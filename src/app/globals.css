@@ -2,7 +2,7 @@
 
 @theme {
   --font-display: "Georgia", "Times New Roman", serif;
-  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-body: var(--font-inter), "Segoe UI", system-ui, sans-serif;
 
   --color-brand-50: #eef7f0;
   --color-brand-100: #d5edd9;

@@ -24,15 +24,15 @@ export default function Home() {
           </span>
         </div>
         <div className="hidden items-center gap-8 sm:flex">
-          <span className="font-[var(--font-body)] text-sm text-white/30">
+          <a href="#" className="font-[var(--font-body)] text-sm text-white/30 hover:text-white/50 cursor-pointer">
             Features
-          </span>
-          <span className="font-[var(--font-body)] text-sm text-white/30">
+          </a>
+          <a href="#" className="font-[var(--font-body)] text-sm text-white/30 hover:text-white/50 cursor-pointer">
             Docs
-          </span>
-          <span className="font-[var(--font-body)] text-sm text-white/30">
+          </a>
+          <a href="#" className="font-[var(--font-body)] text-sm text-white/30 hover:text-white/50 cursor-pointer">
             Changelog
-          </span>
+          </a>
         </div>
       </nav>
 
@@ -68,6 +68,8 @@ export default function Home() {
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
+            aria-hidden="true"
+            focusable="false"
           >
             <path
               strokeLinecap="round"
