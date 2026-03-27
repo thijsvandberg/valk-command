@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Georgia", "Times New Roman", serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+
+  --color-brand-50: #eef7f0;
+  --color-brand-100: #d5edd9;
+  --color-brand-200: #addbb5;
+  --color-brand-300: #7ac48a;
+  --color-brand-400: #4aaa60;
+  --color-brand-500: #2e9149;
+  --color-brand-600: #22753a;
+  --color-brand-700: #1d5d30;
+  --color-brand-800: #1a4a29;
+  --color-brand-900: #173d24;
+  --color-brand-950: #0a2213;
+
+  --color-surface-base: #0c0f14;
+  --color-surface-elevated: #131820;
+  --color-surface-floating: #1a2030;
+}
+
+/* Noise texture overlay for depth */
+@layer base {
+  .noise-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
