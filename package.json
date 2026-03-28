@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "ao": "ao start valk-command",
     "ao:stop": "ao stop valk-command",
-    "ao:status": "ao status"
+    "ao:status": "ao status",
+    "ao:nudge": "tools/scripts/nudge-orchestrator.sh"
   },
   "dependencies": {
     "next": "^15.5.0",
