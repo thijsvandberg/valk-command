@@ -1,9 +1,12 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 export const conversation = sqliteTable("conversation", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
-  createdAt: text("created_at").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
   relatedTicket: text("related_ticket"),
 });
 
@@ -11,10 +14,12 @@ export const message = sqliteTable("message", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id")
     .notNull()
-    .references(() => conversation.id),
+    .references(() => conversation.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["user", "assistant"] }).notNull(),
   content: text("content").notNull(),
-  timestamp: text("timestamp").notNull(),
+  timestamp: text("timestamp")
+    .notNull()
+    .default(sql`(datetime('now'))`),
   workspaceTaskId: text("workspace_task_id"),
 });
 
@@ -78,3 +83,8 @@ export const alert = sqliteTable("alert", {
   createdAt: text("created_at").notNull(),
   read: integer("read", { mode: "boolean" }).notNull().default(false),
 });
+
+export type Conversation = typeof conversation.$inferSelect;
+export type NewConversation = typeof conversation.$inferInsert;
+export type Message = typeof message.$inferSelect;
+export type NewMessage = typeof message.$inferInsert;
