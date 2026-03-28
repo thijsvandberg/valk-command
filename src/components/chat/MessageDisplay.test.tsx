@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import MessageDisplay from "./MessageDisplay";
-import type { Message } from "@/data/chat-mock";
+import type { Message } from "@/types/chat";
 
 const mockMessages: Message[] = [
   {
@@ -10,6 +10,7 @@ const mockMessages: Message[] = [
     role: "user",
     content: "Hello, can you help me?",
     timestamp: "2026-03-28T09:10:00Z",
+    workspaceTaskId: null,
   },
   {
     id: "msg-2",
@@ -17,6 +18,7 @@ const mockMessages: Message[] = [
     role: "assistant",
     content: "Of course! What do you need?",
     timestamp: "2026-03-28T09:12:00Z",
+    workspaceTaskId: null,
   },
 ];
 
