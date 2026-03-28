@@ -6,8 +6,10 @@
 set -euo pipefail
 
 REPO="thijsvandberg/valk-command"
-INTERVAL=${1:-300}
+INTERVAL=${1:-90}
+ISSUE_EVERY=${2:-5}  # Check issues every Nth cycle (saves API calls)
 MAX_CODING_WORKERS=2
+CYCLE=0
 
 # Cached session list (refreshed once per cycle)
 CACHED_SESSIONS=""
@@ -231,9 +233,11 @@ kill_stale_sessions() {
   done
 }
 
-log "Pipeline nudge started (every ${INTERVAL}s). Ctrl+C to stop."
+log "Pipeline nudge started (PRs every ${INTERVAL}s, issues every $((INTERVAL * ISSUE_EVERY))s). Ctrl+C to stop."
 
 while true; do
+  CYCLE=$((CYCLE + 1))
+
   if ! ao status &>/dev/null 2>&1; then
     log "AO not running, skipping"
     sleep "$INTERVAL"
@@ -251,9 +255,8 @@ while true; do
   # Refresh sessions after cleanup
   refresh_sessions
 
-  # Fetch all open PRs and issues once per cycle (REST, 2 calls total)
+  # Always fetch PRs (fast pipeline progression)
   fetch_all_prs
-  fetch_all_issues
 
   # Process open PRs
   echo "$PRS_JSON" | jq -r '.[].number' 2>/dev/null | while read -r pr; do
@@ -261,37 +264,42 @@ while true; do
     process_pr "$pr"
   done
 
-  # Spawn workers for backlog issues (max $MAX_CODING_WORKERS concurrent)
-  active_worker_count=$(echo "$CACHED_SESSIONS" | grep -c "issue-" 2>/dev/null || echo "0")
-  # Filter to actual issues (not PRs) from the cached issues JSON
-  open_issues=$(echo "$ISSUES_JSON" | jq -r '.[] | select(.pull_request == null) | .number' 2>/dev/null || echo "")
-  for issue in $open_issues; do
-    if [[ "$active_worker_count" -ge "$MAX_CODING_WORKERS" ]]; then
-      log "Worker limit ($MAX_CODING_WORKERS) reached, skipping remaining issues"
-      break
-    fi
-    if has_active_session_for_issue "$issue"; then
-      continue
-    fi
-    if has_open_pr_for_issue "$issue"; then
-      log "Issue #$issue: open PR already exists, skipping"
-      continue
-    fi
-    if ! dependencies_met_cached "$issue"; then
-      continue
-    fi
-    model=$(issue_model_cached "$issue")
-    log "Issue #$issue: spawning worker ($model)"
-    ao spawn "$issue" 2>/dev/null || { log "Issue #$issue: spawn failed"; continue; }
-    if [[ "$model" == "sonnet" ]]; then
-      (
-        sleep 20
-        session=$(ao status 2>/dev/null | grep -E "^\s+vc-" | grep "issue-$issue" | awk '{print $1}' | tail -1)
-        [[ -n "$session" ]] && ao send "$session" "/model sonnet" --timeout 30 2>/dev/null || true
-      ) &
-    fi
-    active_worker_count=$((active_worker_count + 1))
-  done
+  # Check issues less frequently (saves API calls, issues don't change as fast)
+  if [[ $((CYCLE % ISSUE_EVERY)) -eq 0 ]]; then
+    fetch_all_issues
+
+    # Spawn workers for backlog issues (max $MAX_CODING_WORKERS concurrent)
+    active_worker_count=$(echo "$CACHED_SESSIONS" | grep -c "issue-" 2>/dev/null || echo "0")
+    # Filter to actual issues (not PRs) from the cached issues JSON
+    open_issues=$(echo "$ISSUES_JSON" | jq -r '.[] | select(.pull_request == null) | .number' 2>/dev/null || echo "")
+    for issue in $open_issues; do
+      if [[ "$active_worker_count" -ge "$MAX_CODING_WORKERS" ]]; then
+        log "Worker limit ($MAX_CODING_WORKERS) reached, skipping remaining issues"
+        break
+      fi
+      if has_active_session_for_issue "$issue"; then
+        continue
+      fi
+      if has_open_pr_for_issue "$issue"; then
+        log "Issue #$issue: open PR already exists, skipping"
+        continue
+      fi
+      if ! dependencies_met_cached "$issue"; then
+        continue
+      fi
+      model=$(issue_model_cached "$issue")
+      log "Issue #$issue: spawning worker ($model)"
+      ao spawn "$issue" 2>/dev/null || { log "Issue #$issue: spawn failed"; continue; }
+      if [[ "$model" == "sonnet" ]]; then
+        (
+          sleep 20
+          session=$(ao status 2>/dev/null | grep -E "^\s+vc-" | grep "issue-$issue" | awk '{print $1}' | tail -1)
+          [[ -n "$session" ]] && ao send "$session" "/model sonnet" --timeout 30 2>/dev/null || true
+        ) &
+      fi
+      active_worker_count=$((active_worker_count + 1))
+    done
+  fi
 
   sleep "$INTERVAL"
 done
