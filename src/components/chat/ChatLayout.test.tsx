@@ -51,7 +51,7 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("No conversations yet").length).toBeGreaterThan(0);
+      expect(screen.getByText("No conversations yet")).toBeInTheDocument();
     });
     expect(screen.getByText("Select a conversation or start a new one.")).toBeInTheDocument();
   });
@@ -62,7 +62,7 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Test conversation").length).toBeGreaterThan(0);
+      expect(screen.getByText("Test conversation")).toBeInTheDocument();
     });
   });
 
@@ -78,11 +78,10 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("No conversations yet").length).toBeGreaterThan(0);
+      expect(screen.getByText("No conversations yet")).toBeInTheDocument();
     });
 
-    const createButtons = screen.getAllByLabelText("New conversation");
-    fireEvent.click(createButtons[0]);
+    fireEvent.click(screen.getByLabelText("New conversation"));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Message input")).toBeInTheDocument();
@@ -98,11 +97,10 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Test conversation").length).toBeGreaterThan(0);
+      expect(screen.getByText("Test conversation")).toBeInTheDocument();
     });
 
-    const convButtons = screen.getAllByText("Test conversation");
-    fireEvent.click(convButtons[0]);
+    fireEvent.click(screen.getByText("Test conversation"));
 
     await waitFor(() => {
       expect(screen.getByText("Hello there")).toBeInTheDocument();
@@ -135,10 +133,10 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Test conversation").length).toBeGreaterThan(0);
+      expect(screen.getByText("Test conversation")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByText("Test conversation")[0]);
+    fireEvent.click(screen.getByText("Test conversation"));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Message input")).toBeInTheDocument();
@@ -163,17 +161,16 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Test conversation").length).toBeGreaterThan(0);
+      expect(screen.getByText("Test conversation")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByText("Test conversation")[0]);
+    fireEvent.click(screen.getByText("Test conversation"));
 
     await waitFor(() => {
       expect(screen.getByText("Hello there")).toBeInTheDocument();
     });
 
-    const deleteButton = screen.getAllByLabelText("Delete Test conversation")[0];
-    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByLabelText("Delete Test conversation"));
 
     await waitFor(() => {
       expect(screen.getByText("Select a conversation or start a new one.")).toBeInTheDocument();
@@ -186,7 +183,65 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Failed to load conversations").length).toBeGreaterThan(0);
+      expect(screen.getByText("Failed to load conversations")).toBeInTheDocument();
+    });
+  });
+
+  it("renders mobile sidebar toggle button", async () => {
+    mockFetchSequence([{ ok: true, data: [] }]);
+
+    render(<ChatLayout />);
+
+    expect(screen.getByLabelText("Open conversations")).toBeInTheDocument();
+  });
+
+  it("shows overlay and close button when mobile sidebar is opened", async () => {
+    mockFetchSequence([{ ok: true, data: [] }]);
+
+    render(<ChatLayout />);
+
+    fireEvent.click(screen.getByLabelText("Open conversations"));
+
+    expect(screen.getByLabelText("Close conversations")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-sidebar")).toBeInTheDocument();
+  });
+
+  it("closes mobile sidebar when overlay is clicked", async () => {
+    mockFetchSequence([{ ok: true, data: [] }]);
+
+    const { container } = render(<ChatLayout />);
+
+    fireEvent.click(screen.getByLabelText("Open conversations"));
+
+    // The overlay div sits before the sidebar
+    const overlay = container.querySelector(".fixed.inset-0.z-30");
+    expect(overlay).toBeTruthy();
+    fireEvent.click(overlay!);
+
+    await waitFor(() => {
+      expect(container.querySelector(".fixed.inset-0.z-30")).not.toBeInTheDocument();
+    });
+  });
+
+  it("closes mobile sidebar and selects conversation when a conversation is clicked", async () => {
+    mockFetchSequence([
+      { ok: true, data: [mockConversation] },
+      { ok: true, data: mockMessages },
+    ]);
+
+    const { container } = render(<ChatLayout />);
+
+    fireEvent.click(screen.getByLabelText("Open conversations"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Test conversation")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Test conversation"));
+
+    await waitFor(() => {
+      expect(container.querySelector(".fixed.inset-0.z-30")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Message input")).toBeInTheDocument();
     });
   });
 });
