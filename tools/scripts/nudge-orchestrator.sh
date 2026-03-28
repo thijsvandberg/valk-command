@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Smart pipeline nudge for valk-command.
-# Checks PR state and spawns the right AO agent for the next step.
-# Deduplicates: skips PRs/issues that already have an active session.
+# Uses ao CLI directly instead of relying on the orchestrator.
 # Start: npm run ao:nudge | Stop: Ctrl+C
 
 set -euo pipefail
 
 REPO="thijsvandberg/valk-command"
 INTERVAL=${1:-120}
+MAX_CODING_WORKERS=2
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
@@ -16,9 +16,9 @@ review_count() {
 }
 
 ci_passing() {
-  local checks
-  checks=$(gh pr checks "$1" --repo "$REPO" 2>/dev/null || echo "")
-  echo "$checks" | grep -q "pass" && ! echo "$checks" | grep -q "fail"
+  local state
+  state=$(gh pr checks "$1" --repo "$REPO" --json state --jq '.[].state' 2>/dev/null | sort -u)
+  [[ "$state" == "SUCCESS" ]]
 }
 
 active_sessions() {
@@ -52,17 +52,87 @@ dependencies_met() {
 }
 
 send_to_latest_session() {
-  local pr=$1; shift
-  local prompt="$*"
-  sleep 8
-  local session
-  session=$(active_sessions | grep "#$pr" | awk '{print $1}' | tail -1)
-  if [[ -n "$session" ]]; then
-    ao send "$session" "$prompt" --no-wait 2>/dev/null || true
-    log "  Sent prompt to $session"
-  else
-    log "  Could not find session for PR #$pr"
-  fi
+  local pr=$1 prompt=$2
+  (
+    sleep 20
+    local session
+    session=$(active_sessions | grep "#$pr" | awk '{print $1}' | tail -1)
+    if [[ -n "$session" ]]; then
+      ao send "$session" "$prompt" --timeout 60 2>/dev/null || true
+      log "  Sent prompt to $session"
+    else
+      log "  Could not find session for PR #$pr"
+    fi
+  ) &
+}
+
+spawn_code_review() {
+  local pr=$1
+  log "PR #$pr: spawning code review"
+  ao spawn --claim-pr "$pr" 2>/dev/null || { log "PR #$pr: spawn failed (branch in use?)"; return; }
+  send_to_latest_session "$pr" "You are a code reviewer for valk-command.
+First read CLAUDE.md for project standards. Then run gh pr diff to read all changes.
+
+Review checklist (evaluate EVERY item):
+1. Tests: included for new features/fixes? Name the test files.
+2. Commits: conventional format (feat:, fix:, chore:)?
+3. Secrets: any hardcoded secrets or credentials?
+4. Types: TypeScript correct? Any unwarranted 'any' or type assertions?
+5. Language: all code, comments, UI strings in English?
+6. Scope: changes outside issue scope?
+7. Build: run npm run build
+8. Tests: run npm run test (if available)
+
+Beyond the checklist, critically review the code. Bugs? Edge cases? Better approaches?
+
+Format your review as:
+## Checklist
+Each item with PASS/FAIL.
+## Review
+Critical assessment.
+
+Submit: gh pr review $pr --approve -b '<review>' or gh pr review $pr --request-changes -b '<review>'
+Do NOT use gh pr comment."
+}
+
+spawn_po_review() {
+  local pr=$1
+  log "PR #$pr: spawning PO acceptance"
+  ao spawn --claim-pr "$pr" 2>/dev/null || { log "PR #$pr: spawn failed (branch in use?)"; return; }
+  send_to_latest_session "$pr" "You are the PO acceptance agent for valk-command.
+Verify PR #$pr delivers what the issue asked for.
+
+Steps:
+1. Find the issue number in the PR body, then read it: gh issue view <N> --repo $REPO
+2. Read the PR diff: gh pr diff
+3. Read review comments: gh pr view $pr --comments
+4. Check CI: gh pr checks $pr
+
+Criteria:
+- All acceptance criteria from the issue addressed
+- No scope creep
+- CI green
+- Production-ready
+
+Submit: gh pr review $pr --approve -b 'PO accepted: <summary>' or gh pr review $pr --request-changes -b '<gaps>'
+Do NOT use gh pr comment. Do NOT merge."
+}
+
+spawn_merge_agent() {
+  local pr=$1
+  log "PR #$pr: spawning merge agent"
+  ao spawn --claim-pr "$pr" 2>/dev/null || { log "PR #$pr: spawn failed (branch in use?)"; return; }
+  send_to_latest_session "$pr" "You are the merge agent for valk-command. Land PR #$pr on dev.
+
+Steps:
+1. git fetch origin dev
+2. git rebase origin/dev
+3. If conflicts: resolve, run npm run build and npm run test, git rebase --continue
+4. git push --force-with-lease
+5. Wait for CI: gh pr checks $pr --watch
+6. Merge: gh pr merge $pr --squash --delete-branch
+
+If conflicts cannot be resolved, post: gh pr comment $pr -b 'Merge blocked: conflicts need manual resolution.'"
 }
 
 process_pr() {
@@ -82,56 +152,11 @@ process_pr() {
   reviews=$(review_count "$pr")
 
   if [[ "$reviews" -lt 1 ]]; then
-    log "PR #$pr: needs code review, spawning"
-    ao spawn --claim-pr "$pr" 2>/dev/null || { log "PR #$pr: spawn failed"; return; }
-    send_to_latest_session "$pr" "You are a code reviewer for valk-command.
-First read CLAUDE.md. Then run gh pr diff to read all changes.
-
-Review checklist (evaluate EVERY item):
-1. Tests: included for new features/fixes?
-2. Commits: conventional format?
-3. Secrets: any hardcoded credentials?
-4. Types: TypeScript correct?
-5. Language: all in English?
-6. Scope: changes outside issue scope?
-7. Build: run npm run build
-8. Tests: run npm run test (if available)
-
-Beyond the checklist, critically review the code.
-
-Format as: ## Checklist (PASS/FAIL per item) ## Review (critical assessment)
-
-Submit: gh pr review $pr --approve -b '<review>' or gh pr review $pr --request-changes -b '<review>'
-Do NOT use gh pr comment."
-
+    spawn_code_review "$pr"
   elif [[ "$reviews" -lt 2 ]]; then
-    log "PR #$pr: needs PO acceptance, spawning"
-    ao spawn --claim-pr "$pr" 2>/dev/null || { log "PR #$pr: spawn failed"; return; }
-    send_to_latest_session "$pr" "You are the PO acceptance agent for valk-command.
-Verify PR #$pr delivers what the issue asked for.
-
-1. Find the issue number in the PR body, read it
-2. Read the PR diff: gh pr diff
-3. Check CI: gh pr checks $pr
-
-Criteria: all AC addressed, no scope creep, CI green, production-ready.
-
-Submit: gh pr review $pr --approve -b 'PO accepted: <summary>' or gh pr review $pr --request-changes -b '<gaps>'
-Do NOT use gh pr comment. Do NOT merge."
-
-  else
-    log "PR #$pr: reviewed + PO done, spawning merge agent"
-    ao spawn --claim-pr "$pr" 2>/dev/null || { log "PR #$pr: spawn failed"; return; }
-    send_to_latest_session "$pr" "You are the merge agent for valk-command. Land PR #$pr on dev.
-
-1. git fetch origin dev
-2. git rebase origin/dev
-3. If conflicts: resolve, run npm run build and npm run test, git rebase --continue
-4. git push --force-with-lease
-5. Wait for CI: gh pr checks $pr --watch
-6. Merge: gh pr merge $pr --squash --delete-branch
-
-If conflicts cannot be resolved, post: gh pr comment $pr -b 'Merge blocked: needs manual resolution.'"
+    spawn_po_review "$pr"
+  elif [[ "$reviews" -ge 2 ]]; then
+    spawn_merge_agent "$pr"
   fi
 }
 
@@ -151,11 +176,15 @@ while true; do
     process_pr "$pr"
   done
 
-  # Spawn workers for backlog issues (no orchestrator delegation)
+  # Spawn workers for backlog issues (max $MAX_CODING_WORKERS concurrent)
+  active_worker_count=$(active_sessions | grep -c "issue-" 2>/dev/null || echo "0")
   open_issues=$(gh issue list --repo "$REPO" --state open --json number --jq '.[].number' 2>/dev/null || echo "")
   for issue in $open_issues; do
+    if [[ "$active_worker_count" -ge "$MAX_CODING_WORKERS" ]]; then
+      log "Worker limit ($MAX_CODING_WORKERS) reached, skipping remaining issues"
+      break
+    fi
     if has_active_session_for_issue "$issue"; then
-      log "Issue #$issue: worker already active, skipping"
       continue
     fi
     if ! dependencies_met "$issue"; then
@@ -163,6 +192,7 @@ while true; do
     fi
     log "Issue #$issue: spawning worker"
     ao spawn "$issue" 2>/dev/null || { log "Issue #$issue: spawn failed"; continue; }
+    active_worker_count=$((active_worker_count + 1))
   done
 
   sleep "$INTERVAL"
