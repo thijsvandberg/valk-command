@@ -33,6 +33,17 @@ has_active_session_for_issue() {
   active_sessions | grep -q "issue-$1"
 }
 
+issue_model() {
+  local issue=$1
+  local labels
+  labels=$(gh issue view "$issue" --repo "$REPO" --json labels --jq '.[].name' 2>/dev/null || echo "")
+  if echo "$labels" | grep -q "model:sonnet"; then
+    echo "sonnet"
+  else
+    echo "opus"
+  fi
+}
+
 dependencies_met() {
   local issue=$1
   local body
@@ -58,10 +69,8 @@ send_to_latest_session() {
     local session
     session=$(active_sessions | grep "#$pr" | awk '{print $1}' | tail -1)
     if [[ -n "$session" ]]; then
-      ao send "$session" "/model sonnet" --timeout 30 2>/dev/null || true
-      sleep 3
       ao send "$session" "$prompt" --timeout 60 2>/dev/null || true
-      log "  Sent prompt to $session (sonnet)"
+      log "  Sent prompt to $session"
     else
       log "  Could not find session for PR #$pr"
     fi
@@ -214,8 +223,18 @@ while true; do
     if ! dependencies_met "$issue"; then
       continue
     fi
-    log "Issue #$issue: spawning worker"
+    local model
+    model=$(issue_model "$issue")
+    log "Issue #$issue: spawning worker ($model)"
     ao spawn "$issue" 2>/dev/null || { log "Issue #$issue: spawn failed"; continue; }
+    if [[ "$model" == "sonnet" ]]; then
+      (
+        sleep 20
+        local session
+        session=$(active_sessions | grep "issue-$issue" | awk '{print $1}' | tail -1)
+        [[ -n "$session" ]] && ao send "$session" "/model sonnet" --timeout 30 2>/dev/null || true
+      ) &
+    fi
     active_worker_count=$((active_worker_count + 1))
   done
 
