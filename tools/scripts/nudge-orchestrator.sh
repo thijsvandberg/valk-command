@@ -6,37 +6,59 @@
 set -euo pipefail
 
 REPO="thijsvandberg/valk-command"
-INTERVAL=${1:-120}
+INTERVAL=${1:-300}
 MAX_CODING_WORKERS=2
+
+# Cached session list (refreshed once per cycle)
+CACHED_SESSIONS=""
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
-review_count() {
-  gh api "repos/$REPO/pulls/$1/reviews" --jq 'length' 2>/dev/null || echo "0"
-}
-
-ci_passing() {
-  local state
-  state=$(gh pr checks "$1" --repo "$REPO" --json state --jq '.[].state' 2>/dev/null | sort -u)
-  [[ "$state" == "SUCCESS" ]]
+refresh_sessions() {
+  CACHED_SESSIONS=$(ao status 2>/dev/null | grep -E "^\s+vc-" | grep -v "exited" || true)
 }
 
 active_sessions() {
-  ao status 2>/dev/null | grep -E "^\s+vc-" | grep -v "exited" || true
+  echo "$CACHED_SESSIONS"
 }
 
 has_active_session_for_pr() {
-  active_sessions | grep -q "#$1"
+  echo "$CACHED_SESSIONS" | grep -q "#$1"
 }
 
 has_active_session_for_issue() {
-  active_sessions | grep -q "issue-$1"
+  echo "$CACHED_SESSIONS" | grep -q "issue-$1"
 }
 
-issue_model() {
+# Cached PR list (fetched once per cycle, includes head SHA)
+PRS_JSON=""
+fetch_all_prs() {
+  PRS_JSON=$(gh api "repos/$REPO/pulls?state=open&base=dev&per_page=50" 2>/dev/null || echo "[]")
+}
+
+# Get review count + CI status for a PR (2 REST calls, uses cached SHA)
+fetch_pr_data() {
+  local pr=$1
+  local sha reviews ci
+  sha=$(echo "$PRS_JSON" | jq -r ".[] | select(.number == $pr) | .head.sha" 2>/dev/null || echo "")
+  [[ -z "$sha" ]] && { echo "0 pending"; return; }
+  reviews=$(gh api "repos/$REPO/pulls/$pr/reviews" --jq 'length' 2>/dev/null || echo "0")
+  ci=$(gh api "repos/$REPO/commits/$sha/check-runs" \
+    --jq '[.check_runs[].conclusion] | if all(. == "success") then "success" else "pending" end' 2>/dev/null || echo "pending")
+  echo "$reviews $ci"
+}
+
+# Fetch all open issues with body + labels in one call (REST API)
+# Stores results in ISSUES_JSON for local processing
+ISSUES_JSON=""
+fetch_all_issues() {
+  ISSUES_JSON=$(gh api "repos/$REPO/issues?state=open&per_page=50" 2>/dev/null || echo "[]")
+}
+
+issue_model_cached() {
   local issue=$1
   local labels
-  labels=$(gh issue view "$issue" --repo "$REPO" --json labels --jq '.[].name' 2>/dev/null || echo "")
+  labels=$(echo "$ISSUES_JSON" | jq -r ".[] | select(.number == $issue) | .labels[].name" 2>/dev/null || echo "")
   if echo "$labels" | grep -q "model:sonnet"; then
     echo "sonnet"
   else
@@ -44,17 +66,25 @@ issue_model() {
   fi
 }
 
-dependencies_met() {
+dependencies_met_cached() {
   local issue=$1
   local body
-  body=$(gh issue view "$issue" --repo "$REPO" --json body --jq '.body' 2>/dev/null || echo "")
+  body=$(echo "$ISSUES_JSON" | jq -r ".[] | select(.number == $issue) | .body // \"\"" 2>/dev/null || echo "")
   local deps
   deps=$(echo "$body" | grep -oE 'Depends on #[0-9]+' | grep -oE '[0-9]+' || true)
   [[ -z "$deps" ]] && return 0
   for dep in $deps; do
-    local state
-    state=$(gh issue view "$dep" --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
-    if [[ "$state" != "CLOSED" ]]; then
+    local dep_state
+    dep_state=$(echo "$ISSUES_JSON" | jq -r ".[] | select(.number == $dep) | .state // \"UNKNOWN\"" 2>/dev/null || echo "")
+    # If dep not in open issues list, check if it's closed via API (only call if needed)
+    if [[ -z "$dep_state" ]]; then
+      dep_state=$(gh api "repos/$REPO/issues/$dep" --jq '.state' 2>/dev/null || echo "unknown")
+      if [[ "$dep_state" != "closed" ]]; then
+        log "  Issue #$issue blocked by open dependency #$dep"
+        return 1
+      fi
+    else
+      # It's in the open issues list, so it's open
       log "  Issue #$issue blocked by open dependency #$dep"
       return 1
     fi
@@ -154,13 +184,15 @@ process_pr() {
     return
   fi
 
-  if ! ci_passing "$pr"; then
-    log "PR #$pr: CI not passing, skipping"
+  local pr_data reviews ci
+  pr_data=$(fetch_pr_data "$pr")
+  reviews=$(echo "$pr_data" | awk '{print $1}')
+  ci=$(echo "$pr_data" | awk '{print $2}')
+
+  if [[ "$ci" != "success" ]]; then
+    log "PR #$pr: CI not passing ($ci), skipping"
     return
   fi
-
-  local reviews
-  reviews=$(review_count "$pr")
 
   if [[ "$reviews" -lt 1 ]]; then
     spawn_code_review "$pr"
@@ -197,21 +229,31 @@ while true; do
     continue
   fi
 
+  # Cache session list once per cycle
+  refresh_sessions
+
   # Cleanup stale worktrees and zombie sessions
   git worktree prune 2>/dev/null || true
   ao session cleanup 2>/dev/null || true
   kill_stale_sessions
 
+  # Refresh sessions after cleanup
+  refresh_sessions
+
+  # Fetch all open PRs and issues once per cycle (REST, 2 calls total)
+  fetch_all_prs
+  fetch_all_issues
+
   # Process open PRs
-  prs=$(gh pr list --repo "$REPO" --base dev --state open --json number 2>/dev/null || echo "[]")
-  echo "$prs" | jq -r '.[].number' 2>/dev/null | while read -r pr; do
+  echo "$PRS_JSON" | jq -r '.[].number' 2>/dev/null | while read -r pr; do
     [[ -z "$pr" ]] && continue
     process_pr "$pr"
   done
 
   # Spawn workers for backlog issues (max $MAX_CODING_WORKERS concurrent)
-  active_worker_count=$(active_sessions | grep -c "issue-" 2>/dev/null || echo "0")
-  open_issues=$(gh issue list --repo "$REPO" --state open --json number --jq '.[].number' 2>/dev/null || echo "")
+  active_worker_count=$(echo "$CACHED_SESSIONS" | grep -c "issue-" 2>/dev/null || echo "0")
+  # Filter to actual issues (not PRs) from the cached issues JSON
+  open_issues=$(echo "$ISSUES_JSON" | jq -r '.[] | select(.pull_request == null) | .number' 2>/dev/null || echo "")
   for issue in $open_issues; do
     if [[ "$active_worker_count" -ge "$MAX_CODING_WORKERS" ]]; then
       log "Worker limit ($MAX_CODING_WORKERS) reached, skipping remaining issues"
@@ -220,18 +262,16 @@ while true; do
     if has_active_session_for_issue "$issue"; then
       continue
     fi
-    if ! dependencies_met "$issue"; then
+    if ! dependencies_met_cached "$issue"; then
       continue
     fi
-    local model
-    model=$(issue_model "$issue")
+    model=$(issue_model_cached "$issue")
     log "Issue #$issue: spawning worker ($model)"
     ao spawn "$issue" 2>/dev/null || { log "Issue #$issue: spawn failed"; continue; }
     if [[ "$model" == "sonnet" ]]; then
       (
         sleep 20
-        local session
-        session=$(active_sessions | grep "issue-$issue" | awk '{print $1}' | tail -1)
+        session=$(ao status 2>/dev/null | grep -E "^\s+vc-" | grep "issue-$issue" | awk '{print $1}' | tail -1)
         [[ -n "$session" ]] && ao send "$session" "/model sonnet" --timeout 30 2>/dev/null || true
       ) &
     fi
