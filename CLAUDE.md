@@ -50,7 +50,7 @@ docs/             Project documentation
 - All code, comments, and UI strings in English
 - Only write comments that explain WHY, not WHAT
 - Use conventional commits (feat:, fix:, chore:)
-- Run `npm run build` before committing to verify the build passes
+- Run `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` before committing
 
 ## Branching Strategy
 
