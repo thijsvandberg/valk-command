@@ -24,7 +24,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("valk-command")).toBeInTheDocument();
   });
 
-  it("renders all 7 navigation items", () => {
+  it("renders all 8 navigation items", () => {
     render(<Sidebar />);
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Chat")).toBeInTheDocument();
@@ -33,6 +33,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("Refinement")).toBeInTheDocument();
     expect(screen.getByText("Jobs")).toBeInTheDocument();
     expect(screen.getByText("Stakeholder")).toBeInTheDocument();
+    expect(screen.getByText("Changelog")).toBeInTheDocument();
   });
 
   it("all navigation links point to correct routes", () => {
@@ -48,6 +49,7 @@ describe("Sidebar", () => {
       "/refinement",
       "/jobs",
       "/stakeholder",
+      "/changelog",
     ]);
   });
 
@@ -65,6 +67,13 @@ describe("Sidebar", () => {
     render(<Sidebar />);
     const dashboardLink = screen.getByText("Dashboard").closest("a");
     expect(dashboardLink).toHaveAttribute("aria-current", "page");
+  });
+
+  it("highlights Changelog when pathname is /changelog", () => {
+    mockUsePathname.mockReturnValue("/changelog");
+    render(<Sidebar />);
+    const changelogLink = screen.getByText("Changelog").closest("a");
+    expect(changelogLink).toHaveAttribute("aria-current", "page");
   });
 
   it("opens and closes on mobile toggle", () => {
