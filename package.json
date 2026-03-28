@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "ao": "ao start valk-command",
     "ao:stop": "ao stop valk-command",
-    "ao:status": "ao status"
+    "ao:status": "ao status",
+    "ao:nudge": "tools/scripts/nudge-orchestrator.sh",
+    "promote": "gh pr create --base main --head dev --title 'Promote dev to main' --body 'Merge accumulated changes from dev into main.' || gh pr view dev --json url --jq .url"
   },
   "dependencies": {
     "next": "^15.5.0",

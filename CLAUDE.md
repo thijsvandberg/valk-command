@@ -59,6 +59,13 @@ The `main` branch is protected with the following rules:
 - Branches must be up to date with `main` before merging
 - Force pushes and branch deletion are blocked
 
+## Testing
+
+- Every feature and bug fix must include tests
+- Test files use `*.test.ts` or `*.test.tsx` and are co-located next to the source file they test
+- Run `npm run test` before committing to verify all tests pass
+- Tests must pass together with `npm run build` before any commit or PR
+
 ## Agent Orchestrator
 
 This project is managed by Agent Orchestrator (AO). Workers are spawned via `ao spawn` to implement issues autonomously.
