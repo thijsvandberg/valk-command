@@ -52,6 +52,13 @@ docs/             Project documentation
 - Use conventional commits (feat:, fix:, chore:)
 - Run `npm run build` before committing to verify the build passes
 
+## Branch Protection
+
+The `main` branch is protected with the following rules:
+- Required status check: `build` (CI workflow) must pass before merge
+- Branches must be up to date with `main` before merging
+- Force pushes and branch deletion are blocked
+
 ## Agent Orchestrator
 
 This project is managed by Agent Orchestrator (AO). Workers are spawned via `ao spawn` to implement issues autonomously.
