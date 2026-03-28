@@ -160,6 +160,23 @@ process_pr() {
   fi
 }
 
+kill_stale_sessions() {
+  local now
+  now=$(date +%s)
+  active_sessions | while read -r line; do
+    local session age_str
+    session=$(echo "$line" | awk '{print $1}')
+    age_str=$(echo "$line" | grep -oE '[0-9]+m ago' | grep -oE '[0-9]+' || echo "")
+    [[ -z "$age_str" ]] && continue
+    local status
+    status=$(echo "$line" | awk '{for(i=1;i<=NF;i++) if($i=="ready"||$i=="idle") print $i}')
+    if [[ -n "$status" && "$age_str" -ge 3 ]]; then
+      log "Killing stale session $session ($status for ${age_str}m)"
+      ao session kill "$session" 2>/dev/null || true
+    fi
+  done
+}
+
 log "Pipeline nudge started (every ${INTERVAL}s). Ctrl+C to stop."
 
 while true; do
@@ -168,6 +185,10 @@ while true; do
     sleep "$INTERVAL"
     continue
   fi
+
+  # Cleanup stale worktrees and zombie sessions
+  git worktree prune 2>/dev/null || true
+  kill_stale_sessions
 
   # Process open PRs
   prs=$(gh pr list --repo "$REPO" --base dev --state open --json number 2>/dev/null || echo "[]")

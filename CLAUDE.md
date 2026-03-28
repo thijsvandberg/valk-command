@@ -85,9 +85,10 @@ See `docs/agent-orchestrator/` for full AO documentation:
 
 1. Define the feature (user story in `docs/user-stories/VC-XXX-name.md`)
 2. Create a GitHub Issue with clear description + acceptance criteria
-3. `ao spawn <issue-number>` to dispatch a worker
-4. Worker builds, PRs, handles CI/review feedback autonomously
-5. Pipeline proceeds: code review agent -> PO agent -> merge agent (driven by nudge script)
+3. Dependencies between issues MUST use exact format: `Depends on #N` (not freetext like "depends on database setup")
+4. `ao spawn <issue-number>` to dispatch a worker
+5. Worker builds, PRs, handles CI/review feedback autonomously
+6. Pipeline proceeds: code review agent -> PO agent -> merge agent (driven by nudge script)
 
 ### Agent Mode (for AO workers)
 
@@ -95,6 +96,7 @@ When this project is worked on by an AO worker agent:
 - Do NOT ask for confirmation. Start working immediately.
 - Do NOT discuss or propose plans. Implement directly.
 - When done: commit, push, and create a PR.
+- Do NOT merge PRs. Only the merge agent (via nudge pipeline) handles merging.
 - If something is unclear in the issue, make a reasonable decision and document it in the PR description.
 
 ## Containment Rules
