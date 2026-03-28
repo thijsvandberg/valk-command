@@ -97,6 +97,8 @@ When this project is worked on by an AO worker agent:
 - Do NOT discuss or propose plans. Implement directly.
 - When done: commit, push, and create a PR.
 - Do NOT merge PRs. Only the merge agent (via nudge pipeline) handles merging.
+- When modifying layouts, routing, or shared components: verify all existing pages still render by running the full test suite.
+- When adding a new route: add it to the EXPECTED_ROUTES manifest in `src/app/routes.test.tsx`.
 - If something is unclear in the issue, make a reasonable decision and document it in the PR description.
 
 ## Containment Rules

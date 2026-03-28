@@ -42,6 +42,16 @@
             "timeout": 5000
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE '\\.(tsx?|jsx?)\"'; then npm run test 2>&1 | tail -5; fi",
+            "timeout": 30000
+          }
+        ]
       }
     ]
   }
