@@ -1,0 +1,170 @@
+[
+  {
+    "date": "2026-03-28",
+    "entries": [
+      {
+        "hash": "d08149f7bde1375fd220bbe135963687caaf2be6",
+        "shortHash": "d08149f",
+        "date": "2026-03-28",
+        "category": "New",
+        "description": "Add automated changelog page",
+        "longDescription": "Add a changelog page at /changelog that is automatically populated from git merge history. Includes: - Generation script (tools/scripts/generate-changelog.mjs) that parses conventional commits into PO",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/d08149f7bde1375fd220bbe135963687caaf2be6"
+      },
+      {
+        "hash": "489c5755d82d6cb0c67ae473a4087c5bfd193a07",
+        "shortHash": "489c575",
+        "date": "2026-03-28",
+        "category": "Fixed",
+        "description": "Smart nudge with dedup checks and pipeline stages",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/489c5755d82d6cb0c67ae473a4087c5bfd193a07"
+      },
+      {
+        "hash": "82af86b2c1cd3c93f8b15fa41d9c0a4be88a9a17",
+        "shortHash": "82af86b",
+        "date": "2026-03-28",
+        "category": "Documentation",
+        "description": "Update project configuration and backlog with pipeline learnings",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/82af86b2c1cd3c93f8b15fa41d9c0a4be88a9a17"
+      },
+      {
+        "hash": "a2f401cf4c386f9be8943776d659dcdb7b60d2ad",
+        "shortHash": "a2f401c",
+        "date": "2026-03-28",
+        "category": "Maintenance",
+        "description": "Document branch protection rules on main",
+        "author": "thijsvandberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/a2f401cf4c386f9be8943776d659dcdb7b60d2ad"
+      },
+      {
+        "hash": "59ede0d07cd0181a1993fd9b12f26f488929f3e0",
+        "shortHash": "59ede0d",
+        "date": "2026-03-28",
+        "category": "New",
+        "description": "Set up testing framework + React Testing Library",
+        "longDescription": "set up testing framework + React Testing Library - Install testing framework, @testing-library/react, @testing-library/jest-dom, jsdom - Create testing framework config with jsdom env, path alias support, and setup file - Add npm run",
+        "author": "thijsvandberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/59ede0d07cd0181a1993fd9b12f26f488929f3e0"
+      },
+      {
+        "hash": "7057b352d2e1fdd88e276d834ec11283fab13b31",
+        "shortHash": "7057b35",
+        "date": "2026-03-28",
+        "category": "Maintenance",
+        "description": "Add testing rules to project configuration",
+        "longDescription": "Add a Testing section covering: - Tests required for all features and bug fixes - Test file naming convention (*.test.ts(x), co-located) - npm run test must pass before committing",
+        "author": "thijsvandberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/7057b352d2e1fdd88e276d834ec11283fab13b31"
+      },
+      {
+        "hash": "145cb61d0b5e9415ba8a678c478c096ca4da90eb",
+        "shortHash": "145cb61",
+        "date": "2026-03-28",
+        "category": "Maintenance",
+        "description": "Add dev branch workflow, automated checks triggers, and promote script",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/145cb61d0b5e9415ba8a678c478c096ca4da90eb"
+      },
+      {
+        "hash": "8cc3c9cf15fd432429579b4f676fe055e5b968b2",
+        "shortHash": "8cc3c9c",
+        "date": "2026-03-28",
+        "category": "Maintenance",
+        "description": "Add orchestrator nudge script and ao:nudge npm script",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/8cc3c9cf15fd432429579b4f676fe055e5b968b2"
+      },
+      {
+        "hash": "019e47eae077f1763f9b9a71cc41a37c86d8c879",
+        "shortHash": "019e47e",
+        "date": "2026-03-28",
+        "category": "Maintenance",
+        "description": "Add AO convenience scripts to package.json",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/019e47eae077f1763f9b9a71cc41a37c86d8c879"
+      },
+      {
+        "hash": "f0fe843b552af5afdf7ee32111583eb8032ddf09",
+        "shortHash": "f0fe843",
+        "date": "2026-03-28",
+        "category": "Other",
+        "description": "Settings",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/f0fe843b552af5afdf7ee32111583eb8032ddf09"
+      },
+      {
+        "hash": "1b57cf4d1cc7a078ca8268e06c8ab5a40e165fce",
+        "shortHash": "1b57cf4",
+        "date": "2026-03-28",
+        "category": "Maintenance",
+        "description": "Add AO metadata updater hook",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/1b57cf4d1cc7a078ca8268e06c8ab5a40e165fce"
+      },
+      {
+        "hash": "9e0f0878df09e490279bc27b8ef8c9f5a00408db",
+        "shortHash": "9e0f087",
+        "date": "2026-03-28",
+        "category": "Maintenance",
+        "description": "Add project docs, PRD, and expand project configuration",
+        "longDescription": "Set up docs structure with PRD, valk-agent spec, user stories, backlog, and project index. Expanded project configuration with product context, views overview, integrations, and AO workflow instructions.",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/9e0f0878df09e490279bc27b8ef8c9f5a00408db"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-27",
+    "entries": [
+      {
+        "hash": "6dac50c1682544ebecc41bf0f9cedd95868f2b8a",
+        "shortHash": "6dac50c",
+        "date": "2026-03-27",
+        "category": "New",
+        "description": "Add styled landing page",
+        "longDescription": "add styled landing page for valk-command Dark-themed full-screen landing page with brand identity, responsive layout, navigation placeholder, feature hints, and Get Started CTA. Uses custom color pale",
+        "author": "thijsvandberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/6dac50c1682544ebecc41bf0f9cedd95868f2b8a"
+      },
+      {
+        "hash": "ee350e5990a8faba6af2ef4da36fe769679d19b0",
+        "shortHash": "ee350e5",
+        "date": "2026-03-27",
+        "category": "Maintenance",
+        "description": "Block all external tool connection servers for agent containment",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/ee350e5990a8faba6af2ef4da36fe769679d19b0"
+      },
+      {
+        "hash": "b0742319f7eff33aa13218c372d528a08987a918",
+        "shortHash": "b074231",
+        "date": "2026-03-27",
+        "category": "Maintenance",
+        "description": "Add containment rules to prevent external tool usage",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/b0742319f7eff33aa13218c372d528a08987a918"
+      },
+      {
+        "hash": "e19f92be97cdad0d0bb0d5585aed328047ebe1eb",
+        "shortHash": "e19f92b",
+        "date": "2026-03-27",
+        "category": "Maintenance",
+        "description": "Add project configuration for autonomous agent mode",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/e19f92be97cdad0d0bb0d5585aed328047ebe1eb"
+      },
+      {
+        "hash": "49b8c2d81496d1ba518b02b257faae5fc060d501",
+        "shortHash": "49b8c2d",
+        "date": "2026-03-27",
+        "category": "Other",
+        "description": "Initial Next.js scaffold",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/49b8c2d81496d1ba518b02b257faae5fc060d501"
+      }
+    ]
+  }
+]

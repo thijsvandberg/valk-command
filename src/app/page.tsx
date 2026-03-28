@@ -30,7 +30,7 @@ export default function Home() {
           <a href="#" className="font-[var(--font-body)] text-sm text-white/30 hover:text-white/50 cursor-pointer">
             Docs
           </a>
-          <a href="#" className="font-[var(--font-body)] text-sm text-white/30 hover:text-white/50 cursor-pointer">
+          <a href="/changelog" className="font-[var(--font-body)] text-sm text-white/30 hover:text-white/50 cursor-pointer">
             Changelog
           </a>
         </div>

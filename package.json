@@ -9,6 +9,7 @@
     "start": "next start --port 3100",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "generate:changelog": "node tools/scripts/generate-changelog.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "ao": "ao start valk-command",
