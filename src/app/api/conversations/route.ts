@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversations } from "@/db/schema";
+import { conversation } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export async function GET() {
   const result = await db
     .select()
-    .from(conversations)
-    .orderBy(desc(conversations.createdAt));
+    .from(conversation)
+    .orderBy(desc(conversation.createdAt));
 
   return NextResponse.json(result);
 }
@@ -24,16 +24,16 @@ export async function POST(request: Request) {
   }
 
   const id = randomUUID();
-  const conversation = {
+  const conv = {
     id,
     title: body.title.trim(),
     createdAt: new Date().toISOString(),
     relatedTicket: body.relatedTicket ?? null,
   };
 
-  await db.insert(conversations).values(conversation);
+  await db.insert(conversation).values(conv);
 
-  const created = await db.query.conversations.findFirst({
+  const created = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),
   });
 

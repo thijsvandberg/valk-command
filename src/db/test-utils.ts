@@ -9,7 +9,7 @@ export function createTestDb() {
   const testDb = drizzle(sqlite, { schema });
 
   testDb.run(sql`
-    CREATE TABLE conversations (
+    CREATE TABLE conversation (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -18,9 +18,9 @@ export function createTestDb() {
   `);
 
   testDb.run(sql`
-    CREATE TABLE messages (
+    CREATE TABLE message (
       id TEXT PRIMARY KEY,
-      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      conversation_id TEXT NOT NULL REFERENCES conversation(id) ON DELETE CASCADE,
       role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
       content TEXT NOT NULL,
       timestamp TEXT NOT NULL DEFAULT (datetime('now')),

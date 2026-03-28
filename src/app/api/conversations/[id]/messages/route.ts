@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversations, messages } from "@/db/schema";
+import { message } from "@/db/schema";
 import { randomUUID } from "crypto";
 
 const VALID_ROLES = ["user", "assistant"] as const;
@@ -11,11 +11,11 @@ export async function POST(
 ) {
   const { id } = await params;
 
-  const conversation = await db.query.conversations.findFirst({
+  const conv = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),
   });
 
-  if (!conversation) {
+  if (!conv) {
     return NextResponse.json(
       { error: "Conversation not found" },
       { status: 404 },
@@ -39,7 +39,7 @@ export async function POST(
   }
 
   const messageId = randomUUID();
-  const message = {
+  const msg = {
     id: messageId,
     conversationId: id,
     role: body.role as (typeof VALID_ROLES)[number],
@@ -47,9 +47,9 @@ export async function POST(
     workspaceTaskId: body.workspaceTaskId ?? null,
   };
 
-  await db.insert(messages).values(message);
+  await db.insert(message).values(msg);
 
-  const created = await db.query.messages.findFirst({
+  const created = await db.query.message.findFirst({
     where: (m, { eq }) => eq(m.id, messageId),
   });
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversations, messages } from "@/db/schema";
+import { conversation, message } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(
@@ -9,11 +9,11 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const conversation = await db.query.conversations.findFirst({
+  const conv = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),
   });
 
-  if (!conversation) {
+  if (!conv) {
     return NextResponse.json(
       { error: "Conversation not found" },
       { status: 404 },
@@ -22,12 +22,12 @@ export async function GET(
 
   const conversationMessages = await db
     .select()
-    .from(messages)
-    .where(eq(messages.conversationId, id))
-    .orderBy(messages.timestamp);
+    .from(message)
+    .where(eq(message.conversationId, id))
+    .orderBy(message.timestamp);
 
   return NextResponse.json({
-    ...conversation,
+    ...conv,
     messages: conversationMessages,
   });
 }
@@ -38,18 +38,18 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const conversation = await db.query.conversations.findFirst({
+  const conv = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),
   });
 
-  if (!conversation) {
+  if (!conv) {
     return NextResponse.json(
       { error: "Conversation not found" },
       { status: 404 },
     );
   }
 
-  await db.delete(conversations).where(eq(conversations.id, id));
+  await db.delete(conversation).where(eq(conversation.id, id));
 
   return new NextResponse(null, { status: 204 });
 }
