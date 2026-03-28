@@ -24,10 +24,10 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/conversations/${conversationId}/messages`);
+      const res = await fetch(`/api/conversations/${conversationId}`);
       if (!res.ok) throw new Error("Failed to load messages");
       const data = await res.json();
-      setMessages(data);
+      setMessages(data.messages ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -44,14 +44,14 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
       if (!conversationId) return false;
       setError(null);
 
-      // Optimistic: show the user message immediately
       const optimisticId = `optimistic-${Date.now()}`;
       const optimisticMessage: Message = {
         id: optimisticId,
         conversationId,
         role: "user",
         content,
-        createdAt: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        workspaceTaskId: null,
       };
       setMessages((prev) => [...prev, optimisticMessage]);
 
@@ -59,20 +59,16 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
         const res = await fetch(`/api/conversations/${conversationId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ role: "user", content }),
         });
         if (!res.ok) throw new Error("Failed to send message");
-        const { userMessage, assistantMessage } = await res.json();
+        const savedMessage: Message = await res.json();
 
-        // Replace optimistic message with real one, append assistant response
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== optimisticId),
-          userMessage,
-          assistantMessage,
-        ]);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === optimisticId ? savedMessage : m))
+        );
         return true;
       } catch (err) {
-        // Roll back optimistic message
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         setError(err instanceof Error ? err.message : "Unknown error");
         return false;

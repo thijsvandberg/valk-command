@@ -6,7 +6,7 @@ const mockConversation = {
   id: "conv-1",
   title: "Test conversation",
   createdAt: "2026-03-28T10:00:00.000Z",
-  updatedAt: "2026-03-28T10:00:00.000Z",
+  relatedTicket: null,
 };
 
 beforeEach(() => {
@@ -73,6 +73,31 @@ describe("useConversations", () => {
     });
   });
 
+  it("uses default title when none provided", async () => {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...mockConversation, title: "New conversation" }),
+      } as Response);
+
+    const { result } = renderHook(() => useConversations());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.createConversation();
+    });
+
+    expect(fetch).toHaveBeenCalledWith("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "New conversation" }),
+    });
+  });
+
   it("deletes a conversation optimistically", async () => {
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce({
@@ -81,7 +106,7 @@ describe("useConversations", () => {
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true }),
+        status: 204,
       } as Response);
 
     const { result } = renderHook(() => useConversations());
@@ -109,7 +134,6 @@ describe("useConversations", () => {
         ok: false,
         status: 500,
       } as Response)
-      // Re-fetch after failed delete
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [mockConversation],

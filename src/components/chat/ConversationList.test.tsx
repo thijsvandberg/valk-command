@@ -4,8 +4,8 @@ import ConversationList from "./ConversationList";
 import type { Conversation } from "@/types/chat";
 
 const mockConversations: Conversation[] = [
-  { id: "conv-1", title: "First conversation", createdAt: "2026-03-28T09:15:00Z", updatedAt: "2026-03-28T09:15:00Z" },
-  { id: "conv-2", title: "Second conversation", createdAt: "2026-03-27T16:30:00Z", updatedAt: "2026-03-27T16:30:00Z" },
+  { id: "conv-1", title: "First conversation", createdAt: "2026-03-28T09:15:00Z", relatedTicket: null },
+  { id: "conv-2", title: "Second conversation", createdAt: "2026-03-27T16:30:00Z", relatedTicket: null },
 ];
 
 const defaultProps = {

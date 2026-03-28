@@ -43,7 +43,7 @@ export function useConversations(): UseConversationsReturn {
         const res = await fetch("/api/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title }),
+          body: JSON.stringify({ title: title || "New conversation" }),
         });
         if (!res.ok) throw new Error("Failed to create conversation");
         const conversation: Conversation = await res.json();

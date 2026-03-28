@@ -8,14 +8,16 @@ const mockMessages = [
     conversationId: "conv-1",
     role: "user",
     content: "Hello",
-    createdAt: "2026-03-28T10:00:00.000Z",
+    timestamp: "2026-03-28T10:00:00.000Z",
+    workspaceTaskId: null,
   },
   {
     id: "msg-2",
     conversationId: "conv-1",
     role: "assistant",
     content: "Hi there!",
-    createdAt: "2026-03-28T10:00:01.000Z",
+    timestamp: "2026-03-28T10:00:01.000Z",
+    workspaceTaskId: null,
   },
 ];
 
@@ -33,10 +35,16 @@ describe("useMessages", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("fetches messages when conversationId is provided", async () => {
+  it("fetches messages from conversation endpoint", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: true,
-      json: async () => mockMessages,
+      json: async () => ({
+        id: "conv-1",
+        title: "Test",
+        createdAt: "2026-03-28T10:00:00.000Z",
+        relatedTicket: null,
+        messages: mockMessages,
+      }),
     } as Response);
 
     const { result } = renderHook(() => useMessages("conv-1"));
@@ -47,7 +55,7 @@ describe("useMessages", () => {
 
     expect(result.current.messages).toEqual(mockMessages);
     expect(result.current.error).toBeNull();
-    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1/messages");
+    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1");
   });
 
   it("sets error when fetch fails", async () => {
@@ -63,33 +71,24 @@ describe("useMessages", () => {
     expect(result.current.error).toBe("Failed to load messages");
   });
 
-  it("sends a message with optimistic update", async () => {
-    const newUserMsg = {
+  it("sends a message with role and replaces optimistic message", async () => {
+    const savedMsg = {
       id: "msg-3",
       conversationId: "conv-1",
       role: "user",
       content: "New message",
-      createdAt: "2026-03-28T10:01:00.000Z",
-    };
-    const newAssistantMsg = {
-      id: "msg-4",
-      conversationId: "conv-1",
-      role: "assistant",
-      content: 'Acknowledged: "New message".',
-      createdAt: "2026-03-28T10:01:01.000Z",
+      timestamp: "2026-03-28T10:01:00.000Z",
+      workspaceTaskId: null,
     };
 
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => [],
+        json: async () => ({ id: "conv-1", messages: [] }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          userMessage: newUserMsg,
-          assistantMessage: newAssistantMsg,
-        }),
+        json: async () => savedMsg,
       } as Response);
 
     const { result } = renderHook(() => useMessages("conv-1"));
@@ -101,11 +100,11 @@ describe("useMessages", () => {
     });
 
     expect(success).toBe(true);
-    expect(result.current.messages).toEqual([newUserMsg, newAssistantMsg]);
+    expect(result.current.messages).toEqual([savedMsg]);
     expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: "New message" }),
+      body: JSON.stringify({ role: "user", content: "New message" }),
     });
   });
 
@@ -113,7 +112,7 @@ describe("useMessages", () => {
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => [],
+        json: async () => ({ id: "conv-1", messages: [] }),
       } as Response)
       .mockResolvedValueOnce({
         ok: false,
@@ -140,11 +139,11 @@ describe("useMessages", () => {
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => msgs1,
+        json: async () => ({ id: "conv-1", messages: msgs1 }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => msgs2,
+        json: async () => ({ id: "conv-2", messages: msgs2 }),
       } as Response);
 
     const { result, rerender } = renderHook(
@@ -157,6 +156,6 @@ describe("useMessages", () => {
     rerender({ id: "conv-2" });
 
     await waitFor(() => expect(result.current.messages).toEqual(msgs2));
-    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-2/messages");
+    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-2");
   });
 });
