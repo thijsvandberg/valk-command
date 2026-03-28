@@ -33,6 +33,24 @@ has_active_session_for_issue() {
   active_sessions | grep -q "issue-$1"
 }
 
+dependencies_met() {
+  local issue=$1
+  local body
+  body=$(gh issue view "$issue" --repo "$REPO" --json body --jq '.body' 2>/dev/null || echo "")
+  local deps
+  deps=$(echo "$body" | grep -oE 'Depends on #[0-9]+' | grep -oE '[0-9]+' || true)
+  [[ -z "$deps" ]] && return 0
+  for dep in $deps; do
+    local state
+    state=$(gh issue view "$dep" --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
+    if [[ "$state" != "CLOSED" ]]; then
+      log "  Issue #$issue blocked by open dependency #$dep"
+      return 1
+    fi
+  done
+  return 0
+}
+
 send_to_latest_session() {
   local pr=$1; shift
   local prompt="$*"
@@ -133,13 +151,18 @@ while true; do
     process_pr "$pr"
   done
 
-  # Nudge orchestrator for backlog (new issues without workers)
-  open_issues=$(gh issue list --repo "$REPO" --state open --json number,title --jq '.[].number' 2>/dev/null || echo "")
+  # Spawn workers for backlog issues (no orchestrator delegation)
+  open_issues=$(gh issue list --repo "$REPO" --state open --json number --jq '.[].number' 2>/dev/null || echo "")
   for issue in $open_issues; do
-    if ! has_active_session_for_issue "$issue"; then
-      ao send vc-orchestrator "Issue #$issue has no active worker. Check dependencies and spawn if ready: ao spawn $issue" --no-wait 2>/dev/null || true
-      log "Nudged orchestrator for issue #$issue"
+    if has_active_session_for_issue "$issue"; then
+      log "Issue #$issue: worker already active, skipping"
+      continue
     fi
+    if ! dependencies_met "$issue"; then
+      continue
+    fi
+    log "Issue #$issue: spawning worker"
+    ao spawn "$issue" 2>/dev/null || { log "Issue #$issue: spawn failed"; continue; }
   done
 
   sleep "$INTERVAL"
