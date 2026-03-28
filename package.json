@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start --port 3100",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ao": "ao start valk-command",
+    "ao:stop": "ao stop valk-command",
+    "ao:status": "ao status"
   },
   "dependencies": {
     "next": "^15.5.0",
