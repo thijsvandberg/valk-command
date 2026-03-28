@@ -1,48 +1,37 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import ConversationList from "./ConversationList";
-import type { Conversation } from "@/data/chat-mock";
+import type { Conversation } from "@/types/chat";
 
 const mockConversations: Conversation[] = [
-  { id: "conv-1", title: "First conversation", lastMessageAt: "2026-03-28T09:15:00Z" },
-  { id: "conv-2", title: "Second conversation", lastMessageAt: "2026-03-27T16:30:00Z" },
+  { id: "conv-1", title: "First conversation", createdAt: "2026-03-28T09:15:00Z", updatedAt: "2026-03-28T09:15:00Z" },
+  { id: "conv-2", title: "Second conversation", createdAt: "2026-03-27T16:30:00Z", updatedAt: "2026-03-27T16:30:00Z" },
 ];
+
+const defaultProps = {
+  conversations: mockConversations,
+  activeId: null as string | null,
+  loading: false,
+  error: null as string | null,
+  onSelect: vi.fn(),
+  onCreate: vi.fn(),
+  onDelete: vi.fn(),
+};
 
 describe("ConversationList", () => {
   it("renders the conversations heading", () => {
-    render(
-      <ConversationList
-        conversations={mockConversations}
-        activeId={null}
-        onSelect={() => {}}
-        onNewConversation={() => {}}
-      />
-    );
+    render(<ConversationList {...defaultProps} />);
     expect(screen.getByText("Conversations")).toBeInTheDocument();
   });
 
   it("renders all conversations", () => {
-    render(
-      <ConversationList
-        conversations={mockConversations}
-        activeId={null}
-        onSelect={() => {}}
-        onNewConversation={() => {}}
-      />
-    );
+    render(<ConversationList {...defaultProps} />);
     expect(screen.getByText("First conversation")).toBeInTheDocument();
     expect(screen.getByText("Second conversation")).toBeInTheDocument();
   });
 
   it("marks the active conversation as selected", () => {
-    render(
-      <ConversationList
-        conversations={mockConversations}
-        activeId="conv-1"
-        onSelect={() => {}}
-        onNewConversation={() => {}}
-      />
-    );
+    render(<ConversationList {...defaultProps} activeId="conv-1" />);
     const options = screen.getAllByRole("option");
     expect(options[0]).toHaveAttribute("aria-selected", "true");
     expect(options[1]).toHaveAttribute("aria-selected", "false");
@@ -50,41 +39,44 @@ describe("ConversationList", () => {
 
   it("calls onSelect when a conversation is clicked", () => {
     const onSelect = vi.fn();
-    render(
-      <ConversationList
-        conversations={mockConversations}
-        activeId={null}
-        onSelect={onSelect}
-        onNewConversation={() => {}}
-      />
-    );
+    render(<ConversationList {...defaultProps} onSelect={onSelect} />);
     fireEvent.click(screen.getByText("Second conversation"));
     expect(onSelect).toHaveBeenCalledWith("conv-2");
   });
 
-  it("calls onNewConversation when the new button is clicked", () => {
-    const onNew = vi.fn();
-    render(
-      <ConversationList
-        conversations={mockConversations}
-        activeId={null}
-        onSelect={() => {}}
-        onNewConversation={onNew}
-      />
-    );
+  it("calls onCreate when the new button is clicked", () => {
+    const onCreate = vi.fn();
+    render(<ConversationList {...defaultProps} onCreate={onCreate} />);
     fireEvent.click(screen.getByLabelText("New conversation"));
-    expect(onNew).toHaveBeenCalled();
+    expect(onCreate).toHaveBeenCalled();
+  });
+
+  it("calls onDelete when the delete button is clicked", () => {
+    const onDelete = vi.fn();
+    render(<ConversationList {...defaultProps} onDelete={onDelete} />);
+    fireEvent.click(screen.getByLabelText("Delete First conversation"));
+    expect(onDelete).toHaveBeenCalledWith("conv-1");
   });
 
   it("renders a listbox with correct label", () => {
-    render(
-      <ConversationList
-        conversations={mockConversations}
-        activeId={null}
-        onSelect={() => {}}
-        onNewConversation={() => {}}
-      />
-    );
+    render(<ConversationList {...defaultProps} />);
     expect(screen.getByRole("listbox", { name: "Conversation list" })).toBeInTheDocument();
+  });
+
+  it("shows loading state when loading with no conversations", () => {
+    render(<ConversationList {...defaultProps} conversations={[]} loading={true} />);
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+  });
+
+  it("shows empty state when no conversations exist", () => {
+    render(<ConversationList {...defaultProps} conversations={[]} />);
+    expect(screen.getByText("No conversations yet")).toBeInTheDocument();
+  });
+
+  it("shows error message when error is set", () => {
+    render(<ConversationList {...defaultProps} error="Something went wrong" />);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
 });
