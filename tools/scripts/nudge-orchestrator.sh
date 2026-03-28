@@ -58,8 +58,10 @@ send_to_latest_session() {
     local session
     session=$(active_sessions | grep "#$pr" | awk '{print $1}' | tail -1)
     if [[ -n "$session" ]]; then
+      ao send "$session" "/model sonnet" --timeout 30 2>/dev/null || true
+      sleep 3
       ao send "$session" "$prompt" --timeout 60 2>/dev/null || true
-      log "  Sent prompt to $session"
+      log "  Sent prompt to $session (sonnet)"
     else
       log "  Could not find session for PR #$pr"
     fi
