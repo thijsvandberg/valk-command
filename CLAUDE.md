@@ -52,11 +52,16 @@ docs/             Project documentation
 - Use conventional commits (feat:, fix:, chore:)
 - Run `npm run build` before committing to verify the build passes
 
+## Branching Strategy
+
+- `dev` is the integration branch. All agent PRs target `dev`.
+- `main` is the production branch. Promoted from `dev` via `npm run promote`.
+
 ## Branch Protection
 
-The `main` branch is protected with the following rules:
+The `dev` branch is protected with the following rules:
 - Required status check: `build` (CI workflow) must pass before merge
-- Branches must be up to date with `main` before merging
+- Strict mode is OFF: branches do not need to be up-to-date before merging
 - Force pushes and branch deletion are blocked
 
 ## Testing
@@ -82,7 +87,7 @@ See `docs/agent-orchestrator/` for full AO documentation:
 2. Create a GitHub Issue with clear description + acceptance criteria
 3. `ao spawn <issue-number>` to dispatch a worker
 4. Worker builds, PRs, handles CI/review feedback autonomously
-5. You review and merge
+5. Pipeline proceeds: code review agent -> PO agent -> merge agent (driven by nudge script)
 
 ### Agent Mode (for AO workers)
 

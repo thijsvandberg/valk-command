@@ -16,8 +16,14 @@
 - [ ] Scheduled Jobs - manage recurring workspace tasks
 - [ ] Stakeholder View - read-only external view
 - [ ] Dashboard Widgets - morning brief, pulse, sprint progress
+- [ ] Bot account for proper PR approvals (same-account reviews fall back to COMMENTED; a dedicated bot account would allow real APPROVED status)
+- [ ] QA agent for user acceptance testing (when UI exists)
+- [ ] Auto-merge PO agent (once the pipeline is proven stable, remove the separate merge agent step)
 
 ## Done
 
 - [x] Project scaffold - Next.js 15, TypeScript, Tailwind v4
 - [x] Hello world landing page (PR #2)
+- [x] Vitest setup (#4) - merged to dev
+- [x] Testing rules in CLAUDE.md (#7) - merged to dev
+- [x] Branch protection via GitHub API (#6) - configured
