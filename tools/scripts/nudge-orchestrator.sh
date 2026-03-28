@@ -190,6 +190,7 @@ while true; do
 
   # Cleanup stale worktrees and zombie sessions
   git worktree prune 2>/dev/null || true
+  ao session cleanup 2>/dev/null || true
   kill_stale_sessions
 
   # Process open PRs
