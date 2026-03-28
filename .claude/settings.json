@@ -1,15 +1,35 @@
 {
   "deniedMcpServers": [
-    { "serverUrl": "https://mcp.slack.com/*" },
-    { "serverUrl": "https://gmail.mcp.claude.com/*" },
-    { "serverUrl": "https://gcal.mcp.claude.com/*" },
-    { "serverUrl": "https://mcp.atlassian.com/*" },
-    { "serverUrl": "https://mcp.canva.com/*" },
-    { "serverUrl": "https://mcp.notion.com/*" },
-    { "serverUrl": "https://mcp.figma.com/*" },
-    { "serverUrl": "https://docuseal.com/*" },
-    { "serverUrl": "https://api.ahrefs.com/*" },
-    { "serverUrl": "https://mcp.neon.tech/*" }
+    {
+      "serverUrl": "https://mcp.slack.com/*"
+    },
+    {
+      "serverUrl": "https://gmail.mcp.claude.com/*"
+    },
+    {
+      "serverUrl": "https://gcal.mcp.claude.com/*"
+    },
+    {
+      "serverUrl": "https://mcp.atlassian.com/*"
+    },
+    {
+      "serverUrl": "https://mcp.canva.com/*"
+    },
+    {
+      "serverUrl": "https://mcp.notion.com/*"
+    },
+    {
+      "serverUrl": "https://mcp.figma.com/*"
+    },
+    {
+      "serverUrl": "https://docuseal.com/*"
+    },
+    {
+      "serverUrl": "https://api.ahrefs.com/*"
+    },
+    {
+      "serverUrl": "https://mcp.neon.tech/*"
+    }
   ],
   "hooks": {
     "PostToolUse": [
