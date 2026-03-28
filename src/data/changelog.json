@@ -3,6 +3,16 @@
     "date": "2026-03-28",
     "entries": [
       {
+        "hash": "d08149f7bde1375fd220bbe135963687caaf2be6",
+        "shortHash": "d08149f",
+        "date": "2026-03-28",
+        "category": "New",
+        "description": "Add automated changelog page",
+        "longDescription": "Add a changelog page at /changelog that is automatically populated from git merge history. Includes: - Generation script (tools/scripts/generate-changelog.mjs) that parses conventional commits into PO",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/d08149f7bde1375fd220bbe135963687caaf2be6"
+      },
+      {
         "hash": "489c5755d82d6cb0c67ae473a4087c5bfd193a07",
         "shortHash": "489c575",
         "date": "2026-03-28",

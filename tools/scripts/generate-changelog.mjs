@@ -75,7 +75,6 @@ function makePOFriendly(description) {
     .replace(/\btsconfig\b/gi, "TypeScript settings")
     .replace(/\bwebhook(s)?\b/gi, "automated notification$1")
     .replace(/\bSSE\b/g, "live updates")
-    .replace(/\bAPI\b/g, "integration")
     .replace(/\bMCP\b/g, "tool connection");
 }
 
