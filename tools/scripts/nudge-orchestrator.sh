@@ -66,6 +66,17 @@ issue_model_cached() {
   fi
 }
 
+has_open_pr_for_issue() {
+  local issue=$1
+  # Check if any open PR references this issue (in body or branch name)
+  local match
+  match=$(echo "$PRS_JSON" | jq -r ".[] | select(.body != null) | select(.body | test(\"#$issue\"; \"i\")) | .number" 2>/dev/null || echo "")
+  [[ -n "$match" ]] && return 0
+  match=$(echo "$PRS_JSON" | jq -r ".[] | select(.head.ref | test(\"issue-$issue\"; \"i\")) | .number" 2>/dev/null || echo "")
+  [[ -n "$match" ]] && return 0
+  return 1
+}
+
 dependencies_met_cached() {
   local issue=$1
   local body
@@ -260,6 +271,10 @@ while true; do
       break
     fi
     if has_active_session_for_issue "$issue"; then
+      continue
+    fi
+    if has_open_pr_for_issue "$issue"; then
+      log "Issue #$issue: open PR already exists, skipping"
       continue
     fi
     if ! dependencies_met_cached "$issue"; then
