@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { scheduledJob } from "@/db/schema";
 import { randomUUID } from "crypto";
+import { isValidCron } from "@/lib/cron";
 
 export async function GET() {
   const result = await db.select().from(scheduledJob);
@@ -21,6 +22,13 @@ export async function POST(request: Request) {
   if (typeof body.cronExpression !== "string" || body.cronExpression.trim() === "") {
     return NextResponse.json(
       { error: "cronExpression is required and must be a non-empty string" },
+      { status: 400 },
+    );
+  }
+
+  if (!isValidCron(body.cronExpression)) {
+    return NextResponse.json(
+      { error: "cronExpression must be a valid 5-field cron expression" },
       { status: 400 },
     );
   }

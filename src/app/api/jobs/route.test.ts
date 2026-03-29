@@ -110,6 +110,16 @@ describe("POST /api/jobs", () => {
     expect(data.error).toContain("cronExpression is required");
   });
 
+  it("returns 400 when cronExpression is not a valid cron expression", async () => {
+    const response = await POST(
+      jsonRequest({ name: "job", cronExpression: "not-a-cron", skillName: "skill" }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("valid 5-field cron expression");
+  });
+
   it("returns 400 when skillName is missing", async () => {
     const response = await POST(jsonRequest({ name: "job", cronExpression: "* * * * *" }));
     const data = await response.json();

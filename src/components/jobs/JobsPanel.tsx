@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { useJobs } from "@/hooks/useJobs";
 import type { ScheduledJob } from "@/db/schema";
-
-// Validates a 5-field cron expression: minute hour day month weekday
-const CRON_RE = /^(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)$/;
-
-function isValidCron(value: string): boolean {
-  return CRON_RE.test(value.trim());
-}
+import { isValidCron } from "@/lib/cron";
 
 interface CreateFormState {
   name: string;

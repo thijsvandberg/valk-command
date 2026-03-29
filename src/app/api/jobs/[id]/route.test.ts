@@ -132,6 +132,18 @@ describe("PUT /api/jobs/[id]", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("returns 400 when cronExpression is not a valid cron expression", async () => {
+    const created = await createJob();
+    const response = await PUT(
+      jsonRequest("http://localhost", "PUT", { cronExpression: "not-a-cron" }),
+      makeParams(created.id),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("valid 5-field cron expression");
+  });
 });
 
 describe("DELETE /api/jobs/[id]", () => {
