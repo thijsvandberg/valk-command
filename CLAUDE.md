@@ -66,6 +66,8 @@ docs/             Project documentation
 
 **main branch:**
 - CI runs on pull request (pre-merge gate). Required status check: `build` must pass.
+- Strict mode is ON: branches must be up to date with `main` before merging.
+- Force pushes and branch deletion are blocked.
 - Promoted from dev via `npm run promote`.
 
 ## Testing
