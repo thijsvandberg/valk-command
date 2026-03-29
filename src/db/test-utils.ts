@@ -28,5 +28,17 @@ export function createTestDb() {
     )
   `);
 
+  testDb.run(sql`
+    CREATE TABLE scheduled_job (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      cron_expression TEXT NOT NULL,
+      skill_name TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      last_run_at TEXT,
+      last_result_summary TEXT
+    )
+  `);
+
   return testDb;
 }
