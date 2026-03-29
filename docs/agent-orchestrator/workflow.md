@@ -238,7 +238,7 @@ Key settings:
 | Review comments not forwarded to worker | Only formal "changes_requested" reviews trigger auto-routing. Use `ao review-check` or `ao send` manually. |
 | Copilot opens competing PRs | Disable Copilot Coding Agent in repo settings. |
 | Worker can access Slack/Gmail/etc | Check `.claude/settings.json` has `deniedMcpServers` list. New workers inherit from main branch. |
-| Issue not being picked up despite being open | Check for `Depends on #N` in the issue body. The dependency may still be open. |
+| Issue not being picked up despite being open | Check for `ao:ready` label (required) and `Depends on #N` in the issue body. |
 | Pipeline driver says "AO not running, skipping" | Start AO first with `npm run ao`, then run the pipeline driver in a separate terminal. |
 | Events not being processed | Check `.ao-events/` for stuck trigger files. Check `.claude/settings.json` for hook config. |
 | Post-merge CI failure | Check `gh run list --branch dev --limit 5`. Pipeline driver sends desktop notification on failure. |

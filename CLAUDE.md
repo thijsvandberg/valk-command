@@ -90,9 +90,10 @@ See `docs/agent-orchestrator/` for full AO documentation:
 1. Define the feature (user story in `docs/user-stories/VC-XXX-name.md`)
 2. Create a GitHub Issue with clear description + acceptance criteria
 3. Dependencies between issues MUST use exact format: `Depends on #N` (not freetext like "depends on database setup")
-4. `ao spawn <issue-number>` to dispatch a worker
-5. Worker builds, PRs, handles CI/review feedback autonomously
-6. Pipeline proceeds via event-driven hooks: PR created -> code review -> PO -> merge (see `docs/architecture/event-driven-pipeline.md`)
+4. Add `ao:ready` label to approve the issue for automatic agent pickup
+5. `ao spawn <issue-number>` to dispatch a worker manually (skips label check)
+6. Worker builds, PRs, handles CI/review feedback autonomously
+7. Pipeline proceeds via event-driven hooks: PR created -> code review -> PO -> merge (see `docs/architecture/event-driven-pipeline.md`)
 
 ### Agent Mode (for AO workers)
 

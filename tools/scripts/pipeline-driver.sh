@@ -399,7 +399,7 @@ fallback_sweep_issues() {
   local active_worker_count
   active_worker_count=$(echo "$CACHED_SESSIONS" | grep -c "issue-" 2>/dev/null || echo "0")
   local open_issues
-  open_issues=$(echo "$ISSUES_JSON" | jq -r '.[] | select(.pull_request == null) | .number' 2>/dev/null || echo "")
+  open_issues=$(echo "$ISSUES_JSON" | jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "ao:ready") | .number' 2>/dev/null || echo "")
 
   for issue in $open_issues; do
     if [[ "$active_worker_count" -ge "$MAX_CODING_WORKERS" ]]; then

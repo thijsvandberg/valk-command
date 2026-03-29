@@ -71,13 +71,19 @@ branch=feat/issue-34
 
 Post-merge CI failures on dev are detected by the pipeline driver (checks `gh run list --branch dev` every fallback cycle) and trigger a desktop notification.
 
+## Issue Gating
+
+Only issues with the `ao:ready` label are picked up for automatic agent spawning. This gives the PO control over which work enters the pipeline. Issues without the label are ignored regardless of their state or dependencies.
+
+Add the label via GitHub UI, CLI (`gh issue edit <N> --add-label ao:ready`), or the `/issue` command.
+
 ## Fallback Mechanism
 
 The pipeline driver runs a fallback sweep every 5 minutes:
 
 1. Fetches all open PRs targeting dev
 2. For any PR older than 10 minutes without an active agent session, spawns the appropriate agent based on review count
-3. Spawns workers for open issues (respects dependency ordering and worker limits)
+3. Spawns workers for open issues labeled `ao:ready` (respects dependency ordering and worker limits)
 4. Cleans up stale sessions and worktrees
 
 This ensures the pipeline progresses even if hooks fail silently or the pipeline driver restarts.
