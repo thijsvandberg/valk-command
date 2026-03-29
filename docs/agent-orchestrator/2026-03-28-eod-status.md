@@ -1,8 +1,8 @@
-# End-of-day status 2026-03-28
+# End-of-day status 2026-03-28 (updated 2026-03-29)
 
-## Branch: dev (clean)
+## Branch: dev
 
-## Open PRs (all CI green, all target dev)
+## Open PRs (all target dev)
 
 | PR | Reviews | Title | Ready to merge? |
 |----|---------|-------|-----------------|
@@ -20,7 +20,7 @@
 | #34 | fix: changelog workflow should also trigger on dev merges | PR #38 open, needs review |
 | #36 | fix: correct branch protection docs in CLAUDE.md | PR #37 open, needs review |
 
-## Pipeline fixes applied today
+## Pipeline fixes applied (2026-03-28)
 
 1. **Rate limit optimization**: switched nudge from GraphQL to REST API, batch fetches, ~80% fewer API calls
 2. **Split loop**: PRs checked every 90s (fast pipeline), issues every 7.5 min (saves API calls)
@@ -30,29 +30,25 @@
 6. **postToolUse hook**: runs test suite after .ts/.tsx edits
 7. **Model selection via labels**: `model:sonnet` / `model:opus` on issues, determined by `/issue` command
 
+## Pipeline changes applied (2026-03-29)
+
+1. **Event-driven pipeline**: replaced 90s polling nudge with hook-based triggers. metadata-updater.sh now writes `.ao-events/` trigger files on `gh pr create`, `gh pr review`, `git push`, `gh pr merge`. New `pipeline-driver.sh` processes triggers every 5s and spawns the next agent.
+2. **CI moved to post-merge on dev**: CI workflow triggers on `push` to dev instead of `pull_request`. Removed `build` required status check from dev branch protection. Agents verify locally before pushing. Main keeps pre-merge CI gate.
+3. **Pre-push build check hook**: PostToolUse hook runs `npm run build` after `git push` commands (informational, agent sees failure and can fix).
+4. **Issue gating via `ao:ready` label**: only issues with the `ao:ready` label are auto-picked up by the pipeline. Manual `ao spawn` still works without label.
+5. **`/ao` monitoring skill**: single-pass or looped (`/loop 3m /ao`) pipeline health checks with feedback logging to `docs/agent-orchestrator/feedback/`.
+6. **Fallback sweep**: pipeline driver runs a 5-min fallback for stale PRs (10+ min without agent), issue backlog, zombie cleanup, and post-merge CI failure detection (desktop notification).
+
 ## Known issues
 
 - **Zombie sessions**: agents go "ready" and stop responding. Auto-kill helps but root cause unclear.
-- **Duplicate PRs**: still happened today (#31, #32, #33 for issue #30). Dedup check added but not yet battle-tested.
-- **Rate limits**: improved but agents themselves also consume API calls. Monitor tomorrow.
+- **Duplicate PRs**: dedup check added (2026-03-28), not yet battle-tested with new event-driven pipeline.
+- **Event-driven pipeline**: not yet tested in production. Trigger file mechanism and fallback sweep need validation.
 
-## Idea: event-driven pipeline via AO hooks
-
-Instead of polling every 90s, use AO's `postToolUse` or session hooks in `.claude/settings.json` to trigger the next pipeline stage immediately when an agent finishes. For example:
-
-- Worker creates PR -> hook detects `gh pr create` -> spawns code review agent
-- Review agent submits review -> hook detects `gh pr review` -> spawns PO agent
-- PO agent approves -> hook detects approval -> spawns merge agent
-
-This would eliminate polling entirely, reduce API calls to near-zero for the nudge, and cut pipeline latency from minutes to seconds. The nudge script would only be needed as a fallback/cleanup process.
-
-Investigate: does AO support session-level hooks or events? If not, a filesystem watcher on the worktree or a GitHub webhook receiver could achieve the same.
-
-## Tomorrow: pick up
+## Next: pick up
 
 1. Merge PR #25 (has 3 reviews, ready)
-2. Review + merge PRs #32, #37, #38 (or let pipeline handle it)
-3. Start nudge: `npm run ao:nudge`
-4. Monitor for zombie/duplicate issues with the new fixes
-5. Issues #16 (app shell) and #17 (view placeholders) are still in backlog
-6. Investigate event-driven pipeline via hooks (see idea above)
+2. Review + merge PRs #32, #37, #38 (or start pipeline: `npm run ao:nudge`)
+3. Add `ao:ready` label to issues that should be auto-picked up
+4. Monitor event-driven pipeline for missed triggers, double spawning
+5. Validate post-merge CI detection works (push broken code to dev, check notification)
