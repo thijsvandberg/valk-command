@@ -2,8 +2,6 @@
 
 ## Up Next
 
-- [ ] Add changelog link to sidebar navigation (#30)
-
 ## Later
 
 - [ ] Sprint Board - Jira sync + PO metadata layer
@@ -33,3 +31,4 @@
 - [x] Chat UI layout with conversation list and messages (#20)
 - [x] Chat API routes for conversations and messages (#21)
 - [x] Wire Chat UI to API (#22)
+- [x] Add changelog link to sidebar navigation (#30)
