@@ -3,6 +3,25 @@
     "date": "2026-03-29",
     "entries": [
       {
+        "hash": "860098bf24b391d5d81d6ca8c79b818621337909",
+        "shortHash": "860098b",
+        "date": "2026-03-29",
+        "category": "Fixed",
+        "description": "Run database migrations automatically on app startup",
+        "longDescription": "Call migrate() during first DB connection so all tables exist before any query runs. Without this, every API route that touches the DB returns a 500 error on a fresh install.",
+        "author": "thijsvandberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/860098bf24b391d5d81d6ca8c79b818621337909"
+      },
+      {
+        "hash": "49e3a6a1790e64dcfb178e686af29cf881848ae0",
+        "shortHash": "49e3a6a",
+        "date": "2026-03-29",
+        "category": "Maintenance",
+        "description": "Regenerate changelog [skip ci]",
+        "author": "github-actions[bot]",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/49e3a6a1790e64dcfb178e686af29cf881848ae0"
+      },
+      {
         "hash": "32334922576071ae12dedf5d5353dc6135a3c530",
         "shortHash": "3233492",
         "date": "2026-03-29",
