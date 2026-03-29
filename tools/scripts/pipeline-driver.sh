@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Event-driven pipeline driver for valk-command.
 #
-# Two cadences:
+# Three cadences:
 #   - Every 5s: process trigger files from .ao-events/ (written by metadata-updater hook)
+#   - Every 60s: kill stale (ready/idle 3+ min) sessions
 #   - Every FALLBACK_INTERVAL: sweep for stale PRs, spawn issue workers, cleanup
 #
 # Start: npm run ao:nudge | Stop: Ctrl+C
@@ -24,6 +25,8 @@ FAILED_DIR="$EVENTS_DIR/failed"
 
 CYCLE=0
 LAST_FALLBACK=0
+LAST_KILL_CHECK=0
+KILL_CHECK_INTERVAL=60
 FALLBACK_CYCLE=0
 
 # Cached data (refreshed during fallback sweeps)
@@ -469,7 +472,7 @@ cleanup_processed_events() {
 
 mkdir -p "$EVENTS_DIR" "$PROCESSED_DIR" "$FAILED_DIR"
 
-log "Pipeline driver started (events every ${EVENT_POLL}s, fallback every ${FALLBACK_INTERVAL}s). Ctrl+C to stop."
+log "Pipeline driver started (events every ${EVENT_POLL}s, kill-check every ${KILL_CHECK_INTERVAL}s, fallback every ${FALLBACK_INTERVAL}s). Ctrl+C to stop."
 
 while true; do
   CYCLE=$((CYCLE + 1))
@@ -483,8 +486,16 @@ while true; do
   # Primary: process event triggers (every cycle)
   process_events
 
-  # Fallback + maintenance (every FALLBACK_INTERVAL)
   now=$(date +%s)
+
+  # Kill stale sessions every 60s (independent of fallback sweep)
+  if [[ $(( now - LAST_KILL_CHECK )) -ge "$KILL_CHECK_INTERVAL" ]]; then
+    LAST_KILL_CHECK=$now
+    refresh_sessions
+    kill_stale_sessions
+  fi
+
+  # Fallback + maintenance (every FALLBACK_INTERVAL)
   if [[ $(( now - LAST_FALLBACK )) -ge "$FALLBACK_INTERVAL" ]]; then
     LAST_FALLBACK=$now
     FALLBACK_CYCLE=$((FALLBACK_CYCLE + 1))
