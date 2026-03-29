@@ -2,7 +2,6 @@
 
 ## Up Next
 
-- [ ] Wire Chat UI to API (#22) - connect frontend to backend routes
 - [ ] Add changelog link to sidebar navigation (#30)
 
 ## Later
@@ -33,3 +32,4 @@
 - [x] Database setup - SQLite + Drizzle ORM, schema from PRD (#19)
 - [x] Chat UI layout with conversation list and messages (#20)
 - [x] Chat API routes for conversations and messages (#21)
+- [x] Wire Chat UI to API (#22)
