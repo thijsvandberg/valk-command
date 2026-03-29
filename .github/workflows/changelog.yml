@@ -20,7 +20,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci
+      - run: npm install
 
       - name: Generate changelog
         run: node tools/scripts/generate-changelog.mjs
