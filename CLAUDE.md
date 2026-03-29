@@ -59,10 +59,14 @@ docs/             Project documentation
 
 ## Branch Protection
 
-The `dev` branch is protected with the following rules:
-- Required status check: `build` (CI workflow) must pass before merge
-- Strict mode is OFF: branches do not need to be up-to-date before merging
-- Force pushes and branch deletion are blocked
+**dev branch:**
+- CI runs post-merge (on push to dev). No required status checks before merge.
+- Agents must run `npm run lint && npm run typecheck && npm run test && npm run build` locally before pushing.
+- Force pushes and branch deletion are blocked.
+
+**main branch:**
+- CI runs on pull request (pre-merge gate). Required status check: `build` must pass.
+- Promoted from dev via `npm run promote`.
 
 ## Testing
 
@@ -88,7 +92,7 @@ See `docs/agent-orchestrator/` for full AO documentation:
 3. Dependencies between issues MUST use exact format: `Depends on #N` (not freetext like "depends on database setup")
 4. `ao spawn <issue-number>` to dispatch a worker
 5. Worker builds, PRs, handles CI/review feedback autonomously
-6. Pipeline proceeds: code review agent -> PO agent -> merge agent (driven by nudge script)
+6. Pipeline proceeds via event-driven hooks: PR created -> code review -> PO -> merge (see `docs/architecture/event-driven-pipeline.md`)
 
 ### Agent Mode (for AO workers)
 

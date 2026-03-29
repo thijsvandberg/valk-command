@@ -2,9 +2,11 @@
 # Metadata Updater Hook for Agent Orchestrator
 #
 # This PostToolUse hook automatically updates session metadata when:
-# - gh pr create: extracts PR URL and writes to metadata
+# - gh pr create: extracts PR URL and writes to metadata + trigger
 # - git checkout -b / git switch -c: extracts branch name and writes to metadata
-# - gh pr merge: updates status to "merged"
+# - gh pr merge: updates status to "merged" + trigger
+# - git push: writes trigger for pipeline progression
+# - gh pr review --approve/--request-changes: writes trigger for next stage
 
 set -euo pipefail
 
@@ -82,6 +84,45 @@ update_metadata_key() {
 }
 
 # ============================================================================
+# Pipeline Event Triggers
+# ============================================================================
+
+# Resolve project root for .ao-events/ directory
+PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+
+# Write a trigger file for the pipeline event processor.
+# Only writes if PROJECT_ROOT is available (we're in a git repo).
+write_trigger() {
+  [[ -z "$PROJECT_ROOT" ]] && return
+  local event="$1"
+  local events_dir="$PROJECT_ROOT/.ao-events"
+  mkdir -p "$events_dir"
+  local timestamp
+  timestamp=$(date +%s)
+  local trigger_file="$events_dir/${timestamp}-${event}.trigger"
+
+  # Read PR URL from metadata if available
+  local pr_url=""
+  if [[ -f "$metadata_file" ]]; then
+    pr_url=$(grep "^pr=" "$metadata_file" 2>/dev/null | cut -d= -f2- || echo "")
+  fi
+
+  # Read branch from metadata if available
+  local branch=""
+  if [[ -f "$metadata_file" ]]; then
+    branch=$(grep "^branch=" "$metadata_file" 2>/dev/null | cut -d= -f2- || echo "")
+  fi
+
+  cat > "$trigger_file" <<EOF
+event=$event
+pr=$pr_url
+session=${AO_SESSION:-unknown}
+timestamp=$timestamp
+branch=$branch
+EOF
+}
+
+# ============================================================================
 # Command Detection and Parsing
 # ============================================================================
 
@@ -108,6 +149,7 @@ if [[ "$clean_command" =~ ^gh[[:space:]]+pr[[:space:]]+create ]]; then
   if [[ -n "$pr_url" ]]; then
     update_metadata_key "pr" "$pr_url"
     update_metadata_key "status" "pr_open"
+    write_trigger "pr_created"
     echo '{"systemMessage": "Updated metadata: PR created at '"$pr_url"'"}'
     exit 0
   fi
@@ -142,7 +184,29 @@ fi
 # Detect: gh pr merge
 if [[ "$clean_command" =~ ^gh[[:space:]]+pr[[:space:]]+merge ]]; then
   update_metadata_key "status" "merged"
+  write_trigger "pr_merged"
   echo '{"systemMessage": "Updated metadata: status = merged"}'
+  exit 0
+fi
+
+# Detect: git push
+if [[ "$clean_command" =~ ^git[[:space:]]+push ]]; then
+  write_trigger "pr_pushed"
+  echo '{"systemMessage": "Pipeline trigger: push detected"}'
+  exit 0
+fi
+
+# Detect: gh pr review --approve
+if [[ "$clean_command" =~ ^gh[[:space:]]+pr[[:space:]]+review.*--approve ]]; then
+  write_trigger "review_approved"
+  echo '{"systemMessage": "Pipeline trigger: review approved"}'
+  exit 0
+fi
+
+# Detect: gh pr review --request-changes
+if [[ "$clean_command" =~ ^gh[[:space:]]+pr[[:space:]]+review.*--request-changes ]]; then
+  write_trigger "review_changes_requested"
+  echo '{"systemMessage": "Pipeline trigger: changes requested"}'
   exit 0
 fi
 
