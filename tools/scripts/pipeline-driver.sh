@@ -60,9 +60,9 @@ send_to_latest_session() {
   local pr=$1 prompt=$2
   (
     sleep 20
-    refresh_sessions
     local session
-    session=$(echo "$CACHED_SESSIONS" | grep "#$pr" | awk '{print $1}' | tail -1)
+    # ao session ls shows PR URL; more reliable than grep on ao status which omits PR# for claimed sessions
+    session=$(ao session ls 2>/dev/null | grep "pull/$pr" | awk '{print $1}' | tail -1)
     if [[ -n "$session" ]]; then
       ao send "$session" "$prompt" --timeout 60 2>/dev/null || true
       log "  Sent prompt to $session"
