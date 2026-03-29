@@ -59,14 +59,14 @@ docs/             Project documentation
 
 ## Branch Protection
 
-**dev branch:**
-- CI runs post-merge (on push to dev). No required status checks before merge.
-- Agents must run `npm run lint && npm run typecheck && npm run test && npm run build` locally before pushing.
-- Force pushes and branch deletion are blocked.
+### `main` (production)
+- Required status check: `build` (CI workflow) must pass before merge
+- Strict mode is ON: branches must be up-to-date with `main` before merging
+- Force pushes and branch deletion are blocked
 
-**main branch:**
-- CI runs on pull request (pre-merge gate). Required status check: `build` must pass.
-- Promoted from dev via `npm run promote`.
+### `dev` (integration)
+- Not currently protected
+- All agent PRs target `dev`; CI runs via GitHub Actions but is not a required check
 
 ## Testing
 
