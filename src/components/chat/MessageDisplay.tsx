@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message } from "@/data/chat-mock";
+import type { Message } from "@/types/chat";
 
 interface MessageDisplayProps {
   messages: Message[];
