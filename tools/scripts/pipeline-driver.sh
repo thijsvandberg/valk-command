@@ -484,7 +484,6 @@ while true; do
   process_events
 
   # Fallback + maintenance (every FALLBACK_INTERVAL)
-  local now
   now=$(date +%s)
   if [[ $(( now - LAST_FALLBACK )) -ge "$FALLBACK_INTERVAL" ]]; then
     LAST_FALLBACK=$now
