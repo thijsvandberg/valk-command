@@ -82,6 +82,45 @@ update_metadata_key() {
 }
 
 # ============================================================================
+# Pipeline Event Triggers
+# ============================================================================
+
+# Resolve project root for .ao-events/ directory
+PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+
+# Write a trigger file for the pipeline event processor.
+# Only writes if PROJECT_ROOT is available (we're in a git repo).
+write_trigger() {
+  [[ -z "$PROJECT_ROOT" ]] && return
+  local event="$1"
+  local events_dir="$PROJECT_ROOT/.ao-events"
+  mkdir -p "$events_dir"
+  local timestamp
+  timestamp=$(date +%s)
+  local trigger_file="$events_dir/${timestamp}-${event}.trigger"
+
+  # Read PR URL from metadata if available
+  local pr_url=""
+  if [[ -f "$metadata_file" ]]; then
+    pr_url=$(grep "^pr=" "$metadata_file" 2>/dev/null | cut -d= -f2- || echo "")
+  fi
+
+  # Read branch from metadata if available
+  local branch=""
+  if [[ -f "$metadata_file" ]]; then
+    branch=$(grep "^branch=" "$metadata_file" 2>/dev/null | cut -d= -f2- || echo "")
+  fi
+
+  cat > "$trigger_file" <<EOF
+event=$event
+pr=$pr_url
+session=${AO_SESSION:-unknown}
+timestamp=$timestamp
+branch=$branch
+EOF
+}
+
+# ============================================================================
 # Command Detection and Parsing
 # ============================================================================
 
@@ -108,6 +147,7 @@ if [[ "$clean_command" =~ ^gh[[:space:]]+pr[[:space:]]+create ]]; then
   if [[ -n "$pr_url" ]]; then
     update_metadata_key "pr" "$pr_url"
     update_metadata_key "status" "pr_open"
+    write_trigger "pr_created"
     echo '{"systemMessage": "Updated metadata: PR created at '"$pr_url"'"}'
     exit 0
   fi
@@ -142,7 +182,15 @@ fi
 # Detect: gh pr merge
 if [[ "$clean_command" =~ ^gh[[:space:]]+pr[[:space:]]+merge ]]; then
   update_metadata_key "status" "merged"
+  write_trigger "pr_merged"
   echo '{"systemMessage": "Updated metadata: status = merged"}'
+  exit 0
+fi
+
+# Detect: git push (branch push triggers pipeline to check for new PRs)
+if [[ "$clean_command" =~ ^git[[:space:]]+push ]]; then
+  write_trigger "git_push"
+  echo '{}'
   exit 0
 fi
 

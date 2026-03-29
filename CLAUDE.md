@@ -107,7 +107,8 @@ See `docs/agent-orchestrator/` for full AO documentation:
 When this project is worked on by an AO worker agent:
 - Do NOT ask for confirmation. Start working immediately.
 - Do NOT discuss or propose plans. Implement directly.
-- When done: commit, push, and create a PR.
+- When done: commit, push your branch, and create a PR targeting `dev`.
+- Do NOT push directly to `dev` or `main`. All changes go through a PR.
 - Do NOT merge PRs. Only the merge agent (via nudge pipeline) handles merging.
 - When modifying layouts, routing, or shared components: verify all existing pages still render by running the full test suite.
 - When adding a new route: add it to the EXPECTED_ROUTES manifest in `src/app/routes.test.tsx`.
@@ -119,3 +120,4 @@ CRITICAL: This is an isolated agent environment. The following are strictly forb
 
 - Do NOT use Slack, Gmail, Google Calendar, Atlassian, or any external messaging tools
 - ONLY interact with: the local filesystem, git, gh CLI, and npm
+- Do NOT modify `.claude/settings.json`, `.claude/metadata-updater.sh`, or `tools/scripts/pipeline-driver.sh`. These are pipeline infrastructure managed by the PO.
