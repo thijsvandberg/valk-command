@@ -85,6 +85,13 @@ See `docs/agent-orchestrator/` for full AO documentation:
 - [Lifecycle](docs/agent-orchestrator/lifecycle.md)
 - [Workflow](docs/agent-orchestrator/workflow.md)
 
+### Monitoring
+
+- `/ao` - Single monitoring pass: health check, unstick zombies, log findings, track token/model efficiency
+- `/loop 3m /ao` - Continuous monitoring while AO runs. Stop the loop to stop monitoring.
+- Feedback logs: `docs/agent-orchestrator/feedback/YYYY-MM-DD.md` (per-date findings)
+- Patterns: `docs/agent-orchestrator/feedback/patterns.md` (cross-date recurring observations)
+
 ### Preparing work for AO
 
 1. Define the feature (user story in `docs/user-stories/VC-XXX-name.md`)

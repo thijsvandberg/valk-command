@@ -164,19 +164,45 @@ Run this alongside AO in a separate terminal. It is safe to stop and restart at 
 
 ## Monitoring
 
+### Quick checks
+
 ```bash
-# Status overview
-ao status
-
-# Attach to a worker's terminal
-ao session attach <session>
-
-# Send a message to a worker
-ao send <session> "your instruction"
-
-# Web dashboard
-# http://localhost:3000
+ao status                           # Session overview
+ao session attach <session>         # Attach to a worker's terminal
+ao send <session> "your message"    # Send instruction to a worker
 ```
+
+### Continuous monitoring with /ao
+
+The `/ao` skill monitors the pipeline, detects stuck agents, takes corrective action, and logs findings for process improvement.
+
+```bash
+# Single monitoring pass
+/ao
+
+# Continuous monitoring (recommended while AO runs)
+/loop 3m /ao
+```
+
+Each run:
+1. **Health check** - parses `ao status`, PRs, issues, triggers, CI
+2. **Idle detection** - distinguishes truly stuck agents from long-running-but-active ones (checks git activity in worktrees)
+3. **Quick fixes** - kills zombies, retries failed triggers, adds missing model labels
+4. **Feedback log** - appends to `docs/agent-orchestrator/feedback/YYYY-MM-DD.md` with full context
+5. **Pattern tracking** - updates `docs/agent-orchestrator/feedback/patterns.md` with recurring observations
+
+Model switch awareness: model changes are OS-wide (affect all running agents). The skill flags mismatches but does not switch models when multiple agents are active.
+
+### Feedback log structure
+
+```
+docs/agent-orchestrator/feedback/
+  patterns.md           Cross-date recurring observations
+  2026-03-29.md         Per-date findings
+  2026-03-30.md
+```
+
+Each date file contains timestamped entries with: pipeline state, session analysis, actions taken, token/model notes, and improvement suggestions. Over time this builds a knowledge base for tuning the pipeline.
 
 ## After PR is Created
 
