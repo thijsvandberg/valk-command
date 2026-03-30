@@ -88,3 +88,5 @@ export type Conversation = typeof conversation.$inferSelect;
 export type NewConversation = typeof conversation.$inferInsert;
 export type Message = typeof message.$inferSelect;
 export type NewMessage = typeof message.$inferInsert;
+export type ScheduledJob = typeof scheduledJob.$inferSelect;
+export type NewScheduledJob = typeof scheduledJob.$inferInsert;

@@ -1,3 +1,5 @@
+import JobsPanel from "@/components/jobs/JobsPanel";
+
 export default function JobsPage() {
   return (
     <div className="noise-overlay relative min-h-full">
@@ -13,6 +15,10 @@ export default function JobsPage() {
         <p className="mt-2 max-w-lg font-[var(--font-body)] text-base leading-[1.7] text-white/50">
           Manage recurring workspace tasks and scheduled automation jobs for the remote agent.
         </p>
+
+        <div className="mt-8">
+          <JobsPanel />
+        </div>
       </div>
     </div>
   );
