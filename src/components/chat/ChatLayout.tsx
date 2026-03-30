@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
+import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
+import { parseSkillInvocation } from "@/lib/agent-client";
 import ConversationList from "./ConversationList";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
+import TaskProgress from "./TaskProgress";
+import WorkspaceStatus from "./WorkspaceStatus";
 
 export default function ChatLayout() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -23,7 +27,10 @@ export default function ChatLayout() {
     loading: msgLoading,
     error: msgError,
     sendMessage,
+    refresh: refreshMessages,
   } = useMessages(activeId);
+
+  const workspaceTask = useWorkspaceTask();
 
   const handleCreate = useCallback(async () => {
     const conversation = await createConversation();
@@ -47,6 +54,59 @@ export default function ChatLayout() {
     },
     [deleteConversation, activeId]
   );
+
+  const handleSend = useCallback(
+    async (content: string): Promise<boolean> => {
+      if (!activeId) return false;
+
+      // Save user message locally first
+      const saved = await sendMessage(content);
+      if (!saved) return false;
+
+      // Check if this is a skill invocation
+      const invocation = parseSkillInvocation(content);
+      if (invocation) {
+        workspaceTask.reset();
+        await workspaceTask.submitAndStream(
+          invocation.skill,
+          invocation.args,
+          activeId
+        );
+
+        // When the task completes, save the result as an assistant message
+        // This is handled by an effect watching workspaceTask.output
+      }
+
+      return true;
+    },
+    [activeId, sendMessage, workspaceTask]
+  );
+
+  // Save completed task output as assistant message (once)
+  const savedTaskRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      workspaceTask.status !== "completed" ||
+      !workspaceTask.output ||
+      !workspaceTask.taskId ||
+      !activeId ||
+      savedTaskRef.current === workspaceTask.taskId
+    ) return;
+
+    savedTaskRef.current = workspaceTask.taskId;
+
+    const displayContent = workspaceTask.output;
+
+    fetch(`/api/conversations/${activeId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role: "assistant",
+        content: displayContent,
+        workspaceTaskId: workspaceTask.taskId,
+      }),
+    }).then(() => refreshMessages());
+  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages]);
 
   return (
     <div className="noise-overlay relative flex h-full">
@@ -108,10 +168,23 @@ export default function ChatLayout() {
 
       {/* Main chat area */}
       <div className="relative z-10 flex flex-1 flex-col min-w-0">
+        <WorkspaceStatus />
         {activeId ? (
           <>
             <MessageList messages={messages} loading={msgLoading} error={msgError} />
-            <MessageInput onSend={sendMessage} />
+            {workspaceTask.status !== "idle" && workspaceTask.status !== "completed" && (
+              <TaskProgress
+                skill={workspaceTask.skill}
+                status={workspaceTask.status}
+                progressText={workspaceTask.progressText}
+                toolCalls={workspaceTask.toolCalls}
+                error={workspaceTask.error}
+              />
+            )}
+            <MessageInput
+              onSend={handleSend}
+              disabled={workspaceTask.status === "submitting" || workspaceTask.status === "streaming"}
+            />
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center">

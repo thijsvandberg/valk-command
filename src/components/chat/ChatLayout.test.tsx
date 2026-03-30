@@ -2,6 +2,28 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ChatLayout from "./ChatLayout";
 
+vi.mock("@/hooks/useWorkspaceTask", () => ({
+  useWorkspaceTask: () => ({
+    status: "idle" as const,
+    skill: null,
+    taskId: null,
+    progressText: null,
+    toolCalls: [],
+    output: null,
+    error: null,
+    submitAndStream: vi.fn(),
+    reset: vi.fn(),
+  }),
+}));
+
+vi.mock("@/hooks/useWorkspaceHealth", () => ({
+  useWorkspaceHealth: () => ({
+    workspace: "connected" as const,
+    claude: "valid" as const,
+    tokenExpiresAt: null,
+  }),
+}));
+
 const mockConversation = {
   id: "conv-1",
   title: "Test conversation",
