@@ -10,6 +10,7 @@ import { Avatar } from "../shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { useTicketVersions } from "@/hooks/useSprintBoard";
+import { RefreshCw, ExternalLink, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare } from "lucide-react";
 
 // -- Simple markdown renderer for panel description --
 
@@ -227,13 +228,10 @@ export function SidePanel({
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Sync ticket from Jira"
               >
-                <svg
-                  viewBox="0 0 16 16"
+                <RefreshCw
                   className={`h-3.5 w-3.5 ${syncingTicket ? "animate-spin" : ""}`}
-                >
-                  <path d="M2 8a6 6 0 0111.47-2.4M14 8a6 6 0 01-11.47 2.4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-                  <path d="M13 2v4h-4m-5 4v4h4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                  strokeWidth={1.5}
+                />
               </button>
               {/* Open in Jira */}
               <a
@@ -243,11 +241,7 @@ export function SidePanel({
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
                 title="Open in Jira"
               >
-                {/* New Jira logomark: two overlapping chevrons */}
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-                  <path d="M4.5 3L9 7.5 4.5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  <path d="M8 3l4.5 4.5L8 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.5" />
-                </svg>
+                <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
               </a>
               {/* Full width toggle */}
               <button
@@ -256,15 +250,10 @@ export function SidePanel({
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
                 title={isFullWidth ? "Restore panel width" : "Expand to full width"}
               >
-                {isFullWidth ? (
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-                    <path d="M10 2l-4 0m0 0v4m0-4l5 5M6 14l4 0m0 0v-4m0 4l-5-5" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-                    <path d="M2 2l4 0m0 0v4m0-4L1 7M14 14l-4 0m0 0v-4m0 4l5-5" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
+                {isFullWidth
+                  ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  : <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                }
               </button>
               {/* Open in valk-command new tab */}
               <a
@@ -274,21 +263,14 @@ export function SidePanel({
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
                 title="Open in new tab"
               >
-                {/* Window with arrow icon */}
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-                  <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                  <path d="M2 5.5h12" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M8 8v3.5m0-3.5l-1.5 1.5m1.5-1.5l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
               </a>
               <button
                 type="button"
                 onClick={onClose}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
               >
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-                  <path d="M4 4l8 8m0-8l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+                <X className="h-3.5 w-3.5" strokeWidth={1.5} />
               </button>
             </div>
           </div>
@@ -307,17 +289,12 @@ export function SidePanel({
                 className="mt-3 flex w-full items-center gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#ea8744]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.99]"
                 style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
               >
-                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-[#ea8744]">
-                  <path d="M8 1v8m0 2v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.2" fill="none" opacity="0.3" />
-                </svg>
+                <AlertCircle className="h-4 w-4 shrink-0 text-[#ea8744]" strokeWidth={1.5} />
                 <div>
                   <span className="text-xs font-medium text-[#ea8744]">Story changed</span>
                   <span className="ml-1.5 text-xs text-white/30">View diff</span>
                 </div>
-                <svg viewBox="0 0 8 8" className="ml-auto h-2.5 w-2.5 text-white/20">
-                  <path d="M2.5 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" />
-                </svg>
+                <ChevronRight className="ml-auto h-2.5 w-2.5 text-white/20" strokeWidth={1.5} />
               </button>
             )}
 
@@ -411,9 +388,7 @@ export function SidePanel({
                   className="flex items-center gap-2 text-xs text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                   style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
                 >
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-                    <path d="M3 3v10m10-10v10M6 5h4M6 8h4M6 11h2" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                  </svg>
+                  <History className="h-3.5 w-3.5" strokeWidth={1.5} />
                   View changes ({ticketVersions.length} versions)
                 </button>
               </>
@@ -433,9 +408,7 @@ export function SidePanel({
                 className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               >
-                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-white/40">
-                  <path d="M3.5 8.5l3 3 6-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <CheckSquare className="h-4 w-4 shrink-0 text-white/40" strokeWidth={1.5} />
                 Review Story
               </button>
               <a
@@ -443,9 +416,7 @@ export function SidePanel({
                 className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               >
-                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-white/40">
-                  <path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V3z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <MessageSquare className="h-4 w-4 shrink-0 text-white/40" strokeWidth={1.5} />
                 Chat about this ticket
               </a>
             </div>

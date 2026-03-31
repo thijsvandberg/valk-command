@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { Ticket, JiraStatus } from "./mock-data";
+import { ChevronRight, BarChart2 } from "lucide-react";
 
 const STATUS_COLORS: Record<JiraStatus, string> = {
   "TO DO": "#94a3b8",
@@ -67,15 +68,11 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-center gap-2 px-5 py-2 text-xs text-white/40 cursor-pointer hover:text-white/60 hover:bg-white/[0.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.03]"
       >
-        <svg
-          viewBox="0 0 12 12"
+        <ChevronRight
           className={`h-3 w-3 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
-        >
-          <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-        </svg>
-        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-          <path d="M2 13V5h3v8zM6.5 13V3h3v10zM11 13V8h3v5z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+          strokeWidth={1.5}
+        />
+        <BarChart2 className="h-3.5 w-3.5" strokeWidth={1.5} />
         Analytics
         <span className="text-white/20">{totalPoints} pts total</span>
       </button>

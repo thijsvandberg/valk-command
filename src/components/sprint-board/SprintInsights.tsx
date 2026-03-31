@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MOCK_TICKETS, type Ticket } from "./mock-data";
+import { Clock, ChevronDown } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Insight computation from existing ticket data
@@ -67,34 +68,17 @@ export function SprintInsights() {
         style={{ transition: "background-color 0.15s ease" }}
       >
         <div className="flex items-center gap-2">
-          <svg viewBox="0 0 16 16" className="h-4 w-4 text-white/30">
-            <path
-              d="M8 1a7 7 0 110 14A7 7 0 018 1zm0 3v4l3 1.5"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Clock className="h-4 w-4 text-white/30" strokeWidth={1.5} />
           <span className="text-xs font-semibold text-white/60">Sprint Insights</span>
           <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/[0.06] px-1 text-[10px] tabular-nums text-white/30">
             {insights.totalTickets}
           </span>
         </div>
-        <svg
-          viewBox="0 0 12 12"
-          className={`h-3 w-3 text-white/25 ${collapsed ? "" : "rotate-180"}`}
+        <ChevronDown
+          className={`h-3 w-3 text-white/25 ${collapsed ? "rotate-180" : ""}`}
+          strokeWidth={1.5}
           style={{ transition: "transform 0.2s ease" }}
-        >
-          <path
-            d="M3 5l3 3 3-3"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </svg>
+        />
       </button>
 
       {!collapsed && (

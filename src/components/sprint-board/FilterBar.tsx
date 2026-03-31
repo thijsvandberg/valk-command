@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { EPIC_COLORS, PO_STATUS_OPTIONS } from "./mock-data";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
+import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3 } from "lucide-react";
 
 // -- PO Status colors (needed for filter rendering) --
 
@@ -93,9 +94,7 @@ function FilterDropdown({
             {selected.size}
           </span>
         )}
-        <svg viewBox="0 0 12 12" className="h-3 w-3 opacity-40">
-          <path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-        </svg>
+        <ChevronDown className="h-3 w-3 opacity-40" strokeWidth={1.5} />
       </button>
 
       {open && (
@@ -182,18 +181,12 @@ function SortDropdown({
             : "text-white/30 hover:bg-white/[0.04] hover:text-white/50"
         }`}
       >
-        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
+        <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
         {isActive ? activeLabel : "Sort"}
         {isActive && (
-          <svg viewBox="0 0 10 10" className="h-3 w-3">
-            {direction === "asc" ? (
-              <path d="M5 2v6M2.5 4.5L5 2l2.5 2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            ) : (
-              <path d="M5 8V2M2.5 5.5L5 8l2.5-2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            )}
-          </svg>
+          direction === "asc"
+            ? <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
+            : <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
         )}
       </button>
 
@@ -222,13 +215,9 @@ function SortDropdown({
                 {opt.label}
               </span>
               {opt.field === field && (
-                <svg viewBox="0 0 10 10" className="h-3 w-3 text-[var(--color-brand-400)]">
-                  {direction === "asc" ? (
-                    <path d="M5 2v6M2.5 4.5L5 2l2.5 2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  ) : (
-                    <path d="M5 8V2M2.5 5.5L5 8l2.5-2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  )}
-                </svg>
+                direction === "asc"
+                  ? <ArrowUp className="h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={1.5} />
+                  : <ArrowDown className="h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={1.5} />
               )}
             </button>
           ))}
@@ -285,10 +274,7 @@ function ColumnToggle({
         className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
         title="Toggle columns"
       >
-        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-          <path d="M2 3h12M2 8h12M2 13h12" />
-          <path d="M6 1v4M10 6v4M6 11v4" />
-        </svg>
+        <Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />
         Columns
       </button>
       {open && (

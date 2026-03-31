@@ -8,6 +8,7 @@ import {
   MOCK_TICKET_DETAILS,
   type Ticket,
 } from "@/components/sprint-board/mock-data";
+import { MessageCircle } from "lucide-react";
 
 const PO_STATUS_COLORS: Record<string, { dot: string }> = {
   Nieuw: { dot: "#94a3b8" },
@@ -69,9 +70,7 @@ function TicketContextSidebar({ ticket }: { ticket: Ticket }) {
         </div>
 
         <div className="rounded-lg border border-dashed border-white/[0.08] bg-white/[0.01] px-3 py-4 text-center">
-          <svg viewBox="0 0 24 24" className="mx-auto mb-2 h-5 w-5 text-white/15">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <MessageCircle className="mx-auto mb-2 h-5 w-5 text-white/15" strokeWidth={1.5} />
           <p className="text-xs text-white/25">Chat with agent about this ticket</p>
         </div>
       </div>

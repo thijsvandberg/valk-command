@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
+import { X, Pin, Check, RefreshCw } from "lucide-react";
 
 type SyncResult = { count: number; timestamp: number } | null;
 
@@ -155,9 +156,7 @@ export function SprintListModal({
           onClick={onClose}
           className="mb-1 flex h-6 w-6 items-center justify-center rounded-md text-white/25 cursor-pointer hover:bg-white/[0.06] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
         >
-          <svg viewBox="0 0 14 14" className="h-3 w-3">
-            <path d="M3 3l8 8m0-8l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <X className="h-3 w-3" strokeWidth={1.5} />
         </button>
       </div>
 
@@ -217,9 +216,11 @@ export function SprintListModal({
                   }`}
                   title={pinnedIds.has(String(sprint.id)) ? "Pinned to tab" : "Pin to tab"}
                 >
-                  <svg viewBox="0 0 16 16" className="h-3 w-3">
-                    <path d="M9.5 2.5l4 4-2.5 2.5-.5 3.5L7 9l-4 4M6.5 2l2 2-3 3-2-2z" stroke="currentColor" strokeWidth="1.3" fill={pinnedIds.has(String(sprint.id)) ? "currentColor" : "none"} strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <Pin
+                    className="h-3 w-3"
+                    strokeWidth={1.5}
+                    fill={pinnedIds.has(String(sprint.id)) ? "currentColor" : "none"}
+                  />
                 </button>
               </span>
             </button>
@@ -241,20 +242,15 @@ export function SprintListModal({
         >
           {syncResult ? (
             <>
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-                <path d="M3.5 8.5l3 3 6-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
               Synced {syncResult.count} sprint{syncResult.count === 1 ? "" : "s"}
             </>
           ) : (
             <>
-              <svg
-                viewBox="0 0 16 16"
+              <RefreshCw
                 className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
-              >
-                <path d="M2 8a6 6 0 0111.47-2.4M14 8a6 6 0 01-11.47 2.4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-                <path d="M13 2v4h-4m-5 4v4h4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+                strokeWidth={1.5}
+              />
               {syncing ? "Syncing from Jira..." : "Sync from Jira"}
             </>
           )}

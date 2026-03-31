@@ -1,6 +1,6 @@
 # VC-010: Migrate to Lucide Icons
 
-**Status:** Open
+**Status:** In Progress
 **Priority:** Low
 
 ## Description
@@ -18,26 +18,26 @@ Replace all hand-coded inline SVG icons with [Lucide React](https://lucide.dev/)
 
 ### Install
 
-- [ ] `npm install lucide-react`
+- [x] `npm install lucide-react`
 
 ### Sprint Board icons
 
-- [ ] SprintSlots: refresh, add slot, sprint list
-- [ ] FilterBar: dropdown chevrons, sort, column toggle
-- [ ] TicketTable: issue type icons, expand row, PO status icons
+- [x] SprintSlots: refresh, add slot, sprint list
+- [x] FilterBar: dropdown chevrons, sort, column toggle
+- [x] TicketTable: issue type icons, expand row, PO status icons
 - [ ] BulkActionBar: clear, refresh, review
-- [ ] SidePanel: sync ticket, open in Jira (use `ExternalLink` or custom Jira mark), expand/collapse, open new tab, close
-- [ ] SprintListModal: search, close, sync, pin/unpin, status dots (keep custom)
-- [ ] SprintAnalytics: collapse chevron
+- [x] SidePanel: sync ticket, open in Jira (ExternalLink), expand/collapse, open new tab, close
+- [x] SprintListModal: search, close, sync, pin/unpin, status dots (keep custom)
+- [x] SprintAnalytics: collapse chevron
 
 ### Sidebar / Layout
 
-- [ ] Navigation icons (dashboard, chat, sprint board, test center, refinement, jobs, stakeholder, changelog)
-- [ ] Sidebar collapse/expand
+- [x] Navigation icons (dashboard, chat, sprint board, test center, refinement, jobs, stakeholder, changelog)
+- [x] Sidebar collapse/expand
 
 ### Other views
 
-- [ ] Chat page icons
+- [x] Chat page icons (MessageCircle, Plus, Trash2, Loader2, SendHorizontal, X)
 - [ ] Jobs page icons
 - [ ] Ticket detail page icons
 

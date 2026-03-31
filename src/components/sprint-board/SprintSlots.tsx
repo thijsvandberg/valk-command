@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "./mock-data";
 import { MOCK_SPRINTS } from "./mock-data";
 import { SprintListModal } from "./SprintListModal";
+import { ChevronRight, List, Plus, RefreshCw } from "lucide-react";
 
 // -- Sprint slot selector dropdown --
 
@@ -77,12 +78,10 @@ function SprintSelector({
               onClick={() => setShowClosed(!showClosed)}
               className="flex w-full items-center gap-1.5 px-3 py-2 text-xs text-white/30 cursor-pointer hover:text-white/50"
             >
-              <svg
-                viewBox="0 0 12 12"
+              <ChevronRight
                 className={`h-3 w-3 transition-transform duration-150 ${showClosed ? "rotate-90" : ""}`}
-              >
-                <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-              </svg>
+                strokeWidth={1.5}
+              />
               Closed sprints ({closed.length})
             </button>
             {showClosed &&
@@ -127,9 +126,7 @@ function SprintListButton({
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
       >
-        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-          <path d="M3 4h10M3 8h10M3 12h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
+        <List className="h-3.5 w-3.5" strokeWidth={1.5} />
         Sprints
       </button>
       {open && (
@@ -215,9 +212,7 @@ export function SprintSlots({
         className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
         title="Add sprint slot"
       >
-        <svg viewBox="0 0 16 16" className="h-4 w-4">
-          <path d="M8 3v10m-5-5h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+        <Plus className="h-4 w-4" strokeWidth={1.5} />
       </button>
 
       {/* Right side: sprint list + refresh */}
@@ -238,13 +233,10 @@ export function SprintSlots({
           onClick={onRefresh}
           className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <svg
-            viewBox="0 0 16 16"
+          <RefreshCw
             className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
-          >
-            <path d="M2 8a6 6 0 0111.47-2.4M14 8a6 6 0 01-11.47 2.4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-            <path d="M13 2v4h-4m-5 4v4h4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+            strokeWidth={1.5}
+          />
           {syncing ? "Syncing..." : "Refresh"}
         </button>
       </div>

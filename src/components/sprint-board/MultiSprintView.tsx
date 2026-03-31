@@ -5,6 +5,7 @@ import { MOCK_SPRINTS, MOCK_TICKETS, EPIC_COLORS, type Ticket } from "./mock-dat
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
+import { Search, X } from "lucide-react";
 
 // Simplified table for a single sprint in compare mode
 function MiniSprintTable({
@@ -147,10 +148,7 @@ export function MultiSprintView({
         <div className="flex-1" />
         {/* Cross-sprint search */}
         <div className="relative">
-          <svg viewBox="0 0 16 16" className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/20">
-            <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.3" fill="none" />
-            <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/20" strokeWidth={1.5} />
           <input
             type="text"
             value={searchQuery}
@@ -165,9 +163,7 @@ export function MultiSprintView({
           className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
           title="Close compare view"
         >
-          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-            <path d="M4 4l8 8m0-8l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
         </button>
       </div>
 

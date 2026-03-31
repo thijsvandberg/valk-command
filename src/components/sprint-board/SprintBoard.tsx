@@ -18,6 +18,7 @@ import { SidePanel } from "./SidePanel";
 import { SprintAnalytics } from "./SprintAnalytics";
 import { MultiSprintView } from "./MultiSprintView";
 import { useSprintSlots, useDebouncedCallback } from "@/hooks/useSprintBoard";
+import { Columns2, Check } from "lucide-react";
 
 // Persist sprint slot configuration to the API
 async function saveSprintSlots(slotSprints: string[]) {
@@ -595,9 +596,7 @@ export default function SprintBoard() {
               onClick={() => setCompareMode(true)}
               className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-xs text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
             >
-              <svg viewBox="0 0 16 16" className="h-3 w-3">
-                <path d="M2 3v10M14 3v10M5 5h6M5 8h6M5 11h6" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-              </svg>
+              <Columns2 className="h-3 w-3" strokeWidth={1.5} />
               Compare
             </button>
           </div>
@@ -663,9 +662,7 @@ export default function SprintBoard() {
             animation: "fadeInUp 0.2s ease-out",
           }}
         >
-          <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]">
-            <path d="M3.5 8.5l3 3 6-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
           <span className="text-sm text-white/70">{toast}</span>
         </div>
       )}

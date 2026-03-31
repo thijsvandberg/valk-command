@@ -6,6 +6,7 @@ import { EPIC_COLORS, PO_STATUS_OPTIONS } from "./mock-data";
 import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
+import { Clock, Minus, Sparkles, Pencil, CircleDot, Check, Pause, GripVertical, Flag, MessageSquare, Sheet } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -64,11 +65,7 @@ function QualityBadge({ score, stale }: { score: number | null; stale: boolean }
         style={{ backgroundColor: color }}
       />
       {score}
-      {stale && (
-        <svg viewBox="0 0 12 12" className="h-3 w-3 text-white/30">
-          <path d="M6 1v4l2.5 1.5M11 6a5 5 0 11-10 0 5 5 0 0110 0z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-        </svg>
-      )}
+      {stale && <Clock className="h-3 w-3 text-white/30" strokeWidth={1.5} />}
     </span>
   );
 }
@@ -78,55 +75,15 @@ export { QualityBadge };
 // -- PO Status icon per status --
 
 function POStatusIcon({ status, size = 14 }: { status: POStatus; size?: number }) {
-  if (!status) {
-    return (
-      <svg viewBox="0 0 16 16" style={{ width: size, height: size }}>
-        <path d="M4 8h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.25" />
-      </svg>
-    );
-  }
-
+  const props = { style: { width: size, height: size }, strokeWidth: 1.5 };
+  if (!status) return <Minus {...props} opacity={0.25} />;
   switch (status) {
-    case "Nieuw":
-      return (
-        <svg viewBox="0 0 16 16" fill="currentColor" style={{ width: size, height: size }}>
-          <path d="M8 1l1.5 4.5L14 7l-4.5 1.5L8 13l-1.5-4.5L2 7l4.5-1.5z" />
-        </svg>
-      );
-    case "Uitwerken":
-      return (
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size }}>
-          <path d="M11.5 2.5l2 2-8 8H3.5v-2z" />
-          <path d="M9.5 4.5l2 2" />
-        </svg>
-      );
-    case "Wachten op feedback":
-      return (
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" style={{ width: size, height: size }}>
-          <circle cx="8" cy="8" r="5.5" />
-          <path d="M8 5v3.5l2.5 1.5" />
-        </svg>
-      );
-    case "Klaar voor refinement":
-      return (
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" style={{ width: size, height: size }}>
-          <circle cx="8" cy="8" r="5.5" />
-          <circle cx="8" cy="8" r="2" fill="currentColor" />
-        </svg>
-      );
-    case "Ready":
-      return (
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size }}>
-          <path d="M3.5 8.5l3 3 6-6" />
-        </svg>
-      );
-    case "Geparkeerd":
-      return (
-        <svg viewBox="0 0 16 16" fill="currentColor" style={{ width: size, height: size }}>
-          <rect x="4" y="3.5" width="3" height="9" rx="0.75" />
-          <rect x="9" y="3.5" width="3" height="9" rx="0.75" />
-        </svg>
-      );
+    case "Nieuw": return <Sparkles {...props} />;
+    case "Uitwerken": return <Pencil {...props} />;
+    case "Wachten op feedback": return <Clock {...props} />;
+    case "Klaar voor refinement": return <CircleDot {...props} />;
+    case "Ready": return <Check {...props} />;
+    case "Geparkeerd": return <Pause {...props} />;
   }
 }
 
@@ -215,14 +172,7 @@ function DragHandle({ listeners, attributes }: { listeners?: ReturnType<typeof u
       {...listeners}
       {...attributes}
     >
-      <svg viewBox="0 0 8 14" className="h-3.5 w-2 text-white/25 hover:text-white/50">
-        <circle cx="2" cy="2" r="1" fill="currentColor" />
-        <circle cx="6" cy="2" r="1" fill="currentColor" />
-        <circle cx="2" cy="7" r="1" fill="currentColor" />
-        <circle cx="6" cy="7" r="1" fill="currentColor" />
-        <circle cx="2" cy="12" r="1" fill="currentColor" />
-        <circle cx="6" cy="12" r="1" fill="currentColor" />
-      </svg>
+      <GripVertical className="h-3.5 w-3.5 text-white/25 hover:text-white/50" strokeWidth={1.5} />
     </td>
   );
 }
@@ -388,11 +338,7 @@ function SortableTicketRow({
 
       {col("flagged") && (
         <td className="py-2 pr-2">
-          {ticket.flagged && (
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-[#e5534b]" fill="currentColor">
-              <path d="M3 2v12m0-12l8 3.5L3 9" />
-            </svg>
-          )}
+          {ticket.flagged && <Flag className="h-3.5 w-3.5 text-[#e5534b]" fill="currentColor" strokeWidth={0} />}
         </td>
       )}
 
@@ -418,9 +364,7 @@ function SortableTicketRow({
         <td className="py-2 pr-5">
           {ticket.notes && (
             <span title={ticket.notes}>
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-white/20">
-                <path d="M3 3h10v8H7l-3 2v-2H3V3z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinejoin="round" />
-              </svg>
+              <MessageSquare className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
             </span>
           )}
         </td>
@@ -592,10 +536,7 @@ export function TicketTable({
       </DndContext>
       {tickets.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <svg viewBox="0 0 48 48" className="mb-4 h-12 w-12 text-white/10">
-            <rect x="6" y="10" width="36" height="28" rx="4" stroke="currentColor" strokeWidth="2" fill="none" />
-            <path d="M6 18h36M18 18v20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
-          </svg>
+          <Sheet className="mb-4 h-12 w-12 text-white/10" strokeWidth={1} />
           <p className="text-sm font-medium text-white/30">No tickets in this sprint</p>
           <p className="mt-1 text-xs text-white/15">Tickets will appear here once they are added to the sprint in Jira</p>
         </div>
