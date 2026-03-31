@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1774715339418,
+      "tag": "0000_ordinary_wendell_rand",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1774913839768,
+      "tag": "0001_public_katie_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1774917531572,
+      "tag": "0002_cloudy_spectrum",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1774985077537,
+      "tag": "0003_secret_mac_gargan",
+      "breakpoints": true
+    }
+  ]
+}

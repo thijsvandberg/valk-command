@@ -1,0 +1,35 @@
+name: Generate Changelog
+
+on:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - name: Generate changelog
+        run: node tools/scripts/generate-changelog.mjs
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/changelog.json
+          git diff --cached --quiet && echo "No changelog changes" && exit 0
+          git commit -m "chore: regenerate changelog [skip ci]"
+          git push

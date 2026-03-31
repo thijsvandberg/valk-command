@@ -40,6 +40,21 @@
             "type": "command",
             "command": ".claude/metadata-updater.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE 'git[[:space:]]+push'; then echo 'Pre-push build check...'; npm run build 2>&1 | tail -10; fi",
+            "timeout": 120000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE '\\.(tsx?|jsx?)\"'; then npm run test 2>&1 | tail -5; fi",
+            "timeout": 30000
           }
         ]
       }
