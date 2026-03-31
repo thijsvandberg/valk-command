@@ -43,7 +43,8 @@ describe("GET /api/tickets/[key]", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.jiraKey).toBe("VPL-100");
+    // New shape: `key` field (mapped from jiraKey)
+    expect(data.key).toBe("VPL-100");
     expect(data.title).toBe("Ticket VPL-100");
   });
 
@@ -56,7 +57,7 @@ describe("GET /api/tickets/[key]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("includes metadata when available", async () => {
+  it("includes PO metadata when available", async () => {
     seedTicket(testDb, "VPL-100");
 
     const { ticketMetadata } = await import("@/db/schema");
@@ -75,6 +76,9 @@ describe("GET /api/tickets/[key]", () => {
     );
     const data = await response.json();
 
+    // New shape: poStatus is flattened into the ticket object, metadata still included separately
+    expect(data.poStatus).toBe("Uitwerken");
+    expect(data.qualityScore).toBe(60);
     expect(data.metadata).not.toBeNull();
     expect(data.metadata.poStatus).toBe("Uitwerken");
   });

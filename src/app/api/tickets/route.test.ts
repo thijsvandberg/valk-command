@@ -64,13 +64,13 @@ describe("GET /api/tickets", () => {
     const data = await response.json();
 
     expect(data).toHaveLength(2);
-    expect(data.every((t: { sprintName: string }) => t.sprintName === "Sprint 1")).toBe(true);
+    // New shape: sprintId field (mapped from sprintName)
+    expect(data.every((t: { sprintId: string }) => t.sprintId === "Sprint 1")).toBe(true);
   });
 
-  it("includes metadata when available", async () => {
+  it("includes PO status from metadata when available", async () => {
     seedTicket(testDb, "VPL-100");
 
-    // Insert metadata directly
     const { ticketMetadata } = await import("@/db/schema");
     testDb
       .insert(ticketMetadata)
@@ -85,18 +85,18 @@ describe("GET /api/tickets", () => {
     const response = await GET(request);
     const data = await response.json();
 
-    expect(data[0].metadata).not.toBeNull();
-    expect(data[0].metadata.poStatus).toBe("Ready");
-    expect(data[0].metadata.qualityScore).toBe(85);
+    // New shape: poStatus and qualityScore are flattened into the ticket object
+    expect(data[0].poStatus).toBe("Ready");
+    expect(data[0].qualityScore).toBe(85);
   });
 
-  it("returns null metadata when none exists", async () => {
+  it("returns null poStatus when no metadata exists", async () => {
     seedTicket(testDb, "VPL-100");
 
     const request = new Request("http://localhost:3100/api/tickets");
     const response = await GET(request);
     const data = await response.json();
 
-    expect(data[0].metadata).toBeNull();
+    expect(data[0].poStatus).toBeNull();
   });
 });

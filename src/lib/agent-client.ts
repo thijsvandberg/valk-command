@@ -4,6 +4,33 @@
  * once the agent is available.
  */
 
+/** Shape of a single server-sent event from the agent streaming endpoint. */
+export interface SSEEvent {
+  type: "tool_call" | "progress" | "output" | "error" | "done";
+  tool?: string;
+  id?: string;
+  args?: string;
+  text?: string;
+}
+
+/** Parsed skill invocation from a chat message (e.g. "/review VPL-123"). */
+export interface SkillInvocation {
+  skill: string;
+  args: string;
+}
+
+/**
+ * Detects whether a chat message is a skill invocation (starts with "/").
+ * Returns the skill name and remaining args, or null if not an invocation.
+ */
+export function parseSkillInvocation(content: string): SkillInvocation | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("/")) return null;
+  const [rawSkill, ...rest] = trimmed.slice(1).split(" ");
+  if (!rawSkill) return null;
+  return { skill: rawSkill, args: rest.join(" ") };
+}
+
 export interface ReviewDimensionResult {
   key: string;
   label: string;

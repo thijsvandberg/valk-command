@@ -29,6 +29,13 @@
       "when": 1774985077537,
       "tag": "0003_secret_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1774986975084,
+      "tag": "0004_slim_korvac",
+      "breakpoints": true
     }
   ]
 }

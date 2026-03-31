@@ -55,6 +55,7 @@ export interface JiraIssueFields {
   updated: string;
   // Acceptance criteria (custom field, varies per project)
   customfield_10034?: string | null;
+  components?: Array<{ name: string }>;
 }
 
 export interface JiraIssue {
@@ -457,10 +458,20 @@ export class JiraClient {
     }
 
     const cfg = getConfig();
-    const result = await jiraFetch<JiraSprintListResponse>(
-      `/rest/agile/1.0/board/${cfg.boardId}/sprint?maxResults=50`,
-    );
-    return result.values;
+    let all: JiraSprint[] = [];
+    let startAt = 0;
+    const maxResults = 50;
+
+    while (true) {
+      const result = await jiraFetch<JiraSprintListResponse>(
+        `/rest/agile/1.0/board/${cfg.boardId}/sprint?maxResults=${maxResults}&startAt=${startAt}`,
+      );
+      all = all.concat(result.values);
+      if (result.isLast) break;
+      startAt += maxResults;
+    }
+
+    return all;
   }
 
   /**
@@ -471,10 +482,21 @@ export class JiraClient {
       return MOCK_ISSUES;
     }
 
-    const result = await jiraFetch<JiraSearchResponse>(
-      `/rest/agile/1.0/sprint/${sprintId}/issue?maxResults=200&fields=summary,issuetype,status,priority,assignee,reporter,labels,customfield_10008,customfield_10028,sprint,flagged,description,created,updated,customfield_10034`,
-    );
-    return result.issues;
+    const fields = "summary,issuetype,status,priority,assignee,reporter,labels,customfield_10008,customfield_10028,sprint,flagged,description,created,updated,customfield_10034,components";
+    let all: JiraIssue[] = [];
+    let startAt = 0;
+    const maxResults = 100;
+
+    while (true) {
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/agile/1.0/sprint/${sprintId}/issue?maxResults=${maxResults}&startAt=${startAt}&fields=${fields}`,
+      );
+      all = all.concat(result.issues);
+      if (startAt + result.issues.length >= result.total) break;
+      startAt += maxResults;
+    }
+
+    return all;
   }
 
   /**
@@ -518,6 +540,65 @@ export class JiraClient {
       `/rest/api/3/issue/${key}?fields=attachment`,
     );
     return issue.fields.attachment ?? [];
+  }
+
+  /**
+   * Verify Jira connectivity by calling /rest/api/3/myself.
+   */
+  async checkHealth(): Promise<{ displayName: string; emailAddress: string }> {
+    return jiraFetch<{ displayName: string; emailAddress: string }>("/rest/api/3/myself");
+  }
+
+  /**
+   * Fetch only key + updated timestamp for all sprint issues.
+   * Used by the timestamp-first sync strategy to detect which issues changed.
+   */
+  async getSprintIssueTimestamps(sprintId: number): Promise<Array<{ key: string; updated: string }>> {
+    if (!isConfigured()) {
+      return MOCK_ISSUES.map((i) => ({ key: i.key, updated: i.fields.updated }));
+    }
+
+    let all: Array<{ key: string; updated: string }> = [];
+    let startAt = 0;
+    const maxResults = 200;
+
+    while (true) {
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/agile/1.0/sprint/${sprintId}/issue?maxResults=${maxResults}&startAt=${startAt}&fields=updated`,
+      );
+      all = all.concat(result.issues.map((i) => ({ key: i.key, updated: i.fields.updated })));
+      if (startAt + result.issues.length >= result.total) break;
+      startAt += maxResults;
+    }
+
+    return all;
+  }
+
+  /**
+   * Fetch full issue data for a specific set of keys (used by timestamp-first strategy).
+   */
+  async getIssuesByKeys(keys: string[]): Promise<JiraIssue[]> {
+    if (!isConfigured()) {
+      return MOCK_ISSUES.filter((i) => keys.includes(i.key));
+    }
+
+    const jql = `key in (${keys.join(",")})`;
+    const fields = "summary,issuetype,status,priority,assignee,reporter,labels,customfield_10008,customfield_10028,sprint,flagged,description,created,updated,customfield_10034,components";
+
+    let all: JiraIssue[] = [];
+    let startAt = 0;
+    const maxResults = 100;
+
+    while (true) {
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search?jql=${encodeURIComponent(jql)}&fields=${fields}&maxResults=${maxResults}&startAt=${startAt}`,
+      );
+      all = all.concat(result.issues);
+      if (startAt + result.issues.length >= result.total) break;
+      startAt += maxResults;
+    }
+
+    return all;
   }
 
   /**

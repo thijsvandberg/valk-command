@@ -44,12 +44,22 @@ export function createTestDb() {
     CREATE TABLE ticket (
       jira_key TEXT PRIMARY KEY,
       title TEXT NOT NULL,
+      type TEXT,
       status TEXT NOT NULL,
       assignee TEXT,
+      assignee_avatar TEXT,
+      epic TEXT,
+      flagged INTEGER NOT NULL DEFAULT 0,
+      reporter TEXT,
+      description TEXT,
+      acceptance_criteria TEXT,
       story_points REAL,
       sprint_name TEXT,
       labels TEXT,
       priority TEXT,
+      components TEXT,
+      jira_created_at TEXT,
+      jira_updated_at TEXT,
       last_synced_at TEXT
     )
   `);
@@ -150,6 +160,21 @@ export function createTestDb() {
       local_value TEXT NOT NULL,
       base_jira_version TEXT,
       modified_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE sync_log (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL CHECK(type IN ('sprint-sync', 'ticket-sync', 'single-ticket', 'comment-sync', 'webhook')),
+      scope TEXT,
+      status TEXT NOT NULL CHECK(status IN ('running', 'success', 'failed')),
+      summary TEXT,
+      error_detail TEXT,
+      duration_ms INTEGER,
+      started_at TEXT NOT NULL DEFAULT (datetime('now')),
+      completed_at TEXT,
+      acknowledged INTEGER NOT NULL DEFAULT 0
     )
   `);
 

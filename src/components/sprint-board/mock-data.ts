@@ -1,105 +1,22 @@
-export type IssueType = "task" | "bug" | "story" | "subtask";
-export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE";
-export type POStatus =
-  | null
-  | "Nieuw"
-  | "Uitwerken"
-  | "Wachten op feedback"
-  | "Klaar voor refinement"
-  | "Ready"
-  | "Geparkeerd";
+// Types and constants are now sourced from @/types/ticket.
+// This file re-exports them for backward compatibility during the mock->API migration.
+import type { IssueType, JiraStatus, POStatus, Assignee, Attachment, Subtask, LinkedIssue, JiraComment, TicketDetail, Ticket, Sprint } from "@/types/ticket";
 
-export const PO_STATUS_OPTIONS: { value: POStatus; label: string }[] = [
-  { value: null, label: "—" },
-  { value: "Nieuw", label: "Nieuw" },
-  { value: "Uitwerken", label: "Uitwerken" },
-  { value: "Wachten op feedback", label: "Wachten op feedback" },
-  { value: "Klaar voor refinement", label: "Klaar voor refinement" },
-  { value: "Ready", label: "Ready" },
-  { value: "Geparkeerd", label: "Geparkeerd" },
-];
+export type {
+  IssueType,
+  JiraStatus,
+  POStatus,
+  Assignee,
+  Attachment,
+  Subtask,
+  LinkedIssue,
+  JiraComment,
+  TicketDetail,
+  Ticket,
+  Sprint,
+};
 
-export interface Assignee {
-  name: string;
-  initials: string;
-  color: string;
-}
-
-export interface Attachment {
-  id: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-  createdAt: string;
-  color: string;
-  cleaned: boolean;
-  cleanedAt: string | null;
-}
-
-export interface Subtask {
-  key: string;
-  title: string;
-  type: IssueType;
-  jiraStatus: JiraStatus;
-  assignee: Assignee | null;
-}
-
-export interface LinkedIssue {
-  relation: "is blocked by" | "relates to" | "blocks";
-  key: string;
-  title: string;
-  type: IssueType;
-  jiraStatus: JiraStatus;
-  assignee: Assignee | null;
-}
-
-export interface JiraComment {
-  id: string;
-  authorName: string;
-  authorAvatar: string | null;
-  authorInitials: string;
-  authorColor: string;
-  content: string;
-  createdAt: string;
-}
-
-export interface TicketDetail {
-  description: string;
-  reporter: Assignee | null;
-  labels: string[];
-  components: string[];
-  priority: "Highest" | "High" | "Medium" | "Low" | "Lowest";
-  createdAt: string;
-  updatedAt: string;
-  attachments: Attachment[];
-  subtasks: Subtask[];
-  linkedIssues: LinkedIssue[];
-  jiraComments: JiraComment[];
-}
-
-export interface Ticket {
-  key: string;
-  title: string;
-  type: IssueType;
-  epic: string | null;
-  jiraStatus: JiraStatus;
-  storyPoints: number | null;
-  assignee: Assignee | null;
-  flagged: boolean;
-  poStatus: POStatus;
-  qualityScore: number | null;
-  qualityStale: boolean;
-  notes: string;
-  sprintId?: string;
-}
-
-export interface Sprint {
-  id: string;
-  name: string;
-  dateRange: string;
-  state: "active" | "future" | "closed";
-  ticketCount: number;
-}
+export { PO_STATUS_OPTIONS } from "@/types/ticket";
 
 export const MOCK_SPRINTS: Sprint[] = [
   { id: "10048", name: "BT: 134", dateRange: "31 Mar - 9 Apr", state: "active", ticketCount: 10 },
@@ -111,13 +28,9 @@ export const MOCK_SPRINTS: Sprint[] = [
   { id: "10044", name: "BT: 130", dateRange: "3 Mar - 10 Mar", state: "closed", ticketCount: 17 },
 ];
 
-export const MOCK_SLOT_SPRINTS = ["10048", "10050", "10033"];
+export { EPIC_COLORS } from "@/types/ticket";
 
-export const EPIC_COLORS: Record<string, { bg: string; text: string }> = {
-  "BT: UPSELL": { bg: "rgba(217, 119, 68, 0.15)", text: "#d97744" },
-  "LOGGING & METRICS": { bg: "rgba(68, 170, 187, 0.15)", text: "#44aabb" },
-  "TECH: GENERAL IMP.": { bg: "rgba(160, 90, 200, 0.15)", text: "#a05ac8" },
-};
+export const MOCK_SLOT_SPRINTS = ["10048", "10050", "10033"];
 
 export const MOCK_TICKETS: Ticket[] = [
   {

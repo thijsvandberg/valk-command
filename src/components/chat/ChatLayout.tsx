@@ -69,7 +69,7 @@ export default function ChatLayout() {
         workspaceTask.reset();
         await workspaceTask.submitAndStream(
           invocation.skill,
-          invocation.args,
+          invocation.args ? { args: invocation.args } : {},
           activeId
         );
 

@@ -26,12 +26,22 @@ export const message = sqliteTable("message", {
 export const ticket = sqliteTable("ticket", {
   jiraKey: text("jira_key").primaryKey(),
   title: text("title").notNull(),
+  type: text("type"),
   status: text("status").notNull(),
   assignee: text("assignee"),
+  assigneeAvatar: text("assignee_avatar"),
+  epic: text("epic"),
+  flagged: integer("flagged", { mode: "boolean" }).notNull().default(false),
+  reporter: text("reporter"),
+  description: text("description"),
+  acceptanceCriteria: text("acceptance_criteria"),
   storyPoints: real("story_points"),
   sprintName: text("sprint_name"),
   labels: text("labels"),
   priority: text("priority"),
+  components: text("components"),
+  jiraCreatedAt: text("jira_created_at"),
+  jiraUpdatedAt: text("jira_updated_at"),
   lastSyncedAt: text("last_synced_at"),
 });
 
@@ -167,6 +177,25 @@ export const ticketAttachment = sqliteTable("ticket_attachment", {
   cleanedAt: text("cleaned_at"),
 });
 
+export const syncLog = sqliteTable("sync_log", {
+  id: text("id").primaryKey(),
+  type: text("type", {
+    enum: ["sprint-sync", "ticket-sync", "single-ticket", "comment-sync", "webhook"],
+  }).notNull(),
+  scope: text("scope"),
+  status: text("status", {
+    enum: ["running", "success", "failed"],
+  }).notNull(),
+  summary: text("summary"),
+  errorDetail: text("error_detail"),
+  durationMs: integer("duration_ms"),
+  startedAt: text("started_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  completedAt: text("completed_at"),
+  acknowledged: integer("acknowledged", { mode: "boolean" }).notNull().default(false),
+});
+
 export type Conversation = typeof conversation.$inferSelect;
 export type NewConversation = typeof conversation.$inferInsert;
 export type Message = typeof message.$inferSelect;
@@ -182,3 +211,7 @@ export type PoComment = typeof poComment.$inferSelect;
 export type JiraComment = typeof jiraComment.$inferSelect;
 export type TicketLocalEdit = typeof ticketLocalEdit.$inferSelect;
 export type TicketAttachment = typeof ticketAttachment.$inferSelect;
+export type SyncLog = typeof syncLog.$inferSelect;
+export type NewSyncLog = typeof syncLog.$inferInsert;
+export type Ticket = typeof ticket.$inferSelect;
+export type NewTicket = typeof ticket.$inferInsert;
