@@ -1,95 +1,68 @@
 /**
- * Client for the valk-agent remote workspace API.
- * All requests go through Next.js API routes (server-side proxy)
- * to keep the agent URL and auth token out of the browser.
+ * Client for communicating with the valk-agent workspace.
+ * Currently returns mock data; will be replaced with real REST/SSE calls
+ * once the agent is available.
  */
 
-export interface TaskSubmission {
-  skill: string;
-  args: Record<string, string>;
-  conversationId: string;
+export interface ReviewDimensionResult {
+  key: string;
+  label: string;
+  score: number;
+  feedback: string;
 }
 
-export interface TaskResponse {
-  id: string;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
-  skill: string;
-  streamUrl: string;
-}
-
-export interface TaskDetail {
-  id: string;
-  skill: string;
-  args: Record<string, string>;
-  conversationId: string;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
-  createdAt: string;
-  startedAt?: string;
-  completedAt?: string;
-  output?: string;
-  error?: string;
-  sessionId?: string;
-}
-
-export interface SSEEvent {
-  event: "status" | "progress" | "tool_call" | "tool_result" | "result" | "error" | "done";
-  data: Record<string, unknown>;
-}
-
-export interface SkillInfo {
-  id: string;
-  name: string;
-  timeout: number;
-}
-
-export async function submitTask(submission: TaskSubmission): Promise<TaskResponse> {
-  const res = await fetch("/api/workspace-tasks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(submission),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Failed to submit task (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function getTask(taskId: string): Promise<TaskDetail> {
-  const res = await fetch(`/api/workspace-tasks/${taskId}`);
-  if (!res.ok) throw new Error(`Failed to get task (${res.status})`);
-  return res.json();
-}
-
-export async function cancelTask(taskId: string): Promise<void> {
-  const res = await fetch(`/api/workspace-tasks/${taskId}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`Failed to cancel task (${res.status})`);
-}
-
-export async function listSkills(): Promise<SkillInfo[]> {
-  const res = await fetch("/api/workspace-tasks/skills");
-  if (!res.ok) throw new Error(`Failed to list skills (${res.status})`);
-  return res.json();
+export interface ReviewResult {
+  overallScore: number;
+  dimensions: ReviewDimensionResult[];
+  summary: string;
+  suggestions: string[];
 }
 
 /**
- * Parse a user message to detect skill invocations.
- * "/review-story VPL-1456" -> { skill: "review-story", args: { input: "VPL-1456" } }
- * "hello world" -> null
+ * Asks the agent to review a story by its Jira key.
+ * Returns a structured review with quality scores per dimension.
+ *
+ * Currently returns mock data after a simulated delay.
  */
-export function parseSkillInvocation(
-  input: string
-): { skill: string; args: Record<string, string> } | null {
-  const trimmed = input.trim();
-  if (!trimmed.startsWith("/")) return null;
+export async function reviewStory(ticketKey: string): Promise<ReviewResult> {
+  // Simulate network latency
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  const parts = trimmed.slice(1).split(/\s+/);
-  const skill = parts[0];
-  if (!skill) return null;
-
-  const rest = parts.slice(1).join(" ");
   return {
-    skill,
-    args: rest ? { input: rest } : {},
+    overallScore: 68,
+    dimensions: [
+      {
+        key: "clarity",
+        label: "Clarity",
+        score: 75,
+        feedback: `The description for ${ticketKey} is mostly clear, but the expected behavior section could be more specific about edge cases.`,
+      },
+      {
+        key: "testability",
+        label: "Testability",
+        score: 60,
+        feedback: "Acceptance criteria are present but lack concrete test scenarios. Consider adding specific input/output examples.",
+      },
+      {
+        key: "completeness",
+        label: "Completeness",
+        score: 55,
+        feedback: "Missing error handling scenarios and rollback behavior. Consider adding non-functional requirements.",
+      },
+      {
+        key: "feasibility",
+        label: "Technical Feasibility",
+        score: 82,
+        feedback: "Implementation approach is sound. The proposed solution aligns with the existing architecture.",
+      },
+    ],
+    summary:
+      "The story provides a reasonable foundation but needs refinement in testability and completeness before it is sprint-ready.",
+    suggestions: [
+      "Add explicit error scenarios to acceptance criteria",
+      "Include a sequence diagram for the concurrency handling",
+      "Define performance thresholds for the load test requirement",
+      "Specify the retry strategy for deadlock scenarios",
+    ],
   };
 }

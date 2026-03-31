@@ -3,6 +3,25 @@
     "date": "2026-03-29",
     "entries": [
       {
+        "hash": "8aedd71c118ccb017b506c0bdb08266b98ae791f",
+        "shortHash": "8aedd71",
+        "date": "2026-03-29",
+        "category": "New",
+        "description": "Scheduled jobs management UI",
+        "longDescription": "scheduled jobs management UI (#44) Add CRUD API routes for scheduled jobs, a useJobs hook, and an interactive JobsPanel component. The jobs page now lists all jobs with toggle, create, and delete acti",
+        "author": "thijsvandberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/8aedd71c118ccb017b506c0bdb08266b98ae791f"
+      },
+      {
+        "hash": "e29a65a1305dd6e565fb86bc98fa15e9c4a0bda9",
+        "shortHash": "e29a65a",
+        "date": "2026-03-29",
+        "category": "Maintenance",
+        "description": "Regenerate changelog [skip ci]",
+        "author": "github-actions[bot]",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/e29a65a1305dd6e565fb86bc98fa15e9c4a0bda9"
+      },
+      {
         "hash": "860098bf24b391d5d81d6ca8c79b818621337909",
         "shortHash": "860098b",
         "date": "2026-03-29",

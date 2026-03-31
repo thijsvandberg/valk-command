@@ -40,5 +40,132 @@ export function createTestDb() {
     )
   `);
 
+  testDb.run(sql`
+    CREATE TABLE ticket (
+      jira_key TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL,
+      assignee TEXT,
+      story_points REAL,
+      sprint_name TEXT,
+      labels TEXT,
+      priority TEXT,
+      last_synced_at TEXT
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE ticket_metadata (
+      jira_key TEXT PRIMARY KEY REFERENCES ticket(jira_key),
+      po_status TEXT,
+      refinement_readiness TEXT NOT NULL DEFAULT 'not_ready' CHECK(refinement_readiness IN ('not_ready', 'in_progress', 'ready')),
+      quality_score REAL,
+      quality_stale INTEGER NOT NULL DEFAULT 0,
+      effort_scores TEXT,
+      po_notes TEXT,
+      po_priority INTEGER,
+      test_status TEXT NOT NULL DEFAULT 'untested' CHECK(test_status IN ('untested', 'pass', 'fail')),
+      last_test_run_at TEXT,
+      last_test_report_url TEXT
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE sprint_slot (
+      slot_index INTEGER PRIMARY KEY,
+      sprint_id TEXT NOT NULL,
+      sprint_name TEXT NOT NULL
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE app_setting (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE story_version (
+      id TEXT PRIMARY KEY,
+      jira_key TEXT NOT NULL REFERENCES ticket(jira_key),
+      description TEXT NOT NULL,
+      acceptance_criteria TEXT,
+      content_hash TEXT NOT NULL,
+      tag TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE workspace_task (
+      id TEXT PRIMARY KEY,
+      skill_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('queued', 'running', 'completed', 'failed')),
+      started_at TEXT,
+      completed_at TEXT,
+      related_ticket TEXT,
+      conversation_id TEXT
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE alert (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      jira_key TEXT,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      read INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE po_comment (
+      id TEXT PRIMARY KEY,
+      ticket_key TEXT NOT NULL REFERENCES ticket(jira_key),
+      author TEXT NOT NULL DEFAULT 'Product Owner',
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE jira_comment (
+      id TEXT PRIMARY KEY,
+      ticket_key TEXT NOT NULL REFERENCES ticket(jira_key),
+      jira_comment_id TEXT,
+      author_name TEXT NOT NULL,
+      author_avatar TEXT,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE ticket_local_edit (
+      id TEXT PRIMARY KEY,
+      ticket_key TEXT NOT NULL REFERENCES ticket(jira_key),
+      field TEXT NOT NULL CHECK(field IN ('title', 'description')),
+      local_value TEXT NOT NULL,
+      base_jira_version TEXT,
+      modified_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  testDb.run(sql`
+    CREATE TABLE ticket_attachment (
+      id TEXT PRIMARY KEY,
+      ticket_key TEXT NOT NULL REFERENCES ticket(jira_key),
+      jira_attachment_id TEXT,
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL DEFAULT 0,
+      downloaded_at TEXT,
+      local_path TEXT,
+      cleaned_at TEXT
+    )
+  `);
+
   return testDb;
 }

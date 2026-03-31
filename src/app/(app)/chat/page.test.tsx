@@ -2,6 +2,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ChatPage from "./page";
 
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(global, "fetch").mockResolvedValue({
