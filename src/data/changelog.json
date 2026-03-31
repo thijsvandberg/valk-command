@@ -1,17 +1,31 @@
 [
   {
-    "date": "2026-03-29",
+    "date": "2026-03-31",
     "entries": [
       {
-        "hash": "8aedd71c118ccb017b506c0bdb08266b98ae791f",
-        "shortHash": "8aedd71",
-        "date": "2026-03-29",
-        "category": "New",
-        "description": "Scheduled jobs management UI",
-        "longDescription": "scheduled jobs management UI (#44) Add CRUD API routes for scheduled jobs, a useJobs hook, and an interactive JobsPanel component. The jobs page now lists all jobs with toggle, create, and delete acti",
-        "author": "thijsvandberg",
-        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/8aedd71c118ccb017b506c0bdb08266b98ae791f"
+        "hash": "1710b234d77a47ce7a81f424512f9ca006398c50",
+        "shortHash": "1710b23",
+        "date": "2026-03-31",
+        "category": "Other",
+        "description": "Merge remote-tracking branch 'origin/main' into dev",
+        "longDescription": "# Conflicts: # src/db/schema.ts # src/db/test-utils.ts # src/lib/agent-client.ts",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/1710b234d77a47ce7a81f424512f9ca006398c50"
       },
+      {
+        "hash": "ba8d742c6fbe6cd0b2765f66a2a98a51a129de21",
+        "shortHash": "ba8d742",
+        "date": "2026-03-31",
+        "category": "Other",
+        "description": "Merge feat/workspace-task-execution into dev",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/ba8d742c6fbe6cd0b2765f66a2a98a51a129de21"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-29",
+    "entries": [
       {
         "hash": "e29a65a1305dd6e565fb86bc98fa15e9c4a0bda9",
         "shortHash": "e29a65a",
