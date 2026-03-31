@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore, useCallback } from "react";
 
 const navItems = [
   {
@@ -79,9 +79,42 @@ const navItems = [
   },
 ];
 
+const STORAGE_KEY = "sidebar-collapsed";
+
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getCollapsedSnapshot(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function getCollapsedServerSnapshot(): boolean {
+  return false;
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const collapsed = useSyncExternalStore(
+    subscribeToStorage,
+    getCollapsedSnapshot,
+    getCollapsedServerSnapshot,
+  );
+
+  const toggleCollapsed = useCallback(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, String(!collapsed));
+      // Dispatch storage event so useSyncExternalStore picks up the change
+      window.dispatchEvent(new Event("storage"));
+    } catch { /* noop */ }
+  }, [collapsed]);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -114,20 +147,22 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         data-testid="sidebar"
-        className={`fixed top-0 left-0 z-50 flex h-full w-64 flex-col bg-[var(--color-surface-elevated)] border-r border-white/[0.06] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-white/[0.06] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 ${
+          collapsed ? "w-[52px]" : "w-64"
+        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-5 pt-5 pb-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_8px_rgba(46,145,73,0.25)]">
+        <div className={`flex items-center ${collapsed ? "justify-center px-2" : "gap-2.5 px-5"} pt-5 pb-6`}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_8px_rgba(46,145,73,0.25)]">
             <span className="font-[var(--font-display)] text-sm font-bold tracking-tight text-white">
               V
             </span>
           </div>
-          <span className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-white">
-            valk-command
-          </span>
+          {!collapsed && (
+            <span className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-white">
+              valk-command
+            </span>
+          )}
 
           {/* Mobile close button */}
           <button
@@ -143,7 +178,7 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3" aria-label="Main navigation">
+        <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-1.5" : "px-3"}`} aria-label="Main navigation">
           <ul className="flex flex-col gap-1">
             {navItems.map((item) => {
               const active = isActive(item.href);
@@ -152,23 +187,49 @@ export default function Sidebar() {
                   <Link
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    className={`group flex items-center ${collapsed ? "justify-center" : "gap-3"} rounded-lg ${collapsed ? "px-0 py-2.5" : "px-3 py-2.5"} text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       active
                         ? "bg-[var(--color-brand-600)]/12 text-[var(--color-brand-300)]"
                         : "text-white/50 hover:bg-white/[0.04] hover:text-white/80 active:bg-white/[0.06]"
                     }`}
                     aria-current={active ? "page" : undefined}
+                    title={collapsed ? item.label : undefined}
                   >
-                    <span className={active ? "text-[var(--color-brand-400)]" : "text-white/30 group-hover:text-white/50"}>
+                    <span className={`shrink-0 ${active ? "text-[var(--color-brand-400)]" : "text-white/30 group-hover:text-white/50"}`}>
                       {item.icon}
                     </span>
-                    <span className="font-[var(--font-body)]">{item.label}</span>
+                    {!collapsed && (
+                      <span className="font-[var(--font-body)]">{item.label}</span>
+                    )}
                   </Link>
                 </li>
               );
             })}
           </ul>
         </nav>
+
+        {/* Collapse toggle (desktop only) */}
+        <div className={`hidden lg:flex ${collapsed ? "justify-center" : "px-3"} pb-4`}>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2 px-3 py-2 w-full"} rounded-lg text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]`}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <svg
+              viewBox="0 0 16 16"
+              className={`h-4 w-4 shrink-0 ${collapsed ? "" : "rotate-180"}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 3L5 8l5 5" />
+            </svg>
+            {!collapsed && (
+              <span className="text-xs font-[var(--font-body)]">Collapse</span>
+            )}
+          </button>
+        </div>
       </aside>
     </>
   );

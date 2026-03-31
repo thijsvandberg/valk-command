@@ -1,0 +1,457 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import type { Ticket, POStatus } from "./mock-data";
+import { MOCK_TICKET_DETAILS, EPIC_COLORS } from "./mock-data";
+import { StoryDiffPanel } from "../story-diff/StoryDiffPanel";
+import { MOCK_VERSIONS_BY_TICKET } from "../story-diff/mock-versions";
+import { IssueTypeIcon } from "../shared/IssueTypeIcon";
+import { Avatar } from "../shared/Avatar";
+import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
+import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
+import { useTicketVersions } from "@/hooks/useSprintBoard";
+
+// -- Simple markdown renderer for panel description --
+
+function renderSimpleMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith("## ")) {
+      elements.push(<h3 key={`h-${i}`} className="mt-4 mb-1 font-[var(--font-display)] text-sm font-semibold text-white/80">{line.slice(3)}</h3>);
+    } else if (line.startsWith("### ")) {
+      elements.push(<h4 key={`h4-${i}`} className="mt-3 mb-1 text-xs font-semibold text-white/70">{line.slice(4)}</h4>);
+    } else if (/^- \[[ x]\] /.test(line)) {
+      const checked = line.startsWith("- [x] ");
+      const content = line.slice(6);
+      elements.push(
+        <div key={`cb-${i}`} className="my-0.5 flex items-start gap-1.5 text-xs text-white/50">
+          <span className={`mt-0.5 flex h-3 w-3 shrink-0 items-center justify-center rounded border ${checked ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10" : "border-white/[0.12] bg-white/[0.03]"}`}>
+            {checked && <svg viewBox="0 0 12 12" className="h-2 w-2 text-[var(--color-brand-400)]"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          </span>
+          <span className={checked ? "line-through opacity-60" : ""}>{content}</span>
+        </div>
+      );
+    } else if (line.startsWith("- ")) {
+      elements.push(<li key={`li-${i}`} className="ml-4 list-disc text-xs text-white/50">{line.slice(2)}</li>);
+    } else if (/^\d+\. /.test(line)) {
+      elements.push(<li key={`ol-${i}`} className="ml-4 list-decimal text-xs text-white/50">{line.replace(/^\d+\.\s*/, "")}</li>);
+    } else if (line.trim() === "") {
+      elements.push(<div key={`br-${i}`} className="h-1.5" />);
+    } else {
+      elements.push(<p key={`p-${i}`} className="text-xs leading-relaxed text-white/50">{line}</p>);
+    }
+  }
+  return elements;
+}
+
+// -- Ticket description for side panel --
+
+function TicketDescription({ ticketKey }: { ticketKey: string }) {
+  const detail = MOCK_TICKET_DETAILS[ticketKey];
+
+  if (!detail?.description) {
+    return (
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">Description</h3>
+        <p className="mt-2 text-xs text-white/25">No description</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">Description</h3>
+      <div className="mt-2 max-h-64 overflow-y-auto">
+        {renderSimpleMarkdown(detail.description)}
+      </div>
+    </div>
+  );
+}
+
+// -- Side panel --
+
+const PANEL_STORAGE_KEY = "sprintBoardPanelWidth";
+const DEFAULT_PANEL_WIDTH = 400;
+const MIN_PANEL_WIDTH = 320;
+
+export function SidePanel({
+  ticket,
+  poStatus,
+  onPoStatusChange,
+  onNotesChange,
+  onClose,
+  onShowToast,
+}: {
+  ticket: Ticket;
+  poStatus: POStatus;
+  onPoStatusChange: (v: POStatus) => void;
+  onNotesChange: (notes: string) => void;
+  onClose: () => void;
+  onShowToast: (message: string) => void;
+}) {
+  const jiraStatusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] || JIRA_STATUS_COLORS["TO DO"];
+  const epicColor = ticket.epic ? EPIC_COLORS[ticket.epic] : null;
+  const [syncingTicket, setSyncingTicket] = useState(false);
+
+  const handleSyncTicket = useCallback(async () => {
+    setSyncingTicket(true);
+    try {
+      const [res] = await Promise.all([
+        fetch(`/api/jira/sync-tickets?sprintId=0&keys=${encodeURIComponent(ticket.key)}`, { method: "POST" }),
+        new Promise((r) => setTimeout(r, 400)),
+      ]);
+      if (res.ok) {
+        onShowToast(`Synced ${ticket.key} from Jira`);
+      }
+    } finally {
+      setSyncingTicket(false);
+    }
+  }, [ticket.key, onShowToast]);
+
+  const [panelWidth, setPanelWidth] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_PANEL_WIDTH;
+    const saved = localStorage.getItem(PANEL_STORAGE_KEY);
+    if (!saved) return DEFAULT_PANEL_WIDTH;
+    const parsed = parseInt(saved, 10);
+    return !isNaN(parsed) ? Math.max(MIN_PANEL_WIDTH, parsed) : DEFAULT_PANEL_WIDTH;
+  });
+  const [isFullWidth, setIsFullWidth] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const savedWidthBeforeFullRef = useRef(panelWidth);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    function handleMouseMove(e: MouseEvent) {
+      const newWidth = Math.max(MIN_PANEL_WIDTH, window.innerWidth - e.clientX);
+      setPanelWidth(newWidth);
+      localStorage.setItem(PANEL_STORAGE_KEY, String(newWidth));
+    }
+
+    function handleMouseUp() {
+      setIsDragging(false);
+    }
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const toggleFullWidth = useCallback(() => {
+    if (isFullWidth) {
+      setPanelWidth(savedWidthBeforeFullRef.current);
+      setIsFullWidth(false);
+    } else {
+      savedWidthBeforeFullRef.current = panelWidth;
+      setIsFullWidth(true);
+    }
+  }, [isFullWidth, panelWidth]);
+
+  const effectiveWidth = isFullWidth ? "100%" : `${panelWidth}px`;
+
+  // Diff view state
+  const [showDiff, setShowDiff] = useState(false);
+
+  // Lazy-load ticket versions via SWR (only fetches when panel is open)
+  const { data: apiVersions } = useTicketVersions(ticket.key);
+
+  const ticketVersions = useMemo(() => {
+    if (Array.isArray(apiVersions) && apiVersions.length > 0) {
+      return apiVersions.map((v: Record<string, unknown>, idx: number) => ({
+        versionNumber: idx + 1,
+        date: (v.createdAt as string) || new Date().toISOString(),
+        source: "Jira sync" as const,
+        contentHash: (v.contentHash as string) || "",
+        qualityScore: null,
+        content: (v.description as string) || "",
+      }));
+    }
+    return MOCK_VERSIONS_BY_TICKET[ticket.key] ?? [];
+  }, [apiVersions, ticket.key]);
+
+  const hasVersions = ticketVersions.length > 1;
+
+  return (
+    <div
+      ref={panelRef}
+      className="relative flex h-full shrink-0 flex-col border-l border-white/[0.06] bg-[var(--color-surface-elevated)]"
+      style={{ width: effectiveWidth, minWidth: isFullWidth ? "100%" : MIN_PANEL_WIDTH }}
+    >
+      {/* Resize drag handle */}
+      {!isFullWidth && (
+        <div
+          onMouseDown={handleMouseDown}
+          className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
+          style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
+        />
+      )}
+
+      {showDiff ? (
+        <StoryDiffPanel
+          versions={ticketVersions}
+          onBack={() => setShowDiff(false)}
+        />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+            <div className="flex items-center gap-2.5">
+              <IssueTypeIcon type={ticket.type} />
+              <a
+                href={getJiraUrl(ticket.key)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-sm font-medium text-white/70 cursor-pointer hover:underline hover:text-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                {ticket.key}
+              </a>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Sync ticket from Jira */}
+              <button
+                type="button"
+                disabled={syncingTicket}
+                onClick={handleSyncTicket}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Sync ticket from Jira"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  className={`h-3.5 w-3.5 ${syncingTicket ? "animate-spin" : ""}`}
+                >
+                  <path d="M2 8a6 6 0 0111.47-2.4M14 8a6 6 0 01-11.47 2.4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+                  <path d="M13 2v4h-4m-5 4v4h4" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {/* Open in Jira */}
+              <a
+                href={getJiraUrl(ticket.key)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                title="Open in Jira"
+              >
+                {/* New Jira logomark: two overlapping chevrons */}
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+                  <path d="M4.5 3L9 7.5 4.5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  <path d="M8 3l4.5 4.5L8 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.5" />
+                </svg>
+              </a>
+              {/* Full width toggle */}
+              <button
+                type="button"
+                onClick={toggleFullWidth}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                title={isFullWidth ? "Restore panel width" : "Expand to full width"}
+              >
+                {isFullWidth ? (
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+                    <path d="M10 2l-4 0m0 0v4m0-4l5 5M6 14l4 0m0 0v-4m0 4l-5-5" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+                    <path d="M2 2l4 0m0 0v4m0-4L1 7M14 14l-4 0m0 0v-4m0 4l5-5" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              {/* Open in valk-command new tab */}
+              <a
+                href={`/tickets/${ticket.key}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                title="Open in new tab"
+              >
+                {/* Window with arrow icon */}
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+                  <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                  <path d="M2 5.5h12" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M8 8v3.5m0-3.5l-1.5 1.5m1.5-1.5l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </a>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+              >
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+                  <path d="M4 4l8 8m0-8l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-5 py-5">
+            <h2 className="font-[var(--font-display)] text-lg font-semibold leading-snug text-white">
+              {ticket.title}
+            </h2>
+
+            {/* Story changed indicator */}
+            {ticket.qualityStale && (
+              <button
+                type="button"
+                onClick={() => setShowDiff(true)}
+                className="mt-3 flex w-full items-center gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#ea8744]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.99]"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-[#ea8744]">
+                  <path d="M8 1v8m0 2v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.2" fill="none" opacity="0.3" />
+                </svg>
+                <div>
+                  <span className="text-xs font-medium text-[#ea8744]">Story changed</span>
+                  <span className="ml-1.5 text-xs text-white/30">View diff</span>
+                </div>
+                <svg viewBox="0 0 8 8" className="ml-auto h-2.5 w-2.5 text-white/20">
+                  <path d="M2.5 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+
+            {/* Status row */}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span
+                className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: jiraStatusColor.bg, color: jiraStatusColor.text }}
+              >
+                {ticket.jiraStatus}
+              </span>
+              {epicColor && (
+                <span
+                  className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                  style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
+                >
+                  {ticket.epic}
+                </span>
+              )}
+              {ticket.storyPoints !== null && (
+                <span className="inline-flex items-center rounded-md bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-white/50">
+                  {ticket.storyPoints} pts
+                </span>
+              )}
+            </div>
+
+            {/* Assignee */}
+            <div className="mt-5 flex items-center gap-2.5">
+              <Avatar assignee={ticket.assignee} />
+              <span className="text-sm text-white/50">
+                {ticket.assignee?.name || "Unassigned"}
+              </span>
+            </div>
+
+            {/* Ticket description */}
+            <div className="my-6 h-px bg-white/[0.06]" />
+            <TicketDescription ticketKey={ticket.key} />
+
+            {/* Divider */}
+            <div className="my-6 h-px bg-white/[0.06]" />
+
+            {/* PO Metadata section */}
+            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/30">
+              PO Metadata
+              {ticket.notes.trim() && (
+                <span
+                  className="h-2 w-2 rounded-full bg-[var(--color-brand-500)]"
+                  title="Has PO notes"
+                />
+              )}
+            </h3>
+
+            <div className="mt-4 space-y-4">
+              {/* PO Status */}
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">PO Status</label>
+                <POStatusCell value={poStatus} onChange={onPoStatusChange} showLabel />
+              </div>
+
+              {/* Quality Score */}
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">Quality Score</label>
+                <div className="flex items-center gap-2">
+                  <QualityBadge score={ticket.qualityScore} stale={ticket.qualityStale} />
+                  {ticket.qualityStale && (
+                    <span className="text-xs text-white/25">Story changed since review</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">Notes</label>
+                <textarea
+                  defaultValue={ticket.notes}
+                  placeholder="Add PO notes..."
+                  rows={3}
+                  onBlur={(e) => onNotesChange(e.target.value)}
+                  className="w-full rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* View changes link for tickets with versions */}
+            {hasVersions && (
+              <>
+                <div className="my-6 h-px bg-white/[0.06]" />
+                <button
+                  type="button"
+                  onClick={() => setShowDiff(true)}
+                  className="flex items-center gap-2 text-xs text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
+                >
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
+                    <path d="M3 3v10m10-10v10M6 5h4M6 8h4M6 11h2" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  </svg>
+                  View changes ({ticketVersions.length} versions)
+                </button>
+              </>
+            )}
+
+            {/* Actions */}
+            <div className="my-6 h-px bg-white/[0.06]" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">
+              Actions
+            </h3>
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onShowToast(`Review story queued for ${ticket.key}`);
+                }}
+                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-white/40">
+                  <path d="M3.5 8.5l3 3 6-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Review Story
+              </button>
+              <a
+                href={`/chat?ticket=${ticket.key}`}
+                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-white/40">
+                  <path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V3z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Chat about this ticket
+              </a>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

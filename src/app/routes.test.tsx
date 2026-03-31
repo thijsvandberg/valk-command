@@ -15,6 +15,8 @@ const EXPECTED_ROUTES = [
   { path: "/refinement", file: "src/app/(app)/refinement/page.tsx", name: "Refinement" },
   { path: "/jobs", file: "src/app/(app)/jobs/page.tsx", name: "Jobs" },
   { path: "/stakeholder", file: "src/app/(app)/stakeholder/page.tsx", name: "Stakeholder" },
+  { path: "/sprint-board/diff-preview", file: "src/app/(app)/sprint-board/diff-preview/page.tsx", name: "Diff Preview" },
+  { path: "/tickets/[key]", file: "src/app/(app)/tickets/[key]/page.tsx", name: "Ticket Detail" },
   { path: "/changelog", file: "src/app/changelog/page.tsx", name: "Changelog" },
 ];
 

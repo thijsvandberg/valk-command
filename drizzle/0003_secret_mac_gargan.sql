@@ -1,0 +1,1 @@
+ALTER TABLE `story_version` ADD `tag` text;

@@ -1,0 +1,230 @@
+"use client";
+
+import { useState, useCallback, useEffect } from "react";
+import { StoryDiff } from "./StoryDiff";
+import type { DiffMode } from "./StoryDiff";
+import type { StoryVersion } from "./mock-versions";
+
+// -----------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------
+
+export interface StoryDiffPanelProps {
+  versions: StoryVersion[];
+  onBack: () => void;
+}
+
+// -----------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function sourceLabel(source: StoryVersion["source"]): string {
+  return source === "Jira sync" ? "Jira sync" : "Local edit";
+}
+
+// -----------------------------------------------------------------------
+// Component
+// -----------------------------------------------------------------------
+
+export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
+  // Index into the versions array for the "new" version being shown.
+  // 0 = most recent version (versions are newest-first by convention).
+  // We compare selectedIdx with selectedIdx + 1 (the previous version).
+  const sorted = [...versions].sort(
+    (a, b) => b.versionNumber - a.versionNumber,
+  );
+
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [diffMode, setDiffMode] = useState<DiffMode>("unified");
+
+  // Navigate to an older diff pair (higher index = older)
+  const canPrev = selectedIdx < sorted.length - 2;
+  // Navigate to a newer diff pair (lower index = newer)
+  const canNext = selectedIdx > 0;
+
+  const handlePrev = useCallback(() => {
+    if (canPrev) setSelectedIdx((i) => i + 1);
+  }, [canPrev]);
+
+  const handleNext = useCallback(() => {
+    if (canNext) setSelectedIdx((i) => i - 1);
+  }, [canNext]);
+
+  // Keyboard shortcuts: arrows / j/k for navigation, Escape to go back
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip if user is in an input/textarea/select
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "ArrowRight" || e.key === "j") {
+        e.preventDefault();
+        if (canNext) setSelectedIdx((i) => i - 1);
+      } else if (e.key === "ArrowLeft" || e.key === "k") {
+        e.preventDefault();
+        if (canPrev) setSelectedIdx((i) => i + 1);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onBack();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [canPrev, canNext, onBack]);
+
+  const current = sorted[selectedIdx];
+  const previous = sorted[selectedIdx + 1] ?? null;
+
+  const isFirstVersion = previous === null;
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            className="text-white/40"
+          >
+            <path
+              d="M10 12L6 8l4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Back
+        </button>
+
+        <div className="flex items-center gap-1">
+          {/* Diff mode toggle */}
+          <div className="mr-2 flex items-center overflow-hidden rounded-md border border-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => setDiffMode("unified")}
+              title="Unified diff view"
+              className={`px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
+                diffMode === "unified"
+                  ? "bg-white/[0.08] text-white/70"
+                  : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
+              }`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+            >
+              Unified
+            </button>
+            <button
+              type="button"
+              onClick={() => setDiffMode("side-by-side")}
+              title="Side-by-side diff view"
+              className={`border-l border-white/[0.08] px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
+                diffMode === "side-by-side"
+                  ? "bg-white/[0.08] text-white/70"
+                  : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
+              }`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+            >
+              Split
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handlePrev}
+            disabled={!canPrev}
+            title="Previous version (Left arrow / k)"
+            className="rounded-md px-2 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!canNext}
+            title="Next version (Right arrow / j)"
+            className="rounded-md px-2 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {/* Version info */}
+      <div className="border-b border-white/[0.06] px-4 py-3">
+        <p className="font-[var(--font-body)] text-sm text-white/70">
+          {isFirstVersion
+            ? `Version ${current.versionNumber} (initial)`
+            : `Version ${previous!.versionNumber} \u2192 Version ${current.versionNumber}`}
+        </p>
+        <div className="mt-1 flex items-center gap-3 text-xs text-white/40">
+          <span>{formatDate(current.date)}</span>
+          <span
+            className="rounded-full border px-2 py-0.5"
+            style={{
+              borderColor:
+                current.source === "Jira sync"
+                  ? "rgba(68, 170, 187, 0.3)"
+                  : "rgba(160, 90, 200, 0.3)",
+              color:
+                current.source === "Jira sync" ? "#44aabb" : "#a05ac8",
+            }}
+          >
+            {sourceLabel(current.source)}
+          </span>
+          {current.qualityScore !== null && (
+            <span className="text-white/30">
+              Quality: {current.qualityScore}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Diff content */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {isFirstVersion ? (
+          <div>
+            <p className="mb-2 text-xs font-medium text-white/40">Initial version</p>
+            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-sm leading-[1.7] text-white/80 whitespace-pre-wrap">
+              {current.content || <span className="text-white/30">No content</span>}
+            </div>
+          </div>
+        ) : (
+          <StoryDiff
+            oldText={previous!.content}
+            newText={current.content}
+            oldLabel={`v${previous!.versionNumber}`}
+            newLabel={`v${current.versionNumber}`}
+            mode={diffMode}
+          />
+        )}
+      </div>
+
+      {/* Keyboard hint */}
+      <div className="border-t border-white/[0.06] px-4 py-2">
+        <p className="text-[10px] text-white/20">
+          Use arrow keys or j/k to navigate, Esc to go back
+        </p>
+      </div>
+    </div>
+  );
+}
