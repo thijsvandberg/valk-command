@@ -235,11 +235,6 @@ export function SidePanel({
                   local changes
                 </span>
               )}
-              {ticket.editState === "conflict" && (
-                <span className="flex items-center gap-1 rounded bg-[#ea8744]/10 px-1.5 py-0.5 text-[10px] text-[#ea8744]/70" title="Jira updated since your local edit">
-                  conflict
-                </span>
-              )}
             </div>
             <div className="flex items-center gap-1">
               {/* Sync ticket from Jira */}

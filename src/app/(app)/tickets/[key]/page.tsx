@@ -15,7 +15,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
-import { useTicketDetail, useJiraSprints, useConflictCheck } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useJiraSprints } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
@@ -100,9 +100,7 @@ export default function TicketDetailPage({
   const handleTitleLocalEdit = useCallback((has: boolean) => setHasLocalTitleEdit(has), []);
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
 
-  const hasLocalEditsForCheck = hasLocalTitleEdit || hasLocalDescEdit;
-  const { data: conflictData } = useConflictCheck(hasLocalEditsForCheck ? key : null);
-  const conflictWarning = conflictData?.stale ? { remoteUpdated: conflictData.remoteUpdated as string } : null;
+  const showConflictWarning = ticket?.editState === "conflict";
 
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);
@@ -185,13 +183,13 @@ export default function TicketDetailPage({
           </nav>
 
           {/* Conflict warning */}
-          {conflictWarning && (
-            <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3">
-              <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-amber-400/70" />
+          {showConflictWarning && (
+            <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3">
+              <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-amber-300/90">Remote version changed</p>
+                <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
                 <p className="mt-0.5 text-xs text-white/40">
-                  This ticket was updated in Jira ({new Date(conflictWarning.remoteUpdated).toLocaleString()}) since your local edits. Review the changes before saving.
+                  Jira was updated since your local edit. Review the changes before pushing.
                 </p>
               </div>
             </div>
