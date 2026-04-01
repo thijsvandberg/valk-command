@@ -145,8 +145,15 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
     [ticket.key],
   );
 
-  const compareOldVersion = sorted.find((v) => v.versionNumber === compareOld) ?? null;
-  const compareNewVersion = sorted.find((v) => v.versionNumber === compareNew) ?? null;
+  const rawOldVersion = sorted.find((v) => v.versionNumber === compareOld) ?? null;
+  const rawNewVersion = sorted.find((v) => v.versionNumber === compareNew) ?? null;
+
+  // When a draft is involved, always put it on the "new" side so the diff
+  // reads as "Jira (old) -> Your edits (new)" regardless of dropdown order
+  const draftOnOldSide = rawOldVersion?.label === "draft" && rawNewVersion?.label !== "draft";
+  const compareOldVersion = draftOnOldSide ? rawNewVersion : rawOldVersion;
+  const compareNewVersion = draftOnOldSide ? rawOldVersion : rawNewVersion;
+
   const hasDraft = sorted.some((v) => v.label === "draft");
   const jiraCurrent = sorted.find((v) => v.label === "current");
   const isConflictView =
