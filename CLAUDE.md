@@ -28,7 +28,7 @@ Single-user web app for the Product Owner of Valk Platform. Chat-driven interfac
 ## Stack
 
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
-- Dev server: `npm run dev` (port 3100)
+- Dev server: `npm run dev` (port 3100). This script auto-kills any existing process on port 3100 before starting. When restarting the dev server manually, always kill port 3100 first: `lsof -ti:3100 | xargs kill -9 2>/dev/null`
 - Database: SQLite + Drizzle ORM (planned)
 
 ## Project Structure
