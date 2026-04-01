@@ -29,10 +29,10 @@ Separately, the `sync-tickets/route.test.ts` tests (lines 33-82) call the POST h
 - [x] Verify all 7 tests in the file pass
 
 ### Phase 3: Build stability
-- [ ] `npm run build` intermittently fails with `PageNotFoundError: Cannot find module for page` on various pages
-- [ ] Root cause: the lazy Proxy in `src/db/index.ts:21-30` triggers native SQLite initialization during Next.js static page collection
-- [ ] Add a build-time guard (e.g., check `process.env.NODE_ENV` or `process.env.NEXT_PHASE`) to prevent DB initialization during build
-- [ ] Verify `npm run build` passes 5 consecutive times without failure
+- [x] `npm run build` intermittently fails with `PageNotFoundError: Cannot find module for page` on various pages
+- [x] Root cause: the lazy Proxy in `src/db/index.ts:21-30` triggers native SQLite initialization during Next.js static page collection
+- [x] Add a build-time guard (e.g., check `process.env.NODE_ENV` or `process.env.NEXT_PHASE`) to prevent DB initialization during build
+- [x] Verify `npm run build` passes 5 consecutive times without failure
 
 ## Key Files
 

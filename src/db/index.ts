@@ -6,7 +6,14 @@ import * as schema from "./schema";
 
 let _db: BetterSQLite3Database<typeof schema> | null = null;
 
+function isBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === "phase-production-build";
+}
+
 function getDb() {
+  if (isBuildPhase()) {
+    throw new Error("Database must not be initialized during build");
+  }
   if (!_db) {
     const sqlite = new Database(process.env.DB_PATH ?? "sqlite.db");
     sqlite.pragma("journal_mode = WAL");
