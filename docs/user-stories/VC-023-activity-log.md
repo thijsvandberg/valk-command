@@ -1,6 +1,6 @@
 # VC-023: Rename Sync Log to Activity Log
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -57,7 +57,7 @@ The current sync-log is scoped to Jira sync operations only. It should become a 
 - [x] Existing sync entries continue to display correctly after migration
 - [x] Quality reviews appear in the activity log with ticket key, score, and source
 - [x] The activity log page has a working type filter
-- [ ] All tests pass after rename (no broken imports or routes)
+- [x] All tests pass after rename (no broken imports or routes)
 
 ## Technical Notes
 
