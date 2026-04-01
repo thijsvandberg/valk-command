@@ -526,13 +526,21 @@ export default function SprintBoard() {
   useEffect(() => {
     if (slotsLoading) return;
     if (Array.isArray(savedSlots) && savedSlots.length > 0) {
+      const sprintIds = new Set(sprints.map((s) => s.id));
       const loaded = savedSlots
         .sort((a, b) => a.slotIndex - b.slotIndex)
-        .map((s) => s.sprintId);
-      setSlotSprints(loaded);
+        .map((s) => s.sprintId)
+        .filter((id) => sprintIds.size === 0 || sprintIds.has(id));
+      if (loaded.length > 0) {
+        setSlotSprints(loaded);
+        // Clean up invalid entries from DB
+        if (loaded.length !== savedSlots.length) {
+          saveSprintSlots(loaded, sprints);
+        }
+      }
     }
     slotsInitialized.current = true;
-  }, [savedSlots, slotsLoading]);
+  }, [savedSlots, slotsLoading, sprints]);
 
   // Fallback: if no slots saved in DB and sprints are available, pick the first active sprint
   useEffect(() => {

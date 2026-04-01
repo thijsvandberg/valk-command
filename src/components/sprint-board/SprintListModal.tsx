@@ -51,11 +51,13 @@ export function SprintListModal({
   onSelect,
   onPin,
   pinnedIds,
+  alignLeft,
 }: {
   onClose: () => void;
   onSelect: (sprintId: string, sprintName: string) => void;
   onPin: (sprintId: string) => void;
   pinnedIds: Set<string>;
+  alignLeft?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("current");
   const [search, setSearch] = useState("");
@@ -121,7 +123,7 @@ export function SprintListModal({
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full z-50 mt-1.5 w-80 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
+      className={`absolute top-full z-50 mt-1.5 w-80 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] ${alignLeft ? "left-0" : "right-0"}`}
       style={{ animation: "sprintListIn 0.15s ease-out" }}
     >
       {/* Header */}

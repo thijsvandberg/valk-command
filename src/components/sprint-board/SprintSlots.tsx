@@ -312,6 +312,7 @@ export function SprintSlots({
               }}
               onPin={(id) => onAddSlotWithSprint(id)}
               pinnedIds={new Set(slotSprints)}
+              alignLeft
             />
           )}
         </div>
