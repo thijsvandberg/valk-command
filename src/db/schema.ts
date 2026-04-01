@@ -214,6 +214,29 @@ export const syncLog = sqliteTable("sync_log", {
   index("sync_log_started_at_idx").on(table.startedAt),
 ]);
 
+// Review persistence: stores full review results linked to story versions
+export const storedReview = sqliteTable("stored_review", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  source: text("source", {
+    enum: ["ticket-detail", "chat", "bulk-action"],
+  }).notNull(),
+  storyVersionHash: text("story_version_hash").notNull(),
+  storyVersionNumber: integer("story_version_number").notNull(),
+  overallScore: real("overall_score").notNull(),
+  dimensions: text("dimensions").notNull(),
+  summary: text("summary").notNull(),
+  suggestions: text("suggestions").notNull(),
+}, (table) => [
+  index("stored_review_ticket_key_idx").on(table.ticketKey),
+  index("stored_review_created_at_idx").on(table.createdAt),
+]);
+
 export type Conversation = typeof conversation.$inferSelect;
 export type NewConversation = typeof conversation.$inferInsert;
 export type Message = typeof message.$inferSelect;
@@ -233,3 +256,5 @@ export type SyncLog = typeof syncLog.$inferSelect;
 export type NewSyncLog = typeof syncLog.$inferInsert;
 export type Ticket = typeof ticket.$inferSelect;
 export type NewTicket = typeof ticket.$inferInsert;
+export type StoredReviewRow = typeof storedReview.$inferSelect;
+export type NewStoredReviewRow = typeof storedReview.$inferInsert;

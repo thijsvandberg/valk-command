@@ -1,6 +1,6 @@
-import useSWR from "swr";
-import { useRef, useMemo, useEffect } from "react";
-import type { Ticket, SyncLogEntry } from "@/types/ticket";
+import useSWR, { mutate as globalMutate } from "swr";
+import { useRef, useMemo, useEffect, useCallback } from "react";
+import type { Ticket, SyncLogEntry, StoredReview } from "@/types/ticket";
 
 // Generic JSON fetcher for SWR
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
@@ -122,6 +122,42 @@ export function useConflictCheck(ticketKey: string | null) {
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
+}
+
+// Fetches stored reviews for a ticket, including current version hash for freshness check
+export function useTicketReviews(ticketKey: string | null) {
+  const swr = useSWR<{ reviews: StoredReview[]; currentVersionHash: string | null }>(
+    ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/reviews` : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 },
+  );
+
+  const saveReview = useCallback(
+    async (review: {
+      source: "ticket-detail" | "chat" | "bulk-action";
+      overallScore: number;
+      dimensions: { key: string; label: string; score: number; feedback: string }[];
+      summary: string;
+      suggestions: string[];
+    }) => {
+      if (!ticketKey) return null;
+      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(review),
+      });
+      if (!res.ok) return null;
+      const saved = await res.json();
+      // Revalidate reviews list and ticket data (qualityScore updated on server)
+      swr.mutate();
+      globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
+      globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
+      return saved as StoredReview;
+    },
+    [ticketKey, swr],
+  );
+
+  return { ...swr, saveReview };
 }
 
 // Debounce hook: returns a stable function that delays invoking callback

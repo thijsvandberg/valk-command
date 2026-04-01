@@ -129,6 +129,21 @@ export interface StoryVersion {
   label?: "current" | "draft";
 }
 
+export type ReviewSource = "ticket-detail" | "chat" | "bulk-action";
+
+export interface StoredReview {
+  id: string;
+  ticketKey: string;
+  createdAt: string;
+  source: ReviewSource;
+  storyVersionHash: string;
+  storyVersionNumber: number;
+  overallScore: number;
+  dimensions: { key: string; label: string; score: number; feedback: string }[];
+  summary: string;
+  suggestions: string[];
+}
+
 export interface SyncLogEntry {
   id: string;
   type: "sprint-sync" | "ticket-sync" | "single-ticket" | "comment-sync" | "webhook";
