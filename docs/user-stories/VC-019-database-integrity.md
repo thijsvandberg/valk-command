@@ -36,9 +36,9 @@ The app uses SQLite + Drizzle ORM (`src/db/schema.ts`). The schema defines 11 ta
 - [x] Verify migration runs cleanly on existing database
 
 ### Phase 3: Fix N+1 queries
-- [ ] `src/app/api/tickets/route.ts:47-70` - Replace the `Promise.all(rows.map(async ...))` pattern with a single LEFT JOIN query between `ticket` and `ticket_metadata`
-- [ ] `src/lib/jira-client.ts:334-339` (fetchTimestampFirst) - Replace per-issue DB lookup loop with a batch query using `WHERE jiraKey IN (...)`
-- [ ] Verify the ticket list API response matches the current shape (no breaking changes)
+- [x] `src/app/api/tickets/route.ts:47-70` - Replace the `Promise.all(rows.map(async ...))` pattern with a single LEFT JOIN query between `ticket` and `ticket_metadata`
+- [x] `src/app/api/jira/sync-tickets/route.ts` (fetchTimestampFirst) - Replace per-issue DB lookup loop with a batch query using `WHERE jiraKey IN (...)`
+- [x] Verify the ticket list API response matches the current shape (no breaking changes)
 
 ### Phase 4: Wrap sprint-slot updates in a transaction
 - [ ] `src/app/api/sprint-slots/route.ts:43-54` - Wrap the delete-all + insert-all in a Drizzle transaction

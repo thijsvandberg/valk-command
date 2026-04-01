@@ -37,37 +37,34 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sprintId = searchParams.get("sprintId");
 
-  let rows;
-  if (sprintId) {
-    rows = await db.select().from(ticket).where(eq(ticket.sprintName, sprintId));
-  } else {
-    rows = await db.select().from(ticket);
-  }
+  const query = db
+    .select({
+      t: ticket,
+      meta: ticketMetadata,
+    })
+    .from(ticket)
+    .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey));
 
-  const result: Ticket[] = await Promise.all(
-    rows.map(async (t) => {
-      const meta = await db.query.ticketMetadata.findFirst({
-        where: (m, { eq: eqFn }) => eqFn(m.jiraKey, t.jiraKey),
-      });
+  const rows = sprintId
+    ? await query.where(eq(ticket.sprintName, sprintId))
+    : await query;
 
-      return {
-        key: t.jiraKey,
-        title: t.title,
-        type: (t.type ?? "task") as IssueType,
-        epic: t.epic ?? null,
-        jiraStatus: (t.status ?? "TO DO") as JiraStatus,
-        storyPoints: t.storyPoints ?? null,
-        assignee: buildAssignee(t.assignee),
-        flagged: t.flagged ?? false,
-        poStatus: (meta?.poStatus ?? null) as POStatus,
-        qualityScore: meta?.qualityScore ?? null,
-        qualityStale: meta?.qualityStale ?? false,
-        notes: meta?.poNotes ?? "",
-        sprintId: t.sprintName ?? undefined,
-        freshness: computeFreshness(t.lastSyncedAt),
-      };
-    }),
-  );
+  const result: Ticket[] = rows.map(({ t, meta }) => ({
+    key: t.jiraKey,
+    title: t.title,
+    type: (t.type ?? "task") as IssueType,
+    epic: t.epic ?? null,
+    jiraStatus: (t.status ?? "TO DO") as JiraStatus,
+    storyPoints: t.storyPoints ?? null,
+    assignee: buildAssignee(t.assignee),
+    flagged: t.flagged ?? false,
+    poStatus: (meta?.poStatus ?? null) as POStatus,
+    qualityScore: meta?.qualityScore ?? null,
+    qualityStale: meta?.qualityStale ?? false,
+    notes: meta?.poNotes ?? "",
+    sprintId: t.sprintName ?? undefined,
+    freshness: computeFreshness(t.lastSyncedAt),
+  }));
 
   return NextResponse.json(result);
 }

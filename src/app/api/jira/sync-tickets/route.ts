@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, syncLog, ticketAttachment } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
@@ -327,20 +327,21 @@ async function syncSprint(sprintId: string | null, strategy: string) {
  */
 async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): Promise<JiraIssue[]> {
   const lightweight = await jiraClient.getSprintIssueTimestamps(sprintIdNum, signal);
+  if (lightweight.length === 0) return [];
 
-  // Compare against local jiraUpdatedAt
-  const changedKeys: string[] = [];
-  for (const item of lightweight) {
-    const local = await db.query.ticket.findFirst({
-      where: (row, { eq: eqFn }) => eqFn(row.jiraKey, item.key),
-    });
-    if (!local || local.jiraUpdatedAt !== item.updated) {
-      changedKeys.push(item.key);
-    }
-  }
+  const allKeys = lightweight.map((item) => item.key);
+  const localTickets = await db
+    .select({ jiraKey: ticket.jiraKey, jiraUpdatedAt: ticket.jiraUpdatedAt })
+    .from(ticket)
+    .where(inArray(ticket.jiraKey, allKeys));
+
+  const localMap = new Map(localTickets.map((t) => [t.jiraKey, t.jiraUpdatedAt]));
+
+  const changedKeys = lightweight
+    .filter((item) => localMap.get(item.key) !== item.updated)
+    .map((item) => item.key);
 
   if (changedKeys.length === 0) return [];
 
-  // Second pass: fetch full data only for changed issues
   return jiraClient.getIssuesByKeys(changedKeys, signal);
 }
