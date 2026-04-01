@@ -101,7 +101,11 @@ export function SidePanel({
     setSyncingTicket(true);
     try {
       const [res] = await Promise.all([
-        fetch(`/api/jira/sync-tickets?sprintId=0&keys=${encodeURIComponent(ticket.key)}`, { method: "POST" }),
+        fetch("/api/jira/sync-tickets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketKeys: [ticket.key] }),
+        }),
         new Promise((r) => setTimeout(r, 400)),
       ]);
       if (res.ok) {

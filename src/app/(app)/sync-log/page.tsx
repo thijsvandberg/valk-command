@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import useSWR from "swr";
 import {
   RefreshCw,
@@ -13,7 +14,6 @@ import {
   Ban,
 } from "lucide-react";
 import type { SyncLogEntry } from "@/types/ticket";
-import { useSyncContext } from "@/contexts/SyncContext";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
 
@@ -86,7 +86,6 @@ function statusLabel(status: SyncLogEntry["status"]): string {
 }
 
 export default function SyncLogPage() {
-  const { cancelSync, cancelAllSyncs } = useSyncContext();
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
@@ -97,11 +96,36 @@ export default function SyncLogPage() {
   if (typeFilter) params.set("type", typeFilter);
   if (statusFilter) params.set("status", statusFilter);
 
-  const { data: entries, isLoading } = useSWR<SyncLogEntry[]>(
+  const { data: sprints } = useSWR<Array<{ id: number; name: string }>>(
+    "/api/jira/sprints",
+    fetcher,
+  );
+
+  const sprintMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (sprints) {
+      for (const s of sprints) {
+        map.set(String(s.id), s.name);
+      }
+    }
+    return map;
+  }, [sprints]);
+
+  const { data: entries, isLoading, mutate } = useSWR<SyncLogEntry[]>(
     `/api/sync-log?${params.toString()}`,
     fetcher,
     { refreshInterval: 10000 },
   );
+
+  const cancelSync = useCallback(async (id: string) => {
+    await fetch(`/api/sync-log/${id}/cancel`, { method: "POST" });
+    mutate();
+  }, [mutate]);
+
+  const cancelAllSyncs = useCallback(async () => {
+    await fetch("/api/sync-log/cancel-all", { method: "POST" });
+    mutate();
+  }, [mutate]);
 
   const handleFilterChange = useCallback((setter: (v: string) => void) => {
     return (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -152,7 +176,7 @@ export default function SyncLogPage() {
       {/* Table */}
       <div className="rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
         {/* Header row */}
-        <div className="grid grid-cols-[1fr_140px_100px_80px_180px] gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.015]">
+        <div className="grid grid-cols-[1fr_140px_100px_140px_140px] gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.015]">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Type</span>
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Status</span>
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Duration</span>
@@ -179,7 +203,7 @@ export default function SyncLogPage() {
         {entries?.map((entry, i) => (
           <div
             key={entry.id}
-            className={`grid grid-cols-[1fr_140px_100px_80px_180px] gap-3 px-4 py-3 items-start hover:bg-white/[0.015] transition-colors duration-100 ${
+            className={`grid grid-cols-[1fr_140px_100px_140px_140px] gap-3 px-4 py-3 items-start hover:bg-white/[0.015] transition-colors duration-100 ${
               i < (entries.length - 1) ? "border-b border-white/[0.03]" : ""
             }`}
           >
@@ -230,9 +254,7 @@ export default function SyncLogPage() {
             </span>
 
             {/* Scope */}
-            <span className="text-xs text-white/25 font-[var(--font-body)] truncate">
-              {entry.scope ?? "-"}
-            </span>
+            <ScopeCell scope={entry.scope} type={entry.type} sprintMap={sprintMap} />
 
             {/* Timestamp */}
             <span className="text-xs text-white/25 font-[var(--font-body)] tabular-nums text-right">
@@ -266,6 +288,58 @@ export default function SyncLogPage() {
       </div>
     </div>
   );
+}
+
+function ScopeCell({
+  scope,
+  type,
+  sprintMap,
+}: {
+  scope: string | null;
+  type: SyncLogEntry["type"];
+  sprintMap: Map<string, string>;
+}) {
+  if (!scope || scope === "0") {
+    return <span className="text-xs text-white/25 font-[var(--font-body)] truncate">-</span>;
+  }
+
+  // Ticket keys: comma-separated VPL-XXXXX patterns
+  const ticketKeyPattern = /^[A-Z]+-\d+(,[A-Z]+-\d+)*$/;
+  if (ticketKeyPattern.test(scope)) {
+    const keys = scope.split(",");
+    return (
+      <div className="flex flex-wrap gap-1 min-w-0">
+        {keys.map((key) => (
+          <Link
+            key={key}
+            href={`/tickets/${key}`}
+            className="text-xs font-[var(--font-body)] cursor-pointer transition-colors duration-150"
+            style={{ color: "var(--color-brand-400)" }}
+          >
+            {key}
+          </Link>
+        ))}
+      </div>
+    );
+  }
+
+  // Sprint ID: numeric scope with a known sprint name
+  const sprintName = sprintMap.get(scope);
+  if (sprintName && (type === "sprint-sync" || type === "ticket-sync")) {
+    return (
+      <Link
+        href={`/sprint-board?sprint=${scope}`}
+        className="text-xs font-[var(--font-body)] truncate cursor-pointer transition-colors duration-150"
+        style={{ color: "var(--color-brand-400)" }}
+        title={sprintName}
+      >
+        {sprintName}
+      </Link>
+    );
+  }
+
+  // Fallback: plain text (e.g. "sprints", "history")
+  return <span className="text-xs text-white/25 font-[var(--font-body)] truncate">{scope}</span>;
 }
 
 function SelectFilter({

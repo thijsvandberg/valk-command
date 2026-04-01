@@ -16,6 +16,7 @@ import {
   X,
   ChevronLeft,
 } from "lucide-react";
+import { SyncIndicator } from "@/components/sync/SyncIndicator";
 
 const navItems = [
   {
@@ -184,6 +185,11 @@ export default function Sidebar() {
             })}
           </ul>
         </nav>
+
+        {/* Sync status */}
+        <div className={`${collapsed ? "px-1.5" : "px-3"} pb-2`}>
+          <SyncIndicator collapsed={collapsed} />
+        </div>
 
         {/* Collapse toggle (desktop only) */}
         <div className={`hidden lg:flex ${collapsed ? "justify-center" : "px-3"} pb-4`}>

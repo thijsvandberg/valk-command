@@ -14,6 +14,11 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+// Mock SyncIndicator to avoid needing SyncProvider
+vi.mock("@/components/sync/SyncIndicator", () => ({
+  SyncIndicator: () => <div data-testid="sync-indicator" />,
+}));
+
 import { usePathname } from "next/navigation";
 const mockUsePathname = vi.mocked(usePathname);
 
