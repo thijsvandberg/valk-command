@@ -118,8 +118,8 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
       description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
       acceptanceCriteria: ac,
       contentHash: hash,
-      updatedBy: changeAuthor?.name ?? assigneeName,
-      updatedByAvatar: changeAuthor?.avatar ?? assigneeAvatar,
+      updatedBy: changeAuthor?.name ?? null,
+      updatedByAvatar: changeAuthor?.avatar ?? null,
     });
   }
 
