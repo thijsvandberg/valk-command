@@ -1,12 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { StoryDiffPanel } from "@/components/story-diff/StoryDiffPanel";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
-import { MOCK_VERSIONS } from "@/components/story-diff/mock-versions";
+import type { StoryVersion } from "@/types/ticket";
+import { useTicketVersions } from "@/hooks/useSprintBoard";
 
-export default function DiffPreviewPage() {
+// Fallback sample data for when no ticket key is provided
+const SAMPLE_VERSIONS: StoryVersion[] = [
+  {
+    versionNumber: 1,
+    date: "2026-03-20T10:00:00Z",
+    source: "Jira sync",
+    contentHash: "abc123",
+    qualityScore: null,
+    content: "## Description\n\nInitial version of the story.\n\n## Acceptance Criteria\n\n- [ ] First criterion",
+  },
+  {
+    versionNumber: 2,
+    date: "2026-03-22T14:30:00Z",
+    source: "Jira sync",
+    contentHash: "def456",
+    qualityScore: 65,
+    content: "## Description\n\nUpdated version with more detail.\n\n## Acceptance Criteria\n\n- [ ] First criterion\n- [ ] Second criterion added",
+  },
+];
+
+function DiffPreviewContent() {
+  const searchParams = useSearchParams();
+  const ticketKey = searchParams.get("ticket");
   const [view, setView] = useState<"panel" | "raw">("panel");
+
+  const { data: apiVersions } = useTicketVersions(ticketKey);
+
+  const versions: StoryVersion[] = apiVersions && apiVersions.length > 0
+    ? apiVersions.map((v: Record<string, unknown>, idx: number) => ({
+        versionNumber: idx + 1,
+        date: (v.createdAt as string) || new Date().toISOString(),
+        source: "Jira sync" as const,
+        contentHash: (v.contentHash as string) || "",
+        qualityScore: null,
+        content: (v.description as string) || "",
+      }))
+    : SAMPLE_VERSIONS;
 
   return (
     <div className="flex h-full flex-col">
@@ -15,6 +52,9 @@ export default function DiffPreviewPage() {
         <h1 className="font-[var(--font-display)] text-base font-semibold text-white mr-4">
           Diff Preview
         </h1>
+        {ticketKey && (
+          <span className="mr-2 font-mono text-xs text-[var(--color-brand-400)]">{ticketKey}</span>
+        )}
         <button
           type="button"
           onClick={() => setView("panel")}
@@ -46,28 +86,42 @@ export default function DiffPreviewPage() {
         {view === "panel" ? (
           <div className="mx-auto h-full max-w-2xl">
             <StoryDiffPanel
-              versions={MOCK_VERSIONS}
+              versions={versions}
               onBack={() => {
                 window.history.back();
               }}
             />
           </div>
-        ) : (
+        ) : versions.length >= 2 ? (
           <div className="mx-auto max-w-2xl overflow-y-auto p-6">
             <div className="mb-4">
               <p className="text-xs text-white/40 mb-2">
-                Version 3 vs Version 4 (raw diff)
+                Version {versions.length - 1} vs Version {versions.length} (raw diff)
               </p>
               <StoryDiff
-                oldText={MOCK_VERSIONS[2].content}
-                newText={MOCK_VERSIONS[3].content}
-                oldLabel="v3 (Local edit)"
-                newLabel="v4 (Jira sync)"
+                oldText={versions[versions.length - 2].content}
+                newText={versions[versions.length - 1].content}
+                oldLabel={`v${versions.length - 1}`}
+                newLabel={`v${versions.length}`}
               />
             </div>
+          </div>
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-white/30">Not enough versions to show a diff</p>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export const dynamic = "force-dynamic";
+
+export default function DiffPreviewPage() {
+  return (
+    <Suspense fallback={<div className="flex h-full items-center justify-center"><span className="text-sm text-white/30">Loading...</span></div>}>
+      <DiffPreviewContent />
+    </Suspense>
   );
 }

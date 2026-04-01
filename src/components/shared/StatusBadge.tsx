@@ -1,4 +1,4 @@
-import type { JiraStatus } from "../sprint-board/mock-data";
+import type { JiraStatus } from "@/types/ticket";
 
 const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   "TO DO": { bg: "rgba(148, 163, 184, 0.12)", text: "#94a3b8" },

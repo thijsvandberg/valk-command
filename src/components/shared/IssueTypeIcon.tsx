@@ -1,4 +1,4 @@
-import type { IssueType } from "../sprint-board/mock-data";
+import type { IssueType } from "@/types/ticket";
 
 export function IssueTypeIcon({ type, size = 16 }: { type: IssueType; size?: number }) {
   const style = { width: size, height: size };

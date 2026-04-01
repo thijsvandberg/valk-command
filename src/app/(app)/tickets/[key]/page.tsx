@@ -3,21 +3,36 @@
 import { useState, useEffect, useRef, useCallback, use } from "react";
 import Link from "next/link";
 import {
-  MOCK_TICKETS,
-  MOCK_SPRINTS,
-  MOCK_TICKET_DETAILS,
   EPIC_COLORS,
   PO_STATUS_OPTIONS,
   type Ticket,
   type POStatus,
   type Attachment,
   type TicketDetail,
-} from "@/components/sprint-board/mock-data";
+  type StoryVersion,
+} from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import type { DiffMode } from "@/components/story-diff/StoryDiff";
 import { exportDiffAsMarkdown } from "@/components/story-diff/export-diff";
+import {
+  ChevronRight,
+  ChevronDown,
+  ChevronLeft,
+  ExternalLink,
+  RefreshCw,
+  Flag,
+  Pencil,
+  Trash2,
+  Download,
+  Plus,
+  Check,
+  Loader2,
+  Sparkles,
+  File,
+  FileMinus,
+} from "lucide-react";
 import { reviewStory, type ReviewResult } from "@/lib/agent-client";
-import { MOCK_VERSIONS_BY_TICKET, MOCK_VERSIONS, type StoryVersion } from "@/components/story-diff/mock-versions";
+import { useTicketDetail, useJiraSprints } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge, JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
@@ -160,7 +175,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
       elements.push(
         <div key={`cb-${i}`} className="my-1 flex items-start gap-2 text-sm text-white/60">
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
-            <svg viewBox="0 0 12 12" className="h-2.5 w-2.5"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <Check size={10} strokeWidth={1.5} />
           </span>
           <span className="line-through opacity-60">{inlineFormat(line.slice(6))}</span>
         </div>
@@ -229,18 +244,12 @@ function AttachmentsSection({ attachments }: { attachments: Attachment[] }) {
             >
               {att.cleaned ? (
                 <div className="flex flex-col items-center gap-1 text-white/15">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                    <path d="M14 2v6h6M9 15h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                  </svg>
+                  <FileMinus className="h-6 w-6" strokeWidth={1.5} />
                   <span className="text-[10px]">Cleaned</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-1" style={{ color: att.color }}>
-                  <svg viewBox="0 0 24 24" className="h-8 w-8 opacity-40">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                    <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                  </svg>
+                  <File className="h-8 w-8 opacity-40" strokeWidth={1.5} />
                   <span className="text-[10px] font-medium opacity-60">
                     {att.mimeType.split("/")[1].toUpperCase()}
                   </span>
@@ -486,9 +495,7 @@ function CommentsSection({
                     className="ml-auto hidden text-white/20 cursor-pointer hover:text-[#e5534b] group-hover:block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     title="Delete comment"
                   >
-                    <svg viewBox="0 0 14 14" className="h-3.5 w-3.5">
-                      <path d="M3 4h8l-.5 7.5a1 1 0 01-1 .5h-5a1 1 0 01-1-.5L3 4zm1-2h6m-7 2h8" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                    </svg>
+                    <Trash2 size={14} strokeWidth={1.2} />
                   </button>
                 </div>
                 <p className="mt-1 text-sm leading-[1.7] text-white/50">{comment.content}</p>
@@ -627,9 +634,7 @@ function EditableTitle({
           Locally modified
         </span>
       )}
-      <svg viewBox="0 0 14 14" className="mt-2 h-3.5 w-3.5 shrink-0 text-white/15 opacity-0 group-hover:opacity-100" style={{ transition: "opacity 150ms" }}>
-        <path d="M10.5 1.5l2 2-7 7H3.5v-2z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <Pencil size={14} strokeWidth={1.2} className="mt-2 shrink-0 text-white/15 opacity-0 group-hover:opacity-100" style={{ transition: "opacity 150ms" }} />
     </div>
   );
 }
@@ -713,9 +718,7 @@ function EditableDescription({
             className="ml-auto text-white/20 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             title="Edit description"
           >
-            <svg viewBox="0 0 14 14" className="h-3.5 w-3.5">
-              <path d="M10.5 1.5l2 2-7 7H3.5v-2z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Pencil size={14} strokeWidth={1.2} />
           </button>
         )}
       </div>
@@ -766,9 +769,7 @@ function EditableDescription({
             className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/25 cursor-not-allowed"
             title="Write access not yet configured"
           >
-            <svg viewBox="0 0 14 14" className="h-3.5 w-3.5">
-              <path d="M7 1v8m-3-3l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Download size={14} strokeWidth={1.2} />
             Push to Jira
           </button>
         </div>
@@ -878,7 +879,7 @@ function DetailsRail({
             </DetailRow>
           )}
           <DetailRow label="Sprint">
-            <span>{MOCK_SPRINTS.find((s) => s.state === "active")?.name ?? "--"}</span>
+            <span>--</span>
           </DetailRow>
           {ticket.epic && (
             <DetailRow label="Epic">
@@ -950,9 +951,7 @@ function DetailsRail({
                   )}
                   <span className="text-white/60">{poStatus ?? "--"}</span>
                 </span>
-                <svg viewBox="0 0 12 12" className="h-3 w-3 text-white/25">
-                  <path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                </svg>
+                <ChevronDown size={12} strokeWidth={1.2} className="text-white/25" />
               </button>
               {statusOpen && (
                 <div className="absolute top-full right-0 left-0 z-50 mt-1 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
@@ -1029,8 +1028,7 @@ const TAG_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 function HistorySection({ ticket }: { ticket: Ticket }) {
-  const mockVersions = MOCK_VERSIONS_BY_TICKET[ticket.key] ?? [];
-  const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>(mockVersions);
+  const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [diffMode, setDiffMode] = useState<DiffMode>("unified");
   const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -1066,8 +1064,9 @@ function HistorySection({ ticket }: { ticket: Ticket }) {
   const handleSaveSnapshot = useCallback(async () => {
     setSavingSnapshot(true);
     try {
-      const detail = MOCK_TICKET_DETAILS[ticket.key];
-      const description = detail?.description ?? "";
+      const detailRes = await fetch(`/api/tickets/${ticket.key}`);
+      const detailData = detailRes.ok ? await detailRes.json() : null;
+      const description = detailData?.description ?? "";
       const res = await fetch(`/api/tickets/${ticket.key}/versions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1207,9 +1206,7 @@ function HistorySection({ ticket }: { ticket: Ticket }) {
             className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
           >
-            <svg viewBox="0 0 14 14" className="h-3 w-3">
-              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-            </svg>
+            <Plus size={12} strokeWidth={1.3} />
             {savingSnapshot ? "Saving..." : "Save snapshot"}
           </button>
         </div>
@@ -1280,9 +1277,7 @@ function HistorySection({ ticket }: { ticket: Ticket }) {
               style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               title="Export diff as markdown"
             >
-              <svg viewBox="0 0 14 14" className="h-3 w-3">
-                <path d="M7 1v8m-3-3l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Download size={12} strokeWidth={1.2} />
               Export diff
             </button>
           </div>
@@ -1304,9 +1299,7 @@ function HistorySection({ ticket }: { ticket: Ticket }) {
             className="mb-3 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
             style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-white/40">
-              <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronLeft size={14} strokeWidth={1.5} className="text-white/40" />
             Back to version list
           </button>
 
@@ -1346,9 +1339,7 @@ function HistorySection({ ticket }: { ticket: Ticket }) {
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
                 title="Export diff as markdown"
               >
-                <svg viewBox="0 0 14 14" className="h-3 w-3">
-                  <path d="M7 1v8m-3-3l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <Download size={12} strokeWidth={1.2} />
                 Export diff
               </button>
             )}
@@ -1443,9 +1434,7 @@ function HistorySection({ ticket }: { ticket: Ticket }) {
                     {version.qualityScore}
                   </div>
                 )}
-                <svg viewBox="0 0 8 8" className="h-2.5 w-2.5 shrink-0 text-white/15">
-                  <path d="M2.5 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" />
-                </svg>
+                <ChevronRight size={10} strokeWidth={1} className="shrink-0 text-white/15" />
               </div>
             );
           })}
@@ -1473,20 +1462,7 @@ interface ReviewEntry {
   overallScore: number;
 }
 
-const MOCK_REVIEW_HISTORY: ReviewEntry[] = [
-  {
-    id: "rev-1",
-    date: "2026-03-25T14:00:00Z",
-    reviewer: "Product Owner",
-    dimensions: [
-      { key: "clarity", label: "Clarity", value: 72 },
-      { key: "testability", label: "Testability", value: 65 },
-      { key: "completeness", label: "Completeness", value: 58 },
-      { key: "feasibility", label: "Technical Feasibility", value: 80 },
-    ],
-    overallScore: 69,
-  },
-];
+const INITIAL_REVIEW_HISTORY: ReviewEntry[] = [];
 
 function getScoreColor(score: number): string {
   if (score < 30) return "#e5534b";
@@ -1503,7 +1479,7 @@ function ReviewSection({ ticketKey }: { ticketKey: string }) {
   ]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [reviews, setReviews] = useState<ReviewEntry[]>(MOCK_REVIEW_HISTORY);
+  const [reviews, setReviews] = useState<ReviewEntry[]>(INITIAL_REVIEW_HISTORY);
   const [agentReviewing, setAgentReviewing] = useState(false);
   const [agentResult, setAgentResult] = useState<ReviewResult | null>(null);
 
@@ -1578,16 +1554,12 @@ function ReviewSection({ ticketKey }: { ticketKey: string }) {
           >
             {agentReviewing ? (
               <>
-                <svg viewBox="0 0 14 14" className="h-3.5 w-3.5 animate-spin">
-                  <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeDasharray="20" strokeDashoffset="5" strokeLinecap="round" />
-                </svg>
+                <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
                 Reviewing...
               </>
             ) : (
               <>
-                <svg viewBox="0 0 14 14" className="h-3.5 w-3.5">
-                  <path d="M7 1v2m0 8v2M1 7h2m8 0h2M2.75 2.75l1.5 1.5m5.5 5.5l1.5 1.5M11.25 2.75l-1.5 1.5m-5.5 5.5l-1.5 1.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                </svg>
+                <Sparkles size={14} strokeWidth={1.2} />
                 Review Story via Agent
               </>
             )}
@@ -1835,9 +1807,7 @@ function RefinementSection({ ticketKey }: { ticketKey: string }) {
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
               >
                 {checklist[item.key] && (
-                  <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 text-[var(--color-brand-400)]">
-                    <path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <Check size={10} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
                 )}
               </span>
               <span className={`text-sm ${checklist[item.key] ? "text-white/40 line-through" : "text-white/60"}`}>
@@ -1866,12 +1836,46 @@ export default function TicketDetailPage({
   params: Promise<{ key: string }>;
 }) {
   const { key } = use(params);
-  const ticket = MOCK_TICKETS.find((t) => t.key === key);
-  const detail = MOCK_TICKET_DETAILS[key];
+
+  // Fetch ticket + detail from API
+  const { data: apiData, isLoading: ticketLoading } = useTicketDetail(key);
+
+  // Map API response to Ticket and TicketDetail shapes
+  const ticket: Ticket | undefined = apiData ? {
+    key: apiData.key,
+    title: apiData.title,
+    type: apiData.type,
+    epic: apiData.epic ?? null,
+    jiraStatus: apiData.jiraStatus,
+    storyPoints: apiData.storyPoints ?? null,
+    assignee: apiData.assignee ?? null,
+    flagged: apiData.flagged ?? false,
+    poStatus: apiData.poStatus ?? null,
+    qualityScore: apiData.qualityScore ?? null,
+    qualityStale: apiData.qualityStale ?? false,
+    notes: apiData.notes ?? "",
+    sprintId: apiData.sprintId,
+    freshness: apiData.freshness,
+  } : undefined;
+
+  const detail: TicketDetail | undefined = apiData ? {
+    description: apiData.description ?? "",
+    reporter: apiData.reporter ?? null,
+    labels: apiData.labels ?? [],
+    components: apiData.components ?? [],
+    priority: apiData.priority ?? "Medium",
+    createdAt: apiData.createdAt ?? "",
+    updatedAt: apiData.updatedAt ?? "",
+    attachments: apiData.attachments ?? [],
+    subtasks: apiData.subtasks ?? [],
+    linkedIssues: apiData.linkedIssues ?? [],
+    jiraComments: apiData.jiraComments ?? [],
+  } : undefined;
+
   const [hasLocalTitleEdit, setHasLocalTitleEdit] = useState(false);
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "history" | "review" | "refinement">("content");
-  const [versionCount, setVersionCount] = useState((MOCK_VERSIONS_BY_TICKET[key] ?? []).length);
+  const [versionCount, setVersionCount] = useState(0);
 
   // Fetch actual version count from API
   useEffect(() => {
@@ -1911,6 +1915,22 @@ export default function TicketDetailPage({
     }
   }, [key]);
 
+  // Fetch sprints for breadcrumb
+  const { data: rawSprints } = useJiraSprints();
+  const activeSprint = rawSprints?.find((s) => s.state === "active");
+  const activeSprintName = activeSprint?.name ?? null;
+
+  if (ticketLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={32} strokeWidth={2} className="animate-spin text-white/20" />
+          <span className="text-sm text-white/30">Loading ticket...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!ticket) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -1930,7 +1950,6 @@ export default function TicketDetailPage({
 
   const jiraStatusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
   const epicColor = ticket.epic ? EPIC_COLORS[ticket.epic] : null;
-  const activeSprint = MOCK_SPRINTS.find((s) => s.state === "active");
   const hasLocalEdits = hasLocalTitleEdit || hasLocalDescEdit;
 
   return (
@@ -1946,20 +1965,16 @@ export default function TicketDetailPage({
             >
               Sprint Board
             </Link>
-            <svg viewBox="0 0 8 8" className="h-2.5 w-2.5 text-white/15">
-              <path d="M2.5 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" />
-            </svg>
-            {activeSprint && (
+            <ChevronRight size={10} strokeWidth={1} className="text-white/15" />
+            {activeSprintName && (
               <>
                 <Link
                   href="/sprint-board"
                   className="text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
-                  {activeSprint.name}
+                  {activeSprintName}
                 </Link>
-                <svg viewBox="0 0 8 8" className="h-2.5 w-2.5 text-white/15">
-                  <path d="M2.5 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" />
-                </svg>
+                <ChevronRight size={10} strokeWidth={1} className="text-white/15" />
               </>
             )}
             <span className="font-mono text-white/60">{key}</span>
@@ -1971,9 +1986,7 @@ export default function TicketDetailPage({
               <IssueTypeIcon type={ticket.type} size={20} />
               <span className="font-mono text-sm text-white/40">{key}</span>
               {ticket.flagged && (
-                <svg viewBox="0 0 16 16" className="h-4 w-4 text-[#e5534b]" fill="currentColor">
-                  <path d="M3 2v12m0-12l8 3.5L3 9" />
-                </svg>
+                <Flag size={16} className="text-[#e5534b]" fill="currentColor" strokeWidth={0} />
               )}
               {hasLocalEdits && (
                 <span className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
@@ -1987,13 +2000,7 @@ export default function TicketDetailPage({
                   disabled={isRefreshing}
                   className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <svg
-                    viewBox="0 0 14 14"
-                    className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
-                  >
-                    <path d="M1.5 7a5.5 5.5 0 019.37-3.9M12.5 7a5.5 5.5 0 01-9.37 3.9" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                    <path d="M11 1v2.5h-2.5M3 13v-2.5h2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <RefreshCw size={14} strokeWidth={1.2} className={isRefreshing ? "animate-spin" : ""} />
                   {isRefreshing ? "Syncing..." : "Refresh from Jira"}
                 </button>
                 <a
@@ -2002,9 +2009,7 @@ export default function TicketDetailPage({
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                 >
-                  <svg viewBox="0 0 14 14" className="h-3.5 w-3.5">
-                    <path d="M5 1.5H2.5a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9m-4.5-7.5h4.5m0 0v4.5m0-4.5L7 7" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ExternalLink size={14} strokeWidth={1.2} />
                   Open in Jira
                 </a>
               </div>

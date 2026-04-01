@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { Sprint } from "./mock-data";
-import { MOCK_SPRINTS } from "./mock-data";
+import type { Sprint } from "@/types/ticket";
 import { SprintListModal } from "./SprintListModal";
 import { ChevronRight, List, Plus, RefreshCw } from "lucide-react";
 
@@ -144,6 +143,7 @@ function SprintListButton({
 export function SprintSlots({
   slotSprints,
   activeSlot,
+  sprints,
   onSlotClick,
   editingSlot,
   onSlotEdit,
@@ -157,6 +157,7 @@ export function SprintSlots({
 }: {
   slotSprints: string[];
   activeSlot: number;
+  sprints: Sprint[];
   onSlotClick: (idx: number) => void;
   editingSlot: number | null;
   onSlotEdit: (idx: number) => void;
@@ -171,7 +172,7 @@ export function SprintSlots({
   return (
     <div className="flex items-center gap-1 border-b border-white/[0.06] px-5 pt-4 pb-0">
       {slotSprints.map((sprintId, idx) => {
-        const sprint = MOCK_SPRINTS.find((s) => s.id === sprintId);
+        const sprint = sprints.find((s) => s.id === sprintId);
         if (!sprint) return null;
         const isActive = idx === activeSlot;
         return (
@@ -196,7 +197,7 @@ export function SprintSlots({
             </button>
             {editingSlot === idx && (
               <SprintSelector
-                sprints={MOCK_SPRINTS}
+                sprints={sprints}
                 onSelect={onSprintSelect}
                 onClose={onEditClose}
               />

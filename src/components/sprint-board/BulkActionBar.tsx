@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { POStatus } from "./mock-data";
-import { PO_STATUS_OPTIONS } from "./mock-data";
+import type { POStatus } from "@/types/ticket";
+import { PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS } from "./FilterBar";
 import { POStatusIcon } from "./TicketTable";
 

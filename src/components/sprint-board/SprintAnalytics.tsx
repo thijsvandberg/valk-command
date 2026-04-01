@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Ticket, JiraStatus } from "./mock-data";
+import type { Ticket, JiraStatus } from "@/types/ticket";
 import { ChevronRight, BarChart2 } from "lucide-react";
 
 const STATUS_COLORS: Record<JiraStatus, string> = {

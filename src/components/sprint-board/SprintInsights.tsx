@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MOCK_TICKETS, type Ticket } from "./mock-data";
+import type { Ticket } from "@/types/ticket";
 import { Clock, ChevronDown } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -55,9 +55,9 @@ function getScoreColor(score: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function SprintInsights() {
+export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
   const [collapsed, setCollapsed] = useState(false);
-  const insights = computeInsights(MOCK_TICKETS);
+  const insights = computeInsights(tickets);
 
   return (
     <div className="rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)]">

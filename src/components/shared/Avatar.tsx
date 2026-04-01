@@ -1,4 +1,5 @@
-import type { Assignee } from "../sprint-board/mock-data";
+import { User } from "lucide-react";
+import type { Assignee } from "@/types/ticket";
 
 export function Avatar({ assignee, size = 24 }: { assignee: Assignee | null; size?: number }) {
   const iconSize = size * 0.55;
@@ -9,9 +10,7 @@ export function Avatar({ assignee, size = 24 }: { assignee: Assignee | null; siz
         className="flex items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.03]"
         style={{ width: size, height: size }}
       >
-        <svg viewBox="0 0 16 16" className="text-white/15" style={{ width: iconSize, height: iconSize }}>
-          <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm0 2c-3.3 0-6 1.34-6 3v1h12v-1c0-1.66-2.7-3-6-3z" fill="currentColor" />
-        </svg>
+        <User className="text-white/15" style={{ width: iconSize, height: iconSize }} strokeWidth={1.5} />
       </div>
     );
   }

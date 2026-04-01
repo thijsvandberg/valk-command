@@ -16,7 +16,7 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 - [ ] Graceful fallback when Jira is unreachable (cached data + banner)
 
 ### Data Sync (Jira -> valk-command)
-- [ ] Remove all mock/stub data from sprint board, ticket detail, and related API routes
+- [x] Remove all mock/stub data from sprint board, ticket detail, and related API routes
 - [x] Fetch sprints, tickets, statuses, assignees from Jira REST API v3
 - [x] Map Jira ADF (Atlassian Document Format) to rendered markdown/HTML
 - [x] Handle Jira custom fields (story points, sprint, epic link, labels, etc.)

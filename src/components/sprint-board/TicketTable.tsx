@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { Ticket, POStatus } from "./mock-data";
-import { EPIC_COLORS, PO_STATUS_OPTIONS } from "./mock-data";
+import type { Ticket, POStatus } from "@/types/ticket";
+import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";

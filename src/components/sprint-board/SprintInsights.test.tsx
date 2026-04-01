@@ -1,10 +1,29 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { SprintInsights } from "./SprintInsights";
+import type { Ticket } from "@/types/ticket";
+
+const MOCK_TICKETS: Ticket[] = [
+  {
+    key: "VPL-1",
+    title: "Test ticket",
+    type: "story",
+    jiraStatus: "IN PROGRESS",
+    storyPoints: 3,
+    assignee: null,
+    epic: null,
+    flagged: false,
+    poStatus: null,
+    qualityScore: 45,
+    qualityStale: false,
+    notes: "",
+    sprintId: "s1",
+  },
+];
 
 describe("SprintInsights", () => {
   it("renders all insight categories", () => {
-    render(<SprintInsights />);
+    render(<SprintInsights tickets={MOCK_TICKETS} />);
 
     expect(screen.getByText("Stale Stories")).toBeTruthy();
     expect(screen.getByText("Unreviewed")).toBeTruthy();
@@ -13,33 +32,27 @@ describe("SprintInsights", () => {
   });
 
   it("shows the sprint insights header", () => {
-    render(<SprintInsights />);
+    render(<SprintInsights tickets={MOCK_TICKETS} />);
     expect(screen.getByText("Sprint Insights")).toBeTruthy();
   });
 
   it("collapses and expands on click", () => {
-    render(<SprintInsights />);
+    render(<SprintInsights tickets={MOCK_TICKETS} />);
 
-    // Initially expanded - insight categories visible
     expect(screen.getByText("Stale Stories")).toBeTruthy();
 
-    // Click to collapse
     fireEvent.click(screen.getByText("Sprint Insights"));
 
-    // Categories should be hidden
     expect(screen.queryByText("Stale Stories")).toBeNull();
 
-    // Click to expand
     fireEvent.click(screen.getByText("Sprint Insights"));
 
-    // Categories visible again
     expect(screen.getByText("Stale Stories")).toBeTruthy();
   });
 
   it("displays numeric values for insights", () => {
-    render(<SprintInsights />);
+    render(<SprintInsights tickets={MOCK_TICKETS} />);
 
-    // Check that at least some numeric values are rendered
     const container = document.querySelector(".grid");
     expect(container).toBeTruthy();
     expect(container!.textContent).toMatch(/\d+/);

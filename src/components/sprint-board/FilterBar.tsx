@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { EPIC_COLORS, PO_STATUS_OPTIONS } from "./mock-data";
+import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3 } from "lucide-react";
 

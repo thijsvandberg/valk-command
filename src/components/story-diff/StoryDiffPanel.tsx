@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { ChevronLeft } from "lucide-react";
 import { StoryDiff } from "./StoryDiff";
 import type { DiffMode } from "./StoryDiff";
-import type { StoryVersion } from "./mock-versions";
+import type { StoryVersion } from "@/types/ticket";
 
 // -----------------------------------------------------------------------
 // Types
@@ -97,21 +98,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
           style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="text-white/40"
-          >
-            <path
-              d="M10 12L6 8l4-4"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <ChevronLeft size={14} className="text-white/40" strokeWidth={1.5} />
           Back
         </button>
 

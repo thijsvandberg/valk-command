@@ -1,16 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { Ticket, POStatus } from "./mock-data";
-import { MOCK_TICKET_DETAILS, EPIC_COLORS } from "./mock-data";
+import type { Ticket, POStatus } from "@/types/ticket";
+import { EPIC_COLORS } from "@/types/ticket";
 import { StoryDiffPanel } from "../story-diff/StoryDiffPanel";
-import { MOCK_VERSIONS_BY_TICKET } from "../story-diff/mock-versions";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
-import { useTicketVersions } from "@/hooks/useSprintBoard";
-import { RefreshCw, ExternalLink, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare } from "lucide-react";
+import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
+import { RefreshCw, ExternalLink, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check } from "lucide-react";
 
 // -- Simple markdown renderer for panel description --
 
@@ -30,7 +29,7 @@ function renderSimpleMarkdown(text: string): React.ReactNode[] {
       elements.push(
         <div key={`cb-${i}`} className="my-0.5 flex items-start gap-1.5 text-xs text-white/50">
           <span className={`mt-0.5 flex h-3 w-3 shrink-0 items-center justify-center rounded border ${checked ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10" : "border-white/[0.12] bg-white/[0.03]"}`}>
-            {checked && <svg viewBox="0 0 12 12" className="h-2 w-2 text-[var(--color-brand-400)]"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+            {checked && <Check size={8} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
           </span>
           <span className={checked ? "line-through opacity-60" : ""}>{content}</span>
         </div>
@@ -51,9 +50,10 @@ function renderSimpleMarkdown(text: string): React.ReactNode[] {
 // -- Ticket description for side panel --
 
 function TicketDescription({ ticketKey }: { ticketKey: string }) {
-  const detail = MOCK_TICKET_DETAILS[ticketKey];
+  const { data: detail } = useTicketDetail(ticketKey);
+  const description = detail?.description as string | undefined;
 
-  if (!detail?.description) {
+  if (!description) {
     return (
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">Description</h3>
@@ -66,7 +66,7 @@ function TicketDescription({ ticketKey }: { ticketKey: string }) {
     <div>
       <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">Description</h3>
       <div className="mt-2 max-h-64 overflow-y-auto">
-        {renderSimpleMarkdown(detail.description)}
+        {renderSimpleMarkdown(description)}
       </div>
     </div>
   );
@@ -179,8 +179,8 @@ export function SidePanel({
         content: (v.description as string) || "",
       }));
     }
-    return MOCK_VERSIONS_BY_TICKET[ticket.key] ?? [];
-  }, [apiVersions, ticket.key]);
+    return [];
+  }, [apiVersions]);
 
   const hasVersions = ticketVersions.length > 1;
 

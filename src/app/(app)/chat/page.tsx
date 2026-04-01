@@ -3,11 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import ChatLayout from "@/components/chat/ChatLayout";
-import {
-  MOCK_TICKETS,
-  MOCK_TICKET_DETAILS,
-  type Ticket,
-} from "@/components/sprint-board/mock-data";
+import type { Ticket } from "@/types/ticket";
+import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { MessageCircle } from "lucide-react";
 
 const PO_STATUS_COLORS: Record<string, { dot: string }> = {
@@ -26,14 +23,17 @@ const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   DONE: { bg: "rgba(46, 145, 73, 0.25)", text: "#2e9149" },
 };
 
-function TicketContextSidebar({ ticket }: { ticket: Ticket }) {
-  const detail = MOCK_TICKET_DETAILS[ticket.key];
-  const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-  const poColor = ticket.poStatus ? PO_STATUS_COLORS[ticket.poStatus] : null;
+function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
+  const { data: ticketData } = useTicketDetail(ticketKey);
 
-  // Trim the description for the snippet
-  const descSnippet = detail?.description
-    ? detail.description.slice(0, 200) + (detail.description.length > 200 ? "..." : "")
+  if (!ticketData) return null;
+
+  const jiraColor = JIRA_STATUS_COLORS[ticketData.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+  const poColor = ticketData.poStatus ? PO_STATUS_COLORS[ticketData.poStatus] : null;
+
+  const description = ticketData.description ?? "";
+  const descSnippet = description
+    ? description.slice(0, 200) + (description.length > 200 ? "..." : "")
     : "No description available.";
 
   return (
@@ -44,9 +44,9 @@ function TicketContextSidebar({ ticket }: { ticket: Ticket }) {
 
       <div className="space-y-3">
         <div>
-          <span className="font-mono text-xs text-[var(--color-brand-400)]">{ticket.key}</span>
+          <span className="font-mono text-xs text-[var(--color-brand-400)]">{ticketData.key}</span>
           <h3 className="mt-1 font-[var(--font-display)] text-sm font-semibold leading-snug text-white/80">
-            {ticket.title}
+            {ticketData.title}
           </h3>
         </div>
 
@@ -55,12 +55,12 @@ function TicketContextSidebar({ ticket }: { ticket: Ticket }) {
             className="rounded px-2 py-0.5 text-[10px] font-medium"
             style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
           >
-            {ticket.jiraStatus}
+            {ticketData.jiraStatus}
           </span>
-          {ticket.poStatus && poColor && (
+          {ticketData.poStatus && poColor && (
             <span className="flex items-center gap-1.5 text-[10px] text-white/40">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: poColor.dot }} />
-              {ticket.poStatus}
+              {ticketData.poStatus}
             </span>
           )}
         </div>
@@ -82,16 +82,12 @@ function ChatPageInner() {
   const searchParams = useSearchParams();
   const ticketParam = searchParams.get("ticket");
 
-  const ticket = ticketParam
-    ? MOCK_TICKETS.find((t) => t.key === ticketParam)
-    : null;
-
   return (
     <div className="flex h-full">
       <div className="min-w-0 flex-1">
         <ChatLayout />
       </div>
-      {ticket && <TicketContextSidebar ticket={ticket} />}
+      {ticketParam && <TicketContextSidebar ticketKey={ticketParam} />}
     </div>
   );
 }

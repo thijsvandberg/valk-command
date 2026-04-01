@@ -2,14 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-  MOCK_TICKETS,
-  MOCK_SPRINTS,
-  MOCK_SLOT_SPRINTS,
-  PO_STATUS_OPTIONS,
-  type Ticket,
-  type POStatus,
-} from "./mock-data";
+import type { Ticket, POStatus, Sprint } from "@/types/ticket";
 import { SprintSlots } from "./SprintSlots";
 import { FilterBar, type SortField, type SortDir, type ColumnId, DEFAULT_VISIBLE } from "./FilterBar";
 import { TicketTable } from "./TicketTable";
@@ -17,13 +10,28 @@ import { BulkActionBar } from "./BulkActionBar";
 import { SidePanel } from "./SidePanel";
 import { SprintAnalytics } from "./SprintAnalytics";
 import { MultiSprintView } from "./MultiSprintView";
-import { useSprintSlots, useDebouncedCallback } from "@/hooks/useSprintBoard";
-import { Columns2, Check } from "lucide-react";
+import { useSprintSlots, useJiraSprints, useTickets, useDebouncedCallback } from "@/hooks/useSprintBoard";
+
+function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
+  if (!raw) return [];
+  return raw.map((s) => {
+    let dateRange = "";
+    if (s.startDate && s.endDate) {
+      const fmt = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      dateRange = `${fmt(s.startDate)} - ${fmt(s.endDate)}`;
+    }
+    const state = s.state === "active" ? "active" as const
+      : s.state === "closed" ? "closed" as const
+      : "future" as const;
+    return { id: String(s.id), name: s.name, dateRange, state, ticketCount: 0 };
+  });
+}
+import { Columns2, Check, Loader2 } from "lucide-react";
 
 // Persist sprint slot configuration to the API
-async function saveSprintSlots(slotSprints: string[]) {
+async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) {
   const slots = slotSprints.map((sprintId, idx) => {
-    const sprint = MOCK_SPRINTS.find((s) => s.id === sprintId);
+    const sprint = sprints.find((s) => s.id === sprintId);
     return {
       slotIndex: idx,
       sprintId,
@@ -63,7 +71,10 @@ async function saveTicketMetadata(
 // ============================================================
 
 export default function SprintBoard() {
-  const [slotSprints, setSlotSprints] = useState(MOCK_SLOT_SPRINTS);
+  const { data: rawJiraSprints } = useJiraSprints();
+  const sprints = useMemo(() => mapJiraSprints(rawJiraSprints), [rawJiraSprints]);
+
+  const [slotSprints, setSlotSprints] = useState<string[]>([]);
   const [activeSlot, setActiveSlot] = useState(0);
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
@@ -82,13 +93,7 @@ export default function SprintBoard() {
     }
     return new Set(DEFAULT_VISIBLE);
   });
-  const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>(() => {
-    const map: Record<string, POStatus> = {};
-    MOCK_TICKETS.forEach((t) => {
-      map[t.key] = t.poStatus;
-    });
-    return map;
-  });
+  const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   // PO priority order: stored in localStorage, independent from Jira rank
   const [poPriorityOrder, setPoPriorityOrder] = useState<string[] | null>(() => {
     if (typeof window !== "undefined") {
@@ -248,11 +253,19 @@ export default function SprintBoard() {
     }
   }, [activeSprintId, searchParams, router]);
 
-  const activeSprint = MOCK_SPRINTS.find((s) => s.id === activeSprintId);
-  const allTickets = useMemo(
-    () => MOCK_TICKETS.filter((t) => !t.sprintId || t.sprintId === activeSprintId),
-    [activeSprintId],
-  );
+  const activeSprint = sprints.find((s) => s.id === activeSprintId);
+  const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
+  const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
+
+  useEffect(() => {
+    if (apiTickets && apiTickets.length > 0) {
+      setPoStatuses((prev) => {
+        const next = { ...prev };
+        apiTickets.forEach((t) => { if (!(t.key in next)) next[t.key] = t.poStatus; });
+        return next;
+      });
+    }
+  }, [apiTickets]);
 
   // Derive unique filter options from the ticket data
   const statusOptions = useMemo(() => [...new Set(allTickets.map((t) => t.jiraStatus))], [allTickets]);
@@ -430,38 +443,38 @@ export default function SprintBoard() {
         setSlotSprints((prev) => {
           const next = [...prev];
           next[editingSlot] = sprintId;
-          saveSprintSlots(next);
+          saveSprintSlots(next, sprints);
           return next;
         });
       }
     },
-    [editingSlot]
+    [editingSlot, sprints]
   );
 
   const handleSprintListSelect = useCallback((sprintId: string) => {
     setSlotSprints((prev) => {
       const next = [...prev];
       next[activeSlot] = sprintId;
-      saveSprintSlots(next);
+      saveSprintSlots(next, sprints);
       return next;
     });
-  }, [activeSlot]);
+  }, [activeSlot, sprints]);
 
   const handleAddSlotWithSprint = useCallback((sprintId: string) => {
     setSlotSprints((prev) => {
       // If already pinned, remove it
       if (prev.includes(sprintId)) {
         const next = prev.filter((id) => id !== sprintId);
-        saveSprintSlots(next);
+        saveSprintSlots(next, sprints);
         return next;
       }
       // Add as new slot (max 4)
       if (prev.length >= 4) return prev;
       const next = [...prev, sprintId];
-      saveSprintSlots(next);
+      saveSprintSlots(next, sprints);
       return next;
     });
-  }, []);
+  }, [sprints]);
 
   const handlePoStatusChange = useCallback((key: string, status: POStatus) => {
     setPoStatuses((prev) => ({ ...prev, [key]: status }));
@@ -481,20 +494,21 @@ export default function SprintBoard() {
       const data = await res.json().catch(() => null);
       const count = data?.count ?? 0;
       showToast(`Refreshed ${count} ticket${count === 1 ? "" : "s"}`);
+      mutateTickets();
     } finally {
       setSyncing(false);
     }
-  }, [slotSprints, activeSlot, showToast]);
+  }, [slotSprints, activeSlot, showToast, mutateTickets]);
 
   const handleAddSlot = useCallback(() => {
     if (slotSprints.length < 4) {
       setSlotSprints((prev) => {
         const next = [...prev, "next"];
-        saveSprintSlots(next);
+        saveSprintSlots(next, sprints);
         return next;
       });
     }
-  }, [slotSprints.length]);
+  }, [slotSprints.length, sprints]);
 
   // Load saved sprint slots from the API via SWR
   const { data: savedSlots } = useSprintSlots();
@@ -507,14 +521,22 @@ export default function SprintBoard() {
     }
   }, [savedSlots]);
 
+  useEffect(() => {
+    if (slotSprints.length === 0 && sprints.length > 0) {
+      const active = sprints.find((s) => s.state === "active");
+      if (active) setSlotSprints([active.id]);
+    }
+  }, [sprints, slotSprints.length]);
+
   // Compare mode: show multi-sprint view
   if (compareMode) {
-    const leftSprint = slotSprints[activeSlot] ?? slotSprints[0] ?? "s134";
-    const rightSprint = slotSprints.find((_, i) => i !== activeSlot) ?? slotSprints[1] ?? "s135";
+    const leftSprint = slotSprints[activeSlot] ?? slotSprints[0] ?? "";
+    const rightSprint = slotSprints.find((_, i) => i !== activeSlot) ?? slotSprints[1] ?? "";
     return (
       <MultiSprintView
         initialLeft={leftSprint}
         initialRight={rightSprint}
+        sprints={sprints}
         onClose={() => setCompareMode(false)}
       />
     );
@@ -527,6 +549,7 @@ export default function SprintBoard() {
         <SprintSlots
           slotSprints={slotSprints}
           activeSlot={activeSlot}
+          sprints={sprints}
           onSlotClick={setActiveSlot}
           editingSlot={editingSlot}
           onSlotEdit={handleSlotEdit}
@@ -603,10 +626,18 @@ export default function SprintBoard() {
         )}
 
         {/* Sprint analytics */}
-        <SprintAnalytics tickets={allTickets} />
+        {!ticketsLoading && <SprintAnalytics tickets={allTickets} />}
 
-        {/* Ticket table */}
-        <TicketTable
+        {ticketsLoading && (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 size={32} strokeWidth={2} className="animate-spin text-white/20" />
+              <span className="text-sm text-white/30">Loading tickets...</span>
+            </div>
+          </div>
+        )}
+
+        {!ticketsLoading && <TicketTable
           tickets={tickets}
           checkedTickets={checkedTickets}
           selectedTicket={selectedTicket}
@@ -624,7 +655,7 @@ export default function SprintBoard() {
           onPoStatusChange={handlePoStatusChange}
           onTableKeyDown={handleTableKeyDown}
           onReorder={handleReorder}
-        />
+        />}
 
         {/* Bulk action bar */}
         {someChecked && (

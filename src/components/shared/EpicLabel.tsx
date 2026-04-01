@@ -1,4 +1,4 @@
-import { EPIC_COLORS } from "../sprint-board/mock-data";
+import { EPIC_COLORS } from "@/types/ticket";
 
 export function EpicLabel({ epic }: { epic: string | null }) {
   if (!epic) return null;

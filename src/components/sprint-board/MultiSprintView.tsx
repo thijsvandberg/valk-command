@@ -1,34 +1,34 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MOCK_SPRINTS, MOCK_TICKETS, EPIC_COLORS, type Ticket } from "./mock-data";
+import type { Ticket, Sprint } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
 import { Search, X } from "lucide-react";
+import { useTickets } from "@/hooks/useSprintBoard";
 
 // Simplified table for a single sprint in compare mode
 function MiniSprintTable({
   sprintId,
+  sprint,
   searchQuery,
 }: {
   sprintId: string;
+  sprint: Sprint | undefined;
   searchQuery: string;
 }) {
-  const sprint = MOCK_SPRINTS.find((s) => s.id === sprintId);
-  // In a real app, tickets would be filtered by sprint. Using mock data for now.
+  const { data: apiTickets } = useTickets(sprintId || null);
   const tickets = useMemo(() => {
-    let list = MOCK_TICKETS;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.key.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [searchQuery]);
+    const list = apiTickets ?? [];
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.toLowerCase();
+    return list.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.key.toLowerCase().includes(q),
+    );
+  }, [apiTickets, searchQuery]);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -103,9 +103,11 @@ function MiniSprintTable({
 function CompareSprintSelector({
   value,
   onChange,
+  sprints,
 }: {
   value: string;
   onChange: (id: string) => void;
+  sprints: Sprint[];
 }) {
   return (
     <select
@@ -113,7 +115,7 @@ function CompareSprintSelector({
       onChange={(e) => onChange(e.target.value)}
       className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-white/60 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none"
     >
-      {MOCK_SPRINTS.map((s) => (
+      {sprints.map((s) => (
         <option key={s.id} value={s.id} className="bg-[var(--color-surface-base)] text-white">
           {s.name}
         </option>
@@ -125,15 +127,20 @@ function CompareSprintSelector({
 export function MultiSprintView({
   initialLeft,
   initialRight,
+  sprints,
   onClose,
 }: {
   initialLeft: string;
   initialRight: string;
+  sprints: Sprint[];
   onClose: () => void;
 }) {
   const [leftSprint, setLeftSprint] = useState(initialLeft);
   const [rightSprint, setRightSprint] = useState(initialRight);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const leftSprintData = sprints.find((s) => s.id === leftSprint);
+  const rightSprintData = sprints.find((s) => s.id === rightSprint);
 
   return (
     <div className="flex h-full flex-col">
@@ -141,9 +148,9 @@ export function MultiSprintView({
       <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-3">
         <span className="text-sm font-medium text-white/60">Compare Sprints</span>
         <div className="flex items-center gap-2">
-          <CompareSprintSelector value={leftSprint} onChange={setLeftSprint} />
+          <CompareSprintSelector value={leftSprint} onChange={setLeftSprint} sprints={sprints} />
           <span className="text-xs text-white/20">vs</span>
-          <CompareSprintSelector value={rightSprint} onChange={setRightSprint} />
+          <CompareSprintSelector value={rightSprint} onChange={setRightSprint} sprints={sprints} />
         </div>
         <div className="flex-1" />
         {/* Cross-sprint search */}
@@ -169,9 +176,9 @@ export function MultiSprintView({
 
       {/* Split view */}
       <div className="flex flex-1 overflow-hidden">
-        <MiniSprintTable sprintId={leftSprint} searchQuery={searchQuery} />
+        <MiniSprintTable sprintId={leftSprint} sprint={leftSprintData} searchQuery={searchQuery} />
         <div className="w-px shrink-0 bg-white/[0.06]" />
-        <MiniSprintTable sprintId={rightSprint} searchQuery={searchQuery} />
+        <MiniSprintTable sprintId={rightSprint} sprint={rightSprintData} searchQuery={searchQuery} />
       </div>
     </div>
   );
