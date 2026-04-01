@@ -160,10 +160,10 @@ export function TicketSidebar({
           {detail && (
             <>
               <DetailRow label="Created">
-                {new Date(detail.createdAt).toLocaleDateString()}
+                {new Date(detail.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
               </DetailRow>
               <DetailRow label="Updated">
-                {new Date(detail.updatedAt).toLocaleDateString()}
+                {new Date(detail.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
               </DetailRow>
             </>
           )}
