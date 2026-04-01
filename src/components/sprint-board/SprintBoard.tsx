@@ -262,9 +262,10 @@ export default function SprintBoard() {
   useEffect(() => {
     if (apiTickets && apiTickets.length > 0) {
       setPoStatuses((prev) => {
+        let changed = false;
         const next = { ...prev };
-        apiTickets.forEach((t) => { if (!(t.key in next)) next[t.key] = t.poStatus; });
-        return next;
+        apiTickets.forEach((t) => { if (!(t.key in next)) { next[t.key] = t.poStatus; changed = true; } });
+        return changed ? next : prev;
       });
     }
   }, [apiTickets]);

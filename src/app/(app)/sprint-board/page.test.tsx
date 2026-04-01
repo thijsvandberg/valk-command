@@ -7,35 +7,37 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
+// Stable references to prevent infinite re-render loops in useEffect deps
+const MOCK_SPRINTS = [
+  { id: 10048, name: "BT: 134", state: "active", startDate: "2026-03-31", endDate: "2026-04-09" },
+  { id: 10050, name: "BT Sprint 135", state: "future", startDate: null, endDate: null },
+];
+const MOCK_TICKETS = [
+  {
+    key: "VPL-29223",
+    title: "Monitoring Kibana dashboards",
+    type: "task",
+    epic: null,
+    jiraStatus: "IN PROGRESS",
+    storyPoints: 3,
+    assignee: { name: "Jan de Vries", initials: "JV", color: "#4a90d9" },
+    flagged: false,
+    poStatus: null,
+    qualityScore: null,
+    qualityStale: false,
+    notes: "",
+  },
+];
+const MOCK_MUTATE = vi.fn();
+const MOCK_SLOTS_RESULT = { data: null };
+const MOCK_SPRINTS_RESULT = { data: MOCK_SPRINTS };
+const MOCK_TICKETS_RESULT = { data: MOCK_TICKETS, isLoading: false, mutate: MOCK_MUTATE };
+
 vi.mock("@/hooks/useSprintBoard", () => ({
-  useSprintSlots: () => ({ data: null }),
-  useJiraSprints: () => ({
-    data: [
-      { id: 10048, name: "BT: 134", state: "active", startDate: "2026-03-31", endDate: "2026-04-09" },
-      { id: 10050, name: "BT Sprint 135", state: "future", startDate: null, endDate: null },
-    ],
-  }),
-  useTickets: () => ({
-    data: [
-      {
-        key: "VPL-29223",
-        title: "Monitoring Kibana dashboards",
-        type: "task",
-        epic: null,
-        jiraStatus: "IN PROGRESS",
-        storyPoints: 3,
-        assignee: { name: "Jan de Vries", initials: "JV", color: "#4a90d9" },
-        flagged: false,
-        poStatus: null,
-        qualityScore: null,
-        qualityStale: false,
-        notes: "",
-      },
-    ],
-    isLoading: false,
-    mutate: vi.fn(),
-  }),
-  useDebouncedCallback: (fn: () => void) => fn,
+  useSprintSlots: () => MOCK_SLOTS_RESULT,
+  useJiraSprints: () => MOCK_SPRINTS_RESULT,
+  useTickets: () => MOCK_TICKETS_RESULT,
+  useDebouncedCallback: (fn: (...args: unknown[]) => void) => fn,
 }));
 
 describe("SprintBoardPage", () => {
