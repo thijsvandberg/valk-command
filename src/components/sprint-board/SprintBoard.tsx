@@ -228,9 +228,11 @@ export default function SprintBoard() {
   // URL search param sync
   const searchParams = useSearchParams();
   const router = useRouter();
+  const slotsInitialized = useRef(false);
 
-  // On mount: restore active sprint from URL if present
+  // Sync active slot from URL after slots are loaded
   useEffect(() => {
+    if (!slotsInitialized.current || slotSprints.length === 0) return;
     const urlSprint = searchParams.get("sprint");
     if (urlSprint) {
       const slotIdx = slotSprints.indexOf(urlSprint);
@@ -238,13 +240,13 @@ export default function SprintBoard() {
         setActiveSlot(slotIdx);
       }
     }
-    // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [slotSprints]);
 
-  // Sync URL when active sprint changes
+  // Sync URL when active sprint changes (only after slots are initialized)
   const activeSprintId = slotSprints[activeSlot];
   useEffect(() => {
+    if (!slotsInitialized.current || !activeSprintId) return;
     const current = searchParams.get("sprint");
     if (current !== activeSprintId) {
       const params = new URLSearchParams(searchParams.toString());
@@ -500,28 +502,24 @@ export default function SprintBoard() {
     }
   }, [slotSprints, activeSlot, showToast, mutateTickets]);
 
-  const handleAddSlot = useCallback(() => {
-    if (slotSprints.length < 4) {
-      setSlotSprints((prev) => {
-        const next = [...prev, "next"];
-        saveSprintSlots(next, sprints);
-        return next;
-      });
-    }
-  }, [slotSprints.length, sprints]);
+  // handleAddSlot removed: "+" button now opens the sprint modal directly in SprintSlots
 
   // Load saved sprint slots from the API via SWR
-  const { data: savedSlots } = useSprintSlots();
+  const { data: savedSlots, isLoading: slotsLoading } = useSprintSlots();
   useEffect(() => {
+    if (slotsLoading) return;
     if (Array.isArray(savedSlots) && savedSlots.length > 0) {
       const loaded = savedSlots
         .sort((a, b) => a.slotIndex - b.slotIndex)
         .map((s) => s.sprintId);
       setSlotSprints(loaded);
     }
-  }, [savedSlots]);
+    slotsInitialized.current = true;
+  }, [savedSlots, slotsLoading]);
 
+  // Fallback: if no slots saved in DB and sprints are available, pick the first active sprint
   useEffect(() => {
+    if (!slotsInitialized.current) return;
     if (slotSprints.length === 0 && sprints.length > 0) {
       const active = sprints.find((s) => s.state === "active");
       if (active) setSlotSprints([active.id]);
@@ -555,7 +553,6 @@ export default function SprintBoard() {
           onSlotEdit={handleSlotEdit}
           onSprintSelect={handleSprintSelect}
           onEditClose={() => setEditingSlot(null)}
-          onAddSlot={handleAddSlot}
           syncing={syncing}
           onRefresh={handleRefresh}
           onSprintListSelect={handleSprintListSelect}

@@ -181,51 +181,62 @@ export function SprintListModal({
               : "No sprints match your search."}
           </div>
         ) : (
-          filtered.map((sprint) => (
-            <button
-              type="button"
-              key={sprint.id}
-              onClick={() => {
-                onSelect(String(sprint.id), sprint.name);
-                onClose();
-              }}
-              className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/65 cursor-pointer hover:bg-white/[0.05] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.07]"
-            >
-              <span className="flex items-center gap-2 min-w-0">
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: stateColor(sprint.state) }}
-                />
-                <span className="truncate">{sprint.name}</span>
-                <span className="shrink-0 text-[10px] tabular-nums text-white/15">#{sprint.id}</span>
-              </span>
-              <span className="ml-2 flex shrink-0 items-center gap-1">
-                <span className="text-xs text-white/20">
-                  {dateRange(sprint) || stateLabel(sprint.state)}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPin(String(sprint.id));
-                  }}
-                  className={`flex h-5 w-5 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                    pinnedIds.has(String(sprint.id))
-                      ? "text-[var(--color-brand-400)]"
-                      : "text-white/15 hover:text-white/40 hover:bg-white/[0.04]"
-                  }`}
-                  title={pinnedIds.has(String(sprint.id)) ? "Pinned to tab" : "Pin to tab"}
-                >
-                  <Pin
-                    className="h-3 w-3"
-                    strokeWidth={1.5}
-                    fill={pinnedIds.has(String(sprint.id)) ? "currentColor" : "none"}
+          filtered.map((sprint) => {
+            const isPinned = pinnedIds.has(String(sprint.id));
+            return (
+              <div
+                key={sprint.id}
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/65 cursor-pointer hover:bg-white/[0.05] hover:text-white"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  onSelect(String(sprint.id), sprint.name);
+                  onClose();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(String(sprint.id), sprint.name);
+                    onClose();
+                  }
+                }}
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: stateColor(sprint.state) }}
                   />
-                </button>
-              </span>
-            </button>
-          ))
-        )}
+                  <span className="truncate">{sprint.name}</span>
+                  <span className="shrink-0 text-[10px] tabular-nums text-white/15">#{sprint.id}</span>
+                </span>
+                <span className="ml-2 flex shrink-0 items-center gap-1">
+                  <span className="text-xs text-white/20">
+                    {dateRange(sprint) || stateLabel(sprint.state)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPin(String(sprint.id));
+                    }}
+                    className={`flex h-5 w-5 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                      isPinned
+                        ? "text-[var(--color-brand-400)]"
+                        : "text-white/15 hover:text-white/40 hover:bg-white/[0.04]"
+                    }`}
+                    title={isPinned ? "Unpin from tabs" : "Pin to tab"}
+                  >
+                    <Pin
+                      className="h-3 w-3"
+                      strokeWidth={1.5}
+                      fill={isPinned ? "currentColor" : "none"}
+                    />
+                  </button>
+                </span>
+              </div>
+            );
+          }))
+        }
       </div>
 
       {/* Sync button */}

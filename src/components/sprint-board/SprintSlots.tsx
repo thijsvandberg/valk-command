@@ -149,7 +149,6 @@ export function SprintSlots({
   onSlotEdit,
   onSprintSelect,
   onEditClose,
-  onAddSlot,
   syncing,
   onRefresh,
   onSprintListSelect,
@@ -163,12 +162,13 @@ export function SprintSlots({
   onSlotEdit: (idx: number) => void;
   onSprintSelect: (sprintId: string) => void;
   onEditClose: () => void;
-  onAddSlot: () => void;
   syncing: boolean;
   onRefresh: () => void;
   onSprintListSelect: (sprintId: string) => void;
   onAddSlotWithSprint: (sprintId: string) => void;
 }) {
+  const [addModalOpen, setAddModalOpen] = useState(false);
+
   return (
     <div className="flex items-center gap-1 border-b border-white/[0.06] px-5 pt-4 pb-0">
       {slotSprints.map((sprintId, idx) => {
@@ -184,14 +184,14 @@ export function SprintSlots({
                 e.preventDefault();
                 onSlotEdit(idx);
               }}
-              className={`relative flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              className={`relative flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 isActive
-                  ? "bg-[var(--color-surface-base)] text-white border border-white/[0.06] border-b-transparent -mb-px"
-                  : "text-white/40 hover:text-white/60 hover:bg-white/[0.02] active:bg-white/[0.04]"
+                  ? "bg-[var(--color-surface-base)] text-white border border-white/[0.08] border-b-transparent -mb-px after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-[var(--color-brand-400)] after:rounded-full"
+                  : "text-white/35 hover:text-white/55 hover:bg-white/[0.02] active:bg-white/[0.04]"
               }`}
             >
               {sprint.state === "active" && (
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]" />
+                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-white/20"}`} />
               )}
               {sprint.name}
             </button>
@@ -206,15 +206,30 @@ export function SprintSlots({
         );
       })}
 
-      {/* Add slot button */}
-      <button
-        type="button"
-        onClick={onAddSlot}
-        className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
-        title="Add sprint slot"
-      >
-        <Plus className="h-4 w-4" strokeWidth={1.5} />
-      </button>
+      {/* Add slot button - opens sprint modal */}
+      {slotSprints.length < 4 && (
+        <div className="relative ml-1">
+          <button
+            type="button"
+            onClick={() => setAddModalOpen((v) => !v)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+            title="Pin a sprint"
+          >
+            <Plus className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+          {addModalOpen && (
+            <SprintListModal
+              onClose={() => setAddModalOpen(false)}
+              onSelect={(id, name) => {
+                onSprintListSelect(id);
+                setAddModalOpen(false);
+              }}
+              onPin={(id) => onAddSlotWithSprint(id)}
+              pinnedIds={new Set(slotSprints)}
+            />
+          )}
+        </div>
+      )}
 
       {/* Right side: sprint list + refresh */}
       <div className="ml-auto flex items-center gap-2 pb-2.5">
