@@ -2,6 +2,12 @@
 
 ## Up Next
 
+- [x] VC-018: Test Stability & CI Reliability (critical - tests hang, 5 failures, intermittent build)
+- [ ] VC-019: Database Integrity & Performance (CHECK constraint mismatch, missing indexes, N+1 queries, race condition)
+- [ ] VC-020: API Route Hardening (input validation, error sanitization, agent proxy safety)
+- [ ] VC-021: Jira Sync Resilience (rate limiting, retry logic, cancel race condition, cache staleness)
+- [ ] VC-022: Frontend Quality & Component Health (memory leaks, error boundaries, 2162-line page decomposition)
+
 ## Later
 
 - [ ] Sprint Board - Jira sync + PO metadata layer
