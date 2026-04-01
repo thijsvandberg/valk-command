@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticketLocalEdit } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { ticketLocalEdit, storyVersion } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -86,4 +86,53 @@ export async function PUT(
   });
 
   return NextResponse.json(result);
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ key: string }> },
+) {
+  const { key } = await params;
+
+  await db
+    .delete(ticketLocalEdit)
+    .where(eq(ticketLocalEdit.ticketKey, key));
+
+  await logActivity({
+    type: "local-edit",
+    scope: key,
+    summary: "Discarded all local edits",
+  });
+
+  return NextResponse.json({ success: true });
+}
+
+export async function PATCH(
+  _request: Request,
+  { params }: { params: Promise<{ key: string }> },
+) {
+  const { key } = await params;
+
+  // Rebase: update baseJiraVersion on all local edits to match the latest stored version
+  const latestVersion = await db.query.storyVersion.findFirst({
+    where: eq(storyVersion.jiraKey, key),
+    orderBy: [desc(storyVersion.createdAt)],
+  });
+
+  if (!latestVersion) {
+    return NextResponse.json({ error: "No version found to rebase onto" }, { status: 404 });
+  }
+
+  await db
+    .update(ticketLocalEdit)
+    .set({ baseJiraVersion: latestVersion.contentHash })
+    .where(eq(ticketLocalEdit.ticketKey, key));
+
+  await logActivity({
+    type: "local-edit",
+    scope: key,
+    summary: "Rebased local edits onto latest Jira version",
+  });
+
+  return NextResponse.json({ success: true, newBase: latestVersion.contentHash });
 }

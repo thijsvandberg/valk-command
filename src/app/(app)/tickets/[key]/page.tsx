@@ -75,6 +75,7 @@ export default function TicketDetailPage({
   const [hasLocalTitleEdit, setHasLocalTitleEdit] = useState(false);
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "history" | "review" | "refinement">("content");
+  const [showConflictDiff, setShowConflictDiff] = useState(false);
   const [versionCount, setVersionCount] = useState(0);
 
   useEffect(() => {
@@ -185,17 +186,25 @@ export default function TicketDetailPage({
             <span className="font-mono text-white/60">{key}</span>
           </nav>
 
-          {/* Conflict warning */}
+          {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
-            <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("history");
+                setShowConflictDiff(true);
+              }}
+              className="mt-3 flex w-full items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3 text-left cursor-pointer hover:bg-[#ea8744]/[0.09] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50 active:scale-[0.995]"
+              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+            >
               <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
                 <p className="mt-0.5 text-xs text-white/40">
-                  Jira was updated since your local edit. Review the changes before pushing.
+                  Jira was updated since your local edit. Click to review and resolve.
                 </p>
               </div>
-            </div>
+            </button>
           )}
 
           {/* Header */}
@@ -313,7 +322,16 @@ export default function TicketDetailPage({
             </>
           )}
 
-          {activeTab === "history" && <TicketHistory ticket={ticket} />}
+          {activeTab === "history" && (
+            <TicketHistory
+              ticket={ticket}
+              showConflictDiff={showConflictDiff}
+              onConflictResolved={() => {
+                setShowConflictDiff(false);
+                mutateTicket();
+              }}
+            />
+          )}
           {activeTab === "review" && <TicketReview ticketKey={key} />}
           {activeTab === "refinement" && <TicketRefinement ticketKey={key} />}
 

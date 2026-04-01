@@ -8,8 +8,6 @@ import { exportDiffAsMarkdown } from "@/components/story-diff/export-diff";
 import { ChevronRight, ChevronLeft, Download } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
-// DB stores UTC timestamps (from SQLite datetime('now')). Append Z so the
-// browser's Date constructor treats them as UTC and renders in local time.
 function formatVersionDate(iso: string): string {
   const raw = iso.endsWith("Z") ? iso : `${iso}Z`;
   const d = new Date(raw);
@@ -33,10 +31,24 @@ function formatVersionDateShort(iso: string): string {
   });
 }
 
-export function TicketHistory({ ticket }: { ticket: Ticket }) {
+export interface TicketHistoryProps {
+  ticket: Ticket;
+  /** When set, auto-open the conflict diff (local draft vs latest Jira) */
+  showConflictDiff?: boolean;
+  /** Called when user resolves the conflict */
+  onConflictResolved?: () => void;
+}
+
+export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [diffMode, setDiffMode] = useState<DiffMode>("unified");
+
+  // Single source of truth for comparison
+  const [compareOld, setCompareOld] = useState<number | null>(null);
+  const [compareNew, setCompareNew] = useState<number | null>(null);
+  const [showingDiff, setShowingDiff] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +76,6 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
           });
         }
 
-        // Inject local description edit as a draft version at the top
         if (Array.isArray(editData) && editData.length > 0) {
           const descEdit = editData.find((e: { field: string }) => e.field === "description");
           if (descEdit) {
@@ -92,38 +103,89 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
     return () => { cancelled = true; };
   }, [ticket.key]);
 
-  const handleExportDiff = useCallback(
-    (oldText: string, newText: string, oldLabel: string, newLabel: string) => {
-      exportDiffAsMarkdown({
-        ticketKey: ticket.key,
-        oldText,
-        newText,
-        oldLabel,
-        newLabel,
-      });
-    },
-    [ticket.key],
-  );
-
   const sorted = [...ticketVersions].sort(
     (a, b) => b.versionNumber - a.versionNumber,
   );
 
-  const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
+  // Initialize defaults once versions load
+  useEffect(() => {
+    if (ticketVersions.length < 2) return;
+    if (compareOld !== null || compareNew !== null) return;
+    const s = [...ticketVersions].sort((a, b) => b.versionNumber - a.versionNumber);
+    setCompareOld(s[1].versionNumber);
+    setCompareNew(s[0].versionNumber);
+  }, [ticketVersions, compareOld, compareNew]);
 
-  const defaultNewVer = sorted.length > 0 ? sorted[0].versionNumber : null;
-  const defaultOldVer = sorted.length > 1 ? sorted[1].versionNumber : null;
-  const [compareOld, setCompareOld] = useState<number | null>(defaultOldVer);
-  const [compareNew, setCompareNew] = useState<number | null>(defaultNewVer);
+  // Auto-open conflict diff: compare local draft vs latest Jira version
+  useEffect(() => {
+    if (!showConflictDiff || sorted.length < 2) return;
+    const draft = sorted.find((v) => v.label === "draft");
+    const jiraCurrent = sorted.find((v) => v.label === "current");
+    if (draft && jiraCurrent) {
+      setCompareOld(jiraCurrent.versionNumber);
+      setCompareNew(draft.versionNumber);
+      setShowingDiff(true);
+    }
+  }, [showConflictDiff, sorted.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectedIdx = selectedVersion !== null
-    ? sorted.findIndex((v) => v.versionNumber === selectedVersion)
-    : null;
-  const current = selectedIdx !== null ? sorted[selectedIdx] : null;
-  const previous = selectedIdx !== null ? sorted[selectedIdx + 1] ?? null : null;
+  const handleExportDiff = useCallback(
+    (oldText: string, newText: string, oldLabel: string, newLabel: string) => {
+      exportDiffAsMarkdown({ ticketKey: ticket.key, oldText, newText, oldLabel, newLabel });
+    },
+    [ticket.key],
+  );
 
   const compareOldVersion = sorted.find((v) => v.versionNumber === compareOld) ?? null;
   const compareNewVersion = sorted.find((v) => v.versionNumber === compareNew) ?? null;
+  const hasDraft = sorted.some((v) => v.label === "draft");
+  const jiraCurrent = sorted.find((v) => v.label === "current");
+  const isConflictView =
+    showConflictDiff &&
+    compareOldVersion?.label === "current" &&
+    compareNewVersion?.label === "draft";
+
+  // Dropdown change: immediately show diff
+  const handleOldChange = (val: number) => {
+    setCompareOld(val);
+    setShowingDiff(true);
+  };
+  const handleNewChange = (val: number) => {
+    setCompareNew(val);
+    setShowingDiff(true);
+  };
+
+  // Version list click: set comparison and show diff
+  const handleVersionClick = (versionNumber: number) => {
+    const idx = sorted.findIndex((v) => v.versionNumber === versionNumber);
+    const prev = sorted[idx + 1];
+    setCompareNew(versionNumber);
+    setCompareOld(prev?.versionNumber ?? versionNumber);
+    setShowingDiff(true);
+  };
+
+  const handleKeepLocal = useCallback(async () => {
+    setResolving(true);
+    try {
+      await fetch(`/api/tickets/${ticket.key}/local-edits`, { method: "PATCH" });
+      onConflictResolved?.();
+    } catch (err) {
+      console.error("Failed to rebase local edits:", err);
+    } finally {
+      setResolving(false);
+    }
+  }, [ticket.key, onConflictResolved]);
+
+  const handleDiscardLocal = useCallback(async () => {
+    setResolving(true);
+    try {
+      await fetch(`/api/tickets/${ticket.key}/local-edits`, { method: "DELETE" });
+      onConflictResolved?.();
+    } catch (err) {
+      console.error("Failed to discard local edits:", err);
+    } finally {
+      setResolving(false);
+    }
+  }, [ticket.key, onConflictResolved]);
 
   const selectStyle = "rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/70 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none";
 
@@ -158,6 +220,7 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
 
   return (
     <div className="mt-8">
+      {/* Header: title + mode toggle */}
       <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
         <div className="flex items-center gap-2">
           <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">History</h3>
@@ -165,45 +228,43 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
             {sorted.length}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center overflow-hidden rounded-md border border-white/[0.08]">
-            <button
-              type="button"
-              onClick={() => setDiffMode("unified")}
-              title="Unified diff view"
-              className={`px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
-                diffMode === "unified"
-                  ? "bg-white/[0.08] text-white/70"
-                  : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
-              }`}
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-            >
-              Unified
-            </button>
-            <button
-              type="button"
-              onClick={() => setDiffMode("side-by-side")}
-              title="Side-by-side diff view"
-              className={`border-l border-white/[0.08] px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
-                diffMode === "side-by-side"
-                  ? "bg-white/[0.08] text-white/70"
-                  : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
-              }`}
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-            >
-              Split
-            </button>
-          </div>
-
+        <div className="flex items-center overflow-hidden rounded-md border border-white/[0.08]">
+          <button
+            type="button"
+            onClick={() => setDiffMode("unified")}
+            title="Unified diff view"
+            className={`px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
+              diffMode === "unified"
+                ? "bg-white/[0.08] text-white/70"
+                : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
+            }`}
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+          >
+            Unified
+          </button>
+          <button
+            type="button"
+            onClick={() => setDiffMode("side-by-side")}
+            title="Side-by-side diff view"
+            className={`border-l border-white/[0.08] px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
+              diffMode === "side-by-side"
+                ? "bg-white/[0.08] text-white/70"
+                : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
+            }`}
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+          >
+            Split
+          </button>
         </div>
       </div>
 
+      {/* Compare dropdowns: always visible when >1 version */}
       {sorted.length > 1 && (
         <div className="mt-3 mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
           <span className="text-xs text-white/40">Compare</span>
           <select
             value={compareOld ?? ""}
-            onChange={(e) => setCompareOld(Number(e.target.value))}
+            onChange={(e) => handleOldChange(Number(e.target.value))}
             className={selectStyle}
           >
             {sorted.map((v) => (
@@ -215,7 +276,7 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
           <span className="text-xs text-white/20">with</span>
           <select
             value={compareNew ?? ""}
-            onChange={(e) => setCompareNew(Number(e.target.value))}
+            onChange={(e) => handleNewChange(Number(e.target.value))}
             className={selectStyle}
           >
             {sorted.map((v) => (
@@ -224,27 +285,28 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
               </option>
             ))}
           </select>
-          {compareOldVersion && compareNewVersion && compareOld !== compareNew && (
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedVersion(null);
-              }}
-              className="ml-2 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-            >
-              View comparison
-            </button>
-          )}
         </div>
       )}
 
-      {selectedVersion === null && compareOldVersion && compareNewVersion && compareOld !== compareNew && sorted.length > 1 ? (
+      {/* Diff view */}
+      {showingDiff && compareOldVersion && compareNewVersion && compareOld !== compareNew ? (
         <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowingDiff(false)}
+            className="mb-3 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+          >
+            <ChevronLeft size={14} strokeWidth={1.5} className="text-white/40" />
+            Back to version list
+          </button>
+
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-3 text-xs text-white/40">
               <span className="font-medium text-white/60">
-                Version {compareOldVersion.versionNumber} &rarr; Version {compareNewVersion.versionNumber}
+                {isConflictView
+                  ? "Latest from Jira \u2192 Your local edits"
+                  : `Version ${compareOldVersion.versionNumber} \u2192 Version ${compareNewVersion.versionNumber}`}
               </span>
             </div>
             <button
@@ -265,81 +327,49 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
               Export diff
             </button>
           </div>
+
           <StoryDiff
             oldText={compareOldVersion.content}
             newText={compareNewVersion.content}
-            oldLabel={`v${compareOldVersion.versionNumber}`}
-            newLabel={`v${compareNewVersion.versionNumber}`}
+            oldLabel={isConflictView ? "Latest from Jira" : `v${compareOldVersion.versionNumber}`}
+            newLabel={isConflictView ? "Your local edits" : `v${compareNewVersion.versionNumber}`}
             mode={diffMode}
           />
-        </div>
-      ) : null}
 
-      {selectedVersion !== null && current ? (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setSelectedVersion(null)}
-            className="mb-3 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-          >
-            <ChevronLeft size={14} strokeWidth={1.5} className="text-white/40" />
-            Back to version list
-          </button>
-
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-3 text-xs text-white/40">
-              <span className="font-medium text-white/60">
-                {previous
-                  ? `Version ${previous.versionNumber} \u2192 Version ${current.versionNumber}`
-                  : `Version ${current.versionNumber} (initial)`}
-              </span>
-              <span>{formatVersionDate(current.date)}</span>
-            </div>
-            {previous && (
+          {/* Conflict resolution buttons */}
+          {isConflictView && (
+            <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+              <span className="text-xs text-white/40">Resolve conflict:</span>
               <button
                 type="button"
-                onClick={() =>
-                  handleExportDiff(
-                    previous.content,
-                    current.content,
-                    `v${previous.versionNumber}`,
-                    `v${current.versionNumber}`,
-                  )
-                }
-                className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-                title="Export diff as markdown"
+                disabled={resolving}
+                onClick={handleKeepLocal}
+                className="rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
               >
-                <Download size={12} strokeWidth={1.2} />
-                Export diff
+                {resolving ? "Resolving..." : "Keep local edits"}
               </button>
-            )}
-          </div>
-
-          {previous ? (
-            <StoryDiff
-              oldText={previous.content}
-              newText={current.content}
-              oldLabel={`v${previous.versionNumber}`}
-              newLabel={`v${current.versionNumber}`}
-              mode={diffMode}
-            />
-          ) : (
-            <div className="rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-sm leading-[1.7] text-white/80 whitespace-pre-wrap">
-              {current.content}
+              <button
+                type="button"
+                disabled={resolving}
+                onClick={handleDiscardLocal}
+                className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              >
+                Discard local edits
+              </button>
             </div>
           )}
         </div>
       ) : (
+        /* Version list */
         <div className="mt-3 overflow-hidden rounded-lg border border-white/[0.06]">
           {sorted.map((version, idx) => {
             const isFirst = idx === sorted.length - 1;
-
             return (
               <div
                 key={version.versionNumber}
-                onClick={() => setSelectedVersion(version.versionNumber)}
+                onClick={() => handleVersionClick(version.versionNumber)}
                 className={`flex w-full items-center gap-3 px-4 py-3 text-left cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.04] ${
                   idx < sorted.length - 1 ? "border-b border-white/[0.04]" : ""
                 }`}
