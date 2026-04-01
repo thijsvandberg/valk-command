@@ -1,6 +1,6 @@
 # VC-019: Database Integrity & Performance
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** High
 **Estimate:** Medium
 **Depends on:** VC-018
@@ -46,9 +46,9 @@ The app uses SQLite + Drizzle ORM (`src/db/schema.ts`). The schema defines 11 ta
 - [x] Verify sprint slot saving still works in the UI
 
 ### Phase 5: Align test helpers with migrations
-- [ ] `src/db/test-utils.ts:6-195` manually creates tables with raw SQL, duplicating the schema
-- [ ] Refactor `createTestDb()` to run Drizzle migrations instead of manual CREATE TABLE statements
-- [ ] Verify all existing tests still pass with the new approach
+- [x] `src/db/test-utils.ts:6-195` manually creates tables with raw SQL, duplicating the schema
+- [x] Refactor `createTestDb()` to run Drizzle migrations instead of manual CREATE TABLE statements
+- [x] Verify all existing tests still pass with the new approach
 
 ## Key Files
 
