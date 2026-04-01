@@ -1,6 +1,6 @@
 # VC-015: Sprint Sync Improvements
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -36,45 +36,46 @@ Note: the comment in jira-client.ts line 6 ("Uses REST API v3 exclusively to sta
 
 ## Acceptance Criteria
 
-### Replace sprint discovery with Agile API
-- [ ] Add `getSprintsAgile(states)` method to `jira-client.ts` using `/rest/agile/1.0/board/{boardId}/sprint`
-- [ ] Support pagination (`startAt` + `maxResults`, loop until `isLast: true`)
-- [ ] Support state filtering: `?state=active,future` and `?state=closed`
-- [ ] Replace existing `getSprints()` calls with the new method
-- [ ] Verify all ~20 active/future sprints from Jira appear after sync
+### Replace sprint discovery with paginated JQL
+Note: Agile API returned 401 (scope mismatch) with current API token. Implemented
+paginated JQL approach instead, which discovers all sprints by paginating through issues.
+- [x] Add pagination to `getSprints()` (loop until `isLast`/no `nextPageToken`)
+- [x] Support state filtering via JQL sprint functions
+- [x] Add `maxSprints` parameter to limit closed sprint discovery
+- [x] Verified: 18 active/future found (was 12), 36 closed sprints synced
 
 ### Sync closed sprints (History tab)
-- [ ] Sync closed sprints separately with a limit (e.g., last 30 closed sprints)
-- [ ] Store closed sprints alongside active/future in the DB cache (`jira_sprints` appSetting)
-- [ ] History tab in sprint modal shows closed sprints after sync
+- [x] Sync closed sprints separately with a limit (e.g., last 30 closed sprints)
+- [x] Store closed sprints alongside active/future in the DB cache (`jira_sprints` appSetting)
+- [x] History tab in sprint modal shows closed sprints after sync
 
 ### Scoped sync button
-- [ ] Sync button in the modal syncs only the active tab's scope
-- [ ] "Sprints" tab: syncs active + future sprints
-- [ ] "History" tab: syncs closed sprints
-- [ ] Button label reflects scope: "Sync sprints" / "Sync history"
+- [x] Sync button in the modal syncs only the active tab's scope
+- [x] "Sprints" tab: syncs active + future sprints
+- [x] "History" tab: syncs closed sprints
+- [x] Button label reflects scope: "Sync sprints" / "Sync history"
 
 ### Hidden sprints
-- [ ] Add `hidden_sprints` key in `appSetting` (JSON array of sprint IDs)
-- [ ] Add a third tab "Hidden" in the sprint modal
-- [ ] Each sprint row gets a hide toggle (eye icon)
-- [ ] Hidden sprints are filtered out of Sprints and History tabs
-- [ ] Hidden sprints can be restored from the Hidden tab
-- [ ] Hiding a pinned sprint also unpins it from the tab bar
+- [x] Add `hidden_sprints` key in `appSetting` (JSON array of sprint IDs)
+- [x] Add a third tab "Hidden" in the sprint modal
+- [x] Each sprint row gets a hide toggle (eye icon)
+- [x] Hidden sprints are filtered out of Sprints and History tabs
+- [x] Hidden sprints can be restored from the Hidden tab
+- [x] Hiding a pinned sprint also unpins it from the tab bar
 
 ### Tab label rename
-- [ ] "Current & Upcoming" -> "Sprints"
-- [ ] "History" stays as-is
-- [ ] "Hidden" for the new third tab
+- [x] "Current & Upcoming" -> "Sprints"
+- [x] "History" stays as-is
+- [x] "Hidden" for the new third tab
 
 ### Sprint list sort order
-- [ ] Active sprints first (sorted by startDate), then future sprints (sorted by name)
-- [ ] History: sorted by endDate descending (most recent first)
-- [ ] Currently undefined (depends on Jira issue update order)
+- [x] Active sprints first (sorted by startDate), then future sprints (sorted by name)
+- [x] History: sorted by endDate descending (most recent first)
+- [x] Currently undefined (depends on Jira issue update order)
 
 ### Error feedback in modal
-- [ ] Show sync errors visually in the modal (not just console.log)
-- [ ] Brief error message with retry option
+- [x] Show sync errors visually in the modal (not just console.log)
+- [x] Brief error message with retry option
 
 ## Technical Notes
 

@@ -37,12 +37,12 @@ Note: the comment in jira-client.ts line 6 ("Uses REST API v3 exclusively to sta
 ## Acceptance Criteria
 
 ### Replace sprint discovery with paginated JQL
-Note: Agile API returned 401 (scope mismatch) with current API token. Fell back to
+Note: Agile API returned 401 (scope mismatch) with current API token. Implemented
 paginated JQL approach instead, which discovers all sprints by paginating through issues.
-- [x] Add pagination to `getSprints()` in `jira-client.ts` (loop until `isLast`/no `nextPageToken`)
+- [x] Add pagination to `getSprints()` (loop until `isLast`/no `nextPageToken`)
 - [x] Support state filtering via JQL sprint functions
 - [x] Add `maxSprints` parameter to limit closed sprint discovery
-- [x] Verify sprints: 18 active/future found (was 12), 36 closed sprints synced
+- [x] Verified: 18 active/future found (was 12), 36 closed sprints synced
 
 ### Sync closed sprints (History tab)
 - [x] Sync closed sprints separately with a limit (e.g., last 30 closed sprints)
