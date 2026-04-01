@@ -75,8 +75,28 @@ export default function SprintBoard() {
   const { data: rawJiraSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawJiraSprints), [rawJiraSprints]);
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [slotSprints, setSlotSprints] = useState<string[]>([]);
-  const [activeSlot, setActiveSlot] = useState(0);
+  // Derive active slot from URL (single source of truth)
+  const activeSlot = useMemo(() => {
+    const urlSprint = searchParams.get("sprint");
+    if (urlSprint && slotSprints.length > 0) {
+      const idx = slotSprints.indexOf(urlSprint);
+      if (idx >= 0) return idx;
+    }
+    return 0;
+  }, [searchParams, slotSprints]);
+
+  const setActiveSlot = useCallback((slot: number) => {
+    const sprintId = slotSprints[slot];
+    if (!sprintId) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sprint", sprintId);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [slotSprints, searchParams, router]);
+
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [checkedTickets, setCheckedTickets] = useState<Set<string>>(new Set());
@@ -142,35 +162,8 @@ export default function SprintBoard() {
 
   // Persistence is handled automatically by useLocalStorage
 
-  // URL search param sync
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const slotsInitialized = useRef(false);
-
-  // Sync active slot from URL after slots are loaded
-  useEffect(() => {
-    if (!slotsInitialized.current || slotSprints.length === 0) return;
-    const urlSprint = searchParams.get("sprint");
-    if (urlSprint) {
-      const slotIdx = slotSprints.indexOf(urlSprint);
-      if (slotIdx >= 0 && slotIdx !== activeSlot) {
-        setActiveSlot(slotIdx);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slotSprints]);
-
-  // Sync URL when active sprint changes (only after slots are initialized)
   const activeSprintId = slotSprints[activeSlot];
-  useEffect(() => {
-    if (!slotsInitialized.current || !activeSprintId) return;
-    const current = searchParams.get("sprint");
-    if (current !== activeSprintId) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("sprint", activeSprintId);
-      router.replace(`?${params.toString()}`, { scroll: false });
-    }
-  }, [activeSprintId, searchParams, router]);
+  const slotsInitialized = useRef(false);
 
   const activeSprint = sprints.find((s) => s.id === activeSprintId);
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
@@ -427,15 +420,10 @@ export default function SprintBoard() {
       next.splice(oldIndex, 1);
       next.splice(newIndex, 0, activeId);
       saveSprintSlots(next, sprints);
-      // Keep active slot pointing at the same sprint
-      const activeSprintBefore = prev[activeSlot];
-      const newActiveIdx = next.indexOf(activeSprintBefore);
-      if (newActiveIdx >= 0 && newActiveIdx !== activeSlot) {
-        setActiveSlot(newActiveIdx);
-      }
+      // activeSlot is derived from URL, so it auto-adjusts to the new array order
       return next;
     });
-  }, [sprints, activeSlot]);
+  }, [sprints]);
 
   // Load saved sprint slots from the API via SWR
   const { data: savedSlots, isLoading: slotsLoading } = useSprintSlots();

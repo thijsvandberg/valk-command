@@ -61,10 +61,10 @@ The sprint board and ticket detail views are the most complex parts of the UI. `
 - [x] All existing functionality must be preserved (test by manual verification of all 4 tabs)
 
 ### Phase 5: Fix circular useEffect cascade
-- [ ] `src/components/sprint-board/SprintBoard.tsx:229-256` has two effects that can trigger each other:
+- [x] `src/components/sprint-board/SprintBoard.tsx:229-256` has two effects that can trigger each other:
   - Effect 1 (line 234): watches `slotSprints` -> updates `activeSlot`
   - Effect 2 (line 248): watches `activeSlot` -> updates URL
-- [ ] Refactor to use URL as single source of truth, with one effect that syncs state from URL on mount/navigation
+- [x] Refactor to use URL as single source of truth, with one effect that syncs state from URL on mount/navigation
 
 ## Key Files
 
