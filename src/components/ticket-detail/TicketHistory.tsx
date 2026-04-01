@@ -5,7 +5,7 @@ import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import type { DiffMode } from "@/components/story-diff/StoryDiff";
 import { exportDiffAsMarkdown } from "@/components/story-diff/export-diff";
-import { ChevronRight, ChevronLeft, Download } from "lucide-react";
+import { ChevronRight, ChevronLeft, Download, GitMerge, Save } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
 function formatVersionDate(iso: string): string {
@@ -59,6 +59,9 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
   const [compareNew, setCompareNew] = useState<number | null>(null);
   const [showingDiff, setShowingDiff] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [interactiveMode, setInteractiveMode] = useState(false);
+  const [mergeResult, setMergeResult] = useState<string | null>(null);
+  const [savingMerge, setSavingMerge] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,6 +209,24 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
     }
   }, [ticket.key, onConflictResolved]);
 
+  const handleSaveMerge = useCallback(async () => {
+    if (!mergeResult) return;
+    setSavingMerge(true);
+    try {
+      await fetch(`/api/tickets/${ticket.key}/local-edits`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field: "description", localValue: mergeResult }),
+      });
+      setInteractiveMode(false);
+      onConflictResolved?.("keep");
+    } catch (err) {
+      console.error("Failed to save merge result:", err);
+    } finally {
+      setSavingMerge(false);
+    }
+  }, [ticket.key, mergeResult, onConflictResolved]);
+
   const handleRevertTo = useCallback(async (version: StoryVersion) => {
     setResolving(true);
     try {
@@ -344,23 +365,42 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
                   : `${versionLabel(compareOldVersion)} \u2192 ${versionLabel(compareNewVersion)}`}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                handleExportDiff(
-                  compareOldVersion.content,
-                  compareNewVersion.content,
-                  `v${compareOldVersion.versionNumber}`,
-                  `v${compareNewVersion.versionNumber}`,
-                )
-              }
-              className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-              title="Export diff as markdown"
-            >
-              <Download size={12} strokeWidth={1.2} />
-              Export diff
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setInteractiveMode((p) => !p);
+                  setMergeResult(null);
+                }}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
+                  interactiveMode
+                    ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)]"
+                    : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+                }`}
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                title={interactiveMode ? "Exit review mode" : "Review changes per section"}
+              >
+                <GitMerge size={12} strokeWidth={1.5} />
+                {interactiveMode ? "Exit review" : "Review & merge"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleExportDiff(
+                    compareOldVersion.content,
+                    compareNewVersion.content,
+                    `v${compareOldVersion.versionNumber}`,
+                    `v${compareNewVersion.versionNumber}`,
+                  )
+                }
+                className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                title="Export diff as markdown"
+              >
+                <Download size={12} strokeWidth={1.2} />
+                Export diff
+              </button>
+            </div>
           </div>
 
           <StoryDiff
@@ -369,7 +409,26 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
             oldLabel={isConflictView ? "Latest from Jira" : versionLabel(compareOldVersion)}
             newLabel={isConflictView ? "Your local edits" : versionLabel(compareNewVersion)}
             mode={diffMode}
+            interactive={interactiveMode}
+            onResultChange={setMergeResult}
           />
+
+          {/* Save bar when in interactive mode */}
+          {interactiveMode && mergeResult !== null && (
+            <div className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-600)]/[0.06] px-4 py-3">
+              <span className="text-xs text-white/50">Save the merged result as a local edit</span>
+              <button
+                type="button"
+                disabled={savingMerge}
+                onClick={handleSaveMerge}
+                className="ml-auto flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              >
+                <Save size={13} strokeWidth={1.5} />
+                {savingMerge ? "Saving..." : "Save as local edit"}
+              </button>
+            </div>
+          )}
 
           {/* Action bar: context-dependent on what's being compared */}
           {(() => {
