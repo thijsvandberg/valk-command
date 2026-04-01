@@ -127,11 +127,13 @@ export function EditableDescription({
   initialDescription,
   onLocalEdit,
   hasConflict = false,
+  onViewDiff,
 }: {
   ticketKey: string;
   initialDescription: string;
   onLocalEdit: (hasEdit: boolean) => void;
   hasConflict?: boolean;
+  onViewDiff?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialDescription);
@@ -195,9 +197,15 @@ export function EditableDescription({
       <div className="flex items-center gap-2 border-b border-white/[0.06] pb-2">
         <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">Description</h3>
         {hasLocalEdit && (
-          <span className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
+          <button
+            type="button"
+            onClick={onViewDiff}
+            className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "background-color 0.15s ease" }}
+            title="View diff in History tab"
+          >
             Locally modified
-          </span>
+          </button>
         )}
         {!editing && (
           <button

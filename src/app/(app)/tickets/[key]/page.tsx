@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
 import {
-  EPIC_COLORS,
   type Ticket,
   type TicketDetail,
 } from "@/types/ticket";
@@ -18,7 +17,6 @@ import {
 import { useTicketDetail, useJiraSprints, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
-import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { getJiraUrl } from "@/components/sprint-board/TicketTable";
 import {
   EditableTitle,
@@ -154,8 +152,6 @@ export default function TicketDetailPage({
     );
   }
 
-  const jiraStatusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-  const epicColor = ticket.epic ? EPIC_COLORS[ticket.epic] : null;
   const hasLocalEdits = hasLocalTitleEdit || hasLocalDescEdit;
 
   return (
@@ -216,9 +212,15 @@ export default function TicketDetailPage({
                 <Flag size={16} className="text-[#e5534b]" fill="currentColor" strokeWidth={0} />
               )}
               {hasLocalEdits && (
-                <span className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("history")}
+                  className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  style={{ transition: "background-color 0.15s ease" }}
+                  title="View diff in History tab"
+                >
                   Modified locally
-                </span>
+                </button>
               )}
               <div className="ml-auto flex items-center gap-2">
                 <button
@@ -250,27 +252,6 @@ export default function TicketDetailPage({
               />
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span
-                className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium"
-                style={{ backgroundColor: jiraStatusColor.bg, color: jiraStatusColor.text }}
-              >
-                {ticket.jiraStatus}
-              </span>
-              {epicColor && (
-                <span
-                  className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium"
-                  style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
-                >
-                  {ticket.epic}
-                </span>
-              )}
-              {ticket.storyPoints !== null && (
-                <span className="inline-flex items-center rounded-md bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-white/50">
-                  {ticket.storyPoints} pts
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Tab bar */}
@@ -312,6 +293,7 @@ export default function TicketDetailPage({
                 initialDescription={detail?.description ?? "No description available."}
                 onLocalEdit={handleDescLocalEdit}
                 hasConflict={showConflictWarning}
+                onViewDiff={() => setActiveTab("history")}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {detail && <SubtasksSection subtasks={detail.subtasks} />}

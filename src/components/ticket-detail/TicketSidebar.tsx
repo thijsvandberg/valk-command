@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { Ticket, POStatus, TicketDetail } from "@/types/ticket";
 import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { ChevronDown, ChevronsUp, ChevronUp, Minus, ChevronsDown, AlertTriangle } from "lucide-react";
+import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
@@ -109,6 +110,19 @@ export function TicketSidebar({
       <div>
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">Details</h3>
         <div className="mt-2 divide-y divide-white/[0.04]">
+          <DetailRow label="Status">
+            {(() => {
+              const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+              return (
+                <span
+                  className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                  style={{ backgroundColor: sc.bg, color: sc.text }}
+                >
+                  {ticket.jiraStatus}
+                </span>
+              );
+            })()}
+          </DetailRow>
           <DetailRow label="Points">
             <span className="tabular-nums">{ticket.storyPoints ?? "--"}</span>
           </DetailRow>
