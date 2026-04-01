@@ -9,7 +9,7 @@ import { Avatar } from "../shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
-import { RefreshCw, ExternalLink, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check } from "lucide-react";
+import { RefreshCw, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2 } from "lucide-react";
 
 // -- Simple markdown renderer for panel description --
 
@@ -208,16 +208,29 @@ export function SidePanel({
         <>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
-            <div className="flex items-center gap-2.5">
+            <div className="group/key flex items-center gap-2.5">
               <IssueTypeIcon type={ticket.type} />
-              <a
-                href={getJiraUrl(ticket.key)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-sm font-medium text-white/70 cursor-pointer hover:underline hover:text-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              >
+              <span className="font-mono text-sm font-medium text-white/70">
                 {ticket.key}
-              </a>
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const url = getJiraUrl(ticket.key);
+                  const text = `${ticket.title} - ${url}`;
+                  await navigator.clipboard.writeText(text);
+                  onShowToast("Link copied");
+                }}
+                className="flex h-5 w-5 items-center justify-center rounded text-white/0 cursor-pointer group-hover/key:text-white/30 hover:!text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-90"
+                title="Copy Jira link"
+              >
+                <Link2 size={12} strokeWidth={1.5} />
+              </button>
+              {ticket.freshness === "stale" && (
+                <span className="flex items-center gap-1 rounded bg-amber-400/10 px-1.5 py-0.5 text-[10px] text-amber-400/70" title="Local data may be outdated">
+                  stale
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1">
               {/* Sync ticket from Jira */}
@@ -233,16 +246,6 @@ export function SidePanel({
                   strokeWidth={1.5}
                 />
               </button>
-              {/* Open in Jira */}
-              <a
-                href={getJiraUrl(ticket.key)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-                title="Open in Jira"
-              >
-                <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </a>
               {/* Full width toggle */}
               <button
                 type="button"
@@ -263,7 +266,7 @@ export function SidePanel({
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
                 title="Open in new tab"
               >
-                <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />
               </a>
               <button
                 type="button"

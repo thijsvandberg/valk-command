@@ -32,13 +32,41 @@ export function useTickets(sprintId: string | null) {
   );
 }
 
-// Fetches full ticket detail (lazy: only when key is provided)
+// Fetches full ticket detail with background staleness check.
+// After returning cached data, checks Jira for updates. If stale,
+// triggers a single-ticket sync and revalidates the local cache.
 export function useTicketDetail(ticketKey: string | null) {
-  return useSWR(
+  const swr = useSWR(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}` : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
+
+  const checkedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!ticketKey || !swr.data) return;
+    if (checkedRef.current === ticketKey) return;
+    checkedRef.current = ticketKey;
+
+    let cancelled = false;
+
+    fetch(`/api/jira/check-updated?key=${encodeURIComponent(ticketKey)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then(async (result) => {
+        if (cancelled || !result?.stale) return;
+        const sprintId = swr.data?.sprintId;
+        if (sprintId) {
+          await fetch(`/api/jira/sync-tickets?sprintId=${encodeURIComponent(sprintId)}`, { method: "POST" });
+        }
+        swr.mutate();
+      })
+      .catch(() => { /* background check, fail silently */ });
+
+    return () => { cancelled = true; };
+  }, [ticketKey, swr.data, swr]);
+
+  return swr;
 }
 
 // Fetches ticket versions for the side panel (lazy: only when ticketKey is provided)
@@ -83,6 +111,15 @@ export function useJiraHealth() {
     "/api/jira/health",
     fetcher,
     { refreshInterval: 60000, revalidateOnFocus: false },
+  );
+}
+
+// Checks if a ticket's Jira data is stale (lazy: only when key is provided)
+export function useConflictCheck(ticketKey: string | null) {
+  return useSWR<{ stale: boolean; localUpdated: string | null; remoteUpdated: string; key: string }>(
+    ticketKey ? `/api/jira/check-updated?key=${encodeURIComponent(ticketKey)}` : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
 

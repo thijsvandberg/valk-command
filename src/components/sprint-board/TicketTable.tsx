@@ -290,7 +290,15 @@ function SortableTicketRow({
 
       {col("key") && (
         <td className="py-2 pr-3 font-mono text-xs text-white/50">
-          {ticket.key}
+          <span className="flex items-center gap-1.5">
+            {ticket.key}
+            {ticket.freshness === "stale" && (
+              <span
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/60"
+                title="Data may be outdated"
+              />
+            )}
+          </span>
         </td>
       )}
 

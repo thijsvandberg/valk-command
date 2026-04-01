@@ -30,9 +30,14 @@ import {
   Sparkles,
   File,
   FileMinus,
+  ChevronsUp,
+  ChevronUp,
+  Minus,
+  ChevronsDown,
+  AlertTriangle,
 } from "lucide-react";
 import { reviewStory, type ReviewResult } from "@/lib/agent-client";
-import { useTicketDetail, useJiraSprints } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useJiraSprints, useConflictCheck } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge, JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
@@ -56,33 +61,19 @@ const PRIORITY_COLORS: Record<string, { icon: string; text: string }> = {
 // Page-specific sub-components
 // ---------------------------------------------------------------------------
 
-function PriorityIcon({ priority }: { priority: string }) {
-  const color = PRIORITY_COLORS[priority]?.icon ?? "#94a3b8";
-  const isUp = priority === "Highest" || priority === "High";
-  const isDown = priority === "Low" || priority === "Lowest";
-  const double = priority === "Highest" || priority === "Lowest";
+const PRIORITY_ICONS: Record<string, { Icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>; color: string }> = {
+  Highest: { Icon: ChevronsUp,   color: "#e5534b" },
+  High:    { Icon: ChevronUp,    color: "#ea8744" },
+  Medium:  { Icon: Minus,        color: "#eab308" },
+  Low:     { Icon: ChevronDown,  color: "#4a90d9" },
+  Lowest:  { Icon: ChevronsDown, color: "#94a3b8" },
+};
 
-  return (
-    <svg viewBox="0 0 16 16" style={{ width: 14, height: 14 }}>
-      {isUp && (
-        <>
-          <path d="M8 10V4" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M5 6l3-3 3 3" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          {double && <path d="M5 9l3-3 3 3" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />}
-        </>
-      )}
-      {isDown && (
-        <>
-          <path d="M8 6v6" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M5 10l3 3 3-3" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          {double && <path d="M5 7l3 3 3-3" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />}
-        </>
-      )}
-      {!isUp && !isDown && (
-        <path d="M4 8h8" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-      )}
-    </svg>
-  );
+function PriorityIcon({ priority }: { priority: string }) {
+  const entry = PRIORITY_ICONS[priority];
+  if (!entry) return null;
+  const { Icon, color } = entry;
+  return <Icon size={14} strokeWidth={2} style={{ color }} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -1900,6 +1891,11 @@ export default function TicketDetailPage({
   const handleTitleLocalEdit = useCallback((has: boolean) => setHasLocalTitleEdit(has), []);
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
 
+  // Conflict detection: check if Jira version changed while local edits exist
+  const hasLocalEditsForCheck = hasLocalTitleEdit || hasLocalDescEdit;
+  const { data: conflictData } = useConflictCheck(hasLocalEditsForCheck ? key : null);
+  const conflictWarning = conflictData?.stale ? { remoteUpdated: conflictData.remoteUpdated as string } : null;
+
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -1979,6 +1975,19 @@ export default function TicketDetailPage({
             )}
             <span className="font-mono text-white/60">{key}</span>
           </nav>
+
+          {/* Conflict warning: Jira version changed while local edits exist */}
+          {conflictWarning && (
+            <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3">
+              <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-amber-400/70" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-amber-300/90">Remote version changed</p>
+                <p className="mt-0.5 text-xs text-white/40">
+                  This ticket was updated in Jira ({new Date(conflictWarning.remoteUpdated).toLocaleString()}) since your local edits. Review the changes before saving.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Header */}
           <div className="mt-4">

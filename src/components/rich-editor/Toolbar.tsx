@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useRef, useEffect } from "react";
-import { List, ListOrdered, Code2, Link, ChevronDown } from "lucide-react";
+import { List, ListOrdered, Code2, Link, ChevronDown, Info } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 import type { CalloutType } from "./callout-extension";
 import type { EditorMode } from "./RichEditor";
@@ -210,7 +210,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
             : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
         }`}
       >
-        <CalloutIcon />
+        <Info size={14} strokeWidth={1.5} />
         <ChevronDown
           size={8}
           strokeWidth={1.5}
@@ -244,13 +244,3 @@ function Divider() {
   return <div className="mx-1 h-4 w-px bg-white/[0.08]" />;
 }
 
-function CalloutIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="1" y="2" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.2" />
-      <line x1="1" y1="2" x2="1" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="7" cy="6" r="0.8" fill="currentColor" />
-      <line x1="7" y1="7.5" x2="7" y2="10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}

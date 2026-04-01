@@ -1,8 +1,7 @@
 # VC-011: Real Jira Integration (Read-Only)
 
-**Status:** In Progress
+**Status:** In Progress (Phase 4)
 **Priority:** High
-**Blocked:** Jira credentials needed
 
 ## Description
 
@@ -11,7 +10,7 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 ## Acceptance Criteria
 
 ### Core Connection
-- [ ] Configure Jira credentials (API token via env vars)
+- [x] Configure Jira credentials (API token via env vars)
 - [x] Health check endpoint to verify Jira connectivity (`GET /api/jira/health`)
 - [ ] Graceful fallback when Jira is unreachable (cached data + banner)
 
@@ -43,12 +42,12 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 
 ### Smart Fetching
 - [x] Store Jira `updated` timestamp per issue locally (`jiraUpdatedAt` column)
-- [ ] On issue open: compare local timestamp with Jira `updated`, only fetch full data if changed
+- [x] On issue open: compare local timestamp with Jira `updated`, only fetch full data if changed
 - [x] Sprint refresh strategy: both bulk and timestamp-first implemented (`?strategy=bulk|timestamp-first`)
   - **A) Bulk fetch:** single JQL query fetching all sprint issues with full fields. Simple, one round-trip, but transfers unchanged data. Better for small sprints or first sync.
   - **B) Timestamp-first:** first call fetches only `key` + `updated` for all sprint issues (minimal fields, fast response). Compare against local timestamps. Second call fetches full data only for issues where remote `updated` > local `updated`. Two round-trips but transfers less data. Better for large sprints with few changes.
   - **Decision criteria:** measure both against real Jira instance with varying sprint sizes (10, 30, 80+ issues) and change ratios (10%, 50%, 90% changed). Pick default strategy, allow override per sync.
-- [ ] Visual indicator when local data is stale vs fresh
+- [x] Visual indicator when local data is stale vs fresh
 
 ### Real-time Inbound Updates
 - [ ] Webhook receiver (`POST /api/jira/webhook`) for ticket changes, comments, status transitions
@@ -70,12 +69,51 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 
 ## Technical Notes
 
-- Extend existing `src/lib/jira-client.ts` with real implementation
-- Jira REST API v3 (read-only scopes)
-- Env vars: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`
-- ADF-to-markdown: `@atlaskit/adf-utils` or custom lightweight mapper
+- Jira client uses Atlassian API gateway (`api.atlassian.com`) with `JIRA_CLOUD_ID`, not direct instance URL
+- REST API v3 only (no Agile API), uses `search/jql` endpoint with token-based pagination
+- OAuth token scopes: `read:jira-work`, `write:jira-work`
+- Custom field IDs aligned with jira-mcp: sprint (`customfield_10007`), story points (`customfield_10016`), epic link (`customfield_10008`)
+- Env vars: `JIRA_CLOUD_ID`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_BASE_URL` (fallback), `JIRA_BOARD_ID`, `JIRA_PROJECT_KEY`
+- ADF-to-markdown: custom lightweight mapper (`src/lib/adf-to-markdown.ts`)
 - PO metadata (readiness scores, notes, review) stays local in SQLite, only Jira fields come from API
+- Default board ID: 233 (BT board in Jira sprint field data)
+- Freshness computation exists in `/api/tickets` (5-min threshold), not yet shown in UI
+
+## Completed Work
+
+### Phase 0: Schema Extension + Migration
+- Extended `ticket` table with type, epic, flagged, reporter, description, acceptanceCriteria, jiraCreatedAt, jiraUpdatedAt, assigneeAvatar, components
+- New `syncLog` table for sync audit trail
+- Drizzle migrations 0003 + 0004
+
+### Phase 1: ADF-to-Markdown + Enhanced Sync
+- ADF converter (`src/lib/adf-to-markdown.ts`) with tests
+- Enhanced sync-tickets route with all new columns, ADF conversion, pagination, syncLog entries
+- Sprint sync with pagination
+- Comment sync route
+- Attachment metadata sync
+
+### Phase 2: API Response Shaping + New Hooks
+- Health check endpoint
+- Shared types (`src/types/ticket.ts`)
+- Enriched GET `/api/tickets` and `/api/tickets/[key]`
+- SWR hooks: useTickets, useTicketDetail, useTicketVersions, useTicketComments, useTicketAttachments, useSyncStatus, useJiraHealth
+- Sync log API with acknowledge endpoint
+
+### Phase 3: Wire UI to API (Remove Mock Data)
+- All 19 UI files migrated from mock imports to API hooks
+- Mock data files moved to `deleted/`
+- Tests updated to mock SWR hooks
+
+### Auth + Config Fix (2026-04-01)
+- Switched to Atlassian API gateway with JIRA_CLOUD_ID (matching jira-mcp auth pattern)
+- Replaced Agile API with REST API v3 search/jql (OAuth scope compatibility)
+- Migrated from deprecated /rest/api/3/search to /search/jql with token-based pagination
+- Aligned custom field IDs with jira-mcp config
+- Fixed health check (lightweight search instead of /myself)
+- Fixed DB migration state mismatch (0003/0004)
+- Board ID corrected to 233
 
 ## Dependencies
 
-- Jira API credentials (blocked)
+- ~~Jira API credentials (blocked)~~ Resolved: using shared OAuth token from jira-mcp

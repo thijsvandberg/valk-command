@@ -45,29 +45,18 @@ Replace all hand-coded inline SVG icons with [Lucide React](https://lucide.dev/)
 
 - [x] Avatar: User icon
 - [x] StoryDiffPanel: ChevronLeft back button
-- [x] Rich editor Toolbar: List, ListOrdered, Code2, Link, ChevronDown (kept CalloutIcon custom)
+- [x] Rich editor Toolbar: List, ListOrdered, Code2, Link, ChevronDown, Info (callout)
 
 ### Special cases
 
 - [x] Jira logo mark: keep as custom SVG (brand icon, not in Lucide)
-- [x] Issue type icons (bug, story, task, subtask): kept as custom SVGs (Jira-specific visual language)
-
-## Remaining custom SVGs (intentionally kept)
-
-6 inline SVGs remain in the codebase. These have no suitable lucide-react equivalent and are kept as custom SVGs by design.
-
-| Icon | File | Line | Reason |
-|------|------|------|--------|
-| PriorityIcon | `src/app/(app)/tickets/[key]/page.tsx` | 66 | Dynamic arrow direction (up/down/dash) and color per priority level (Highest, High, Medium, Low, Lowest). No single lucide icon covers this. |
-| IssueTypeIcon (story) | `src/components/shared/IssueTypeIcon.tsx` | 8 | Bookmark shape matching Jira's story icon, colored `#4a90d9`. |
-| IssueTypeIcon (bug) | `src/components/shared/IssueTypeIcon.tsx` | 15 | Filled circle matching Jira's bug icon, colored `#e5534b`. |
-| IssueTypeIcon (task) | `src/components/shared/IssueTypeIcon.tsx` | 22 | Checkmark-in-square matching Jira's task icon, colored `#4aaa60`. |
-| IssueTypeIcon (subtask) | `src/components/shared/IssueTypeIcon.tsx` | 29 | Nested square matching Jira's subtask icon, colored `#4a90d9`. |
-| CalloutIcon | `src/components/rich-editor/Toolbar.tsx` | 249 | Rectangle with left accent border + info dot representing a callout/admonition block. No lucide equivalent. |
+- [x] Issue type icons: CheckSquare (task), Bug (bug), Bookmark (story), SquareMinus (subtask)
+- [x] Priority icons: ChevronsUp (Highest), ChevronUp (High), Minus (Medium), ChevronDown (Low), ChevronsDown (Lowest)
+- [x] Callout icon: replaced with Info
 
 ## Acceptance Criteria
 
-- [x] All inline SVGs replaced with Lucide components (except brand marks, issue types, priority arrows, callout icon)
+- [x] All inline SVGs replaced with Lucide components (only Jira logo mark remains custom)
 - [x] Consistent icon sizing: `h-4 w-4` for standard, `h-3.5 w-3.5` for compact areas
 - [x] No visual regressions: icons match the intended purpose and style
 - [x] Bundle size impact verified (tree-shaking keeps only used icons)
