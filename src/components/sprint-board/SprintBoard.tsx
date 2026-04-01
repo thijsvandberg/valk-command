@@ -502,7 +502,24 @@ export default function SprintBoard() {
     }
   }, [slotSprints, activeSlot, showToast, mutateTickets]);
 
-  // handleAddSlot removed: "+" button now opens the sprint modal directly in SprintSlots
+  const handleReorderSlots = useCallback((activeId: string, overId: string) => {
+    setSlotSprints((prev) => {
+      const oldIndex = prev.indexOf(activeId);
+      const newIndex = prev.indexOf(overId);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = [...prev];
+      next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, activeId);
+      saveSprintSlots(next, sprints);
+      // Keep active slot pointing at the same sprint
+      const activeSprintBefore = prev[activeSlot];
+      const newActiveIdx = next.indexOf(activeSprintBefore);
+      if (newActiveIdx >= 0 && newActiveIdx !== activeSlot) {
+        setActiveSlot(newActiveIdx);
+      }
+      return next;
+    });
+  }, [sprints, activeSlot]);
 
   // Load saved sprint slots from the API via SWR
   const { data: savedSlots, isLoading: slotsLoading } = useSprintSlots();
@@ -557,6 +574,7 @@ export default function SprintBoard() {
           onRefresh={handleRefresh}
           onSprintListSelect={handleSprintListSelect}
           onAddSlotWithSprint={handleAddSlotWithSprint}
+          onReorderSlots={handleReorderSlots}
         />
 
         {/* Filter bar */}
