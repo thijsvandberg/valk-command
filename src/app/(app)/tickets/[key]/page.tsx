@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Flag,
   Loader2,
-  AlertTriangle,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -186,27 +185,6 @@ export default function TicketDetailPage({
             <span className="font-mono text-white/60">{key}</span>
           </nav>
 
-          {/* Conflict warning: clickable, opens conflict diff */}
-          {showConflictWarning && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("history");
-                setShowConflictDiff(true);
-              }}
-              className="mt-3 flex w-full items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3 text-left cursor-pointer hover:bg-[#ea8744]/[0.09] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50 active:scale-[0.995]"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-            >
-              <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
-                <p className="mt-0.5 text-xs text-white/40">
-                  Jira was updated since your local edit. Click to review and resolve.
-                </p>
-              </div>
-            </button>
-          )}
-
           {/* Header */}
           <div className="mt-4">
             <div className="flex items-center gap-2.5">
@@ -214,11 +192,6 @@ export default function TicketDetailPage({
               <span className="font-mono text-sm text-white/40">{key}</span>
               {ticket.flagged && (
                 <Flag size={16} className="text-[#e5534b]" fill="currentColor" strokeWidth={0} />
-              )}
-              {hasLocalEdits && (
-                <span className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
-                  Modified locally
-                </span>
               )}
               <div className="ml-auto flex items-center gap-2">
                 <button
@@ -342,7 +315,16 @@ export default function TicketDetailPage({
       </div>
 
       <div className="sticky top-0 min-h-full self-stretch overflow-y-auto">
-        <TicketSidebar ticket={ticket} detail={detail} onNavigateToReview={() => setActiveTab("review")} />
+        <TicketSidebar
+          ticket={ticket}
+          detail={detail}
+          hasLocalEdits={hasLocalEdits}
+          onNavigateToReview={() => setActiveTab("review")}
+          onNavigateToHistory={() => {
+            setActiveTab("history");
+            if (showConflictWarning) setShowConflictDiff(true);
+          }}
+        />
       </div>
     </div>
     </ErrorBoundary>
