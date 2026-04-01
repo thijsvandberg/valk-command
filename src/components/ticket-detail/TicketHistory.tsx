@@ -386,7 +386,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
                     className="rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                   >
-                    {resolving ? "Pushing..." : "Keep local and push to Jira"}
+                    {resolving ? "Pushing..." : "Push local changes to Jira"}
                   </button>
                   <button
                     type="button"
