@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const conversation = sqliteTable("conversation", {
@@ -8,7 +8,9 @@ export const conversation = sqliteTable("conversation", {
     .notNull()
     .default(sql`(datetime('now'))`),
   relatedTicket: text("related_ticket"),
-});
+}, (table) => [
+  index("conversation_created_at_idx").on(table.createdAt),
+]);
 
 export const message = sqliteTable("message", {
   id: text("id").primaryKey(),
@@ -21,7 +23,9 @@ export const message = sqliteTable("message", {
     .notNull()
     .default(sql`(datetime('now'))`),
   workspaceTaskId: text("workspace_task_id"),
-});
+}, (table) => [
+  index("message_conversation_id_idx").on(table.conversationId),
+]);
 
 export const ticket = sqliteTable("ticket", {
   jiraKey: text("jira_key").primaryKey(),
@@ -110,7 +114,9 @@ export const storyVersion = sqliteTable("story_version", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-});
+}, (table) => [
+  index("story_version_jira_key_idx").on(table.jiraKey),
+]);
 
 export const alert = sqliteTable("alert", {
   id: text("id").primaryKey(),
@@ -132,7 +138,9 @@ export const poComment = sqliteTable("po_comment", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-});
+}, (table) => [
+  index("po_comment_ticket_key_idx").on(table.ticketKey),
+]);
 
 export const jiraComment = sqliteTable("jira_comment", {
   id: text("id").primaryKey(),
@@ -146,7 +154,9 @@ export const jiraComment = sqliteTable("jira_comment", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-});
+}, (table) => [
+  index("jira_comment_ticket_key_idx").on(table.ticketKey),
+]);
 
 // Phase 4: Local edits
 export const ticketLocalEdit = sqliteTable("ticket_local_edit", {
@@ -160,7 +170,9 @@ export const ticketLocalEdit = sqliteTable("ticket_local_edit", {
   modifiedAt: text("modified_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-});
+}, (table) => [
+  index("ticket_local_edit_ticket_key_idx").on(table.ticketKey),
+]);
 
 // Phase 5: Attachment management
 export const ticketAttachment = sqliteTable("ticket_attachment", {
@@ -175,7 +187,9 @@ export const ticketAttachment = sqliteTable("ticket_attachment", {
   downloadedAt: text("downloaded_at"),
   localPath: text("local_path"),
   cleanedAt: text("cleaned_at"),
-});
+}, (table) => [
+  index("ticket_attachment_ticket_key_idx").on(table.ticketKey),
+]);
 
 export const syncLog = sqliteTable("sync_log", {
   id: text("id").primaryKey(),
@@ -194,7 +208,9 @@ export const syncLog = sqliteTable("sync_log", {
     .default(sql`(datetime('now'))`),
   completedAt: text("completed_at"),
   acknowledged: integer("acknowledged", { mode: "boolean" }).notNull().default(false),
-});
+}, (table) => [
+  index("sync_log_started_at_idx").on(table.startedAt),
+]);
 
 export type Conversation = typeof conversation.$inferSelect;
 export type NewConversation = typeof conversation.$inferInsert;

@@ -21,19 +21,19 @@ The app uses SQLite + Drizzle ORM (`src/db/schema.ts`). The schema defines 11 ta
 - [x] Verify the cancel sync flow works end-to-end: POST to `/api/sync-log/[id]/cancel` should update status to "cancelled"
 
 ### Phase 2: Add database indexes
-- [ ] Add indexes to `src/db/schema.ts` for all foreign key columns:
+- [x] Add indexes to `src/db/schema.ts` for all foreign key columns:
   - `message.conversation_id`
-  - `ticket_metadata.jira_key`
+  - `ticket_metadata.jira_key` (skipped: primary key is already indexed)
   - `ticket_attachment.ticket_key`
   - `jira_comment.ticket_key`
   - `po_comment.ticket_key`
   - `story_version.jira_key`
   - `ticket_local_edit.ticket_key`
-- [ ] Add useful query indexes:
+- [x] Add useful query indexes:
   - `sync_log.started_at` (DESC, for recent-first listing)
   - `conversation.created_at` (DESC)
-- [ ] Generate a Drizzle migration for the indexes
-- [ ] Verify migration runs cleanly on existing database
+- [x] Generate a Drizzle migration for the indexes
+- [x] Verify migration runs cleanly on existing database
 
 ### Phase 3: Fix N+1 queries
 - [ ] `src/app/api/tickets/route.ts:47-70` - Replace the `Promise.all(rows.map(async ...))` pattern with a single LEFT JOIN query between `ticket` and `ticket_metadata`
