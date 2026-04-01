@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sprintSlot } from "@/db/schema";
-import { eq } from "drizzle-orm";
 
 export async function GET() {
   const slots = await db.select().from(sprintSlot).orderBy(sprintSlot.slotIndex);
@@ -39,19 +38,17 @@ export async function PUT(request: Request) {
     }
   }
 
-  // Replace all slots atomically
-  const existingSlots = await db.select().from(sprintSlot);
-  for (const existing of existingSlots) {
-    await db.delete(sprintSlot).where(eq(sprintSlot.slotIndex, existing.slotIndex));
-  }
-
-  for (const slot of body) {
-    await db.insert(sprintSlot).values({
-      slotIndex: slot.slotIndex,
-      sprintId: slot.sprintId.trim(),
-      sprintName: slot.sprintName.trim(),
-    });
-  }
+  // Replace all slots atomically in a single transaction
+  db.transaction((tx) => {
+    tx.delete(sprintSlot).run();
+    for (const slot of body) {
+      tx.insert(sprintSlot).values({
+        slotIndex: slot.slotIndex,
+        sprintId: slot.sprintId.trim(),
+        sprintName: slot.sprintName.trim(),
+      }).run();
+    }
+  });
 
   const updated = await db.select().from(sprintSlot).orderBy(sprintSlot.slotIndex);
   return NextResponse.json(updated);

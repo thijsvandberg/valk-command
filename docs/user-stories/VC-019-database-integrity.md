@@ -41,9 +41,9 @@ The app uses SQLite + Drizzle ORM (`src/db/schema.ts`). The schema defines 11 ta
 - [x] Verify the ticket list API response matches the current shape (no breaking changes)
 
 ### Phase 4: Wrap sprint-slot updates in a transaction
-- [ ] `src/app/api/sprint-slots/route.ts:43-54` - Wrap the delete-all + insert-all in a Drizzle transaction
-- [ ] Use `db.transaction(async (tx) => { ... })` pattern
-- [ ] Verify sprint slot saving still works in the UI
+- [x] `src/app/api/sprint-slots/route.ts:43-54` - Wrap the delete-all + insert-all in a Drizzle transaction
+- [x] Use `db.transaction((tx) => { ... })` pattern (synchronous for better-sqlite3)
+- [x] Verify sprint slot saving still works in the UI
 
 ### Phase 5: Align test helpers with migrations
 - [ ] `src/db/test-utils.ts:6-195` manually creates tables with raw SQL, duplicating the schema
