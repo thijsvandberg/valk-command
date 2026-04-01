@@ -12,7 +12,7 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { GET, POST } from "./route";
+import { GET } from "./route";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket)
@@ -118,80 +118,3 @@ describe("GET /api/tickets/[key]/versions", () => {
   });
 });
 
-describe("POST /api/tickets/[key]/versions", () => {
-  beforeEach(() => {
-    testDb = createTestDb();
-  });
-
-  it("creates a new version snapshot", async () => {
-    seedTicket(testDb, "VPL-100");
-
-    const response = await POST(
-      new Request("http://localhost:3100/api/tickets/VPL-100/versions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: "Snapshot content" }),
-      }),
-      makeParams("VPL-100"),
-    );
-    const data = await response.json();
-
-    expect(response.status).toBe(201);
-    expect(data.jiraKey).toBe("VPL-100");
-    expect(data.description).toBe("Snapshot content");
-    expect(data.contentHash).toBeTruthy();
-  });
-
-  it("creates a version with a tag", async () => {
-    seedTicket(testDb, "VPL-100");
-
-    const response = await POST(
-      new Request("http://localhost:3100/api/tickets/VPL-100/versions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: "Pre-refinement snapshot",
-          tag: "pre-refinement",
-        }),
-      }),
-      makeParams("VPL-100"),
-    );
-    const data = await response.json();
-
-    expect(response.status).toBe(201);
-    expect(data.tag).toBe("pre-refinement");
-  });
-
-  it("rejects invalid tags", async () => {
-    seedTicket(testDb, "VPL-100");
-
-    const response = await POST(
-      new Request("http://localhost:3100/api/tickets/VPL-100/versions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: "Content",
-          tag: "bad-tag",
-        }),
-      }),
-      makeParams("VPL-100"),
-    );
-
-    expect(response.status).toBe(400);
-  });
-
-  it("rejects missing description", async () => {
-    seedTicket(testDb, "VPL-100");
-
-    const response = await POST(
-      new Request("http://localhost:3100/api/tickets/VPL-100/versions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      }),
-      makeParams("VPL-100"),
-    );
-
-    expect(response.status).toBe(400);
-  });
-});

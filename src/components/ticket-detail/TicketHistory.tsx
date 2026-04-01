@@ -5,7 +5,7 @@ import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import type { DiffMode } from "@/components/story-diff/StoryDiff";
 import { exportDiffAsMarkdown } from "@/components/story-diff/export-diff";
-import { ChevronRight, ChevronLeft, Download, Plus } from "lucide-react";
+import { ChevronRight, ChevronLeft, Download } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
 function formatVersionDate(iso: string): string {
@@ -29,7 +29,6 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [diffMode, setDiffMode] = useState<DiffMode>("unified");
-  const [savingSnapshot, setSavingSnapshot] = useState(false);
   const [versionTags, setVersionTags] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
@@ -58,36 +57,6 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
       });
     return () => { cancelled = true; };
   }, [ticket.key]);
-
-  const handleSaveSnapshot = useCallback(async () => {
-    setSavingSnapshot(true);
-    try {
-      const detailRes = await fetch(`/api/tickets/${ticket.key}`);
-      const detailData = detailRes.ok ? await detailRes.json() : null;
-      const description = detailData?.description ?? "";
-      const res = await fetch(`/api/tickets/${ticket.key}/versions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description }),
-      });
-      if (res.ok) {
-        const created = await res.json();
-        const newVersion: StoryVersion = {
-          versionNumber: ticketVersions.length + 1,
-          date: created.createdAt || new Date().toISOString(),
-          source: "Local edit",
-          contentHash: created.contentHash || "",
-          qualityScore: null,
-          content: created.description || description,
-        };
-        setTicketVersions((prev) => [...prev, newVersion]);
-      }
-    } catch (err) {
-      console.error("Operation failed:", err);
-    } finally {
-      setSavingSnapshot(false);
-    }
-  }, [ticket.key, ticketVersions.length]);
 
   const handleExportDiff = useCallback(
     (oldText: string, newText: string, oldLabel: string, newLabel: string) => {
@@ -192,16 +161,6 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSaveSnapshot}
-            disabled={savingSnapshot}
-            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-          >
-            <Plus size={12} strokeWidth={1.3} />
-            {savingSnapshot ? "Saving..." : "Save snapshot"}
-          </button>
         </div>
       </div>
 
