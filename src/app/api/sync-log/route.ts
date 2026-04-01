@@ -13,7 +13,8 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000;
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const limit = parseInt(searchParams.get("limit") ?? "20", 10);
+  const parsedLimit = parseInt(searchParams.get("limit") ?? "20", 10);
+  const limit = Math.max(1, Math.min(isNaN(parsedLimit) ? 20 : parsedLimit, 500));
   const onlyUnacked = searchParams.get("unacknowledged") === "true";
 
   // Stale cleanup: mark running syncs older than 5 min as failed

@@ -8,9 +8,14 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const body = await request.json().catch(() => null);
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  if (!body || !Array.isArray(body)) {
+  if (!Array.isArray(body)) {
     return NextResponse.json(
       { error: "Request body must be an array of sprint slot objects" },
       { status: 400 },

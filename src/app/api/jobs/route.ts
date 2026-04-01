@@ -10,9 +10,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  if (!body || typeof body.name !== "string" || body.name.trim() === "") {
+  if (typeof body.name !== "string" || body.name.trim() === "") {
     return NextResponse.json(
       { error: "name is required and must be a non-empty string" },
       { status: 400 },

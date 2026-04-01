@@ -2,8 +2,22 @@ import { NextResponse } from "next/server";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
 
 export async function POST(request: Request) {
+  let body: unknown;
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
+  }
+
+  if (!("skillName" in body) || typeof (body as Record<string, unknown>).skillName !== "string") {
+    return NextResponse.json({ error: "skillName (string) is required" }, { status: 400 });
+  }
+
+  try {
     const res = await fetch(agentUrl("/api/tasks"), {
       method: "POST",
       headers: agentHeaders(),

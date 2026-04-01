@@ -22,9 +22,14 @@ export async function POST(
     );
   }
 
-  const body = await request.json().catch(() => null);
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  if (!body || typeof body.content !== "string" || body.content.trim() === "") {
+  if (typeof body.content !== "string" || body.content.trim() === "") {
     return NextResponse.json(
       { error: "content is required and must be a non-empty string" },
       { status: 400 },

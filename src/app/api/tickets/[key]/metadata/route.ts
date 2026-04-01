@@ -17,9 +17,11 @@ export async function PUT(
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  const body = await request.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const existing = await db.query.ticketMetadata.findFirst({

@@ -14,9 +14,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
+  let body: Record<string, string | null>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  if (!body || typeof body.title !== "string" || body.title.trim() === "") {
+  if (typeof body.title !== "string" || body.title.trim() === "") {
     return NextResponse.json(
       { error: "title is required and must be a non-empty string" },
       { status: 400 },

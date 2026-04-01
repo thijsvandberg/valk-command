@@ -25,9 +25,11 @@ export async function PUT(
 ) {
   const { key } = await params;
 
-  const body = await request.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const { field, localValue, baseJiraVersion } = body;

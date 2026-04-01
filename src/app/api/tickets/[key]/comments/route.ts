@@ -31,8 +31,13 @@ export async function POST(
 ) {
   const { key } = await params;
 
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body.content !== "string" || !body.content.trim()) {
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  if (typeof body.content !== "string" || !body.content.trim()) {
     return NextResponse.json(
       { error: "content is required and must be a non-empty string" },
       { status: 400 },

@@ -153,7 +153,8 @@ async function jiraFetch<T>(path: string, signal?: AbortSignal): Promise<T> {
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Jira API ${res.status}: ${res.statusText} (${path}) ${body}`);
+    console.error(`Jira API error: ${res.status} ${res.statusText} path=${path} body=${body}`);
+    throw new Error("Jira API request failed");
   }
 
   return res.json() as Promise<T>;
@@ -176,7 +177,8 @@ async function jiraPost<T>(path: string, body: unknown): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Jira API ${res.status}: ${res.statusText} (${path}) ${text}`);
+    console.error(`Jira API error: ${res.status} ${res.statusText} path=${path} body=${text}`);
+    throw new Error("Jira API request failed");
   }
 
   return res.json() as Promise<T>;
