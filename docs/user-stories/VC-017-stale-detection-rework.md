@@ -1,6 +1,6 @@
 # VC-017: Stale Detection Rework
 
-**Status:** Ready
+**Status:** In Progress
 **Priority:** High
 **Depends on:** VC-011 (Real Jira Integration)
 
@@ -55,37 +55,37 @@ else:
 ## Acceptance Criteria
 
 ### Remove old system
-- [ ] Remove `qualityStale` column from `ticketMetadata` (migration)
-- [ ] Remove `freshness` computation from `/api/tickets` route
-- [ ] Remove `freshness` and `qualityStale` from `Ticket` type
-- [ ] Remove all UI code that reads `qualityStale` or `freshness`
+- [x] Remove `qualityStale` column from `ticketMetadata` (migration)
+- [x] Remove `freshness` computation from `/api/tickets` route
+- [x] Remove `freshness` and `qualityStale` from `Ticket` type
+- [x] Remove all UI code that reads `qualityStale` or `freshness`
 
 ### Implement computed staleness
-- [ ] Add utility function `computeTicketState(ticket, localEdits, latestVersion)` that returns `"clean" | "local_edits" | "conflict"`
-- [ ] Expose state in ticket API responses (computed, not stored)
-- [ ] On ticket detail open (side panel or single view): auto-check Jira for latest version and update mirror silently
+- [x] Add utility function `computeTicketState(ticket, localEdits, latestVersion)` that returns `"clean" | "local_edits" | "conflict"`
+- [x] Expose state in ticket API responses (computed, not stored)
+- [x] On ticket detail open (side panel or single view): auto-check Jira for latest version and update mirror silently
 
 ### UI: Clean state
-- [ ] No dots, badges, or warnings shown
-- [ ] This should be the default for 90%+ of tickets
+- [x] No dots, badges, or warnings shown
+- [x] This should be the default for 90%+ of tickets
 
 ### UI: Local edits state
-- [ ] Side panel: blue "Local changes" badge
-- [ ] Ticket table: blue dot next to key
-- [ ] Single view: "Push to Jira" button in edit section
-- [ ] Push flow: send local edits to Jira, wait for confirmation, then refresh mirror and delete local edits if versions match
+- [x] Side panel: blue "Local changes" badge
+- [x] Ticket table: blue dot next to key
+- [x] Single view: "Push to Jira" button in edit section
+- [x] Push flow: send local edits to Jira, wait for confirmation, then refresh mirror and delete local edits if versions match
 
 ### UI: Conflict state
-- [ ] Side panel: orange "Conflict" warning with "View diff" link
-- [ ] Ticket table: orange dot next to key
-- [ ] Single view: warning banner with diff viewer
+- [x] Side panel: orange "Conflict" warning with "View diff" link
+- [x] Ticket table: orange dot next to key
+- [x] Single view: warning banner with diff viewer
 - [ ] Diff viewer shows: local edits vs latest Jira version
 - [ ] User can choose: "Keep local" (re-base edit on new version) or "Discard local" (delete local edits, show mirror)
 
 ### Push to Jira flow
-- [ ] Pre-push check: verify mirror is up-to-date with remote (compare `jiraUpdatedAt` with Jira API). If not, update mirror first and re-evaluate state (may become conflict)
-- [ ] On successful push: refresh mirror from Jira, verify versions match, then delete local edits
-- [ ] On conflict detected during push: switch to conflict state, show diff
+- [x] Pre-push check: verify mirror is up-to-date with remote (compare `jiraUpdatedAt` with Jira API). If not, update mirror first and re-evaluate state (may become conflict)
+- [x] On successful push: refresh mirror from Jira, verify versions match, then delete local edits
+- [x] On conflict detected during push: switch to conflict state, show diff
 
 ## Technical Design
 
