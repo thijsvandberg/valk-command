@@ -39,11 +39,11 @@ The current sync-log is scoped to Jira sync operations only. It should become a 
 
 ### 5. Log all actions
 
-- [ ] Quality reviews (from ticket detail, chat, bulk action) write an activity log entry with type `review`
-- [ ] PO metadata updates (status, notes) write an activity log entry with type `metadata-update`
-- [ ] Local edits write an activity log entry with type `local-edit`
-- [ ] Push-to-Jira writes an activity log entry with type `push-to-jira`
-- [ ] Bulk actions write a single summary entry with type `bulk-action`
+- [x] Quality reviews (from ticket detail, chat, bulk action) write an activity log entry with type `review`
+- [x] PO metadata updates (status, notes) write an activity log entry with type `metadata-update`
+- [x] Local edits write an activity log entry with type `local-edit`
+- [x] Push-to-Jira writes an activity log entry with type `push-to-jira`
+- [x] Bulk actions write a single summary entry with type `bulk-action`
 
 ### 6. Filter support (UI)
 

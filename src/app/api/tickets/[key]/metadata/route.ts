@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function PUT(
   request: Request,
@@ -91,6 +92,13 @@ export async function PUT(
 
   const result = await db.query.ticketMetadata.findFirst({
     where: (m, { eq }) => eq(m.jiraKey, key),
+  });
+
+  const changedFields = Object.keys(updates).join(", ");
+  await logActivity({
+    type: "metadata-update",
+    scope: key,
+    summary: `Updated ${changedFields}`,
   });
 
   return NextResponse.json(result);

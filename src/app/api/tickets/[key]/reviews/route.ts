@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { storedReview, ticketMetadata, storyVersion } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function GET(
   _request: Request,
@@ -132,6 +133,12 @@ export async function POST(
 
   const saved = await db.query.storedReview.findFirst({
     where: (r, { eq: eqFn }) => eqFn(r.id, id),
+  });
+
+  await logActivity({
+    type: body.source === "bulk-action" ? "bulk-action" : "review",
+    scope: key,
+    summary: `Review score ${body.overallScore} (${body.source})`,
   });
 
   return NextResponse.json({

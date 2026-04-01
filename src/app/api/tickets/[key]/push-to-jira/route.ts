@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { createHash } from "crypto";
+import { logActivity } from "@/lib/activity-logger";
 
 function contentHash(description: unknown, ac: string | null | undefined): string {
   const text = `${JSON.stringify(description ?? "")}|${ac ?? ""}`;
@@ -114,9 +115,16 @@ export async function POST(
   });
 
   // Delete local edits now that they are pushed
+  const pushedFields = localEdits.map((e) => e.field).join(", ");
   await db
     .delete(ticketLocalEdit)
     .where(eq(ticketLocalEdit.ticketKey, key));
+
+  await logActivity({
+    type: "push-to-jira",
+    scope: key,
+    summary: `Pushed ${pushedFields} to Jira`,
+  });
 
   return NextResponse.json({
     success: true,

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticketLocalEdit } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function GET(
   _request: Request,
@@ -77,6 +78,12 @@ export async function PUT(
     .from(ticketLocalEdit)
     .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, field)))
     .get();
+
+  await logActivity({
+    type: "local-edit",
+    scope: key,
+    summary: `Edited ${field}`,
+  });
 
   return NextResponse.json(result);
 }
