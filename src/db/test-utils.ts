@@ -178,7 +178,7 @@ export function createTestDb() {
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL CHECK(type IN ('sprint-sync', 'ticket-sync', 'single-ticket', 'comment-sync', 'webhook')),
       scope TEXT,
-      status TEXT NOT NULL CHECK(status IN ('running', 'success', 'failed')),
+      status TEXT NOT NULL CHECK(status IN ('running', 'success', 'failed', 'cancelled')),
       summary TEXT,
       error_detail TEXT,
       duration_ms INTEGER,
