@@ -121,17 +121,21 @@ export function ReviewPopover({
   }
 
   // Persist when workspace task completes
+  const taskStatus = workspaceTask.status;
+  const taskOutput = workspaceTask.output;
+  const taskId = workspaceTask.taskId;
+
   useEffect(() => {
     if (
-      workspaceTask.status !== "completed" ||
-      !workspaceTask.output ||
-      !workspaceTask.taskId ||
-      savedTaskRef.current === workspaceTask.taskId
+      taskStatus !== "completed" ||
+      !taskOutput ||
+      !taskId ||
+      savedTaskRef.current === taskId
     ) return;
 
-    savedTaskRef.current = workspaceTask.taskId;
+    savedTaskRef.current = taskId;
 
-    const agentData = parseReviewOutput(workspaceTask.output);
+    const agentData = parseReviewOutput(taskOutput);
     if (agentData) {
       const result = mapAgentReviewToResult(agentData);
       saveReview({
@@ -142,7 +146,7 @@ export function ReviewPopover({
         suggestions: result.suggestions,
       });
     }
-  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, saveReview]);
+  }, [taskStatus, taskOutput, taskId, saveReview]);
 
   const color = score !== null ? getScoreColor(score) : undefined;
 

@@ -236,17 +236,21 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
 
   // Persist review when workspace task completes
   const savedTaskRef = useRef<string | null>(null);
+  const taskStatus = workspaceTask.status;
+  const taskOutput = workspaceTask.output;
+  const taskId = workspaceTask.taskId;
+
   useEffect(() => {
     if (
-      workspaceTask.status !== "completed" ||
-      !workspaceTask.output ||
-      !workspaceTask.taskId ||
-      savedTaskRef.current === workspaceTask.taskId
+      taskStatus !== "completed" ||
+      !taskOutput ||
+      !taskId ||
+      savedTaskRef.current === taskId
     ) return;
 
-    savedTaskRef.current = workspaceTask.taskId;
+    savedTaskRef.current = taskId;
 
-    const agentData = parseReviewOutput(workspaceTask.output);
+    const agentData = parseReviewOutput(taskOutput);
     if (agentData) {
       const result = mapAgentReviewToResult(agentData);
       saveReview({
@@ -257,7 +261,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         suggestions: result.suggestions,
       });
     }
-  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, saveReview]);
+  }, [taskStatus, taskOutput, taskId, saveReview]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
