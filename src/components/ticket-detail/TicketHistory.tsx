@@ -31,6 +31,16 @@ function formatVersionDateShort(iso: string): string {
   });
 }
 
+function versionSourceTag(v: StoryVersion): string {
+  if (v.label === "draft") return "Local draft";
+  if (v.label === "current") return "Jira";
+  return "Jira";
+}
+
+function versionLabel(v: StoryVersion): string {
+  return `v${v.versionNumber} (${versionSourceTag(v)})`;
+}
+
 export interface TicketHistoryProps {
   ticket: Ticket;
   /** When set, auto-open the conflict diff (local draft vs latest Jira) */
@@ -269,7 +279,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
           >
             {sorted.map((v) => (
               <option key={v.versionNumber} value={v.versionNumber}>
-                v{v.versionNumber} - {formatVersionDateShort(v.date)}
+                v{v.versionNumber} ({versionSourceTag(v)}) - {formatVersionDateShort(v.date)}
               </option>
             ))}
           </select>
@@ -281,7 +291,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
           >
             {sorted.map((v) => (
               <option key={v.versionNumber} value={v.versionNumber}>
-                v{v.versionNumber} - {formatVersionDateShort(v.date)}
+                v{v.versionNumber} ({versionSourceTag(v)}) - {formatVersionDateShort(v.date)}
               </option>
             ))}
           </select>
@@ -306,7 +316,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
               <span className="font-medium text-white/60">
                 {isConflictView
                   ? "Latest from Jira \u2192 Your local edits"
-                  : `Version ${compareOldVersion.versionNumber} \u2192 Version ${compareNewVersion.versionNumber}`}
+                  : `${versionLabel(compareOldVersion)} \u2192 ${versionLabel(compareNewVersion)}`}
               </span>
             </div>
             <button
@@ -331,8 +341,8 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
           <StoryDiff
             oldText={compareOldVersion.content}
             newText={compareNewVersion.content}
-            oldLabel={isConflictView ? "Latest from Jira" : `v${compareOldVersion.versionNumber}`}
-            newLabel={isConflictView ? "Your local edits" : `v${compareNewVersion.versionNumber}`}
+            oldLabel={isConflictView ? "Latest from Jira" : versionLabel(compareOldVersion)}
+            newLabel={isConflictView ? "Your local edits" : versionLabel(compareNewVersion)}
             mode={diffMode}
           />
 
