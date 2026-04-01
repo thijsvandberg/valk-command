@@ -36,16 +36,16 @@ The sprint board and ticket detail views are the most complex parts of the UI. `
 - [x] Write a basic test that verifies the error boundary catches a thrown error
 
 ### Phase 3: Extract useLocalStorage hook
-- [ ] `src/components/sprint-board/SprintBoard.tsx:84-171` has 6 duplicated patterns:
+- [x] `src/components/sprint-board/SprintBoard.tsx:84-171` has 6 duplicated patterns:
   ```tsx
   const [value, setValue] = useState<T>(() => {
     try { return JSON.parse(localStorage.getItem(key) ?? ""); }
     catch { return defaultValue; }
   });
   ```
-- [ ] Create `src/hooks/useLocalStorage.ts` with proper typing, SSR safety (`typeof window !== 'undefined'`), and sync across tabs via `storage` event
-- [ ] Replace all 6 instances in SprintBoard.tsx
-- [ ] Write tests for the hook
+- [x] Create `src/hooks/useLocalStorage.ts` with proper typing, SSR safety (`typeof window !== 'undefined'`), and sync across tabs via `storage` event
+- [x] Replace all 6 instances in SprintBoard.tsx
+- [x] Write tests for the hook
 
 ### Phase 4: Decompose ticket detail page
 - [ ] `src/app/(app)/tickets/[key]/page.tsx` is 2,162 lines. Split into:

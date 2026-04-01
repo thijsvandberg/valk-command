@@ -10,7 +10,8 @@ import { BulkActionBar } from "./BulkActionBar";
 import { SidePanel } from "./SidePanel";
 import { SprintAnalytics } from "./SprintAnalytics";
 import { MultiSprintView } from "./MultiSprintView";
-import { useSprintSlots, useJiraSprints, useTickets, useDebouncedCallback } from "@/hooks/useSprintBoard";
+import { useSprintSlots, useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
   if (!raw) return [];
@@ -81,32 +82,14 @@ export default function SprintBoard() {
   const [checkedTickets, setCheckedTickets] = useState<Set<string>>(new Set());
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [focusedTicketIdx, setFocusedTicketIdx] = useState<number>(-1);
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-columns");
-        if (stored) {
-          const arr = JSON.parse(stored) as ColumnId[];
-          if (Array.isArray(arr) && arr.length > 0) return new Set(arr);
-        }
-      } catch { /* fall through */ }
-    }
-    return new Set(DEFAULT_VISIBLE);
-  });
+  const [storedColumns, setStoredColumns] = useLocalStorage<ColumnId[]>("sprint-board-columns", [...DEFAULT_VISIBLE]);
+  const visibleColumns = useMemo(() => new Set(storedColumns), [storedColumns]);
+  const setVisibleColumns = useCallback((updater: (prev: Set<ColumnId>) => Set<ColumnId>) => {
+    setStoredColumns((prev) => [...updater(new Set(prev))]);
+  }, [setStoredColumns]);
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   // PO priority order: stored in localStorage, independent from Jira rank
-  const [poPriorityOrder, setPoPriorityOrder] = useState<string[] | null>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-po-priority");
-        if (stored) {
-          const arr = JSON.parse(stored) as string[];
-          if (Array.isArray(arr) && arr.length > 0) return arr;
-        }
-      } catch { /* fall through */ }
-    }
-    return null;
-  });
+  const [poPriorityOrder, setPoPriorityOrder] = useLocalStorage<string[] | null>("sprint-board-po-priority", null);
 
   const [compareMode, setCompareMode] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -124,110 +107,40 @@ export default function SprintBoard() {
     toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // Filter state (restored from localStorage when available)
-  const [statusFilter, setStatusFilter] = useState<Set<string>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-filters");
-        if (stored) {
-          const obj = JSON.parse(stored);
-          if (obj.status && Array.isArray(obj.status)) return new Set(obj.status);
-        }
-      } catch { /* fall through */ }
-    }
-    return new Set();
-  });
-  const [epicFilter, setEpicFilter] = useState<Set<string>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-filters");
-        if (stored) {
-          const obj = JSON.parse(stored);
-          if (obj.epic && Array.isArray(obj.epic)) return new Set(obj.epic);
-        }
-      } catch { /* fall through */ }
-    }
-    return new Set();
-  });
-  const [assigneeFilter, setAssigneeFilter] = useState<Set<string>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-filters");
-        if (stored) {
-          const obj = JSON.parse(stored);
-          if (obj.assignee && Array.isArray(obj.assignee)) return new Set(obj.assignee);
-        }
-      } catch { /* fall through */ }
-    }
-    return new Set();
-  });
-  const [poStatusFilter, setPoStatusFilter] = useState<Set<string>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-filters");
-        if (stored) {
-          const obj = JSON.parse(stored);
-          if (obj.poStatus && Array.isArray(obj.poStatus)) return new Set(obj.poStatus);
-        }
-      } catch { /* fall through */ }
-    }
-    return new Set();
-  });
+  // Filter state (restored from localStorage)
+  interface StoredFilters { status: string[]; epic: string[]; assignee: string[]; poStatus: string[] }
+  const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [] };
+  const [storedFilters, setStoredFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
+  const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
+  const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
+  const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
+  const poStatusFilter = useMemo(() => new Set(storedFilters.poStatus), [storedFilters.poStatus]);
+  const setStatusFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, status: [...v] }));
+  }, [setStoredFilters]);
+  const setEpicFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, epic: [...v] }));
+  }, [setStoredFilters]);
+  const setAssigneeFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, assignee: [...v] }));
+  }, [setStoredFilters]);
+  const setPoStatusFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, poStatus: [...v] }));
+  }, [setStoredFilters]);
 
-  // Sort state (restored from localStorage when available)
-  const [sortField, setSortField] = useState<SortField>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-sort");
-        if (stored) {
-          const obj = JSON.parse(stored);
-          if (obj.field) return obj.field as SortField;
-        }
-      } catch { /* fall through */ }
-    }
-    return "rank";
-  });
-  const [sortDir, setSortDir] = useState<SortDir>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("sprint-board-sort");
-        if (stored) {
-          const obj = JSON.parse(stored);
-          if (obj.direction) return obj.direction as SortDir;
-        }
-      } catch { /* fall through */ }
-    }
-    return "asc";
-  });
+  // Sort state (restored from localStorage)
+  interface StoredSort { field: SortField; direction: SortDir }
+  const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
+  const sortField = storedSort.field;
+  const sortDir = storedSort.direction;
+  const setSortField = useCallback((f: SortField) => {
+    setStoredSort((prev) => ({ ...prev, field: f }));
+  }, [setStoredSort]);
+  const setSortDir = useCallback((d: SortDir) => {
+    setStoredSort((prev) => ({ ...prev, direction: d }));
+  }, [setStoredSort]);
 
-  // Debounced persistence to avoid thrashing localStorage on rapid filter changes
-  const debouncedPersistColumns = useDebouncedCallback((cols: Set<ColumnId>) => {
-    try { localStorage.setItem("sprint-board-columns", JSON.stringify([...cols])); }
-    catch { /* noop */ }
-  }, 300);
-
-  const debouncedPersistSort = useDebouncedCallback((field: SortField, dir: SortDir) => {
-    try { localStorage.setItem("sprint-board-sort", JSON.stringify({ field, direction: dir })); }
-    catch { /* noop */ }
-  }, 300);
-
-  const debouncedPersistFilters = useDebouncedCallback(
-    (status: Set<string>, epic: Set<string>, assignee: Set<string>, poStatus: Set<string>) => {
-      try {
-        localStorage.setItem("sprint-board-filters", JSON.stringify({
-          status: [...status],
-          epic: [...epic],
-          assignee: [...assignee],
-          poStatus: [...poStatus],
-        }));
-      } catch { /* noop */ }
-    },
-    300,
-  );
-
-  useEffect(() => { debouncedPersistColumns(visibleColumns); }, [visibleColumns, debouncedPersistColumns]);
-  useEffect(() => { debouncedPersistSort(sortField, sortDir); }, [sortField, sortDir, debouncedPersistSort]);
-  useEffect(() => { debouncedPersistFilters(statusFilter, epicFilter, assigneeFilter, poStatusFilter); }, [statusFilter, epicFilter, assigneeFilter, poStatusFilter, debouncedPersistFilters]);
+  // Persistence is handled automatically by useLocalStorage
 
   // URL search param sync
   const searchParams = useSearchParams();
@@ -378,9 +291,7 @@ export default function SprintBoard() {
     newOrder.splice(newIndex, 0, activeKey);
 
     setPoPriorityOrder(newOrder);
-    try { localStorage.setItem("sprint-board-po-priority", JSON.stringify(newOrder)); }
-    catch { /* noop */ }
-  }, [poPriorityOrder, tickets]);
+  }, [poPriorityOrder, tickets, setPoPriorityOrder]);
 
   const handleBulkSetPoStatus = useCallback(async (status: POStatus) => {
     const keys = [...checkedTickets];
@@ -438,7 +349,7 @@ export default function SprintBoard() {
       else next.delete(id);
       return next;
     });
-  }, []);
+  }, [setVisibleColumns]);
 
   const handleSlotEdit = useCallback((slotIndex: number) => {
     setEditingSlot((prev) => (prev === slotIndex ? null : slotIndex));
