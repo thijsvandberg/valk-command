@@ -173,13 +173,21 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
     setShowingDiff(true);
   };
 
-  const handleKeepLocal = useCallback(async () => {
+  const handleKeepAndPush = useCallback(async () => {
     setResolving(true);
     try {
+      // Rebase first so baseJiraVersion matches latest
       await fetch(`/api/tickets/${ticket.key}/local-edits`, { method: "PATCH" });
-      onConflictResolved?.("keep");
+      // Then push to Jira
+      const res = await fetch(`/api/tickets/${ticket.key}/push-to-jira`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        onConflictResolved?.("keep");
+      } else {
+        console.error("Push failed after rebase:", data.error ?? data.message);
+      }
     } catch (err) {
-      console.error("Failed to rebase local edits:", err);
+      console.error("Failed to keep and push local edits:", err);
     } finally {
       setResolving(false);
     }
@@ -353,11 +361,11 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
               <button
                 type="button"
                 disabled={resolving}
-                onClick={handleKeepLocal}
+                onClick={handleKeepAndPush}
                 className="rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
               >
-                {resolving ? "Resolving..." : "Keep local edits"}
+                {resolving ? "Pushing..." : "Keep local and push to Jira"}
               </button>
               <button
                 type="button"
