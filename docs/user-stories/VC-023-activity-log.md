@@ -1,0 +1,71 @@
+# VC-023: Rename Sync Log to Activity Log
+
+**Status:** Not Started
+**Priority:** Medium
+
+## Description
+
+The current sync-log is scoped to Jira sync operations only. It should become a central activity log that tracks all user and system actions. This enables full auditability and, in the future, filtering by action type.
+
+## Scope
+
+### 1. Database rename
+
+- [ ] Rename table `sync_log` to `activity_log`
+- [ ] Expand the `type` enum to include all action categories:
+  - Existing: `sprint-sync`, `ticket-sync`, `single-ticket`, `comment-sync`, `webhook`
+  - New: `review`, `metadata-update`, `local-edit`, `push-to-jira`, `bulk-action`
+- [ ] Generate and verify Drizzle migration (ALTER TABLE RENAME)
+- [ ] Update all schema types and exports
+
+### 2. API route rename
+
+- [ ] Move `/api/sync-log` to `/api/activity-log` (GET, cancel, acknowledge endpoints)
+- [ ] Update all internal fetch calls to use new route
+- [ ] Keep old route as redirect or remove (decide based on external consumers)
+
+### 3. UI rename
+
+- [ ] Rename page route from `/sync-log` to `/activity-log`
+- [ ] Update nav sidebar label
+- [ ] Update page title and breadcrumbs
+- [ ] Update EXPECTED_ROUTES manifest in `routes.test.tsx`
+
+### 4. Context and hooks rename
+
+- [ ] Rename `SyncContext` / `SyncProvider` to `ActivityContext` / `ActivityProvider`
+- [ ] Rename `useSyncStatus` hook
+- [ ] Update all consumer components
+
+### 5. Log all actions
+
+- [ ] Quality reviews (from ticket detail, chat, bulk action) write an activity log entry with type `review`
+- [ ] PO metadata updates (status, notes) write an activity log entry with type `metadata-update`
+- [ ] Local edits write an activity log entry with type `local-edit`
+- [ ] Push-to-Jira writes an activity log entry with type `push-to-jira`
+- [ ] Bulk actions write a single summary entry with type `bulk-action`
+
+### 6. Filter support (UI)
+
+- [ ] Add a type filter dropdown to the activity log page (multi-select, default: all)
+- [ ] Pass filter as query param to GET `/api/activity-log?type=review,sync`
+- [ ] API supports comma-separated type filter
+
+## Acceptance Criteria
+
+- [ ] All references to "sync-log" / "SyncLog" are renamed to "activity-log" / "ActivityLog"
+- [ ] Existing sync entries continue to display correctly after migration
+- [ ] Quality reviews appear in the activity log with ticket key, score, and source
+- [ ] The activity log page has a working type filter
+- [ ] All tests pass after rename (no broken imports or routes)
+
+## Technical Notes
+
+- The rename touches ~30 files across schema, API routes, hooks, context, components, and tests
+- SQLite supports `ALTER TABLE RENAME TO` so the migration is straightforward
+- Consider doing the rename and the "log all actions" in two commits for easier review
+- The activity log entry for reviews should include: ticket key in `scope`, score in `summary`, duration
+
+## Dependencies
+
+- None (can be done independently)
