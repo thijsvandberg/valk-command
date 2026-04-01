@@ -184,7 +184,7 @@ export const syncLog = sqliteTable("sync_log", {
   }).notNull(),
   scope: text("scope"),
   status: text("status", {
-    enum: ["running", "success", "failed"],
+    enum: ["running", "success", "failed", "cancelled"],
   }).notNull(),
   summary: text("summary"),
   errorDetail: text("error_detail"),

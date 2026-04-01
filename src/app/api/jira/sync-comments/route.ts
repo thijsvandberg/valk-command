@@ -4,6 +4,7 @@ import { jiraComment, syncLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
+import { registerSync, unregisterSync } from "@/lib/sync-abort";
 
 /**
  * POST /api/jira/sync-comments?key=VPL-12345
@@ -31,7 +32,9 @@ export async function POST(request: Request) {
       startedAt,
     });
 
-    const comments = await jiraClient.getComments(key);
+    const controller = registerSync(logId);
+
+    const comments = await jiraClient.getComments(key, controller.signal);
     let synced = 0;
 
     for (const comment of comments) {
@@ -75,6 +78,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, key, count: synced });
   } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
     await db.update(syncLog).set({
@@ -85,5 +91,7 @@ export async function POST(request: Request) {
     }).where(eq(syncLog.id, logId));
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } finally {
+    unregisterSync(logId);
   }
 }

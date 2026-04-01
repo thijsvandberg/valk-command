@@ -18,6 +18,7 @@ const EXPECTED_ROUTES = [
   { path: "/sprint-board/diff-preview", file: "src/app/(app)/sprint-board/diff-preview/page.tsx", name: "Diff Preview" },
   { path: "/tickets/[key]", file: "src/app/(app)/tickets/[key]/page.tsx", name: "Ticket Detail" },
   { path: "/changelog", file: "src/app/changelog/page.tsx", name: "Changelog" },
+  { path: "/sync-log", file: "src/app/(app)/sync-log/page.tsx", name: "Sync Log" },
 ];
 
 const ROOT = join(__dirname, "../..");

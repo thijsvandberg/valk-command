@@ -16,7 +16,7 @@ export function useSprintSlots() {
 
 // Fetches cached sprint list from the DB
 export function useJiraSprints() {
-  return useSWR<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null }[]>(
+  return useSWR<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; hidden?: boolean }[]>(
     "/api/jira/sprints",
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
@@ -55,10 +55,11 @@ export function useTicketDetail(ticketKey: string | null) {
       .then((r) => r.ok ? r.json() : null)
       .then(async (result) => {
         if (cancelled || !result?.stale) return;
-        const sprintId = swr.data?.sprintId;
-        if (sprintId) {
-          await fetch(`/api/jira/sync-tickets?sprintId=${encodeURIComponent(sprintId)}`, { method: "POST" });
-        }
+        await fetch("/api/jira/sync-tickets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketKeys: [ticketKey] }),
+        });
         swr.mutate();
       })
       .catch(() => { /* background check, fail silently */ });

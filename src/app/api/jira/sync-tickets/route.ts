@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
+import { registerSync, unregisterSync } from "@/lib/sync-abort";
 
 function normalizeIssueType(name: string): string {
   const lower = name.toLowerCase();
@@ -37,7 +38,7 @@ function userColor(name: string): string {
   return `hsl(${hue}, 55%, 50%)`;
 }
 
-async function upsertIssue(issue: JiraIssue, sprintName: string) {
+async function upsertIssue(issue: JiraIssue, sprintName: string, signal?: AbortSignal) {
   const fields = issue.fields;
   const storyPoints = extractStoryPoints(fields);
   const epicValue = extractEpicLink(fields);
@@ -123,7 +124,7 @@ async function upsertIssue(issue: JiraIssue, sprintName: string) {
   }
 
   // Sync attachment metadata (no file download)
-  const attachments = await jiraClient.getAttachments(issue.key);
+  const attachments = await jiraClient.getAttachments(issue.key, signal);
   for (const att of attachments) {
     const existingAtt = await db.query.ticketAttachment.findFirst({
       where: (a, { eq: eqFn }) => eqFn(a.jiraAttachmentId, att.id),
@@ -150,14 +151,97 @@ async function upsertIssue(issue: JiraIssue, sprintName: string) {
 }
 
 /**
- * POST /api/jira/sync-tickets?sprintId=xxx&strategy=bulk|timestamp-first
+ * POST /api/jira/sync-tickets
  *
- * Fetches all issues for the given sprint from Jira and upserts them locally.
- * Supports two strategies:
- *   bulk (default) - fetches all issues with full fields in one JQL query
- *   timestamp-first - first fetches only key+updated, then full data for changed issues
+ * Two modes:
+ *   1. Body { ticketKeys: ["VPL-123"] } - syncs only the listed tickets
+ *   2. Query ?sprintId=xxx&strategy=bulk|timestamp-first - syncs all sprint tickets
  */
 export async function POST(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const sprintId = searchParams.get("sprintId");
+
+  // Check body for single-ticket mode
+  let ticketKeys: string[] | undefined;
+  if (!sprintId) {
+    try {
+      const body = await request.json();
+      if (Array.isArray(body?.ticketKeys) && body.ticketKeys.length > 0) {
+        ticketKeys = body.ticketKeys;
+      }
+    } catch {
+      // No valid JSON body
+    }
+  }
+
+  if (ticketKeys) {
+    return syncIndividualTickets(ticketKeys);
+  }
+
+  return syncSprint(sprintId, searchParams.get("strategy") ?? "bulk");
+}
+
+async function syncIndividualTickets(ticketKeys: string[]) {
+  const logId = `sync-${Date.now()}`;
+  const startedAt = new Date().toISOString();
+  const scope = ticketKeys.join(",");
+
+  await db.insert(syncLog).values({
+    id: logId,
+    type: "ticket-sync",
+    scope,
+    status: "running",
+    startedAt,
+  });
+
+  const controller = registerSync(logId);
+
+  try {
+    const results = [];
+    for (const key of ticketKeys) {
+      const issue = await jiraClient.getIssue(key, controller.signal);
+      const existing = await db.query.ticket.findFirst({
+        where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+      });
+      const info = await upsertIssue(issue, existing?.sprintName ?? "", controller.signal);
+      results.push(info);
+    }
+
+    const durationMs = Date.now() - new Date(startedAt).getTime();
+    await db.update(syncLog).set({
+      status: "success",
+      summary: `${results.length} ticket${results.length === 1 ? "" : "s"} synced`,
+      durationMs,
+      completedAt: new Date().toISOString(),
+    }).where(eq(syncLog.id, logId));
+
+    return NextResponse.json({
+      ok: true,
+      count: results.length,
+      live: jiraClient.isLive,
+      strategy: "individual",
+      tickets: results,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+    }
+    const message = err instanceof Error ? err.message : "Unknown error";
+    const durationMs = Date.now() - new Date(startedAt).getTime();
+    await db.update(syncLog).set({
+      status: "failed",
+      errorDetail: message,
+      durationMs,
+      completedAt: new Date().toISOString(),
+    }).where(eq(syncLog.id, logId));
+
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } finally {
+    unregisterSync(logId);
+  }
+}
+
+async function syncSprint(sprintId: string | null, strategy: string) {
   const logId = `sync-${Date.now()}`;
   const startedAt = new Date().toISOString();
 
@@ -169,11 +253,9 @@ export async function POST(request: Request) {
     startedAt,
   });
 
-  try {
-    const { searchParams } = new URL(request.url);
-    const sprintId = searchParams.get("sprintId");
-    const strategy = searchParams.get("strategy") ?? "bulk";
+  const controller = registerSync(logId);
 
+  try {
     if (!sprintId) {
       return NextResponse.json(
         { error: "sprintId query parameter is required" },
@@ -194,14 +276,14 @@ export async function POST(request: Request) {
     let issues: JiraIssue[];
 
     if (strategy === "timestamp-first" && jiraClient.isLive) {
-      issues = await fetchTimestampFirst(sprintIdNum);
+      issues = await fetchTimestampFirst(sprintIdNum, controller.signal);
     } else {
-      issues = await jiraClient.getSprintIssues(sprintIdNum);
+      issues = await jiraClient.getSprintIssues(sprintIdNum, controller.signal);
     }
 
     const results = [];
     for (const issue of issues) {
-      const info = await upsertIssue(issue, sprintId);
+      const info = await upsertIssue(issue, sprintId, controller.signal);
       results.push(info);
     }
 
@@ -221,6 +303,9 @@ export async function POST(request: Request) {
       tickets: results,
     });
   } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
     await db.update(syncLog).set({
@@ -231,6 +316,8 @@ export async function POST(request: Request) {
     }).where(eq(syncLog.id, logId));
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } finally {
+    unregisterSync(logId);
   }
 }
 
@@ -238,9 +325,8 @@ export async function POST(request: Request) {
  * Timestamp-first strategy: lightweight first pass fetches only key+updated,
  * then fetches full data only for issues changed since last local sync.
  */
-async function fetchTimestampFirst(sprintIdNum: number): Promise<JiraIssue[]> {
-  // First pass: get only key + updated for all sprint issues
-  const lightweight = await jiraClient.getSprintIssueTimestamps(sprintIdNum);
+async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): Promise<JiraIssue[]> {
+  const lightweight = await jiraClient.getSprintIssueTimestamps(sprintIdNum, signal);
 
   // Compare against local jiraUpdatedAt
   const changedKeys: string[] = [];
@@ -256,5 +342,5 @@ async function fetchTimestampFirst(sprintIdNum: number): Promise<JiraIssue[]> {
   if (changedKeys.length === 0) return [];
 
   // Second pass: fetch full data only for changed issues
-  return jiraClient.getIssuesByKeys(changedKeys);
+  return jiraClient.getIssuesByKeys(changedKeys, signal);
 }

@@ -132,7 +132,7 @@ export interface SyncLogEntry {
   id: string;
   type: "sprint-sync" | "ticket-sync" | "single-ticket" | "comment-sync" | "webhook";
   scope: string | null;
-  status: "running" | "success" | "failed";
+  status: "running" | "success" | "failed" | "cancelled";
   summary: string | null;
   errorDetail: string | null;
   durationMs: number | null;

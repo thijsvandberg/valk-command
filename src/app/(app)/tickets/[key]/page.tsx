@@ -1829,7 +1829,7 @@ export default function TicketDetailPage({
   const { key } = use(params);
 
   // Fetch ticket + detail from API
-  const { data: apiData, isLoading: ticketLoading } = useTicketDetail(key);
+  const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
 
   // Map API response to Ticket and TicketDetail shapes
   const ticket: Ticket | undefined = apiData ? {
@@ -1904,12 +1904,13 @@ export default function TicketDetailPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticketKeys: [key] }),
       });
-      window.location.reload();
+      await mutateTicket();
     } catch (err) {
       console.error("Failed to refresh from Jira:", err);
+    } finally {
       setIsRefreshing(false);
     }
-  }, [key]);
+  }, [key, mutateTicket]);
 
   // Fetch sprints for breadcrumb
   const { data: rawSprints } = useJiraSprints();

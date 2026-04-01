@@ -138,7 +138,7 @@ function isConfigured(): boolean {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
-async function jiraFetch<T>(path: string): Promise<T> {
+async function jiraFetch<T>(path: string, signal?: AbortSignal): Promise<T> {
   const cfg = getConfig();
   const url = `${cfg.baseUrl}${path}`;
   const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
@@ -148,6 +148,7 @@ async function jiraFetch<T>(path: string): Promise<T> {
       Authorization: `Basic ${auth}`,
       Accept: "application/json",
     },
+    signal,
   });
 
   if (!res.ok) {
@@ -220,7 +221,7 @@ export class JiraClient {
    * then extracting sprint data from the sprint custom field.
    * Uses REST API v3 search (no Agile API needed).
    */
-  async getSprints(states: string[] = ["active", "future"]): Promise<JiraSprint[]> {
+  async getSprints(states: string[] = ["active", "future"], signal?: AbortSignal, maxSprints?: number): Promise<JiraSprint[]> {
     if (!isConfigured()) {
       return [];
     }
@@ -235,26 +236,34 @@ export class JiraClient {
     if (jqlParts.length === 0) return [];
 
     const jql = `project = ${cfg.projectKey} AND (${jqlParts.join(" OR ")}) ORDER BY updated DESC`;
-    const result = await jiraFetch<JiraSearchResponse>(
-      `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${SPRINT_FIELD}&maxResults=100`,
-    );
-
     const boardId = cfg.boardId ? parseInt(cfg.boardId, 10) : null;
     const seen = new Set<number>();
     const sprints: JiraSprint[] = [];
 
-    for (const issue of result.issues) {
-      const sprintList = issue.fields[SPRINT_FIELD as `customfield_${string}`] as JiraSprint[] | null;
-      if (!Array.isArray(sprintList)) continue;
-      for (const sp of sprintList) {
-        if (seen.has(sp.id)) continue;
-        seen.add(sp.id);
-        // Filter by board if configured
-        if (boardId && sp.boardId !== boardId) continue;
-        const state = sp.state?.toLowerCase();
-        if (!states.includes(state)) continue;
-        sprints.push(sp);
+    let pageToken: string | undefined;
+    while (true) {
+      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${SPRINT_FIELD}&maxResults=100${tokenParam}`,
+        signal,
+      );
+
+      for (const issue of result.issues) {
+        const sprintList = issue.fields[SPRINT_FIELD as `customfield_${string}`] as JiraSprint[] | null;
+        if (!Array.isArray(sprintList)) continue;
+        for (const sp of sprintList) {
+          if (seen.has(sp.id)) continue;
+          seen.add(sp.id);
+          if (boardId && sp.boardId !== boardId) continue;
+          const state = sp.state?.toLowerCase();
+          if (!states.includes(state)) continue;
+          sprints.push(sp);
+        }
       }
+
+      if (maxSprints && sprints.length >= maxSprints) break;
+      if (result.isLast !== false || !result.nextPageToken) break;
+      pageToken = result.nextPageToken;
     }
 
     return sprints;
@@ -263,7 +272,7 @@ export class JiraClient {
   /**
    * Fetch all issues for a given sprint using JQL search.
    */
-  async getSprintIssues(sprintId: number): Promise<JiraIssue[]> {
+  async getSprintIssues(sprintId: number, signal?: AbortSignal): Promise<JiraIssue[]> {
     if (!isConfigured()) {
       return [];
     }
@@ -276,6 +285,7 @@ export class JiraClient {
       const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
       const result = await jiraFetch<JiraSearchResponse>(
         `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${ISSUE_FIELDS}&maxResults=100${tokenParam}`,
+        signal,
       );
       all = all.concat(result.issues);
       if (result.isLast !== false || !result.nextPageToken) break;
@@ -288,26 +298,28 @@ export class JiraClient {
   /**
    * Fetch a single issue by key.
    */
-  async getIssue(key: string): Promise<JiraIssue> {
+  async getIssue(key: string, signal?: AbortSignal): Promise<JiraIssue> {
     if (!isConfigured()) {
       throw new Error("Jira is not configured");
     }
 
     return jiraFetch<JiraIssue>(
       `/rest/api/3/issue/${key}?fields=${ISSUE_FIELDS}`,
+      signal,
     );
   }
 
   /**
    * Fetch comments for an issue.
    */
-  async getComments(key: string): Promise<JiraComment[]> {
+  async getComments(key: string, signal?: AbortSignal): Promise<JiraComment[]> {
     if (!isConfigured()) {
       return [];
     }
 
     const result = await jiraFetch<JiraCommentResponse>(
       `/rest/api/3/issue/${key}/comment?maxResults=100`,
+      signal,
     );
     return result.comments;
   }
@@ -315,13 +327,14 @@ export class JiraClient {
   /**
    * Fetch attachments for an issue.
    */
-  async getAttachments(key: string): Promise<JiraAttachment[]> {
+  async getAttachments(key: string, signal?: AbortSignal): Promise<JiraAttachment[]> {
     if (!isConfigured()) {
       return [];
     }
 
     const issue = await jiraFetch<{ fields: { attachment: JiraAttachment[] } }>(
       `/rest/api/3/issue/${key}?fields=attachment`,
+      signal,
     );
     return issue.fields.attachment ?? [];
   }
@@ -346,7 +359,7 @@ export class JiraClient {
    * Fetch only key + updated timestamp for all sprint issues.
    * Used by the timestamp-first sync strategy to detect which issues changed.
    */
-  async getSprintIssueTimestamps(sprintId: number): Promise<Array<{ key: string; updated: string }>> {
+  async getSprintIssueTimestamps(sprintId: number, signal?: AbortSignal): Promise<Array<{ key: string; updated: string }>> {
     if (!isConfigured()) {
       return [];
     }
@@ -359,6 +372,7 @@ export class JiraClient {
       const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
       const result = await jiraFetch<JiraSearchResponse>(
         `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=updated&maxResults=200${tokenParam}`,
+        signal,
       );
       all = all.concat(result.issues.map((i) => ({ key: i.key, updated: i.fields.updated })));
       if (result.isLast !== false || !result.nextPageToken) break;
@@ -371,7 +385,7 @@ export class JiraClient {
   /**
    * Fetch full issue data for a specific set of keys (used by timestamp-first strategy).
    */
-  async getIssuesByKeys(keys: string[]): Promise<JiraIssue[]> {
+  async getIssuesByKeys(keys: string[], signal?: AbortSignal): Promise<JiraIssue[]> {
     if (!isConfigured()) {
       return [];
     }
@@ -384,6 +398,7 @@ export class JiraClient {
       const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
       const result = await jiraFetch<JiraSearchResponse>(
         `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${ISSUE_FIELDS}&maxResults=100${tokenParam}`,
+        signal,
       );
       all = all.concat(result.issues);
       if (result.isLast !== false || !result.nextPageToken) break;
