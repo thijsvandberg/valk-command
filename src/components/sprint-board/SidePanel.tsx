@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import { EPIC_COLORS } from "@/types/ticket";
-import { StoryDiffPanel } from "../story-diff/StoryDiffPanel";
+import Link from "next/link";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
@@ -167,7 +167,7 @@ export function SidePanel({
   const effectiveWidth = isFullWidth ? "100%" : `${panelWidth}px`;
 
   // Diff view state
-  const [showDiff, setShowDiff] = useState(false);
+  // Diff is only available in full-page ticket detail mode
 
   // Lazy-load ticket versions via SWR (only fetches when panel is open)
   const { data: apiVersions } = useTicketVersions(ticket.key);
@@ -203,13 +203,9 @@ export function SidePanel({
         />
       )}
 
-      {showDiff ? (
-        <StoryDiffPanel
-          versions={ticketVersions}
-          onBack={() => setShowDiff(false)}
-        />
-      ) : (
+      {(
         <>
+
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
             <div className="group/key flex items-center gap-2.5">
@@ -290,19 +286,18 @@ export function SidePanel({
 
             {/* Conflict indicator */}
             {ticket.editState === "conflict" && (
-              <button
-                type="button"
-                onClick={() => setShowDiff(true)}
+              <Link
+                href={`/tickets/${ticket.key}`}
                 className="mt-3 flex w-full items-center gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#ea8744]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.99]"
                 style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
               >
                 <AlertCircle className="h-4 w-4 shrink-0 text-[#ea8744]" strokeWidth={1.5} />
                 <div>
                   <span className="text-xs font-medium text-[#ea8744]">Conflict</span>
-                  <span className="ml-1.5 text-xs text-white/30">Jira updated since your edit. View diff</span>
+                  <span className="ml-1.5 text-xs text-white/30">Open full view to review diff</span>
                 </div>
                 <ChevronRight className="ml-auto h-2.5 w-2.5 text-white/20" strokeWidth={1.5} />
-              </button>
+              </Link>
             )}
 
             {/* Status row */}
@@ -386,15 +381,14 @@ export function SidePanel({
             {hasVersions && (
               <>
                 <div className="my-6 h-px bg-white/[0.06]" />
-                <button
-                  type="button"
-                  onClick={() => setShowDiff(true)}
+                <Link
+                  href={`/tickets/${ticket.key}`}
                   className="flex items-center gap-2 text-xs text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                   style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
                 >
                   <History className="h-3.5 w-3.5" strokeWidth={1.5} />
                   View changes ({ticketVersions.length} versions)
-                </button>
+                </Link>
               </>
             )}
 
