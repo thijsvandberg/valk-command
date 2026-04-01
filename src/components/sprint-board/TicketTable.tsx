@@ -81,13 +81,16 @@ function QualityBadge({
     </span>
   );
 
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
   if (!ticketKey || !onTogglePopover) {
     return <span title={score !== null ? `Quality: ${score}/100` : undefined}>{content}</span>;
   }
 
   return (
-    <div className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -103,9 +106,10 @@ function QualityBadge({
           ticketKey={ticketKey}
           score={score}
           onClose={onTogglePopover}
+          anchorRef={buttonRef}
         />
       )}
-    </div>
+    </>
   );
 }
 

@@ -82,10 +82,12 @@ export function ReviewPopover({
   ticketKey,
   score,
   onClose,
+  anchorRef,
 }: {
   ticketKey: string;
   score: number | null;
   onClose: () => void;
+  anchorRef: React.RefObject<HTMLElement | null>;
 }) {
   const { data, mutate: mutateReviews } = useTicketReviews(ticketKey);
   const reviews = data?.reviews ?? [];
@@ -93,6 +95,26 @@ export function ReviewPopover({
   const latestReview = reviews[0] ?? null;
   const [reviewing, setReviewing] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Position fixed relative to anchor button
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  useEffect(() => {
+    function updatePos() {
+      if (!anchorRef.current) return;
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + 8,
+        left: Math.max(8, rect.left + rect.width / 2 - 144), // 144 = half of w-72 (288px)
+      });
+    }
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [anchorRef]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -132,11 +154,10 @@ export function ReviewPopover({
   return (
     <div
       ref={popoverRef}
-      className="absolute top-full left-1/2 z-50 mt-2 w-72 -translate-x-1/2 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
+      className="fixed z-50 w-72 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
+      style={{ top: pos.top, left: pos.left }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Arrow */}
-      <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-white/[0.08] bg-[var(--color-surface-floating)]" />
 
       <div className="relative p-4">
         {/* Header */}
