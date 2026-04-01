@@ -93,6 +93,8 @@ export interface TicketDetail {
   jiraComments: JiraComment[];
 }
 
+export type TicketEditState = "clean" | "local_edits" | "conflict";
+
 export interface Ticket {
   key: string;
   title: string;
@@ -104,11 +106,9 @@ export interface Ticket {
   flagged: boolean;
   poStatus: POStatus;
   qualityScore: number | null;
-  qualityStale: boolean;
+  editState: TicketEditState;
   notes: string;
   sprintId?: string;
-  /** Freshness indicator: "fresh" if synced within 5 min, "stale" otherwise */
-  freshness?: "fresh" | "stale";
 }
 
 export interface Sprint {

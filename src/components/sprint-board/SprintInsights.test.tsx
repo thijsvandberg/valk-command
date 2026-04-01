@@ -15,7 +15,7 @@ const MOCK_TICKETS: Ticket[] = [
     flagged: false,
     poStatus: null,
     qualityScore: 45,
-    qualityStale: false,
+    editState: "clean" as const,
     notes: "",
     sprintId: "s1",
   },

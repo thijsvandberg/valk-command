@@ -231,10 +231,7 @@ export function TicketSidebar({
           <div>
             <label className="mb-1.5 block text-xs text-white/30">Quality Score</label>
             <div className="flex items-center gap-2">
-              <QualityBadge score={ticket.qualityScore} stale={ticket.qualityStale} />
-              {ticket.qualityStale && (
-                <span className="text-[10px] text-white/20">Story changed since review</span>
-              )}
+              <QualityBadge score={ticket.qualityScore} />
             </div>
           </div>
 

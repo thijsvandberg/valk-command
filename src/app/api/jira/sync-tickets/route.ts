@@ -115,12 +115,7 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
       contentHash: hash,
     });
 
-    if (latestVersion) {
-      await db
-        .update(ticketMetadata)
-        .set({ qualityStale: true })
-        .where(eq(ticketMetadata.jiraKey, issue.key));
-    }
+    // VC-017: staleness is now computed from local edits vs Jira mirror, no flag needed
   }
 
   // Sync attachment metadata from the already-fetched issue data (no extra API call)

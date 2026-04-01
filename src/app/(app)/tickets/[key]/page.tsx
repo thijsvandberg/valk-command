@@ -53,10 +53,9 @@ export default function TicketDetailPage({
     flagged: apiData.flagged ?? false,
     poStatus: apiData.poStatus ?? null,
     qualityScore: apiData.qualityScore ?? null,
-    qualityStale: apiData.qualityStale ?? false,
+    editState: apiData.editState ?? "clean",
     notes: apiData.notes ?? "",
     sprintId: apiData.sprintId,
-    freshness: apiData.freshness,
   } : undefined;
 
   const detail: TicketDetail | undefined = apiData ? {

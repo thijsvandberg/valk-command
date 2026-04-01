@@ -61,10 +61,6 @@ export async function PUT(
     updates.qualityScore = body.qualityScore;
   }
 
-  if (body.qualityStale !== undefined) {
-    updates.qualityStale = Boolean(body.qualityStale);
-  }
-
   if (body.poNotes !== undefined) {
     if (body.poNotes !== null && typeof body.poNotes !== "string") {
       return NextResponse.json(

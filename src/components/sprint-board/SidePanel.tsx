@@ -230,9 +230,14 @@ export function SidePanel({
               >
                 <Link2 size={12} strokeWidth={1.5} />
               </button>
-              {ticket.freshness === "stale" && (
-                <span className="flex items-center gap-1 rounded bg-amber-400/10 px-1.5 py-0.5 text-[10px] text-amber-400/70" title="Local data may be outdated">
-                  stale
+              {ticket.editState === "local_edits" && (
+                <span className="flex items-center gap-1 rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-[10px] text-[#4a90d9]/70" title="Has local changes not yet pushed to Jira">
+                  local changes
+                </span>
+              )}
+              {ticket.editState === "conflict" && (
+                <span className="flex items-center gap-1 rounded bg-[#ea8744]/10 px-1.5 py-0.5 text-[10px] text-[#ea8744]/70" title="Jira updated since your local edit">
+                  conflict
                 </span>
               )}
             </div>
@@ -288,8 +293,8 @@ export function SidePanel({
               {ticket.title}
             </h2>
 
-            {/* Story changed indicator */}
-            {ticket.qualityStale && (
+            {/* Conflict indicator */}
+            {ticket.editState === "conflict" && (
               <button
                 type="button"
                 onClick={() => setShowDiff(true)}
@@ -298,8 +303,8 @@ export function SidePanel({
               >
                 <AlertCircle className="h-4 w-4 shrink-0 text-[#ea8744]" strokeWidth={1.5} />
                 <div>
-                  <span className="text-xs font-medium text-[#ea8744]">Story changed</span>
-                  <span className="ml-1.5 text-xs text-white/30">View diff</span>
+                  <span className="text-xs font-medium text-[#ea8744]">Conflict</span>
+                  <span className="ml-1.5 text-xs text-white/30">Jira updated since your edit. View diff</span>
                 </div>
                 <ChevronRight className="ml-auto h-2.5 w-2.5 text-white/20" strokeWidth={1.5} />
               </button>
@@ -365,10 +370,7 @@ export function SidePanel({
               <div>
                 <label className="mb-1.5 block text-xs text-white/40">Quality Score</label>
                 <div className="flex items-center gap-2">
-                  <QualityBadge score={ticket.qualityScore} stale={ticket.qualityStale} />
-                  {ticket.qualityStale && (
-                    <span className="text-xs text-white/25">Story changed since review</span>
-                  )}
+                  <QualityBadge score={ticket.qualityScore} />
                 </div>
               </div>
 

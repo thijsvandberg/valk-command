@@ -153,16 +153,15 @@ describe("PUT /api/tickets/[key]/metadata", () => {
     expect(response.status).toBe(400);
   });
 
-  it("handles qualityStale flag", async () => {
+  it("handles qualityScore update", async () => {
     seedTicket(testDb, "VPL-100");
 
     const response = await PUT(
-      putRequest("VPL-100", { qualityScore: 80, qualityStale: true }),
+      putRequest("VPL-100", { qualityScore: 80 }),
       makeParams("VPL-100"),
     );
     const data = await response.json();
 
     expect(data.qualityScore).toBe(80);
-    expect(data.qualityStale).toBe(true);
   });
 });

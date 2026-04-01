@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { ticket, ticketLocalEdit, storyVersion } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, Attachment, JiraComment } from "@/types/ticket";
+import { computeTicketEditState } from "@/lib/ticket-state";
 
 function userInitials(name: string): string {
   return name
@@ -84,6 +85,17 @@ export async function GET(
   const labels: string[] = t.labels ? JSON.parse(t.labels) : [];
   const components: string[] = t.components ? JSON.parse(t.components) : [];
 
+  // Compute edit state from local edits vs latest Jira mirror
+  const [localEdits, latestVersion] = await Promise.all([
+    db.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.ticketKey, key)),
+    db.query.storyVersion.findFirst({
+      where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
+      orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
+    }),
+  ]);
+
+  const editState = computeTicketEditState(localEdits, latestVersion?.contentHash ?? null);
+
   const ticketBase: Ticket = {
     key: t.jiraKey,
     title: t.title,
@@ -95,7 +107,7 @@ export async function GET(
     flagged: t.flagged ?? false,
     poStatus: (meta?.poStatus ?? null) as POStatus,
     qualityScore: meta?.qualityScore ?? null,
-    qualityStale: meta?.qualityStale ?? false,
+    editState,
     notes: meta?.poNotes ?? "",
     sprintId: t.sprintName ?? undefined,
   };

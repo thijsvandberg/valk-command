@@ -6,7 +6,7 @@ import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
-import { Clock, Minus, Sparkles, Pencil, CircleDot, Check, Pause, GripVertical, Flag, MessageSquare, Sheet } from "lucide-react";
+import { Minus, Sparkles, Pencil, CircleDot, Check, Pause, GripVertical, Flag, MessageSquare, Sheet, Clock } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -47,7 +47,7 @@ const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 
 // -- Quality score badge --
 
-function QualityBadge({ score, stale }: { score: number | null; stale: boolean }) {
+function QualityBadge({ score }: { score: number | null }) {
   if (score === null) return <span className="text-white/15">--</span>;
 
   let color: string;
@@ -58,15 +58,14 @@ function QualityBadge({ score, stale }: { score: number | null; stale: boolean }
   return (
     <span
       className="inline-flex items-center gap-1.5 tabular-nums"
-      style={{ color, opacity: stale ? 0.4 : 1 }}
-      title={stale ? "Score is based on an older version of this story" : `Quality: ${score}/100`}
+      style={{ color }}
+      title={`Quality: ${score}/100`}
     >
       <span
         className="h-1.5 w-1.5 rounded-full"
         style={{ backgroundColor: color }}
       />
       {score}
-      {stale && <Clock className="h-3 w-3 text-white/30" strokeWidth={1.5} />}
     </span>
   );
 }
@@ -293,10 +292,16 @@ function SortableTicketRow({
         <td className="py-2 pr-3 font-mono text-xs text-white/50">
           <span className="flex items-center gap-1.5">
             {ticket.key}
-            {ticket.freshness === "stale" && (
+            {ticket.editState === "local_edits" && (
               <span
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/60"
-                title="Data may be outdated"
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#4a90d9]/70"
+                title="Has local changes"
+              />
+            )}
+            {ticket.editState === "conflict" && (
+              <span
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#ea8744]/70"
+                title="Conflict: Jira updated since local edit"
               />
             )}
           </span>
@@ -365,7 +370,7 @@ function SortableTicketRow({
 
       {col("quality") && (
         <td className="py-2 pr-3 text-xs tabular-nums">
-          <QualityBadge score={ticket.qualityScore} stale={ticket.qualityStale} />
+          <QualityBadge score={ticket.qualityScore} />
         </td>
       )}
 

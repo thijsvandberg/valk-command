@@ -17,7 +17,7 @@ interface InsightData {
 }
 
 function computeInsights(tickets: Ticket[]): InsightData {
-  const staleStories = tickets.filter((t) => t.qualityStale).length;
+  const staleStories = tickets.filter((t) => t.editState === "conflict").length;
   const unreviewedTickets = tickets.filter((t) => t.qualityScore === null).length;
   const blockedItems = tickets.filter((t) => t.flagged).length;
 

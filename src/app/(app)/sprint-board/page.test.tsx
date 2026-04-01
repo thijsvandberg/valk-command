@@ -24,7 +24,7 @@ const MOCK_TICKETS = [
     flagged: false,
     poStatus: null,
     qualityScore: null,
-    qualityStale: false,
+    editState: "clean" as const,
     notes: "",
   },
 ];
