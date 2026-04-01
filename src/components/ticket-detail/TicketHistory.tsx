@@ -205,6 +205,22 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
     }
   }, [ticket.key, onConflictResolved]);
 
+  const handleRevertTo = useCallback(async (version: StoryVersion) => {
+    setResolving(true);
+    try {
+      await fetch(`/api/tickets/${ticket.key}/local-edits`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field: "description", localValue: version.content }),
+      });
+      onConflictResolved?.("keep");
+    } catch (err) {
+      console.error("Failed to create revert edit:", err);
+    } finally {
+      setResolving(false);
+    }
+  }, [ticket.key, onConflictResolved]);
+
   const selectStyle = "rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/70 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none";
 
   if (loading) {
@@ -354,30 +370,56 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
             mode={diffMode}
           />
 
-          {/* Local edit actions: visible whenever a draft exists */}
-          {hasDraft && (
-            <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <span className="text-xs text-white/40">{isConflictView ? "Resolve conflict:" : "Local edits:"}</span>
-              <button
-                type="button"
-                disabled={resolving}
-                onClick={handleKeepAndPush}
-                className="rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-              >
-                {resolving ? "Pushing..." : "Keep local and push to Jira"}
-              </button>
-              <button
-                type="button"
-                disabled={resolving}
-                onClick={handleDiscardLocal}
-                className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-              >
-                Discard local edits
-              </button>
-            </div>
-          )}
+          {/* Action bar: context-dependent on what's being compared */}
+          {(() => {
+            const draftInvolved =
+              compareOldVersion?.label === "draft" || compareNewVersion?.label === "draft";
+
+            if (draftInvolved && hasDraft) {
+              return (
+                <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                  <span className="text-xs text-white/40">{isConflictView ? "Resolve conflict:" : "Local edits:"}</span>
+                  <button
+                    type="button"
+                    disabled={resolving}
+                    onClick={handleKeepAndPush}
+                    className="rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                  >
+                    {resolving ? "Pushing..." : "Keep local and push to Jira"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={resolving}
+                    onClick={handleDiscardLocal}
+                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                  >
+                    Discard local edits
+                  </button>
+                </div>
+              );
+            }
+
+            if (!draftInvolved && compareOldVersion && compareNewVersion) {
+              return (
+                <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                  <span className="text-xs text-white/40">Revert:</span>
+                  <button
+                    type="button"
+                    disabled={resolving}
+                    onClick={() => handleRevertTo(compareOldVersion)}
+                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                  >
+                    {resolving ? "Reverting..." : `Revert to ${versionLabel(compareOldVersion)}`}
+                  </button>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
         </div>
       ) : (
         /* Version list */
