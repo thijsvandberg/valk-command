@@ -97,7 +97,7 @@ export function ReviewPopover({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Position fixed relative to anchor button, clamped to viewport
-  const popoverWidth = 288; // w-72
+  const popoverWidth = 384; // w-96
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   useEffect(() => {
     function updatePos() {
@@ -159,7 +159,7 @@ export function ReviewPopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-50 w-72 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
+      className="fixed z-50 w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
       style={{ top: pos.top, left: pos.left }}
       onClick={(e) => e.stopPropagation()}
     >
