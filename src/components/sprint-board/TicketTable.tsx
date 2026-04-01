@@ -7,6 +7,7 @@ import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
 import { Minus, Sparkles, Pencil, CircleDot, Check, Pause, GripVertical, Flag, MessageSquare, Sheet, Clock } from "lucide-react";
+import { ReviewPopover } from "./ReviewPopover";
 import {
   DndContext,
   closestCenter,
@@ -45,21 +46,32 @@ const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   DEPRECATED: { bg: "rgba(239, 68, 68, 0.12)", text: "#ef4444" },
 };
 
-// -- Quality score badge --
+// -- Quality score badge (clickable to show review popover) --
 
-function QualityBadge({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-white/15">--</span>;
+function QualityBadge({
+  score,
+  ticketKey,
+  isPopoverOpen,
+  onTogglePopover,
+}: {
+  score: number | null;
+  ticketKey?: string;
+  isPopoverOpen?: boolean;
+  onTogglePopover?: () => void;
+}) {
+  let color: string | undefined;
+  if (score !== null) {
+    if (score < 30) color = "#e5534b";
+    else if (score < 70) color = "#ea8744";
+    else color = "#4aaa60";
+  }
 
-  let color: string;
-  if (score < 30) color = "#e5534b";
-  else if (score < 70) color = "#ea8744";
-  else color = "#4aaa60";
-
-  return (
+  const content = score === null ? (
+    <span className="text-white/15">--</span>
+  ) : (
     <span
       className="inline-flex items-center gap-1.5 tabular-nums"
       style={{ color }}
-      title={`Quality: ${score}/100`}
     >
       <span
         className="h-1.5 w-1.5 rounded-full"
@@ -67,6 +79,33 @@ function QualityBadge({ score }: { score: number | null }) {
       />
       {score}
     </span>
+  );
+
+  if (!ticketKey || !onTogglePopover) {
+    return <span title={score !== null ? `Quality: ${score}/100` : undefined}>{content}</span>;
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onTogglePopover();
+        }}
+        className="cursor-pointer rounded px-1 py-0.5 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
+        title={score !== null ? `Quality: ${score}/100` : "No review"}
+      >
+        {content}
+      </button>
+      {isPopoverOpen && (
+        <ReviewPopover
+          ticketKey={ticketKey}
+          score={score}
+          onClose={onTogglePopover}
+        />
+      )}
+    </div>
   );
 }
 
@@ -196,6 +235,8 @@ function SortableTicketRow({
   onSelectTicket,
   onToggleCheck,
   onPoStatusChange,
+  reviewPopoverKey,
+  onToggleReviewPopover,
 }: {
   ticket: Ticket;
   ticketIdx: number;
@@ -213,6 +254,8 @@ function SortableTicketRow({
   onSelectTicket: (key: string | null) => void;
   onToggleCheck: (key: string) => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
+  reviewPopoverKey: string | null;
+  onToggleReviewPopover: (key: string) => void;
 }) {
   const {
     attributes,
@@ -369,8 +412,16 @@ function SortableTicketRow({
       )}
 
       {col("quality") && (
-        <td className="py-2 pr-3 text-xs tabular-nums">
-          <QualityBadge score={ticket.qualityScore} />
+        <td
+          className="py-2 pr-3 text-xs tabular-nums"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <QualityBadge
+            score={ticket.qualityScore}
+            ticketKey={ticket.key}
+            isPopoverOpen={reviewPopoverKey === ticket.key}
+            onTogglePopover={() => onToggleReviewPopover(ticket.key)}
+          />
         </td>
       )}
 
@@ -430,6 +481,11 @@ export function TicketTable({
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [reviewPopoverKey, setReviewPopoverKey] = useState<string | null>(null);
+
+  const handleToggleReviewPopover = useCallback((key: string) => {
+    setReviewPopoverKey((prev) => (prev === key ? null : key));
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -513,6 +569,8 @@ export function TicketTable({
                   onSelectTicket={onSelectTicket}
                   onToggleCheck={onToggleCheck}
                   onPoStatusChange={onPoStatusChange}
+                  reviewPopoverKey={reviewPopoverKey}
+                  onToggleReviewPopover={handleToggleReviewPopover}
                 />
               ))}
             </tbody>

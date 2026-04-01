@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
 import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
-import { parseSkillInvocation } from "@/lib/agent-client";
+import { parseSkillInvocation, type ReviewResult } from "@/lib/agent-client";
 import ConversationList from "./ConversationList";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
@@ -67,6 +67,7 @@ export default function ChatLayout() {
       // Check if this is a skill invocation
       const invocation = parseSkillInvocation(content);
       if (invocation) {
+        lastInvocationRef.current = invocation;
         workspaceTask.reset();
         await workspaceTask.submitAndStream(
           invocation.skill,
@@ -83,7 +84,11 @@ export default function ChatLayout() {
     [activeId, sendMessage, workspaceTask]
   );
 
+  // Track the last skill invocation so we can persist review results from chat
+  const lastInvocationRef = useRef<{ skill: string; args: string } | null>(null);
+
   // Save completed task output as assistant message (once)
+  // Also persist review results when /review-story completes
   const savedTaskRef = useRef<string | null>(null);
   useEffect(() => {
     if (
@@ -107,6 +112,30 @@ export default function ChatLayout() {
         workspaceTaskId: workspaceTask.taskId,
       }),
     }).then(() => refreshMessages());
+
+    // Persist review results from /review-story commands
+    const invocation = lastInvocationRef.current;
+    if (invocation?.skill === "review-story" && invocation.args) {
+      const ticketKey = invocation.args.trim();
+      try {
+        const parsed = JSON.parse(workspaceTask.output) as ReviewResult;
+        if (parsed?.overallScore && parsed?.dimensions) {
+          fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source: "chat",
+              overallScore: parsed.overallScore,
+              dimensions: parsed.dimensions,
+              summary: parsed.summary ?? "",
+              suggestions: parsed.suggestions ?? [],
+            }),
+          }).catch(() => {});
+        }
+      } catch {
+        // Output wasn't JSON review data, skip
+      }
+    }
   }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages]);
 
   return (

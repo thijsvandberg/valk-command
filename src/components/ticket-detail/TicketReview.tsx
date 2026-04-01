@@ -1,22 +1,17 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, CheckCircle2, AlertTriangle } from "lucide-react";
 import { reviewStory, type ReviewResult } from "@/lib/agent-client";
+import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "./SectionHeader";
+import type { StoredReview } from "@/types/ticket";
 
 interface ReviewDimension {
   key: string;
   label: string;
   value: number;
-}
-
-interface ReviewEntry {
-  id: string;
-  date: string;
-  reviewer: string;
-  dimensions: ReviewDimension[];
-  overallScore: number;
+  feedback: string;
 }
 
 function getScoreColor(score: number): string {
@@ -25,16 +20,47 @@ function getScoreColor(score: number): string {
   return "#4aaa60";
 }
 
+function VersionFreshnessLabel({
+  review,
+  currentVersionHash,
+}: {
+  review: StoredReview;
+  currentVersionHash: string | null;
+}) {
+  if (!currentVersionHash) return null;
+
+  const isCurrent = review.storyVersionHash === currentVersionHash;
+
+  if (isCurrent) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-[#4aaa60]">
+        <CheckCircle2 size={10} strokeWidth={1.5} />
+        Based on v{review.storyVersionNumber} (current)
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-[#ea8744]">
+      <AlertTriangle size={10} strokeWidth={1.5} />
+      Based on v{review.storyVersionNumber} (outdated)
+    </span>
+  );
+}
+
 export function TicketReview({ ticketKey }: { ticketKey: string }) {
+  const { data, saveReview } = useTicketReviews(ticketKey);
+  const reviews = data?.reviews ?? [];
+  const currentVersionHash = data?.currentVersionHash ?? null;
+
   const [dimensions, setDimensions] = useState<ReviewDimension[]>([
-    { key: "clarity", label: "Clarity", value: 50 },
-    { key: "testability", label: "Testability", value: 50 },
-    { key: "completeness", label: "Completeness", value: 50 },
-    { key: "feasibility", label: "Technical Feasibility", value: 50 },
+    { key: "clarity", label: "Clarity", value: 50, feedback: "" },
+    { key: "testability", label: "Testability", value: 50, feedback: "" },
+    { key: "completeness", label: "Completeness", value: 50, feedback: "" },
+    { key: "feasibility", label: "Technical Feasibility", value: 50, feedback: "" },
   ]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [reviews, setReviews] = useState<ReviewEntry[]>([]);
   const [agentReviewing, setAgentReviewing] = useState(false);
   const [agentResult, setAgentResult] = useState<ReviewResult | null>(null);
 
@@ -52,27 +78,25 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
   const handleSaveReview = useCallback(async () => {
     setSaving(true);
     try {
-      await fetch(`/api/tickets/${ticketKey}/metadata`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qualityScore: overallScore }),
-      });
-
-      const newReview: ReviewEntry = {
-        id: `rev-${Date.now()}`,
-        date: new Date().toISOString(),
-        reviewer: "Product Owner",
-        dimensions: [...dimensions],
+      await saveReview({
+        source: "ticket-detail",
         overallScore,
-      };
-      setReviews((prev) => [newReview, ...prev]);
+        dimensions: dimensions.map((d) => ({
+          key: d.key,
+          label: d.label,
+          score: d.value,
+          feedback: d.feedback,
+        })),
+        summary: agentResult?.summary ?? "Manual quality review",
+        suggestions: agentResult?.suggestions ?? [],
+      });
       setSaved(true);
     } catch (err) {
       console.error("Operation failed:", err);
     } finally {
       setSaving(false);
     }
-  }, [ticketKey, dimensions, overallScore]);
+  }, [dimensions, overallScore, agentResult, saveReview]);
 
   const handleAgentReview = useCallback(async () => {
     setAgentReviewing(true);
@@ -83,15 +107,24 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
       setDimensions((prev) =>
         prev.map((d) => {
           const agentDim = result.dimensions.find((ad) => ad.key === d.key);
-          return agentDim ? { ...d, value: agentDim.score } : d;
+          return agentDim ? { ...d, value: agentDim.score, feedback: agentDim.feedback } : d;
         }),
       );
+
+      // Auto-persist agent review result
+      await saveReview({
+        source: "ticket-detail",
+        overallScore: result.overallScore,
+        dimensions: result.dimensions,
+        summary: result.summary,
+        suggestions: result.suggestions,
+      });
     } catch (err) {
       console.error("Operation failed:", err);
     } finally {
       setAgentReviewing(false);
     }
-  }, [ticketKey]);
+  }, [ticketKey, saveReview]);
 
   return (
     <div className="mt-6 space-y-8">
@@ -210,8 +243,9 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
             <div key={review.id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-white/40">
-                  <span className="font-medium text-white/60">{review.reviewer}</span>
-                  <span>{new Date(review.date).toLocaleDateString()}</span>
+                  <span className="font-medium text-white/60 capitalize">{review.source.replace("-", " ")}</span>
+                  <span>{new Date(review.createdAt).toLocaleDateString()}</span>
+                  <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
                 </div>
                 <span className="text-sm font-semibold tabular-nums" style={{ color: getScoreColor(review.overallScore) }}>
                   {review.overallScore}
@@ -221,10 +255,13 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
                 {review.dimensions.map((dim) => (
                   <div key={dim.key} className="flex items-center gap-1.5 text-[10px] text-white/30">
                     <span>{dim.label}:</span>
-                    <span className="font-medium tabular-nums" style={{ color: getScoreColor(dim.value) }}>{dim.value}</span>
+                    <span className="font-medium tabular-nums" style={{ color: getScoreColor(dim.score) }}>{dim.score}</span>
                   </div>
                 ))}
               </div>
+              {review.summary && (
+                <p className="mt-2 text-xs text-white/35 line-clamp-2">{review.summary}</p>
+              )}
             </div>
           ))}
           {reviews.length === 0 && <p className="text-sm text-white/25">No reviews yet</p>}
