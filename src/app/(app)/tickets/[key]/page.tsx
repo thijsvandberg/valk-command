@@ -327,9 +327,12 @@ export default function TicketDetailPage({
             <TicketHistory
               ticket={ticket}
               showConflictDiff={showConflictDiff}
-              onConflictResolved={() => {
+              onConflictResolved={(action) => {
                 setShowConflictDiff(false);
                 mutateTicket();
+                if (action === "discard") {
+                  setActiveTab("content");
+                }
               }}
             />
           )}

@@ -45,8 +45,8 @@ export interface TicketHistoryProps {
   ticket: Ticket;
   /** When set, auto-open the conflict diff (local draft vs latest Jira) */
   showConflictDiff?: boolean;
-  /** Called when user resolves the conflict */
-  onConflictResolved?: () => void;
+  /** Called when user resolves the conflict. Action is "keep" or "discard". */
+  onConflictResolved?: (action: "keep" | "discard") => void;
 }
 
 export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: TicketHistoryProps) {
@@ -177,7 +177,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
     setResolving(true);
     try {
       await fetch(`/api/tickets/${ticket.key}/local-edits`, { method: "PATCH" });
-      onConflictResolved?.();
+      onConflictResolved?.("keep");
     } catch (err) {
       console.error("Failed to rebase local edits:", err);
     } finally {
@@ -189,7 +189,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
     setResolving(true);
     try {
       await fetch(`/api/tickets/${ticket.key}/local-edits`, { method: "DELETE" });
-      onConflictResolved?.();
+      onConflictResolved?.("discard");
     } catch (err) {
       console.error("Failed to discard local edits:", err);
     } finally {
