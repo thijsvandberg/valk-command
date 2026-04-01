@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { List, ListOrdered, Code2, Link, ChevronDown } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 import type { CalloutType } from "./callout-extension";
 import type { EditorMode } from "./RichEditor";
@@ -70,7 +71,7 @@ export function Toolbar({ editor, mode }: ToolbarProps) {
         active={editor.isActive("bulletList")}
         label="Bullet list"
       >
-        <BulletListIcon />
+        <List size={14} strokeWidth={1.5} />
       </FormatButton>
 
       <FormatButton
@@ -79,7 +80,7 @@ export function Toolbar({ editor, mode }: ToolbarProps) {
         active={editor.isActive("orderedList")}
         label="Numbered list"
       >
-        <OrderedListIcon />
+        <ListOrdered size={14} strokeWidth={1.5} />
       </FormatButton>
 
       <Divider />
@@ -90,7 +91,7 @@ export function Toolbar({ editor, mode }: ToolbarProps) {
         active={editor.isActive("codeBlock")}
         label="Code block"
       >
-        <CodeIcon />
+        <Code2 size={14} strokeWidth={1.5} />
       </FormatButton>
 
       <LinkButton editor={editor} />
@@ -160,7 +161,7 @@ function LinkButton({ editor }: { editor: Editor }) {
       active={editor.isActive("link")}
       label="Insert link"
     >
-      <LinkIcon />
+      <Link size={14} strokeWidth={1.5} />
     </FormatButton>
   );
 }
@@ -210,15 +211,11 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
         }`}
       >
         <CalloutIcon />
-        <svg
-          width="8"
-          height="8"
-          viewBox="0 0 8 8"
-          fill="none"
+        <ChevronDown
+          size={8}
+          strokeWidth={1.5}
           className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`}
-        >
-          <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        />
       </button>
 
       {open && (
@@ -245,53 +242,6 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
 
 function Divider() {
   return <div className="mx-1 h-4 w-px bg-white/[0.08]" />;
-}
-
-// SVG Icons
-
-function BulletListIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <circle cx="2.5" cy="3.5" r="1" fill="currentColor" />
-      <circle cx="2.5" cy="7" r="1" fill="currentColor" />
-      <circle cx="2.5" cy="10.5" r="1" fill="currentColor" />
-      <line x1="5.5" y1="3.5" x2="12" y2="3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="5.5" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="5.5" y1="10.5" x2="12" y2="10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function OrderedListIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <text x="1" y="5" fontSize="5" fill="currentColor" fontFamily="monospace">1</text>
-      <text x="1" y="8.5" fontSize="5" fill="currentColor" fontFamily="monospace">2</text>
-      <text x="1" y="12" fontSize="5" fill="currentColor" fontFamily="monospace">3</text>
-      <line x1="5.5" y1="3.5" x2="12" y2="3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="5.5" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="5.5" y1="10.5" x2="12" y2="10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CodeIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M4.5 3.5L1.5 7L4.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9.5 3.5L12.5 7L9.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function LinkIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M6 8L8 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M5 9.5L3.5 11C2.7 11.8 1.5 11.5 1 11C0.5 10.5 0.2 9.3 1 8.5L3 6.5C3.8 5.7 5 6 5.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M9 4.5L10.5 3C11.3 2.2 12.5 2.5 13 3C13.5 3.5 13.8 4.7 13 5.5L11 7.5C10.2 8.3 9 8 8.5 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
 }
 
 function CalloutIcon() {
