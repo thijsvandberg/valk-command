@@ -6,8 +6,9 @@ import { useTicketReviews } from "@/hooks/useSprintBoard";
 import type { StoredReview } from "@/types/ticket";
 
 function getScoreColor(score: number): string {
-  if (score < 30) return "#e5534b";
-  if (score < 70) return "#ea8744";
+  if (score < 60) return "#e5534b";
+  if (score < 75) return "#ea8744";
+  if (score < 90) return "#eab308";
   return "#4aaa60";
 }
 

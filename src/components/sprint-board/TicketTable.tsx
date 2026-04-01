@@ -61,8 +61,9 @@ function QualityBadge({
 }) {
   let color: string | undefined;
   if (score !== null) {
-    if (score < 30) color = "#e5534b";
-    else if (score < 70) color = "#ea8744";
+    if (score < 60) color = "#e5534b";
+    else if (score < 75) color = "#ea8744";
+    else if (score < 90) color = "#eab308";
     else color = "#4aaa60";
   }
 
