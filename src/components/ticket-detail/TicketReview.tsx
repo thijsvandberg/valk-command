@@ -159,36 +159,44 @@ function ReviewDetail({
 
       {/* Summary */}
       {review.summary && (
-        <p className="text-xs leading-relaxed text-white/45">{review.summary}</p>
+        <div className="rounded-lg bg-white/[0.02] px-4 py-3">
+          <p className="text-sm leading-relaxed text-white/55">{review.summary}</p>
+        </div>
       )}
 
       {/* Issues / Suggestions */}
       {review.suggestions.length > 0 && (
         <div>
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-white/25">
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-white/25">
             Issues ({review.suggestions.length})
           </p>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {review.suggestions.map((s, i) => {
               const parsed = parseSuggestion(s);
               return (
-                <div key={i} className="rounded-md border border-white/[0.04] bg-white/[0.015] px-3 py-2.5">
-                  <div className="flex items-center gap-2 mb-1">
+                <div key={i} className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-4 py-3">
+                  {/* Issue header: criterion, score, location */}
+                  <div className="flex items-center gap-2 mb-2">
                     {parsed.criterion && (
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/20">{parsed.criterion}</span>
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-white/25">{parsed.criterion}</span>
                     )}
                     {parsed.score && (
-                      <span className="text-[10px] tabular-nums text-white/15">{parsed.score}</span>
+                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-white/30">{parsed.score}</span>
                     )}
                     {parsed.location && (
-                      <span className="text-[10px] text-white/25">{parsed.location}</span>
+                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/30">{parsed.location}</span>
                     )}
                   </div>
-                  <p className="text-sm leading-relaxed text-white/50">{parsed.problem}</p>
+
+                  {/* Problem */}
+                  <p className="text-sm leading-relaxed text-white/60">{parsed.problem}</p>
+
+                  {/* Suggestion */}
                   {parsed.suggestion && (
-                    <p className="mt-2 text-sm leading-relaxed text-white/40">
-                      <span className="font-medium text-[var(--color-brand-400)]/60">Suggestion: </span>{parsed.suggestion}
-                    </p>
+                    <div className="mt-3 flex gap-2 rounded-md bg-[var(--color-brand-500)]/[0.04] px-3 py-2">
+                      <span className="shrink-0 text-xs font-medium text-[var(--color-brand-400)]/50 mt-px">Suggestion</span>
+                      <p className="text-sm leading-relaxed text-white/50">{parsed.suggestion}</p>
+                    </div>
                   )}
                 </div>
               );
