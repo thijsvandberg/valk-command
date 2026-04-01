@@ -115,7 +115,7 @@ export default function ChatLayout() {
 
     // Persist review results from /review-story commands
     const invocation = lastInvocationRef.current;
-    if (invocation?.skill === "review-story" && invocation.args) {
+    if ((invocation?.skill === "review-story" || invocation?.skill === "review-story-json") && invocation.args) {
       const ticketKey = invocation.args.trim();
       const agentData = parseReviewOutput(workspaceTask.output);
       if (agentData) {

@@ -117,7 +117,7 @@ export function ReviewPopover({
 
   const handleRunReview = useCallback(() => {
     workspaceTask.reset();
-    workspaceTask.submitAndStream("review-story", { args: ticketKey });
+    workspaceTask.submitAndStream("review-story-json", { args: ticketKey });
   }, [ticketKey, workspaceTask]);
 
   // Persist when workspace task completes

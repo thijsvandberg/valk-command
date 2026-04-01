@@ -133,7 +133,7 @@ export function parseReviewOutput(output: string): ReviewStoryData | null {
       typeof parsed === "object" &&
       parsed !== null &&
       "skill" in parsed &&
-      parsed.skill === "review-story" &&
+      (parsed.skill === "review-story" || parsed.skill === "review-story-json") &&
       "score" in parsed &&
       "criteria" in parsed
     ) {

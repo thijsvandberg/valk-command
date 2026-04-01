@@ -231,7 +231,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
 
   const handleAgentReview = useCallback(() => {
     workspaceTask.reset();
-    workspaceTask.submitAndStream("review-story", { args: ticketKey });
+    workspaceTask.submitAndStream("review-story-json", { args: ticketKey });
   }, [ticketKey, workspaceTask]);
 
   // Persist review when workspace task completes
