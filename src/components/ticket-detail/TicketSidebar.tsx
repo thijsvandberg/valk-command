@@ -45,14 +45,10 @@ export function TicketSidebar({
   ticket,
   detail,
   onNavigateToReview,
-  onNavigateToHistory,
-  hasLocalEdits = false,
 }: {
   ticket: Ticket;
   detail: TicketDetail | undefined;
   onNavigateToReview?: () => void;
-  onNavigateToHistory?: () => void;
-  hasLocalEdits?: boolean;
 }) {
   const [poStatus, setPoStatus] = useState<POStatus>(ticket.poStatus);
   const [poNotes, setPoNotes] = useState(ticket.notes);
@@ -109,39 +105,6 @@ export function TicketSidebar({
 
   return (
     <div className="w-72 shrink-0 space-y-6 border-l border-white/[0.06] bg-[var(--color-surface-elevated)] p-5 xl:w-80">
-      {/* Edit state indicators */}
-      {(ticket.editState === "conflict" || hasLocalEdits) && (
-        <div className="space-y-2">
-          {ticket.editState === "conflict" && (
-            <button
-              type="button"
-              onClick={onNavigateToHistory}
-              className="flex w-full items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-3 py-2.5 text-left cursor-pointer hover:bg-[#ea8744]/[0.09] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50 active:scale-[0.995]"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-            >
-              <AlertTriangle size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-[#ea8744]">Conflict</p>
-                <p className="mt-0.5 text-[11px] text-white/35">Click to review diff</p>
-              </div>
-            </button>
-          )}
-          {hasLocalEdits && ticket.editState !== "conflict" && (
-            <button
-              type="button"
-              onClick={onNavigateToHistory}
-              className="flex w-full items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.05] px-3 py-2 text-left cursor-pointer hover:bg-[var(--color-brand-500)]/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.995]"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-            >
-              <span className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
-                Modified locally
-              </span>
-              <span className="text-[11px] text-white/30">View diff</span>
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Jira details */}
       <div>
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">Details</h3>
