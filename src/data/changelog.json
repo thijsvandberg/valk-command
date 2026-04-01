@@ -1,7 +1,428 @@
 [
   {
+    "date": "2026-04-01",
+    "entries": [
+      {
+        "hash": "6f83f692a4e4f78e3a5b6079037a1b4861d87f77",
+        "shortHash": "6f83f69",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Mark VC-022 frontend quality story as done",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/6f83f692a4e4f78e3a5b6079037a1b4861d87f77"
+      },
+      {
+        "hash": "a81c7f5e2f69dcf86ae52bcfee61dc9fc9513322",
+        "shortHash": "a81c7f5",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Eliminate circular useEffect cascade in SprintBoard URL sync",
+        "longDescription": "Replace the two mutually-triggering effects (slotSprints -> activeSlot, activeSlot -> URL) with URL as single source of truth. activeSlot is now derived from searchParams via useMemo, and setActiveSlo",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/a81c7f5e2f69dcf86ae52bcfee61dc9fc9513322"
+      },
+      {
+        "hash": "4cf357adb10f02b9b8b129359bf5cc2da3013e7c",
+        "shortHash": "4cf357a",
+        "date": "2026-04-01",
+        "category": "Improved",
+        "description": "Decompose ticket detail page into focused components",
+        "longDescription": "Split 2162-line page into 6 components in src/components/ticket-detail/: - TicketContent (editable title/description, attachments, subtasks, linked issues, comments) - TicketHistory (version list, dif",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/4cf357adb10f02b9b8b129359bf5cc2da3013e7c"
+      },
+      {
+        "hash": "322ef2bef67d498c1cc51ee270847ef74eb813c9",
+        "shortHash": "322ef2b",
+        "date": "2026-04-01",
+        "category": "Improved",
+        "description": "Extract useLocalStorage hook and replace duplicated patterns",
+        "longDescription": "Create reusable useLocalStorage hook with SSR safety, proper typing, and cross-tab sync via storage event. Replace all duplicated localStorage initialization patterns in SprintBoard.tsx (columns, filt",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/322ef2bef67d498c1cc51ee270847ef74eb813c9"
+      },
+      {
+        "hash": "3ac391fc07a3113d1be2bdf287ccfc6b5b954ec8",
+        "shortHash": "3ac391f",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Add memory leak fixes and error boundaries",
+        "longDescription": "Phase 1: Fix toast timer cleanup on unmount in SprintBoard, add EventSource cleanup with unmount guard in useWorkspaceTask, verify ChatLayout savedTaskRef pattern (safe as-is). Phase 2: Create reusabl",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/3ac391fc07a3113d1be2bdf287ccfc6b5b954ec8"
+      },
+      {
+        "hash": "ba5580e1fb87a1042cac4a19b756270694b99562",
+        "shortHash": "ba5580e",
+        "date": "2026-04-01",
+        "category": "Testing",
+        "description": "Add tests for sync log retention, cancel race condition, and rate limiter",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/ba5580e1fb87a1042cac4a19b756270694b99562"
+      },
+      {
+        "hash": "d1e97b60990905e9ee38788c2b7cad9bbd64d372",
+        "shortHash": "d1e97b6",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Add Jira sync resilience (rate limiting, retry, attachment optimization, race fix, retention)",
+        "longDescription": "- Add sliding window rate limiter (200 req/min) with 100ms minimum gap to jiraFetch/jiraPost - Add exponential backoff retry (max 3) for HTTP 429, 503, and network errors - Include attachment field in",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/d1e97b60990905e9ee38788c2b7cad9bbd64d372"
+      },
+      {
+        "hash": "95ba6cf788ec68e1ba173956fc9477220e0f2d3b",
+        "shortHash": "95ba6cf",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Move VC-020 to completed",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/95ba6cf788ec68e1ba173956fc9477220e0f2d3b"
+      },
+      {
+        "hash": "a930048f82db7e7f7d12e23651516ebae846ab07",
+        "shortHash": "a930048",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Harden API routes with input validation, error sanitization, and consistent responses",
+        "longDescription": "- Add bounds check on sync-log limit parameter (clamped to 1-500) - Validate workspace-tasks POST body (require skillName string) - Sanitize jiraFetch/jiraPost errors to not leak internal paths - Remo",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/a930048f82db7e7f7d12e23651516ebae846ab07"
+      },
+      {
+        "hash": "a7f2af186b6b26e860ac2f86cec4078c421cb66c",
+        "shortHash": "a7f2af1",
+        "date": "2026-04-01",
+        "category": "Improved",
+        "description": "Replace manual test DB setup with database layer migrations",
+        "longDescription": "createTestDb() now runs the actual database layer migrations on an in-memory SQLite database instead of duplicating the schema with manual CREATE TABLE statements. This eliminates drift between the test sche",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/a7f2af186b6b26e860ac2f86cec4078c421cb66c"
+      },
+      {
+        "hash": "8c60cc132ba03644ed16eae42e8ae5708685c4dd",
+        "shortHash": "8c60cc1",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Wrap sprint-slot updates in a transaction",
+        "longDescription": "Replaces the non-atomic delete-then-insert pattern with a single synchronous transaction to prevent race conditions where a crash between delete and insert would leave an empty slot table.",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/8c60cc132ba03644ed16eae42e8ae5708685c4dd"
+      },
+      {
+        "hash": "d39fd94147b61781a05a11b2c035430af08dd60a",
+        "shortHash": "d39fd94",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Replace N+1 query patterns with batch queries",
+        "longDescription": "Tickets route now uses a single LEFT JOIN between ticket and ticket_metadata instead of per-row metadata lookups. fetchTimestampFirst now batches all local ticket lookups into a single SELECT with IN ",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/d39fd94147b61781a05a11b2c035430af08dd60a"
+      },
+      {
+        "hash": "42f3ec8a814f6d155b1f292b41e4eeb28a05fd6b",
+        "shortHash": "42f3ec8",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Add database indexes for all FK columns and query columns",
+        "longDescription": "Adds indexes on message.conversation_id, story_version.jira_key, po_comment.ticket_key, jira_comment.ticket_key, ticket_local_edit.ticket_key, ticket_attachment.ticket_key, sync_log.started_at, and co",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/42f3ec8a814f6d155b1f292b41e4eeb28a05fd6b"
+      },
+      {
+        "hash": "a3c855f371d762a07f20ebd6bd1f5a3231742092",
+        "shortHash": "a3c855f",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Add cancelled status to sync_log CHECK constraint",
+        "longDescription": "Migration 0005 rebuilds sync_log table with CHECK that includes cancelled status, matching the schema enum definition. Also fixes the test-utils manual CREATE TABLE to include cancelled.",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/a3c855f371d762a07f20ebd6bd1f5a3231742092"
+      },
+      {
+        "hash": "d8500d8adb4b34caad008b11132060a204b2cdbf",
+        "shortHash": "d8500d8",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Mark VC-018 as done",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/d8500d8adb4b34caad008b11132060a204b2cdbf"
+      },
+      {
+        "hash": "0a0473e0764d277d0b29e1a46ed59ae62c40f83b",
+        "shortHash": "0a0473e",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Add build-time guard to prevent DB init during Next.js build",
+        "longDescription": "Check NEXT_PHASE env var in getDb() and throw if called during production build. Prevents intermittent build failures caused by the lazy Proxy triggering native SQLite initialization.",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/0a0473e0764d277d0b29e1a46ed59ae62c40f83b"
+      },
+      {
+        "hash": "6b18cba11f44a1334df5d395975cee139ec601ce",
+        "shortHash": "6b18cba",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Mock jira client in sync-tickets tests, use UUID for sync_log IDs",
+        "longDescription": "Tests now mock @/lib/jira-client with fake issues instead of relying on demo mode (which returns empty arrays). Also replaced Date.now() with crypto.randomUUID() for sync_log IDs to prevent collisions",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/6b18cba11f44a1334df5d395975cee139ec601ce"
+      },
+      {
+        "hash": "ae09af629b57bec49e5ddb49d18aecd39dfda793",
+        "shortHash": "ae09af6",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Resolve testing framework hang caused by infinite re-render in sprint board test",
+        "longDescription": "Root cause: useTickets mock returned new object refs each render, triggering setPoStatuses effect loop. Fixed by stabilizing mock refs and adding bail-out when state unchanged. Also added DB handle cl",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/ae09af629b57bec49e5ddb49d18aecd39dfda793"
+      },
+      {
+        "hash": "f85bff8a55b0a240df243e6b2f63b9ecb9523c94",
+        "shortHash": "f85bff8",
+        "date": "2026-04-01",
+        "category": "Other",
+        "description": "Cleanup user stories",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/f85bff8a55b0a240df243e6b2f63b9ecb9523c94"
+      },
+      {
+        "hash": "d9932a3c04dd1cef8010391b893c75c0994a4bdc",
+        "shortHash": "d9932a3",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Integrate sync cancellation UI, fix single-ticket sync, add scope links",
+        "longDescription": "- Wire SyncProvider and SyncToast into app layout (was disconnected) - Add SyncIndicator to Sidebar with cancel buttons per running sync - Sync Log page: cancel buttons, stop-all, cancelled status ico",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/d9932a3c04dd1cef8010391b893c75c0994a4bdc"
+      },
+      {
+        "hash": "b325f0758137f3098d37fbe36f02afb4a0f8a21f",
+        "shortHash": "b325f07",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Implement VC-015 sprint sync improvements",
+        "longDescription": "- SprintListModal: rename tabs (Sprints/History/Hidden), add eye icon for hide/restore, scoped sync button, sort order, error feedback - Sync-sprints test: update for NextRequest with scope param, add",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/b325f0758137f3098d37fbe36f02afb4a0f8a21f"
+      },
+      {
+        "hash": "70230febd5f4af9b1695beac553fc0e3b1b3711f",
+        "shortHash": "70230fe",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Phase 5 sync feedback UI, rate limiting, audit log, and polish",
+        "longDescription": "- SyncContext provider with centralized sync state, toast management, health monitoring - SyncIndicator in sidebar: live sync state, error badge, expandable mini-history - SyncToast: success auto-dism",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/70230febd5f4af9b1695beac553fc0e3b1b3711f"
+      },
+      {
+        "hash": "6d267b76117f013f8318dd293abd7146045064b8",
+        "shortHash": "6d267b7",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Add test execution rules to project configuration to prevent agent resource waste",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/6d267b76117f013f8318dd293abd7146045064b8"
+      },
+      {
+        "hash": "82e21a3de8030cb838a409f678a971aa5ddfbbb9",
+        "shortHash": "82e21a3",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Add fallback for unmapped Jira statuses and add DEPRECATED status",
+        "longDescription": "Jira status lookup crashed on statuses not in the color map. Added a neutral gray fallback for unknown statuses and DEPRECATED as a named red status.",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/82e21a3de8030cb838a409f678a971aa5ddfbbb9"
+      },
+      {
+        "hash": "c7d907a28babede25f5882dca8e1d0dfbdaea4c1",
+        "shortHash": "c7d907a",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Update VC-015 with Agile API decision and additional improvements",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/c7d907a28babede25f5882dca8e1d0dfbdaea4c1"
+      },
+      {
+        "hash": "594a755ba083bb50748756d4333dc3ad0dc49a44",
+        "shortHash": "594a755",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Add Phase 5 session prompt for next conversation",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/594a755ba083bb50748756d4333dc3ad0dc49a44"
+      },
+      {
+        "hash": "8f70180e613419e5f2d7ebe12b4ecd53ab29d548",
+        "shortHash": "8f70180",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Add VC-015 sprint sync improvements story",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/8f70180e613419e5f2d7ebe12b4ecd53ab29d548"
+      },
+      {
+        "hash": "3ac27430f57e3e5ad524c1c171bbd7b0d4c11b02",
+        "shortHash": "3ac2743",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Update VC-011 story (phases 0-4 done), mark Phase 4 complete in plan",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/3ac27430f57e3e5ad524c1c171bbd7b0d4c11b02"
+      },
+      {
+        "hash": "c4ef6c3a40fc97eb24d5a189fab35a36f3ecc92f",
+        "shortHash": "c4ef6c3",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Mark VC-014 sprint tab system as done",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/c4ef6c3a40fc97eb24d5a189fab35a36f3ecc92f"
+      },
+      {
+        "hash": "bbf742b8e48b34380225ae52a1f61a9645d377ea",
+        "shortHash": "bbf742b",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Slot loading validation, modal positioning, cleanup corrupted DB entries",
+        "longDescription": "- Filter out invalid sprint IDs (like phantom \"next\") when loading saved slots from DB. Auto-cleans DB if corrupted entries found. - Add alignLeft prop to SprintListModal so the \"+\" button's modal ope",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/bbf742b8e48b34380225ae52a1f61a9645d377ea"
+      },
+      {
+        "hash": "1891ba2dc8b4a92d13783d7579a53fa5749ca264",
+        "shortHash": "1891ba2",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Tab drag-and-drop reordering and active tab styling",
+        "longDescription": "- Add @dnd-kit horizontal sortable context to sprint tabs - Each tab is a SortableTab with pointer sensor (8px activation distance to avoid accidental drags on click) - New order persists to DB on dro",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/1891ba2dc8b4a92d13783d7579a53fa5749ca264"
+      },
+      {
+        "hash": "cdf7efe84605ca480f9faeeb33aa31a27e19122d",
+        "shortHash": "cdf7efe",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Sprint tab system - pin button, + button, default tab loading",
+        "longDescription": "- Fix button-inside-button nesting in SprintListModal (invalid HTML caused pin clicks to be swallowed by parent button handler). Changed outer element to div with role=button. - Fix extra closing pare",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/cdf7efe84605ca480f9faeeb33aa31a27e19122d"
+      },
+      {
+        "hash": "8f556f72a4d0ef884c46be7cec418b87913fac1e",
+        "shortHash": "8f556f7",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Smart fetching, freshness indicators, conflict detection (VC-011 phase 4)",
+        "longDescription": "- New GET /api/jira/check-updated?key=X for lightweight staleness check - useTicketDetail auto-checks Jira on open, resyncs if stale - Amber freshness dot in TicketTable, \"stale\" badge in SidePanel - ",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/8f556f72a4d0ef884c46be7cec418b87913fac1e"
+      },
+      {
+        "hash": "99f8cf2e6ee0e0e291ea34b4df331d333cd25d25",
+        "shortHash": "99f8cf2",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Complete VC-010 lucide migration, add copy-link and conflict detection",
+        "longDescription": "- Replace all remaining custom SVGs with lucide-react: IssueTypeIcon (CheckSquare, Bug, Bookmark, SquareMinus), PriorityIcon (ChevronsUp, ChevronUp, Minus, ChevronDown, ChevronsDown), CalloutIcon (Inf",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/99f8cf2e6ee0e0e291ea34b4df331d333cd25d25"
+      },
+      {
+        "hash": "c2ba3c89f4aac215154368605a44ca018df4ebd9",
+        "shortHash": "c2ba3c8",
+        "date": "2026-04-01",
+        "category": "Maintenance",
+        "description": "Auto-kill port 3100 on dev start, remove AO metadata hook",
+        "longDescription": "Dev script now kills any existing process on port 3100 before starting Next.js. Removed the AO metadata-updater PostToolUse hook from settings.",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/c2ba3c89f4aac215154368605a44ca018df4ebd9"
+      },
+      {
+        "hash": "372547912f27c91fcfaad4c86845327e54a939da",
+        "shortHash": "3725479",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Switch Jira client to API gateway + REST API v3, fix auth and field mapping",
+        "longDescription": "- Use Atlassian API gateway (api.atlassian.com) with JIRA_CLOUD_ID instead of direct instance URL, matching the jira-mcp auth pattern - Replace all Agile API calls (/rest/agile/1.0) with REST API v3 s",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/372547912f27c91fcfaad4c86845327e54a939da"
+      },
+      {
+        "hash": "8a00b8828301f9864c13d713cf184ea1ede28d73",
+        "shortHash": "8a00b88",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Migrate Toolbar SVGs to lucide-react, add icon-preview route (VC-010)",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/8a00b8828301f9864c13d713cf184ea1ede28d73"
+      },
+      {
+        "hash": "f4759cb0bbcf9411c0584e672a6b158ed4716c94",
+        "shortHash": "f4759cb",
+        "date": "2026-04-01",
+        "category": "New",
+        "description": "Wire all UI components to Jira API, remove mock data (VC-011 phase 3)",
+        "longDescription": "Phase 3 migrates 19 UI files from mock data imports to real API hooks. All components now use useTickets, useTicketDetail, useTicketVersions, and useJiraSprints hooks backed by SWR. Mock data files mo",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/f4759cb0bbcf9411c0584e672a6b158ed4716c94"
+      },
+      {
+        "hash": "a9b982a1f3a96be3c8e7e599c245ef618b58f12c",
+        "shortHash": "a9b982a",
+        "date": "2026-04-01",
+        "category": "Fixed",
+        "description": "Add lock to postToolUse test hook to prevent cascading testing framework processes",
+        "longDescription": "Without a lock, rapid edits spawned parallel testing framework runs that consumed 20+ GB RAM. Uses atomic mkdir lock with stale-lock cleanup after 1 minute.",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/a9b982a1f3a96be3c8e7e599c245ef618b58f12c"
+      }
+    ]
+  },
+  {
     "date": "2026-03-31",
     "entries": [
+      {
+        "hash": "4377aa795e29252d60cc347afa81c4a2fc583bd1",
+        "shortHash": "4377aa7",
+        "date": "2026-03-31",
+        "category": "New",
+        "description": "Migrate sprint board and chat SVGs to lucide-react (partial VC-010)",
+        "longDescription": "Installed lucide-react and replaced inline SVG icons in: - Sidebar (nav icons, hamburger, close, collapse toggle) - SprintSlots (refresh, add slot, sprint list, closed chevron) - FilterBar (chevrons, ",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/4377aa795e29252d60cc347afa81c4a2fc583bd1"
+      },
+      {
+        "hash": "553018b93abad32430c3f2ae6284e72c98da5fd2",
+        "shortHash": "553018b",
+        "date": "2026-03-31",
+        "category": "Maintenance",
+        "description": "Update VC-011 status (phases 0-2 done)",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/553018b93abad32430c3f2ae6284e72c98da5fd2"
+      },
+      {
+        "hash": "f984c548982764daf95546588b1f675539ef9283",
+        "shortHash": "f984c54",
+        "date": "2026-03-31",
+        "category": "New",
+        "description": "Jira integration foundation (VC-011 phases 0-2)",
+        "longDescription": "- Extend ticket schema: type, epic, flagged, reporter, description, acceptanceCriteria, jiraCreatedAt, jiraUpdatedAt, assigneeAvatar, components fields - Add syncLog table for audit trail of all sync ",
+        "author": "thijsvandenberg",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/f984c548982764daf95546588b1f675539ef9283"
+      },
+      {
+        "hash": "c27485825fd287b9df7df548698aeeef1e42ce20",
+        "shortHash": "c274858",
+        "date": "2026-03-31",
+        "category": "Maintenance",
+        "description": "Regenerate changelog [skip ci]",
+        "author": "github-actions[bot]",
+        "commitUrl": "https://github.com/thijsvandberg/valk-command/commit/c27485825fd287b9df7df548698aeeef1e42ce20"
+      },
       {
         "hash": "1710b234d77a47ce7a81f424512f9ca006398c50",
         "shortHash": "1710b23",
