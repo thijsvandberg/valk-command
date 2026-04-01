@@ -107,17 +107,20 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
   });
 
   if (!latestVersion || latestVersion.contentHash !== hash) {
+    // Fetch the actual author of the change from the Jira changelog
+    const changeAuthor = latestVersion
+      ? await jiraClient.getLastChangeAuthor(issue.key, _signal)
+      : null;
+
     await db.insert(storyVersion).values({
       id: `sv-${issue.key}-${Date.now()}`,
       jiraKey: issue.key,
       description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
       acceptanceCriteria: ac,
       contentHash: hash,
-      updatedBy: assigneeName,
-      updatedByAvatar: assigneeAvatar,
+      updatedBy: changeAuthor?.name ?? assigneeName,
+      updatedByAvatar: changeAuthor?.avatar ?? assigneeAvatar,
     });
-
-    // VC-017: staleness is now computed from local edits vs Jira mirror, no flag needed
   }
 
   // Sync attachment metadata from the already-fetched issue data (no extra API call)

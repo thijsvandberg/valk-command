@@ -539,6 +539,33 @@ export class JiraClient {
   }
 
   /**
+   * Fetch the most recent changelog author for an issue.
+   * Used to determine who made the latest content change.
+   */
+  async getLastChangeAuthor(key: string, signal?: AbortSignal): Promise<{ name: string; avatar: string | null } | null> {
+    if (!isConfigured()) return null;
+
+    try {
+      const result = await jiraFetch<{
+        values: Array<{
+          author: { displayName: string; avatarUrls?: Record<string, string> };
+        }>;
+      }>(
+        `/rest/api/3/issue/${key}/changelog?maxResults=1`,
+        signal,
+      );
+      const entry = result.values?.[result.values.length - 1];
+      if (!entry?.author) return null;
+      return {
+        name: entry.author.displayName,
+        avatar: entry.author.avatarUrls?.["48x48"] ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Update an issue's fields in Jira (summary, description).
    * Uses REST API v3 PUT /rest/api/3/issue/{key}.
    */
