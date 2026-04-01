@@ -13,7 +13,7 @@ import {
   Square,
   Ban,
 } from "lucide-react";
-import type { SyncLogEntry } from "@/types/ticket";
+import type { ActivityLogEntry } from "@/types/ticket";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
 
@@ -24,6 +24,11 @@ const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "single-ticket", label: "Single ticket" },
   { value: "comment-sync", label: "Comment sync" },
   { value: "webhook", label: "Webhook" },
+  { value: "review", label: "Review" },
+  { value: "metadata-update", label: "Metadata update" },
+  { value: "local-edit", label: "Local edit" },
+  { value: "push-to-jira", label: "Push to Jira" },
+  { value: "bulk-action", label: "Bulk action" },
 ];
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -36,13 +41,18 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 
 const PAGE_SIZE = 30;
 
-function entryTypeLabel(type: SyncLogEntry["type"]): string {
-  const labels: Record<SyncLogEntry["type"], string> = {
+function entryTypeLabel(type: ActivityLogEntry["type"]): string {
+  const labels: Record<ActivityLogEntry["type"], string> = {
     "sprint-sync": "Sprint sync",
     "ticket-sync": "Ticket sync",
     "single-ticket": "Single ticket",
     "comment-sync": "Comment sync",
     "webhook": "Webhook",
+    "review": "Review",
+    "metadata-update": "Metadata update",
+    "local-edit": "Local edit",
+    "push-to-jira": "Push to Jira",
+    "bulk-action": "Bulk action",
   };
   return labels[type] ?? type;
 }
@@ -65,7 +75,7 @@ function formatTimestamp(dateStr: string): string {
   return `${day} ${time}`;
 }
 
-function StatusIcon({ status }: { status: SyncLogEntry["status"] }) {
+function StatusIcon({ status }: { status: ActivityLogEntry["status"] }) {
   if (status === "success") {
     return <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-brand-400)]" strokeWidth={2} />;
   }
@@ -78,14 +88,14 @@ function StatusIcon({ status }: { status: SyncLogEntry["status"] }) {
   return <RefreshCw className="h-3.5 w-3.5 text-white/30 animate-spin" strokeWidth={2} />;
 }
 
-function statusLabel(status: SyncLogEntry["status"]): string {
+function statusLabel(status: ActivityLogEntry["status"]): string {
   if (status === "success") return "Success";
   if (status === "failed") return "Failed";
   if (status === "cancelled") return "Cancelled";
   return "Running";
 }
 
-export default function SyncLogPage() {
+export default function ActivityLogPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
@@ -111,19 +121,19 @@ export default function SyncLogPage() {
     return map;
   }, [sprints]);
 
-  const { data: entries, isLoading, mutate } = useSWR<SyncLogEntry[]>(
-    `/api/sync-log?${params.toString()}`,
+  const { data: entries, isLoading, mutate } = useSWR<ActivityLogEntry[]>(
+    `/api/activity-log?${params.toString()}`,
     fetcher,
     { refreshInterval: 10000 },
   );
 
   const cancelSync = useCallback(async (id: string) => {
-    await fetch(`/api/sync-log/${id}/cancel`, { method: "POST" });
+    await fetch(`/api/activity-log/${id}/cancel`, { method: "POST" });
     mutate();
   }, [mutate]);
 
   const cancelAllSyncs = useCallback(async () => {
-    await fetch("/api/sync-log/cancel-all", { method: "POST" });
+    await fetch("/api/activity-log/cancel-all", { method: "POST" });
     mutate();
   }, [mutate]);
 
@@ -141,10 +151,10 @@ export default function SyncLogPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-[var(--font-display)] text-2xl font-semibold tracking-[-0.03em] text-white">
-          Sync Log
+          Activity Log
         </h1>
         <p className="mt-1.5 text-sm text-white/35 font-[var(--font-body)] leading-relaxed">
-          Audit trail of all Jira synchronization activity
+          Audit trail of all system and user activity
         </p>
       </div>
 
@@ -195,7 +205,7 @@ export default function SyncLogPage() {
         {entries?.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <Clock className="h-8 w-8 text-white/10" strokeWidth={1.5} />
-            <span className="text-sm text-white/25 font-[var(--font-body)]">No sync entries found</span>
+            <span className="text-sm text-white/25 font-[var(--font-body)]">No activity entries found</span>
           </div>
         )}
 
@@ -296,7 +306,7 @@ function ScopeCell({
   sprintMap,
 }: {
   scope: string | null;
-  type: SyncLogEntry["type"];
+  type: ActivityLogEntry["type"];
   sprintMap: Map<string, string>;
 }) {
   if (!scope || scope === "0") {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { appSetting, syncLog } from "@/db/schema";
+import { appSetting, activityLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   const logId = `sync-sprints-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = new Date().toISOString();
 
-  await db.insert(syncLog).values({
+  await db.insert(activityLog).values({
     id: logId,
     type: "sprint-sync",
     scope,
@@ -76,12 +76,12 @@ export async function POST(request: NextRequest) {
     }
 
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "success",
       summary: `${sprints.length} ${scope} synced`,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({
       ok: true,
@@ -96,12 +96,12 @@ export async function POST(request: NextRequest) {
 
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "failed",
       errorDetail: message,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   } finally {

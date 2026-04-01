@@ -97,10 +97,10 @@ export function useTicketAttachments(ticketKey: string | null) {
   );
 }
 
-// Polls recent sync log entries (latest N results)
-export function useSyncStatus(limit = 10) {
+// Polls recent activity log entries (latest N results)
+export function useActivityStatus(limit = 10) {
   return useSWR<ActivityLogEntry[]>(
-    `/api/sync-log?limit=${limit}`,
+    `/api/activity-log?limit=${limit}`,
     fetcher,
     { refreshInterval: 10000, revalidateOnFocus: true },
   );

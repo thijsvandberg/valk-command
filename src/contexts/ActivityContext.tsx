@@ -11,37 +11,37 @@ import {
 } from "react";
 import useSWR from "swr";
 import { useJiraHealth } from "@/hooks/useSprintBoard";
-import type { SyncLogEntry } from "@/types/ticket";
+import type { ActivityLogEntry } from "@/types/ticket";
 
-export type SyncState = "idle" | "syncing" | "error";
+export type ActivityState = "idle" | "syncing" | "error";
 
 export interface Toast {
   id: string;
-  entry: SyncLogEntry;
+  entry: ActivityLogEntry;
 }
 
-interface SyncContextValue {
-  syncState: SyncState;
-  lastSync: SyncLogEntry | null;
-  unacknowledgedErrors: SyncLogEntry[];
-  logEntries: SyncLogEntry[];
+interface ActivityContextValue {
+  activityState: ActivityState;
+  lastEntry: ActivityLogEntry | null;
+  unacknowledgedErrors: ActivityLogEntry[];
+  logEntries: ActivityLogEntry[];
   jiraOnline: boolean;
   toasts: Toast[];
-  runningEntries: SyncLogEntry[];
+  runningEntries: ActivityLogEntry[];
   triggerSync: (type: "sprint" | "tickets" | "comments", scope?: string) => Promise<void>;
-  cancelSync: (id: string) => Promise<void>;
-  cancelAllSyncs: () => Promise<void>;
+  cancelEntry: (id: string) => Promise<void>;
+  cancelAllEntries: () => Promise<void>;
   acknowledgeError: (id: string) => Promise<void>;
   dismissToast: (id: string) => void;
   retryHealth: () => void;
-  mutateSyncLog: () => void;
+  mutateActivityLog: () => void;
 }
 
-const SyncContext = createContext<SyncContextValue | null>(null);
+const ActivityContext = createContext<ActivityContextValue | null>(null);
 
-export function useSyncContext() {
-  const ctx = useContext(SyncContext);
-  if (!ctx) throw new Error("useSyncContext must be used within SyncProvider");
+export function useActivityContext() {
+  const ctx = useContext(ActivityContext);
+  if (!ctx) throw new Error("useActivityContext must be used within ActivityProvider");
   return ctx;
 }
 
@@ -53,26 +53,24 @@ const SYNC_ENDPOINTS: Record<string, string> = {
   comments: "/api/jira/sync-comments",
 };
 
-export function SyncProvider({ children }: { children: ReactNode }) {
+export function ActivityProvider({ children }: { children: ReactNode }) {
   const [toastEntries, setToastEntries] = useState<Toast[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
   const [knownIds, setKnownIds] = useState<Set<string>>(new Set());
 
-  const { data: logEntries, mutate: mutateSyncLog } = useSWR<SyncLogEntry[]>(
-    "/api/sync-log?limit=20",
+  const { data: logEntries, mutate: mutateActivityLog } = useSWR<ActivityLogEntry[]>(
+    "/api/activity-log?limit=20",
     fetcher,
     {
       refreshInterval: 10000,
       revalidateOnFocus: true,
       onSuccess: (data) => {
         if (!initialized) {
-          // First load: mark all existing IDs as known, don't toast them
           setKnownIds(new Set(data.map((e) => e.id)));
           setInitialized(true);
           return;
         }
-        // Subsequent loads: toast new completed entries
         const newToasts: Toast[] = [];
         setKnownIds((prev) => {
           const next = new Set(prev);
@@ -93,13 +91,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const { data: health, mutate: mutateHealth } = useJiraHealth();
 
-  // Active toasts: not yet dismissed
   const toasts = useMemo(
     () => toastEntries.filter((t) => !dismissedIds.has(t.id)),
     [toastEntries, dismissedIds],
   );
 
-  // Auto-dismiss success toasts after 3s
   useEffect(() => {
     const successToasts = toasts.filter((t) => t.entry.status === "success");
     if (successToasts.length === 0) return;
@@ -114,7 +110,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const entries = logEntries ?? [];
 
-  const syncState: SyncState = (() => {
+  const activityState: ActivityState = (() => {
     if (entries.length === 0) return "idle";
     const hasRunning = entries.some((e) => e.status === "running");
     if (hasRunning) return "syncing";
@@ -125,7 +121,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return "idle";
   })();
 
-  const lastSync = entries[0] ?? null;
+  const lastEntry = entries[0] ?? null;
 
   const unacknowledgedErrors = entries.filter(
     (e) => e.status === "failed" && !e.acknowledged,
@@ -140,34 +136,34 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const endpoint = SYNC_ENDPOINTS[type];
       const params = scope ? `?sprintId=${encodeURIComponent(scope)}` : "";
       await fetch(`${endpoint}${params}`, { method: "POST" });
-      mutateSyncLog();
+      mutateActivityLog();
     },
-    [mutateSyncLog],
+    [mutateActivityLog],
   );
 
-  const cancelSync = useCallback(
+  const cancelEntry = useCallback(
     async (id: string) => {
-      await fetch(`/api/sync-log/${id}/cancel`, { method: "POST" });
-      mutateSyncLog();
+      await fetch(`/api/activity-log/${id}/cancel`, { method: "POST" });
+      mutateActivityLog();
     },
-    [mutateSyncLog],
+    [mutateActivityLog],
   );
 
-  const cancelAllSyncs = useCallback(
+  const cancelAllEntries = useCallback(
     async () => {
-      await fetch("/api/sync-log/cancel-all", { method: "POST" });
-      mutateSyncLog();
+      await fetch("/api/activity-log/cancel-all", { method: "POST" });
+      mutateActivityLog();
     },
-    [mutateSyncLog],
+    [mutateActivityLog],
   );
 
   const acknowledgeError = useCallback(
     async (id: string) => {
-      await fetch(`/api/sync-log/${id}/acknowledge`, { method: "POST" });
-      mutateSyncLog();
+      await fetch(`/api/activity-log/${id}/acknowledge`, { method: "POST" });
+      mutateActivityLog();
       setDismissedIds((prev) => new Set([...prev, id]));
     },
-    [mutateSyncLog],
+    [mutateActivityLog],
   );
 
   const dismissToast = useCallback((id: string) => {
@@ -179,25 +175,25 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [mutateHealth]);
 
   return (
-    <SyncContext.Provider
+    <ActivityContext.Provider
       value={{
-        syncState,
-        lastSync,
+        activityState,
+        lastEntry,
         unacknowledgedErrors,
         runningEntries,
         logEntries: entries,
         jiraOnline,
         toasts,
         triggerSync,
-        cancelSync,
-        cancelAllSyncs,
+        cancelEntry,
+        cancelAllEntries,
         acknowledgeError,
         dismissToast,
         retryHealth,
-        mutateSyncLog,
+        mutateActivityLog,
       }}
     >
       {children}
-    </SyncContext.Provider>
+    </ActivityContext.Provider>
   );
 }

@@ -144,9 +144,13 @@ export interface StoredReview {
   suggestions: string[];
 }
 
-export interface SyncLogEntry {
+export type ActivityLogType =
+  | "sprint-sync" | "ticket-sync" | "single-ticket" | "comment-sync" | "webhook"
+  | "review" | "metadata-update" | "local-edit" | "push-to-jira" | "bulk-action";
+
+export interface ActivityLogEntry {
   id: string;
-  type: "sprint-sync" | "ticket-sync" | "single-ticket" | "comment-sync" | "webhook";
+  type: ActivityLogType;
   scope: string | null;
   status: "running" | "success" | "failed" | "cancelled";
   summary: string | null;

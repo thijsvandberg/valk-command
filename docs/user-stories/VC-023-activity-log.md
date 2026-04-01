@@ -1,6 +1,6 @@
 # VC-023: Rename Sync Log to Activity Log
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -11,31 +11,31 @@ The current sync-log is scoped to Jira sync operations only. It should become a 
 
 ### 1. Database rename
 
-- [ ] Rename table `sync_log` to `activity_log`
-- [ ] Expand the `type` enum to include all action categories:
+- [x] Rename table `sync_log` to `activity_log`
+- [x] Expand the `type` enum to include all action categories:
   - Existing: `sprint-sync`, `ticket-sync`, `single-ticket`, `comment-sync`, `webhook`
   - New: `review`, `metadata-update`, `local-edit`, `push-to-jira`, `bulk-action`
-- [ ] Generate and verify Drizzle migration (ALTER TABLE RENAME)
-- [ ] Update all schema types and exports
+- [x] Generate and verify Drizzle migration (ALTER TABLE RENAME)
+- [x] Update all schema types and exports
 
 ### 2. API route rename
 
-- [ ] Move `/api/sync-log` to `/api/activity-log` (GET, cancel, acknowledge endpoints)
-- [ ] Update all internal fetch calls to use new route
-- [ ] Keep old route as redirect or remove (decide based on external consumers)
+- [x] Move `/api/sync-log` to `/api/activity-log` (GET, cancel, acknowledge endpoints)
+- [x] Update all internal fetch calls to use new route
+- [x] Keep old route as redirect or remove (decide based on external consumers)
 
 ### 3. UI rename
 
-- [ ] Rename page route from `/sync-log` to `/activity-log`
-- [ ] Update nav sidebar label
-- [ ] Update page title and breadcrumbs
-- [ ] Update EXPECTED_ROUTES manifest in `routes.test.tsx`
+- [x] Rename page route from `/sync-log` to `/activity-log`
+- [x] Update nav sidebar label
+- [x] Update page title and breadcrumbs
+- [x] Update EXPECTED_ROUTES manifest in `routes.test.tsx`
 
 ### 4. Context and hooks rename
 
-- [ ] Rename `SyncContext` / `SyncProvider` to `ActivityContext` / `ActivityProvider`
-- [ ] Rename `useSyncStatus` hook
-- [ ] Update all consumer components
+- [x] Rename `SyncContext` / `SyncProvider` to `ActivityContext` / `ActivityProvider`
+- [x] Rename `useSyncStatus` hook
+- [x] Update all consumer components
 
 ### 5. Log all actions
 

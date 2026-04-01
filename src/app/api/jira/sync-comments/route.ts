@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { jiraComment, syncLog } from "@/db/schema";
+import { jiraComment, activityLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "key query parameter is required" }, { status: 400 });
     }
 
-    await db.insert(syncLog).values({
+    await db.insert(activityLog).values({
       id: logId,
       type: "comment-sync",
       scope: key,
@@ -69,12 +69,12 @@ export async function POST(request: Request) {
     }
 
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "success",
       summary: `${synced} comments synced for ${key}`,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({ ok: true, key, count: synced });
   } catch (err) {
@@ -83,12 +83,12 @@ export async function POST(request: Request) {
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "failed",
       errorDetail: message,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   } finally {

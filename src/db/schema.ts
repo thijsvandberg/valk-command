@@ -193,10 +193,13 @@ export const ticketAttachment = sqliteTable("ticket_attachment", {
   index("ticket_attachment_ticket_key_idx").on(table.ticketKey),
 ]);
 
-export const syncLog = sqliteTable("sync_log", {
+export const activityLog = sqliteTable("activity_log", {
   id: text("id").primaryKey(),
   type: text("type", {
-    enum: ["sprint-sync", "ticket-sync", "single-ticket", "comment-sync", "webhook"],
+    enum: [
+      "sprint-sync", "ticket-sync", "single-ticket", "comment-sync", "webhook",
+      "review", "metadata-update", "local-edit", "push-to-jira", "bulk-action",
+    ],
   }).notNull(),
   scope: text("scope"),
   status: text("status", {
@@ -211,7 +214,7 @@ export const syncLog = sqliteTable("sync_log", {
   completedAt: text("completed_at"),
   acknowledged: integer("acknowledged", { mode: "boolean" }).notNull().default(false),
 }, (table) => [
-  index("sync_log_started_at_idx").on(table.startedAt),
+  index("activity_log_started_at_idx").on(table.startedAt),
 ]);
 
 // Review persistence: stores full review results linked to story versions
@@ -252,8 +255,8 @@ export type PoComment = typeof poComment.$inferSelect;
 export type JiraComment = typeof jiraComment.$inferSelect;
 export type TicketLocalEdit = typeof ticketLocalEdit.$inferSelect;
 export type TicketAttachment = typeof ticketAttachment.$inferSelect;
-export type SyncLog = typeof syncLog.$inferSelect;
-export type NewSyncLog = typeof syncLog.$inferInsert;
+export type ActivityLog = typeof activityLog.$inferSelect;
+export type NewActivityLog = typeof activityLog.$inferInsert;
 export type Ticket = typeof ticket.$inferSelect;
 export type NewTicket = typeof ticket.$inferInsert;
 export type StoredReviewRow = typeof storedReview.$inferSelect;

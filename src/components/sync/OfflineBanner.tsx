@@ -1,10 +1,10 @@
 "use client";
 
 import { RefreshCw, WifiOff } from "lucide-react";
-import { useSyncContext } from "@/contexts/SyncContext";
+import { useActivityContext } from "@/contexts/ActivityContext";
 
 export function OfflineBanner() {
-  const { jiraOnline, retryHealth } = useSyncContext();
+  const { jiraOnline, retryHealth } = useActivityContext();
 
   if (jiraOnline) return null;
 

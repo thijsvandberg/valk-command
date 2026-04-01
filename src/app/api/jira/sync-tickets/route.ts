@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, syncLog, ticketAttachment } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, activityLog, ticketAttachment } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
@@ -186,7 +186,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
   const startedAt = new Date().toISOString();
   const scope = ticketKeys.join(",");
 
-  await db.insert(syncLog).values({
+  await db.insert(activityLog).values({
     id: logId,
     type: "ticket-sync",
     scope,
@@ -208,12 +208,12 @@ async function syncIndividualTickets(ticketKeys: string[]) {
     }
 
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "success",
       summary: `${results.length} ticket${results.length === 1 ? "" : "s"} synced`,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({
       ok: true,
@@ -228,12 +228,12 @@ async function syncIndividualTickets(ticketKeys: string[]) {
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "failed",
       errorDetail: message,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   } finally {
@@ -245,7 +245,7 @@ async function syncSprint(sprintId: string | null, strategy: string) {
   const logId = `sync-${crypto.randomUUID()}`;
   const startedAt = new Date().toISOString();
 
-  await db.insert(syncLog).values({
+  await db.insert(activityLog).values({
     id: logId,
     type: "sprint-sync",
     scope: "",
@@ -271,7 +271,7 @@ async function syncSprint(sprintId: string | null, strategy: string) {
       );
     }
 
-    await db.update(syncLog).set({ scope: sprintId }).where(eq(syncLog.id, logId));
+    await db.update(activityLog).set({ scope: sprintId }).where(eq(activityLog.id, logId));
 
     let issues: JiraIssue[];
 
@@ -288,12 +288,12 @@ async function syncSprint(sprintId: string | null, strategy: string) {
     }
 
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "success",
       summary: `${results.length} tickets synced`,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({
       ok: true,
@@ -308,12 +308,12 @@ async function syncSprint(sprintId: string | null, strategy: string) {
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
-    await db.update(syncLog).set({
+    await db.update(activityLog).set({
       status: "failed",
       errorDetail: message,
       durationMs,
       completedAt: new Date().toISOString(),
-    }).where(eq(syncLog.id, logId));
+    }).where(eq(activityLog.id, logId));
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   } finally {

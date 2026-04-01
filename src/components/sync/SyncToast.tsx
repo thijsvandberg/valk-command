@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { CheckCircle2, AlertTriangle, X } from "lucide-react";
-import { useSyncContext } from "@/contexts/SyncContext";
+import { useActivityContext } from "@/contexts/ActivityContext";
 
-export function SyncToast() {
-  const { toasts, dismissToast, acknowledgeError } = useSyncContext();
+export function ActivityToast() {
+  const { toasts, dismissToast, acknowledgeError } = useActivityContext();
 
   const visibleToasts = toasts.slice(-5);
 
@@ -48,7 +48,6 @@ function ToastItem({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Animate in
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -81,7 +80,7 @@ function ToastItem({
       )}
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-white/80 font-[var(--font-body)]">
-          {isError ? "Sync failed" : isCancelled ? "Sync cancelled" : "Sync complete"}
+          {isError ? "Action failed" : isCancelled ? "Action cancelled" : "Action complete"}
         </p>
         <p className="text-[11px] text-white/40 font-[var(--font-body)] truncate mt-0.5">
           {isError ? (error ?? "Unknown error") : isCancelled ? "Cancelled by user" : (summary ?? "Done")}
