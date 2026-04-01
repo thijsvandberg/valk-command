@@ -53,29 +53,25 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
   const reviews = data?.reviews ?? [];
   const currentVersionHash = data?.currentVersionHash ?? null;
 
-  const [dimensions, setDimensions] = useState<ReviewDimension[]>([
-    { key: "clarity", label: "Clarity", value: 50, feedback: "" },
-    { key: "testability", label: "Testability", value: 50, feedback: "" },
-    { key: "completeness", label: "Completeness", value: 50, feedback: "" },
-    { key: "feasibility", label: "Technical Feasibility", value: 50, feedback: "" },
-  ]);
+  const [dimensions, setDimensions] = useState<ReviewDimension[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [agentReviewing, setAgentReviewing] = useState(false);
   const [agentResult, setAgentResult] = useState<ReviewResult | null>(null);
 
-  const overallScore = Math.round(
-    dimensions.reduce((sum, d) => sum + d.value, 0) / dimensions.length,
-  );
+  const overallScore = dimensions
+    ? Math.round(dimensions.reduce((sum, d) => sum + d.value, 0) / dimensions.length)
+    : null;
 
   const handleDimensionChange = useCallback((key: string, value: number) => {
     setDimensions((prev) =>
-      prev.map((d) => (d.key === key ? { ...d, value } : d)),
+      prev ? prev.map((d) => (d.key === key ? { ...d, value } : d)) : prev,
     );
     setSaved(false);
   }, []);
 
   const handleSaveReview = useCallback(async () => {
+    if (!dimensions || overallScore === null) return;
     setSaving(true);
     try {
       await saveReview({
@@ -104,11 +100,13 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
     try {
       const result = await reviewStory(ticketKey);
       setAgentResult(result);
-      setDimensions((prev) =>
-        prev.map((d) => {
-          const agentDim = result.dimensions.find((ad) => ad.key === d.key);
-          return agentDim ? { ...d, value: agentDim.score, feedback: agentDim.feedback } : d;
-        }),
+      setDimensions(
+        result.dimensions.map((d) => ({
+          key: d.key,
+          label: d.label,
+          value: d.score,
+          feedback: d.feedback,
+        })),
       );
 
       // Auto-persist agent review result
@@ -180,6 +178,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         </div>
       </div>
 
+      {dimensions && (
       <div>
         <SectionHeader title="Quality Review" />
         <div className="mt-4 space-y-5">
@@ -215,7 +214,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         <div className="mt-6 flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
           <span className="text-sm font-medium text-white/50">Overall Score</span>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold tabular-nums" style={{ color: getScoreColor(overallScore) }}>
+            <span className="text-lg font-semibold tabular-nums" style={{ color: getScoreColor(overallScore!) }}>
               {overallScore}
             </span>
             <span className="text-xs text-white/25">/100</span>
@@ -235,6 +234,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
           {saved && <span className="text-xs text-[#4aaa60]">Review saved</span>}
         </div>
       </div>
+      )}
 
       <div>
         <SectionHeader title="Review History" count={reviews.length} />
