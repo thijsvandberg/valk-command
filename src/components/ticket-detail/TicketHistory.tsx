@@ -375,8 +375,11 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
           {(() => {
             const draftInvolved =
               compareOldVersion?.label === "draft" || compareNewVersion?.label === "draft";
+            const currentJiraInvolved =
+              compareOldVersion?.label === "current" || compareNewVersion?.label === "current";
 
-            if (draftInvolved && hasDraft) {
+            // Draft vs current Jira: push or discard
+            if (draftInvolved && currentJiraInvolved) {
               return (
                 <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
                   <span className="text-xs text-white/40">{isConflictView ? "Resolve conflict:" : "Local edits:"}</span>
@@ -402,6 +405,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
               );
             }
 
+            // Two Jira versions (no draft involved): offer revert to the older one
             if (!draftInvolved && compareOldVersion && compareNewVersion) {
               return (
                 <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
@@ -419,6 +423,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
               );
             }
 
+            // Draft vs older Jira version: just browsing, no actions
             return null;
           })()}
         </div>
