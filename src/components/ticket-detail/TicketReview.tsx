@@ -184,10 +184,10 @@ function ReviewDetail({
                       <span className="text-[10px] text-white/25">{parsed.location}</span>
                     )}
                   </div>
-                  <p className="text-xs leading-relaxed text-white/50">{parsed.problem}</p>
+                  <p className="text-sm leading-relaxed text-white/50">{parsed.problem}</p>
                   {parsed.suggestion && (
-                    <p className="mt-1.5 text-xs leading-relaxed text-white/30">
-                      <span className="text-white/20">Suggestion: </span>{parsed.suggestion}
+                    <p className="mt-2 text-sm leading-relaxed text-white/40">
+                      <span className="font-medium text-[var(--color-brand-400)]/60">Suggestion: </span>{parsed.suggestion}
                     </p>
                   )}
                 </div>
