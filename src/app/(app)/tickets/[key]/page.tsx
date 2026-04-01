@@ -119,8 +119,8 @@ export default function TicketDetailPage({
   }, [key, mutateTicket]);
 
   const { data: rawSprints } = useJiraSprints();
-  const activeSprint = rawSprints?.find((s) => s.state === "active");
-  const activeSprintName = activeSprint?.name ?? null;
+  const ticketSprintId = ticket?.sprintId ?? null;
+  const ticketSprintLabel = rawSprints?.find((s) => String(s.id) === ticketSprintId)?.name ?? ticketSprintId;
 
   if (ticketLoading) {
     return (
@@ -168,13 +168,13 @@ export default function TicketDetailPage({
               Sprint Board
             </Link>
             <ChevronRight size={10} strokeWidth={1} className="text-white/15" />
-            {activeSprintName && (
+            {ticketSprintId && (
               <>
                 <Link
-                  href="/sprint-board"
+                  href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
                   className="text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
-                  {activeSprintName}
+                  {ticketSprintLabel}
                 </Link>
                 <ChevronRight size={10} strokeWidth={1} className="text-white/15" />
               </>
