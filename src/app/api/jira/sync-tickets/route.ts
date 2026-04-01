@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, syncLog, ticketAttachment } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { jiraClient, type JiraIssue } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
 
@@ -39,8 +39,9 @@ function userColor(name: string): string {
 
 async function upsertIssue(issue: JiraIssue, sprintName: string) {
   const fields = issue.fields;
-  const storyPoints = fields.customfield_10028 ?? fields.story_points ?? null;
-  const epicValue = fields.customfield_10008 ?? null;
+  const storyPoints = extractStoryPoints(fields);
+  const epicValue = extractEpicLink(fields);
+  const ac = extractAcceptanceCriteria(fields);
   const assigneeName = fields.assignee?.displayName ?? null;
   const assigneeAvatar = fields.assignee?.avatarUrls?.["48x48"] ?? null;
   const reporterName = fields.reporter?.displayName ?? null;
@@ -72,7 +73,7 @@ async function upsertIssue(issue: JiraIssue, sprintName: string) {
     flagged: Boolean(fields.flagged),
     reporter: reporterName,
     description: descriptionMarkdown || null,
-    acceptanceCriteria: fields.customfield_10034 ?? null,
+    acceptanceCriteria: ac,
     storyPoints,
     sprintName,
     labels: fields.labels.length > 0 ? JSON.stringify(fields.labels) : null,
@@ -98,7 +99,7 @@ async function upsertIssue(issue: JiraIssue, sprintName: string) {
   }
 
   // Story version tracking: snapshot when content changes
-  const hash = contentHash(fields.description, fields.customfield_10034);
+  const hash = contentHash(fields.description, ac);
   const latestVersion = await db.query.storyVersion.findFirst({
     where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, issue.key),
     orderBy: (sv, { desc }) => [desc(sv.createdAt)],
@@ -109,7 +110,7 @@ async function upsertIssue(issue: JiraIssue, sprintName: string) {
       id: `sv-${issue.key}-${Date.now()}`,
       jiraKey: issue.key,
       description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
-      acceptanceCriteria: fields.customfield_10034 ?? null,
+      acceptanceCriteria: ac,
       contentHash: hash,
     });
 

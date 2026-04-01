@@ -24,8 +24,8 @@ export async function GET() {
   }
 
   try {
-    const user = await jiraClient.checkHealth();
-    return NextResponse.json({ ok: true, live: true, user });
+    const result = await jiraClient.checkHealth();
+    return NextResponse.json({ ok: true, live: true, user: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     const cached = await db.query.appSetting.findFirst({
