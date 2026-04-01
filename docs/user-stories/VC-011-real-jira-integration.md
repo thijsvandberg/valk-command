@@ -34,9 +34,9 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 ### Local Editing & Conflict Resolution
 - [x] Local draft layer per issue: edits stored in SQLite, separate from synced Jira data
 - [ ] Draft indicator on issues that have unpushed local changes
-- [ ] On entering edit mode: background check against Jira `updated` timestamp, show warning/badge if remote is newer
+- [x] On entering edit mode: background check against Jira `updated` timestamp, show warning/badge if remote is newer
 - [ ] On sync: fetch latest Jira version and store as new snapshot in history (never overwrite local draft)
-- [ ] If Jira version is newer than draft basis: show warning "remote version changed since your edit"
+- [x] If Jira version is newer than draft basis: show warning "remote version changed since your edit"
 - [ ] Diff view between local draft and latest Jira version
 - [ ] Manual merge flow: user decides which changes to keep
 
@@ -104,6 +104,13 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 - All 19 UI files migrated from mock imports to API hooks
 - Mock data files moved to `deleted/`
 - Tests updated to mock SWR hooks
+
+### Phase 4: Smart Fetching + Conflict Detection
+- `GET /api/jira/check-updated?key=X` route: lightweight freshness check against Jira
+- `useTicketDetail` hook: background staleness check on ticket open, auto-resyncs stale tickets
+- Freshness indicators: amber dot in TicketTable for stale tickets, "stale" badge in SidePanel
+- Conflict detection: when local edits exist and Jira version is newer, shows warning banner in ticket detail
+- `useConflictCheck` hook: SWR-based conflict detection for edit mode
 
 ### Auth + Config Fix (2026-04-01)
 - Switched to Atlassian API gateway with JIRA_CLOUD_ID (matching jira-mcp auth pattern)
