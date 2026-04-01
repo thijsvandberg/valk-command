@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Ticket, POStatus, TicketDetail } from "@/types/ticket";
 import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
-import { ChevronDown, ChevronsUp, ChevronUp, Minus, ChevronsDown } from "lucide-react";
+import { ChevronDown, ChevronsUp, ChevronUp, Minus, ChevronsDown, AlertTriangle } from "lucide-react";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
+import { useTicketReviews } from "@/hooks/useSprintBoard";
 
 const PRIORITY_COLORS: Record<string, { icon: string; text: string }> = {
   Highest: { icon: "#e5534b", text: "#e5534b" },
@@ -51,6 +52,13 @@ export function TicketSidebar({
   const [poNotes, setPoNotes] = useState(ticket.notes);
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
+
+  const { data: reviewData } = useTicketReviews(ticket.key);
+  const latestReview = reviewData?.reviews?.[0] ?? null;
+  const currentVersionHash = reviewData?.currentVersionHash ?? null;
+  const isReviewOutdated = latestReview && currentVersionHash
+    ? latestReview.storyVersionHash !== currentVersionHash
+    : false;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -228,10 +236,15 @@ export function TicketSidebar({
           </div>
 
           {/* Quality Score */}
-          <div>
-            <label className="mb-1.5 block text-xs text-white/30">Quality Score</label>
+          <div className="flex items-start justify-between py-2">
+            <span className="shrink-0 text-xs text-white/30">Quality Score</span>
             <div className="flex items-center gap-2">
               <QualityBadge score={ticket.qualityScore} />
+              {isReviewOutdated && (
+                <span title="Review is based on an older version of this story">
+                  <AlertTriangle size={12} strokeWidth={1.5} className="text-[#ea8744]/70" />
+                </span>
+              )}
             </div>
           </div>
 
