@@ -108,7 +108,7 @@ export function mapAgentReviewToResult(data: ReviewStoryData): ReviewResult {
     };
   });
 
-  const suggestions = data.issues.map((i) => `${i.problem} \u2192 ${i.suggestion}`);
+  const suggestions = data.issues.map((i) => `[${i.criterion}] ${i.problem} \u2192 ${i.suggestion}`);
 
   return {
     overallScore,

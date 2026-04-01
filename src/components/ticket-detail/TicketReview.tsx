@@ -23,27 +23,29 @@ function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
   const color = getScoreColor(dim.score);
   const icon = statusIcon(dim.score);
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span
-        className="w-4 text-center text-xs font-medium"
-        style={{ color }}
-      >
-        {icon}
-      </span>
-      <span className="flex-1 text-xs text-white/50">{dim.label}</span>
-      <div className="flex items-center gap-2">
-        <div className="h-1 w-16 rounded-full bg-white/[0.06] overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.5 }}
-          />
-        </div>
-        <span className="w-7 text-right text-xs font-medium tabular-nums" style={{ color }}>
-          {dim.score}
-        </span>
+    <div className="grid grid-cols-[16px_1fr_80px_32px] items-center gap-x-2 px-3 py-2">
+      <span className="text-center text-xs font-medium" style={{ color }}>{icon}</span>
+      <span className="text-xs text-white/50">{dim.label}</span>
+      <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.5 }}
+        />
       </div>
+      <span className="text-right text-xs font-medium tabular-nums" style={{ color }}>{dim.score}</span>
     </div>
   );
+}
+
+function parseSuggestion(s: string): { criterion: string | null; problem: string; suggestion: string | null } {
+  const criterionMatch = s.match(/^\[([^\]]+)\]\s*/);
+  const rest = criterionMatch ? s.slice(criterionMatch[0].length) : s;
+  const parts = rest.split(" \u2192 ");
+  return {
+    criterion: criterionMatch ? criterionMatch[1] : null,
+    problem: parts[0],
+    suggestion: parts[1] ?? null,
+  };
 }
 
 function VersionFreshnessLabel({
@@ -132,18 +134,19 @@ function ReviewDetail({
       {review.suggestions.length > 0 && (
         <div>
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-white/25">
-            Issues ({failedDimensions.length})
+            Issues ({review.suggestions.length})
           </p>
           <div className="space-y-2">
             {review.suggestions.map((s, i) => {
-              const parts = s.split(" \u2192 ");
-              const problem = parts[0];
-              const suggestion = parts[1];
+              const parsed = parseSuggestion(s);
               return (
-                <div key={i} className="rounded-md border border-white/[0.04] bg-white/[0.015] px-3 py-2">
-                  <p className="text-xs text-white/50">{problem}</p>
-                  {suggestion && (
-                    <p className="mt-1 text-xs text-[var(--color-brand-400)]/70">{suggestion}</p>
+                <div key={i} className="rounded-md border border-white/[0.04] bg-white/[0.015] px-3 py-2.5">
+                  {parsed.criterion && (
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-white/20">{parsed.criterion}</p>
+                  )}
+                  <p className="text-xs leading-relaxed text-white/50">{parsed.problem}</p>
+                  {parsed.suggestion && (
+                    <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-brand-400)]/70">{parsed.suggestion}</p>
                   )}
                 </div>
               );

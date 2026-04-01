@@ -96,15 +96,20 @@ export function ReviewPopover({
   const [reviewing, setReviewing] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Position fixed relative to anchor button
+  // Position fixed relative to anchor button, clamped to viewport
+  const popoverWidth = 288; // w-72
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   useEffect(() => {
     function updatePos() {
       if (!anchorRef.current) return;
       const rect = anchorRef.current.getBoundingClientRect();
+      const vw = window.innerWidth;
+      // Try to center on the button, but clamp to stay 8px from edges
+      const idealLeft = rect.left + rect.width / 2 - popoverWidth / 2;
+      const clampedLeft = Math.min(Math.max(8, idealLeft), vw - popoverWidth - 8);
       setPos({
         top: rect.bottom + 8,
-        left: Math.max(8, rect.left + rect.width / 2 - 144), // 144 = half of w-72 (288px)
+        left: clampedLeft,
       });
     }
     updatePos();
