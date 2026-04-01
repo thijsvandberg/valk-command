@@ -60,9 +60,11 @@ export async function POST(request: NextRequest) {
       try { cached = JSON.parse(existingRow.value); } catch { /* ignore corrupt cache */ }
     }
 
-    // Remove sprints of the synced states, then add fresh data
+    // Remove cached entries that match the synced states OR whose ID appears
+    // in fresh data (handles sprints that changed state, e.g. active -> closed)
     const syncedStates = new Set(states);
-    const kept = cached.filter((s) => !syncedStates.has(s.state));
+    const freshIds = new Set(sprints.map((s) => s.id));
+    const kept = cached.filter((s) => !syncedStates.has(s.state) && !freshIds.has(s.id));
     const merged = [...kept, ...sprints.map(sprintToStored)];
 
     const payload = JSON.stringify(merged);

@@ -22,6 +22,7 @@ const ISSUE_FIELDS = [
   "summary", "issuetype", "status", "priority", "assignee", "reporter",
   "labels", EPIC_LINK_FIELD, STORY_POINTS_FIELD, SPRINT_FIELD, "flagged",
   "description", "created", "updated", ACCEPTANCE_CRITERIA_FIELD, "components",
+  "attachment",
 ].join(",");
 
 // ---------------------------------------------------------------------------
@@ -67,6 +68,7 @@ export interface JiraIssueFields {
   created: string;
   updated: string;
   components?: Array<{ name: string }>;
+  attachment?: JiraAttachment[];
 }
 
 export interface JiraIssue {
@@ -135,6 +137,115 @@ function isConfigured(): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Rate limiting: sliding window throttle (max 200 req/min with buffer)
+// ---------------------------------------------------------------------------
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 200;
+const MIN_REQUEST_GAP_MS = 100;
+
+const requestTimestamps: number[] = [];
+
+async function throttle(): Promise<void> {
+  const now = Date.now();
+  // Prune timestamps outside the window
+  while (requestTimestamps.length > 0 && requestTimestamps[0] < now - RATE_LIMIT_WINDOW_MS) {
+    requestTimestamps.shift();
+  }
+
+  // Enforce minimum gap between requests
+  if (requestTimestamps.length > 0) {
+    const lastRequest = requestTimestamps[requestTimestamps.length - 1];
+    const gap = now - lastRequest;
+    if (gap < MIN_REQUEST_GAP_MS) {
+      await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_GAP_MS - gap));
+    }
+  }
+
+  // Enforce sliding window limit
+  if (requestTimestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const oldestInWindow = requestTimestamps[0];
+    const waitMs = oldestInWindow + RATE_LIMIT_WINDOW_MS - Date.now() + 1;
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  requestTimestamps.push(Date.now());
+}
+
+// Exported for testing
+export { requestTimestamps as _requestTimestamps };
+
+// ---------------------------------------------------------------------------
+// Retry logic: exponential backoff for transient errors
+// ---------------------------------------------------------------------------
+
+const MAX_RETRIES = 3;
+const INITIAL_BACKOFF_MS = 500;
+
+function isRetryable(status: number): boolean {
+  return status === 429 || status === 503;
+}
+
+async function withRetry<T>(
+  fn: () => Promise<Response>,
+  parse: (res: Response) => Promise<T>,
+  path: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (signal?.aborted) {
+      throw new DOMException("The operation was aborted", "AbortError");
+    }
+
+    try {
+      await throttle();
+      const res = await fn();
+
+      if (res.ok) {
+        return parse(res);
+      }
+
+      if (isRetryable(res.status) && attempt < MAX_RETRIES) {
+        const retryAfterHeader = res.headers.get("Retry-After");
+        let delayMs: number;
+        if (retryAfterHeader) {
+          const seconds = parseInt(retryAfterHeader, 10);
+          delayMs = isNaN(seconds) ? INITIAL_BACKOFF_MS * 2 ** attempt : seconds * 1000;
+        } else {
+          delayMs = INITIAL_BACKOFF_MS * 2 ** attempt;
+        }
+        console.warn(`Jira API ${res.status} on ${path}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      const body = await res.text().catch(() => "");
+      console.error(`Jira API error: ${res.status} ${res.statusText} path=${path} body=${body}`);
+      throw new Error("Jira API request failed");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      if (err instanceof Error && err.message === "Jira API request failed") throw err;
+
+      // Network errors / timeouts are retryable
+      if (attempt < MAX_RETRIES) {
+        const delayMs = INITIAL_BACKOFF_MS * 2 ** attempt;
+        console.warn(`Jira API network error on ${path}: ${err instanceof Error ? err.message : err}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        lastError = err instanceof Error ? err : new Error(String(err));
+        continue;
+      }
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw lastError ?? new Error("Jira API request failed after retries");
+}
+
+// ---------------------------------------------------------------------------
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
@@ -143,45 +254,40 @@ async function jiraFetch<T>(path: string, signal?: AbortSignal): Promise<T> {
   const url = `${cfg.baseUrl}${path}`;
   const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Basic ${auth}`,
-      Accept: "application/json",
-    },
+  return withRetry(
+    () => fetch(url, {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+      },
+      signal,
+    }),
+    (res) => res.json() as Promise<T>,
+    path,
     signal,
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error(`Jira API error: ${res.status} ${res.statusText} path=${path} body=${body}`);
-    throw new Error("Jira API request failed");
-  }
-
-  return res.json() as Promise<T>;
+  );
 }
 
-async function jiraPost<T>(path: string, body: unknown): Promise<T> {
+async function jiraPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const cfg = getConfig();
   const url = `${cfg.baseUrl}${path}`;
   const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error(`Jira API error: ${res.status} ${res.statusText} path=${path} body=${text}`);
-    throw new Error("Jira API request failed");
-  }
-
-  return res.json() as Promise<T>;
+  return withRetry(
+    () => fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal,
+    }),
+    (res) => res.json() as Promise<T>,
+    path,
+    signal,
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, syncLog, ticketAttachment } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
@@ -38,7 +38,7 @@ function userColor(name: string): string {
   return `hsl(${hue}, 55%, 50%)`;
 }
 
-async function upsertIssue(issue: JiraIssue, sprintName: string, signal?: AbortSignal) {
+async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: AbortSignal) {
   const fields = issue.fields;
   const storyPoints = extractStoryPoints(fields);
   const epicValue = extractEpicLink(fields);
@@ -123,8 +123,8 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, signal?: AbortS
     }
   }
 
-  // Sync attachment metadata (no file download)
-  const attachments = await jiraClient.getAttachments(issue.key, signal);
+  // Sync attachment metadata from the already-fetched issue data (no extra API call)
+  const attachments: JiraAttachment[] = issue.fields.attachment ?? [];
   for (const att of attachments) {
     const existingAtt = await db.query.ticketAttachment.findFirst({
       where: (a, { eq: eqFn }) => eqFn(a.jiraAttachmentId, att.id),

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { syncLog } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { abortSync } from "@/lib/sync-abort";
 
 /**
@@ -9,6 +9,7 @@ import { abortSync } from "@/lib/sync-abort";
  *
  * Cancels a running sync by aborting its in-flight Jira requests
  * and marking the sync log entry as cancelled.
+ * Uses optimistic concurrency: only updates if status is still "running".
  */
 export async function POST(
   _request: Request,
@@ -30,13 +31,23 @@ export async function POST(
 
   abortSync(id);
 
+  // Optimistic concurrency: only cancel if the sync is still running
   const durationMs = Date.now() - new Date(entry.startedAt).getTime();
-  await db.update(syncLog).set({
+  const result = await db.update(syncLog).set({
     status: "cancelled",
     summary: "Cancelled by user",
     durationMs,
     completedAt: new Date().toISOString(),
-  }).where(eq(syncLog.id, id));
+  }).where(and(eq(syncLog.id, id), eq(syncLog.status, "running")));
+
+  const updated = result.changes > 0;
+
+  if (!updated) {
+    return NextResponse.json({
+      ok: false,
+      error: "Sync already completed before cancellation took effect",
+    }, { status: 409 });
+  }
 
   return NextResponse.json({ ok: true });
 }
