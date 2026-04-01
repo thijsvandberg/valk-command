@@ -12,18 +12,18 @@ const SAMPLE_VERSIONS: StoryVersion[] = [
   {
     versionNumber: 1,
     date: "2026-03-20T10:00:00Z",
-    source: "Jira sync",
     contentHash: "abc123",
-    qualityScore: null,
     content: "## Description\n\nInitial version of the story.\n\n## Acceptance Criteria\n\n- [ ] First criterion",
+    updatedBy: null,
+    updatedByAvatar: null,
   },
   {
     versionNumber: 2,
     date: "2026-03-22T14:30:00Z",
-    source: "Jira sync",
     contentHash: "def456",
-    qualityScore: 65,
     content: "## Description\n\nUpdated version with more detail.\n\n## Acceptance Criteria\n\n- [ ] First criterion\n- [ ] Second criterion added",
+    updatedBy: null,
+    updatedByAvatar: null,
   },
 ];
 
@@ -38,10 +38,10 @@ function DiffPreviewContent() {
     ? apiVersions.map((v: Record<string, unknown>, idx: number) => ({
         versionNumber: idx + 1,
         date: (v.createdAt as string) || new Date().toISOString(),
-        source: "Jira sync" as const,
         contentHash: (v.contentHash as string) || "",
-        qualityScore: null,
         content: (v.description as string) || "",
+        updatedBy: (v.updatedBy as string) ?? null,
+        updatedByAvatar: (v.updatedByAvatar as string) ?? null,
       }))
     : SAMPLE_VERSIONS;
 

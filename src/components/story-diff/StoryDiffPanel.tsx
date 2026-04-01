@@ -20,17 +20,17 @@ export interface StoryDiffPanelProps {
 // -----------------------------------------------------------------------
 
 function formatDate(iso: string): string {
-  const d = new Date(iso);
+  const raw = iso.endsWith("Z") ? iso : `${iso}Z`;
+  const d = new Date(raw);
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
-function sourceLabel(source: StoryVersion["source"]): string {
-  return source === "Jira sync" ? "Jira sync" : "Local edit";
-}
 
 // -----------------------------------------------------------------------
 // Component
@@ -165,23 +165,8 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
         </p>
         <div className="mt-1 flex items-center gap-3 text-xs text-white/40">
           <span>{formatDate(current.date)}</span>
-          <span
-            className="rounded-full border px-2 py-0.5"
-            style={{
-              borderColor:
-                current.source === "Jira sync"
-                  ? "rgba(68, 170, 187, 0.3)"
-                  : "rgba(160, 90, 200, 0.3)",
-              color:
-                current.source === "Jira sync" ? "#44aabb" : "#a05ac8",
-            }}
-          >
-            {sourceLabel(current.source)}
-          </span>
-          {current.qualityScore !== null && (
-            <span className="text-white/30">
-              Quality: {current.qualityScore}
-            </span>
+          {current.updatedBy && (
+            <span className="text-white/30">{current.updatedBy}</span>
           )}
         </div>
       </div>

@@ -122,10 +122,10 @@ export interface Sprint {
 export interface StoryVersion {
   versionNumber: number;
   date: string;
-  source: "Jira sync" | "Local edit";
   contentHash: string;
-  qualityScore: number | null;
   content: string;
+  updatedBy: string | null;
+  updatedByAvatar: string | null;
 }
 
 export interface SyncLogEntry {

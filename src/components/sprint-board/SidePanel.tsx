@@ -177,10 +177,10 @@ export function SidePanel({
       return apiVersions.map((v: Record<string, unknown>, idx: number) => ({
         versionNumber: idx + 1,
         date: (v.createdAt as string) || new Date().toISOString(),
-        source: "Jira sync" as const,
         contentHash: (v.contentHash as string) || "",
-        qualityScore: null,
         content: (v.description as string) || "",
+        updatedBy: (v.updatedBy as string) ?? null,
+        updatedByAvatar: (v.updatedByAvatar as string) ?? null,
       }));
     }
     return [];

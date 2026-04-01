@@ -111,6 +111,8 @@ export const storyVersion = sqliteTable("story_version", {
   acceptanceCriteria: text("acceptance_criteria"),
   contentHash: text("content_hash").notNull(),
   tag: text("tag"),
+  updatedBy: text("updated_by"),
+  updatedByAvatar: text("updated_by_avatar"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

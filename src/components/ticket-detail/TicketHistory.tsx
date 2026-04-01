@@ -8,28 +8,35 @@ import { exportDiffAsMarkdown } from "@/components/story-diff/export-diff";
 import { ChevronRight, ChevronLeft, Download } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
+// DB stores UTC timestamps (from SQLite datetime('now')). Append Z so the
+// browser's Date constructor treats them as UTC and renders in local time.
 function formatVersionDate(iso: string): string {
-  const d = new Date(iso);
+  const raw = iso.endsWith("Z") ? iso : `${iso}Z`;
+  const d = new Date(raw);
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
-const VERSION_TAGS = ["pre-refinement", "post-refinement", "final"] as const;
-
-const TAG_COLORS: Record<string, { bg: string; text: string }> = {
-  "pre-refinement": { bg: "rgba(234, 179, 8, 0.12)", text: "#eab308" },
-  "post-refinement": { bg: "rgba(96, 165, 250, 0.12)", text: "#60a5fa" },
-  "final": { bg: "rgba(46, 145, 73, 0.12)", text: "#4aaa60" },
-};
+function formatVersionDateShort(iso: string): string {
+  const raw = iso.endsWith("Z") ? iso : `${iso}Z`;
+  const d = new Date(raw);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function TicketHistory({ ticket }: { ticket: Ticket }) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [diffMode, setDiffMode] = useState<DiffMode>("unified");
-  const [versionTags, setVersionTags] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -41,10 +48,10 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
           const mapped: StoryVersion[] = data.map((v: Record<string, unknown>, idx: number) => ({
             versionNumber: idx + 1,
             date: (v.createdAt as string) || new Date().toISOString(),
-            source: "Jira sync" as const,
             contentHash: (v.contentHash as string) || "",
-            qualityScore: null,
             content: (v.description as string) || "",
+            updatedBy: (v.updatedBy as string) ?? null,
+            updatedByAvatar: (v.updatedByAvatar as string) ?? null,
           }));
           setTicketVersions(mapped);
         }
@@ -174,7 +181,7 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
           >
             {sorted.map((v) => (
               <option key={v.versionNumber} value={v.versionNumber}>
-                v{v.versionNumber} - {formatVersionDate(v.date)}
+                v{v.versionNumber} - {formatVersionDateShort(v.date)}
               </option>
             ))}
           </select>
@@ -186,7 +193,7 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
           >
             {sorted.map((v) => (
               <option key={v.versionNumber} value={v.versionNumber}>
-                v{v.versionNumber} - {formatVersionDate(v.date)}
+                v{v.versionNumber} - {formatVersionDateShort(v.date)}
               </option>
             ))}
           </select>
@@ -261,18 +268,6 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
                   : `Version ${current.versionNumber} (initial)`}
               </span>
               <span>{formatVersionDate(current.date)}</span>
-              <span
-                className="rounded-full border px-2 py-0.5"
-                style={{
-                  borderColor: current.source === "Jira sync" ? "rgba(68, 170, 187, 0.3)" : "rgba(160, 90, 200, 0.3)",
-                  color: current.source === "Jira sync" ? "#44aabb" : "#a05ac8",
-                }}
-              >
-                {current.source}
-              </span>
-              {current.qualityScore !== null && (
-                <span className="text-white/30">Quality: {current.qualityScore}</span>
-              )}
             </div>
             {previous && (
               <button
@@ -313,14 +308,6 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
         <div className="mt-3 overflow-hidden rounded-lg border border-white/[0.06]">
           {sorted.map((version, idx) => {
             const isFirst = idx === sorted.length - 1;
-            let scoreColor = "#94a3b8";
-            if (version.qualityScore !== null) {
-              if (version.qualityScore < 30) scoreColor = "#e5534b";
-              else if (version.qualityScore < 70) scoreColor = "#ea8744";
-              else scoreColor = "#4aaa60";
-            }
-            const currentTag = versionTags[version.versionNumber] ?? null;
-            const tagColor = currentTag ? TAG_COLORS[currentTag] : null;
 
             return (
               <div
@@ -331,58 +318,30 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
                 }`}
                 style={{ transition: "background-color 0.15s ease" }}
               >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-[10px] font-semibold tabular-nums text-white/40">
-                  v{version.versionNumber}
-                </div>
+                {version.updatedByAvatar ? (
+                  <img
+                    src={version.updatedByAvatar}
+                    alt={version.updatedBy ?? ""}
+                    className="h-7 w-7 shrink-0 rounded-full"
+                  />
+                ) : (
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-[10px] font-semibold tabular-nums text-white/40">
+                    v{version.versionNumber}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-white/60">
                       {isFirst ? "Initial version" : `Version ${version.versionNumber}`}
                     </span>
-                    <span
-                      className="rounded-full border px-1.5 py-0.5 text-[10px]"
-                      style={{
-                        borderColor: version.source === "Jira sync" ? "rgba(68, 170, 187, 0.2)" : "rgba(160, 90, 200, 0.2)",
-                        color: version.source === "Jira sync" ? "#44aabb" : "#a05ac8",
-                      }}
-                    >
-                      {version.source}
-                    </span>
-                    {tagColor && currentTag && (
-                      <span
-                        className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                        style={{ backgroundColor: tagColor.bg, color: tagColor.text }}
-                      >
-                        {currentTag}
-                      </span>
+                    {version.updatedBy && (
+                      <span className="text-xs text-white/30">{version.updatedBy}</span>
                     )}
                   </div>
                   <div className="mt-0.5 text-xs text-white/25">
                     {formatVersionDate(version.date)}
                   </div>
                 </div>
-                <select
-                  value={currentTag ?? ""}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    const newTag = e.target.value || null;
-                    setVersionTags((prev) => ({ ...prev, [version.versionNumber]: newTag }));
-                  }}
-                  className="shrink-0 rounded-md border border-white/[0.06] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-white/40 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none"
-                  title="Set version tag"
-                >
-                  <option value="">No tag</option>
-                  {VERSION_TAGS.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-                {version.qualityScore !== null && (
-                  <div className="flex items-center gap-1.5 tabular-nums text-xs" style={{ color: scoreColor }}>
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: scoreColor }} />
-                    {version.qualityScore}
-                  </div>
-                )}
                 <ChevronRight size={10} strokeWidth={1} className="shrink-0 text-white/15" />
               </div>
             );

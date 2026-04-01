@@ -113,6 +113,8 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
       description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
       acceptanceCriteria: ac,
       contentHash: hash,
+      updatedBy: assigneeName,
+      updatedByAvatar: assigneeAvatar,
     });
 
     // VC-017: staleness is now computed from local edits vs Jira mirror, no flag needed
