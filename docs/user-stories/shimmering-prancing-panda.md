@@ -124,7 +124,7 @@ Uses `useTicketVersions(ticketKey)` from URL `?ticket=` param. Falls back to sam
 
 ---
 
-## Phase 4: Smart Fetching + Conflict Detection
+## Phase 4: Smart Fetching + Conflict Detection -- DONE
 
 ### 4a. Single-ticket freshness check
 New `src/app/api/jira/check-updated/route.ts` (GET `?key=X`): fetch only `updated` from Jira, compare with local `jiraUpdatedAt`, return `{ stale, localUpdated, remoteUpdated }`

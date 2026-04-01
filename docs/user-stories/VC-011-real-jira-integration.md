@@ -1,6 +1,6 @@
 # VC-011: Real Jira Integration (Read-Only)
 
-**Status:** In Progress (Phase 4)
+**Status:** In Progress (Phase 5 next)
 **Priority:** High
 
 ## Description
@@ -77,7 +77,7 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 - ADF-to-markdown: custom lightweight mapper (`src/lib/adf-to-markdown.ts`)
 - PO metadata (readiness scores, notes, review) stays local in SQLite, only Jira fields come from API
 - Default board ID: 233 (BT board in Jira sprint field data)
-- Freshness computation exists in `/api/tickets` (5-min threshold), not yet shown in UI
+- Freshness computation in `/api/tickets` (5-min threshold), shown as amber dot in table + "stale" badge in side panel
 
 ## Completed Work
 
