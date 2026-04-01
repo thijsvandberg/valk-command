@@ -182,7 +182,7 @@ export async function POST(request: Request) {
 }
 
 async function syncIndividualTickets(ticketKeys: string[]) {
-  const logId = `sync-${Date.now()}`;
+  const logId = `sync-${crypto.randomUUID()}`;
   const startedAt = new Date().toISOString();
   const scope = ticketKeys.join(",");
 
@@ -242,7 +242,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
 }
 
 async function syncSprint(sprintId: string | null, strategy: string) {
-  const logId = `sync-${Date.now()}`;
+  const logId = `sync-${crypto.randomUUID()}`;
   const startedAt = new Date().toISOString();
 
   await db.insert(syncLog).values({

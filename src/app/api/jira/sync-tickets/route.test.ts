@@ -11,6 +11,63 @@ vi.mock("@/db", () => ({
   },
 }));
 
+vi.mock("@/lib/jira-client", () => ({
+  jiraClient: {
+    isLive: false,
+    getSprintIssues: vi.fn().mockResolvedValue([
+      {
+        id: "10001",
+        key: "VPL-101",
+        fields: {
+          summary: "Implement auth flow",
+          issuetype: { name: "Story" },
+          status: { name: "In Progress" },
+          priority: { name: "High" },
+          assignee: { displayName: "Alice", avatarUrls: { "48x48": "https://example.com/alice.png" } },
+          reporter: { displayName: "Bob" },
+          labels: ["backend"],
+          flagged: false,
+          description: "As a user I want to authenticate",
+          created: "2026-03-01T10:00:00.000Z",
+          updated: "2026-03-15T12:00:00.000Z",
+          components: [{ name: "auth" }],
+        },
+      },
+      {
+        id: "10002",
+        key: "VPL-102",
+        fields: {
+          summary: "Add dashboard widgets",
+          issuetype: { name: "Task" },
+          status: { name: "To Do" },
+          priority: { name: "Medium" },
+          assignee: null,
+          reporter: null,
+          labels: [],
+          flagged: false,
+          description: null,
+          created: "2026-03-02T10:00:00.000Z",
+          updated: "2026-03-16T12:00:00.000Z",
+          components: [],
+        },
+      },
+    ]),
+    getAttachments: vi.fn().mockResolvedValue([]),
+  },
+  extractStoryPoints: () => null,
+  extractEpicLink: () => null,
+  extractAcceptanceCriteria: () => null,
+}));
+
+vi.mock("@/lib/sync-abort", () => ({
+  registerSync: () => new AbortController(),
+  unregisterSync: () => {},
+}));
+
+vi.mock("@/lib/adf-to-markdown", () => ({
+  adfToMarkdown: (doc: unknown) => (typeof doc === "string" ? doc : ""),
+}));
+
 import { POST } from "./route";
 
 function makeRequest(sprintId?: string): Request {

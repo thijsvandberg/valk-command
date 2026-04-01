@@ -23,10 +23,10 @@ Separately, the `sync-tickets/route.test.ts` tests (lines 33-82) call the POST h
 - [x] Verify `npx vitest run` exits cleanly with exit code 0
 
 ### Phase 2: Fix failing sync-tickets tests
-- [ ] Run `npx vitest run src/app/api/jira/sync-tickets/route.test.ts` and capture exact error messages
-- [ ] The tests at lines 33-82 call `POST` with `sprintId=134` but the Jira client isn't mocked for that path. When `isLive()` returns false, the demo fallback data may not match what the tests expect
-- [ ] Either mock the Jira client in these tests (preferred) or align assertions with the actual demo data
-- [ ] Verify all 7 tests in the file pass
+- [x] Run `npx vitest run src/app/api/jira/sync-tickets/route.test.ts` and capture exact error messages
+- [x] The tests at lines 33-82 call `POST` with `sprintId=134` but the Jira client isn't mocked for that path. When `isLive()` returns false, the demo fallback data may not match what the tests expect
+- [x] Either mock the Jira client in these tests (preferred) or align assertions with the actual demo data
+- [x] Verify all 7 tests in the file pass
 
 ### Phase 3: Build stability
 - [ ] `npm run build` intermittently fails with `PageNotFoundError: Cannot find module for page` on various pages
