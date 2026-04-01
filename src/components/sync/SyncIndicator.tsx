@@ -32,9 +32,9 @@ function stateIcon(state: ActivityState, errorCount: number) {
 }
 
 function stateLabel(state: ActivityState): string {
-  if (state === "syncing") return "Syncing...";
-  if (state === "error") return "Sync error";
-  return "Synced";
+  if (state === "syncing") return "Active...";
+  if (state === "error") return "Error";
+  return "All clear";
 }
 
 function timeAgo(dateStr: string | null): string {
