@@ -48,17 +48,17 @@ The sprint board and ticket detail views are the most complex parts of the UI. `
 - [x] Write tests for the hook
 
 ### Phase 4: Decompose ticket detail page
-- [ ] `src/app/(app)/tickets/[key]/page.tsx` is 2,162 lines. Split into:
+- [x] `src/app/(app)/tickets/[key]/page.tsx` is 2,162 lines. Split into:
   - `TicketHeader` - title, status, assignee, breadcrumb
   - `TicketContent` - description with markdown rendering
   - `TicketHistory` - version list and diff viewer
   - `TicketReview` - review dimensions, agent review, score display
   - `TicketRefinement` - estimation, readiness checklist
   - `TicketSidebar` - metadata panel (PO status, quality score, notes)
-- [ ] Each component gets its own file in `src/components/ticket-detail/`
-- [ ] The page file becomes a thin shell that composes these components
-- [ ] Target: page file under 200 lines
-- [ ] All existing functionality must be preserved (test by manual verification of all 4 tabs)
+- [x] Each component gets its own file in `src/components/ticket-detail/`
+- [x] The page file becomes a thin shell that composes these components
+- [x] Target: page file under 200 lines
+- [x] All existing functionality must be preserved (test by manual verification of all 4 tabs)
 
 ### Phase 5: Fix circular useEffect cascade
 - [ ] `src/components/sprint-board/SprintBoard.tsx:229-256` has two effects that can trigger each other:
