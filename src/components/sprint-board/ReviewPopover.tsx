@@ -115,10 +115,10 @@ export function ReviewPopover({
     };
   }, [onClose]);
 
-  const handleRunReview = useCallback(() => {
+  function handleRunReview() {
     workspaceTask.reset();
     workspaceTask.submitAndStream("review-story-json", { args: ticketKey });
-  }, [ticketKey, workspaceTask]);
+  }
 
   // Persist when workspace task completes
   useEffect(() => {

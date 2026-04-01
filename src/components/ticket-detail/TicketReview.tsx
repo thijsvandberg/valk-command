@@ -229,10 +229,10 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
   const agentReviewing = workspaceTask.status === "submitting" || workspaceTask.status === "streaming";
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const handleAgentReview = useCallback(() => {
+  function handleAgentReview() {
     workspaceTask.reset();
     workspaceTask.submitAndStream("review-story-json", { args: ticketKey });
-  }, [ticketKey, workspaceTask]);
+  }
 
   // Persist review when workspace task completes
   const savedTaskRef = useRef<string | null>(null);

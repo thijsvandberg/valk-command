@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { storedReview, ticketMetadata, storyVersion } from "@/db/schema";
+import { storedReview, ticketMetadata, storyVersion, activityLog } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
