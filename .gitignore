@@ -11,7 +11,7 @@ docs/agent-orchestrator/config-reference.md
 docs/agent-orchestrator/lifecycle.md
 docs/agent-orchestrator/workflow.md
 docs/investigations/2026-03-28-project-setup-session.md
-sqlite.db
-sqlite.db-wal
-sqlite.db-shm
+*.db
+*.db-wal
+*.db-shm
 .ao-events/
