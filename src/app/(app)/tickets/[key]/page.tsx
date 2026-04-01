@@ -15,7 +15,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
-import { useTicketDetail, useJiraSprints } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useJiraSprints, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
@@ -94,6 +94,9 @@ export default function TicketDetailPage({
     loadVersionCount();
     return () => { cancelled = true; };
   }, [key]);
+
+  const { data: reviewData } = useTicketReviews(key);
+  const reviewCount = reviewData?.reviews?.length ?? 0;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -266,7 +269,7 @@ export default function TicketDetailPage({
             {([
               { id: "content" as const, label: "Content" },
               { id: "history" as const, label: "History", badge: versionCount },
-              { id: "review" as const, label: "Review" },
+              { id: "review" as const, label: "Review", badge: reviewCount || undefined },
               { id: "refinement" as const, label: "Refinement" },
             ]).map((tab) => (
               <button
@@ -319,7 +322,7 @@ export default function TicketDetailPage({
       </div>
 
       <div className="sticky top-0 min-h-full self-stretch overflow-y-auto">
-        <TicketSidebar ticket={ticket} detail={detail} />
+        <TicketSidebar ticket={ticket} detail={detail} onNavigateToReview={() => setActiveTab("review")} />
       </div>
     </div>
     </ErrorBoundary>

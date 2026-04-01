@@ -44,9 +44,11 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 export function TicketSidebar({
   ticket,
   detail,
+  onNavigateToReview,
 }: {
   ticket: Ticket;
   detail: TicketDetail | undefined;
+  onNavigateToReview?: () => void;
 }) {
   const [poStatus, setPoStatus] = useState<POStatus>(ticket.poStatus);
   const [poNotes, setPoNotes] = useState(ticket.notes);
@@ -109,6 +111,30 @@ export function TicketSidebar({
         <div className="mt-2 divide-y divide-white/[0.04]">
           <DetailRow label="Points">
             <span className="tabular-nums">{ticket.storyPoints ?? "--"}</span>
+          </DetailRow>
+          <DetailRow label="Quality">
+            {ticket.qualityScore !== null ? (
+              <button
+                type="button"
+                onClick={onNavigateToReview}
+                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                title="View review details"
+              >
+                <QualityBadge score={ticket.qualityScore} />
+                {isReviewOutdated && (
+                  <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onNavigateToReview}
+                className="text-xs text-white/20 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                style={{ transition: "color 0.15s ease" }}
+              >
+                Run review
+              </button>
+            )}
           </DetailRow>
           <DetailRow label="Assignee">
             <div className="flex items-center justify-end gap-2">
@@ -231,19 +257,6 @@ export function TicketSidebar({
                     );
                   })}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quality Score */}
-          <div className="flex items-start justify-between py-2">
-            <span className="shrink-0 text-xs text-white/30">Quality Score</span>
-            <div className="flex items-center gap-2">
-              <QualityBadge score={ticket.qualityScore} />
-              {isReviewOutdated && (
-                <span title="Review is based on an older version of this story">
-                  <AlertTriangle size={12} strokeWidth={1.5} className="text-[#ea8744]/70" />
-                </span>
               )}
             </div>
           </div>
