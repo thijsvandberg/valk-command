@@ -20,11 +20,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "skillName (string) is required" }, { status: 400 });
   }
 
+  // Normalise body for the agent: ensure skillName is set and provide a default conversationId
+  const agentBody = {
+    ...b,
+    skillName,
+    conversationId: b.conversationId || `auto-${Date.now()}`,
+  };
+
   try {
     const res = await fetch(agentUrl("/api/tasks"), {
       method: "POST",
       headers: agentHeaders(),
-      body: JSON.stringify(body),
+      body: JSON.stringify(agentBody),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
