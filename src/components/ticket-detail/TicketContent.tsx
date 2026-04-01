@@ -126,16 +126,19 @@ export function EditableDescription({
   ticketKey,
   initialDescription,
   onLocalEdit,
+  hasConflict = false,
 }: {
   ticketKey: string;
   initialDescription: string;
   onLocalEdit: (hasEdit: boolean) => void;
+  hasConflict?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialDescription);
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -248,9 +251,23 @@ export function EditableDescription({
       )}
       {hasLocalEdit && (
         <div className="mt-3">
+          {hasConflict && (
+            <label className="mb-2 flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={overrideConfirmed}
+                onChange={(e) => setOverrideConfirmed(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-white/20 bg-white/[0.03] accent-[var(--color-brand-500)] cursor-pointer"
+              />
+              <span className="text-xs text-white/40">
+                I have reviewed the diff and want to overwrite remote changes
+              </span>
+            </label>
+          )}
           <button
             type="button"
-            disabled={pushing}
+            disabled={pushing || (hasConflict && !overrideConfirmed)}
+            title={hasConflict && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
             onClick={async () => {
               setPushing(true);
               try {
@@ -262,6 +279,7 @@ export function EditableDescription({
                   setHasLocalEdit(false);
                   onLocalEdit(false);
                   setPushError(null);
+                  setOverrideConfirmed(false);
                 } else {
                   setPushError(data.error ?? "Push failed");
                 }

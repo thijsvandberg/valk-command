@@ -311,6 +311,7 @@ export default function TicketDetailPage({
                 ticketKey={key}
                 initialDescription={detail?.description ?? "No description available."}
                 onLocalEdit={handleDescLocalEdit}
+                hasConflict={showConflictWarning}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {detail && <SubtasksSection subtasks={detail.subtasks} />}
