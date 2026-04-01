@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { CheckCircle2, AlertTriangle, RefreshCw, Sparkles, X } from "lucide-react";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
-import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
-import { parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import type { StoredReview } from "@/types/ticket";
 
 function getScoreColor(score: number): string {
@@ -89,14 +87,12 @@ export function ReviewPopover({
   score: number | null;
   onClose: () => void;
 }) {
-  const { data, saveReview } = useTicketReviews(ticketKey);
+  const { data, mutate: mutateReviews } = useTicketReviews(ticketKey);
   const reviews = data?.reviews ?? [];
   const currentVersionHash = data?.currentVersionHash ?? null;
   const latestReview = reviews[0] ?? null;
-  const workspaceTask = useWorkspaceTask();
-  const reviewing = workspaceTask.status === "submitting" || workspaceTask.status === "streaming";
+  const [reviewing, setReviewing] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const savedTaskRef = useRef<string | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -115,38 +111,21 @@ export function ReviewPopover({
     };
   }, [onClose]);
 
-  function handleRunReview() {
-    workspaceTask.reset();
-    workspaceTask.submitAndStream("review-story-json", { args: ticketKey });
-  }
-
-  // Persist when workspace task completes
-  const taskStatus = workspaceTask.status;
-  const taskOutput = workspaceTask.output;
-  const taskId = workspaceTask.taskId;
-
-  useEffect(() => {
-    if (
-      taskStatus !== "completed" ||
-      !taskOutput ||
-      !taskId ||
-      savedTaskRef.current === taskId
-    ) return;
-
-    savedTaskRef.current = taskId;
-
-    const agentData = parseReviewOutput(taskOutput);
-    if (agentData) {
-      const result = mapAgentReviewToResult(agentData);
-      saveReview({
-        source: "ticket-detail",
-        overallScore: result.overallScore,
-        dimensions: result.dimensions,
-        summary: result.summary,
-        suggestions: result.suggestions,
+  async function handleRunReview() {
+    setReviewing(true);
+    try {
+      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "ticket-detail" }),
       });
+      if (res.ok) mutateReviews();
+    } catch {
+      // Silently fail in popover context
+    } finally {
+      setReviewing(false);
     }
-  }, [taskStatus, taskOutput, taskId, saveReview]);
+  }
 
   const color = score !== null ? getScoreColor(score) : undefined;
 

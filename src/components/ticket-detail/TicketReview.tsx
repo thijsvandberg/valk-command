@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
-import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "./SectionHeader";
 import type { StoredReview } from "@/types/ticket";
@@ -219,49 +217,37 @@ function DeleteConfirmModal({
 }
 
 export function TicketReview({ ticketKey }: { ticketKey: string }) {
-  const { data, saveReview, deleteReview } = useTicketReviews(ticketKey);
+  const { data, saveReview, deleteReview, mutate: mutateReviews } = useTicketReviews(ticketKey);
   const reviews = data?.reviews ?? [];
   const currentVersionHash = data?.currentVersionHash ?? null;
   const latestReview = reviews[0] ?? null;
   const olderReviews = reviews.slice(1);
 
-  const workspaceTask = useWorkspaceTask();
-  const agentReviewing = workspaceTask.status === "submitting" || workspaceTask.status === "streaming";
+  const [agentReviewing, setAgentReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  function handleAgentReview() {
-    workspaceTask.reset();
-    workspaceTask.submitAndStream("review-story-json", { args: ticketKey });
-  }
-
-  // Persist review when workspace task completes
-  const savedTaskRef = useRef<string | null>(null);
-  const taskStatus = workspaceTask.status;
-  const taskOutput = workspaceTask.output;
-  const taskId = workspaceTask.taskId;
-
-  useEffect(() => {
-    if (
-      taskStatus !== "completed" ||
-      !taskOutput ||
-      !taskId ||
-      savedTaskRef.current === taskId
-    ) return;
-
-    savedTaskRef.current = taskId;
-
-    const agentData = parseReviewOutput(taskOutput);
-    if (agentData) {
-      const result = mapAgentReviewToResult(agentData);
-      saveReview({
-        source: "ticket-detail",
-        overallScore: result.overallScore,
-        dimensions: result.dimensions,
-        summary: result.summary,
-        suggestions: result.suggestions,
+  async function handleAgentReview() {
+    setAgentReviewing(true);
+    setReviewError(null);
+    try {
+      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "ticket-detail" }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setReviewError(err.error ?? `Review failed (${res.status})`);
+      } else {
+        mutateReviews();
+      }
+    } catch {
+      setReviewError("Failed to connect to agent");
+    } finally {
+      setAgentReviewing(false);
     }
-  }, [taskStatus, taskOutput, taskId, saveReview]);
+  }
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -308,11 +294,8 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
               Delete
             </button>
           </div>
-          {agentReviewing && workspaceTask.progressText && (
-            <p className="mt-2 text-xs text-white/30">{workspaceTask.progressText}</p>
-          )}
-          {workspaceTask.status === "failed" && (
-            <p className="mt-2 text-xs text-[#e5534b]/70">{workspaceTask.error ?? "Review failed"}</p>
+          {reviewError && (
+            <p className="mt-2 text-xs text-[#e5534b]/70">{reviewError}</p>
           )}
         </div>
       ) : (
