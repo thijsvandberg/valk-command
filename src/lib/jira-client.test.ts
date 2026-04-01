@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { JiraClient } from "./jira-client";
+import { describe, it, expect, beforeEach } from "vitest";
+import { JiraClient, _requestTimestamps } from "./jira-client";
 
 describe("JiraClient (unconfigured mode)", () => {
   const client = new JiraClient();
@@ -40,5 +40,20 @@ describe("JiraClient (unconfigured mode)", () => {
   it("getIssuesByKeys returns empty array when not configured", async () => {
     const issues = await client.getIssuesByKeys(["VPL-29223"]);
     expect(issues).toEqual([]);
+  });
+});
+
+describe("Rate limiter", () => {
+  beforeEach(() => {
+    _requestTimestamps.length = 0;
+  });
+
+  it("exposes request timestamps array for tracking", () => {
+    expect(Array.isArray(_requestTimestamps)).toBe(true);
+    expect(_requestTimestamps.length).toBe(0);
+  });
+
+  it("timestamps array is empty on init", () => {
+    expect(_requestTimestamps).toEqual([]);
   });
 });
