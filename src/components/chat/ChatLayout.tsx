@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
 import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
-import { parseSkillInvocation, type ReviewResult } from "@/lib/agent-client";
+import { parseSkillInvocation, parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import ConversationList from "./ConversationList";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
@@ -117,23 +117,20 @@ export default function ChatLayout() {
     const invocation = lastInvocationRef.current;
     if (invocation?.skill === "review-story" && invocation.args) {
       const ticketKey = invocation.args.trim();
-      try {
-        const parsed = JSON.parse(workspaceTask.output) as ReviewResult;
-        if (parsed?.overallScore && parsed?.dimensions) {
-          fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              source: "chat",
-              overallScore: parsed.overallScore,
-              dimensions: parsed.dimensions,
-              summary: parsed.summary ?? "",
-              suggestions: parsed.suggestions ?? [],
-            }),
-          }).catch(() => {});
-        }
-      } catch {
-        // Output wasn't JSON review data, skip
+      const agentData = parseReviewOutput(workspaceTask.output);
+      if (agentData) {
+        const result = mapAgentReviewToResult(agentData);
+        fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source: "chat",
+            overallScore: result.overallScore,
+            dimensions: result.dimensions,
+            summary: result.summary,
+            suggestions: result.suggestions,
+          }),
+        }).catch(() => {});
       }
     }
   }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages]);

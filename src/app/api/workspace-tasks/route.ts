@@ -13,7 +13,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
   }
 
-  if (!("skillName" in body) || typeof (body as Record<string, unknown>).skillName !== "string") {
+  const b = body as Record<string, unknown>;
+  // Accept both "skillName" and "skill" for compatibility
+  const skillName = typeof b.skillName === "string" ? b.skillName : typeof b.skill === "string" ? b.skill : null;
+  if (!skillName) {
     return NextResponse.json({ error: "skillName (string) is required" }, { status: 400 });
   }
 

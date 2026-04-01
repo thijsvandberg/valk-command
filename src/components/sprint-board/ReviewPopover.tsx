@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { CheckCircle2, AlertTriangle, RefreshCw, Sparkles, X } from "lucide-react";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
-import { reviewStory } from "@/lib/agent-client";
+import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
+import { parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import type { StoredReview } from "@/types/ticket";
 
 function getScoreColor(score: number): string {
@@ -92,8 +93,10 @@ export function ReviewPopover({
   const reviews = data?.reviews ?? [];
   const currentVersionHash = data?.currentVersionHash ?? null;
   const latestReview = reviews[0] ?? null;
-  const [reviewing, setReviewing] = useState(false);
+  const workspaceTask = useWorkspaceTask();
+  const reviewing = workspaceTask.status === "submitting" || workspaceTask.status === "streaming";
   const popoverRef = useRef<HTMLDivElement>(null);
+  const savedTaskRef = useRef<string | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -112,23 +115,34 @@ export function ReviewPopover({
     };
   }, [onClose]);
 
-  const handleRunReview = async () => {
-    setReviewing(true);
-    try {
-      const result = await reviewStory(ticketKey);
-      await saveReview({
+  const handleRunReview = useCallback(() => {
+    workspaceTask.reset();
+    workspaceTask.submitAndStream("review-story", { args: ticketKey });
+  }, [ticketKey, workspaceTask]);
+
+  // Persist when workspace task completes
+  useEffect(() => {
+    if (
+      workspaceTask.status !== "completed" ||
+      !workspaceTask.output ||
+      !workspaceTask.taskId ||
+      savedTaskRef.current === workspaceTask.taskId
+    ) return;
+
+    savedTaskRef.current = workspaceTask.taskId;
+
+    const agentData = parseReviewOutput(workspaceTask.output);
+    if (agentData) {
+      const result = mapAgentReviewToResult(agentData);
+      saveReview({
         source: "ticket-detail",
         overallScore: result.overallScore,
         dimensions: result.dimensions,
         summary: result.summary,
         suggestions: result.suggestions,
       });
-    } catch (err) {
-      console.error("Review failed:", err);
-    } finally {
-      setReviewing(false);
     }
-  };
+  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, saveReview]);
 
   const color = score !== null ? getScoreColor(score) : undefined;
 

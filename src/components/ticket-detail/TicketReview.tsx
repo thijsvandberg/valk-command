@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { reviewStory } from "@/lib/agent-client";
+import { parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
+import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "./SectionHeader";
 import type { StoredReview } from "@/types/ticket";
@@ -224,32 +225,45 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
   const latestReview = reviews[0] ?? null;
   const olderReviews = reviews.slice(1);
 
-  const [agentReviewing, setAgentReviewing] = useState(false);
+  const workspaceTask = useWorkspaceTask();
+  const agentReviewing = workspaceTask.status === "submitting" || workspaceTask.status === "streaming";
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const handleAgentReview = useCallback(async () => {
-    setAgentReviewing(true);
-    try {
-      const result = await reviewStory(ticketKey);
-      await saveReview({
+  const handleAgentReview = useCallback(() => {
+    workspaceTask.reset();
+    workspaceTask.submitAndStream("review-story", { args: ticketKey });
+  }, [ticketKey, workspaceTask]);
+
+  // Persist review when workspace task completes
+  const savedTaskRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      workspaceTask.status !== "completed" ||
+      !workspaceTask.output ||
+      !workspaceTask.taskId ||
+      savedTaskRef.current === workspaceTask.taskId
+    ) return;
+
+    savedTaskRef.current = workspaceTask.taskId;
+
+    const agentData = parseReviewOutput(workspaceTask.output);
+    if (agentData) {
+      const result = mapAgentReviewToResult(agentData);
+      saveReview({
         source: "ticket-detail",
         overallScore: result.overallScore,
         dimensions: result.dimensions,
         summary: result.summary,
         suggestions: result.suggestions,
       });
-    } catch (err) {
-      console.error("Operation failed:", err);
-    } finally {
-      setAgentReviewing(false);
     }
-  }, [ticketKey, saveReview]);
+  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, saveReview]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     await deleteReview(deleteTarget);
     setDeleteTarget(null);
-  }, [deleteTarget, deleteReview]);
+  }, [deleteTarget, deleteReview, setDeleteTarget]);
 
   return (
     <div className="mt-6 space-y-8">
@@ -290,6 +304,12 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
               Delete
             </button>
           </div>
+          {agentReviewing && workspaceTask.progressText && (
+            <p className="mt-2 text-xs text-white/30">{workspaceTask.progressText}</p>
+          )}
+          {workspaceTask.status === "failed" && (
+            <p className="mt-2 text-xs text-[#e5534b]/70">{workspaceTask.error ?? "Review failed"}</p>
+          )}
         </div>
       ) : (
         <div>
@@ -315,6 +335,12 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
                 </>
               )}
             </button>
+            {agentReviewing && workspaceTask.progressText && (
+              <p className="mt-2 text-xs text-white/30">{workspaceTask.progressText}</p>
+            )}
+            {workspaceTask.status === "failed" && (
+              <p className="mt-2 text-xs text-[#e5534b]/70">{workspaceTask.error ?? "Review failed"}</p>
+            )}
           </div>
         </div>
       )}

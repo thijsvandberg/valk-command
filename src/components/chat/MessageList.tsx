@@ -2,49 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import type { Message } from "@/types/chat";
+import type { ReviewStoryData } from "@/lib/agent-client";
 
 interface MessageListProps {
   messages: Message[];
   loading: boolean;
   error: string | null;
-}
-
-interface ReviewStoryData {
-  skill: string;
-  issue: {
-    key: string;
-    summary: string;
-    type: string;
-    status: string;
-    priority: string;
-    assignee: string | null;
-    sprint: string | null;
-    url: string;
-  };
-  profile: string;
-  score: number;
-  maxScore: number;
-  verdict: string;
-  criteria: Array<{
-    name: string;
-    score: number;
-    maxScore: number;
-    status: string;
-    subItems?: Array<{
-      name: string;
-      score: number;
-      maxScore: number;
-      status: string;
-      issue?: string;
-    }>;
-  }>;
-  issues: Array<{
-    criterion: string;
-    location: string;
-    problem: string;
-    suggestion: string;
-  }>;
-  summary: string;
 }
 
 function verdictColor(verdict: string): string {

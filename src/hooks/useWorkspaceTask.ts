@@ -25,7 +25,7 @@ interface UseWorkspaceTaskReturn extends WorkspaceTaskState {
   submitAndStream: (
     skill: string,
     args: Record<string, string>,
-    conversationId: string
+    conversationId?: string
   ) => Promise<void>;
   reset: () => void;
 }
@@ -65,7 +65,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
   }, [safeSetState]);
 
   const submitAndStream = useCallback(
-    async (skill: string, args: Record<string, string>, conversationId: string) => {
+    async (skill: string, args: Record<string, string>, conversationId?: string) => {
       // Clean up previous stream
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
@@ -80,7 +80,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         const res = await fetch("/api/workspace-tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ skill, args, conversationId }),
+          body: JSON.stringify({ skill, args, ...(conversationId ? { conversationId } : {}) }),
         });
 
         if (!res.ok) {

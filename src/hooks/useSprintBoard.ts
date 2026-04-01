@@ -1,6 +1,6 @@
 import useSWR, { mutate as globalMutate } from "swr";
 import { useRef, useMemo, useEffect, useCallback } from "react";
-import type { Ticket, SyncLogEntry, StoredReview } from "@/types/ticket";
+import type { Ticket, ActivityLogEntry, StoredReview } from "@/types/ticket";
 
 // Generic JSON fetcher for SWR
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
@@ -99,7 +99,7 @@ export function useTicketAttachments(ticketKey: string | null) {
 
 // Polls recent sync log entries (latest N results)
 export function useSyncStatus(limit = 10) {
-  return useSWR<SyncLogEntry[]>(
+  return useSWR<ActivityLogEntry[]>(
     `/api/sync-log?limit=${limit}`,
     fetcher,
     { refreshInterval: 10000, revalidateOnFocus: true },

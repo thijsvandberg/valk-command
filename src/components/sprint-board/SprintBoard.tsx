@@ -11,7 +11,6 @@ import { SidePanel } from "./SidePanel";
 import { SprintAnalytics } from "./SprintAnalytics";
 import { MultiSprintView } from "./MultiSprintView";
 import { useSprintSlots, useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
-import { reviewStory } from "@/lib/agent-client";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
@@ -309,24 +308,51 @@ export default function SprintBoard() {
     }
   }, [slotSprints, activeSlot, checkedTickets.size, showToast]);
 
+  // Bulk review submits each ticket as a workspace task sequentially
   const handleBulkReviewStory = useCallback(async () => {
     const keys = Array.from(checkedTickets);
     showToast(`Reviewing ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`);
 
     for (const key of keys) {
       try {
-        const result = await reviewStory(key);
-        await fetch(`/api/tickets/${encodeURIComponent(key)}/reviews`, {
+        // Submit workspace task and wait for completion via polling
+        const taskRes = await fetch("/api/workspace-tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source: "bulk-action",
-            overallScore: result.overallScore,
-            dimensions: result.dimensions,
-            summary: result.summary,
-            suggestions: result.suggestions,
-          }),
+          body: JSON.stringify({ skill: "review-story", args: { args: key } }),
         });
+        if (!taskRes.ok) continue;
+
+        const task = await taskRes.json();
+        // Poll for result (simple approach for bulk)
+        let attempts = 0;
+        while (attempts < 60) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const statusRes = await fetch(`/api/workspace-tasks/${task.id}`);
+          if (!statusRes.ok) break;
+          const statusData = await statusRes.json();
+          if (statusData.status === "completed" && statusData.output) {
+            const { parseReviewOutput, mapAgentReviewToResult } = await import("@/lib/agent-client");
+            const agentData = parseReviewOutput(statusData.output);
+            if (agentData) {
+              const result = mapAgentReviewToResult(agentData);
+              await fetch(`/api/tickets/${encodeURIComponent(key)}/reviews`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  source: "bulk-action",
+                  overallScore: result.overallScore,
+                  dimensions: result.dimensions,
+                  summary: result.summary,
+                  suggestions: result.suggestions,
+                }),
+              });
+            }
+            break;
+          }
+          if (statusData.status === "failed") break;
+          attempts++;
+        }
       } catch {
         // Individual review failures shouldn't stop the batch
       }
