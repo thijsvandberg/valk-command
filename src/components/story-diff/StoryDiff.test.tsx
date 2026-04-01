@@ -3,42 +3,34 @@ import { describe, it, expect } from "vitest";
 import { StoryDiff } from "./StoryDiff";
 
 describe("StoryDiff", () => {
-  it("renders additions with green background", () => {
+  it("renders additions with green gutter marker", () => {
     const { container } = render(
       <StoryDiff oldText="hello world" newText="hello beautiful world" />,
     );
 
-    const insertSpan = container.querySelector(
-      'span[style*="rgba(46, 145, 73"]',
-    );
-    expect(insertSpan).toBeTruthy();
-    expect(insertSpan!.textContent).toContain("beautiful");
+    const markers = container.querySelectorAll("[data-marker='insert']");
+    expect(markers.length).toBeGreaterThan(0);
   });
 
-  it("renders deletions with red background and strikethrough", () => {
+  it("renders deletions with red gutter marker", () => {
     const { container } = render(
       <StoryDiff oldText="remove this word" newText="remove word" />,
     );
 
-    const deleteSpan = container.querySelector(
-      'span[style*="rgba(229, 83, 75"]',
-    );
-    expect(deleteSpan).toBeTruthy();
-    expect(deleteSpan!.className).toContain("line-through");
-    expect(deleteSpan!.textContent).toContain("this ");
+    const markers = container.querySelectorAll("[data-marker='delete']");
+    expect(markers.length).toBeGreaterThan(0);
   });
 
-  it("renders unchanged text without diff styling", () => {
+  it("renders word-level highlights for modified lines", () => {
     const { container } = render(
-      <StoryDiff oldText="same text here" newText="same text changed" />,
+      <StoryDiff oldText="the quick brown fox" newText="the slow brown fox" />,
     );
 
-    const allSpans = container.querySelectorAll("span");
-    const plainSpans = Array.from(allSpans).filter(
-      (s) => !s.getAttribute("style") && !s.className.includes("line-through"),
+    // Word-level highlight spans have colored backgrounds
+    const highlighted = container.querySelectorAll(
+      'span[style*="rgba(46, 160, 80"]',
     );
-    const plainText = plainSpans.map((s) => s.textContent).join("");
-    expect(plainText).toContain("same text ");
+    expect(highlighted.length).toBeGreaterThan(0);
   });
 
   it("handles empty old text (all insertions)", () => {
@@ -46,11 +38,10 @@ describe("StoryDiff", () => {
       <StoryDiff oldText="" newText="brand new content" />,
     );
 
-    const insertDiv = container.querySelector(
-      'div[style*="rgba(46, 145, 73"]',
-    );
-    expect(insertDiv).toBeTruthy();
-    expect(insertDiv!.textContent).toContain("brand new content");
+    const diff = container.querySelector('[data-testid="story-diff"]');
+    expect(diff).toBeTruthy();
+    const markers = container.querySelectorAll("[data-marker='insert']");
+    expect(markers.length).toBeGreaterThan(0);
   });
 
   it("handles empty new text (all deletions)", () => {
@@ -58,41 +49,28 @@ describe("StoryDiff", () => {
       <StoryDiff oldText="deleted content" newText="" />,
     );
 
-    const deleteDiv = container.querySelector(
-      'div[style*="rgba(229, 83, 75"]',
-    );
-    expect(deleteDiv).toBeTruthy();
-    expect(deleteDiv!.textContent).toContain("deleted content");
+    const diff = container.querySelector('[data-testid="story-diff"]');
+    expect(diff).toBeTruthy();
+    const markers = container.querySelectorAll("[data-marker='delete']");
+    expect(markers.length).toBeGreaterThan(0);
   });
 
   it("shows no-changes message for identical strings", () => {
     render(<StoryDiff oldText="identical" newText="identical" />);
-
-    expect(
-      screen.getByTestId("story-diff-identical"),
-    ).toBeTruthy();
+    expect(screen.getByTestId("story-diff-identical")).toBeTruthy();
     expect(screen.getByText("No changes between versions.")).toBeTruthy();
   });
 
   it("handles both empty strings", () => {
     render(<StoryDiff oldText="" newText="" />);
-
-    expect(
-      screen.getByTestId("story-diff-empty"),
-    ).toBeTruthy();
+    expect(screen.getByTestId("story-diff-empty")).toBeTruthy();
     expect(screen.getByText("No content in either version.")).toBeTruthy();
   });
 
   it("renders labels when provided", () => {
     render(
-      <StoryDiff
-        oldText="old"
-        newText="new"
-        oldLabel="v1"
-        newLabel="v2"
-      />,
+      <StoryDiff oldText="old" newText="new" oldLabel="v1" newLabel="v2" />,
     );
-
     expect(screen.getByText("v1")).toBeTruthy();
     expect(screen.getByText("v2")).toBeTruthy();
   });
@@ -109,37 +87,47 @@ describe("StoryDiff", () => {
     );
 
     expect(container.querySelector('[data-testid="story-diff"]')).toBeTruthy();
-    // Column headers should be present
-    expect(screen.getByText("v1")).toBeTruthy();
-    expect(screen.getByText("v2")).toBeTruthy();
+    expect(container.querySelector(".grid-cols-2")).toBeTruthy();
+    expect(screen.getAllByText("v1").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("v2").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("defaults to unified mode", () => {
+  it("defaults to unified mode (no grid columns)", () => {
     const { container } = render(
-      <StoryDiff
-        oldText="old text"
-        newText="new text"
-        oldLabel="v1"
-        newLabel="v2"
-      />,
+      <StoryDiff oldText="old text" newText="new text" oldLabel="v1" newLabel="v2" />,
     );
 
-    // In unified mode, labels are in a flex row with arrow, not as column headers
     const diffEl = container.querySelector('[data-testid="story-diff"]');
     expect(diffEl).toBeTruthy();
-    // Unified mode does not use grid columns
     expect(container.querySelector(".grid-cols-2")).toBeNull();
   });
 
-  it("side-by-side mode shows grid layout", () => {
-    const { container } = render(
+  it("shows diff summary stats", () => {
+    render(
       <StoryDiff
-        oldText="old paragraph"
-        newText="new paragraph"
-        mode="side-by-side"
+        oldText="line one\nline two\nline three"
+        newText="line one\nline changed\nline three\nnew line"
       />,
     );
 
-    expect(container.querySelector(".grid-cols-2")).toBeTruthy();
+    expect(screen.getByText("modified")).toBeTruthy();
+  });
+
+  it("shows collapsed unchanged lines", () => {
+    const oldLines = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n");
+    const newLines = oldLines.replace("line 10", "CHANGED");
+
+    render(<StoryDiff oldText={oldLines} newText={newLines} />);
+
+    expect(screen.getAllByText(/Show \d+ unchanged lines?/).length).toBeGreaterThan(0);
+  });
+
+  it("renders line numbers in unified mode", () => {
+    const { container } = render(
+      <StoryDiff oldText="first\nsecond" newText="first\nchanged" />,
+    );
+
+    const lineNums = container.querySelectorAll(".text-white\\/15");
+    expect(lineNums.length).toBeGreaterThan(0);
   });
 });
