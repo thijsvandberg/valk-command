@@ -19,11 +19,20 @@ function statusIcon(score: number): string {
   return "\u2717";
 }
 
+function parseRawScore(feedback: string): { raw: string | null; text: string } {
+  const pipeIdx = feedback.indexOf("|");
+  if (pipeIdx !== -1 && /^\d+\/\d+$/.test(feedback.slice(0, pipeIdx))) {
+    return { raw: feedback.slice(0, pipeIdx), text: feedback.slice(pipeIdx + 1) };
+  }
+  return { raw: null, text: feedback };
+}
+
 function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
   const color = getScoreColor(dim.score);
   const icon = statusIcon(dim.score);
+  const { raw } = parseRawScore(dim.feedback);
   return (
-    <div className="grid grid-cols-[16px_1fr_80px_32px] items-center gap-x-2 px-3 py-2">
+    <div className="grid grid-cols-[16px_1fr_60px_44px] items-center gap-x-2 px-3 py-2">
       <span className="text-center text-xs font-medium" style={{ color }}>{icon}</span>
       <span className="text-xs text-white/50">{dim.label}</span>
       <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
@@ -32,17 +41,40 @@ function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
           style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.5 }}
         />
       </div>
-      <span className="text-right text-xs font-medium tabular-nums" style={{ color }}>{dim.score}</span>
+      <span className="text-right text-xs font-medium tabular-nums" style={{ color }}>
+        {raw ?? dim.score}
+      </span>
     </div>
   );
 }
 
-function parseSuggestion(s: string): { criterion: string | null; problem: string; suggestion: string | null } {
-  const criterionMatch = s.match(/^\[([^\]]+)\]\s*/);
-  const rest = criterionMatch ? s.slice(criterionMatch[0].length) : s;
+function parseSuggestion(s: string): {
+  criterion: string | null;
+  location: string | null;
+  score: string | null;
+  problem: string;
+  suggestion: string | null;
+} {
+  const metaMatch = s.match(/^\[([^|]*)\|([^|]*)\|([^\]]*)\]\s*/);
+  if (metaMatch) {
+    const rest = s.slice(metaMatch[0].length);
+    const parts = rest.split(" \u2192 ");
+    return {
+      criterion: metaMatch[1] || null,
+      location: metaMatch[2] || null,
+      score: metaMatch[3] || null,
+      problem: parts[0],
+      suggestion: parts[1] ?? null,
+    };
+  }
+  // Fallback for older format [Criterion] problem -> suggestion
+  const simpleMatch = s.match(/^\[([^\]]+)\]\s*/);
+  const rest = simpleMatch ? s.slice(simpleMatch[0].length) : s;
   const parts = rest.split(" \u2192 ");
   return {
-    criterion: criterionMatch ? criterionMatch[1] : null,
+    criterion: simpleMatch ? simpleMatch[1] : null,
+    location: null,
+    score: null,
     problem: parts[0],
     suggestion: parts[1] ?? null,
   };
@@ -141,12 +173,22 @@ function ReviewDetail({
               const parsed = parseSuggestion(s);
               return (
                 <div key={i} className="rounded-md border border-white/[0.04] bg-white/[0.015] px-3 py-2.5">
-                  {parsed.criterion && (
-                    <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-white/20">{parsed.criterion}</p>
-                  )}
+                  <div className="flex items-center gap-2 mb-1">
+                    {parsed.criterion && (
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/20">{parsed.criterion}</span>
+                    )}
+                    {parsed.score && (
+                      <span className="text-[10px] tabular-nums text-white/15">{parsed.score}</span>
+                    )}
+                    {parsed.location && (
+                      <span className="text-[10px] text-white/25">{parsed.location}</span>
+                    )}
+                  </div>
                   <p className="text-xs leading-relaxed text-white/50">{parsed.problem}</p>
                   {parsed.suggestion && (
-                    <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-brand-400)]/70">{parsed.suggestion}</p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-white/30">
+                      <span className="text-white/20">Suggestion: </span>{parsed.suggestion}
+                    </p>
                   )}
                 </div>
               );

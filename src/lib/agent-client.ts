@@ -96,7 +96,7 @@ export function mapAgentReviewToResult(data: ReviewStoryData): ReviewResult {
   const dimensions: ReviewDimensionResult[] = data.criteria.map((c) => {
     const pct = c.maxScore > 0 ? Math.round((c.score / c.maxScore) * 100) : 0;
     const failedSubs = c.subItems?.filter((s) => s.status === "fail") ?? [];
-    const feedback = failedSubs.length > 0
+    const feedbackText = failedSubs.length > 0
       ? failedSubs.map((s) => s.issue ?? s.name).join("; ")
       : c.status === "pass" ? "Looks good" : "Needs attention";
 
@@ -104,11 +104,17 @@ export function mapAgentReviewToResult(data: ReviewStoryData): ReviewResult {
       key: c.name.toLowerCase().replace(/\s+/g, "-"),
       label: c.name,
       score: pct,
-      feedback,
+      // Encode raw score in feedback so the UI can display "15/20" alongside the percentage
+      feedback: `${c.score}/${c.maxScore}|${feedbackText}`,
     };
   });
 
-  const suggestions = data.issues.map((i) => `[${i.criterion}] ${i.problem} \u2192 ${i.suggestion}`);
+  const suggestions = data.issues.map((i) => {
+    const crit = data.criteria.find((c) => c.name === i.criterion);
+    const scoreStr = crit ? `${crit.score}/${crit.maxScore}` : "";
+    const location = i.location || "";
+    return `[${i.criterion}|${location}|${scoreStr}] ${i.problem} \u2192 ${i.suggestion}`;
+  });
 
   return {
     overallScore,
