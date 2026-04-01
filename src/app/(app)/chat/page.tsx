@@ -6,6 +6,7 @@ import ChatLayout from "@/components/chat/ChatLayout";
 import type { Ticket } from "@/types/ticket";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { MessageCircle } from "lucide-react";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 const PO_STATUS_COLORS: Record<string, { dot: string }> = {
   Nieuw: { dot: "#94a3b8" },
@@ -94,14 +95,16 @@ function ChatPageInner() {
 
 export default function ChatPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-full">
-          <ChatLayout />
-        </div>
-      }
-    >
-      <ChatPageInner />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="h-full">
+            <ChatLayout />
+          </div>
+        }
+      >
+        <ChatPageInner />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

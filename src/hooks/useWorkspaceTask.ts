@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { SSEEvent } from "@/lib/agent-client";
 
 export type TaskStreamStatus = "idle" | "submitting" | "streaming" | "completed" | "failed";
@@ -43,12 +43,26 @@ const initialState: WorkspaceTaskState = {
 export function useWorkspaceTask(): UseWorkspaceTaskReturn {
   const [state, setState] = useState<WorkspaceTaskState>(initialState);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const unmountedRef = useRef(false);
+
+  // Cleanup on unmount: close EventSource and prevent further setState calls
+  useEffect(() => {
+    return () => {
+      unmountedRef.current = true;
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
+
+  const safeSetState: typeof setState = useCallback((action) => {
+    if (!unmountedRef.current) setState(action);
+  }, []);
 
   const reset = useCallback(() => {
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
-    setState(initialState);
-  }, []);
+    safeSetState(initialState);
+  }, [safeSetState]);
 
   const submitAndStream = useCallback(
     async (skill: string, args: Record<string, string>, conversationId: string) => {
@@ -56,7 +70,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
 
-      setState({
+      safeSetState({
         ...initialState,
         status: "submitting",
         skill,
@@ -71,7 +85,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          setState((s) => ({
+          safeSetState((s) => ({
             ...s,
             status: "failed",
             error: body.error ?? `Submit failed (${res.status})`,
@@ -82,7 +96,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         const task = await res.json();
         const taskId = task.id as string;
 
-        setState((s) => ({
+        safeSetState((s) => ({
           ...s,
           status: "streaming",
           taskId,
@@ -94,7 +108,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
 
         es.addEventListener("status", (e) => {
           const data = JSON.parse(e.data) as Record<string, unknown>;
-          setState((s) => ({
+          safeSetState((s) => ({
             ...s,
             status: "streaming",
             progressText: `Running ${skill}...`,
@@ -104,7 +118,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
 
         es.addEventListener("progress", (e) => {
           const data = JSON.parse(e.data) as { message: string };
-          setState((s) => ({
+          safeSetState((s) => ({
             ...s,
             progressText: data.message,
           }));
@@ -112,7 +126,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
 
         es.addEventListener("tool_call", (e) => {
           const data = JSON.parse(e.data) as ToolCallEvent;
-          setState((s) => ({
+          safeSetState((s) => ({
             ...s,
             toolCalls: [...s.toolCalls, data],
             progressText: `Using ${data.tool.replace("mcp__jira__", "").replace("mcp__", "")}...`,
@@ -121,7 +135,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
 
         es.addEventListener("result", (e) => {
           const data = JSON.parse(e.data) as { output: string; status: string };
-          setState((s) => ({
+          safeSetState((s) => ({
             ...s,
             status: "completed",
             output: data.output,
@@ -134,14 +148,14 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         es.addEventListener("error", (e) => {
           if (e instanceof MessageEvent) {
             const data = JSON.parse(e.data) as { message: string };
-            setState((s) => ({
+            safeSetState((s) => ({
               ...s,
               status: "failed",
               error: data.message,
               progressText: "",
             }));
           } else {
-            setState((s) => ({
+            safeSetState((s) => ({
               ...s,
               status: "failed",
               error: "Connection lost",
@@ -157,14 +171,14 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
           eventSourceRef.current = null;
         });
       } catch (err) {
-        setState((s) => ({
+        safeSetState((s) => ({
           ...s,
           status: "failed",
           error: err instanceof Error ? err.message : "Unknown error",
         }));
       }
     },
-    []
+    [safeSetState]
   );
 
   return {

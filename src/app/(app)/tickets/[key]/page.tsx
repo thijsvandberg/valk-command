@@ -40,6 +40,7 @@ import { reviewStory, type ReviewResult } from "@/lib/agent-client";
 import { useTicketDetail, useJiraSprints, useConflictCheck } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { StatusBadge, JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { EpicLabel } from "@/components/shared/EpicLabel";
 import { getJiraUrl, QualityBadge } from "@/components/sprint-board/TicketTable";
@@ -1950,6 +1951,7 @@ export default function TicketDetailPage({
   const hasLocalEdits = hasLocalTitleEdit || hasLocalDescEdit;
 
   return (
+    <ErrorBoundary>
     <div className="flex h-full">
       {/* Main content (left, scrollable) */}
       <div className="min-w-0 flex-1 overflow-y-auto">
@@ -2158,5 +2160,6 @@ export default function TicketDetailPage({
         <DetailsRail ticket={ticket} detail={detail} />
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

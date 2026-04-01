@@ -114,6 +114,10 @@ export default function SprintBoard() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+  }, []);
+
   const showToast = useCallback((message: string) => {
     setToast(message);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
