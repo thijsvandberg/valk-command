@@ -290,6 +290,28 @@ async function jiraPost<T>(path: string, body: unknown, signal?: AbortSignal): P
   );
 }
 
+async function jiraPut(path: string, body: unknown, signal?: AbortSignal): Promise<void> {
+  const cfg = getConfig();
+  const url = `${cfg.baseUrl}${path}`;
+  const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
+
+  return withRetry(
+    () => fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal,
+    }),
+    async () => {},
+    path,
+    signal,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Field helpers
 // ---------------------------------------------------------------------------
@@ -514,6 +536,18 @@ export class JiraClient {
     }
 
     return all;
+  }
+
+  /**
+   * Update an issue's fields in Jira (summary, description).
+   * Uses REST API v3 PUT /rest/api/3/issue/{key}.
+   */
+  async updateIssue(key: string, fields: { summary?: string; description?: unknown }, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    await jiraPut(`/rest/api/3/issue/${key}`, { fields }, signal);
   }
 
   /**

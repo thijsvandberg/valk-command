@@ -134,6 +134,8 @@ export function EditableDescription({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialDescription);
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -248,13 +250,35 @@ export function EditableDescription({
         <div className="mt-3">
           <button
             type="button"
-            disabled
-            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/25 cursor-not-allowed"
-            title="Write access not yet configured"
+            disabled={pushing}
+            onClick={async () => {
+              setPushing(true);
+              try {
+                const res = await fetch(`/api/tickets/${ticketKey}/push-to-jira`, { method: "POST" });
+                const data = await res.json();
+                if (data.conflict) {
+                  setPushError("Conflict: Jira was updated since your edit. Refresh the page to see the diff.");
+                } else if (data.success) {
+                  setHasLocalEdit(false);
+                  onLocalEdit(false);
+                  setPushError(null);
+                } else {
+                  setPushError(data.error ?? "Push failed");
+                }
+              } catch {
+                setPushError("Failed to push to Jira");
+              } finally {
+                setPushing(false);
+              }
+            }}
+            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-[var(--color-brand-600)]/80 px-3 py-1.5 text-xs font-medium text-white/80 cursor-pointer hover:bg-[var(--color-brand-500)]/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Download size={14} strokeWidth={1.2} />
-            Push to Jira
+            {pushing ? "Pushing..." : "Push to Jira"}
           </button>
+          {pushError && (
+            <p className="mt-1.5 text-xs text-[#e5534b]">{pushError}</p>
+          )}
         </div>
       )}
     </div>
