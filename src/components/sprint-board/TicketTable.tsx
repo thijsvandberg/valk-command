@@ -42,6 +42,7 @@ const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   "IN PROGRESS": { bg: "rgba(46, 145, 73, 0.15)", text: "#4aaa60" },
   TEST: { bg: "rgba(234, 179, 8, 0.15)", text: "#eab308" },
   DONE: { bg: "rgba(46, 145, 73, 0.25)", text: "#2e9149" },
+  DEPRECATED: { bg: "rgba(239, 68, 68, 0.12)", text: "#ef4444" },
 };
 
 // -- Quality score badge --
@@ -232,7 +233,7 @@ function SortableTicketRow({
 
   const showCheckbox = isChecked || isHovered || someChecked;
   const epicColor = ticket.epic ? EPIC_COLORS[ticket.epic] : null;
-  const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus];
+  const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
 
   return (
     <tr
