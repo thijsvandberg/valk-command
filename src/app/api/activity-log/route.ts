@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { activityLog } from "@/db/schema";
-import { desc, eq, and, lt, notInArray } from "drizzle-orm";
+import { desc, eq, and, lt, notInArray, inArray } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import type { ActivityLogType } from "@/types/ticket";
 
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 const RETENTION_DAYS = 7;
 const RETENTION_MAX_ENTRIES = 200;
 
 /**
- * GET /api/activity-log?limit=20&unacknowledged=true
+ * GET /api/activity-log?limit=20&unacknowledged=true&type=review,metadata-update
  *
  * Returns recent activity log entries, newest first.
- * Also marks running syncs older than 5 minutes as failed (stale cleanup).
+ * Supports comma-separated type filter via the `type` query param.
+ * Also marks running entries older than 5 minutes as failed (stale cleanup).
  * Prunes entries older than 7 days or beyond the 200 most recent.
  */
 export async function GET(request: Request) {
@@ -19,6 +22,7 @@ export async function GET(request: Request) {
   const parsedLimit = parseInt(searchParams.get("limit") ?? "20", 10);
   const limit = Math.max(1, Math.min(isNaN(parsedLimit) ? 20 : parsedLimit, 500));
   const onlyUnacked = searchParams.get("unacknowledged") === "true";
+  const typeFilter = searchParams.get("type")?.split(",").filter(Boolean) ?? [];
 
   // Stale cleanup: mark running syncs older than 5 min as failed
   const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
@@ -48,21 +52,20 @@ export async function GET(request: Request) {
     await db.delete(activityLog).where(notInArray(activityLog.id, keepSet));
   }
 
-  let rows;
+  const conditions: SQL[] = [];
   if (onlyUnacked) {
-    rows = await db
-      .select()
-      .from(activityLog)
-      .where(eq(activityLog.acknowledged, false))
-      .orderBy(desc(activityLog.startedAt))
-      .limit(limit);
-  } else {
-    rows = await db
-      .select()
-      .from(activityLog)
-      .orderBy(desc(activityLog.startedAt))
-      .limit(limit);
+    conditions.push(eq(activityLog.acknowledged, false));
   }
+  if (typeFilter.length > 0) {
+    conditions.push(inArray(activityLog.type, typeFilter as ActivityLogType[]));
+  }
+
+  const rows = await db
+    .select()
+    .from(activityLog)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(activityLog.startedAt))
+    .limit(limit);
 
   return NextResponse.json(rows);
 }

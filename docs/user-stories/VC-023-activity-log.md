@@ -47,16 +47,16 @@ The current sync-log is scoped to Jira sync operations only. It should become a 
 
 ### 6. Filter support (UI)
 
-- [ ] Add a type filter dropdown to the activity log page (multi-select, default: all)
-- [ ] Pass filter as query param to GET `/api/activity-log?type=review,sync`
-- [ ] API supports comma-separated type filter
+- [x] Add a type filter dropdown to the activity log page (multi-select, default: all)
+- [x] Pass filter as query param to GET `/api/activity-log?type=review,sync`
+- [x] API supports comma-separated type filter
 
 ## Acceptance Criteria
 
-- [ ] All references to "sync-log" / "SyncLog" are renamed to "activity-log" / "ActivityLog"
-- [ ] Existing sync entries continue to display correctly after migration
-- [ ] Quality reviews appear in the activity log with ticket key, score, and source
-- [ ] The activity log page has a working type filter
+- [x] All references to "sync-log" / "SyncLog" are renamed to "activity-log" / "ActivityLog"
+- [x] Existing sync entries continue to display correctly after migration
+- [x] Quality reviews appear in the activity log with ticket key, score, and source
+- [x] The activity log page has a working type filter
 - [ ] All tests pass after rename (no broken imports or routes)
 
 ## Technical Notes

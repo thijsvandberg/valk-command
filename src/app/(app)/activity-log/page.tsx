@@ -96,14 +96,14 @@ function statusLabel(status: ActivityLogEntry["status"]): string {
 }
 
 export default function ActivityLogPage() {
-  const [typeFilter, setTypeFilter] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
 
   const params = new URLSearchParams();
   params.set("limit", String(PAGE_SIZE));
   params.set("offset", String(offset));
-  if (typeFilter) params.set("type", typeFilter);
+  if (selectedTypes.size > 0) params.set("type", [...selectedTypes].join(","));
   if (statusFilter) params.set("status", statusFilter);
 
   const { data: sprints } = useSWR<Array<{ id: number; name: string }>>(
@@ -137,11 +137,22 @@ export default function ActivityLogPage() {
     mutate();
   }, [mutate]);
 
-  const handleFilterChange = useCallback((setter: (v: string) => void) => {
-    return (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setter(e.target.value);
-      setOffset(0);
-    };
+  const toggleType = useCallback((type: string) => {
+    setSelectedTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+    setOffset(0);
+  }, []);
+
+  const handleStatusChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+    setOffset(0);
   }, []);
 
   const hasMore = entries?.length === PAGE_SIZE;
@@ -159,28 +170,50 @@ export default function ActivityLogPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-5">
-        <Filter className="h-3.5 w-3.5 text-white/25" strokeWidth={2} />
-        {entries?.some((e) => e.status === "running") && (
-          <button
-            type="button"
-            onClick={() => cancelAllSyncs()}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-400/20 text-xs text-red-400/80 cursor-pointer hover:bg-red-400/10 hover:text-red-400 hover:border-red-400/30 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400 active:scale-95 transition-colors duration-150 font-[var(--font-body)]"
-          >
-            <Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />
-            Stop all syncs
-          </button>
-        )}
-        <SelectFilter
-          value={typeFilter}
-          options={TYPE_OPTIONS}
-          onChange={handleFilterChange(setTypeFilter)}
-        />
-        <SelectFilter
-          value={statusFilter}
-          options={STATUS_OPTIONS}
-          onChange={handleFilterChange(setStatusFilter)}
-        />
+      <div className="flex flex-col gap-3 mb-5">
+        <div className="flex items-center gap-3">
+          <Filter className="h-3.5 w-3.5 text-white/25" strokeWidth={2} />
+          <SelectFilter
+            value={statusFilter}
+            options={STATUS_OPTIONS}
+            onChange={handleStatusChange}
+          />
+          {entries?.some((e) => e.status === "running") && (
+            <button
+              type="button"
+              onClick={() => cancelAllSyncs()}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-400/20 text-xs text-red-400/80 cursor-pointer hover:bg-red-400/10 hover:text-red-400 hover:border-red-400/30 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400 active:scale-95 transition-colors duration-150 font-[var(--font-body)]"
+            >
+              <Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />
+              Stop all
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {TYPE_OPTIONS.filter((o) => o.value !== "").map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => toggleType(opt.value)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-[var(--font-body)] cursor-pointer border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
+                selectedTypes.has(opt.value)
+                  ? "border-[var(--color-brand-400)]/30 bg-[var(--color-brand-400)]/10 text-[var(--color-brand-400)]"
+                  : "border-white/[0.06] bg-transparent text-white/35 hover:border-white/[0.1] hover:text-white/50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+          {selectedTypes.size > 0 && (
+            <button
+              type="button"
+              onClick={() => { setSelectedTypes(new Set()); setOffset(0); }}
+              className="px-2.5 py-1 rounded-md text-[11px] font-[var(--font-body)] text-white/25 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
