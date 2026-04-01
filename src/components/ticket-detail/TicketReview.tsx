@@ -7,17 +7,30 @@ import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "./SectionHeader";
 import type { StoredReview } from "@/types/ticket";
 
-interface ReviewDimension {
-  key: string;
-  label: string;
-  value: number;
-  feedback: string;
-}
-
 function getScoreColor(score: number): string {
   if (score < 30) return "#e5534b";
   if (score < 70) return "#ea8744";
   return "#4aaa60";
+}
+
+function DimensionBar({ label, score }: { label: string; score: number }) {
+  const color = getScoreColor(score);
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-xs font-medium text-white/50">{label}</span>
+        <span className="text-xs font-semibold tabular-nums" style={{ color }}>
+          {score}
+        </span>
+      </div>
+      <div className="relative h-1.5 w-full rounded-full bg-white/[0.06]">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ width: `${score}%`, backgroundColor: color, opacity: 0.4 }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function VersionFreshnessLabel({
@@ -53,46 +66,8 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
   const reviews = data?.reviews ?? [];
   const currentVersionHash = data?.currentVersionHash ?? null;
 
-  const [dimensions, setDimensions] = useState<ReviewDimension[] | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [agentReviewing, setAgentReviewing] = useState(false);
   const [agentResult, setAgentResult] = useState<ReviewResult | null>(null);
-
-  const overallScore = dimensions
-    ? Math.round(dimensions.reduce((sum, d) => sum + d.value, 0) / dimensions.length)
-    : null;
-
-  const handleDimensionChange = useCallback((key: string, value: number) => {
-    setDimensions((prev) =>
-      prev ? prev.map((d) => (d.key === key ? { ...d, value } : d)) : prev,
-    );
-    setSaved(false);
-  }, []);
-
-  const handleSaveReview = useCallback(async () => {
-    if (!dimensions || overallScore === null) return;
-    setSaving(true);
-    try {
-      await saveReview({
-        source: "ticket-detail",
-        overallScore,
-        dimensions: dimensions.map((d) => ({
-          key: d.key,
-          label: d.label,
-          score: d.value,
-          feedback: d.feedback,
-        })),
-        summary: agentResult?.summary ?? "Manual quality review",
-        suggestions: agentResult?.suggestions ?? [],
-      });
-      setSaved(true);
-    } catch (err) {
-      console.error("Operation failed:", err);
-    } finally {
-      setSaving(false);
-    }
-  }, [dimensions, overallScore, agentResult, saveReview]);
 
   const handleAgentReview = useCallback(async () => {
     setAgentReviewing(true);
@@ -100,16 +75,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
     try {
       const result = await reviewStory(ticketKey);
       setAgentResult(result);
-      setDimensions(
-        result.dimensions.map((d) => ({
-          key: d.key,
-          label: d.label,
-          value: d.score,
-          feedback: d.feedback,
-        })),
-      );
 
-      // Auto-persist agent review result
       await saveReview({
         source: "ticket-detail",
         overallScore: result.overallScore,
@@ -151,8 +117,33 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
           </button>
 
           {agentResult && (
-            <div className="mt-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+            <div className="mt-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
+              {/* Overall score */}
+              <div className="flex items-center justify-between rounded-md bg-white/[0.03] px-3 py-2">
+                <span className="text-xs text-white/50">Overall Score</span>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: getScoreColor(agentResult.overallScore) }}
+                  />
+                  <span className="text-base font-semibold tabular-nums" style={{ color: getScoreColor(agentResult.overallScore) }}>
+                    {agentResult.overallScore}
+                  </span>
+                  <span className="text-[10px] text-white/20">/100</span>
+                </div>
+              </div>
+
+              {/* Dimension bars */}
+              <div className="space-y-3">
+                {agentResult.dimensions.map((dim) => (
+                  <DimensionBar key={dim.key} label={dim.label} score={dim.score} />
+                ))}
+              </div>
+
+              {/* Summary */}
               <p className="text-sm text-white/60">{agentResult.summary}</p>
+
+              {/* Suggestions */}
               {agentResult.suggestions.length > 0 && (
                 <div>
                   <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-white/25">Suggestions</p>
@@ -166,76 +157,12 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
                   </ul>
                 </div>
               )}
-              <div className="flex flex-wrap gap-3 pt-1">
-                {agentResult.dimensions.map((dim) => (
-                  <div key={dim.key} className="text-[10px] text-white/30">
-                    {dim.label}: <span className="font-medium tabular-nums" style={{ color: getScoreColor(dim.score) }}>{dim.score}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
       </div>
 
-      {dimensions && (
-      <div>
-        <SectionHeader title="Quality Review" />
-        <div className="mt-4 space-y-5">
-          {dimensions.map((dim) => {
-            const color = getScoreColor(dim.value);
-            return (
-              <div key={dim.key}>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="text-xs font-medium text-white/50">{dim.label}</label>
-                  <span className="text-xs font-semibold tabular-nums" style={{ color }}>
-                    {dim.value}
-                  </span>
-                </div>
-                <div className="relative">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={dim.value}
-                    onChange={(e) => handleDimensionChange(dim.key, Number(e.target.value))}
-                    className="w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-white/[0.06] [&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[var(--color-surface-base)] [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
-                  />
-                  <div
-                    className="pointer-events-none absolute top-[50%] left-0 h-1.5 -translate-y-[50%] rounded-full"
-                    style={{ width: `${dim.value}%`, backgroundColor: color, opacity: 0.4 }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-          <span className="text-sm font-medium text-white/50">Overall Score</span>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold tabular-nums" style={{ color: getScoreColor(overallScore!) }}>
-              {overallScore}
-            </span>
-            <span className="text-xs text-white/25">/100</span>
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSaveReview}
-            disabled={saving}
-            className="rounded-md bg-[var(--color-brand-600)] px-4 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-          >
-            {saving ? "Saving..." : "Save Review"}
-          </button>
-          {saved && <span className="text-xs text-[#4aaa60]">Review saved</span>}
-        </div>
-      </div>
-      )}
-
+      {/* Review history */}
       <div>
         <SectionHeader title="Review History" count={reviews.length} />
         <div className="mt-3 space-y-3">
