@@ -126,6 +126,7 @@ export interface StoryVersion {
   content: string;
   updatedBy: string | null;
   updatedByAvatar: string | null;
+  label?: "current" | "draft";
 }
 
 export interface SyncLogEntry {

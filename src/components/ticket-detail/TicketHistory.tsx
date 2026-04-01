@@ -40,21 +40,47 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/tickets/${ticket.key}/versions`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
+
+    Promise.all([
+      fetch(`/api/tickets/${ticket.key}/versions`).then((r) => r.ok ? r.json() : []),
+      fetch(`/api/tickets/${ticket.key}/local-edits`).then((r) => r.ok ? r.json() : []),
+    ])
+      .then(([versionData, editData]) => {
         if (cancelled) return;
-        if (Array.isArray(data) && data.length > 0) {
-          const mapped: StoryVersion[] = data.map((v: Record<string, unknown>, idx: number) => ({
-            versionNumber: idx + 1,
-            date: (v.createdAt as string) || new Date().toISOString(),
-            contentHash: (v.contentHash as string) || "",
-            content: (v.description as string) || "",
-            updatedBy: (v.updatedBy as string) ?? null,
-            updatedByAvatar: (v.updatedByAvatar as string) ?? null,
-          }));
-          setTicketVersions(mapped);
+        const versions: StoryVersion[] = [];
+
+        if (Array.isArray(versionData)) {
+          const count = versionData.length;
+          versionData.forEach((v: Record<string, unknown>, idx: number) => {
+            versions.push({
+              versionNumber: idx + 1,
+              date: (v.createdAt as string) || new Date().toISOString(),
+              contentHash: (v.contentHash as string) || "",
+              content: (v.description as string) || "",
+              updatedBy: (v.updatedBy as string) ?? null,
+              updatedByAvatar: (v.updatedByAvatar as string) ?? null,
+              label: idx === count - 1 ? "current" : undefined,
+            });
+          });
         }
+
+        // Inject local description edit as a draft version at the top
+        if (Array.isArray(editData) && editData.length > 0) {
+          const descEdit = editData.find((e: { field: string }) => e.field === "description");
+          if (descEdit) {
+            versions.push({
+              versionNumber: versions.length + 1,
+              date: descEdit.modifiedAt || new Date().toISOString(),
+              contentHash: "local-draft",
+              content: descEdit.localValue || "",
+              updatedBy: "You",
+              updatedByAvatar: null,
+              label: "draft",
+            });
+          }
+        }
+
+        setTicketVersions(versions);
       })
       .catch((err) => {
         console.error("Failed to load versions:", err);
@@ -62,6 +88,7 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => { cancelled = true; };
   }, [ticket.key]);
 
@@ -332,8 +359,22 @@ export function TicketHistory({ ticket }: { ticket: Ticket }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-white/60">
-                      {isFirst ? "Initial version" : `Version ${version.versionNumber}`}
+                      {version.label === "draft"
+                        ? "Local draft"
+                        : isFirst
+                        ? "Initial version"
+                        : `Version ${version.versionNumber}`}
                     </span>
+                    {version.label === "current" && (
+                      <span className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
+                        Jira
+                      </span>
+                    )}
+                    {version.label === "draft" && (
+                      <span className="rounded bg-[#4a90d9]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#4a90d9]">
+                        Draft
+                      </span>
+                    )}
                     {version.updatedBy && (
                       <span className="text-xs text-white/30">{version.updatedBy}</span>
                     )}
