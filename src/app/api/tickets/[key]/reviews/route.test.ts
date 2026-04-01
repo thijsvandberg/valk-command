@@ -216,3 +216,83 @@ describe("GET /api/tickets/[key]/reviews", () => {
     expect(data.currentVersionHash).toBe("hash-v1");
   });
 });
+
+// Import DELETE handler for the [id] sub-route
+const { DELETE } = await import("./[id]/route");
+
+function makeIdParams(key: string, id: string) {
+  return { params: Promise.resolve({ key, id }) };
+}
+
+function deleteRequest(key: string, id: string): Request {
+  return new Request(`http://localhost:3100/api/tickets/${key}/reviews/${id}`, {
+    method: "DELETE",
+  });
+}
+
+describe("DELETE /api/tickets/[key]/reviews/[id]", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("deletes a review and updates qualityScore", async () => {
+    seedTicket(testDb, "VPL-100");
+    seedVersion(testDb, "VPL-100", "hash1");
+
+    // Create two reviews
+    const r1 = await POST(
+      postRequest("VPL-100", { ...sampleReview, overallScore: 60 }),
+      makeParams("VPL-100"),
+    );
+    const review1 = await r1.json();
+
+    await POST(
+      postRequest("VPL-100", { ...sampleReview, overallScore: 85 }),
+      makeParams("VPL-100"),
+    );
+
+    // Delete the first review
+    const response = await DELETE(
+      deleteRequest("VPL-100", review1.id),
+      makeIdParams("VPL-100", review1.id),
+    );
+    expect(response.status).toBe(200);
+
+    // Verify only one review remains
+    const listRes = await GET(getRequest("VPL-100"), makeParams("VPL-100"));
+    const listData = await listRes.json();
+    expect(listData.reviews).toHaveLength(1);
+    expect(listData.reviews[0].overallScore).toBe(85);
+  });
+
+  it("sets qualityScore to null when last review is deleted", async () => {
+    seedTicket(testDb, "VPL-100");
+
+    const r1 = await POST(
+      postRequest("VPL-100", sampleReview),
+      makeParams("VPL-100"),
+    );
+    const review1 = await r1.json();
+
+    await DELETE(
+      deleteRequest("VPL-100", review1.id),
+      makeIdParams("VPL-100", review1.id),
+    );
+
+    const metaRows = testDb
+      .select()
+      .from(ticketMetadata)
+      .where(eq(ticketMetadata.jiraKey, "VPL-100"))
+      .all();
+
+    expect(metaRows[0]?.qualityScore).toBeNull();
+  });
+
+  it("returns 404 for non-existent review", async () => {
+    const response = await DELETE(
+      deleteRequest("VPL-100", "nonexistent"),
+      makeIdParams("VPL-100", "nonexistent"),
+    );
+    expect(response.status).toBe(404);
+  });
+});

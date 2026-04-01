@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Loader2, Sparkles, CheckCircle2, AlertTriangle } from "lucide-react";
-import { reviewStory, type ReviewResult } from "@/lib/agent-client";
+import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { reviewStory } from "@/lib/agent-client";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "./SectionHeader";
 import type { StoredReview } from "@/types/ticket";
@@ -61,21 +61,176 @@ function VersionFreshnessLabel({
   );
 }
 
+function ReviewDetail({
+  review,
+  currentVersionHash,
+}: {
+  review: StoredReview;
+  currentVersionHash: string | null;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Overall score */}
+      <div className="flex items-center justify-between rounded-md bg-white/[0.03] px-3 py-2">
+        <span className="text-xs text-white/50">Overall Score</span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: getScoreColor(review.overallScore) }}
+          />
+          <span className="text-base font-semibold tabular-nums" style={{ color: getScoreColor(review.overallScore) }}>
+            {review.overallScore}
+          </span>
+          <span className="text-[10px] text-white/20">/100</span>
+        </div>
+      </div>
+
+      {/* Dimension bars */}
+      <div className="space-y-3">
+        {review.dimensions.map((dim) => (
+          <DimensionBar key={dim.key} label={dim.label} score={dim.score} />
+        ))}
+      </div>
+
+      {/* Summary */}
+      {review.summary && (
+        <p className="text-sm text-white/60">{review.summary}</p>
+      )}
+
+      {/* Suggestions */}
+      {review.suggestions.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-white/25">Suggestions</p>
+          <ul className="space-y-1">
+            {review.suggestions.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-white/50">
+                <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-white/20" />
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Meta */}
+      <div className="flex items-center gap-2 text-[10px] text-white/25">
+        <span>{new Date(review.createdAt).toLocaleString()}</span>
+        <span>via {review.source.replace("-", " ")}</span>
+        <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
+      </div>
+    </div>
+  );
+}
+
+function ReviewHistoryItem({
+  review,
+  currentVersionHash,
+  onDelete,
+}: {
+  review: StoredReview;
+  currentVersionHash: string | null;
+  onDelete: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02]">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/[0.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      >
+        <div className="flex items-center gap-2 text-xs text-white/40">
+          <span className="font-medium text-white/60 capitalize">{review.source.replace("-", " ")}</span>
+          <span>{new Date(review.createdAt).toLocaleDateString()}</span>
+          <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold tabular-nums" style={{ color: getScoreColor(review.overallScore) }}>
+            {review.overallScore}
+          </span>
+          {expanded ? (
+            <ChevronUp size={14} className="text-white/25" strokeWidth={1.5} />
+          ) : (
+            <ChevronDown size={14} className="text-white/25" strokeWidth={1.5} />
+          )}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-white/[0.04] px-4 py-3 space-y-4">
+          <ReviewDetail review={review} currentVersionHash={currentVersionHash} />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(review.id);
+              }}
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[#e5534b]/60 cursor-pointer hover:bg-[#e5534b]/10 hover:text-[#e5534b] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#e5534b] active:scale-[0.97]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+            >
+              <Trash2 size={11} strokeWidth={1.5} />
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeleteConfirmModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-80 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.5)]">
+        <h3 className="text-sm font-medium text-white/80">Delete review?</h3>
+        <p className="mt-2 text-xs text-white/40">
+          This will permanently remove this review from the history. The quality score will update to reflect the most recent remaining review.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+            style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-md bg-[#e5534b] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[#d04840] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e5534b] active:scale-[0.98]"
+            style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TicketReview({ ticketKey }: { ticketKey: string }) {
-  const { data, saveReview } = useTicketReviews(ticketKey);
+  const { data, saveReview, deleteReview } = useTicketReviews(ticketKey);
   const reviews = data?.reviews ?? [];
   const currentVersionHash = data?.currentVersionHash ?? null;
+  const latestReview = reviews[0] ?? null;
+  const olderReviews = reviews.slice(1);
 
   const [agentReviewing, setAgentReviewing] = useState(false);
-  const [agentResult, setAgentResult] = useState<ReviewResult | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const handleAgentReview = useCallback(async () => {
     setAgentReviewing(true);
-    setAgentResult(null);
     try {
       const result = await reviewStory(ticketKey);
-      setAgentResult(result);
-
       await saveReview({
         source: "ticket-detail",
         overallScore: result.overallScore,
@@ -90,110 +245,104 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
     }
   }, [ticketKey, saveReview]);
 
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    await deleteReview(deleteTarget);
+    setDeleteTarget(null);
+  }, [deleteTarget, deleteReview]);
+
   return (
     <div className="mt-6 space-y-8">
-      {/* Agent review */}
-      <div>
-        <SectionHeader title="Agent Review" />
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={handleAgentReview}
-            disabled={agentReviewing}
-            className="flex items-center gap-2 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-4 py-2 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-          >
-            {agentReviewing ? (
-              <>
-                <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-                Reviewing...
-              </>
-            ) : (
-              <>
-                <Sparkles size={14} strokeWidth={1.2} />
-                Review Story via Agent
-              </>
-            )}
-          </button>
-
-          {agentResult && (
-            <div className="mt-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
-              {/* Overall score */}
-              <div className="flex items-center justify-between rounded-md bg-white/[0.03] px-3 py-2">
-                <span className="text-xs text-white/50">Overall Score</span>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: getScoreColor(agentResult.overallScore) }}
-                  />
-                  <span className="text-base font-semibold tabular-nums" style={{ color: getScoreColor(agentResult.overallScore) }}>
-                    {agentResult.overallScore}
-                  </span>
-                  <span className="text-[10px] text-white/20">/100</span>
-                </div>
-              </div>
-
-              {/* Dimension bars */}
-              <div className="space-y-3">
-                {agentResult.dimensions.map((dim) => (
-                  <DimensionBar key={dim.key} label={dim.label} score={dim.score} />
-                ))}
-              </div>
-
-              {/* Summary */}
-              <p className="text-sm text-white/60">{agentResult.summary}</p>
-
-              {/* Suggestions */}
-              {agentResult.suggestions.length > 0 && (
-                <div>
-                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-white/25">Suggestions</p>
-                  <ul className="space-y-1">
-                    {agentResult.suggestions.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-white/50">
-                        <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-white/20" />
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+      {/* Latest review (always shown expanded if exists) */}
+      {latestReview ? (
+        <div>
+          <SectionHeader title="Latest Review" />
+          <div className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+            <ReviewDetail review={latestReview} currentVersionHash={currentVersionHash} />
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleAgentReview}
+              disabled={agentReviewing}
+              className="flex items-center gap-2 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-4 py-2 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+            >
+              {agentReviewing ? (
+                <>
+                  <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                  Reviewing...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} strokeWidth={1.2} />
+                  Re-review
+                </>
               )}
-            </div>
-          )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(latestReview.id)}
+              className="flex items-center gap-1 rounded-md px-3 py-2 text-xs text-[#e5534b]/60 cursor-pointer hover:bg-[#e5534b]/10 hover:text-[#e5534b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e5534b] active:scale-[0.98]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+            >
+              <Trash2 size={12} strokeWidth={1.5} />
+              Delete
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* Review history */}
-      <div>
-        <SectionHeader title="Review History" count={reviews.length} />
-        <div className="mt-3 space-y-3">
-          {reviews.map((review) => (
-            <div key={review.id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-white/40">
-                  <span className="font-medium text-white/60 capitalize">{review.source.replace("-", " ")}</span>
-                  <span>{new Date(review.createdAt).toLocaleDateString()}</span>
-                  <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
-                </div>
-                <span className="text-sm font-semibold tabular-nums" style={{ color: getScoreColor(review.overallScore) }}>
-                  {review.overallScore}
-                </span>
-              </div>
-              <div className="mt-2 flex gap-3">
-                {review.dimensions.map((dim) => (
-                  <div key={dim.key} className="flex items-center gap-1.5 text-[10px] text-white/30">
-                    <span>{dim.label}:</span>
-                    <span className="font-medium tabular-nums" style={{ color: getScoreColor(dim.score) }}>{dim.score}</span>
-                  </div>
-                ))}
-              </div>
-              {review.summary && (
-                <p className="mt-2 text-xs text-white/35 line-clamp-2">{review.summary}</p>
+      ) : (
+        <div>
+          <SectionHeader title="Review" />
+          <div className="mt-3">
+            <p className="mb-3 text-sm text-white/25">No review yet</p>
+            <button
+              type="button"
+              onClick={handleAgentReview}
+              disabled={agentReviewing}
+              className="flex items-center gap-2 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-4 py-2 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+            >
+              {agentReviewing ? (
+                <>
+                  <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                  Reviewing...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} strokeWidth={1.2} />
+                  Review Story via Agent
+                </>
               )}
-            </div>
-          ))}
-          {reviews.length === 0 && <p className="text-sm text-white/25">No reviews yet</p>}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Older reviews (collapsible) */}
+      {olderReviews.length > 0 && (
+        <div>
+          <SectionHeader title="Previous Reviews" count={olderReviews.length} />
+          <div className="mt-3 space-y-2">
+            {olderReviews.map((review) => (
+              <ReviewHistoryItem
+                key={review.id}
+                review={review}
+                currentVersionHash={currentVersionHash}
+                onDelete={setDeleteTarget}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }

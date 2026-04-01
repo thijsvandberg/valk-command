@@ -157,7 +157,23 @@ export function useTicketReviews(ticketKey: string | null) {
     [ticketKey, swr],
   );
 
-  return { ...swr, saveReview };
+  const deleteReview = useCallback(
+    async (reviewId: string) => {
+      if (!ticketKey) return false;
+      const res = await fetch(
+        `/api/tickets/${encodeURIComponent(ticketKey)}/reviews/${encodeURIComponent(reviewId)}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) return false;
+      swr.mutate();
+      globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
+      globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
+      return true;
+    },
+    [ticketKey, swr],
+  );
+
+  return { ...swr, saveReview, deleteReview };
 }
 
 // Debounce hook: returns a stable function that delays invoking callback
