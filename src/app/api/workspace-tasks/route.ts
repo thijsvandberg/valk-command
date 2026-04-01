@@ -20,10 +20,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "skillName (string) is required" }, { status: 400 });
   }
 
-  // Normalise body for the agent: ensure skillName is set and provide a default conversationId
+  // Normalise body for the agent: ensure skill is set and provide a default conversationId
   const agentBody = {
     ...b,
-    skillName,
+    skill: skillName,
     conversationId: b.conversationId || `auto-${Date.now()}`,
   };
 

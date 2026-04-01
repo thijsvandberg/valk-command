@@ -43,7 +43,7 @@ export async function POST(
       method: "POST",
       headers: agentHeaders(),
       body: JSON.stringify({
-        skillName: "review-story-json",
+        skill: "review-story-json",
         args: { args: key },
         conversationId: `review-${key}-${Date.now()}`,
       }),
