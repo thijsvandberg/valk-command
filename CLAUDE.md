@@ -74,6 +74,8 @@ docs/             Project documentation
 - Test files use `*.test.ts` or `*.test.tsx` and are co-located next to the source file they test
 - Run `npm run test` before committing to verify all tests pass
 - Tests must pass together with `npm run build` before any commit or PR
+- **CRITICAL: Only ONE test process at a time.** Never run multiple `vitest`/`npm run test` commands in parallel or in quick succession. This is a 16GB RAM machine; concurrent vitest processes cause swap thrashing. Always wait for a test run to fully complete before starting another.
+- **Running tests correctly:** Run `npx vitest run` in the foreground without pipes (`| tail`, `| grep`). Do NOT run tests in background mode. Do NOT use `sleep && cat` to poll for output. Just run the command and wait for it to finish (~20s).
 
 ## Agent Orchestrator
 
