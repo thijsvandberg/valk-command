@@ -79,8 +79,8 @@ else:
 - [x] Side panel: orange "Conflict" warning with "View diff" link
 - [x] Ticket table: orange dot next to key
 - [x] Single view: warning banner with diff viewer
-- [ ] Diff viewer shows: local edits vs latest Jira version
-- [ ] User can choose: "Keep local" (re-base edit on new version) or "Discard local" (delete local edits, show mirror)
+- Moved to VC-018: Diff viewer shows local edits vs latest Jira version
+- Moved to VC-018: User can choose "Keep local" / "Discard local"
 
 ### Push to Jira flow
 - [x] Pre-push check: verify mirror is up-to-date with remote (compare `jiraUpdatedAt` with Jira API). If not, update mirror first and re-evaluate state (may become conflict)
