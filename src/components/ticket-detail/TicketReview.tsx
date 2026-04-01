@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { mutate as globalMutate } from "swr";
 import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "./SectionHeader";
@@ -12,21 +13,34 @@ function getScoreColor(score: number): string {
   return "#4aaa60";
 }
 
-function DimensionBar({ label, score }: { label: string; score: number }) {
-  const color = getScoreColor(score);
+function statusIcon(score: number): string {
+  if (score >= 100) return "\u2713";
+  if (score > 0) return "~";
+  return "\u2717";
+}
+
+function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
+  const color = getScoreColor(dim.score);
+  const icon = statusIcon(dim.score);
   return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-xs font-medium text-white/50">{label}</span>
-        <span className="text-xs font-semibold tabular-nums" style={{ color }}>
-          {score}
+    <div className="flex items-center gap-3 py-1.5">
+      <span
+        className="w-4 text-center text-xs font-medium"
+        style={{ color }}
+      >
+        {icon}
+      </span>
+      <span className="flex-1 text-xs text-white/50">{dim.label}</span>
+      <div className="flex items-center gap-2">
+        <div className="h-1 w-16 rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.5 }}
+          />
+        </div>
+        <span className="w-7 text-right text-xs font-medium tabular-nums" style={{ color }}>
+          {dim.score}
         </span>
-      </div>
-      <div className="relative h-1.5 w-full rounded-full bg-white/[0.06]">
-        <div
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ width: `${score}%`, backgroundColor: color, opacity: 0.4 }}
-        />
       </div>
     </div>
   );
@@ -60,6 +74,13 @@ function VersionFreshnessLabel({
   );
 }
 
+function verdictLabel(score: number): { text: string; color: string } {
+  if (score >= 90) return { text: "Ready for sprint", color: "#4aaa60" };
+  if (score >= 75) return { text: "Minor issues", color: "#eab308" };
+  if (score >= 60) return { text: "Needs work", color: "#ea8744" };
+  return { text: "Not ready", color: "#e5534b" };
+}
+
 function ReviewDetail({
   review,
   currentVersionHash,
@@ -67,56 +88,69 @@ function ReviewDetail({
   review: StoredReview;
   currentVersionHash: string | null;
 }) {
+  const verdict = verdictLabel(review.overallScore);
+  const failedDimensions = review.dimensions.filter((d) => d.score < 100);
+
   return (
-    <div className="space-y-4">
-      {/* Overall score */}
-      <div className="flex items-center justify-between rounded-md bg-white/[0.03] px-3 py-2">
-        <span className="text-xs text-white/50">Overall Score</span>
-        <div className="flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: getScoreColor(review.overallScore) }}
-          />
-          <span className="text-base font-semibold tabular-nums" style={{ color: getScoreColor(review.overallScore) }}>
+    <div className="space-y-5">
+      {/* Score header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl font-semibold tabular-nums" style={{ color: verdict.color }}>
             {review.overallScore}
           </span>
-          <span className="text-[10px] text-white/20">/100</span>
+          <div>
+            <span
+              className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
+              style={{ backgroundColor: `${verdict.color}15`, color: verdict.color }}
+            >
+              {verdict.text}
+            </span>
+          </div>
+        </div>
+        <div className="text-right">
+          <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
+          <div className="mt-0.5 text-[10px] text-white/20">
+            {new Date(review.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </div>
         </div>
       </div>
 
-      {/* Dimension bars */}
-      <div className="space-y-3">
+      {/* Criteria breakdown */}
+      <div className="rounded-md border border-white/[0.04] divide-y divide-white/[0.04]">
         {review.dimensions.map((dim) => (
-          <DimensionBar key={dim.key} label={dim.label} score={dim.score} />
+          <DimensionRow key={dim.key} dim={dim} />
         ))}
       </div>
 
       {/* Summary */}
       {review.summary && (
-        <p className="text-sm text-white/60">{review.summary}</p>
+        <p className="text-xs leading-relaxed text-white/45">{review.summary}</p>
       )}
 
-      {/* Suggestions */}
+      {/* Issues / Suggestions */}
       {review.suggestions.length > 0 && (
         <div>
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-white/25">Suggestions</p>
-          <ul className="space-y-1">
-            {review.suggestions.map((s, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs text-white/50">
-                <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-white/20" />
-                {s}
-              </li>
-            ))}
-          </ul>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-white/25">
+            Issues ({failedDimensions.length})
+          </p>
+          <div className="space-y-2">
+            {review.suggestions.map((s, i) => {
+              const parts = s.split(" \u2192 ");
+              const problem = parts[0];
+              const suggestion = parts[1];
+              return (
+                <div key={i} className="rounded-md border border-white/[0.04] bg-white/[0.015] px-3 py-2">
+                  <p className="text-xs text-white/50">{problem}</p>
+                  {suggestion && (
+                    <p className="mt-1 text-xs text-[var(--color-brand-400)]/70">{suggestion}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
-
-      {/* Meta */}
-      <div className="flex items-center gap-2 text-[10px] text-white/25">
-        <span>{new Date(review.createdAt).toLocaleString()}</span>
-        <span>via {review.source.replace("-", " ")}</span>
-        <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
-      </div>
     </div>
   );
 }
@@ -241,6 +275,9 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         setReviewError(err.error ?? `Review failed (${res.status})`);
       } else {
         mutateReviews();
+        // Revalidate ticket data so sidebar quality score updates
+        globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
+        globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
       }
     } catch {
       setReviewError("Failed to connect to agent");
