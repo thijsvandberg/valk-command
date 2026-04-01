@@ -346,10 +346,10 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
             mode={diffMode}
           />
 
-          {/* Conflict resolution buttons */}
-          {isConflictView && (
+          {/* Local edit actions: visible whenever a draft exists */}
+          {hasDraft && (
             <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <span className="text-xs text-white/40">Resolve conflict:</span>
+              <span className="text-xs text-white/40">{isConflictView ? "Resolve conflict:" : "Local edits:"}</span>
               <button
                 type="button"
                 disabled={resolving}
