@@ -322,11 +322,8 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
                 </>
               )}
             </button>
-            {agentReviewing && workspaceTask.progressText && (
-              <p className="mt-2 text-xs text-white/30">{workspaceTask.progressText}</p>
-            )}
-            {workspaceTask.status === "failed" && (
-              <p className="mt-2 text-xs text-[#e5534b]/70">{workspaceTask.error ?? "Review failed"}</p>
+            {reviewError && (
+              <p className="mt-2 text-xs text-[#e5534b]/70">{reviewError}</p>
             )}
           </div>
         </div>
