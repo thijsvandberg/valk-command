@@ -176,6 +176,15 @@ export function useTicketReviews(ticketKey: string | null) {
   return { ...swr, saveReview, deleteReview };
 }
 
+// Fetches active story writer sessions (ticketKey -> sessionId map)
+export function useActiveWriterSessions() {
+  return useSWR<Record<string, string>>(
+    "/api/story-writer/active-sessions",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 },
+  );
+}
+
 // Debounce hook: returns a stable function that delays invoking callback
 export function useDebouncedCallback<A extends unknown[]>(
   callback: (...args: A) => void,

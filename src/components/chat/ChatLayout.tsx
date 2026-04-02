@@ -10,7 +10,8 @@ import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import TaskProgress from "./TaskProgress";
 import WorkspaceStatus from "./WorkspaceStatus";
-import { MessageCircle, X } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, X, PenLine } from "lucide-react";
 
 export default function ChatLayout() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -32,6 +33,7 @@ export default function ChatLayout() {
   } = useMessages(activeId);
 
   const workspaceTask = useWorkspaceTask();
+  const activeConv = conversations.find((c) => c.id === activeId) ?? null;
 
   const handleCreate = useCallback(async () => {
     const conversation = await createConversation();
@@ -136,8 +138,8 @@ export default function ChatLayout() {
   }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages]);
 
   return (
-    <div className="noise-overlay relative flex h-full">
-      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+    <div className="noise-overlay relative flex h-full overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute top-[-20%] left-[15%] h-[600px] w-[600px] rounded-full bg-[radial-gradient(circle,var(--color-brand-900)_0%,transparent_70%)] opacity-30" />
         <div className="absolute bottom-[-10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,var(--color-brand-950)_0%,transparent_70%)] opacity-50" />
       </div>
@@ -192,6 +194,18 @@ export default function ChatLayout() {
       {/* Main chat area */}
       <div className="relative z-10 flex flex-1 flex-col min-w-0">
         <WorkspaceStatus />
+        {/* Story Writer link when conversation is linked to a ticket */}
+        {activeConv?.relatedTicket && (
+          <div className="border-b border-white/[0.06] px-6 py-2">
+            <Link
+              href={`/tickets/${activeConv.relatedTicket}/write`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-all duration-150"
+            >
+              <PenLine size={13} strokeWidth={1.5} />
+              Open Story Writer for {activeConv.relatedTicket}
+            </Link>
+          </div>
+        )}
         {activeId ? (
           <>
             <MessageList messages={messages} loading={msgLoading} error={msgError} />

@@ -13,6 +13,7 @@ import {
   Flag,
   Loader2,
   AlertTriangle,
+  PenLine,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -76,6 +77,7 @@ export default function TicketDetailPage({
   const [showConflictDiff, setShowConflictDiff] = useState(false);
   const [metadataOnlyConflict, setMetadataOnlyConflict] = useState(false);
   const [versionCount, setVersionCount] = useState(0);
+  const [historyResetKey, setHistoryResetKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,6 +242,14 @@ export default function TicketDetailPage({
                   <RefreshCw size={14} strokeWidth={1.2} className={isRefreshing ? "animate-spin" : ""} />
                   {isRefreshing ? "Syncing..." : "Refresh from Jira"}
                 </button>
+                <Link
+                  href={`/tickets/${key}/write`}
+                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                >
+                  <PenLine size={14} strokeWidth={1.2} />
+                  Write Story
+                </Link>
                 <a
                   href={getJiraUrl(key)}
                   target="_blank"
@@ -273,7 +283,12 @@ export default function TicketDetailPage({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id === "history" && activeTab === "history") {
+                    setHistoryResetKey((k) => k + 1);
+                  }
+                  setActiveTab(tab.id);
+                }}
                 className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                   activeTab === tab.id
                     ? "text-white/80"
@@ -320,6 +335,7 @@ export default function TicketDetailPage({
               ticket={ticket}
               showConflictDiff={showConflictDiff}
               metadataOnlyConflict={metadataOnlyConflict}
+              resetKey={historyResetKey}
               onConflictResolved={async () => {
                 setShowConflictDiff(false);
                 setMetadataOnlyConflict(false);

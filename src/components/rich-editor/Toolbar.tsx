@@ -15,7 +15,7 @@ export function Toolbar({ editor, mode }: ToolbarProps) {
   if (!editor || mode !== "rich") return null;
 
   return (
-    <div className="flex items-center gap-0.5 px-1" role="toolbar" aria-label="Editor formatting">
+    <div className="flex items-center gap-0.5 px-2 py-0.5" role="toolbar" aria-label="Editor formatting">
       <FormatButton
         editor={editor}
         action={() => editor.chain().focus().toggleBold().run()}
@@ -71,7 +71,7 @@ export function Toolbar({ editor, mode }: ToolbarProps) {
         active={editor.isActive("bulletList")}
         label="Bullet list"
       >
-        <List size={14} strokeWidth={1.5} />
+        <List size={16} strokeWidth={1.5} />
       </FormatButton>
 
       <FormatButton
@@ -80,7 +80,7 @@ export function Toolbar({ editor, mode }: ToolbarProps) {
         active={editor.isActive("orderedList")}
         label="Numbered list"
       >
-        <ListOrdered size={14} strokeWidth={1.5} />
+        <ListOrdered size={16} strokeWidth={1.5} />
       </FormatButton>
 
       <Divider />
@@ -91,7 +91,7 @@ export function Toolbar({ editor, mode }: ToolbarProps) {
         active={editor.isActive("codeBlock")}
         label="Code block"
       >
-        <Code2 size={14} strokeWidth={1.5} />
+        <Code2 size={16} strokeWidth={1.5} />
       </FormatButton>
 
       <LinkButton editor={editor} />
@@ -122,7 +122,7 @@ function FormatButton({
       onClick={action}
       aria-label={label}
       aria-pressed={active}
-      className={`cursor-pointer flex items-center justify-center rounded px-2 py-1.5 text-xs transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+      className={`cursor-pointer flex items-center justify-center rounded px-2.5 py-2 text-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
         active
           ? "bg-white/[0.1] text-white"
           : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
@@ -161,7 +161,7 @@ function LinkButton({ editor }: { editor: Editor }) {
       active={editor.isActive("link")}
       label="Insert link"
     >
-      <Link size={14} strokeWidth={1.5} />
+      <Link size={16} strokeWidth={1.5} />
     </FormatButton>
   );
 }
@@ -204,13 +204,13 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
         onClick={() => setOpen(!open)}
         aria-label="Insert callout"
         aria-expanded={open}
-        className={`cursor-pointer flex items-center gap-1 rounded px-2 py-1.5 text-xs transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`cursor-pointer flex items-center gap-1 rounded px-2.5 py-2 text-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
           open
             ? "bg-white/[0.1] text-white"
             : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
         }`}
       >
-        <Info size={14} strokeWidth={1.5} />
+        <Info size={16} strokeWidth={1.5} />
         <ChevronDown
           size={8}
           strokeWidth={1.5}
@@ -241,6 +241,6 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
 }
 
 function Divider() {
-  return <div className="mx-1 h-4 w-px bg-white/[0.08]" />;
+  return <div className="mx-1.5 h-5 w-px bg-white/[0.08]" />;
 }
 

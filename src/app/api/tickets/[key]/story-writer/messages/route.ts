@@ -1,0 +1,219 @@
+import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+
+type RouteContext = { params: Promise<{ key: string }> };
+
+/**
+ * Sends a message in the story writer conversation.
+ * First message: creates a workspace task with the write-story-draft skill.
+ * Follow-up: sends to the workspace conversation endpoint (resumes CLI session).
+ * On 410 (session lost): recovers by re-sending with current context as a new first message.
+ */
+export async function POST(request: Request, { params }: RouteContext) {
+  const { key } = await params;
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  if (!content) {
+    return NextResponse.json({ error: "content is required" }, { status: 400 });
+  }
+
+  const codebaseResearch = body.codebaseResearch === true;
+  const model = typeof body.model === "string" ? body.model : undefined;
+
+  const session = await db
+    .select()
+    .from(storyWriterSession)
+    .where(
+      and(
+        eq(storyWriterSession.ticketKey, key),
+        eq(storyWriterSession.status, "active"),
+      ),
+    )
+    .get();
+
+  if (!session) {
+    return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
+  }
+
+  // Save user message locally
+  const messageId = randomUUID();
+  await db.insert(message).values({
+    id: messageId,
+    conversationId: session.conversationId,
+    role: "user",
+    content,
+  });
+
+  // Check if this is the first message (no assistant messages yet)
+  const assistantMessages = await db
+    .select()
+    .from(message)
+    .where(
+      and(
+        eq(message.conversationId, session.conversationId),
+        eq(message.role, "assistant"),
+      ),
+    )
+    .all();
+
+  const isFirstMessage = assistantMessages.length === 0;
+
+  try {
+    let taskData: { id?: string; error?: string };
+    let status: number;
+
+    if (isFirstMessage) {
+      // First message: invoke the write-story-draft skill with enriched context
+      const ticketRow = await db
+        .select()
+        .from(ticket)
+        .where(eq(ticket.jiraKey, key))
+        .get();
+
+      const comments = await db
+        .select()
+        .from(jiraComment)
+        .where(eq(jiraComment.ticketKey, key))
+        .all();
+
+      const contextParts = [];
+      if (ticketRow) {
+        contextParts.push(`Ticket: ${key} - ${ticketRow.title}`);
+        contextParts.push(`Current description:\n${ticketRow.description ?? "(empty)"}`);
+      }
+      if (comments.length > 0) {
+        const formatted = comments
+          .map((c) => `[${c.authorName}] ${c.content}`)
+          .join("\n---\n");
+        contextParts.push(`Jira comments (${comments.length}):\n${formatted}`);
+      }
+
+      const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+      contextParts.push(`${researchFlag}\n\nUser request: ${content}`);
+
+      const res = await fetch(agentUrl("/api/tasks"), {
+        method: "POST",
+        headers: agentHeaders(),
+        body: JSON.stringify({
+          skill: "write-story-draft",
+          args: { args: contextParts.join("\n\n") },
+          conversationId: session.conversationId,
+          model,
+        }),
+      });
+
+      status = res.status;
+      taskData = await res.json();
+    } else {
+      // Follow-up message: resume the existing workspace conversation
+      const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+      const res = await fetch(
+        agentUrl(`/api/conversations/${session.conversationId}/messages`),
+        {
+          method: "POST",
+          headers: agentHeaders(),
+          body: JSON.stringify({
+            content: `${researchFlag}\n\n${content}`,
+            model,
+          }),
+        },
+      );
+
+      // Session lost on workspace side: recover
+      if (res.status === 410) {
+        const recovered = await recoverSession(session, key, content);
+        return NextResponse.json(recovered.body, { status: recovered.status });
+      }
+
+      status = res.status;
+      taskData = await res.json();
+    }
+
+    if (status >= 400) {
+      return NextResponse.json(
+        { error: taskData.error ?? "Workspace request failed" },
+        { status },
+      );
+    }
+
+    const taskId = taskData.id ?? "";
+    return NextResponse.json({
+      messageId,
+      taskId,
+      streamUrl: `/api/workspace-tasks/${taskId}/stream`,
+      isFirstMessage,
+    }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Agent unreachable" }, { status: 502 });
+  }
+}
+
+/**
+ * Recovers a lost workspace session by re-sending context + user message
+ * as a new first message with the write-story-draft skill.
+ */
+async function recoverSession(
+  session: { conversationId: string; localDraft: string | null; ticketKey: string },
+  key: string,
+  userMessage: string,
+): Promise<{ body: Record<string, unknown>; status: number }> {
+  const ticketRow = await db
+    .select()
+    .from(ticket)
+    .where(eq(ticket.jiraKey, key))
+    .get();
+
+  const recoveryPrompt = [
+    `[Session recovery] The previous conversation context was lost. Here is the current state:`,
+    `Ticket: ${key}${ticketRow ? ` - ${ticketRow.title}` : ""}`,
+    ticketRow?.description ? `Current Jira description:\n${ticketRow.description}` : "",
+    session.localDraft ? `Current working draft:\n${session.localDraft}` : "",
+    `\nUser message: ${userMessage}`,
+  ].filter(Boolean).join("\n\n");
+
+  try {
+    const res = await fetch(agentUrl("/api/tasks"), {
+      method: "POST",
+      headers: agentHeaders(),
+      body: JSON.stringify({
+        skill: "write-story-draft",
+        args: { args: recoveryPrompt },
+        conversationId: session.conversationId,
+      }),
+    });
+
+    const taskData = await res.json();
+
+    if (res.status >= 400) {
+      return {
+        body: { error: taskData.error ?? "Recovery failed" },
+        status: res.status,
+      };
+    }
+
+    const taskId = taskData.id ?? "";
+    return {
+      body: {
+        messageId: `recovered-${Date.now()}`,
+        taskId,
+        streamUrl: `/api/workspace-tasks/${taskId}/stream`,
+        isFirstMessage: true,
+        recovered: true,
+      },
+      status: 201,
+    };
+  } catch {
+    return { body: { error: "Agent unreachable during recovery" }, status: 502 };
+  }
+}

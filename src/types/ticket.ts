@@ -126,7 +126,7 @@ export interface StoryVersion {
   content: string;
   updatedBy: string | null;
   updatedByAvatar: string | null;
-  label?: "current" | "draft";
+  label?: "current" | "draft" | "ai-draft";
 }
 
 export type ReviewSource = "ticket-detail" | "chat" | "bulk-action";
@@ -146,7 +146,8 @@ export interface StoredReview {
 
 export type ActivityLogType =
   | "sprint-sync" | "ticket-sync" | "single-ticket" | "comment-sync" | "webhook"
-  | "review" | "metadata-update" | "local-edit" | "push-to-jira" | "bulk-action";
+  | "review" | "metadata-update" | "local-edit" | "push-to-jira" | "bulk-action"
+  | "story-writer";
 
 export interface ActivityLogEntry {
   id: string;

@@ -60,6 +60,7 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
     "local-edit": "Local edit",
     "push-to-jira": "Push to Jira",
     "bulk-action": "Bulk action",
+    "story-writer": "Story writer",
   };
   return labels[type] ?? type;
 }

@@ -9,7 +9,7 @@ import { Avatar } from "../shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
-import { RefreshCw, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2 } from "lucide-react";
+import { RefreshCw, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
 
 // -- Simple markdown renderer for panel description --
 
@@ -233,6 +233,15 @@ export function SidePanel({
               )}
             </div>
             <div className="flex items-center gap-1">
+              {/* Write Story */}
+              <a
+                href={`/tickets/${ticket.key}/write`}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                title="Write story"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              >
+                <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
+              </a>
               {/* Sync ticket from Jira */}
               <button
                 type="button"

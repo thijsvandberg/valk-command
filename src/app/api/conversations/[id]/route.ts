@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversation, message } from "@/db/schema";
+import { conversation, message, storyWriterSession } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(
@@ -49,6 +49,8 @@ export async function DELETE(
     );
   }
 
+  // Remove story writer sessions that reference this conversation (FK constraint)
+  await db.delete(storyWriterSession).where(eq(storyWriterSession.conversationId, id));
   await db.delete(conversation).where(eq(conversation.id, id));
 
   return new NextResponse(null, { status: 204 });

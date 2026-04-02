@@ -19,6 +19,8 @@ interface RichEditorProps {
   placeholder?: string;
   className?: string;
   minHeight?: number;
+  /** Removes card wrapper (border, bg, radius) so the editor fills its container */
+  borderless?: boolean;
 }
 
 function getInitialMode(): EditorMode {
@@ -40,11 +42,13 @@ export function RichEditor({
   placeholder = "Start writing...",
   className = "",
   minHeight = 200,
+  borderless = false,
 }: RichEditorProps) {
   const [mode, setMode] = useState<EditorMode>(getInitialMode);
   const suppressRef = useRef(false);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3, 4] },
@@ -107,10 +111,12 @@ export function RichEditor({
     [onChange]
   );
 
+  const rootClasses = borderless
+    ? `rich-editor-root flex h-full flex-col overflow-hidden ${className}`
+    : `rich-editor-root rounded-lg border border-white/[0.08] bg-[var(--color-surface-elevated)] overflow-hidden ${className}`;
+
   return (
-    <div
-      className={`rich-editor-root rounded-lg border border-white/[0.08] bg-[var(--color-surface-elevated)] overflow-hidden ${className}`}
-    >
+    <div className={rootClasses}>
       <div className="flex items-center justify-between border-b border-white/[0.06] px-1 py-1">
         <Toolbar editor={editor} mode={mode} />
         <ModeToggle mode={mode} onToggle={handleModeToggle} />
@@ -119,15 +125,15 @@ export function RichEditor({
       {mode === "rich" ? (
         <EditorContent
           editor={editor}
-          className="rich-editor-wrapper"
+          className={`rich-editor-wrapper ${borderless ? "flex-1 overflow-y-auto" : ""}`}
         />
       ) : (
         <textarea
           value={value}
           onChange={handleMarkdownChange}
           placeholder={placeholder}
-          className="w-full resize-y bg-transparent px-4 py-3 font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none"
-          style={{ minHeight: `${minHeight}px` }}
+          className={`w-full bg-transparent px-4 py-3 font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none ${borderless ? "flex-1 resize-none" : "resize-y"}`}
+          style={borderless ? undefined : { minHeight: `${minHeight}px` }}
           spellCheck={false}
         />
       )}

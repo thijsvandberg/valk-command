@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
-import type { DiffMode } from "@/components/story-diff/StoryDiff";
-import { ChevronRight, ChevronLeft, GitMerge, Save, Info, Upload } from "lucide-react";
+import { ChevronRight, Save, Info, Upload } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
 function parseVersionDate(iso: string): number {
@@ -37,6 +36,7 @@ function formatVersionDateShort(iso: string): string {
 
 function versionSourceTag(v: StoryVersion): string {
   if (v.label === "draft") return "Draft";
+  if (v.label === "ai-draft") return "AI";
   if (v.label === "current") return "Jira";
   return "Jira";
 }
@@ -53,20 +53,29 @@ export interface TicketHistoryProps {
   metadataOnlyConflict?: boolean;
   /** Called when user resolves the conflict. Action is "keep" or "discard". */
   onConflictResolved?: (action: "keep" | "discard") => void;
+  /** When changed, resets the diff view back to the version list */
+  resetKey?: number;
 }
 
-export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved }: TicketHistoryProps) {
+export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [diffMode, setDiffMode] = useState<DiffMode>("unified");
 
   const [compareOld, setCompareOld] = useState<number | null>(null);
   const [compareNew, setCompareNew] = useState<number | null>(null);
   const [showingDiff, setShowingDiff] = useState(false);
   const [resolving, setResolving] = useState(false);
-  const [interactiveMode, setInteractiveMode] = useState(false);
   const [mergeResult, setMergeResult] = useState<string | null>(null);
   const [savingMerge, setSavingMerge] = useState(false);
+  const [diffStats, setDiffStats] = useState<{ added: number; removed: number; modified: number; changeHunkCount: number; decidedCount: number } | null>(null);
+
+  useEffect(() => {
+    if (resetKey !== undefined) {
+      setShowingDiff(false);
+      setMergeResult(null);
+      setDiffStats(null);
+    }
+  }, [resetKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,8 +83,9 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     Promise.all([
       fetch(`/api/tickets/${ticket.key}/versions`).then((r) => r.ok ? r.json() : []),
       fetch(`/api/tickets/${ticket.key}/local-edits`).then((r) => r.ok ? r.json() : []),
+      fetch(`/api/tickets/${ticket.key}/story-writer`).then((r) => r.ok ? r.json() : { aiDrafts: [] }),
     ])
-      .then(([versionData, editData]) => {
+      .then(([versionData, editData, writerData]) => {
         if (cancelled) return;
         const versions: StoryVersion[] = [];
 
@@ -105,6 +115,22 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
               updatedBy: "You",
               updatedByAvatar: null,
               label: "draft",
+            });
+          }
+        }
+
+        // Add AI drafts from story writer session
+        const aiDrafts = writerData?.aiDrafts;
+        if (Array.isArray(aiDrafts)) {
+          for (const draft of aiDrafts) {
+            versions.push({
+              versionNumber: 0,
+              date: draft.createdAt || new Date().toISOString(),
+              contentHash: `ai-draft-${draft.id}`,
+              content: draft.content || "",
+              updatedBy: `AI Draft ${(draft.draftIndex ?? 0) + 1}`,
+              updatedByAvatar: null,
+              label: "ai-draft",
             });
           }
         }
@@ -240,7 +266,6 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ field: "description", localValue: mergeResult }),
       });
-      setInteractiveMode(false);
       onConflictResolved?.("keep");
     } catch (err) {
       console.error("Failed to save merge result:", err);
@@ -266,18 +291,6 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   }, [ticket.key, onConflictResolved]);
 
   const selectStyle = "rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/70 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none";
-
-  // Diff labels: include timestamps in conflict view for clarity
-  const diffOldLabel = compareOldVersion
-    ? (isConflictView
-      ? `Jira latest (${formatVersionDateShort(compareOldVersion.date)})`
-      : versionLabel(compareOldVersion))
-    : "";
-  const diffNewLabel = compareNewVersion
-    ? (isConflictView
-      ? `Your draft (${formatVersionDateShort(compareNewVersion.date)})`
-      : versionLabel(compareNewVersion))
-    : "";
 
   if (loading) {
     return (
@@ -309,8 +322,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   }
 
   const compareBar = (
-    <div className="flex flex-1 flex-wrap items-center gap-2">
-      <span className="text-xs text-white/40">Compare</span>
+    <div className="flex items-center gap-2">
       <select
         value={compareOld ?? ""}
         onChange={(e) => handleOldChange(Number(e.target.value))}
@@ -341,76 +353,40 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     </div>
   );
 
-  const modeToggle = (
-    <div className="flex items-center overflow-hidden rounded-md border border-white/[0.08]">
-      <button
-        type="button"
-        onClick={() => setDiffMode("unified")}
-        title="Unified diff view"
-        className={`px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
-          diffMode === "unified"
-            ? "bg-white/[0.08] text-white/70"
-            : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
-        }`}
-        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-      >
-        Unified
-      </button>
-      <button
-        type="button"
-        onClick={() => setDiffMode("side-by-side")}
-        title="Side-by-side diff view"
-        className={`border-l border-white/[0.08] px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
-          diffMode === "side-by-side"
-            ? "bg-white/[0.08] text-white/70"
-            : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
-        }`}
-        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-      >
-        Split
-      </button>
-    </div>
-  );
-
   return (
     <div className="mt-8">
       {showingDiff && compareOldVersion && compareNewVersion && compareOld !== compareNew ? (
         <>
-          {/* Combined bar: back link + compare dropdowns + mode toggle */}
-          <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.06] pb-3">
-            <button
-              type="button"
-              onClick={() => setShowingDiff(false)}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-            >
-              <ChevronLeft size={14} strokeWidth={1.5} className="text-white/40" />
-              Versions
-            </button>
-            <div className="h-4 w-px bg-white/[0.08]" />
+          {/* Compare bar */}
+          <div className="mb-3 flex items-center justify-between">
             {compareBar}
-            {modeToggle}
-          </div>
-
-          {/* Toolbar: review & merge */}
-          <div className="mt-3 mb-3 flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setInteractiveMode((p) => !p);
-                setMergeResult(null);
-              }}
-              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
-                interactiveMode
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)]"
-                  : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
-              }`}
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-              title={interactiveMode ? "Exit review mode" : "Review changes per section"}
-            >
-              <GitMerge size={12} strokeWidth={1.5} />
-              {interactiveMode ? "Exit review" : "Review & merge"}
-            </button>
+            {diffStats && (
+              <div className="flex items-center gap-3 text-xs">
+                {diffStats.changeHunkCount > 0 && (
+                  <span className="text-white/30">
+                    {diffStats.decidedCount}/{diffStats.changeHunkCount} reviewed
+                  </span>
+                )}
+                {diffStats.added > 0 && (
+                  <span className="flex items-center gap-1" style={{ color: "#3fb950" }}>
+                    <span className="font-mono font-semibold">+{diffStats.added}</span>
+                    <span className="text-white/40">added</span>
+                  </span>
+                )}
+                {diffStats.removed > 0 && (
+                  <span className="flex items-center gap-1" style={{ color: "#e5534b" }}>
+                    <span className="font-mono font-semibold">&minus;{diffStats.removed}</span>
+                    <span className="text-white/40">removed</span>
+                  </span>
+                )}
+                {diffStats.modified > 0 && (
+                  <span className="flex items-center gap-1" style={{ color: "#d2a8ff" }}>
+                    <span className="font-mono font-semibold">~{diffStats.modified}</span>
+                    <span className="text-white/40">modified</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Metadata-only change notification with force push */}
@@ -439,15 +415,14 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
           <StoryDiff
             oldText={compareOldVersion.content}
             newText={compareNewVersion.content}
-            oldLabel={diffOldLabel}
-            newLabel={diffNewLabel}
-            mode={diffMode}
-            interactive={interactiveMode}
+            mode="unified"
+            interactive
             onResultChange={setMergeResult}
+            onStatsComputed={setDiffStats}
           />
 
-          {/* Save bar when in interactive mode */}
-          {interactiveMode && mergeResult !== null && (
+          {/* Save bar */}
+          {mergeResult !== null && (
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-600)]/[0.06] px-4 py-3">
               <span className="text-xs text-white/50">Save the merged result as a local edit</span>
               <button
@@ -520,15 +495,14 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
         </>
       ) : (
         <>
-          {/* Header: title + mode toggle */}
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+          {/* Header */}
+          <div className="flex items-center border-b border-white/[0.06] pb-2">
             <div className="flex items-center gap-2">
               <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">History</h3>
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/[0.06] px-1.5 text-[10px] font-medium tabular-nums text-white/40">
                 {sorted.length}
               </span>
             </div>
-            {modeToggle}
           </div>
 
           {/* Compare dropdowns */}
@@ -568,6 +542,8 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                       <span className="text-sm text-white/60">
                         {version.label === "draft"
                           ? "Local draft"
+                          : version.label === "ai-draft"
+                          ? version.updatedBy ?? "AI Draft"
                           : isFirst
                           ? "Initial version"
                           : `Version ${version.versionNumber}`}
@@ -580,6 +556,11 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                       {version.label === "draft" && (
                         <span className="rounded bg-[#4a90d9]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#4a90d9]">
                           Draft
+                        </span>
+                      )}
+                      {version.label === "ai-draft" && (
+                        <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] font-medium text-purple-400">
+                          AI
                         </span>
                       )}
                       {isOutdated && (

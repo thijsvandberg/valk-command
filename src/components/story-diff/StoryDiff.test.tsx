@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { StoryDiff } from "./StoryDiff";
 
 describe("StoryDiff", () => {
@@ -67,12 +67,14 @@ describe("StoryDiff", () => {
     expect(screen.getByText("No content in either version.")).toBeTruthy();
   });
 
-  it("renders labels when provided", () => {
+  it("reports stats via onStatsComputed callback", () => {
+    const onStats = vi.fn();
     render(
-      <StoryDiff oldText="old" newText="new" oldLabel="v1" newLabel="v2" />,
+      <StoryDiff oldText="old" newText="new" onStatsComputed={onStats} />,
     );
-    expect(screen.getByText("v1")).toBeTruthy();
-    expect(screen.getByText("v2")).toBeTruthy();
+    expect(onStats).toHaveBeenCalledWith(
+      expect.objectContaining({ added: 0, removed: 0, modified: 1, changeHunkCount: 1, decidedCount: 0 }),
+    );
   });
 
   it("renders side-by-side mode with two columns", () => {
@@ -102,15 +104,19 @@ describe("StoryDiff", () => {
     expect(container.querySelector(".grid-cols-2")).toBeNull();
   });
 
-  it("shows diff summary stats", () => {
+  it("reports added/modified stats via callback", () => {
+    const onStats = vi.fn();
     render(
       <StoryDiff
         oldText="line one\nline two\nline three"
         newText="line one\nline changed\nline three\nnew line"
+        onStatsComputed={onStats}
       />,
     );
 
-    expect(screen.getByText("modified")).toBeTruthy();
+    expect(onStats).toHaveBeenCalledWith(
+      expect.objectContaining({ modified: expect.any(Number) }),
+    );
   });
 
   it("shows collapsed unchanged lines", () => {

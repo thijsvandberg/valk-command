@@ -18,7 +18,14 @@ export interface StoryDiffProps {
   mode?: DiffMode;
   interactive?: boolean;
   onResultChange?: (text: string) => void;
+  /** Reports computed diff stats to the parent whenever they change */
+  onStatsComputed?: (stats: { added: number; removed: number; modified: number; changeHunkCount: number; decidedCount: number }) => void;
+  /** Controlled hunk decisions (lifted state). When provided, component uses this instead of internal state. */
+  hunkStates?: Record<number, HunkState>;
+  onHunkStatesChange?: (states: Record<number, HunkState>) => void;
 }
+
+export type { HunkState };
 
 type LineType = "equal" | "insert" | "delete";
 
@@ -193,37 +200,53 @@ function addWordHighlights(lines: DiffLine[]): DiffLine[] {
 const CTX = 3;
 
 function groupIntoHunks(lines: DiffLine[]): DiffHunk[] {
-  const ci: number[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].type !== "equal") ci.push(i);
+  // Find contiguous groups of changed lines
+  const changeGroups: [number, number][] = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (lines[i].type !== "equal") {
+      const start = i;
+      while (i < lines.length && lines[i].type !== "equal") i++;
+      changeGroups.push([start, i - 1]);
+    } else {
+      i++;
+    }
   }
-  if (ci.length === 0) {
+
+  if (changeGroups.length === 0) {
     return lines.length > 0
       ? [{ kind: "collapsed", lines: [], collapsedCount: lines.length }]
       : [];
   }
-  const ranges: [number, number][] = [];
-  for (const c of ci) {
-    const s = Math.max(0, c - CTX);
-    const e = Math.min(lines.length - 1, c + CTX);
-    if (ranges.length > 0 && s <= ranges[ranges.length - 1][1] + 1) {
-      ranges[ranges.length - 1][1] = Math.max(ranges[ranges.length - 1][1], e);
-    } else {
-      ranges.push([s, e]);
-    }
-  }
+
+  // Each change group becomes its own hunk (never merged) with up to CTX context
   const hunks: DiffHunk[] = [];
-  let last = -1;
-  for (const [s, e] of ranges) {
-    if (s > last + 1) {
-      hunks.push({ kind: "collapsed", lines: lines.slice(last + 1, s), collapsedCount: s - (last + 1) });
+  let cursor = 0;
+
+  for (let g = 0; g < changeGroups.length; g++) {
+    const [gs, ge] = changeGroups[g];
+
+    const ctxBefore = Math.min(CTX, gs - cursor);
+    const hunkStart = gs - ctxBefore;
+
+    const nextChangeStart = g + 1 < changeGroups.length ? changeGroups[g + 1][0] : lines.length;
+    const ctxAfter = Math.min(CTX, nextChangeStart - (ge + 1));
+    const hunkEnd = ge + ctxAfter;
+
+    if (hunkStart > cursor) {
+      const collapsed = lines.slice(cursor, hunkStart);
+      hunks.push({ kind: "collapsed", lines: collapsed, collapsedCount: collapsed.length });
     }
-    hunks.push({ kind: "change", lines: lines.slice(s, e + 1), collapsedCount: 0 });
-    last = e;
+
+    hunks.push({ kind: "change", lines: lines.slice(hunkStart, hunkEnd + 1), collapsedCount: 0 });
+    cursor = hunkEnd + 1;
   }
-  if (last < lines.length - 1) {
-    hunks.push({ kind: "collapsed", lines: lines.slice(last + 1), collapsedCount: lines.length - 1 - last });
+
+  if (cursor < lines.length) {
+    const collapsed = lines.slice(cursor);
+    hunks.push({ kind: "collapsed", lines: collapsed, collapsedCount: collapsed.length });
   }
+
   return hunks;
 }
 
@@ -368,11 +391,11 @@ function CollapsedBar({ count, onExpand }: { count: number; onExpand: () => void
 // Interactive: hunk action bar
 // -----------------------------------------------------------------------
 
-const decisionStyles: Record<HunkDecision, { label: string; color: string; bg: string }> = {
-  pending: { label: "", color: "", bg: "" },
-  accept: { label: "Accepted", color: C.addedGutter, bg: "rgba(46, 160, 80, 0.08)" },
-  reject: { label: "Rejected", color: C.deletedGutter, bg: "rgba(229, 83, 75, 0.06)" },
-  custom: { label: "Custom edit", color: C.modifiedBadge, bg: "rgba(210, 168, 255, 0.06)" },
+const decisionStyles: Record<HunkDecision, { label: string; color: string; bg: string; borderColor: string }> = {
+  pending: { label: "", color: "", bg: "rgba(255, 255, 255, 0.015)", borderColor: C.border },
+  accept: { label: "Accepted", color: C.addedGutter, bg: "rgba(46, 160, 80, 0.10)", borderColor: "rgba(46, 160, 80, 0.20)" },
+  reject: { label: "Rejected", color: C.deletedGutter, bg: "rgba(229, 83, 75, 0.08)", borderColor: "rgba(229, 83, 75, 0.18)" },
+  custom: { label: "Custom edit", color: C.modifiedBadge, bg: "rgba(210, 168, 255, 0.08)", borderColor: "rgba(210, 168, 255, 0.18)" },
 };
 
 function HunkActionBar({
@@ -385,69 +408,76 @@ function HunkActionBar({
   cbs: InteractiveCallbacks;
 }) {
   const st = decisionStyles[decision];
+  const decided = decision !== "pending";
   const btnBase =
-    "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed";
+    "flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed";
 
   return (
     <div
-      className="flex items-center gap-1.5 border-y px-3 py-1.5"
-      style={{
-        borderColor: C.border,
-        backgroundColor: st.bg || "rgba(255, 255, 255, 0.015)",
-      }}
+      className="flex items-center border-y"
+      style={{ borderColor: st.borderColor, backgroundColor: st.bg }}
     >
-      <button
-        type="button"
-        onClick={() => cbs.onAccept(hunkIndex)}
-        disabled={decision === "accept"}
-        className={`${btnBase} ${decision === "accept" ? "text-white/20" : "text-white/50 hover:bg-white/[0.04] hover:text-white/70"}`}
-        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-        title="Accept new version"
-      >
-        <Check size={12} strokeWidth={2} style={{ color: decision === "accept" ? C.addedGutter : undefined }} />
-        Accept
-      </button>
-      <button
-        type="button"
-        onClick={() => cbs.onReject(hunkIndex)}
-        disabled={decision === "reject"}
-        className={`${btnBase} ${decision === "reject" ? "text-white/20" : "text-white/50 hover:bg-white/[0.04] hover:text-white/70"}`}
-        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-        title="Keep old version"
-      >
-        <X size={12} strokeWidth={2} style={{ color: decision === "reject" ? C.deletedGutter : undefined }} />
-        Reject
-      </button>
-      <button
-        type="button"
-        onClick={() => cbs.onEdit(hunkIndex)}
-        className={`${btnBase} text-white/50 hover:bg-white/[0.04] hover:text-white/70`}
-        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-        title="Edit this section"
-      >
-        <Pencil size={11} strokeWidth={1.5} />
-        Edit
-      </button>
+      {/* Gutter spacer to align with diff content */}
+      <div className="w-[100px] shrink-0" style={{ backgroundColor: C.gutterBg }} />
 
-      {decision !== "pending" && (
-        <>
-          <span
-            className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ color: st.color, backgroundColor: `${st.color}15` }}
-          >
-            {st.label}
-          </span>
-          <button
-            type="button"
-            onClick={() => cbs.onReset(hunkIndex)}
-            className={`${btnBase} ml-auto text-white/30 hover:bg-white/[0.04] hover:text-white/50`}
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-            title="Reset decision"
-          >
-            <RotateCcw size={11} strokeWidth={1.5} />
-          </button>
-        </>
-      )}
+      <div className="flex flex-1 items-center gap-1 px-2 py-1.5">
+        {decided ? (
+          <>
+            <span
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold"
+              style={{ color: st.color }}
+            >
+              {decision === "accept" && <Check size={12} strokeWidth={2.5} />}
+              {decision === "reject" && <X size={12} strokeWidth={2.5} />}
+              {decision === "custom" && <Pencil size={11} strokeWidth={2} />}
+              {st.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => cbs.onReset(hunkIndex)}
+              className={`${btnBase} ml-auto text-white/30 hover:bg-white/[0.06] hover:text-white/50`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              title="Clear decision"
+            >
+              <X size={11} strokeWidth={1.5} />
+              Clear
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => cbs.onAccept(hunkIndex)}
+              className={`${btnBase} text-white/50 hover:bg-[rgba(46,160,80,0.12)] hover:text-[${C.addedGutter}]`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              title="Accept new version"
+            >
+              <Check size={12} strokeWidth={2} />
+              Accept
+            </button>
+            <button
+              type="button"
+              onClick={() => cbs.onReject(hunkIndex)}
+              className={`${btnBase} text-white/50 hover:bg-[rgba(229,83,75,0.10)] hover:text-[${C.deletedGutter}]`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              title="Keep old version"
+            >
+              <X size={12} strokeWidth={2} />
+              Reject
+            </button>
+            <button
+              type="button"
+              onClick={() => cbs.onEdit(hunkIndex)}
+              className={`${btnBase} text-white/50 hover:bg-white/[0.06] hover:text-white/70`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              title="Edit this section"
+            >
+              <Pencil size={11} strokeWidth={1.5} />
+              Edit
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -742,6 +772,9 @@ export function StoryDiff({
   mode = "unified",
   interactive = false,
   onResultChange,
+  onStatsComputed,
+  hunkStates: controlledHunkStates,
+  onHunkStatesChange,
 }: StoryDiffProps) {
   const { hunks, stats } = useMemo(() => {
     if (oldText === newText || (oldText === "" && newText === "")) {
@@ -755,25 +788,35 @@ export function StoryDiff({
     };
   }, [oldText, newText]);
 
-  // Interactive state
-  const [hunkStates, setHunkStates] = useState<Record<number, HunkState>>({});
+  // Interactive state: use controlled props when available, fallback to internal
+  const [internalHunkStates, setInternalHunkStates] = useState<Record<number, HunkState>>({});
   const [editingHunk, setEditingHunk] = useState<number | null>(null);
+
+  const hunkStates = controlledHunkStates ?? internalHunkStates;
+  const setHunkStates = useCallback((updater: Record<number, HunkState> | ((prev: Record<number, HunkState>) => Record<number, HunkState>)) => {
+    const next = typeof updater === "function" ? updater(controlledHunkStates ?? internalHunkStates) : updater;
+    if (onHunkStatesChange) {
+      onHunkStatesChange(next);
+    } else {
+      setInternalHunkStates(next);
+    }
+  }, [controlledHunkStates, internalHunkStates, onHunkStatesChange]);
 
   const onAccept = useCallback((i: number) => {
     setHunkStates((prev) => ({ ...prev, [i]: { decision: "accept" } }));
     setEditingHunk(null);
-  }, []);
+  }, [setHunkStates]);
   const onReject = useCallback((i: number) => {
     setHunkStates((prev) => ({ ...prev, [i]: { decision: "reject" } }));
     setEditingHunk(null);
-  }, []);
+  }, [setHunkStates]);
   const onEdit = useCallback((i: number) => {
     setEditingHunk(i);
   }, []);
   const onSaveEdit = useCallback((i: number, text: string) => {
     setHunkStates((prev) => ({ ...prev, [i]: { decision: "custom", customText: text } }));
     setEditingHunk(null);
-  }, []);
+  }, [setHunkStates]);
   const onCancelEdit = useCallback(() => {
     setEditingHunk(null);
   }, []);
@@ -783,7 +826,7 @@ export function StoryDiff({
       delete next[i];
       return next;
     });
-  }, []);
+  }, [setHunkStates]);
 
   const interactiveCallbacks: InteractiveCallbacks | undefined = interactive
     ? { states: hunkStates, editingHunk, onAccept, onReject, onEdit, onSaveEdit, onCancelEdit, onReset }
@@ -807,6 +850,10 @@ export function StoryDiff({
     }
   }, [interactive, onResultChange, resultText]);
 
+  useEffect(() => {
+    onStatsComputed?.({ ...stats, changeHunkCount, decidedCount });
+  }, [stats, changeHunkCount, decidedCount, onStatsComputed]);
+
   if (oldText === "" && newText === "") {
     return (
       <div data-testid="story-diff-empty" className="rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] p-5">
@@ -824,25 +871,7 @@ export function StoryDiff({
   }
 
   return (
-    <div data-testid="story-diff" className="space-y-3">
-      {/* Labels + summary */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs text-white/40">
-          {oldLabel && <span>{oldLabel}</span>}
-          {oldLabel && newLabel && <span className="text-white/20">vs</span>}
-          {newLabel && <span>{newLabel}</span>}
-        </div>
-        <div className="flex items-center gap-4">
-          {interactive && changeHunkCount > 0 && (
-            <span className="text-[11px] text-white/30">
-              {decidedCount}/{changeHunkCount} reviewed
-            </span>
-          )}
-          <DiffSummary stats={stats} />
-        </div>
-      </div>
-
-      {/* Diff */}
+    <div data-testid="story-diff">
       <div className="max-h-[70vh] overflow-y-auto">
         {mode === "unified" ? (
           <UnifiedDiff hunks={hunks} interactive={interactiveCallbacks} />

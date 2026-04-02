@@ -199,6 +199,7 @@ export const activityLog = sqliteTable("activity_log", {
     enum: [
       "sprint-sync", "ticket-sync", "single-ticket", "comment-sync", "webhook",
       "review", "metadata-update", "local-edit", "push-to-jira", "bulk-action",
+      "story-writer",
     ],
   }).notNull(),
   scope: text("scope"),
@@ -261,3 +262,49 @@ export type Ticket = typeof ticket.$inferSelect;
 export type NewTicket = typeof ticket.$inferInsert;
 export type StoredReviewRow = typeof storedReview.$inferSelect;
 export type NewStoredReviewRow = typeof storedReview.$inferInsert;
+
+// Story Writer sessions: links a ticket to a conversation for AI-assisted story editing
+export const storyWriterSession = sqliteTable("story_writer_session", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey),
+  conversationId: text("conversation_id")
+    .notNull()
+    .references(() => conversation.id),
+  status: text("status", {
+    enum: ["active", "completed", "discarded"],
+  }).notNull().default("active"),
+  localDraft: text("local_draft"),
+  baseVersionHash: text("base_version_hash"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("story_writer_session_ticket_key_idx").on(table.ticketKey),
+  index("story_writer_session_status_idx").on(table.status),
+]);
+
+// AI draft suggestions from the workspace, linked to a session and optionally to a chat message
+export const storyWriterDraft = sqliteTable("story_writer_draft", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => storyWriterSession.id, { onDelete: "cascade" }),
+  draftIndex: integer("draft_index").notNull(),
+  content: text("content").notNull(),
+  messageId: text("message_id")
+    .references(() => message.id, { onDelete: "set null" }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("story_writer_draft_session_id_idx").on(table.sessionId),
+]);
+
+export type StoryWriterSessionRow = typeof storyWriterSession.$inferSelect;
+export type NewStoryWriterSessionRow = typeof storyWriterSession.$inferInsert;
+export type StoryWriterDraftRow = typeof storyWriterDraft.$inferSelect;

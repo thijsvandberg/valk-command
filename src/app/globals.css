@@ -22,6 +22,22 @@
   --color-surface-floating: #1a2030;
 }
 
+@layer base {
+  html {
+    font-size: 17px;
+  }
+}
+
+/* Chat markdown: tighter spacing for chat bubbles */
+.chat-markdown h3 { margin-top: 0.75rem; margin-bottom: 0.25rem; }
+.chat-markdown h4 { margin-top: 0.5rem; margin-bottom: 0.125rem; }
+.chat-markdown ul,
+.chat-markdown ol { margin-top: 0.25rem; margin-bottom: 0.25rem; }
+.chat-markdown p + p { margin-top: 0.25rem; }
+.chat-markdown pre { margin-top: 0.5rem; margin-bottom: 0.5rem; }
+.chat-markdown > *:first-child { margin-top: 0; }
+.chat-markdown > *:last-child { margin-bottom: 0; }
+
 /* Noise texture overlay for depth */
 @layer base {
   .noise-overlay::before {

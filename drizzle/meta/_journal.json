@@ -78,6 +78,20 @@
       "when": 1775241600000,
       "tag": "0010_rename_sync_log_to_activity_log",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1775328000000,
+      "tag": "0011_careful_carmella_unuscione",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1775414400000,
+      "tag": "0012_rapid_jubilee",
+      "breakpoints": true
     }
   ]
 }
