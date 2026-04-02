@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import SprintBoardPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -29,26 +29,45 @@ const MOCK_TICKETS = [
   },
 ];
 const MOCK_MUTATE = vi.fn();
-const MOCK_SLOTS_RESULT = { data: null };
 const MOCK_SPRINTS_RESULT = { data: MOCK_SPRINTS };
 const MOCK_TICKETS_RESULT = { data: MOCK_TICKETS, isLoading: false, mutate: MOCK_MUTATE };
 
 vi.mock("@/hooks/useSprintBoard", () => ({
-  useSprintSlots: () => MOCK_SLOTS_RESULT,
   useJiraSprints: () => MOCK_SPRINTS_RESULT,
   useTickets: () => MOCK_TICKETS_RESULT,
   useDebouncedCallback: (fn: (...args: unknown[]) => void) => fn,
 }));
 
+const MOCK_SAVED_SLOTS = [
+  { slotIndex: 0, sprintId: "10048", sprintName: "BT: 134" },
+];
+
+beforeEach(() => {
+  vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+    const url = typeof input === "string" ? input : (input as Request).url;
+    if (url.includes("/api/sprint-slots")) {
+      return Promise.resolve(new Response(JSON.stringify(MOCK_SAVED_SLOTS), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    }
+    return Promise.resolve(new Response("null", { status: 200 }));
+  });
+});
+
 describe("SprintBoardPage", () => {
-  it("renders the sprint board with sprint slots", () => {
+  it("renders the sprint board with sprint slots", async () => {
     render(<SprintBoardPage />);
-    expect(screen.getAllByText("BT: 134").length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => {
+      expect(screen.getAllByText("BT: 134").length).toBeGreaterThanOrEqual(1);
+    });
   });
 
-  it("renders ticket table with API data", () => {
+  it("renders ticket table with API data", async () => {
     render(<SprintBoardPage />);
-    expect(screen.getByText("VPL-29223")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("VPL-29223")).toBeInTheDocument();
+    });
     expect(screen.getByText(/Monitoring Kibana/)).toBeInTheDocument();
   });
 

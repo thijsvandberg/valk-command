@@ -10,7 +10,7 @@ import { BulkActionBar } from "./BulkActionBar";
 import { SidePanel } from "./SidePanel";
 import { SprintAnalytics } from "./SprintAnalytics";
 import { MultiSprintView } from "./MultiSprintView";
-import { useSprintSlots, useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
+import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
@@ -28,8 +28,9 @@ function mapJiraSprints(raw: { id: number; name: string; state: string; startDat
   });
 }
 import { Columns2, Check, Loader2 } from "lucide-react";
+import { mutate as globalMutate } from "swr";
 
-// Persist sprint slot configuration to the API
+// Persist sprint slot configuration to the API and SWR cache
 async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) {
   const slots = slotSprints.map((sprintId, idx) => {
     const sprint = sprints.find((s) => s.id === sprintId);
@@ -39,6 +40,9 @@ async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) {
       sprintName: sprint?.name ?? sprintId,
     };
   });
+
+  // Keep SWR cache in sync so stale data never overwrites state
+  globalMutate("/api/sprint-slots", slots, false);
 
   try {
     await fetch("/api/sprint-slots", {
@@ -79,15 +83,19 @@ export default function SprintBoard() {
   const router = useRouter();
 
   const [slotSprints, setSlotSprints] = useState<string[]>([]);
-  // Derive active slot from URL (single source of truth)
+  // Derive active slot from URL, falling back to the first active sprint
   const activeSlot = useMemo(() => {
     const urlSprint = searchParams.get("sprint");
     if (urlSprint && slotSprints.length > 0) {
       const idx = slotSprints.indexOf(urlSprint);
       if (idx >= 0) return idx;
     }
-    return 0;
-  }, [searchParams, slotSprints]);
+    // No URL param: prefer the first pinned sprint with state "active"
+    const activeIdx = slotSprints.findIndex((id) =>
+      sprints.find((s) => s.id === id && s.state === "active"),
+    );
+    return activeIdx >= 0 ? activeIdx : 0;
+  }, [searchParams, slotSprints, sprints]);
 
   const setActiveSlot = useCallback((slot: number) => {
     const sprintId = slotSprints[slot];
@@ -475,35 +483,41 @@ export default function SprintBoard() {
     });
   }, [sprints]);
 
-  // Load saved sprint slots from the API via SWR
-  const { data: savedSlots, isLoading: slotsLoading } = useSprintSlots();
+  // Load saved sprint slots directly from API on mount, bypassing SWR cache
+  // to avoid stale cache data after client-side navigation.
   useEffect(() => {
-    if (slotsLoading) return;
-    if (Array.isArray(savedSlots) && savedSlots.length > 0) {
-      const sprintIds = new Set(sprints.map((s) => s.id));
-      const loaded = savedSlots
-        .sort((a, b) => a.slotIndex - b.slotIndex)
-        .map((s) => s.sprintId)
-        .filter((id) => sprintIds.size === 0 || sprintIds.has(id));
-      if (loaded.length > 0) {
-        setSlotSprints(loaded);
-        // Clean up invalid entries from DB
-        if (loaded.length !== savedSlots.length) {
-          saveSprintSlots(loaded, sprints);
-        }
-      }
-    }
+    if (slotsInitialized.current) return;
+    if (sprints.length === 0) return;
     slotsInitialized.current = true;
-  }, [savedSlots, slotsLoading, sprints]);
 
-  // Fallback: if no slots saved in DB and sprints are available, pick the first active sprint
-  useEffect(() => {
-    if (!slotsInitialized.current) return;
-    if (slotSprints.length === 0 && sprints.length > 0) {
-      const active = sprints.find((s) => s.state === "active");
-      if (active) setSlotSprints([active.id]);
-    }
-  }, [sprints, slotSprints.length]);
+    fetch("/api/sprint-slots")
+      .then((r) => r.ok ? r.json() : [])
+      .then((savedSlots: { slotIndex: number; sprintId: string }[]) => {
+        const sprintIds = new Set(sprints.map((s) => s.id));
+
+        if (Array.isArray(savedSlots) && savedSlots.length > 0) {
+          const loaded = savedSlots
+            .sort((a, b) => a.slotIndex - b.slotIndex)
+            .map((s) => s.sprintId)
+            .filter((id) => sprintIds.has(id));
+          if (loaded.length > 0) {
+            setSlotSprints(loaded);
+            if (loaded.length !== savedSlots.length) {
+              saveSprintSlots(loaded, sprints);
+            }
+            return;
+          }
+        }
+
+        // Fallback: pick active sprint or first available
+        const fallback = sprints.find((s) => s.state === "active") ?? sprints[0];
+        if (fallback) setSlotSprints([fallback.id]);
+      })
+      .catch(() => {
+        const fallback = sprints.find((s) => s.state === "active") ?? sprints[0];
+        if (fallback) setSlotSprints([fallback.id]);
+      });
+  }, [sprints]);
 
   // Compare mode: show multi-sprint view
   if (compareMode) {
