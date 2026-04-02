@@ -17,12 +17,23 @@ function contentHash(description: unknown, ac: string | null | undefined): strin
  *
  * Pushes local edits to Jira. Pre-checks that the local mirror is up-to-date
  * with the remote. If not, updates the mirror and returns conflict status.
+ *
+ * Body (optional): { force: true } to skip the remote-change check (used
+ * after the user has reviewed the diff and confirmed the push).
  */
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+
+  let force = false;
+  try {
+    const body = await request.json();
+    force = body?.force === true;
+  } catch {
+    // No body or invalid JSON is fine
+  }
 
   if (!jiraClient.isLive) {
     return NextResponse.json(
@@ -80,10 +91,22 @@ export async function POST(
       orderBy: (sv, { desc }) => [desc(sv.createdAt)],
     });
 
-    if (newLatestVersion?.contentHash !== baseHash) {
+    const contentChanged = newLatestVersion?.contentHash !== baseHash;
+
+    if (contentChanged) {
       return NextResponse.json({
         conflict: true,
+        contentChanged: true,
         message: "Jira was updated since your edit. Review the diff before pushing.",
+      });
+    }
+
+    // Content is the same but metadata changed (status transition, comment, etc.)
+    if (!force) {
+      return NextResponse.json({
+        conflict: true,
+        contentChanged: false,
+        message: "Jira metadata was updated since your last sync, but the content is unchanged. Review and confirm.",
       });
     }
   }

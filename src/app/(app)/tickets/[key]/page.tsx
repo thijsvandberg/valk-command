@@ -74,6 +74,7 @@ export default function TicketDetailPage({
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "history" | "review" | "refinement">("content");
   const [showConflictDiff, setShowConflictDiff] = useState(false);
+  const [metadataOnlyConflict, setMetadataOnlyConflict] = useState(false);
   const [versionCount, setVersionCount] = useState(0);
 
   useEffect(() => {
@@ -103,6 +104,13 @@ export default function TicketDetailPage({
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
 
   const showConflictWarning = ticket?.editState === "conflict";
+
+  const handleRemoteChanged = useCallback((contentChanged: boolean) => {
+    setActiveTab("history");
+    setShowConflictDiff(true);
+    setMetadataOnlyConflict(!contentChanged);
+    mutateTicket();
+  }, [mutateTicket]);
 
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);
@@ -294,6 +302,8 @@ export default function TicketDetailPage({
                 onLocalEdit={handleDescLocalEdit}
                 hasConflict={showConflictWarning}
                 onViewDiff={() => setActiveTab("history")}
+                onRemoteChanged={handleRemoteChanged}
+                onPushSuccess={() => { mutateTicket(); }}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {detail && <SubtasksSection subtasks={detail.subtasks} />}
@@ -309,10 +319,12 @@ export default function TicketDetailPage({
             <TicketHistory
               ticket={ticket}
               showConflictDiff={showConflictDiff}
-              onConflictResolved={() => {
+              metadataOnlyConflict={metadataOnlyConflict}
+              onConflictResolved={async () => {
                 setShowConflictDiff(false);
+                setMetadataOnlyConflict(false);
+                await mutateTicket();
                 setActiveTab("content");
-                mutateTicket();
               }}
             />
           )}

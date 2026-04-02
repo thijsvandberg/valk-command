@@ -5,7 +5,7 @@ import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import type { DiffMode } from "@/components/story-diff/StoryDiff";
 import { exportDiffAsMarkdown } from "@/components/story-diff/export-diff";
-import { ChevronRight, ChevronLeft, Download, GitMerge, Save } from "lucide-react";
+import { ChevronRight, ChevronLeft, Download, GitMerge, Save, Info, Upload } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
 function formatVersionDate(iso: string): string {
@@ -45,11 +45,13 @@ export interface TicketHistoryProps {
   ticket: Ticket;
   /** When set, auto-open the conflict diff (local draft vs latest Jira) */
   showConflictDiff?: boolean;
+  /** When true, the remote change was metadata-only (no content diff). Shows push button in diff view. */
+  metadataOnlyConflict?: boolean;
   /** Called when user resolves the conflict. Action is "keep" or "discard". */
   onConflictResolved?: (action: "keep" | "discard") => void;
 }
 
-export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: TicketHistoryProps) {
+export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [diffMode, setDiffMode] = useState<DiffMode>("unified");
@@ -192,6 +194,27 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
       }
     } catch (err) {
       console.error("Failed to keep and push local edits:", err);
+    } finally {
+      setResolving(false);
+    }
+  }, [ticket.key, onConflictResolved]);
+
+  const handleForcePush = useCallback(async () => {
+    setResolving(true);
+    try {
+      const res = await fetch(`/api/tickets/${ticket.key}/push-to-jira`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        onConflictResolved?.("keep");
+      } else {
+        console.error("Force push failed:", data.error ?? data.message);
+      }
+    } catch (err) {
+      console.error("Failed to force push to Jira:", err);
     } finally {
       setResolving(false);
     }
@@ -403,6 +426,29 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
             </div>
           </div>
 
+          {/* Metadata-only change notification with force push */}
+          {isConflictView && metadataOnlyConflict && (
+            <div className="mb-3 flex items-center gap-3 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-600)]/[0.06] px-4 py-3">
+              <Info size={16} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-white/60">No content changes detected</p>
+                <p className="mt-0.5 text-[11px] text-white/35">
+                  Jira was updated (e.g. status transition, comment, or field change) but the description content is unchanged.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={resolving}
+                onClick={handleForcePush}
+                className="flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              >
+                <Upload size={13} strokeWidth={1.5} />
+                {resolving ? "Pushing..." : "Push to Jira"}
+              </button>
+            </div>
+          )}
+
           <StoryDiff
             oldText={compareOldVersion.content}
             newText={compareNewVersion.content}
@@ -445,7 +491,7 @@ export function TicketHistory({ ticket, showConflictDiff, onConflictResolved }: 
                   <button
                     type="button"
                     disabled={resolving}
-                    onClick={handleKeepAndPush}
+                    onClick={metadataOnlyConflict ? handleForcePush : handleKeepAndPush}
                     className="rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                   >

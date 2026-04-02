@@ -128,12 +128,18 @@ export function EditableDescription({
   onLocalEdit,
   hasConflict = false,
   onViewDiff,
+  onRemoteChanged,
+  onPushSuccess,
 }: {
   ticketKey: string;
   initialDescription: string;
   onLocalEdit: (hasEdit: boolean) => void;
   hasConflict?: boolean;
   onViewDiff?: () => void;
+  /** Called when push detects remote changes. contentChanged indicates whether content or only metadata changed. */
+  onRemoteChanged?: (contentChanged: boolean) => void;
+  /** Called after a successful push so the parent can refresh ticket data. */
+  onPushSuccess?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialDescription);
@@ -282,12 +288,17 @@ export function EditableDescription({
                 const res = await fetch(`/api/tickets/${ticketKey}/push-to-jira`, { method: "POST" });
                 const data = await res.json();
                 if (data.conflict) {
-                  setPushError("Conflict: Jira was updated since your edit. Refresh the page to see the diff.");
+                  if (onRemoteChanged) {
+                    onRemoteChanged(data.contentChanged ?? true);
+                  } else {
+                    setPushError("Conflict: Jira was updated since your edit. Refresh the page to see the diff.");
+                  }
                 } else if (data.success) {
                   setHasLocalEdit(false);
                   onLocalEdit(false);
                   setPushError(null);
                   setOverrideConfirmed(false);
+                  onPushSuccess?.();
                 } else {
                   setPushError(data.error ?? "Push failed");
                 }
