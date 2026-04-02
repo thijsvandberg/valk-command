@@ -12,6 +12,7 @@ import { SprintAnalytics } from "./SprintAnalytics";
 import { MultiSprintView } from "./MultiSprintView";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
   if (!raw) return [];
@@ -174,6 +175,7 @@ export default function SprintBoard() {
   const slotsInitialized = useRef(false);
 
   const activeSprint = sprints.find((s) => s.id === activeSprintId);
+  usePageTitle(activeSprint ? `Sprint Board - ${activeSprint.name}` : "Sprint Board");
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
 

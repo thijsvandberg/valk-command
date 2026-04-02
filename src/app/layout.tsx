@@ -8,7 +8,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "valk-command",
+  title: {
+    template: "%s | Valk Command",
+    default: "Valk Command",
+  },
   description: "PO Command Center for Valk Platform",
 };
 

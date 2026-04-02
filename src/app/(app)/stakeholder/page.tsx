@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Stakeholder View" };
+
 export default function StakeholderPage() {
   return (
     <div className="noise-overlay relative min-h-full">

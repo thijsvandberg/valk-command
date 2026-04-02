@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import changelogData from "@/data/changelog.json";
 import type { ChangelogGroup } from "@/types/changelog";
+
+export const metadata: Metadata = { title: "Changelog" };
 
 const changelog = changelogData as ChangelogGroup[];
 

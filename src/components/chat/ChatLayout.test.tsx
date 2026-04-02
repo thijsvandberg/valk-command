@@ -2,6 +2,12 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ChatLayout from "./ChatLayout";
 
+const mockPush = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 vi.mock("@/hooks/useWorkspaceTask", () => ({
   useWorkspaceTask: () => ({
     status: "idle" as const,
@@ -64,6 +70,7 @@ function mockFetchSequence(responses: Array<{ ok: boolean; data?: unknown; statu
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  mockPush.mockClear();
   Element.prototype.scrollIntoView = vi.fn();
 });
 
@@ -89,13 +96,12 @@ describe("ChatLayout", () => {
     });
   });
 
-  it("creates a new conversation and selects it", async () => {
+  it("creates a new conversation and navigates to it", async () => {
     const newConv = { ...mockConversation, id: "conv-new", title: "New conversation" };
 
     mockFetchSequence([
       { ok: true, data: [] },
       { ok: true, data: newConv },
-      { ok: true, data: { ...newConv, messages: [] } },
     ]);
 
     render(<ChatLayout />);
@@ -107,23 +113,17 @@ describe("ChatLayout", () => {
     fireEvent.click(screen.getByLabelText("New conversation"));
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Message input")).toBeInTheDocument();
+      expect(mockPush).toHaveBeenCalledWith("/chat/conv-new");
     });
   });
 
-  it("shows messages when a conversation is selected", async () => {
+  it("shows messages when rendered with a conversationId", async () => {
     mockFetchSequence([
       { ok: true, data: [mockConversation] },
       { ok: true, data: { ...mockConversation, messages: mockMessages } },
     ]);
 
-    render(<ChatLayout />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Test conversation")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test conversation"));
+    render(<ChatLayout conversationId="conv-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Hello there")).toBeInTheDocument();
@@ -147,13 +147,7 @@ describe("ChatLayout", () => {
       { ok: true, data: savedMsg },
     ]);
 
-    render(<ChatLayout />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Test conversation")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test conversation"));
+    render(<ChatLayout conversationId="conv-1" />);
 
     await waitFor(() => {
       expect(screen.getByLabelText("Message input")).toBeInTheDocument();
@@ -168,12 +162,28 @@ describe("ChatLayout", () => {
     });
   });
 
-  it("deletes a conversation and clears the active view", async () => {
+  it("deletes the active conversation and navigates to /chat", async () => {
     mockFetchSequence([
       { ok: true, data: [mockConversation] },
       { ok: true, data: { ...mockConversation, messages: mockMessages } },
       { ok: true, status: 204, data: null },
     ]);
+
+    render(<ChatLayout conversationId="conv-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Test conversation")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText("Delete Test conversation"));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/chat");
+    });
+  });
+
+  it("navigates to conversation URL when clicking a conversation", async () => {
+    mockFetchSequence([{ ok: true, data: [mockConversation] }]);
 
     render(<ChatLayout />);
 
@@ -183,15 +193,7 @@ describe("ChatLayout", () => {
 
     fireEvent.click(screen.getByText("Test conversation"));
 
-    await waitFor(() => {
-      expect(screen.getByText("Hello there")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByLabelText("Delete Test conversation"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Select a conversation or start a new one.")).toBeInTheDocument();
-    });
+    expect(mockPush).toHaveBeenCalledWith("/chat/conv-1");
   });
 
   it("shows error when conversation load fails", async () => {
@@ -236,28 +238,6 @@ describe("ChatLayout", () => {
 
     await waitFor(() => {
       expect(container.querySelector(".fixed.inset-0.z-30")).not.toBeInTheDocument();
-    });
-  });
-
-  it("closes mobile sidebar and selects conversation when a conversation is clicked", async () => {
-    mockFetchSequence([
-      { ok: true, data: [mockConversation] },
-      { ok: true, data: { ...mockConversation, messages: mockMessages } },
-    ]);
-
-    const { container } = render(<ChatLayout />);
-
-    fireEvent.click(screen.getByLabelText("Open conversations"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Test conversation")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test conversation"));
-
-    await waitFor(() => {
-      expect(container.querySelector(".fixed.inset-0.z-30")).not.toBeInTheDocument();
-      expect(screen.getByLabelText("Message input")).toBeInTheDocument();
     });
   });
 });

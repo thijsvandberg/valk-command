@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import useSWR from "swr";
 import {
@@ -97,6 +98,7 @@ function statusLabel(status: ActivityLogEntry["status"]): string {
 }
 
 export default function ActivityLogPage() {
+  usePageTitle("Activity Log");
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);

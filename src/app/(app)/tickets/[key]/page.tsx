@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, use } from "react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
   type Ticket,
@@ -40,6 +41,7 @@ export default function TicketDetailPage({
   const { key } = use(params);
 
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
+  usePageTitle(apiData ? `${key} - ${apiData.title}` : key);
 
   const ticket: Ticket | undefined = apiData ? {
     key: apiData.key,

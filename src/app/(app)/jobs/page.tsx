@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import JobsPanel from "@/components/jobs/JobsPanel";
+
+export const metadata: Metadata = { title: "Scheduled Jobs" };
 
 export default function JobsPage() {
   return (

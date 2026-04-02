@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Test Center" };
+
 export default function TestCenterPage() {
   return (
     <div className="noise-overlay relative min-h-full">

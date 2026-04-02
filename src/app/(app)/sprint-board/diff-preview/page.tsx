@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { StoryDiffPanel } from "@/components/story-diff/StoryDiffPanel";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import type { StoryVersion } from "@/types/ticket";
@@ -119,6 +120,7 @@ function DiffPreviewContent() {
 export const dynamic = "force-dynamic";
 
 export default function DiffPreviewPage() {
+  usePageTitle("Diff Preview");
   return (
     <Suspense fallback={<div className="flex h-full items-center justify-center"><span className="text-sm text-white/30">Loading...</span></div>}>
       <DiffPreviewContent />

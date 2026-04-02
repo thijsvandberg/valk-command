@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
 import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { parseSkillInvocation, parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import ConversationList from "./ConversationList";
 import MessageList from "./MessageList";
@@ -13,8 +15,13 @@ import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { MessageCircle, X, PenLine } from "lucide-react";
 
-export default function ChatLayout() {
-  const [activeId, setActiveId] = useState<string | null>(null);
+interface ChatLayoutProps {
+  conversationId?: string;
+}
+
+export default function ChatLayout({ conversationId }: ChatLayoutProps) {
+  const activeId = conversationId ?? null;
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const {
     conversations,
@@ -34,28 +41,29 @@ export default function ChatLayout() {
 
   const workspaceTask = useWorkspaceTask();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
+  usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
 
   const handleCreate = useCallback(async () => {
     const conversation = await createConversation();
     if (conversation) {
-      setActiveId(conversation.id);
+      router.push(`/chat/${conversation.id}`);
       setSidebarOpen(false);
     }
-  }, [createConversation]);
+  }, [createConversation, router]);
 
   const handleSelect = useCallback((id: string) => {
-    setActiveId(id);
+    router.push(`/chat/${id}`);
     setSidebarOpen(false);
-  }, []);
+  }, [router]);
 
   const handleDelete = useCallback(
     async (id: string) => {
       const success = await deleteConversation(id);
       if (success && activeId === id) {
-        setActiveId(null);
+        router.push("/chat");
       }
     },
-    [deleteConversation, activeId]
+    [deleteConversation, activeId, router]
   );
 
   const handleSend = useCallback(

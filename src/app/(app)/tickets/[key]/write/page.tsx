@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { StoryWriterLayout } from "@/components/story-writer/StoryWriterLayout";
 
 export default function StoryWriterPage({
@@ -9,6 +10,7 @@ export default function StoryWriterPage({
   params: Promise<{ key: string }>;
 }) {
   const { key } = use(params);
+  usePageTitle(`Write Story - ${key}`);
 
   return (
     <div className="h-full">
