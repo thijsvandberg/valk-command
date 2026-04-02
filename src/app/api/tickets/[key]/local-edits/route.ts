@@ -57,10 +57,20 @@ export async function PUT(
     .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, field)))
     .get();
 
+  // Resolve baseJiraVersion: use explicit value, keep existing, or look up latest
+  let resolvedBase = baseJiraVersion ?? existing?.baseJiraVersion ?? null;
+  if (!resolvedBase) {
+    const latestVersion = await db.query.storyVersion.findFirst({
+      where: eq(storyVersion.jiraKey, key),
+      orderBy: [desc(storyVersion.createdAt)],
+    });
+    resolvedBase = latestVersion?.contentHash ?? null;
+  }
+
   if (existing) {
     await db
       .update(ticketLocalEdit)
-      .set({ localValue, modifiedAt: now, baseJiraVersion: baseJiraVersion ?? existing.baseJiraVersion })
+      .set({ localValue, modifiedAt: now, baseJiraVersion: resolvedBase })
       .where(eq(ticketLocalEdit.id, existing.id));
   } else {
     await db.insert(ticketLocalEdit).values({
@@ -68,7 +78,7 @@ export async function PUT(
       ticketKey: key,
       field: field as "title" | "description",
       localValue,
-      baseJiraVersion: baseJiraVersion ?? null,
+      baseJiraVersion: resolvedBase,
       modifiedAt: now,
     });
   }
