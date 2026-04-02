@@ -829,7 +829,7 @@ export function StoryDiff({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 text-xs text-white/40">
           {oldLabel && <span>{oldLabel}</span>}
-          {oldLabel && newLabel && <span className="text-white/20">&rarr;</span>}
+          {oldLabel && newLabel && <span className="text-white/20">vs</span>}
           {newLabel && <span>{newLabel}</span>}
         </div>
         <div className="flex items-center gap-4">
