@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
 import { CalloutExtension } from "./callout-extension";
 import { calloutMarkdownToHtml, htmlToCalloutMarkdown } from "./callout-markdown";
@@ -57,6 +58,10 @@ export function RichEditor({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { class: "editor-link" },
+      }),
+      Image.configure({
+        allowBase64: false,
+        HTMLAttributes: { class: "editor-image" },
       }),
       Markdown.configure({
         html: true,

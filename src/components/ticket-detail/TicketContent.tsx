@@ -4,10 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import type { Attachment, TicketDetail } from "@/types/ticket";
 import {
-  Pencil,
   Trash2,
-  Download,
-  Check,
+  CloudUpload,
   File,
   FileMinus,
 } from "lucide-react";
@@ -16,6 +14,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "./SectionHeader";
 import { renderMarkdown } from "./renderMarkdown";
+import { RichEditor } from "@/components/rich-editor/RichEditor";
 
 // ---------------------------------------------------------------------------
 // Editable title
@@ -33,7 +32,7 @@ export function EditableTitle({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialTitle);
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     async function loadLocalEdit() {
@@ -59,8 +58,17 @@ export function EditableTitle({
     if (editing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
+      // Auto-size height to match content
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
     }
   }, [editing]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  };
 
   const save = useCallback(async () => {
     setEditing(false);
@@ -84,17 +92,17 @@ export function EditableTitle({
 
   if (editing) {
     return (
-      <input
+      <textarea
         ref={inputRef}
-        type="text"
+        rows={1}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={handleChange}
         onBlur={save}
         onKeyDown={(e) => {
-          if (e.key === "Enter") save();
+          if (e.key === "Enter") { e.preventDefault(); save(); }
           if (e.key === "Escape") { setValue(hasLocalEdit ? value : initialTitle); setEditing(false); }
         }}
-        className="w-full border-b-2 border-[var(--color-brand-500)]/40 bg-transparent font-[var(--font-display)] text-2xl font-semibold leading-tight tracking-[-0.02em] text-white outline-none"
+        className="w-full resize-none overflow-hidden border-b-2 border-[var(--color-brand-500)]/40 bg-transparent font-[var(--font-display)] text-2xl font-semibold leading-tight tracking-[-0.02em] text-white outline-none"
       />
     );
   }
@@ -113,7 +121,6 @@ export function EditableTitle({
           Locally modified
         </span>
       )}
-      <Pencil size={14} strokeWidth={1.2} className="mt-2 shrink-0 text-white/15 opacity-0 group-hover:opacity-100" style={{ transition: "opacity 150ms" }} />
     </div>
   );
 }
@@ -125,6 +132,7 @@ export function EditableTitle({
 export function EditableDescription({
   ticketKey,
   initialDescription,
+  attachments,
   onLocalEdit,
   hasConflict = false,
   onViewDiff,
@@ -133,6 +141,7 @@ export function EditableDescription({
 }: {
   ticketKey: string;
   initialDescription: string;
+  attachments?: Attachment[];
   onLocalEdit: (hasEdit: boolean) => void;
   hasConflict?: boolean;
   onViewDiff?: () => void;
@@ -147,7 +156,6 @@ export function EditableDescription({
   const [pushing, setPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     async function loadLocalEdit() {
@@ -157,7 +165,31 @@ export function EditableDescription({
           const data = await res.json();
           const descEdit = data.find?.((e: { field: string }) => e.field === "description");
           if (descEdit) {
-            setValue(descEdit.localValue);
+            let localValue: string = descEdit.localValue;
+            // Resolve attachment placeholders using the synced attachment list
+            if (attachments && attachments.length > 0) {
+              const filenameToId = new Map(attachments.map((a) => [a.filename, a.id]));
+              localValue = localValue.replace(
+                /!\[([^\]]*)\]\(attachment[^)]*\)/g,
+                (_match: string, alt: string) => {
+                  const id = filenameToId.get(alt);
+                  return id ? `![${alt}](/api/attachments/${id})` : `![${alt}](attachment)`;
+                },
+              );
+            }
+            // Restore images that were stripped by TipTap before Image extension support was added.
+            // If initialDescription has resolved images but the local edit has none, re-append them.
+            const resolvedImageRe = /!\[[^\]]*\]\(\/api\/attachments\/[^)]+\)/;
+            const hasImages = (text: string) => resolvedImageRe.test(text);
+            if (hasImages(initialDescription) && !hasImages(localValue)) {
+              const imageLines = initialDescription
+                .split("\n")
+                .filter((line) => /^!\[[^\]]*\]\(\/api\/attachments\/[^)]+\)$/.test(line.trim()));
+              if (imageLines.length > 0) {
+                localValue = localValue.trimEnd() + "\n\n" + imageLines.join("\n");
+              }
+            }
+            setValue(localValue);
             setHasLocalEdit(true);
             onLocalEdit(true);
           }
@@ -167,16 +199,8 @@ export function EditableDescription({
       }
     }
     loadLocalEdit();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketKey, onLocalEdit]);
-
-  useEffect(() => {
-    if (editing && textareaRef.current) {
-      textareaRef.current.focus();
-      const el = textareaRef.current;
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight}px`;
-    }
-  }, [editing]);
 
   const save = useCallback(async () => {
     setEditing(false);
@@ -198,11 +222,51 @@ export function EditableDescription({
     }
   }, [ticketKey, value, initialDescription, onLocalEdit]);
 
+  const handlePush = useCallback(async () => {
+    setPushing(true);
+    try {
+      const res = await fetch(`/api/tickets/${ticketKey}/push-to-jira`, { method: "POST" });
+      const data = await res.json();
+      if (data.conflict) {
+        if (onRemoteChanged) {
+          onRemoteChanged(data.contentChanged ?? true);
+        } else {
+          setPushError("Conflict: Jira was updated since your edit. Refresh the page to see the diff.");
+        }
+      } else if (data.success) {
+        setHasLocalEdit(false);
+        onLocalEdit(false);
+        setPushError(null);
+        setOverrideConfirmed(false);
+        onPushSuccess?.();
+      } else {
+        setPushError(data.error ?? "Push failed");
+      }
+    } catch {
+      setPushError("Failed to push to Jira");
+    } finally {
+      setPushing(false);
+    }
+  }, [ticketKey, onRemoteChanged, onLocalEdit, onPushSuccess]);
+
+  useEffect(() => {
+    if (!editing) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setEditing(false);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [editing]);
+
   return (
     <div className="mt-6">
+      {/* Header bar */}
       <div className="flex items-center gap-2 border-b border-white/[0.06] pb-2">
         <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">Description</h3>
-        {hasLocalEdit && (
+        {hasLocalEdit && !editing && (
           <button
             type="button"
             onClick={onViewDiff}
@@ -213,109 +277,78 @@ export function EditableDescription({
             Locally modified
           </button>
         )}
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="ml-auto text-white/20 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            title="Edit description"
-          >
-            <Pencil size={14} strokeWidth={1.2} />
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Push to Jira (when local edits exist and not editing) */}
+          {hasLocalEdit && !editing && (
+            <>
+              {hasConflict && (
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={overrideConfirmed}
+                    onChange={(e) => setOverrideConfirmed(e.target.checked)}
+                    className="h-3 w-3 rounded border-white/20 bg-white/[0.03] accent-[var(--color-brand-500)] cursor-pointer"
+                  />
+                  <span className="text-[10px] text-white/40">Override remote</span>
+                </label>
+              )}
+              <button
+                type="button"
+                disabled={pushing || (hasConflict && !overrideConfirmed)}
+                title={hasConflict && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
+                onClick={handlePush}
+                className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 py-1 text-[11px] font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <CloudUpload size={12} strokeWidth={1.5} />
+                {pushing ? "Pushing..." : "Push to Jira"}
+              </button>
+            </>
+          )}
+          {/* Edit mode: Save / Cancel */}
+          {editing && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setEditing(false); }}
+                className="rounded-md px-3 py-1 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                className="rounded-md bg-[var(--color-brand-600)] px-3 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+              >
+                Save
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Push error */}
+      {pushError && (
+        <p className="mt-1.5 text-xs text-[#e5534b]">{pushError}</p>
+      )}
+
+      {/* Content */}
       {editing ? (
         <div className="mt-3">
-          <textarea
-            ref={textareaRef}
+          <RichEditor
             value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 font-mono text-sm leading-[1.7] text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
-            rows={15}
+            onChange={setValue}
+            placeholder="Write a description..."
+            minHeight={300}
           />
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={save}
-              className="rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => { setEditing(false); }}
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       ) : (
         <div
-          className="group mt-3 cursor-pointer rounded-lg p-1 hover:bg-white/[0.02]"
+          className="group mt-3 cursor-pointer rounded-xl border border-white/[0.04] bg-white/[0.015] p-5 hover:border-white/[0.07] hover:bg-white/[0.025]"
           onClick={() => setEditing(true)}
           title="Click to edit"
+          style={{ transition: "border-color 0.15s ease, background-color 0.15s ease" }}
         >
           {renderMarkdown(value)}
-        </div>
-      )}
-      {hasLocalEdit && (
-        <div className="mt-3">
-          {hasConflict && (
-            <label className="mb-2 flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={overrideConfirmed}
-                onChange={(e) => setOverrideConfirmed(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-white/20 bg-white/[0.03] accent-[var(--color-brand-500)] cursor-pointer"
-              />
-              <span className="text-xs text-white/40">
-                I have reviewed the diff and want to overwrite remote changes
-              </span>
-            </label>
-          )}
-          <button
-            type="button"
-            disabled={pushing || (hasConflict && !overrideConfirmed)}
-            title={hasConflict && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
-            onClick={async () => {
-              setPushing(true);
-              try {
-                const res = await fetch(`/api/tickets/${ticketKey}/push-to-jira`, { method: "POST" });
-                const data = await res.json();
-                if (data.conflict) {
-                  if (onRemoteChanged) {
-                    onRemoteChanged(data.contentChanged ?? true);
-                  } else {
-                    setPushError("Conflict: Jira was updated since your edit. Refresh the page to see the diff.");
-                  }
-                } else if (data.success) {
-                  setHasLocalEdit(false);
-                  onLocalEdit(false);
-                  setPushError(null);
-                  setOverrideConfirmed(false);
-                  onPushSuccess?.();
-                } else {
-                  setPushError(data.error ?? "Push failed");
-                }
-              } catch {
-                setPushError("Failed to push to Jira");
-              } finally {
-                setPushing(false);
-              }
-            }}
-            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-[var(--color-brand-600)]/80 px-3 py-1.5 text-xs font-medium text-white/80 cursor-pointer hover:bg-[var(--color-brand-500)]/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Download size={14} strokeWidth={1.2} />
-            {pushing ? "Pushing..." : "Push to Jira"}
-          </button>
-          {pushError && (
-            <p className="mt-1.5 text-xs text-[#e5534b]">{pushError}</p>
-          )}
         </div>
       )}
     </div>
@@ -350,7 +383,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
             }`}
           >
             <div
-              className="flex h-24 items-center justify-center"
+              className="flex h-24 items-center justify-center overflow-hidden"
               style={att.cleaned ? {} : { backgroundColor: `${att.color}08` }}
             >
               {att.cleaned ? (
@@ -358,6 +391,13 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
                   <FileMinus className="h-6 w-6" strokeWidth={1.5} />
                   <span className="text-[10px]">Cleaned</span>
                 </div>
+              ) : att.mimeType.startsWith("image/") ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/attachments/${att.id}`}
+                  alt={att.filename}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="flex flex-col items-center gap-1" style={{ color: att.color }}>
                   <File className="h-8 w-8 opacity-40" strokeWidth={1.5} />
