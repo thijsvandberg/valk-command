@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect, useCallback, useRef, use } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
@@ -8,17 +8,28 @@ import {
   type TicketDetail,
 } from "@/types/ticket";
 import {
-  ChevronRight,
+  ChevronUp,
+  ChevronsUp,
+  ChevronDown,
+  ChevronsDown,
+  Minus,
   ExternalLink,
-  RefreshCw,
+  CloudSync,
   Flag,
   Loader2,
   AlertTriangle,
-  PenLine,
+  NotebookPen,
+  Zap,
+  KanbanSquare,
+  IterationCw,
+  Link2,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
+import { Avatar } from "@/components/shared/Avatar";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { getJiraUrl } from "@/components/sprint-board/TicketTable";
 import {
   EditableTitle,
@@ -32,6 +43,14 @@ import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
 import { TicketReview } from "@/components/ticket-detail/TicketReview";
 import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
 import { TicketSidebar } from "@/components/ticket-detail/TicketSidebar";
+
+const PRIORITY_ICONS: Record<string, { Icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>; color: string }> = {
+  Highest: { Icon: ChevronsUp,   color: "#e5534b" },
+  High:    { Icon: ChevronUp,    color: "#ea8744" },
+  Medium:  { Icon: Minus,        color: "#eab308" },
+  Low:     { Icon: ChevronDown,  color: "#4a90d9" },
+  Lowest:  { Icon: ChevronsDown, color: "#94a3b8" },
+};
 
 export default function TicketDetailPage({
   params,
@@ -48,6 +67,7 @@ export default function TicketDetailPage({
     title: apiData.title,
     type: apiData.type,
     epic: apiData.epic ?? null,
+    epicKey: apiData.epicKey ?? null,
     jiraStatus: apiData.jiraStatus,
     storyPoints: apiData.storyPoints ?? null,
     assignee: apiData.assignee ?? null,
@@ -72,6 +92,36 @@ export default function TicketDetailPage({
     linkedIssues: apiData.linkedIssues ?? [],
     jiraComments: apiData.jiraComments ?? [],
   } : undefined;
+
+  // Auto-fetch from Jira when ticket is not in local DB
+  const [jiraCheckState, setJiraCheckState] = useState<"idle" | "checking" | "not-found">("idle");
+  const jiraCheckStarted = useRef(false);
+  useEffect(() => {
+    if (ticketLoading || apiData || jiraCheckStarted.current) return;
+    jiraCheckStarted.current = true;
+    setJiraCheckState("checking");
+    let cancelled = false;
+    async function tryFetchFromJira() {
+      try {
+        const res = await fetch("/api/jira/sync-tickets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketKeys: [key] }),
+        });
+        if (cancelled) return;
+        const data = await res.json();
+        if (data.ok && data.count > 0) {
+          await mutateTicket();
+          return;
+        }
+        setJiraCheckState("not-found");
+      } catch {
+        if (!cancelled) setJiraCheckState("not-found");
+      }
+    }
+    tryFetchFromJira();
+    return () => { cancelled = true; };
+  }, [ticketLoading, apiData, key, mutateTicket]);
 
   const [hasLocalTitleEdit, setHasLocalTitleEdit] = useState(false);
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
@@ -148,11 +198,21 @@ export default function TicketDetailPage({
   }
 
   if (!ticket) {
+    if (jiraCheckState === "idle" || jiraCheckState === "checking") {
+      return (
+        <div className="flex h-full items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 size={32} strokeWidth={2} className="animate-spin text-white/20" />
+            <span className="text-sm text-white/30">Checking Jira...</span>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <h1 className="font-[var(--font-display)] text-2xl font-semibold text-white/80">Ticket not found</h1>
-          <p className="mt-2 text-sm text-white/40">No ticket with key &quot;{key}&quot; exists in the current data.</p>
+          <p className="mt-2 text-sm text-white/40">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
           <Link
             href="/sprint-board"
             className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
@@ -170,29 +230,96 @@ export default function TicketDetailPage({
     <ErrorBoundary>
     <div className="flex h-full">
       <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-8 py-6">
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 text-xs">
-            <Link
-              href="/sprint-board"
-              className="text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            >
-              Sprint Board
-            </Link>
-            <ChevronRight size={10} strokeWidth={1} className="text-white/15" />
-            {ticketSprintId && (
-              <>
-                <Link
-                  href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                  className="text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        <div className="mx-auto max-w-4xl px-8 py-6">
+          {/* Top bar: breadcrumb + actions */}
+          <div className="flex items-center gap-1.5 border-b border-white/[0.06] pb-3">
+            <nav className="flex items-center gap-2 text-xs">
+              <Link
+                href="/sprint-board"
+                className="flex items-center gap-1 text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <KanbanSquare size={12} strokeWidth={1.5} className="shrink-0" />
+                Sprint Board
+              </Link>
+              {ticketSprintId && (
+                <>
+                  <span className="text-white/15">/</span>
+                  <Link
+                    href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
+                    className="flex items-center gap-1 text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  >
+                    <IterationCw size={12} strokeWidth={1.5} className="shrink-0" />
+                    {ticketSprintLabel}
+                  </Link>
+                </>
+              )}
+              {ticket.epic && (
+                <>
+                  <span className="text-white/15">/</span>
+                  <Tooltip content={ticket.epic}>
+                    {ticket.epicKey ? (
+                      <Link
+                        href={`/tickets/${ticket.epicKey}`}
+                        className="flex items-center gap-1 text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      >
+                        <Zap size={12} strokeWidth={1.5} className="shrink-0 text-[#9b6cd4]" />
+                        <span className="max-w-[140px] truncate">{ticket.epic}</span>
+                      </Link>
+                    ) : (
+                      <span className="flex items-center gap-1 text-white/40">
+                        <Zap size={12} strokeWidth={1.5} className="shrink-0 text-[#9b6cd4]" />
+                        <span className="max-w-[140px] truncate">{ticket.epic}</span>
+                      </span>
+                    )}
+                  </Tooltip>
+                </>
+              )}
+              <span className="text-white/15">/</span>
+              <span className="group/key flex items-center gap-1.5 font-mono text-white/60">
+                <IssueTypeIcon type={ticket.type} size={14} />
+                {key}
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/tickets/${key}`);
+                  }}
+                  className="text-white/0 group-hover/key:text-white/25 cursor-pointer hover:!text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.9]"
+                  style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
+                  title="Copy link"
                 >
-                  {ticketSprintLabel}
-                </Link>
-                <ChevronRight size={10} strokeWidth={1} className="text-white/15" />
-              </>
-            )}
-            <span className="font-mono text-white/60">{key}</span>
-          </nav>
+                  <Link2 size={15} strokeWidth={1.5} />
+                </button>
+              </span>
+            </nav>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleRefreshFromJira}
+                disabled={isRefreshing}
+                className="flex items-center justify-center rounded-md p-1.5 text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+                title={isRefreshing ? "Syncing..." : "Refresh from Jira"}
+              >
+                <CloudSync size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
+              </button>
+              <a
+                href={getJiraUrl(key)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center rounded-md p-1.5 text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
+                title="Open in Jira"
+              >
+                <ExternalLink size={15} strokeWidth={1.5} />
+              </a>
+              <Link
+                href={`/tickets/${key}/write`}
+                className="ml-1 flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              >
+                <NotebookPen size={13} strokeWidth={1.5} />
+                Story Writer
+              </Link>
+            </div>
+          </div>
 
           {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
@@ -217,59 +344,53 @@ export default function TicketDetailPage({
 
           {/* Header */}
           <div className="mt-4">
-            <div className="flex items-center gap-2.5">
-              <IssueTypeIcon type={ticket.type} size={20} />
-              <span className="font-mono text-sm text-white/40">{key}</span>
-              {ticket.flagged && (
-                <Flag size={16} className="text-[#e5534b]" fill="currentColor" strokeWidth={0} />
-              )}
-              {hasLocalEdits && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("history")}
-                  className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                  style={{ transition: "background-color 0.15s ease" }}
-                  title="View diff in History tab"
-                >
-                  Modified locally
-                </button>
-              )}
-              <div className="ml-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleRefreshFromJira}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <RefreshCw size={14} strokeWidth={1.2} className={isRefreshing ? "animate-spin" : ""} />
-                  {isRefreshing ? "Syncing..." : "Refresh from Jira"}
-                </button>
-                <Link
-                  href={`/tickets/${key}/write`}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-                >
-                  <PenLine size={14} strokeWidth={1.2} />
-                  Write Story
-                </Link>
-                <a
-                  href={getJiraUrl(key)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-                >
-                  <ExternalLink size={14} strokeWidth={1.2} />
-                  Open in Jira
-                </a>
-              </div>
-            </div>
 
-            <div className="mt-3">
+            <div className="mt-3 flex items-start gap-2.5">
               <EditableTitle
                 ticketKey={key}
                 initialTitle={ticket.title}
                 onLocalEdit={handleTitleLocalEdit}
               />
+              {ticket.flagged && (
+                <Flag size={16} className="mt-2 shrink-0 text-[#e5534b]" fill="currentColor" strokeWidth={0} />
+              )}
+            </div>
+
+            {/* Metadata strip */}
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+              {(() => {
+                const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+                return (
+                  <span
+                    className="inline-flex items-center rounded-md px-2 py-0.5 font-medium"
+                    style={{ backgroundColor: sc.bg, color: sc.text }}
+                  >
+                    {ticket.jiraStatus}
+                  </span>
+                );
+              })()}
+              {(() => {
+                const priority = detail?.priority ?? "Medium";
+                const entry = PRIORITY_ICONS[priority];
+                if (!entry) return null;
+                const { Icon, color } = entry;
+                return (
+                  <span className="flex items-center gap-1 text-white/50">
+                    <Icon size={14} strokeWidth={2} style={{ color }} />
+                    <span style={{ color }}>{priority}</span>
+                  </span>
+                );
+              })()}
+              <span className="flex items-center gap-1 text-white/40">
+                <span className="text-white/20">Points</span>
+                <span className="tabular-nums text-white/60">{ticket.storyPoints ?? "--"}</span>
+              </span>
+              {ticket.assignee && (
+                <span className="flex items-center gap-1.5 text-white/40">
+                  <Avatar assignee={ticket.assignee} size={18} />
+                  <span className="truncate">{ticket.assignee.name}</span>
+                </span>
+              )}
             </div>
 
           </div>
@@ -300,7 +421,13 @@ export default function TicketDetailPage({
               >
                 {tab.label}
                 {tab.badge !== undefined && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/[0.06] px-1 text-[10px] tabular-nums text-white/30">
+                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
+                    tab.id === "review" && tab.badge > 0
+                      ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
+                      : activeTab === tab.id
+                        ? "bg-white/[0.10] text-white/50"
+                        : "bg-white/[0.06] text-white/30"
+                  }`}>
                     {tab.badge}
                   </span>
                 )}
@@ -316,6 +443,7 @@ export default function TicketDetailPage({
               <EditableDescription
                 ticketKey={key}
                 initialDescription={detail?.description ?? "No description available."}
+                attachments={detail?.attachments}
                 onLocalEdit={handleDescLocalEdit}
                 hasConflict={showConflictWarning}
                 onViewDiff={() => setActiveTab("history")}
@@ -354,7 +482,7 @@ export default function TicketDetailPage({
       </div>
 
       <div className="sticky top-0 min-h-full self-stretch overflow-y-auto">
-        <TicketSidebar ticket={ticket} detail={detail} onNavigateToReview={() => setActiveTab("review")} />
+        <TicketSidebar ticket={ticket} detail={detail} sprintLabel={ticketSprintLabel} onNavigateToReview={() => setActiveTab("review")} />
       </div>
     </div>
     </ErrorBoundary>
