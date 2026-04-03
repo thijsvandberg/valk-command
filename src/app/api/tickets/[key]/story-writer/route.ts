@@ -81,14 +81,26 @@ export async function POST(_request: Request, { params }: RouteContext) {
       orderBy: [desc(storyVersion.createdAt)],
     });
 
-    const conversationId = randomUUID();
-    const sessionId = randomUUID();
+    // Reuse existing conversation for this ticket to avoid duplicates in the sidebar
+    const existingConversation = await db
+      .select()
+      .from(conversation)
+      .where(eq(conversation.relatedTicket, key))
+      .get();
 
-    await db.insert(conversation).values({
-      id: conversationId,
-      title: `Story Writer: ${key}`,
-      relatedTicket: key,
-    });
+    let conversationId: string;
+    if (existingConversation) {
+      conversationId = existingConversation.id;
+    } else {
+      conversationId = randomUUID();
+      await db.insert(conversation).values({
+        id: conversationId,
+        title: `Story Writer: ${key}`,
+        relatedTicket: key,
+      });
+    }
+
+    const sessionId = randomUUID();
 
     await db.insert(storyWriterSession).values({
       id: sessionId,
@@ -150,11 +162,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (typeof body.localDraft === "string") {
     updates.localDraft = body.localDraft;
   }
+  if (typeof body.targetLocalDraft === "string") {
+    updates.targetLocalDraft = body.targetLocalDraft;
+  }
+  if (body.clearSplit === true) {
+    updates.targetTicketKey = null;
+    updates.targetLocalDraft = null;
+  }
   if (typeof body.status === "string" && ["active", "completed", "discarded"].includes(body.status as string)) {
     updates.status = body.status;
   }
 
-  // Accept a specific AI draft: copy its content to localDraft
+  // Accept a specific AI draft: copy its content to localDraft or targetLocalDraft
   if (typeof body.acceptDraftId === "string") {
     const draft = await db
       .select()
@@ -162,7 +181,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       .where(eq(storyWriterDraft.id, body.acceptDraftId as string))
       .get();
     if (draft) {
-      updates.localDraft = draft.content;
+      if (draft.storySlot === "target") {
+        updates.targetLocalDraft = draft.content;
+      } else {
+        updates.localDraft = draft.content;
+      }
     }
   }
 
