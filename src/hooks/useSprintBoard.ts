@@ -23,13 +23,16 @@ export function useJiraSprints() {
   );
 }
 
-// Fetches all tickets for a sprint from the local DB
+// Fetches all tickets for a sprint from the local DB.
+// Pass "__all__" to fetch all tickets regardless of sprint.
 export function useTickets(sprintId: string | null) {
-  return useSWR<Ticket[]>(
-    sprintId ? `/api/tickets?sprintId=${encodeURIComponent(sprintId)}` : null,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 },
-  );
+  const key =
+    sprintId === "__all__"
+      ? "/api/tickets"
+      : sprintId
+      ? `/api/tickets?sprintId=${encodeURIComponent(sprintId)}`
+      : null;
+  return useSWR<Ticket[]>(key, fetcher, { revalidateOnFocus: false, dedupingInterval: 30000 });
 }
 
 // Fetches full ticket detail with background staleness check.
@@ -65,7 +68,7 @@ export function useTicketDetail(ticketKey: string | null) {
       .catch(() => { /* background check, fail silently */ });
 
     return () => { cancelled = true; };
-  }, [ticketKey, swr.data, swr]);
+  }, [ticketKey, swr.data]);
 
   return swr;
 }
@@ -176,9 +179,18 @@ export function useTicketReviews(ticketKey: string | null) {
   return { ...swr, saveReview, deleteReview };
 }
 
-// Fetches active story writer sessions (ticketKey -> sessionId map)
+export interface ActiveSession {
+  sessionId: string;
+  ticketKey: string;
+  title: string;
+  sprintName: string | null;
+  status: string;
+  updatedAt: string | null;
+}
+
+// Fetches active story writer sessions with enriched ticket info
 export function useActiveWriterSessions() {
-  return useSWR<Record<string, string>>(
+  return useSWR<ActiveSession[]>(
     "/api/story-writer/active-sessions",
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
