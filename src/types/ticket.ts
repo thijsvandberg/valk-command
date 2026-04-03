@@ -35,6 +35,11 @@ export const EPIC_COLORS: Record<string, { bg: string; text: string }> = {
   "TECH: GENERAL IMP.": { bg: "rgba(160, 90, 200, 0.15)", text: "#a05ac8" },
 };
 
+/** Case-insensitive lookup for epic color, since Jira epic names may vary in casing. */
+export function getEpicColor(epic: string): { bg: string; text: string } | undefined {
+  return EPIC_COLORS[epic] ?? EPIC_COLORS[epic.toUpperCase()];
+}
+
 export interface Assignee {
   name: string;
   initials: string;
@@ -61,7 +66,7 @@ export interface Subtask {
 }
 
 export interface LinkedIssue {
-  relation: "is blocked by" | "relates to" | "blocks";
+  relation: string;
   key: string;
   title: string;
   type: IssueType;
@@ -100,6 +105,7 @@ export interface Ticket {
   title: string;
   type: IssueType;
   epic: string | null;
+  epicKey: string | null;
   jiraStatus: JiraStatus;
   storyPoints: number | null;
   assignee: Assignee | null;

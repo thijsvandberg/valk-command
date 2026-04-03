@@ -56,6 +56,15 @@ function convertNode(node: AdfNode): string {
       return `\`\`\`${lang}\n${code}\n\`\`\`\n\n`;
     }
 
+    case "panel": {
+      // Jira panel types map directly to our callout fence syntax
+      const panelType = (node.attrs?.panelType as string) || "info";
+      const validTypes = ["info", "warning", "error", "note", "success"];
+      const type = validTypes.includes(panelType) ? panelType : "info";
+      const inner = convertChildren(node).trim();
+      return `:::${type}\n${inner}\n:::\n\n`;
+    }
+
     case "blockquote": {
       const inner = convertChildren(node).trim();
       const quoted = inner
@@ -122,12 +131,19 @@ function applyMarks(text: string, marks?: AdfMark[]): string {
   let result = text;
   for (const mark of marks) {
     switch (mark.type) {
-      case "strong":
-        result = `**${result}**`;
+      case "strong": {
+        // CommonMark forbids trailing spaces inside ** delimiters
+        const trail = result.match(/(\s+)$/)?.[1] ?? "";
+        const inner = trail ? result.slice(0, -trail.length) : result;
+        result = `**${inner}**${trail}`;
         break;
-      case "em":
-        result = `*${result}*`;
+      }
+      case "em": {
+        const trail = result.match(/(\s+)$/)?.[1] ?? "";
+        const inner = trail ? result.slice(0, -trail.length) : result;
+        result = `*${inner}*${trail}`;
         break;
+      }
       case "code":
         result = `\`${result}\``;
         break;

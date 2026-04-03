@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, activityLog, ticketAttachment } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, activityLog, ticketAttachment, ticketSubtask, ticketLink, jiraComment } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
@@ -41,7 +41,9 @@ function userColor(name: string): string {
 async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: AbortSignal) {
   const fields = issue.fields;
   const storyPoints = extractStoryPoints(fields);
-  const epicValue = extractEpicLink(fields);
+  const epicData = extractEpicLink(fields);
+  const epicValue = epicData?.name ?? null;
+  const epicKeyValue = epicData?.key ?? null;
   const ac = extractAcceptanceCriteria(fields);
   const assigneeName = fields.assignee?.displayName ?? null;
   const assigneeAvatar = fields.assignee?.avatarUrls?.["48x48"] ?? null;
@@ -71,6 +73,7 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
     assignee: assigneeName,
     assigneeAvatar,
     epic: epicValue,
+    epicKey: epicKeyValue,
     flagged: Boolean(fields.flagged),
     reporter: reporterName,
     description: descriptionMarkdown || null,
@@ -137,6 +140,76 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
         filename: att.filename,
         mimeType: att.mimeType,
         size: att.size,
+        jiraUrl: att.content ?? null,
+      });
+    } else if (!existingAtt.jiraUrl && att.content) {
+      await db.update(ticketAttachment)
+        .set({ jiraUrl: att.content })
+        .where(eq(ticketAttachment.id, existingAtt.id));
+    }
+  }
+
+  // Sync subtasks: replace all for this ticket
+  await db.delete(ticketSubtask).where(eq(ticketSubtask.ticketKey, issue.key));
+  const subtasks = fields.subtasks ?? [];
+  for (const sub of subtasks) {
+    await db.insert(ticketSubtask).values({
+      id: `sub-${issue.key}-${sub.key}`,
+      ticketKey: issue.key,
+      subtaskKey: sub.key,
+      title: sub.fields.summary,
+      type: normalizeIssueType(sub.fields.issuetype.name),
+      status: normalizeStatus(sub.fields.status.name),
+      assignee: sub.fields.assignee?.displayName ?? null,
+      assigneeAvatar: sub.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+    });
+  }
+
+  // Sync issue links: replace all for this ticket
+  await db.delete(ticketLink).where(eq(ticketLink.ticketKey, issue.key));
+  const issuelinks = fields.issuelinks ?? [];
+  for (const link of issuelinks) {
+    const linked = link.inwardIssue ?? link.outwardIssue;
+    if (!linked) continue;
+    const relation = link.inwardIssue ? link.type.inward : link.type.outward;
+    await db.insert(ticketLink).values({
+      id: `link-${issue.key}-${link.id}`,
+      ticketKey: issue.key,
+      jiraLinkId: link.id,
+      relation,
+      linkedKey: linked.key,
+      title: linked.fields.summary,
+      type: normalizeIssueType(linked.fields.issuetype.name),
+      status: normalizeStatus(linked.fields.status.name),
+      assignee: linked.fields.assignee?.displayName ?? null,
+      assigneeAvatar: linked.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+    });
+  }
+
+  // Sync inline comments (from the already-fetched issue data)
+  const inlineComments = fields.comment?.comments ?? [];
+  for (const comment of inlineComments) {
+    const contentMarkdown = typeof comment.body === "string"
+      ? comment.body
+      : adfToMarkdown(comment.body);
+    const authorName = comment.author?.displayName ?? "Unknown";
+    const authorAvatar = comment.author?.avatarUrls?.["48x48"] ?? null;
+    const existingComment = await db.query.jiraComment.findFirst({
+      where: (c, { eq: eqFn }) => eqFn(c.jiraCommentId, comment.id),
+    });
+    if (existingComment) {
+      await db.update(jiraComment)
+        .set({ content: contentMarkdown, authorName, authorAvatar })
+        .where(eq(jiraComment.jiraCommentId, comment.id));
+    } else {
+      await db.insert(jiraComment).values({
+        id: `jc-${comment.id}`,
+        ticketKey: issue.key,
+        jiraCommentId: comment.id,
+        authorName,
+        authorAvatar,
+        content: contentMarkdown,
+        createdAt: comment.created,
       });
     }
   }
@@ -145,6 +218,7 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
     key: issue.key,
     type: normalizeIssueType(fields.issuetype.name),
     epic: epicValue,
+    epicKey: epicKeyValue,
     flagged: Boolean(fields.flagged),
     assigneeColor: assigneeName ? userColor(assigneeName) : null,
   };

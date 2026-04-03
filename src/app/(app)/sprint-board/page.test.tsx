@@ -18,6 +18,7 @@ const MOCK_TICKETS = [
     title: "Monitoring Kibana dashboards",
     type: "task",
     epic: null,
+    epicKey: null,
     jiraStatus: "IN PROGRESS",
     storyPoints: 3,
     assignee: { name: "Jan de Vries", initials: "JV", color: "#4a90d9" },

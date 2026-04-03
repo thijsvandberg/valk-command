@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketLocalEdit, storyVersion } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, Attachment, JiraComment } from "@/types/ticket";
+import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 
 function userInitials(name: string): string {
@@ -59,6 +59,15 @@ export async function GET(
 
   const jiraCommentRows = await db.query.jiraComment.findMany({
     where: (c, { eq: eqFn }) => eqFn(c.ticketKey, key),
+    orderBy: (c, { asc }) => [asc(c.createdAt)],
+  });
+
+  const subtaskRows = await db.query.ticketSubtask.findMany({
+    where: (s, { eq: eqFn }) => eqFn(s.ticketKey, key),
+  });
+
+  const linkRows = await db.query.ticketLink.findMany({
+    where: (l, { eq: eqFn }) => eqFn(l.ticketKey, key),
   });
 
   const attachments: Attachment[] = attachmentRows.map((a) => ({
@@ -101,6 +110,7 @@ export async function GET(
     title: t.title,
     type: (t.type ?? "task") as IssueType,
     epic: t.epic ?? null,
+    epicKey: t.epicKey ?? null,
     jiraStatus: (t.status ?? "TO DO") as JiraStatus,
     storyPoints: t.storyPoints ?? null,
     assignee: buildAssignee(t.assignee),
@@ -112,8 +122,36 @@ export async function GET(
     sprintId: t.sprintName ?? undefined,
   };
 
+  const subtasks: Subtask[] = subtaskRows.map((s) => ({
+    key: s.subtaskKey,
+    title: s.title,
+    type: (s.type ?? "subtask") as IssueType,
+    jiraStatus: (s.status ?? "TO DO") as JiraStatus,
+    assignee: buildAssignee(s.assignee),
+  }));
+
+  const linkedIssues: LinkedIssue[] = linkRows.map((l) => ({
+    relation: l.relation,
+    key: l.linkedKey,
+    title: l.title,
+    type: (l.type ?? "task") as IssueType,
+    jiraStatus: (l.status ?? "TO DO") as JiraStatus,
+    assignee: buildAssignee(l.assignee),
+  }));
+
+  // Resolve inline attachment references: ![filename](attachment) → ![filename](/api/attachments/ID)
+  const filenameToId = new Map(attachmentRows.map((a) => [a.filename, a.id]));
+  const rawDescription = t.description ?? "";
+  const description = rawDescription.replace(
+    /!\[([^\]]*)\]\(attachment[^)]*\)/g,
+    (_match, alt: string) => {
+      const id = filenameToId.get(alt);
+      return id ? `![${alt}](/api/attachments/${id})` : `![${alt}](attachment)`;
+    },
+  );
+
   const detail: TicketDetail = {
-    description: t.description ?? "",
+    description,
     reporter: buildAssignee(t.reporter),
     labels,
     components,
@@ -121,8 +159,8 @@ export async function GET(
     createdAt: t.jiraCreatedAt ?? t.lastSyncedAt ?? new Date().toISOString(),
     updatedAt: t.jiraUpdatedAt ?? t.lastSyncedAt ?? new Date().toISOString(),
     attachments,
-    subtasks: [],
-    linkedIssues: [],
+    subtasks,
+    linkedIssues,
     jiraComments,
   };
 

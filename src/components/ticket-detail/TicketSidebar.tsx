@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Ticket, POStatus, TicketDetail } from "@/types/ticket";
-import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
+import { EPIC_COLORS, getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { ChevronDown, ChevronsUp, ChevronUp, Minus, ChevronsDown, AlertTriangle } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
@@ -45,10 +45,12 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 export function TicketSidebar({
   ticket,
   detail,
+  sprintLabel,
   onNavigateToReview,
 }: {
   ticket: Ticket;
   detail: TicketDetail | undefined;
+  sprintLabel?: string | null;
   onNavigateToReview?: () => void;
 }) {
   const [poStatus, setPoStatus] = useState<POStatus>(ticket.poStatus);
@@ -100,12 +102,62 @@ export function TicketSidebar({
     }
   }, [ticket.key]);
 
-  const epicColor = ticket.epic ? EPIC_COLORS[ticket.epic] : null;
+  const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const priority = detail?.priority ?? "Medium";
   const priorityColor = PRIORITY_COLORS[priority];
 
+  const description = detail?.description ?? "";
+  const hasDescription = description.trim().length > 20;
+  const hasAcceptanceCriteria = /acceptance\s*criteria/i.test(description);
+  const hasPoints = ticket.storyPoints !== null;
+  const hasPoStatus = poStatus !== null;
+  const hasReview = ticket.qualityScore !== null;
+  const completenessChecks = [
+    { label: "Description", done: hasDescription },
+    { label: "AC", done: hasAcceptanceCriteria },
+    { label: "Points", done: hasPoints },
+    { label: "PO Status", done: hasPoStatus },
+    { label: "Review", done: hasReview },
+  ];
+  const completenessCount = completenessChecks.filter((c) => c.done).length;
+
   return (
     <div className="w-72 shrink-0 space-y-6 border-l border-white/[0.06] bg-[var(--color-surface-elevated)] p-5 xl:w-80">
+      {/* Completeness indicator */}
+      <div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">Readiness</h3>
+          <span className="text-[11px] tabular-nums text-white/30">{completenessCount}/{completenessChecks.length}</span>
+        </div>
+        <div className="mt-2 flex gap-1">
+          {completenessChecks.map((check) => (
+            <div
+              key={check.label}
+              className="group relative h-1.5 flex-1 overflow-hidden rounded-full"
+              title={`${check.label}: ${check.done ? "Complete" : "Missing"}`}
+            >
+              <div className="absolute inset-0 rounded-full bg-white/[0.06]" />
+              {check.done && (
+                <div
+                  className="absolute inset-0 rounded-full bg-[var(--color-brand-500)]"
+                  style={{ opacity: 0.7 }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="mt-1.5 flex gap-1">
+          {completenessChecks.map((check) => (
+            <span
+              key={check.label}
+              className={`flex-1 truncate text-center text-[10px] ${check.done ? "text-white/30" : "text-white/15"}`}
+            >
+              {check.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Jira details */}
       <div>
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">Details</h3>
@@ -126,30 +178,48 @@ export function TicketSidebar({
           <DetailRow label="Points">
             <span className="tabular-nums">{ticket.storyPoints ?? "--"}</span>
           </DetailRow>
-          <DetailRow label="Quality">
-            {ticket.qualityScore !== null ? (
-              <button
-                type="button"
-                onClick={onNavigateToReview}
-                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                title="View review details"
-              >
-                <QualityBadge score={ticket.qualityScore} />
-                {isReviewOutdated && (
-                  <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
-                )}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onNavigateToReview}
-                className="text-xs text-white/20 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                style={{ transition: "color 0.15s ease" }}
-              >
-                Run review
-              </button>
-            )}
-          </DetailRow>
+          {/* Quality score with visual bar */}
+          <div className="py-2">
+            <button
+              type="button"
+              onClick={onNavigateToReview}
+              className="w-full cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              title="View review details"
+            >
+              <div className="flex items-center justify-between">
+                <span className="shrink-0 text-xs text-white/30">Quality</span>
+                <div className="flex items-center gap-1.5">
+                  {ticket.qualityScore !== null ? (
+                    <>
+                      <QualityBadge score={ticket.qualityScore} />
+                      {isReviewOutdated && (
+                        <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
+                      )}
+                    </>
+                  ) : (
+                    <span
+                      className="text-xs text-white/20 hover:text-[var(--color-brand-400)]"
+                      style={{ transition: "color 0.15s ease" }}
+                    >
+                      Run review
+                    </span>
+                  )}
+                </div>
+              </div>
+              {ticket.qualityScore !== null && (
+                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${ticket.qualityScore}%`,
+                      backgroundColor: ticket.qualityScore < 60 ? "#e5534b" : ticket.qualityScore < 75 ? "#ea8744" : ticket.qualityScore < 90 ? "#eab308" : "#4aaa60",
+                      transition: "width 0.4s ease",
+                    }}
+                  />
+                </div>
+              )}
+            </button>
+          </div>
           <DetailRow label="Assignee">
             <div className="flex items-center justify-end gap-2">
               <span className="truncate">{ticket.assignee?.name ?? "Unassigned"}</span>
@@ -176,7 +246,7 @@ export function TicketSidebar({
             </DetailRow>
           )}
           <DetailRow label="Sprint">
-            <span>--</span>
+            <span>{sprintLabel ?? "--"}</span>
           </DetailRow>
           {ticket.epic && (
             <DetailRow label="Epic">
@@ -219,7 +289,7 @@ export function TicketSidebar({
       </div>
 
       {/* PO Metadata */}
-      <div>
+      <div className="rounded-lg border border-[var(--color-brand-500)]/10 bg-[var(--color-brand-500)]/[0.03] p-4">
         <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-white/25">
           PO Metadata
           {poNotes.trim() && (
@@ -237,16 +307,17 @@ export function TicketSidebar({
               <button
                 type="button"
                 onClick={() => setStatusOpen(!statusOpen)}
-                className="flex w-full items-center justify-between rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-sm cursor-pointer hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                style={{ transition: "background-color 0.15s ease" }}
               >
                 <span className="flex items-center gap-2">
                   {poStatus && (
                     <span
-                      className="h-2 w-2 rounded-full"
+                      className="h-2.5 w-2.5 rounded-full"
                       style={{ backgroundColor: PO_STATUS_COLORS[poStatus]?.dot ?? "#94a3b8" }}
                     />
                   )}
-                  <span className="text-white/60">{poStatus ?? "--"}</span>
+                  <span className="text-white/70">{poStatus ?? "--"}</span>
                 </span>
                 <ChevronDown size={12} strokeWidth={1.2} className="text-white/25" />
               </button>
@@ -283,7 +354,8 @@ export function TicketSidebar({
               placeholder="Add PO notes..."
               rows={3}
               onBlur={(e) => handleNotesChange(e.target.value)}
-              className="w-full resize-none rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+              className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+              style={{ transition: "border-color 0.15s ease" }}
             />
           </div>
         </div>

@@ -2,14 +2,14 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
-import { EPIC_COLORS } from "@/types/ticket";
+import { getEpicColor } from "@/types/ticket";
 import Link from "next/link";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
-import { RefreshCw, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
+import { CloudSync, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
 
 // -- Simple markdown renderer for panel description --
 
@@ -94,7 +94,7 @@ export function SidePanel({
   onShowToast: (message: string) => void;
 }) {
   const jiraStatusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] || JIRA_STATUS_COLORS["TO DO"];
-  const epicColor = ticket.epic ? EPIC_COLORS[ticket.epic] : null;
+  const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const [syncingTicket, setSyncingTicket] = useState(false);
 
   const handleSyncTicket = useCallback(async () => {
@@ -250,7 +250,7 @@ export function SidePanel({
                 className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Sync ticket from Jira"
               >
-                <RefreshCw
+                <CloudSync
                   className={`h-3.5 w-3.5 ${syncingTicket ? "animate-spin" : ""}`}
                   strokeWidth={1.5}
                 />

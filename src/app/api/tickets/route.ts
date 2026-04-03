@@ -92,6 +92,7 @@ export async function GET(request: Request) {
       title: t.title,
       type: (t.type ?? "task") as IssueType,
       epic: t.epic ?? null,
+      epicKey: t.epicKey ?? null,
       jiraStatus: (t.status ?? "TO DO") as JiraStatus,
       storyPoints: t.storyPoints ?? null,
       assignee: buildAssignee(t.assignee),

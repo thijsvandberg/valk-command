@@ -35,6 +35,7 @@ export const ticket = sqliteTable("ticket", {
   assignee: text("assignee"),
   assigneeAvatar: text("assignee_avatar"),
   epic: text("epic"),
+  epicKey: text("epic_key"),
   flagged: integer("flagged", { mode: "boolean" }).notNull().default(false),
   reporter: text("reporter"),
   description: text("description"),
@@ -176,6 +177,40 @@ export const ticketLocalEdit = sqliteTable("ticket_local_edit", {
   index("ticket_local_edit_ticket_key_idx").on(table.ticketKey),
 ]);
 
+// Subtasks: child issues of a ticket (synced inline during ticket sync)
+export const ticketSubtask = sqliteTable("ticket_subtask", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey),
+  subtaskKey: text("subtask_key").notNull(),
+  title: text("title").notNull(),
+  type: text("type"),
+  status: text("status").notNull(),
+  assignee: text("assignee"),
+  assigneeAvatar: text("assignee_avatar"),
+}, (table) => [
+  index("ticket_subtask_ticket_key_idx").on(table.ticketKey),
+]);
+
+// Issue links: blocks / is blocked by / relates to, etc.
+export const ticketLink = sqliteTable("ticket_link", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey),
+  jiraLinkId: text("jira_link_id"),
+  relation: text("relation").notNull(),
+  linkedKey: text("linked_key").notNull(),
+  title: text("title").notNull(),
+  type: text("type"),
+  status: text("status").notNull(),
+  assignee: text("assignee"),
+  assigneeAvatar: text("assignee_avatar"),
+}, (table) => [
+  index("ticket_link_ticket_key_idx").on(table.ticketKey),
+]);
+
 // Phase 5: Attachment management
 export const ticketAttachment = sqliteTable("ticket_attachment", {
   id: text("id").primaryKey(),
@@ -186,6 +221,7 @@ export const ticketAttachment = sqliteTable("ticket_attachment", {
   filename: text("filename").notNull(),
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull().default(0),
+  jiraUrl: text("jira_url"),
   downloadedAt: text("downloaded_at"),
   localPath: text("local_path"),
   cleanedAt: text("cleaned_at"),
@@ -255,6 +291,8 @@ export type TicketMetadata = typeof ticketMetadata.$inferSelect;
 export type PoComment = typeof poComment.$inferSelect;
 export type JiraComment = typeof jiraComment.$inferSelect;
 export type TicketLocalEdit = typeof ticketLocalEdit.$inferSelect;
+export type TicketSubtask = typeof ticketSubtask.$inferSelect;
+export type TicketLink = typeof ticketLink.$inferSelect;
 export type TicketAttachment = typeof ticketAttachment.$inferSelect;
 export type ActivityLog = typeof activityLog.$inferSelect;
 export type NewActivityLog = typeof activityLog.$inferInsert;

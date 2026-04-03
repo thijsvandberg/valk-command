@@ -296,7 +296,7 @@ export default function TicketDetailPage({
                 type="button"
                 onClick={handleRefreshFromJira}
                 disabled={isRefreshing}
-                className="flex items-center justify-center rounded-md p-1.5 text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center justify-center rounded-md p-1.5 text-white/45 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
                 title={isRefreshing ? "Syncing..." : "Refresh from Jira"}
               >
                 <CloudSync size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
@@ -305,7 +305,7 @@ export default function TicketDetailPage({
                 href={getJiraUrl(key)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center rounded-md p-1.5 text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
+                className="flex items-center justify-center rounded-md p-1.5 text-white/45 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
                 title="Open in Jira"
               >
                 <ExternalLink size={15} strokeWidth={1.5} />

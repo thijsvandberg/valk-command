@@ -321,4 +321,72 @@ describe("adfToMarkdown", () => {
     const adf = { type: "doc", content: [] };
     expect(adfToMarkdown(adf)).toBe("");
   });
+
+  it("converts panel nodes to callout fence syntax", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "panel",
+          attrs: { panelType: "note" },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "New info" }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(adfToMarkdown(adf)).toBe(":::note\nNew info\n:::");
+  });
+
+  it("moves trailing space outside bold/em delimiters", () => {
+    // Jira ADF often has "text: " as a bold run followed by plain text.
+    // CommonMark forbids trailing spaces inside ** so the space must move out.
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    { type: "text", text: "Discuss: ", marks: [{ type: "strong" }] },
+                    { type: "text", text: "Valk Verrast" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const result = adfToMarkdown(adf);
+    expect(result).toContain("**Discuss:** Valk Verrast");
+    expect(result).not.toContain("**Discuss: **");
+  });
+
+  it("maps unknown panel types to info", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "panel",
+          attrs: { panelType: "custom" },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Content" }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(adfToMarkdown(adf)).toBe(":::info\nContent\n:::");
+  });
 });

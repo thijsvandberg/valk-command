@@ -1,8 +1,8 @@
-import { EPIC_COLORS } from "@/types/ticket";
+import { getEpicColor } from "@/types/ticket";
 
 export function EpicLabel({ epic }: { epic: string | null }) {
   if (!epic) return null;
-  const color = EPIC_COLORS[epic];
+  const color = getEpicColor(epic);
   if (!color) return null;
 
   return (

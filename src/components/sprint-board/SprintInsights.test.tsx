@@ -12,6 +12,7 @@ const MOCK_TICKETS: Ticket[] = [
     storyPoints: 3,
     assignee: null,
     epic: null,
+    epicKey: null,
     flagged: false,
     poStatus: null,
     qualityScore: 45,

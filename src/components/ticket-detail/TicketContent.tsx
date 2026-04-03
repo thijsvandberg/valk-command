@@ -54,6 +54,13 @@ export function EditableTitle({
     loadLocalEdit();
   }, [ticketKey, onLocalEdit]);
 
+  // When the Jira-synced title changes and there are no local edits, reflect the fresh value.
+  useEffect(() => {
+    if (!hasLocalEdit) {
+      setValue(initialTitle);
+    }
+  }, [initialTitle, hasLocalEdit]);
+
   useEffect(() => {
     if (editing && inputRef.current) {
       inputRef.current.focus();
@@ -156,6 +163,13 @@ export function EditableDescription({
   const [pushing, setPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+
+  // When the Jira-synced description changes and there are no local edits, reflect the fresh value.
+  useEffect(() => {
+    if (!hasLocalEdit) {
+      setValue(initialDescription);
+    }
+  }, [initialDescription, hasLocalEdit]);
 
   useEffect(() => {
     async function loadLocalEdit() {

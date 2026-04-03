@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
-import { ChevronRight, Save, Info, Upload } from "lucide-react";
+import { ChevronRight, Save, Info, CloudUpload } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 
 function parseVersionDate(iso: string): number {
@@ -406,7 +406,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                 className="flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
               >
-                <Upload size={13} strokeWidth={1.5} />
+                <CloudUpload size={13} strokeWidth={1.5} />
                 {resolving ? "Pushing..." : "Push to Jira"}
               </button>
             </div>

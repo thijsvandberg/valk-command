@@ -92,6 +92,27 @@
       "when": 1775414400000,
       "tag": "0012_rapid_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1775500800000,
+      "tag": "0013_add_subtasks_and_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1775587200000,
+      "tag": "0014_attachment_jira_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1775673600000,
+      "tag": "0015_ticket_epic_key",
+      "breakpoints": true
     }
   ]
 }

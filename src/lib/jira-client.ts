@@ -13,16 +13,15 @@
 // ---------------------------------------------------------------------------
 
 const SPRINT_FIELD = "customfield_10007";
-const STORY_POINTS_FIELD = "customfield_10016";
-const EPIC_LINK_FIELD = "customfield_10008";
+const STORY_POINTS_FIELD = "customfield_11909";
 const ACCEPTANCE_CRITERIA_FIELD = "customfield_10034";
 
 // Fields to request when fetching full issue data
 const ISSUE_FIELDS = [
   "summary", "issuetype", "status", "priority", "assignee", "reporter",
-  "labels", EPIC_LINK_FIELD, STORY_POINTS_FIELD, SPRINT_FIELD, "flagged",
+  "labels", "parent", STORY_POINTS_FIELD, SPRINT_FIELD, "flagged",
   "description", "created", "updated", ACCEPTANCE_CRITERIA_FIELD, "components",
-  "attachment",
+  "attachment", "subtasks", "issuelinks", "comment",
 ].join(",");
 
 // ---------------------------------------------------------------------------
@@ -63,12 +62,17 @@ export interface JiraIssueFields {
   labels: string[];
   // Sprint field (REST API v3 returns array of sprint objects)
   [key: `customfield_${string}`]: unknown;
+  // Modern Jira hierarchy: stories/tasks are children of epics via parent
+  parent?: { id: string; key: string; fields: { summary: string; issuetype?: { name: string } } } | null;
   flagged?: boolean;
   description?: unknown;
   created: string;
   updated: string;
   components?: Array<{ name: string }>;
   attachment?: JiraAttachment[];
+  subtasks?: JiraSubtask[];
+  issuelinks?: JiraIssueLink[];
+  comment?: { total: number; comments: JiraComment[] };
 }
 
 export interface JiraIssue {
@@ -108,6 +112,37 @@ export interface JiraAttachment {
   size: number;
   created: string;
   content: string;
+}
+
+interface JiraLinkedIssueRef {
+  id: string;
+  key: string;
+  fields: {
+    summary: string;
+    status: { name: string };
+    issuetype: { name: string };
+    assignee?: JiraUser | null;
+    priority?: { name: string };
+  };
+}
+
+export interface JiraSubtask {
+  id: string;
+  key: string;
+  fields: {
+    summary: string;
+    status: { name: string };
+    issuetype: { name: string };
+    assignee?: JiraUser | null;
+    priority?: { name: string };
+  };
+}
+
+export interface JiraIssueLink {
+  id: string;
+  type: { name: string; inward: string; outward: string };
+  inwardIssue?: JiraLinkedIssueRef;
+  outwardIssue?: JiraLinkedIssueRef;
 }
 
 // ---------------------------------------------------------------------------
@@ -329,10 +364,16 @@ export function extractStoryPoints(fields: JiraIssueFields): number | null {
   return typeof val === "number" ? val : null;
 }
 
-/** Extract epic link from the custom field */
-export function extractEpicLink(fields: JiraIssueFields): string | null {
-  const val = fields[EPIC_LINK_FIELD as `customfield_${string}`];
-  return typeof val === "string" ? val : null;
+/**
+ * Extract epic name from the parent field (modern Jira uses hierarchy: story → epic via parent).
+ * Returns the parent's summary when the parent is an Epic, null otherwise.
+ */
+export function extractEpicLink(fields: JiraIssueFields): { name: string; key: string } | null {
+  const parent = fields.parent;
+  if (!parent?.fields?.summary || !parent.key) return null;
+  const parentType = parent.fields.issuetype?.name?.toLowerCase() ?? "";
+  if (parentType && parentType !== "epic") return null;
+  return { name: parent.fields.summary, key: parent.key };
 }
 
 /** Extract acceptance criteria from the custom field */
@@ -586,7 +627,7 @@ export class JiraClient {
 }
 
 // Re-export field constants for use in sync routes
-export { SPRINT_FIELD, STORY_POINTS_FIELD, EPIC_LINK_FIELD, ACCEPTANCE_CRITERIA_FIELD };
+export { SPRINT_FIELD, STORY_POINTS_FIELD, ACCEPTANCE_CRITERIA_FIELD };
 
 // Singleton for convenience
 export const jiraClient = new JiraClient();

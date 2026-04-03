@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
-import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
+import { EPIC_COLORS, getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
@@ -279,7 +279,7 @@ function SortableTicketRow({
   };
 
   const showCheckbox = isChecked || isHovered || someChecked;
-  const epicColor = ticket.epic ? EPIC_COLORS[ticket.epic] : null;
+  const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
 
   return (
@@ -291,7 +291,7 @@ function SortableTicketRow({
       onClick={(e) => {
         if (isDragActive) return;
         if (e.metaKey || e.ctrlKey) {
-          window.open(getJiraUrl(ticket.key), "_blank", "noopener,noreferrer");
+          window.open(`/tickets/${ticket.key}`, "_blank", "noopener,noreferrer");
           return;
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);

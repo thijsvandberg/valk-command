@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { EPIC_COLORS, PO_STATUS_OPTIONS } from "@/types/ticket";
+import { getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
 import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3 } from "lucide-react";
 
@@ -369,7 +369,7 @@ export function FilterBar({
         selected={epicFilter}
         onChange={onEpicFilterChange}
         renderOption={(v) => {
-          const color = EPIC_COLORS[v];
+          const color = getEpicColor(v);
           return (
             <span
               className="inline-block rounded px-1.5 py-0.5 text-xs"
