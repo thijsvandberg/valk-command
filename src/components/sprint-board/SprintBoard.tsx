@@ -4,15 +4,17 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Ticket, POStatus, Sprint } from "@/types/ticket";
 import { SprintSlots } from "./SprintSlots";
-import { FilterBar, type SortField, type SortDir, type ColumnId, DEFAULT_VISIBLE } from "./FilterBar";
+import { FilterBar, SprintFilterBar, type SortField, type SortDir, type ColumnId, DEFAULT_VISIBLE } from "./FilterBar";
 import { TicketTable } from "./TicketTable";
 import { BulkActionBar } from "./BulkActionBar";
 import { SidePanel } from "./SidePanel";
 import { SprintAnalytics } from "./SprintAnalytics";
 import { MultiSprintView } from "./MultiSprintView";
+import { SearchModal } from "./SearchModal";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import type { LocalSearchResult } from "@/app/api/search/local/route";
 
 function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
   if (!raw) return [];
@@ -28,7 +30,7 @@ function mapJiraSprints(raw: { id: number; name: string; state: string; startDat
     return { id: String(s.id), name: s.name, dateRange, state, ticketCount: 0 };
   });
 }
-import { Columns2, Check, Loader2 } from "lucide-react";
+import { Columns2, Check, Loader2, LayoutGrid, Search } from "lucide-react";
 import { mutate as globalMutate } from "swr";
 
 // Persist sprint slot configuration to the API and SWR cache
@@ -85,8 +87,12 @@ export default function SprintBoard() {
 
   const [slotSprints, setSlotSprints] = useState<string[]>([]);
   // Derive active slot from URL, falling back to the first active sprint
+  const isAllView = searchParams.get("sprint") === "__all__";
+
   const activeSlot = useMemo(() => {
     const urlSprint = searchParams.get("sprint");
+    // "__all__" is handled by isAllView; no slot is active
+    if (urlSprint === "__all__") return -1;
     if (urlSprint && slotSprints.length > 0) {
       const idx = slotSprints.indexOf(urlSprint);
       if (idx >= 0) return idx;
@@ -106,6 +112,12 @@ export default function SprintBoard() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [slotSprints, searchParams, router]);
 
+  const handleAllClick = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sprint", "__all__");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [checkedTickets, setCheckedTickets] = useState<Set<string>>(new Set());
@@ -119,6 +131,16 @@ export default function SprintBoard() {
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   // PO priority order: stored in localStorage, independent from Jira rank
   const [poPriorityOrder, setPoPriorityOrder] = useLocalStorage<string[] | null>("sprint-board-po-priority", null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchDropdownResults, setSearchDropdownResults] = useState<LocalSearchResult[]>([]);
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchDropdownActive, setSearchDropdownActive] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const [compareMode, setCompareMode] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -134,6 +156,78 @@ export default function SprintBoard() {
     setToast(message);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  // Inline search: debounced fetch to local search API
+  const runInlineSearch = useCallback(async (q: string) => {
+    if (q.trim().length < 2) {
+      setSearchDropdownResults([]);
+      setSearchDropdownOpen(false);
+      return;
+    }
+
+    if (searchAbortRef.current) searchAbortRef.current.abort();
+    searchAbortRef.current = new AbortController();
+    const { signal } = searchAbortRef.current;
+
+    try {
+      const res = await fetch(`/api/search/local?q=${encodeURIComponent(q)}`, { signal });
+      if (res.ok) {
+        const data = await res.json();
+        // Inline dropdown shows max 6 results
+        setSearchDropdownResults((data.results ?? []).slice(0, 6));
+        setSearchDropdownOpen(true);
+        setSearchDropdownActive(0);
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => runInlineSearch(searchQuery), 150);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchQuery, runInlineSearch]);
+
+  // Global Cmd+K / Ctrl+K listener to open search modal
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchModalOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const handleInlineSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      setSearchQuery("");
+      setSearchDropdownOpen(false);
+      return;
+    }
+    if (e.key === "Enter" || (e.key === "k" && (e.metaKey || e.ctrlKey))) {
+      e.preventDefault();
+      setSearchDropdownOpen(false);
+      setSearchModalOpen(true);
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSearchDropdownActive((prev) => Math.min(prev + 1, searchDropdownResults.length - 1));
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSearchDropdownActive((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+  }, [searchDropdownResults.length]);
+
+  const handleSearchModalSelect = useCallback((key: string) => {
+    setSelectedTicket(key);
   }, []);
 
   // Filter state (restored from localStorage)
@@ -157,6 +251,9 @@ export default function SprintBoard() {
     setStoredFilters((prev) => ({ ...prev, poStatus: [...v] }));
   }, [setStoredFilters]);
 
+  // Sprint filter - only used in All view, not persisted
+  const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
+
   // Sort state (restored from localStorage)
   interface StoredSort { field: SortField; direction: SortDir }
   const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
@@ -171,11 +268,18 @@ export default function SprintBoard() {
 
   // Persistence is handled automatically by useLocalStorage
 
-  const activeSprintId = slotSprints[activeSlot];
+  // Map from sprint ID (numeric string) to human-readable sprint name
+  const sprintNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    sprints.forEach((s) => { map[s.id] = s.name; });
+    return map;
+  }, [sprints]);
+
+  const activeSprintId = isAllView ? "__all__" : slotSprints[activeSlot];
   const slotsInitialized = useRef(false);
 
-  const activeSprint = sprints.find((s) => s.id === activeSprintId);
-  usePageTitle(activeSprint ? `Sprint Board - ${activeSprint.name}` : "Sprint Board");
+  const activeSprint = isAllView ? null : sprints.find((s) => s.id === activeSprintId);
+  const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `Sprint Board - ${activeSprint.name}` : "Sprint Board");
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
 
@@ -194,6 +298,11 @@ export default function SprintBoard() {
   const statusOptions = useMemo(() => [...new Set(allTickets.map((t) => t.jiraStatus))], [allTickets]);
   const epicOptions = useMemo(() => [...new Set(allTickets.map((t) => t.epic).filter(Boolean) as string[])], [allTickets]);
   const assigneeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.assignee?.name).filter(Boolean) as string[])], [allTickets]);
+  // Sprint options for All view - unique sprint IDs present in loaded tickets
+  const sprintOptions = useMemo(
+    () => [...new Set(allTickets.map((t) => t.sprintId).filter(Boolean) as string[])],
+    [allTickets],
+  );
 
   // Apply filters
   const filteredTickets = useMemo(() => {
@@ -208,9 +317,10 @@ export default function SprintBoard() {
         const current = poStatuses[t.key] ?? null;
         if (!current || !poStatusFilter.has(current)) return false;
       }
+      if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, poStatuses]);
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, poStatuses, isAllView, sprintFilter]);
 
   // Apply sort (PO priority order takes precedence when sorting by rank)
   const tickets = useMemo(() => {
@@ -261,7 +371,7 @@ export default function SprintBoard() {
   const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
   const totalPoints = allTickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0);
 
-  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0;
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || sprintFilter.size > 0;
 
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
@@ -295,6 +405,18 @@ export default function SprintBoard() {
 
     setPoPriorityOrder(newOrder);
   }, [poPriorityOrder, tickets, setPoPriorityOrder]);
+
+  const handleRangeCheck = useCallback((keys: string[], checked: boolean) => {
+    setCheckedTickets((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        keys.forEach((k) => next.add(k));
+      } else {
+        keys.forEach((k) => next.delete(k));
+      }
+      return next;
+    });
+  }, []);
 
   const handleBulkSetPoStatus = useCallback(async (status: POStatus) => {
     const keys = [...checkedTickets];
@@ -439,8 +561,8 @@ export default function SprintBoard() {
         saveSprintSlots(next, sprints);
         return next;
       }
-      // Add as new slot (max 4)
-      if (prev.length >= 4) return prev;
+      // Add as new slot (max 8)
+      if (prev.length >= 8) return prev;
       const next = [...prev, sprintId];
       saveSprintSlots(next, sprints);
       return next;
@@ -536,14 +658,18 @@ export default function SprintBoard() {
   }
 
   return (
-    <div className="flex h-full">
+    <>
+      {pageTitle}
+      <div className="flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Sprint Slots */}
         <SprintSlots
           slotSprints={slotSprints}
           activeSlot={activeSlot}
+          allActive={isAllView}
           sprints={sprints}
           onSlotClick={setActiveSlot}
+          onAllClick={handleAllClick}
           editingSlot={editingSlot}
           onSlotEdit={handleSlotEdit}
           onSprintSelect={handleSprintSelect}
@@ -555,28 +681,148 @@ export default function SprintBoard() {
           onReorderSlots={handleReorderSlots}
         />
 
-        {/* Filter bar */}
-        <FilterBar
-          statusFilter={statusFilter}
-          epicFilter={epicFilter}
-          assigneeFilter={assigneeFilter}
-          poStatusFilter={poStatusFilter}
-          onStatusFilterChange={setStatusFilter}
-          onEpicFilterChange={setEpicFilter}
-          onAssigneeFilterChange={setAssigneeFilter}
-          onPoStatusFilterChange={setPoStatusFilter}
-          statusOptions={statusOptions}
-          epicOptions={epicOptions}
-          assigneeOptions={assigneeOptions}
-          sortField={sortField}
-          sortDir={sortDir}
-          onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
-          visibleColumns={visibleColumns}
-          onColumnToggle={handleColumnToggle}
-        />
+        {/* Filter bar + inline search */}
+        <div className="relative flex items-center border-b border-white/[0.06]">
+          <div className="flex-1 min-w-0">
+            <FilterBar
+              statusFilter={statusFilter}
+              epicFilter={epicFilter}
+              assigneeFilter={assigneeFilter}
+              poStatusFilter={poStatusFilter}
+              onStatusFilterChange={setStatusFilter}
+              onEpicFilterChange={setEpicFilter}
+              onAssigneeFilterChange={setAssigneeFilter}
+              onPoStatusFilterChange={setPoStatusFilter}
+              statusOptions={statusOptions}
+              epicOptions={epicOptions}
+              assigneeOptions={assigneeOptions}
+              sortField={sortField}
+              sortDir={sortDir}
+              onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
+              visibleColumns={visibleColumns}
+              onColumnToggle={handleColumnToggle}
+              noBorder
+            />
+          </div>
+          {/* Inline search bar */}
+          <div className="relative mr-3 shrink-0">
+            <div className="relative flex items-center">
+              <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-white/25" strokeWidth={1.5} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => { if (searchDropdownResults.length > 0) setSearchDropdownOpen(true); }}
+                onBlur={() => { setTimeout(() => setSearchDropdownOpen(false), 150); }}
+                onKeyDown={handleInlineSearchKeyDown}
+                placeholder="Search... ⌘K"
+                className="h-7 w-48 rounded-full border border-white/[0.08] bg-white/[0.03] pl-7 pr-3 text-xs text-white/70 placeholder-white/20 focus:outline-none focus:border-[var(--color-brand-500)]/50 focus:bg-white/[0.05]"
+                style={{
+                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.2)",
+                }}
+              />
+            </div>
+
+            {/* Inline dropdown */}
+            {searchDropdownOpen && searchDropdownResults.length > 0 && (
+              <div
+                className="absolute right-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-lg border border-white/[0.08]"
+                style={{
+                  backgroundColor: "var(--color-surface-floating)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04)",
+                }}
+              >
+                {searchDropdownResults.map((r, i) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left cursor-pointer focus-visible:outline-none"
+                    style={{
+                      backgroundColor: i === searchDropdownActive ? "rgba(74, 170, 96, 0.06)" : undefined,
+                      borderLeft: i === searchDropdownActive ? "2px solid var(--color-brand-400)" : "2px solid transparent",
+                    }}
+                    onMouseEnter={() => setSearchDropdownActive(i)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSelectedTicket(r.key);
+                      setSearchQuery("");
+                      setSearchDropdownOpen(false);
+                    }}
+                  >
+                    <span className="shrink-0 font-mono text-[10px] text-white/30 w-14 truncate">{r.key}</span>
+                    <span className="flex-1 truncate text-xs text-white/70">{r.summary}</span>
+                    <span
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                      style={(() => {
+                        const upper = r.status.toUpperCase();
+                        const map: Record<string, { backgroundColor: string; color: string }> = {
+                          "TO DO": { backgroundColor: "rgba(148,163,184,0.12)", color: "#94a3b8" },
+                          "IN PROGRESS": { backgroundColor: "rgba(46,145,73,0.15)", color: "#4aaa60" },
+                          TEST: { backgroundColor: "rgba(234,179,8,0.15)", color: "#eab308" },
+                          DONE: { backgroundColor: "rgba(46,145,73,0.25)", color: "#2e9149" },
+                        };
+                        return map[upper] ?? { backgroundColor: "rgba(148,163,184,0.12)", color: "#94a3b8" };
+                      })()}
+                    >
+                      {r.status.toUpperCase()}
+                    </span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-center gap-1.5 border-t border-white/[0.06] px-3 py-2 text-xs text-white/25 cursor-pointer hover:text-white/40 focus-visible:outline-none"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setSearchDropdownOpen(false);
+                    setSearchModalOpen(true);
+                  }}
+                >
+                  Open full search
+                  <kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono text-[9px]">⌘K</kbd>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Sprint header */}
-        {activeSprint && (
+        {isAllView && (
+          <div className="relative flex items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5 overflow-hidden">
+            {/* Ambient glow */}
+            <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
+
+            <div className="relative flex items-center gap-4 min-w-0">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
+                  <LayoutGrid size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                </div>
+                <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+                  All tickets
+                </span>
+              </div>
+
+              {!ticketsLoading && (
+                <>
+                  <div className="h-6 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent shrink-0" />
+                  <span className="text-sm text-white/35">
+                    {hasActiveFilters ? `${tickets.length} / ${allTickets.length}` : allTickets.length} items
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="relative flex items-center gap-2">
+              <SprintFilterBar
+                sprintOptions={sprintOptions}
+                sprintFilter={sprintFilter}
+                onSprintFilterChange={setSprintFilter}
+                sprintNameMap={sprintNameMap}
+              />
+            </div>
+          </div>
+        )}
+        {!isAllView && activeSprint && (
           <div className="flex items-center gap-4 border-b border-white/[0.06] px-5 py-3">
             <span className="font-[var(--font-display)] text-sm font-semibold text-white">
               {activeSprint.name}
@@ -639,8 +885,11 @@ export default function SprintBoard() {
           someChecked={someChecked}
           allChecked={allChecked}
           visibleColumns={visibleColumns}
+          showSprintColumn={isAllView}
+          sprintNameMap={sprintNameMap}
           poStatuses={poStatuses}
           onToggleCheck={toggleCheck}
+          onRangeCheck={handleRangeCheck}
           onToggleAll={toggleAll}
           onSelectTicket={setSelectedTicket}
           onHoverRow={setHoveredRow}
@@ -690,6 +939,14 @@ export default function SprintBoard() {
           <span className="text-sm text-white/70">{toast}</span>
         </div>
       )}
+      {/* Search modal */}
+      <SearchModal
+        open={searchModalOpen}
+        initialQuery={searchQuery}
+        onClose={() => setSearchModalOpen(false)}
+        onSelectTicket={handleSearchModalSelect}
+      />
+
       <style>{`
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(8px); }
@@ -697,5 +954,6 @@ export default function SprintBoard() {
         }
       `}</style>
     </div>
+    </>
   );
 }

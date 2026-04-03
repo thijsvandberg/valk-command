@@ -303,6 +303,95 @@ function ColumnToggle({
 }
 
 // ---------------------------------------------------------------------------
+// Sprint filter dropdown (used in All view, styled like FilterDropdown)
+// ---------------------------------------------------------------------------
+
+export function SprintFilterBar({
+  sprintOptions,
+  sprintFilter,
+  onSprintFilterChange,
+  sprintNameMap,
+}: {
+  sprintOptions: string[];
+  sprintFilter: Set<string>;
+  onSprintFilterChange: (next: Set<string>) => void;
+  sprintNameMap: Record<string, string>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
+  const isActive = sprintFilter.size > 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] ${
+          isActive
+            ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/8 text-[var(--color-brand-300)]"
+            : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+        }`}
+      >
+        Sprint
+        {isActive && (
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)]/20 px-1 text-[10px] font-medium text-[var(--color-brand-300)]">
+            {sprintFilter.size}
+          </span>
+        )}
+        <ChevronDown className="h-3 w-3 opacity-40" strokeWidth={1.5} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-1 w-64 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          {isActive && (
+            <button
+              type="button"
+              onClick={() => onSprintFilterChange(new Set())}
+              className="flex w-full items-center px-3 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50"
+            >
+              Clear filter
+            </button>
+          )}
+          {sprintOptions.map((id) => {
+            const name = sprintNameMap[id] ?? id;
+            return (
+              <label
+                key={id}
+                className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/60 cursor-pointer hover:bg-white/[0.04]"
+              >
+                <input
+                  type="checkbox"
+                  checked={sprintFilter.has(id)}
+                  onChange={(e) => {
+                    const next = new Set(sprintFilter);
+                    if (e.target.checked) next.add(id);
+                    else next.delete(id);
+                    onSprintFilterChange(next);
+                  }}
+                  className="h-3 w-3 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
+                />
+                {name}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // FilterBar component
 // ---------------------------------------------------------------------------
 
@@ -323,6 +412,7 @@ export function FilterBar({
   onSortChange,
   visibleColumns,
   onColumnToggle,
+  noBorder = false,
 }: {
   statusFilter: Set<string>;
   epicFilter: Set<string>;
@@ -340,11 +430,12 @@ export function FilterBar({
   onSortChange: (field: SortField, dir: SortDir) => void;
   visibleColumns: Set<ColumnId>;
   onColumnToggle: (id: ColumnId, show: boolean) => void;
+  noBorder?: boolean;
 }) {
   const poStatusOptions = PO_STATUS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string);
 
   return (
-    <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-2.5">
+    <div className={`flex items-center gap-2 px-5 py-2.5${noBorder ? "" : " border-b border-white/[0.06]"}`}>
       <FilterDropdown
         label="Status"
         options={statusOptions}

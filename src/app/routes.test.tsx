@@ -23,11 +23,25 @@ const EXPECTED_ROUTES = [
   { path: "/activity-log", file: "src/app/(app)/activity-log/page.tsx", name: "Activity Log" },
 ];
 
+// API route manifest: ensures search API route files exist
+const EXPECTED_API_ROUTES = [
+  { path: "/api/search/local", file: "src/app/api/search/local/route.ts", name: "Local Search API" },
+  { path: "/api/search/jira", file: "src/app/api/search/jira/route.ts", name: "Jira Search API" },
+];
+
 const ROOT = join(__dirname, "../..");
 
 describe("Route manifest", () => {
   it.each(EXPECTED_ROUTES)(
     "$name ($path) page file exists",
+    ({ file }) => {
+      const fullPath = join(ROOT, file);
+      expect(existsSync(fullPath)).toBe(true);
+    },
+  );
+
+  it.each(EXPECTED_API_ROUTES)(
+    "$name ($path) route file exists",
     ({ file }) => {
       const fullPath = join(ROOT, file);
       expect(existsSync(fullPath)).toBe(true);

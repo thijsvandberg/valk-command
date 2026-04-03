@@ -619,6 +619,57 @@ export class JiraClient {
   }
 
   /**
+   * Create a new issue in Jira. Returns the new issue key and id.
+   */
+  async createIssue(params: {
+    summary: string;
+    description?: unknown;
+    issueType?: string;
+    projectKey?: string;
+    sprintId?: string;
+  }, signal?: AbortSignal): Promise<{ key: string; id: string }> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    const body = {
+      fields: {
+        project: { key: params.projectKey ?? "VPL" },
+        summary: params.summary,
+        issuetype: { name: params.issueType ?? "Story" },
+        ...(params.description ? { description: params.description } : {}),
+        // Sprint field requires a plain integer for Jira Cloud (not wrapped in {id})
+        ...(params.sprintId ? { [SPRINT_FIELD]: parseInt(params.sprintId, 10) } : {}),
+      },
+    };
+
+    const result = await jiraPost<{ id: string; key: string }>(
+      "/rest/api/3/issue",
+      body,
+      signal,
+    );
+
+    return { key: result.key, id: result.id };
+  }
+
+  /**
+   * Search Jira issues via JQL. Used by the sprint board search modal.
+   * Returns up to maxResults issues (default 25).
+   */
+  async searchIssues(jql: string, fields?: string[], maxResults = 25, signal?: AbortSignal): Promise<JiraIssue[]> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const fieldList = fields ? fields.join(",") : `summary,status,assignee,priority,issuetype,${SPRINT_FIELD}`;
+    const result = await jiraFetch<JiraSearchResponse>(
+      `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${fieldList}&maxResults=${maxResults}`,
+      signal,
+    );
+    return result.issues;
+  }
+
+  /**
    * Whether the client is talking to a real Jira instance.
    */
   get isLive(): boolean {

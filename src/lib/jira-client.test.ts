@@ -41,6 +41,11 @@ describe("JiraClient (unconfigured mode)", () => {
     const issues = await client.getIssuesByKeys(["VPL-29223"]);
     expect(issues).toEqual([]);
   });
+
+  it("searchIssues returns empty array when not configured", async () => {
+    const issues = await client.searchIssues("project = VPL");
+    expect(issues).toEqual([]);
+  });
 });
 
 describe("Rate limiter", () => {
