@@ -1,7 +1,7 @@
 // Shared ticket and sprint types used across UI components and API responses.
 // All mock-data and story-diff types are now sourced from here.
 
-export type IssueType = "task" | "bug" | "story" | "subtask";
+export type IssueType = "task" | "bug" | "story" | "subtask" | "spike";
 export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE";
 export type POStatus =
   | null

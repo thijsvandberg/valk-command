@@ -2,12 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { SearchModal } from "./SearchModal";
 
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 function makeLocalResult(key: string, summary: string, status = "TO DO") {
-  return { key, summary, status, priority: null, assignee: null, sprintName: null, labels: null, descriptionPreview: null, score: 0.1, matches: [] };
+  return { key, summary, status, issueType: null, assignee: null, sprintName: null, labels: null, epic: null, description: null, jiraUrl: null, storyPoints: null, reporter: null, updatedAt: null, score: 0.1, matches: [] };
 }
 
 describe("SearchModal", () => {
@@ -24,6 +29,7 @@ describe("SearchModal", () => {
     });
     // Re-assign the global after reset
     global.fetch = mockFetch;
+    mockPush.mockReset();
   });
 
   it("does not render when open is false", () => {
@@ -82,7 +88,7 @@ describe("SearchModal", () => {
     });
   });
 
-  it("calls onSelectTicket and onClose when a result is clicked", async () => {
+  it("navigates to ticket page and calls onClose when a local result is clicked", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -98,11 +104,38 @@ describe("SearchModal", () => {
       expect(screen.getAllByText("Login page redesign").length).toBeGreaterThanOrEqual(1);
     });
 
-    // Click the result row button (the first occurrence is in the result list)
-    const resultRow = document.querySelector("[data-result-row] button")!;
+    // Regular click: router.push + onClose
+    const resultRow = document.querySelector("[data-result-row] a")!;
     fireEvent.click(resultRow);
-    expect(onSelectTicket).toHaveBeenCalledWith("VPL-3");
+    expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-3");
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("cmd+click opens in new tab and keeps modal open", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [makeLocalResult("VPL-4", "Settings page")],
+      }),
+    });
+
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    render(
+      <SearchModal open={true} initialQuery="settings" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Settings page").length).toBeGreaterThanOrEqual(1);
+    });
+
+    const resultRow = document.querySelector("[data-result-row] a")!;
+    fireEvent.click(resultRow, { metaKey: true });
+    // window.open called (new tab), modal stays open
+    expect(windowOpenSpy).toHaveBeenCalledWith("/tickets/VPL-4", "_blank", "noopener,noreferrer");
+    expect(onClose).not.toHaveBeenCalled();
+
+    windowOpenSpy.mockRestore();
   });
 
   it("switches to Jira mode when Jira tab is clicked", () => {
@@ -162,11 +195,15 @@ describe("SearchModal", () => {
     const footer = screen.getByText("navigate");
     const modalCard = footer.closest(".overflow-hidden")!;
 
+    // First navigate down to select the first result (activeIdx starts at -1)
+    fireEvent.keyDown(modalCard, { key: "ArrowDown" });
+    await act(async () => {});
+
     // Press Enter → should select first active result (VPL-10)
     fireEvent.keyDown(modalCard, { key: "Enter" });
     await act(async () => {});
 
-    expect(onSelectTicket).toHaveBeenCalledWith("VPL-10");
+    expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-10");
     expect(onClose).toHaveBeenCalled();
   });
 

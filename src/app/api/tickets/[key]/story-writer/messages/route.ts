@@ -46,7 +46,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
   }
 
-  // Save user message locally
+  // Save user message locally and bump session activity timestamp
   const messageId = randomUUID();
   await db.insert(message).values({
     id: messageId,
@@ -54,6 +54,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     role: "user",
     content,
   });
+  await db
+    .update(storyWriterSession)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(storyWriterSession.id, session.id));
 
   // Check if this is the first message (no assistant messages yet)
   const assistantMessages = await db
@@ -99,6 +103,22 @@ export async function POST(request: Request, { params }: RouteContext) {
         contextParts.push(`Jira comments (${comments.length}):\n${formatted}`);
       }
 
+      // Inject target story context when in split mode
+      if (session.targetTicketKey) {
+        const targetTicketRow = await db
+          .select()
+          .from(ticket)
+          .where(eq(ticket.jiraKey, session.targetTicketKey))
+          .get();
+        contextParts.push(
+          `[Split mode] You are helping redistribute content between two stories.\n` +
+          `Original story: ${key}${ticketRow ? ` - ${ticketRow.title}` : ""}\n` +
+          `Target story: ${session.targetTicketKey}${targetTicketRow ? ` - ${targetTicketRow.title}` : ""}\n` +
+          `Target story current content:\n${session.targetLocalDraft || "(empty)"}\n\n` +
+          `Output a revised version of the original story using <story-draft> and a revised version of the target story using <story-draft slot="target">.`,
+        );
+      }
+
       const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
       contextParts.push(`${researchFlag}\n\nUser request: ${content}`);
 
@@ -118,13 +138,22 @@ export async function POST(request: Request, { params }: RouteContext) {
     } else {
       // Follow-up message: resume the existing workspace conversation
       const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+
+      // In split mode, remind the AI of the split context and expected output format
+      let splitReminder = "";
+      if (session.targetTicketKey) {
+        splitReminder =
+          `\n\n[Split mode: original=${key}, target=${session.targetTicketKey}. ` +
+          `Output <story-draft> for original and <story-draft slot="target"> for target story.]`;
+      }
+
       const res = await fetch(
         agentUrl(`/api/conversations/${session.conversationId}/messages`),
         {
           method: "POST",
           headers: agentHeaders(),
           body: JSON.stringify({
-            content: `${researchFlag}\n\n${content}`,
+            content: `${researchFlag}\n\n${content}${splitReminder}`,
             model,
           }),
         },
