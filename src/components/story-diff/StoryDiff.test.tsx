@@ -128,12 +128,18 @@ describe("StoryDiff", () => {
     expect(screen.getAllByText(/Show \d+ unchanged lines?/).length).toBeGreaterThan(0);
   });
 
-  it("renders line numbers in unified mode", () => {
+  it("hides line numbers by default and shows them after toggle", async () => {
     const { container } = render(
       <StoryDiff oldText="first\nsecond" newText="first\nchanged" />,
     );
 
-    const lineNums = container.querySelectorAll(".text-white\\/15");
-    expect(lineNums.length).toBeGreaterThan(0);
+    // Line numbers hidden by default
+    expect(container.querySelectorAll(".text-white\\/15").length).toBe(0);
+
+    // Clicking the # toggle reveals them
+    const toggle = screen.getByTitle("Show line numbers");
+    toggle.click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(container.querySelectorAll(".text-white\\/15").length).toBeGreaterThan(0);
   });
 });

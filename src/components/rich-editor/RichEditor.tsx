@@ -34,7 +34,12 @@ function getInitialMode(): EditorMode {
 function getEditorMarkdown(editor: ReturnType<typeof useEditor>): string {
   if (!editor) return "";
   const raw = (editor.storage as unknown as Record<string, { getMarkdown?: () => string }>).markdown?.getMarkdown?.() ?? "";
-  return htmlToCalloutMarkdown(raw);
+  const withCallouts = htmlToCalloutMarkdown(raw);
+  // Normalize hard breaks to single newlines, matching ADF hardBreak conversion behavior.
+  // tiptap-markdown serializes Shift+Enter as "  \n" or "<br>" depending on context.
+  return withCallouts
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\\\n/g, "\n");
 }
 
 export function RichEditor({

@@ -23,6 +23,12 @@ export interface StoryDiffProps {
   /** Controlled hunk decisions (lifted state). When provided, component uses this instead of internal state. */
   hunkStates?: Record<number, HunkState>;
   onHunkStatesChange?: (states: Record<number, HunkState>) => void;
+  /**
+   * When true, undecided hunks default to keeping the OLD text instead of accepting the new.
+   * Used for live-patching mode: start from the current draft and only apply explicitly accepted hunks.
+   * onResultChange fires only after the first explicit user decision (not on mount).
+   */
+  pendingIsOld?: boolean;
 }
 
 export type { HunkState };
@@ -70,6 +76,7 @@ interface InteractiveCallbacks {
   onSaveEdit: (i: number, text: string) => void;
   onCancelEdit: () => void;
   onReset: (i: number) => void;
+  onAcceptAll: () => void;
 }
 
 // -----------------------------------------------------------------------
@@ -288,7 +295,11 @@ function getHunkOldText(hunk: DiffHunk): string {
     .join("\n");
 }
 
-function computeResultText(hunks: DiffHunk[], states: Record<number, HunkState>): string {
+function computeResultText(
+  hunks: DiffHunk[],
+  states: Record<number, HunkState>,
+  pendingIsOld = false,
+): string {
   const parts: string[] = [];
   hunks.forEach((hunk, i) => {
     if (hunk.kind === "collapsed") {
@@ -296,7 +307,7 @@ function computeResultText(hunks: DiffHunk[], states: Record<number, HunkState>)
       return;
     }
     const st = states[i];
-    const d = st?.decision ?? "accept";
+    const d = st?.decision ?? (pendingIsOld ? "reject" : "accept");
     if (d === "reject") {
       parts.push(getHunkOldText(hunk));
     } else if (d === "custom" && st?.customText !== undefined) {
@@ -545,7 +556,7 @@ function HunkEditor({
 // Unified diff
 // -----------------------------------------------------------------------
 
-function UnifiedLine({ line }: { line: DiffLine }) {
+function UnifiedLine({ line, showLineNumbers }: { line: DiffLine; showLineNumbers: boolean }) {
   const bg =
     line.type === "insert"
       ? C.addedLineBg
@@ -570,18 +581,22 @@ function UnifiedLine({ line }: { line: DiffLine }) {
       >
         {marker}
       </div>
-      <div
-        className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15"
-        style={{ backgroundColor: C.gutterBg }}
-      >
-        {line.oldLineNum ?? ""}
-      </div>
-      <div
-        className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15"
-        style={{ backgroundColor: C.gutterBg }}
-      >
-        {line.newLineNum ?? ""}
-      </div>
+      {showLineNumbers && (
+        <>
+          <div
+            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15"
+            style={{ backgroundColor: C.gutterBg }}
+          >
+            {line.oldLineNum ?? ""}
+          </div>
+          <div
+            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15"
+            style={{ backgroundColor: C.gutterBg }}
+          >
+            {line.newLineNum ?? ""}
+          </div>
+        </>
+      )}
       <div
         className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-sm ${
           line.type === "delete" ? "text-white/60" : "text-white/70"
@@ -593,7 +608,7 @@ function UnifiedLine({ line }: { line: DiffLine }) {
   );
 }
 
-function UnifiedDiff({ hunks, interactive }: { hunks: DiffHunk[]; interactive?: InteractiveCallbacks }) {
+function UnifiedDiff({ hunks, interactive, showLineNumbers }: { hunks: DiffHunk[]; interactive?: InteractiveCallbacks; showLineNumbers: boolean }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const toggle = useCallback((i: number) => {
     setExpanded((prev) => {
@@ -617,7 +632,7 @@ function UnifiedDiff({ hunks, interactive }: { hunks: DiffHunk[]; interactive?: 
         return (
           <div key={hi}>
             {h.lines.map((line, li) => (
-              <UnifiedLine key={`${hi}-${li}`} line={line} />
+              <UnifiedLine key={`${hi}-${li}`} line={line} showLineNumbers={showLineNumbers} />
             ))}
             {interactive && h.kind === "change" && !isEditing && (
               <HunkActionBar hunkIndex={hi} decision={decision} cbs={interactive} />
@@ -669,12 +684,12 @@ function buildSplitRows(lines: DiffLine[]): SplitRow[] {
   return rows;
 }
 
-function SplitCell({ line, side }: { line: DiffLine | null; side: "left" | "right" }) {
+function SplitCell({ line, side, showLineNumbers }: { line: DiffLine | null; side: "left" | "right"; showLineNumbers: boolean }) {
   if (!line) {
     return (
       <div className="flex h-full text-[13px] leading-6" style={{ backgroundColor: "rgba(255, 255, 255, 0.01)" }}>
         <div className="w-5 shrink-0" style={{ backgroundColor: C.gutterBg }} />
-        <div className="w-10 shrink-0" style={{ backgroundColor: C.gutterBg }} />
+        {showLineNumbers && <div className="w-10 shrink-0" style={{ backgroundColor: C.gutterBg }} />}
         <div className="min-w-0 flex-1 px-3 py-px">&nbsp;</div>
       </div>
     );
@@ -689,9 +704,11 @@ function SplitCell({ line, side }: { line: DiffLine | null; side: "left" | "righ
       <div className="flex w-5 shrink-0 select-none items-center justify-center font-mono text-[11px] font-bold" style={{ color: markerColor, backgroundColor: C.gutterBg }}>
         {marker}
       </div>
-      <div className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15" style={{ backgroundColor: C.gutterBg }}>
-        {num ?? ""}
-      </div>
+      {showLineNumbers && (
+        <div className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15" style={{ backgroundColor: C.gutterBg }}>
+          {num ?? ""}
+        </div>
+      )}
       <div className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-sm ${line.type === "delete" ? "text-white/60" : "text-white/70"}`}>
         <LineContent line={line} />
       </div>
@@ -704,11 +721,13 @@ function SplitDiff({
   oldLabel,
   newLabel,
   interactive,
+  showLineNumbers,
 }: {
   hunks: DiffHunk[];
   oldLabel?: string;
   newLabel?: string;
   interactive?: InteractiveCallbacks;
+  showLineNumbers: boolean;
 }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const toggle = useCallback((i: number) => {
@@ -739,8 +758,8 @@ function SplitDiff({
           <div key={hi}>
             {rows.map((row, ri) => (
               <div key={`${hi}-${ri}`} className="grid grid-cols-2">
-                <div style={{ borderRight: `1px solid ${C.border}` }}><SplitCell line={row.left} side="left" /></div>
-                <div><SplitCell line={row.right} side="right" /></div>
+                <div style={{ borderRight: `1px solid ${C.border}` }}><SplitCell line={row.left} side="left" showLineNumbers={showLineNumbers} /></div>
+                <div><SplitCell line={row.right} side="right" showLineNumbers={showLineNumbers} /></div>
               </div>
             ))}
             {interactive && h.kind === "change" && !isEditing && (
@@ -775,6 +794,7 @@ export function StoryDiff({
   onStatsComputed,
   hunkStates: controlledHunkStates,
   onHunkStatesChange,
+  pendingIsOld = false,
 }: StoryDiffProps) {
   const { hunks, stats } = useMemo(() => {
     if (oldText === newText || (oldText === "" && newText === "")) {
@@ -791,6 +811,11 @@ export function StoryDiff({
   // Interactive state: use controlled props when available, fallback to internal
   const [internalHunkStates, setInternalHunkStates] = useState<Record<number, HunkState>>({});
   const [editingHunk, setEditingHunk] = useState<number | null>(null);
+  const [showLineNumbers, setShowLineNumbers] = useState(false);
+
+  // In pendingIsOld mode, only fire onResultChange after the first explicit user decision
+  // to avoid overwriting the draft on mount with the base text.
+  const hasDecided = useRef(false);
 
   const hunkStates = controlledHunkStates ?? internalHunkStates;
   const setHunkStates = useCallback((updater: Record<number, HunkState> | ((prev: Record<number, HunkState>) => Record<number, HunkState>)) => {
@@ -803,10 +828,12 @@ export function StoryDiff({
   }, [controlledHunkStates, internalHunkStates, onHunkStatesChange]);
 
   const onAccept = useCallback((i: number) => {
+    hasDecided.current = true;
     setHunkStates((prev) => ({ ...prev, [i]: { decision: "accept" } }));
     setEditingHunk(null);
   }, [setHunkStates]);
   const onReject = useCallback((i: number) => {
+    hasDecided.current = true;
     setHunkStates((prev) => ({ ...prev, [i]: { decision: "reject" } }));
     setEditingHunk(null);
   }, [setHunkStates]);
@@ -814,6 +841,7 @@ export function StoryDiff({
     setEditingHunk(i);
   }, []);
   const onSaveEdit = useCallback((i: number, text: string) => {
+    hasDecided.current = true;
     setHunkStates((prev) => ({ ...prev, [i]: { decision: "custom", customText: text } }));
     setEditingHunk(null);
   }, [setHunkStates]);
@@ -821,6 +849,7 @@ export function StoryDiff({
     setEditingHunk(null);
   }, []);
   const onReset = useCallback((i: number) => {
+    hasDecided.current = true;
     setHunkStates((prev) => {
       const next = { ...prev };
       delete next[i];
@@ -828,14 +857,25 @@ export function StoryDiff({
     });
   }, [setHunkStates]);
 
+  const onAcceptAll = useCallback(() => {
+    hasDecided.current = true;
+    const next = { ...hunkStates };
+    hunks.forEach((hunk, i) => {
+      if (hunk.kind === "change" && !next[i]) {
+        next[i] = { decision: "accept" };
+      }
+    });
+    setHunkStates(next);
+  }, [hunks, hunkStates, setHunkStates]);
+
   const interactiveCallbacks: InteractiveCallbacks | undefined = interactive
-    ? { states: hunkStates, editingHunk, onAccept, onReject, onEdit, onSaveEdit, onCancelEdit, onReset }
+    ? { states: hunkStates, editingHunk, onAccept, onReject, onEdit, onSaveEdit, onCancelEdit, onReset, onAcceptAll }
     : undefined;
 
   // Compute result and notify parent
   const resultText = useMemo(
-    () => (interactive ? computeResultText(hunks, hunkStates) : ""),
-    [interactive, hunks, hunkStates],
+    () => (interactive ? computeResultText(hunks, hunkStates, pendingIsOld) : ""),
+    [interactive, hunks, hunkStates, pendingIsOld],
   );
 
   const changeHunkCount = useMemo(
@@ -845,10 +885,12 @@ export function StoryDiff({
   const decidedCount = Object.keys(hunkStates).length;
 
   useEffect(() => {
-    if (interactive && onResultChange) {
+    // In pendingIsOld mode: only fire after the first explicit decision to avoid
+    // overwriting localDraft on mount (when all hunks are pending = old text).
+    if (interactive && onResultChange && (!pendingIsOld || hasDecided.current)) {
       onResultChange(resultText);
     }
-  }, [interactive, onResultChange, resultText]);
+  }, [interactive, onResultChange, resultText, pendingIsOld]);
 
   useEffect(() => {
     onStatsComputed?.({ ...stats, changeHunkCount, decidedCount });
@@ -870,15 +912,44 @@ export function StoryDiff({
     );
   }
 
+  const pendingHunkCount = hunks.filter(
+    (h, i) => h.kind === "change" && !hunkStates[i],
+  ).length;
+
   return (
-    <div data-testid="story-diff">
-      <div className="max-h-[70vh] overflow-y-auto">
-        {mode === "unified" ? (
-          <UnifiedDiff hunks={hunks} interactive={interactiveCallbacks} />
-        ) : (
-          <SplitDiff hunks={hunks} oldLabel={oldLabel} newLabel={newLabel} interactive={interactiveCallbacks} />
+    <div data-testid="story-diff" className="flex flex-col gap-2">
+      {/* Toolbar: stats + accept-all + line numbers toggle */}
+      <div className="flex items-center gap-3">
+        <DiffSummary stats={stats} />
+        {interactive && pendingIsOld && pendingHunkCount > 0 && (
+          <button
+            type="button"
+            onClick={onAcceptAll}
+            className="flex items-center gap-1 rounded-md bg-[var(--color-brand-600)]/15 px-2.5 py-1 text-[11px] font-medium text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/20 cursor-pointer hover:bg-[var(--color-brand-600)]/25 active:scale-95 transition-transform duration-150"
+          >
+            <Check size={11} strokeWidth={2} />
+            Accept {pendingHunkCount} remaining
+          </button>
         )}
+        <button
+          type="button"
+          onClick={() => setShowLineNumbers((v) => !v)}
+          title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
+          className={`ml-auto flex items-center gap-1 rounded px-2 py-1 text-[11px] font-mono cursor-pointer transition-colors duration-150 ${
+            showLineNumbers
+              ? "text-white/50 bg-white/[0.06]"
+              : "text-white/25 hover:text-white/45 hover:bg-white/[0.04]"
+          }`}
+        >
+          #
+        </button>
       </div>
+
+      {mode === "unified" ? (
+        <UnifiedDiff hunks={hunks} interactive={interactiveCallbacks} showLineNumbers={showLineNumbers} />
+      ) : (
+        <SplitDiff hunks={hunks} oldLabel={oldLabel} newLabel={newLabel} interactive={interactiveCallbacks} showLineNumbers={showLineNumbers} />
+      )}
     </div>
   );
 }

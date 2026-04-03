@@ -10,7 +10,7 @@ export default function StoryWriterPage({
   params: Promise<{ key: string }>;
 }) {
   const { key } = use(params);
-  usePageTitle(`Write Story - ${key}`);
+  usePageTitle(`Story Writer - ${key}`);
 
   return (
     <div className="h-full">

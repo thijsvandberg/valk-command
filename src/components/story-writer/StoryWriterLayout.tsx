@@ -4,12 +4,14 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Upload,
+  CloudUpload,
   Save,
   Trash2,
   Loader2,
   Star,
   ExternalLink,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
@@ -19,9 +21,11 @@ import { StoryWriterChat } from "./StoryWriterChat";
 import { StoryWriterEditor } from "./StoryWriterEditor";
 
 const PANEL_STORAGE_KEY = "storyWriterChatWidth";
+const PANEL_COLLAPSED_KEY = "storyWriterChatCollapsed";
 const DEFAULT_CHAT_WIDTH = 420;
 const MIN_CHAT_WIDTH = 280;
 const MAX_CHAT_WIDTH = 640;
+const COLLAPSED_STRIP_WIDTH = 40;
 
 interface StoryWriterLayoutProps {
   ticketKey: string;
@@ -37,6 +41,11 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     if (typeof window === "undefined") return DEFAULT_CHAT_WIDTH;
     const stored = localStorage.getItem(PANEL_STORAGE_KEY);
     return stored ? Math.max(MIN_CHAT_WIDTH, Math.min(MAX_CHAT_WIDTH, parseInt(stored, 10))) : DEFAULT_CHAT_WIDTH;
+  });
+
+  const [chatCollapsed, setChatCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(PANEL_COLLAPSED_KEY) === "true";
   });
 
   const [pushing, setPushing] = useState(false);
@@ -119,9 +128,13 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     window.history.back();
   }, [writer]);
 
-  const handleMergeResult = useCallback((merged: string) => {
-    writer.updateLocalDraft(merged);
-  }, [writer]);
+  const handleToggleChat = useCallback(() => {
+    setChatCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(PANEL_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   const handleViewDraft = useCallback((draftId: string) => {
     setActiveDraftId(draftId);
@@ -203,7 +216,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             disabled={pushing || !writer.session?.localDraft}
             className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-transform duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {pushing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} strokeWidth={1.5} />}
+            {pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
             Push to Jira
           </button>
 
@@ -225,30 +238,59 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
       {/* Main content: chat + editor */}
       <div ref={containerRef} className="flex flex-1 overflow-hidden">
-        {/* Chat panel */}
-        <div style={{ width: chatWidth }} className="flex shrink-0 flex-col border-r border-white/[0.06]">
-          <StoryWriterChat
-            messages={writer.messages}
-            status={writer.status}
-            streamProgress={writer.streamProgress}
-            streamError={writer.streamError}
-            codebaseResearch={writer.codebaseResearch}
-            onCodebaseResearchChange={writer.setCodbaseResearch}
-            model={writer.model}
-            onModelChange={writer.setModel}
-            onSend={writer.sendMessage}
-            messageDraftMap={messageDraftMap}
-            onViewDraft={handleViewDraft}
-          />
-        </div>
+        {/* Chat panel or collapsed strip */}
+        {chatCollapsed ? (
+          <div
+            style={{ width: COLLAPSED_STRIP_WIDTH }}
+            className="flex shrink-0 flex-col items-center border-r border-white/[0.06] bg-[var(--color-surface-base)] pt-2"
+          >
+            <button
+              type="button"
+              onClick={handleToggleChat}
+              title="Expand chat"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-white/30 cursor-pointer hover:text-white/60 hover:bg-white/[0.06] transition-colors duration-150"
+            >
+              <PanelLeftOpen size={15} strokeWidth={1.5} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ width: chatWidth }} className="flex shrink-0 flex-col border-r border-white/[0.06]">
+              {/* Chat panel header with collapse button */}
+              <div className="flex items-center justify-end border-b border-white/[0.04] px-2 py-1">
+                <button
+                  type="button"
+                  onClick={handleToggleChat}
+                  title="Collapse chat"
+                  className="flex h-6 w-6 items-center justify-center rounded text-white/25 cursor-pointer hover:text-white/50 hover:bg-white/[0.06] transition-colors duration-150"
+                >
+                  <PanelLeftClose size={13} strokeWidth={1.5} />
+                </button>
+              </div>
+              <StoryWriterChat
+                messages={writer.messages}
+                status={writer.status}
+                streamProgress={writer.streamProgress}
+                streamError={writer.streamError}
+                codebaseResearch={writer.codebaseResearch}
+                onCodebaseResearchChange={writer.setCodbaseResearch}
+                model={writer.model}
+                onModelChange={writer.setModel}
+                onSend={writer.sendMessage}
+                messageDraftMap={messageDraftMap}
+                onViewDraft={handleViewDraft}
+              />
+            </div>
 
-        {/* Resize handle */}
-        <div
-          onMouseDown={handleMouseDown}
-          className="group flex w-1 cursor-col-resize items-center justify-center hover:bg-[var(--color-brand-500)]/20 transition-colors duration-150"
-        >
-          <div className="h-8 w-0.5 rounded-full bg-white/[0.08] group-hover:bg-[var(--color-brand-500)]/40 transition-colors duration-150" />
-        </div>
+            {/* Resize handle */}
+            <div
+              onMouseDown={handleMouseDown}
+              className="group flex w-1 cursor-col-resize items-center justify-center hover:bg-[var(--color-brand-500)]/20 transition-colors duration-150"
+            >
+              <div className="h-8 w-0.5 rounded-full bg-white/[0.08] group-hover:bg-[var(--color-brand-500)]/40 transition-colors duration-150" />
+            </div>
+          </>
+        )}
 
         {/* Editor panel */}
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -262,6 +304,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 title: ticketData?.title ?? "",
                 type: (ticketData?.type as import("@/types/ticket").IssueType) ?? "story",
                 epic: ticketData?.epic ?? null,
+                epicKey: ticketData?.epicKey ?? null,
                 jiraStatus: (ticketData?.jiraStatus as import("@/types/ticket").JiraStatus) ?? "TO DO",
                 storyPoints: ticketData?.storyPoints ?? null,
                 assignee: ticketData?.assignee ?? null,
@@ -272,9 +315,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 notes: "",
               }}
               onDraftChange={writer.updateLocalDraft}
-              onAcceptDraft={writer.acceptDraft}
               onDismissDraft={writer.dismissDraft}
-              onMergeResult={handleMergeResult}
               activeDraftId={activeDraftId}
             />
           ) : (
