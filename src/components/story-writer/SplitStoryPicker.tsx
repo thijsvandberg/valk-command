@@ -1,0 +1,216 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Scissors, X, Plus, Link, ChevronDown } from "lucide-react";
+
+interface SprintSlot {
+  slotIndex: number;
+  sprintId: string;
+  sprintName: string;
+}
+
+interface SplitStoryPickerProps {
+  open: boolean;
+  originalTitle: string;
+  originalSprintId: string | null;
+  onConfirm: (targetKey?: string, sprintId?: string) => Promise<void>;
+  onClose: () => void;
+}
+
+type PickerMode = "create" | "existing";
+
+export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConfirm, onClose }: SplitStoryPickerProps) {
+  const [mode, setMode] = useState<PickerMode>("create");
+  const [customTitle, setCustomTitle] = useState(`Split: ${originalTitle}`);
+  const [existingKey, setExistingKey] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sprints, setSprints] = useState<SprintSlot[]>([]);
+  const [selectedSprintId, setSelectedSprintId] = useState<string>("");
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/sprint-slots")
+      .then((r) => r.json())
+      .then((data: SprintSlot[]) => {
+        setSprints(data);
+        // Pre-select the sprint matching originalSprintName, or first available
+        const match = data.find((s) => s.sprintId === originalSprintId);
+        setSelectedSprintId(match?.sprintId ?? data[0]?.sprintId ?? "");
+      })
+      .catch(() => {});
+  }, [open, originalSprintId]);
+
+  if (!open) return null;
+
+  const handleConfirm = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      if (mode === "existing") {
+        const key = existingKey.trim().toUpperCase();
+        if (!key) {
+          setError("Enter a ticket key");
+          return;
+        }
+        await onConfirm(key, undefined);
+      } else {
+        await onConfirm(undefined, selectedSprintId || undefined);
+      }
+    } catch {
+      setError("Failed to activate split mode");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-[var(--color-surface-elevated)] shadow-[0_24px_64px_rgba(0,0,0,0.6)] p-6">
+        {/* Header */}
+        <div className="mb-5 flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/10">
+              <Scissors size={15} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-white/85">Split story</h2>
+              <p className="text-[11px] text-white/35 mt-0.5">Select or create the target story</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-white/30 hover:text-white/55 hover:bg-white/[0.05] cursor-pointer transition-colors duration-150"
+          >
+            <X size={15} strokeWidth={1.5} />
+          </button>
+        </div>
+
+        {/* Mode selector */}
+        <div className="mb-4 flex gap-1 rounded-lg bg-white/[0.04] p-1">
+          <button
+            type="button"
+            onClick={() => setMode("create")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+              mode === "create"
+                ? "bg-[var(--color-surface-floating)] text-white/80 shadow-sm"
+                : "text-white/40 hover:text-white/60"
+            }`}
+          >
+            <Plus size={12} strokeWidth={2} />
+            Create new story
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("existing")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+              mode === "existing"
+                ? "bg-[var(--color-surface-floating)] text-white/80 shadow-sm"
+                : "text-white/40 hover:text-white/60"
+            }`}
+          >
+            <Link size={12} strokeWidth={2} />
+            Use existing story
+          </button>
+        </div>
+
+        {/* Create new */}
+        {mode === "create" && (
+          <div className="mb-5 space-y-3">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+                New story title
+              </label>
+              <input
+                type="text"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+                placeholder="Story title..."
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+                Sprint
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedSprintId}
+                  onChange={(e) => setSelectedSprintId(e.target.value)}
+                  className="w-full appearance-none rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                >
+                  {sprints.length === 0 && (
+                    <option value="">No sprints configured</option>
+                  )}
+                  {sprints.map((s) => (
+                    <option key={s.sprintId} value={s.sprintId}>
+                      {s.sprintName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35" />
+              </div>
+            </div>
+            <p className="text-[11px] text-white/30">
+              A new story will be created on Jira and linked to the original.
+            </p>
+          </div>
+        )}
+
+        {/* Use existing */}
+        {mode === "existing" && (
+          <div className="mb-5">
+            <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+              Ticket key
+            </label>
+            <input
+              type="text"
+              value={existingKey}
+              onChange={(e) => setExistingKey(e.target.value.toUpperCase())}
+              className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              placeholder="VPL-123"
+            />
+            <p className="mt-1.5 text-[11px] text-white/30">
+              The existing story must be synced locally. It will be linked to the original.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <p className="mb-4 rounded-md bg-red-500/[0.08] px-3 py-2 text-xs text-red-400/80">
+            {error}
+          </p>
+        )}
+
+        {/* Actions */}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="rounded-md border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/50 hover:text-white/70 hover:bg-white/[0.04] disabled:opacity-40 cursor-pointer transition-colors duration-150"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-500)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-[var(--color-brand-400)] active:scale-[0.98] cursor-pointer transition-colors duration-150"
+          >
+            {loading ? (
+              <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white/80 animate-spin" />
+            ) : (
+              <Scissors size={13} strokeWidth={2} />
+            )}
+            {mode === "create" ? "Create & split" : "Link & split"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

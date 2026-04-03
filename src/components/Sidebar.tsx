@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  Search,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 
@@ -131,17 +132,28 @@ export default function Sidebar() {
           collapsed ? "w-[52px]" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        {/* Header */}
-        <div className={`flex items-center ${collapsed ? "justify-center px-2" : "gap-2.5 px-5"} pt-5 pb-6`}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_8px_rgba(46,145,73,0.25)]">
-            <span className="font-[var(--font-display)] text-sm font-bold tracking-tight text-white">
-              V
+        {/* Header — height matches main content header (py-3.5 + h-8 icon) */}
+        <div className={`flex items-center border-b border-white/[0.06] py-3.5 ${collapsed ? "justify-center px-2" : "gap-3 px-5"}`}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(46,145,73,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]">
+            <span className="font-[var(--font-display)] text-[13px] font-black tracking-tighter text-white">
+              vc
             </span>
           </div>
           {!collapsed && (
-            <span className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-white">
-              valk-command
-            </span>
+            <>
+              <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+                valk-command
+              </span>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("valk:openSearch"))}
+                className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                title="Search tickets (⌘K)"
+                style={{ transition: "background-color 100ms, color 100ms, transform 80ms" }}
+              >
+                <Search className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+            </>
           )}
 
           {/* Mobile close button */}

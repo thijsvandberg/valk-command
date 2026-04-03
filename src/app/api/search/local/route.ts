@@ -11,6 +11,8 @@ export interface LocalSearchResult {
   priority: string | null;
   assignee: string | null;
   sprintName: string | null;
+  labels: string | null;
+  descriptionPreview: string | null;
   score: number;
   matches: readonly FuseResultMatch[] | undefined;
 }
@@ -148,6 +150,10 @@ export async function GET(request: Request) {
       priority: r.item.priority,
       assignee: r.item.assignee,
       sprintName: r.item.sprintName,
+      labels: r.item.labels || null,
+      descriptionPreview: r.item.description
+        ? r.item.description.slice(0, 250).trim() || null
+        : null,
       score: r.score ?? 1,
       matches: r.matches,
     }));

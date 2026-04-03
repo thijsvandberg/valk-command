@@ -7,7 +7,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 function makeLocalResult(key: string, summary: string, status = "TO DO") {
-  return { key, summary, status, priority: null, assignee: null, sprintName: null, score: 0.1, matches: [] };
+  return { key, summary, status, priority: null, assignee: null, sprintName: null, labels: null, descriptionPreview: null, score: 0.1, matches: [] };
 }
 
 describe("SearchModal", () => {
@@ -77,7 +77,8 @@ describe("SearchModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("User authentication flow")).toBeInTheDocument();
+      // The text appears in both the result row and the preview pane
+      expect(screen.getAllByText("User authentication flow").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -94,10 +95,12 @@ describe("SearchModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Login page redesign")).toBeInTheDocument();
+      expect(screen.getAllByText("Login page redesign").length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText("Login page redesign").closest("button")!);
+    // Click the result row button (the first occurrence is in the result list)
+    const resultRow = document.querySelector("[data-result-row] button")!;
+    fireEvent.click(resultRow);
     expect(onSelectTicket).toHaveBeenCalledWith("VPL-3");
     expect(onClose).toHaveBeenCalled();
   });
@@ -152,7 +155,7 @@ describe("SearchModal", () => {
 
     // Wait for results to appear (same as the passing test)
     await waitFor(() => {
-      expect(screen.getByText("Enter key nav test")).toBeInTheDocument();
+      expect(screen.getAllByText("Enter key nav test").length).toBeGreaterThanOrEqual(1);
     });
 
     // Find the modal card - it has the onKeyDown handler

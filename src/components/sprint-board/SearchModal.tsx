@@ -18,6 +18,7 @@ interface SearchModalProps {
   onClose: () => void;
   /** Called when user selects a locally-known ticket key */
   onSelectTicket: (key: string) => void;
+  sprintNameMap?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,6 +43,81 @@ function StatusBadge({ status }: { status: string }) {
     >
       {upper}
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Preview pane for active local result
+// ---------------------------------------------------------------------------
+
+function PreviewPane({
+  result,
+  sprintNameMap,
+}: {
+  result: LocalSearchResult;
+  sprintNameMap?: Record<string, string>;
+}) {
+  const displaySprintName = result.sprintName
+    ? (sprintNameMap?.[result.sprintName] ?? result.sprintName)
+    : null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Key + status */}
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-xs text-white/35">{result.key}</span>
+        <div className="flex-1" />
+        <StatusBadge status={result.status} />
+      </div>
+
+      {/* Summary */}
+      <h3 className="text-[14px] font-medium leading-snug text-white/90">
+        {result.summary}
+      </h3>
+
+      {/* Meta grid */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        {displaySprintName && (
+          <>
+            <span className="text-[11px] text-white/30 uppercase tracking-wide">Sprint</span>
+            <span className="text-[12px] text-white/65">{displaySprintName}</span>
+          </>
+        )}
+        {result.assignee && (
+          <>
+            <span className="text-[11px] text-white/30 uppercase tracking-wide">Assignee</span>
+            <span className="text-[12px] text-white/65">{result.assignee}</span>
+          </>
+        )}
+        {result.priority && (
+          <>
+            <span className="text-[11px] text-white/30 uppercase tracking-wide">Priority</span>
+            <span className="text-[12px] text-white/65">{result.priority}</span>
+          </>
+        )}
+        {result.labels && (
+          <>
+            <span className="text-[11px] text-white/30 uppercase tracking-wide">Labels</span>
+            <span className="text-[12px] text-white/65">{result.labels}</span>
+          </>
+        )}
+      </div>
+
+      {/* Description preview */}
+      {result.descriptionPreview ? (
+        <div
+          className="rounded-lg p-3 text-[12px] leading-relaxed text-white/50"
+          style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+        >
+          {result.descriptionPreview}
+          {result.descriptionPreview.length >= 250 && (
+            <span className="text-white/25">...</span>
+          )}
+        </div>
+      ) : (
+        <p className="text-[12px] text-white/20 italic">No description</p>
+      )}
+    </div>
   );
 }
 
@@ -114,12 +190,18 @@ function LocalResultRow({
   active,
   onSelect,
   onHover,
+  sprintNameMap,
 }: {
   result: LocalSearchResult;
   active: boolean;
   onSelect: () => void;
   onHover: () => void;
+  sprintNameMap?: Record<string, string>;
 }) {
+  const displaySprintName = result.sprintName
+    ? (sprintNameMap?.[result.sprintName] ?? result.sprintName)
+    : null;
+
   return (
     <button
       type="button"
@@ -146,9 +228,9 @@ function LocalResultRow({
 
       {/* Right side: sprint + status */}
       <span className="ml-auto flex shrink-0 items-center gap-2">
-        {result.sprintName && (
+        {displaySprintName && (
           <span className="text-xs text-white/25 hidden sm:block truncate max-w-[140px]">
-            {result.sprintName}
+            {displaySprintName}
           </span>
         )}
         <StatusBadge status={result.status} />
@@ -239,7 +321,7 @@ function EmptyState({ query, mode }: { query: string; mode: SearchMode }) {
 // SearchModal
 // ---------------------------------------------------------------------------
 
-export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }: SearchModalProps) {
+export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, sprintNameMap }: SearchModalProps) {
   const [query, setQuery] = useState(initialQuery);
   const [mode, setMode] = useState<SearchMode>("local");
   const [localResults, setLocalResults] = useState<LocalSearchResult[]>([]);
@@ -270,6 +352,19 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open, initialQuery]);
+
+  // Close on Escape via window listener (covers all focus states inside the modal)
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [open, onClose]);
 
   // Local search with debounce
   const runLocalSearch = useCallback(async (q: string) => {
@@ -342,11 +437,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
   const resultCount = mode === "local" ? localResults.length : jiraResults.length;
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      onClose();
-      return;
-    }
-
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIdx((prev) => Math.min(prev + 1, resultCount - 1));
@@ -372,7 +462,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
         if (jiraResults.length > 0) {
           const issue = jiraResults[activeIdx];
           if (issue) {
-            // Check if we have it locally; if so, open side panel; otherwise open Jira URL
             onSelectTicket(issue.key);
             onClose();
           }
@@ -397,10 +486,12 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
   const displayQuery = mode === "local" ? query : (jiraQuery || query);
   const showLocalSkeleton = loadingLocal && mode === "local";
   const showJiraSkeleton = loadingJira && mode === "jira";
+  const showPreview = mode === "local" && localResults.length > 0 && activeIdx >= 0;
+  const activeResult = showPreview ? localResults[activeIdx] : null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]"
       style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -505,78 +596,89 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
           </div>
         )}
 
-        {/* Results list */}
-        <div
-          ref={listRef}
-          className="max-h-[520px] overflow-y-auto"
-          style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.08) transparent" }}
-        >
-          {/* Skeleton rows */}
-          {(showLocalSkeleton || showJiraSkeleton) && (
-            <div>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <SkeletonRow key={i} idx={i} />
-              ))}
-            </div>
-          )}
+        {/* Results area: two-column when preview is visible */}
+        <div className="flex" style={{ minHeight: showPreview ? 340 : undefined }}>
+          {/* Results list */}
+          <div
+            ref={listRef}
+            className={`overflow-y-auto ${showPreview ? "w-[340px] shrink-0 border-r border-white/[0.06]" : "flex-1"}`}
+            style={{ maxHeight: 520, scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.08) transparent" }}
+          >
+            {/* Skeleton rows */}
+            {(showLocalSkeleton || showJiraSkeleton) && (
+              <div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <SkeletonRow key={i} idx={i} />
+                ))}
+              </div>
+            )}
 
-          {/* Jira error */}
-          {!loadingJira && mode === "jira" && jiraError && (
-            <div className="flex items-center gap-2 px-4 py-6 text-sm text-red-400/70">
-              {jiraError}
-            </div>
-          )}
+            {/* Jira error */}
+            {!loadingJira && mode === "jira" && jiraError && (
+              <div className="flex items-center gap-2 px-4 py-6 text-sm text-red-400/70">
+                {jiraError}
+              </div>
+            )}
 
-          {/* Local results */}
-          {!showLocalSkeleton && mode === "local" && localResults.length > 0 && (
-            <div>
-              {localResults.map((r, i) => (
-                <div key={r.key} data-result-row="">
-                  <LocalResultRow
-                    result={r}
-                    active={i === activeIdx}
-                    onSelect={() => { onSelectTicket(r.key); onClose(); }}
-                    onHover={() => setActiveIdx(i)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+            {/* Local results */}
+            {!showLocalSkeleton && mode === "local" && localResults.length > 0 && (
+              <div>
+                {localResults.map((r, i) => (
+                  <div key={r.key} data-result-row="">
+                    <LocalResultRow
+                      result={r}
+                      active={i === activeIdx}
+                      onSelect={() => { onSelectTicket(r.key); onClose(); }}
+                      onHover={() => setActiveIdx(i)}
+                      sprintNameMap={sprintNameMap}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* Jira results */}
-          {!showJiraSkeleton && mode === "jira" && jiraResults.length > 0 && (
-            <div>
-              {jiraResults.map((issue, i) => (
-                <div key={issue.key} data-result-row="">
-                  <JiraResultRow
-                    issue={issue}
-                    active={i === activeIdx}
-                    onSelect={() => {
-                      // If ticket may be known locally, select it via onSelectTicket;
-                      // the parent can open the side panel if it's in local DB.
-                      onSelectTicket(issue.key);
-                      onClose();
-                    }}
-                    onHover={() => setActiveIdx(i)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+            {/* Jira results */}
+            {!showJiraSkeleton && mode === "jira" && jiraResults.length > 0 && (
+              <div>
+                {jiraResults.map((issue, i) => (
+                  <div key={issue.key} data-result-row="">
+                    <JiraResultRow
+                      issue={issue}
+                      active={i === activeIdx}
+                      onSelect={() => {
+                        // If ticket may be known locally, select it via onSelectTicket;
+                        // the parent can open the side panel if it's in local DB.
+                        onSelectTicket(issue.key);
+                        onClose();
+                      }}
+                      onHover={() => setActiveIdx(i)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* Empty state */}
-          {!showLocalSkeleton && !showJiraSkeleton && !jiraError && (
-            (mode === "local" && localResults.length === 0) ||
-            (mode === "jira" && jiraResults.length === 0 && !loadingJira)
-          ) && (
-            <EmptyState query={displayQuery} mode={mode} />
+            {/* Empty state */}
+            {!showLocalSkeleton && !showJiraSkeleton && !jiraError && (
+              (mode === "local" && localResults.length === 0) ||
+              (mode === "jira" && jiraResults.length === 0 && !loadingJira)
+            ) && (
+              <EmptyState query={displayQuery} mode={mode} />
+            )}
+          </div>
+
+          {/* Preview pane - only in local mode when something is active */}
+          {showPreview && activeResult && (
+            <div className="flex-1 overflow-y-auto p-5" style={{ maxHeight: 520, scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.08) transparent" }}>
+              <PreviewPane result={activeResult} sprintNameMap={sprintNameMap} />
+            </div>
           )}
         </div>
 
         {/* Footer hint */}
         <div className="flex items-center gap-4 border-t border-white/[0.06] px-6 py-3 text-[10px] text-white/20">
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
-          <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">↵</kbd> {mode === "jira" && jiraResults.length === 0 ? "search" : "open"}</span>
+          <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">↵</kbd> open</span>
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">esc</kbd> close</span>
         </div>
       </div>

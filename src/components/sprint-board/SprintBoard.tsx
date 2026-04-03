@@ -165,8 +165,15 @@ export default function SprintBoard() {
         setSearchModalOpen(true);
       }
     }
+    function onOpenSearch() {
+      setSearchModalOpen(true);
+    }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("valk:openSearch", onOpenSearch);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("valk:openSearch", onOpenSearch);
+    };
   }, []);
 
   const handleSearchModalSelect = useCallback((key: string) => {
@@ -811,6 +818,7 @@ export default function SprintBoard() {
         initialQuery={searchQuery}
         onClose={() => setSearchModalOpen(false)}
         onSelectTicket={handleSearchModalSelect}
+        sprintNameMap={sprintNameMap}
       />
 
       <style>{`
