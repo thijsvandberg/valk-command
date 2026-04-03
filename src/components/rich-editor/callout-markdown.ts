@@ -4,6 +4,9 @@ const CALLOUT_TYPES: CalloutType[] = ["info", "warning", "error", "note", "succe
 const CALLOUT_REGEX = /^:::(info|warning|error|note|success)\s*$/;
 const EXPAND_REGEX = /^:::expand\b(.*)$/;
 
+// Matches hex, named, rgb(), and rgba() color values
+const COLOR_VALUE = "#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgb\\([^)]+\\)|rgba\\([^)]+\\)";
+
 /**
  * Parses markdown with :::type callout fences and :::expand fences into HTML
  * that TipTap can consume, and serializes TipTap nodes back to fence markdown.
@@ -88,11 +91,51 @@ export function calloutMarkdownToHtml(markdown: string): string {
     result.push(...expandContent);
   }
 
+  // Second pass: wrap consecutive non-blank, non-block paragraph lines in <p><br> so
+  // that TipTap preserves soft-enter (hardBreak) nodes when parsing as HTML.
+  const htmlResult: string[] = [];
+  let paraBuffer: string[] = [];
+
+  const isBlockOrHtml = (line: string): boolean => {
+    if (line.trim() === "") return true;
+    if (line.startsWith("<")) return true; // callout/expand HTML blocks
+    const t = line.trim();
+    return (
+      /^#{1,6}\s/.test(t) ||
+      /^---+$/.test(t) ||
+      /^```/.test(t) ||
+      /^> /.test(t) || t === ">" ||
+      /^[-*]\s/.test(t) ||
+      /^\d+\.\s/.test(t) ||
+      /^\|/.test(t)
+    );
+  };
+
+  const flushPara = () => {
+    if (paraBuffer.length === 0) return;
+    if (paraBuffer.length === 1) {
+      htmlResult.push(paraBuffer[0]);
+    } else {
+      htmlResult.push(`<p>${paraBuffer.join("<br>")}</p>`);
+    }
+    paraBuffer = [];
+  };
+
+  for (const line of result) {
+    if (isBlockOrHtml(line)) {
+      flushPara();
+      htmlResult.push(line);
+    } else {
+      paraBuffer.push(line);
+    }
+  }
+  flushPara();
+
   // Convert {color:X}text{color} syntax to HTML spans for TipTap.
   // Inner markdown is also converted to HTML so TipTap's HTML parser applies
   // both the color mark and any bold/italic marks correctly.
-  return result.join("\n").replace(
-    /\{color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\}(.*?)\{color\}/g,
+  return htmlResult.join("\n").replace(
+    new RegExp(`\\{color:(${COLOR_VALUE})\\}(.*?)\\{color\\}`, "g"),
     (_, color: string, inner: string) =>
       `<span style="color: ${color}">${inlineMarkdownToHtml(inner)}</span>`
   );
@@ -110,15 +153,16 @@ function inlineMarkdownToHtml(text: string): string {
 
 export function htmlToCalloutMarkdown(html: string): string {
   // Convert color spans back to {color:} syntax, also converting inner HTML marks to markdown.
+  // Normalize the color value: strip trailing semicolons/whitespace left by inline style serializers.
   let result = html.replace(
     /<span style="color:\s*([^"]+)">([\s\S]*?)<\/span>/g,
     (_, color: string, inner: string) =>
-      `{color:${color}}${inlineHtmlToMarkdown(inner)}{color}`
+      `{color:${color.trim().replace(/;+$/, "")}}${inlineHtmlToMarkdown(inner)}{color}`
   );
 
   // Replace expand details back to :::expand fences
   result = result.replace(
-    /<details data-expand-title="([^"]*)"[^>]*>[\s\S]*?<summary>[^<]*<\/summary>\s*<div>([\s\S]*?)<\/div>\s*<\/details>/g,
+    /<details data-expand-title="([^\"]*)\"[^>]*>[\s\S]*?<summary>[^<]*<\/summary>\s*<div>([\s\S]*?)<\/div>\s*<\/details>/g,
     (_match, title: string, content: string) => {
       const text = content
         .replace(/<p>/g, "")

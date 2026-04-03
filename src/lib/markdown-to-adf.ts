@@ -233,7 +233,7 @@ function parseTable(tableLines: string[]): AdfNode | null {
     type: "tableRow",
     content: headerRow.map((cell) => ({
       type: "tableHeader",
-      attrs: { colwidth: null },
+      attrs: { colspan: 1, rowspan: 1, colwidth: [] },
       content: [{ type: "paragraph", content: parseInline(cell) }],
     })),
   });
@@ -245,13 +245,17 @@ function parseTable(tableLines: string[]): AdfNode | null {
       type: "tableRow",
       content: cells.map((cell) => ({
         type: "tableCell",
-        attrs: { colwidth: null },
+        attrs: { colspan: 1, rowspan: 1, colwidth: [] },
         content: [{ type: "paragraph", content: parseInline(cell) }],
       })),
     });
   }
 
-  return { type: "table", content: rows };
+  return {
+    type: "table",
+    attrs: { isNumberColumnEnabled: false, layout: "default" },
+    content: rows,
+  };
 }
 
 function parseInline(text: string): AdfNode[] {
@@ -260,7 +264,7 @@ function parseInline(text: string): AdfNode[] {
 
   while (remaining.length > 0) {
     // Colored text {color:#hex}text{color} — parse inner content and add color mark to each node
-    const colorMatch = remaining.match(/^\{color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\}(.*?)\{color\}/);
+    const colorMatch = remaining.match(/^\{color:(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\}(.*?)\{color\}/);
     if (colorMatch) {
       const color = colorMatch[1];
       const innerNodes = parseInline(colorMatch[2]);

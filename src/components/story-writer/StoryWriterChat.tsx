@@ -116,7 +116,7 @@ function ChatMessage({
         }`}
       >
         {displayContent && (
-          <div className="chat-markdown">{renderMarkdown(displayContent)}</div>
+          <div className="description-content chat-markdown">{renderMarkdown(displayContent)}</div>
         )}
         {draftId && (
           <button

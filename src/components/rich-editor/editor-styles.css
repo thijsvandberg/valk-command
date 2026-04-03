@@ -225,8 +225,8 @@
 
 /* Note callout */
 .rich-editor-wrapper .tiptap .callout-block[data-callout-type="note"] {
-  background: rgba(156, 163, 175, 0.08);
-  border-left-color: #9ca3af;
+  background: rgba(168, 85, 247, 0.08);
+  border-left-color: #a855f7;
 }
 
 /* Success callout */
