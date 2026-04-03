@@ -65,6 +65,19 @@ function convertNode(node: AdfNode): string {
       return `:::${type}\n${inner}\n:::\n\n`;
     }
 
+    case "expand": {
+      // Jira expand/collapsible section
+      const title = (node.attrs?.title as string) || "";
+      const inner = convertChildren(node).trim();
+      return `:::expand ${title}\n${inner}\n:::\n\n`;
+    }
+
+    case "nestedExpand": {
+      const title = (node.attrs?.title as string) || "";
+      const inner = convertChildren(node).trim();
+      return `:::expand ${title}\n${inner}\n:::\n\n`;
+    }
+
     case "blockquote": {
       const inner = convertChildren(node).trim();
       const quoted = inner
@@ -92,8 +105,11 @@ function convertNode(node: AdfNode): string {
       return convertChildren(node);
 
     case "media": {
-      const alt = (node.attrs?.alt as string) || "attachment";
-      return `![${alt}](attachment)\n\n`;
+      const alt = (node.attrs?.alt as string) || "";
+      const fileId = (node.attrs?.id as string) || "";
+      // Use alt if available, otherwise fallback hint with fileId prefix
+      const displayName = alt || (fileId ? `media-${fileId.slice(0, 8)}` : "attachment");
+      return `![${displayName}](attachment)\n\n`;
     }
 
     case "hardBreak":
@@ -155,12 +171,18 @@ function applyMarks(text: string, marks?: AdfMark[]): string {
         result = `[${result}](${href})`;
         break;
       }
+      case "textColor": {
+        // Preserve color using custom {color:#hex}text{color} syntax
+        const color = (mark.attrs?.color as string) || "";
+        if (color) {
+          result = `{color:${color}}${result}{color}`;
+        }
+        break;
+      }
       case "underline":
         // Markdown has no underline; keep as-is
         break;
       case "subsup":
-        break;
-      case "textColor":
         break;
     }
   }

@@ -115,7 +115,6 @@
 /* Bold & italic */
 .rich-editor-wrapper .tiptap strong {
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
 }
 
 .rich-editor-wrapper .tiptap em {

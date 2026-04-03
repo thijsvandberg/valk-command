@@ -52,3 +52,8 @@
     z-index: 1;
   }
 }
+
+/* Expand/details block: hide native marker, rotate arrow when open */
+details.expand-block > summary::-webkit-details-marker { display: none; }
+details.expand-block > summary { list-style: none; }
+details.expand-block[open] > summary .expand-arrow { transform: rotate(90deg); }

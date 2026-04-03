@@ -1,10 +1,87 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 
+// Common Jira/Slack emoji shortnames mapped to their unicode characters
+const EMOJI_MAP: Record<string, string> = {
+  check_mark: "✅",
+  white_check_mark: "✅",
+  warning: "⚠️",
+  question_mark: "❓",
+  question: "❓",
+  info: "ℹ️",
+  information_source: "ℹ️",
+  star: "⭐",
+  heart: "❤️",
+  thumbsup: "👍",
+  thumbsdown: "👎",
+  slightly_smiling_face: "🙂",
+  smile: "😊",
+  grinning: "😀",
+  fire: "🔥",
+  rocket: "🚀",
+  tada: "🎉",
+  x: "❌",
+  memo: "📝",
+  bug: "🐛",
+  wrench: "🔧",
+  bulb: "💡",
+  zap: "⚡",
+  eyes: "👀",
+  clap: "👏",
+  pray: "🙏",
+  muscle: "💪",
+  wave: "👋",
+  point_right: "👉",
+  point_left: "👈",
+  point_up: "☝️",
+  point_down: "👇",
+  exclamation: "❗",
+  heavy_exclamation_mark: "❗",
+  100: "💯",
+  clock1: "🕐",
+  calendar: "📅",
+  link: "🔗",
+  lock: "🔒",
+  key: "🔑",
+  hammer: "🔨",
+  computer: "💻",
+  phone: "📱",
+  email: "📧",
+  mailbox: "📬",
+  package: "📦",
+  chart_with_upwards_trend: "📈",
+  chart_with_downwards_trend: "📉",
+  bar_chart: "📊",
+  checkered_flag: "🏁",
+  red_circle: "🔴",
+  large_orange_circle: "🟠",
+  large_yellow_circle: "🟡",
+  large_green_circle: "🟢",
+  large_blue_circle: "🔵",
+  purple_circle: "🟣",
+};
+
+function resolveEmoji(shortName: string): string {
+  // Strip surrounding colons
+  const key = shortName.replace(/^:|:$/g, "");
+  return EMOJI_MAP[key] ?? shortName;
+}
+
 function inlineFormat(text: string): ReactNode {
   const parts: ReactNode[] = [];
-  // Match: images, links, bold, italic, inline code
-  const regex = /!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)/g;
+  // Match: colored text, images, links, strikethrough, bold+italic, bold, italic, inline code, emoji shortnames
+  // Group index map:
+  //  1,2   = {color:X}text{color}
+  //  3,4   = image ![alt](src)
+  //  5,6   = link [text](url)
+  //  7     = strikethrough ~~text~~
+  //  8,9   = bold+italic ***text***
+  //  10,11 = bold **text**
+  //  12,13 = italic *text*
+  //  14,15 = inline code `text`
+  //  16    = emoji :name:
+  const regex =
+    /\{color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\}(.*?)\{color\}|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|~~(.+?)~~|(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|:([a-zA-Z0-9_+\-]+):/g;
   let lastIndex = 0;
   let match;
   let i = 0;
@@ -14,10 +91,17 @@ function inlineFormat(text: string): ReactNode {
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    if (match[2] !== undefined) {
+    if (match[1] !== undefined) {
+      // Colored text: {color:#hex}text{color}
+      parts.push(
+        <span key={i++} style={{ color: match[1] }}>
+          {inlineFormat(match[2])}
+        </span>
+      );
+    } else if (match[4] !== undefined) {
       // Image: ![alt](src)
-      const src = match[2];
-      const alt = match[1];
+      const src = match[4];
+      const alt = match[3];
       if (src.startsWith("/api/attachments/")) {
         parts.push(
           // eslint-disable-next-line @next/next/no-img-element
@@ -30,32 +114,48 @@ function inlineFormat(text: string): ReactNode {
           />,
         );
       } else {
+        // Non-resolvable attachment (e.g. Jira media storage ID)
         parts.push(
-          <span key={i++} className="my-1 inline-flex items-center gap-1.5 rounded bg-white/[0.04] px-2 py-1 text-[0.85em] text-white/30">
-            <span className="text-white/20">img:</span> {alt || src.split("/").pop()}
+          <span key={i++} className="my-1 inline-flex items-center gap-1 rounded bg-white/[0.05] px-2 py-0.5 text-[0.8em] text-white/30">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 opacity-50">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+            </svg>
+            {alt && alt !== "attachment" ? alt : "attachment"}
           </span>
         );
       }
-    } else if (match[4] !== undefined) {
+    } else if (match[6] !== undefined) {
       // Link: [text](url)
       parts.push(
         <a
           key={i++}
-          href={match[4]}
+          href={match[6]}
           target="_blank"
           rel="noopener noreferrer"
           className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 underline-offset-2 hover:decoration-[var(--color-brand-400)]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           style={{ transition: "text-decoration-color 0.15s ease" }}
         >
-          {match[3]}
+          {match[5]}
         </a>
       );
-    } else if (match[6]) {
-      parts.push(<strong key={i++} className="font-semibold text-white/80">{match[6]}</strong>);
-    } else if (match[8]) {
-      parts.push(<em key={i++} className="italic text-white/70">{match[8]}</em>);
-    } else if (match[10]) {
-      parts.push(<code key={i++} className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[0.85em] text-[var(--color-brand-300)]">{match[10]}</code>);
+    } else if (match[7] !== undefined) {
+      // Strikethrough: ~~text~~
+      parts.push(<s key={i++} className="text-white/30 line-through">{inlineFormat(match[7])}</s>);
+    } else if (match[9] !== undefined) {
+      // Bold + italic: ***text***
+      parts.push(<strong key={i++} className="font-semibold text-white/80"><em className="italic text-white/70">{inlineFormat(match[9])}</em></strong>);
+    } else if (match[11] !== undefined) {
+      // Bold: **text**
+      parts.push(<strong key={i++} className="font-semibold text-white/80">{inlineFormat(match[11])}</strong>);
+    } else if (match[13] !== undefined) {
+      // Italic: *text*
+      parts.push(<em key={i++} className="italic text-white/70">{inlineFormat(match[13])}</em>);
+    } else if (match[15] !== undefined) {
+      // Inline code
+      parts.push(<code key={i++} className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[0.85em] text-[var(--color-brand-300)]">{match[15]}</code>);
+    } else if (match[16] !== undefined) {
+      // Emoji shortname :name:
+      parts.push(<span key={i++}>{resolveEmoji(match[16])}</span>);
     }
     lastIndex = match.index + match[0].length;
   }
@@ -97,19 +197,93 @@ function getIndentLevel(line: string): number {
 }
 
 const CALLOUT_STYLES: Record<string, { border: string; bg: string; dot: string; label: string }> = {
-  info:    { border: "border-blue-500/40",   bg: "bg-blue-500/[0.07]",   dot: "bg-blue-400",   label: "Info" },
-  warning: { border: "border-amber-500/40",  bg: "bg-amber-500/[0.07]",  dot: "bg-amber-400",  label: "Warning" },
-  error:   { border: "border-red-500/40",    bg: "bg-red-500/[0.07]",    dot: "bg-red-400",    label: "Error" },
-  note:    { border: "border-white/[0.12]",  bg: "bg-white/[0.04]",      dot: "bg-white/40",   label: "Note" },
-  success: { border: "border-green-500/40",  bg: "bg-green-500/[0.07]",  dot: "bg-green-400",  label: "Success" },
+  info:    { border: "border-blue-500/40",   bg: "bg-blue-500/[0.07]",    dot: "bg-blue-400",    label: "Info" },
+  warning: { border: "border-amber-500/40",  bg: "bg-amber-500/[0.07]",   dot: "bg-amber-400",   label: "Warning" },
+  error:   { border: "border-red-500/40",    bg: "bg-red-500/[0.07]",     dot: "bg-red-400",     label: "Error" },
+  note:    { border: "border-purple-500/40", bg: "bg-purple-500/[0.07]",  dot: "bg-purple-400",  label: "Note" },
+  success: { border: "border-green-500/40",  bg: "bg-green-500/[0.07]",   dot: "bg-green-400",   label: "Success" },
 };
+
+// Renders a table from markdown pipe rows
+function renderTable(tableLines: string[], key: string): ReactNode {
+  const parseRow = (line: string): string[] =>
+    line.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+
+  if (tableLines.length < 2) return null;
+
+  const headers = parseRow(tableLines[0]);
+  // tableLines[1] is the separator row (--- | --- | ---)
+  const dataRows = tableLines.slice(2).map(parseRow);
+
+  return (
+    <div key={key} className="my-3 overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            {headers.map((h, hi) => (
+              <th
+                key={hi}
+                className="border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-white/50"
+              >
+                {inlineFormat(h)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dataRows.map((row, ri) => (
+            <tr key={ri} className="border-b border-white/[0.06] transition-colors hover:bg-white/[0.02]">
+              {row.map((cell, ci) => (
+                <td key={ci} className="border border-white/[0.06] px-3 py-2 text-white/60">
+                  {inlineFormat(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Renders a code block with optional language label and line numbers
+function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode {
+  return (
+    <div key={key} className="my-3 overflow-hidden rounded-lg border border-white/[0.06]">
+      {lang && (
+        <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.04] px-4 py-1.5">
+          <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-white/30">{lang}</span>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <tbody>
+            {lines.map((codeLine, li) => (
+              <tr key={li} className="group">
+                <td className="select-none border-r border-white/[0.05] bg-white/[0.03] px-3 py-0 text-right font-mono text-[11px] leading-6 text-white/20 group-hover:text-white/30" style={{ minWidth: "2.5rem" }}>
+                  {li + 1}
+                </td>
+                <td className="bg-white/[0.02] px-4 py-0 font-mono text-[0.82em] leading-6 text-white/65 group-hover:bg-white/[0.03]">
+                  {codeLine || "\u00a0"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export function renderMarkdown(text: string): ReactNode[] {
   const lines = text.split("\n");
   const elements: ReactNode[] = [];
-  let codeBlock: string[] | null = null;
+  let codeBlockLines: string[] | null = null;
+  let codeBlockLang = "";
   let calloutType: string | null = null;
   let calloutLines: string[] | null = null;
+  let expandTitle: string | null = null;
+  let expandLines: string[] | null = null;
   let idx = 0;
 
   function parseListBlock(startIdx: number): { nodes: ListNode[]; nextIdx: number } {
@@ -169,6 +343,47 @@ export function renderMarkdown(text: string): ReactNode[] {
   while (idx < lines.length) {
     const line = lines[idx];
 
+    // Expand blocks: :::expand Title ... :::
+    const expandOpen = line.match(/^:::expand\s*(.*)$/);
+    if (expandOpen && expandTitle === null && calloutType === null) {
+      expandTitle = expandOpen[1].trim();
+      expandLines = [];
+      idx++;
+      continue;
+    }
+    if (expandTitle !== null) {
+      if (line.trim() === ":::") {
+        const inner = renderMarkdown((expandLines ?? []).join("\n"));
+        const title = expandTitle;
+        elements.push(
+          <details
+            key={`expand-${elements.length}`}
+            className="expand-block my-2 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.02]"
+          >
+            <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90">
+              <span className="flex items-center gap-2">
+                <svg
+                  className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
+                  style={{ transition: "transform 0.15s ease" }}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+                {title || "Details"}
+              </span>
+            </summary>
+            <div className="border-t border-white/[0.06] px-4 py-3">{inner}</div>
+          </details>
+        );
+        expandTitle = null;
+        expandLines = null;
+      } else {
+        expandLines!.push(line);
+      }
+      idx++;
+      continue;
+    }
+
     // Callout blocks: :::type ... :::
     const calloutOpen = line.match(/^:::(info|warning|error|note|success)\s*$/);
     if (calloutOpen && calloutType === null) {
@@ -184,9 +399,9 @@ export function renderMarkdown(text: string): ReactNode[] {
         elements.push(
           <div
             key={`callout-${elements.length}`}
-            className={`my-3 rounded-lg border-l-2 px-4 py-3 ${style.border} ${style.bg}`}
+            className={`my-2 rounded-lg border-l-2 px-4 py-2.5 ${style.border} ${style.bg}`}
           >
-            <div className="mb-1.5 flex items-center gap-1.5">
+            <div className="mb-1 flex items-center gap-1.5">
               <span className={`h-2 w-2 rounded-full ${style.dot}`} />
               <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">{style.label}</span>
             </div>
@@ -204,22 +419,27 @@ export function renderMarkdown(text: string): ReactNode[] {
 
     // Code blocks
     if (line.startsWith("```")) {
-      if (codeBlock !== null) {
-        elements.push(
-          <pre key={`code-${elements.length}`} className="my-3 overflow-x-auto rounded-lg border border-white/[0.06] bg-white/[0.03] p-4 font-mono text-sm leading-relaxed text-white/60">
-            {codeBlock.join("\n")}
-          </pre>
-        );
-        codeBlock = null;
+      if (codeBlockLines !== null) {
+        elements.push(renderCodeBlock(codeBlockLines, codeBlockLang, `code-${elements.length}`));
+        codeBlockLines = null;
+        codeBlockLang = "";
       } else {
-        codeBlock = [];
+        codeBlockLines = [];
+        codeBlockLang = line.slice(3).trim();
       }
       idx++;
       continue;
     }
 
-    if (codeBlock !== null) {
-      codeBlock.push(line);
+    if (codeBlockLines !== null) {
+      codeBlockLines.push(line);
+      idx++;
+      continue;
+    }
+
+    // Horizontal rule
+    if (line.trim() === "---") {
+      elements.push(<hr key={`hr-${idx}`} className="my-4 border-white/[0.08]" />);
       idx++;
       continue;
     }
@@ -237,6 +457,11 @@ export function renderMarkdown(text: string): ReactNode[] {
     }
     if (line.startsWith("## ")) {
       elements.push(<h3 key={`h3-${idx}`} className="mt-6 mb-2 font-[var(--font-display)] text-base font-semibold text-white/90">{inlineFormat(line.slice(3))}</h3>);
+      idx++;
+      continue;
+    }
+    if (line.startsWith("# ")) {
+      elements.push(<h2 key={`h2-${idx}`} className="mt-6 mb-2 font-[var(--font-display)] text-lg font-semibold text-white/90">{inlineFormat(line.slice(2))}</h2>);
       idx++;
       continue;
     }
@@ -283,6 +508,50 @@ export function renderMarkdown(text: string): ReactNode[] {
       continue;
     }
 
+    // Blockquote: collect consecutive > lines
+    if (line.startsWith("> ") || line === ">") {
+      const quoteLines: string[] = [];
+      while (idx < lines.length && (lines[idx].startsWith("> ") || lines[idx] === ">")) {
+        quoteLines.push(lines[idx] === ">" ? "" : lines[idx].slice(2));
+        idx++;
+      }
+      // Group by blank lines into paragraphs
+      const paragraphs = quoteLines.join("\n").split(/\n\n+/).filter((p) => p.trim() !== "");
+      elements.push(
+        <blockquote
+          key={`bq-${elements.length}`}
+          className="my-2 border-l-2 border-white/[0.15] pl-4 text-white/50 italic"
+        >
+          {paragraphs.map((para, pi) => {
+            const paraLines = para.split("\n");
+            return (
+              <p key={pi} className="text-sm leading-[1.7]">
+                {paraLines.map((l, li) => (
+                  <span key={li}>
+                    {li > 0 && <br />}
+                    {inlineFormat(l)}
+                  </span>
+                ))}
+              </p>
+            );
+          })}
+        </blockquote>
+      );
+      continue;
+    }
+
+    // Table: collect consecutive | lines
+    if (line.trim().startsWith("|")) {
+      const tableLines: string[] = [];
+      while (idx < lines.length && lines[idx].trim().startsWith("|")) {
+        tableLines.push(lines[idx]);
+        idx++;
+      }
+      const tableNode = renderTable(tableLines, `table-${elements.length}`);
+      if (tableNode) elements.push(tableNode);
+      continue;
+    }
+
     // Standalone image line: render as block figure
     const standaloneImg = line.trim().match(/^!\[([^\]]*)\]\((\/api\/attachments\/[^)]+)\)$/);
     if (standaloneImg) {
@@ -311,9 +580,43 @@ export function renderMarkdown(text: string): ReactNode[] {
       continue;
     }
 
-    // Paragraph (fallback)
-    elements.push(<p key={`p-${idx}`} className="text-sm leading-[1.7] text-white/60">{inlineFormat(line)}</p>);
+    // Paragraph: collect consecutive non-block lines as a single paragraph with <br> for soft enters.
+    // This matches ADF's hardBreak behavior (single newlines within a paragraph).
+    const paraLines: string[] = [line];
     idx++;
+    while (
+      idx < lines.length &&
+      lines[idx].trim() !== "" &&
+      !lines[idx].startsWith("> ") &&
+      lines[idx] !== ">" &&
+      !lines[idx].trim().startsWith("|") &&
+      !lines[idx].startsWith("```") &&
+      !/^#{1,6} /.test(lines[idx]) &&
+      !/^:::(info|warning|error|note|success|expand)/.test(lines[idx]) &&
+      !/^---+$/.test(lines[idx].trim()) &&
+      !/^[-*] /.test(lines[idx].trimStart()) &&
+      !/^\d+\. /.test(lines[idx].trimStart()) &&
+      !lines[idx].trimStart().startsWith("- [")
+    ) {
+      paraLines.push(lines[idx]);
+      idx++;
+    }
+
+    if (paraLines.length === 1) {
+      elements.push(<p key={`p-${idx}`} className="text-sm leading-[1.7] text-white/60">{inlineFormat(paraLines[0])}</p>);
+    } else {
+      // Multiple consecutive lines → single paragraph with soft breaks
+      elements.push(
+        <p key={`p-${idx}`} className="text-sm leading-[1.7] text-white/60">
+          {paraLines.map((l, li) => (
+            <span key={li}>
+              {li > 0 && <br />}
+              {inlineFormat(l)}
+            </span>
+          ))}
+        </p>
+      );
+    }
   }
 
   return elements;

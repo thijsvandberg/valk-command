@@ -5,8 +5,15 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
+import { Color } from "@tiptap/extension-color";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table";
+import { TableHeader } from "@tiptap/extension-table";
+import { TableCell } from "@tiptap/extension-table";
 import { Markdown } from "tiptap-markdown";
 import { CalloutExtension } from "./callout-extension";
+import { ExpandExtension } from "./expand-extension";
 import { calloutMarkdownToHtml, htmlToCalloutMarkdown } from "./callout-markdown";
 import { Toolbar } from "./Toolbar";
 
@@ -68,12 +75,19 @@ export function RichEditor({
         allowBase64: false,
         HTMLAttributes: { class: "editor-image" },
       }),
+      TextStyle,
+      Color,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Markdown.configure({
         html: true,
         transformPastedText: true,
         transformCopiedText: true,
       }),
       CalloutExtension,
+      ExpandExtension,
     ],
     content: calloutMarkdownToHtml(value),
     editorProps: {
