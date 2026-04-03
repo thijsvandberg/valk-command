@@ -97,7 +97,7 @@ function SkeletonRow({ idx }: { idx: number }) {
   const widths = ["w-48", "w-56", "w-40", "w-52", "w-44"];
   const w = widths[idx % widths.length];
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex items-center gap-3 px-6 py-4">
       <div className="h-3 w-14 animate-pulse rounded bg-white/[0.06]" />
       <div className={`h-3 animate-pulse rounded bg-white/[0.06] ${w}`} />
       <div className="ml-auto h-4 w-14 animate-pulse rounded bg-white/[0.06]" />
@@ -123,7 +123,7 @@ function LocalResultRow({
   return (
     <button
       type="button"
-      className="group relative flex w-full items-center gap-3 px-4 py-2.5 text-left focus-visible:outline-none"
+      className="group relative flex w-full items-center gap-3 px-6 py-3.5 text-left focus-visible:outline-none"
       style={{
         backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
@@ -137,17 +137,17 @@ function LocalResultRow({
       )}
 
       {/* Ticket key */}
-      <span className="shrink-0 font-mono text-xs text-white/30 w-16 truncate">{result.key}</span>
+      <span className="shrink-0 font-mono text-[13px] text-white/30 w-20 truncate">{result.key}</span>
 
       {/* Summary with highlights */}
-      <span className="min-w-0 flex-1 truncate text-sm text-white/75">
+      <span className="min-w-0 flex-1 truncate text-[14px] text-white/75">
         <HighlightedText text={result.summary} matches={result.matches} fieldName="summary" />
       </span>
 
       {/* Right side: sprint + status */}
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {result.sprintName && (
-          <span className="text-[10px] text-white/25 hidden sm:block truncate max-w-[100px]">
+          <span className="text-xs text-white/25 hidden sm:block truncate max-w-[140px]">
             {result.sprintName}
           </span>
         )}
@@ -175,7 +175,7 @@ function JiraResultRow({
   return (
     <button
       type="button"
-      className="group relative flex w-full items-center gap-3 px-4 py-2.5 text-left focus-visible:outline-none"
+      className="group relative flex w-full items-center gap-3 px-6 py-3.5 text-left focus-visible:outline-none"
       style={{
         backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
@@ -187,11 +187,11 @@ function JiraResultRow({
         <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
       )}
 
-      <span className="shrink-0 font-mono text-xs text-white/30 w-16 truncate">{issue.key}</span>
-      <span className="min-w-0 flex-1 truncate text-sm text-white/75">{issue.summary}</span>
+      <span className="shrink-0 font-mono text-[13px] text-white/30 w-20 truncate">{issue.key}</span>
+      <span className="min-w-0 flex-1 truncate text-[14px] text-white/75">{issue.summary}</span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {issue.sprintName && (
-          <span className="text-[10px] text-white/25 hidden sm:block truncate max-w-[100px]">
+          <span className="text-xs text-white/25 hidden sm:block truncate max-w-[140px]">
             {issue.sprintName}
           </span>
         )}
@@ -409,7 +409,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
 
       {/* Modal card */}
       <div
-        className="relative z-10 w-full max-w-[680px] overflow-hidden rounded-xl"
+        className="relative z-10 w-full max-w-[860px] overflow-hidden rounded-xl"
         style={{
           backgroundColor: "var(--color-surface-floating)",
           boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)",
@@ -418,8 +418,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
         onKeyDown={handleKeyDown}
       >
         {/* Search input area */}
-        <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3">
-          <Search className="h-4 w-4 shrink-0 text-white/30" strokeWidth={1.5} />
+        <div className="flex items-center gap-4 border-b border-white/[0.06] px-6 py-4">
+          <Search className="h-5 w-5 shrink-0 text-white/35" strokeWidth={1.5} />
           <input
             ref={inputRef}
             type="text"
@@ -432,28 +432,29 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
               }
             }}
             placeholder={mode === "local" ? "Search tickets..." : "Search Jira..."}
-            className="flex-1 bg-transparent text-sm text-white placeholder-white/25 focus:outline-none"
+            className="flex-1 bg-transparent text-[15px] text-white/90 placeholder-white/25 focus:outline-none"
           />
           <button
             type="button"
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-white/30 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:text-white/80"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 cursor-pointer hover:text-white/60 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:text-white/80"
           >
-            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Mode tabs */}
-        <div className="flex items-center gap-1 border-b border-white/[0.06] px-4 py-2">
+        <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-6 py-2.5">
           <button
             type="button"
             onClick={() => { setMode("local"); setActiveIdx(0); }}
             className={[
-              "rounded-full px-3 py-1 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors",
+              "rounded-full px-4 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
               mode === "local"
                 ? "bg-[var(--color-brand-400)] text-white"
                 : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]",
             ].join(" ")}
+            style={{ transition: "background-color 100ms, color 100ms" }}
           >
             Local
           </button>
@@ -461,11 +462,12 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
             type="button"
             onClick={() => { setMode("jira"); setActiveIdx(0); }}
             className={[
-              "rounded-full px-3 py-1 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors",
+              "rounded-full px-4 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
               mode === "jira"
                 ? "bg-[var(--color-brand-400)] text-white"
                 : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]",
             ].join(" ")}
+            style={{ transition: "background-color 100ms, color 100ms" }}
           >
             Jira
           </button>
@@ -473,7 +475,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
 
         {/* Jira mode: JQL override toggle + search button */}
         {mode === "jira" && (
-          <div className="border-b border-white/[0.06] px-4 py-2 flex items-center gap-3">
+          <div className="border-b border-white/[0.06] px-6 py-2.5 flex items-center gap-3">
             <button
               type="button"
               onClick={() => setShowJqlOverride((v) => !v)}
@@ -506,7 +508,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
         {/* Results list */}
         <div
           ref={listRef}
-          className="max-h-[420px] overflow-y-auto"
+          className="max-h-[520px] overflow-y-auto"
           style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.08) transparent" }}
         >
           {/* Skeleton rows */}
@@ -572,7 +574,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket }
         </div>
 
         {/* Footer hint */}
-        <div className="flex items-center gap-4 border-t border-white/[0.06] px-4 py-2.5 text-[10px] text-white/20">
+        <div className="flex items-center gap-4 border-t border-white/[0.06] px-6 py-3 text-[10px] text-white/20">
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">↵</kbd> {mode === "jira" && jiraResults.length === 0 ? "search" : "open"}</span>
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">esc</kbd> close</span>

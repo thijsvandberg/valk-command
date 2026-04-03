@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
-import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3 } from "lucide-react";
+import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X } from "lucide-react";
 
 // -- PO Status colors (needed for filter rendering) --
 
@@ -82,51 +82,74 @@ function FilterDropdown({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] ${
+        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
           isActive
-            ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/8 text-[var(--color-brand-300)]"
-            : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+            ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
+            : "border-white/[0.07] bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/75 hover:border-white/[0.12]"
         }`}
+        style={{ transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms" }}
       >
         {label}
         {isActive && (
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)]/20 px-1 text-[10px] font-medium text-[var(--color-brand-300)]">
+          <span
+            className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold"
+            style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
+          >
             {selected.size}
           </span>
         )}
-        <ChevronDown className="h-3 w-3 opacity-40" strokeWidth={1.5} />
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 opacity-40 ${open ? "rotate-180" : ""}`} strokeWidth={1.5} style={{ transition: "transform 150ms" }} />
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 w-56 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-          {isActive && (
-            <button
-              type="button"
-              onClick={() => onChange(new Set())}
-              className="flex w-full items-center px-3 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50"
-            >
-              Clear filter
-            </button>
-          )}
-          {options.map((opt) => (
-            <label
-              key={opt}
-              className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/60 cursor-pointer hover:bg-white/[0.04]"
-            >
-              <input
-                type="checkbox"
-                checked={selected.has(opt)}
-                onChange={(e) => {
-                  const next = new Set(selected);
-                  if (e.target.checked) next.add(opt);
-                  else next.delete(opt);
-                  onChange(next);
-                }}
-                className="h-3 w-3 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
-              />
-              {renderOption ? renderOption(opt) : opt}
-            </label>
-          ))}
+        <div className="absolute top-full left-0 z-50 mt-1.5 w-60 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
+          <button
+            type="button"
+            onClick={() => onChange(new Set())}
+            className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-white/35 cursor-pointer hover:bg-white/[0.04] hover:text-white/55"
+            style={{ transition: "background-color 80ms, color 80ms" }}
+          >
+            <X className="h-3 w-3" strokeWidth={1.5} />
+            Clear filter
+          </button>
+          <div className="my-1 h-px bg-white/[0.05]" />
+          {options.map((opt) => {
+            const checked = selected.has(opt);
+            return (
+              <label
+                key={opt}
+                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-[13px] text-white/65 cursor-pointer hover:bg-white/[0.04] hover:text-white/85"
+                style={{ transition: "background-color 80ms, color 80ms" }}
+              >
+                <span
+                  className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
+                  style={{
+                    backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
+                    borderColor: checked ? "var(--color-brand-500)" : "rgba(255,255,255,0.18)",
+                    transition: "background-color 100ms, border-color 100ms",
+                  }}
+                >
+                  {checked && (
+                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const next = new Set(selected);
+                    if (e.target.checked) next.add(opt);
+                    else next.delete(opt);
+                    onChange(next);
+                  }}
+                  className="sr-only"
+                />
+                {renderOption ? renderOption(opt) : <span>{opt}</span>}
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
@@ -175,11 +198,12 @@ function SortDropdown({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] ${
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
           isActive
-            ? "border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/8 text-[var(--color-brand-300)] hover:bg-[var(--color-brand-500)]/12"
-            : "text-white/30 hover:bg-white/[0.04] hover:text-white/50"
+            ? "border border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)] hover:bg-[var(--color-brand-500)]/15"
+            : "text-white/40 hover:bg-white/[0.04] hover:text-white/60"
         }`}
+        style={{ transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms" }}
       >
         <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
         {isActive ? activeLabel : "Sort"}
@@ -271,31 +295,51 @@ function ColumnToggle({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+        style={{ transition: "background-color 120ms, color 120ms, transform 80ms" }}
         title="Toggle columns"
       >
         <Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />
         Columns
       </button>
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-44 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-          {COLUMNS.map((col) => (
-            <label
-              key={col.id}
-              className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-white/[0.04] ${
-                col.alwaysVisible ? "text-white/25" : "text-white/60"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={visible.has(col.id)}
-                disabled={col.alwaysVisible}
-                onChange={(e) => onChange(col.id, e.target.checked)}
-                className="h-3 w-3 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer disabled:opacity-30"
-              />
-              {col.label}
-            </label>
-          ))}
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
+          {COLUMNS.map((col) => {
+            const checked = visible.has(col.id);
+            return (
+              <label
+                key={col.id}
+                className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-[13px] cursor-pointer hover:bg-white/[0.04] ${
+                  col.alwaysVisible ? "text-white/25 pointer-events-none" : "text-white/65 hover:text-white/85"
+                }`}
+                style={{ transition: "background-color 80ms, color 80ms" }}
+              >
+                <span
+                  className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
+                  style={{
+                    backgroundColor: checked ? (col.alwaysVisible ? "rgba(255,255,255,0.12)" : "var(--color-brand-500)") : "transparent",
+                    borderColor: checked ? (col.alwaysVisible ? "rgba(255,255,255,0.2)" : "var(--color-brand-500)") : "rgba(255,255,255,0.18)",
+                    transition: "background-color 100ms, border-color 100ms",
+                    opacity: col.alwaysVisible ? 0.4 : 1,
+                  }}
+                >
+                  {checked && (
+                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={col.alwaysVisible}
+                  onChange={(e) => onChange(col.id, e.target.checked)}
+                  className="sr-only"
+                />
+                {col.label}
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
@@ -337,49 +381,70 @@ export function SprintFilterBar({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] ${
+        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
           isActive
-            ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/8 text-[var(--color-brand-300)]"
-            : "border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+            ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
+            : "border-white/[0.07] bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/75 hover:border-white/[0.12]"
         }`}
+        style={{ transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms" }}
       >
         Sprint
         {isActive && (
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)]/20 px-1 text-[10px] font-medium text-[var(--color-brand-300)]">
+          <span
+            className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold"
+            style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
+          >
             {sprintFilter.size}
           </span>
         )}
-        <ChevronDown className="h-3 w-3 opacity-40" strokeWidth={1.5} />
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 opacity-40 ${open ? "rotate-180" : ""}`} strokeWidth={1.5} style={{ transition: "transform 150ms" }} />
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-64 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-          {isActive && (
-            <button
-              type="button"
-              onClick={() => onSprintFilterChange(new Set())}
-              className="flex w-full items-center px-3 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50"
-            >
-              Clear filter
-            </button>
-          )}
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
+          <button
+            type="button"
+            onClick={() => onSprintFilterChange(new Set())}
+            className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-white/35 cursor-pointer hover:bg-white/[0.04] hover:text-white/55"
+            style={{ transition: "background-color 80ms, color 80ms" }}
+          >
+            <X className="h-3 w-3" strokeWidth={1.5} />
+            Clear filter
+          </button>
+          <div className="my-1 h-px bg-white/[0.05]" />
           {sprintOptions.map((id) => {
             const name = sprintNameMap[id] ?? id;
+            const checked = sprintFilter.has(id);
             return (
               <label
                 key={id}
-                className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/60 cursor-pointer hover:bg-white/[0.04]"
+                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-[13px] text-white/65 cursor-pointer hover:bg-white/[0.04] hover:text-white/85"
+                style={{ transition: "background-color 80ms, color 80ms" }}
               >
+                <span
+                  className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
+                  style={{
+                    backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
+                    borderColor: checked ? "var(--color-brand-500)" : "rgba(255,255,255,0.18)",
+                    transition: "background-color 100ms, border-color 100ms",
+                  }}
+                >
+                  {checked && (
+                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
                 <input
                   type="checkbox"
-                  checked={sprintFilter.has(id)}
+                  checked={checked}
                   onChange={(e) => {
                     const next = new Set(sprintFilter);
                     if (e.target.checked) next.add(id);
                     else next.delete(id);
                     onSprintFilterChange(next);
                   }}
-                  className="h-3 w-3 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
+                  className="sr-only"
                 />
                 {name}
               </label>
@@ -407,12 +472,18 @@ export function FilterBar({
   statusOptions,
   epicOptions,
   assigneeOptions,
+  sprintFilter,
+  onSprintFilterChange,
+  sprintOptions,
+  sprintNameMap,
   sortField,
   sortDir,
   onSortChange,
   visibleColumns,
   onColumnToggle,
   noBorder = false,
+  searchQuery,
+  onSearchChange,
 }: {
   statusFilter: Set<string>;
   epicFilter: Set<string>;
@@ -425,17 +496,47 @@ export function FilterBar({
   statusOptions: string[];
   epicOptions: string[];
   assigneeOptions: string[];
+  sprintFilter?: Set<string>;
+  onSprintFilterChange?: (next: Set<string>) => void;
+  sprintOptions?: string[];
+  sprintNameMap?: Record<string, string>;
   sortField: SortField;
   sortDir: SortDir;
   onSortChange: (field: SortField, dir: SortDir) => void;
   visibleColumns: Set<ColumnId>;
   onColumnToggle: (id: ColumnId, show: boolean) => void;
   noBorder?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
 }) {
   const poStatusOptions = PO_STATUS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string);
 
   return (
     <div className={`flex items-center gap-2 px-5 py-2.5${noBorder ? "" : " border-b border-white/[0.06]"}`}>
+      {onSearchChange && (
+        <div className="relative flex items-center shrink-0">
+          <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-white/25" strokeWidth={1.5} />
+          <input
+            type="text"
+            value={searchQuery ?? ""}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search tickets..."
+            className="h-8 w-52 rounded-lg border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/50 focus:bg-white/[0.05]"
+            style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" }}
+          />
+          {(searchQuery?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => onSearchChange("")}
+              className="absolute right-2.5 flex h-4 w-4 items-center justify-center rounded-full text-white/30 hover:text-white/60 cursor-pointer"
+              style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+            >
+              <X className="h-2.5 w-2.5" strokeWidth={2} />
+            </button>
+          )}
+        </div>
+      )}
+      {onSearchChange && <div className="h-5 w-px bg-white/[0.08] shrink-0" />}
       <FilterDropdown
         label="Status"
         options={statusOptions}
@@ -495,6 +596,14 @@ export function FilterBar({
           );
         }}
       />
+      {sprintFilter && onSprintFilterChange && sprintOptions && sprintNameMap && (
+        <SprintFilterBar
+          sprintOptions={sprintOptions}
+          sprintFilter={sprintFilter}
+          onSprintFilterChange={onSprintFilterChange}
+          sprintNameMap={sprintNameMap}
+        />
+      )}
       <div className="flex-1" />
       <SortDropdown
         field={sortField}
