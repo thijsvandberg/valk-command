@@ -29,7 +29,8 @@ function mapJiraSprints(raw: { id: number; name: string; state: string; startDat
     return { id: String(s.id), name: s.name, dateRange, state, ticketCount: 0 };
   });
 }
-import { Columns2, Check, Loader2, LayoutGrid, CalendarRange } from "lucide-react";
+import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search } from "lucide-react";
+import { StoryWriterLauncherModal } from "./StoryWriterLauncherModal";
 import { mutate as globalMutate } from "swr";
 
 // Persist sprint slot configuration to the API and SWR cache
@@ -142,6 +143,7 @@ export default function SprintBoard() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
   const [compareMode, setCompareMode] = useState(false);
+  const [showStoryWriterLauncher, setShowStoryWriterLauncher] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -669,8 +671,8 @@ export default function SprintBoard() {
               )}
             </div>
 
-            {!isAllView && (
-              <div className="relative flex items-center gap-2">
+            <div className="relative flex items-center gap-2">
+              {!isAllView && (
                 <button
                   type="button"
                   onClick={() => setCompareMode(true)}
@@ -679,8 +681,25 @@ export default function SprintBoard() {
                   <Columns2 className="h-3 w-3" strokeWidth={1.5} />
                   Compare
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                type="button"
+                onClick={() => setSearchModalOpen(true)}
+                className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-xs text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+                title="Search tickets (⌘K)"
+              >
+                <Search className="h-3 w-3" strokeWidth={1.5} />
+                Search
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowStoryWriterLauncher(true)}
+                className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/25 transition-colors duration-150 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+              >
+                <NotebookPen className="h-3 w-3" strokeWidth={1.5} />
+                Story writer
+              </button>
+            </div>
           </div>
         )}
 
@@ -819,6 +838,11 @@ export default function SprintBoard() {
         onClose={() => setSearchModalOpen(false)}
         onSelectTicket={handleSearchModalSelect}
         sprintNameMap={sprintNameMap}
+      />
+      {/* Story writer launcher */}
+      <StoryWriterLauncherModal
+        open={showStoryWriterLauncher}
+        onClose={() => setShowStoryWriterLauncher(false)}
       />
 
       <style>{`

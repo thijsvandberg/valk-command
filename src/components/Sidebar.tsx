@@ -15,7 +15,6 @@ import {
   Menu,
   X,
   ChevronLeft,
-  Search,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 
@@ -140,20 +139,9 @@ export default function Sidebar() {
             </span>
           </div>
           {!collapsed && (
-            <>
-              <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-                valk-command
-              </span>
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent("valk:openSearch"))}
-                className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-                title="Search tickets (⌘K)"
-                style={{ transition: "background-color 100ms, color 100ms, transform 80ms" }}
-              >
-                <Search className="h-4 w-4" strokeWidth={1.5} />
-              </button>
-            </>
+            <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+              valk-command
+            </span>
           )}
 
           {/* Mobile close button */}
