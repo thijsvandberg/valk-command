@@ -357,12 +357,17 @@ export function EditableDescription({
         </div>
       ) : (
         <div
-          className="group mt-3 cursor-pointer rounded-xl border border-white/[0.04] bg-white/[0.015] p-5 hover:border-white/[0.07] hover:bg-white/[0.025]"
+          className="description-content group relative mt-3 cursor-pointer"
           onClick={() => setEditing(true)}
           title="Click to edit"
-          style={{ transition: "border-color 0.15s ease, background-color 0.15s ease" }}
         >
           {renderMarkdown(value)}
+          <span className="pointer-events-none absolute -top-1 -right-1 rounded p-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/30">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </span>
         </div>
       )}
     </div>

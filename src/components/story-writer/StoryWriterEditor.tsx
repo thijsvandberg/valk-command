@@ -179,7 +179,7 @@ function DiffPane({
             {rightVersions.length === 0 ? "No versions to compare" : "Select a version"}
           </div>
         ) : diffViewMode === "plain" ? (
-          <div className="rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] p-5">
+          <div className="description-content px-1 py-2">
             {renderMarkdown(selected.content)}
           </div>
         ) : (

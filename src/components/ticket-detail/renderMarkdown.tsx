@@ -140,19 +140,19 @@ function inlineFormat(text: string): ReactNode {
       );
     } else if (match[7] !== undefined) {
       // Strikethrough: ~~text~~
-      parts.push(<s key={i++} className="text-white/30 line-through">{inlineFormat(match[7])}</s>);
+      parts.push(<s key={i++}>{inlineFormat(match[7])}</s>);
     } else if (match[9] !== undefined) {
       // Bold + italic: ***text***
-      parts.push(<strong key={i++} className="font-semibold text-white/80"><em className="italic text-white/70">{inlineFormat(match[9])}</em></strong>);
+      parts.push(<strong key={i++}><em>{inlineFormat(match[9])}</em></strong>);
     } else if (match[11] !== undefined) {
       // Bold: **text**
-      parts.push(<strong key={i++} className="font-semibold text-white/80">{inlineFormat(match[11])}</strong>);
+      parts.push(<strong key={i++}>{inlineFormat(match[11])}</strong>);
     } else if (match[13] !== undefined) {
       // Italic: *text*
-      parts.push(<em key={i++} className="italic text-white/70">{inlineFormat(match[13])}</em>);
+      parts.push(<em key={i++}>{inlineFormat(match[13])}</em>);
     } else if (match[15] !== undefined) {
       // Inline code
-      parts.push(<code key={i++} className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[0.85em] text-[var(--color-brand-300)]">{match[15]}</code>);
+      parts.push(<code key={i++}>{match[15]}</code>);
     } else if (match[16] !== undefined) {
       // Emoji shortname :name:
       parts.push(<span key={i++}>{resolveEmoji(match[16])}</span>);
@@ -176,13 +176,13 @@ function renderListTree(nodes: ListNode[], keyPrefix: string, isRoot = true): Re
   const isOrdered = nodes[0].ordered;
   const Tag = isOrdered ? "ol" : "ul";
   const listClass = isOrdered
-    ? `${isRoot ? "ml-5" : "ml-4 mt-0.5"} list-decimal space-y-0.5 text-white/60`
-    : `${isRoot ? "ml-5" : "ml-4 mt-0.5"} list-disc space-y-0.5 text-white/60`;
+    ? `${isRoot ? "ml-5" : "ml-4 mt-0.5"} list-decimal space-y-0.5`
+    : `${isRoot ? "ml-5" : "ml-4 mt-0.5"} list-disc space-y-0.5`;
 
   return (
     <Tag key={keyPrefix} className={listClass}>
       {nodes.map((node, idx) => (
-        <li key={`${keyPrefix}-${idx}`} className="text-sm leading-[1.6]">
+        <li key={`${keyPrefix}-${idx}`}>
           {node.content}
           {node.children.length > 0 && renderListTree(node.children, `${keyPrefix}-${idx}-sub`, false)}
         </li>
@@ -439,29 +439,29 @@ export function renderMarkdown(text: string): ReactNode[] {
 
     // Horizontal rule
     if (line.trim() === "---") {
-      elements.push(<hr key={`hr-${idx}`} className="my-4 border-white/[0.08]" />);
+      elements.push(<hr key={`hr-${idx}`} />);
       idx++;
       continue;
     }
 
     // Headings (check longer prefixes first)
     if (line.startsWith("#### ")) {
-      elements.push(<h5 key={`h5-${idx}`} className="mt-3 mb-1 text-sm font-semibold text-white/70">{inlineFormat(line.slice(5))}</h5>);
+      elements.push(<h4 key={`h4-${idx}`}>{inlineFormat(line.slice(5))}</h4>);
       idx++;
       continue;
     }
     if (line.startsWith("### ")) {
-      elements.push(<h4 key={`h4-${idx}`} className="mt-4 mb-1.5 text-sm font-semibold text-white/80">{inlineFormat(line.slice(4))}</h4>);
+      elements.push(<h3 key={`h3-${idx}`}>{inlineFormat(line.slice(4))}</h3>);
       idx++;
       continue;
     }
     if (line.startsWith("## ")) {
-      elements.push(<h3 key={`h3-${idx}`} className="mt-6 mb-2 font-[var(--font-display)] text-base font-semibold text-white/90">{inlineFormat(line.slice(3))}</h3>);
+      elements.push(<h2 key={`h2-${idx}`}>{inlineFormat(line.slice(3))}</h2>);
       idx++;
       continue;
     }
     if (line.startsWith("# ")) {
-      elements.push(<h2 key={`h2-${idx}`} className="mt-6 mb-2 font-[var(--font-display)] text-lg font-semibold text-white/90">{inlineFormat(line.slice(2))}</h2>);
+      elements.push(<h1 key={`h1-${idx}`}>{inlineFormat(line.slice(2))}</h1>);
       idx++;
       continue;
     }
@@ -470,7 +470,7 @@ export function renderMarkdown(text: string): ReactNode[] {
     if (line.trimStart().startsWith("- [ ] ")) {
       const content = line.trimStart().slice(6);
       elements.push(
-        <div key={`cb-${idx}`} className="my-1 flex items-start gap-2 text-sm text-white/60">
+        <div key={`cb-${idx}`} className="my-1 flex items-start gap-2">
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-white/[0.12] bg-white/[0.03]" />
           <span>{inlineFormat(content)}</span>
         </div>
@@ -481,7 +481,7 @@ export function renderMarkdown(text: string): ReactNode[] {
     if (line.trimStart().startsWith("- [x] ")) {
       const content = line.trimStart().slice(6);
       elements.push(
-        <div key={`cb-${idx}`} className="my-1 flex items-start gap-2 text-sm text-white/60">
+        <div key={`cb-${idx}`} className="my-1 flex items-start gap-2">
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
             <Check size={10} strokeWidth={1.5} />
           </span>
@@ -520,12 +520,11 @@ export function renderMarkdown(text: string): ReactNode[] {
       elements.push(
         <blockquote
           key={`bq-${elements.length}`}
-          className="my-2 border-l-2 border-white/[0.15] pl-4 text-white/50 italic"
         >
           {paragraphs.map((para, pi) => {
             const paraLines = para.split("\n");
             return (
-              <p key={pi} className="text-sm leading-[1.7]">
+              <p key={pi}>
                 {paraLines.map((l, li) => (
                   <span key={li}>
                     {li > 0 && <br />}
@@ -603,11 +602,11 @@ export function renderMarkdown(text: string): ReactNode[] {
     }
 
     if (paraLines.length === 1) {
-      elements.push(<p key={`p-${idx}`} className="text-sm leading-[1.7] text-white/60">{inlineFormat(paraLines[0])}</p>);
+      elements.push(<p key={`p-${idx}`}>{inlineFormat(paraLines[0])}</p>);
     } else {
       // Multiple consecutive lines → single paragraph with soft breaks
       elements.push(
-        <p key={`p-${idx}`} className="text-sm leading-[1.7] text-white/60">
+        <p key={`p-${idx}`}>
           {paraLines.map((l, li) => (
             <span key={li}>
               {li > 0 && <br />}
