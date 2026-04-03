@@ -8,11 +8,6 @@ import {
   type TicketDetail,
 } from "@/types/ticket";
 import {
-  ChevronUp,
-  ChevronsUp,
-  ChevronDown,
-  ChevronsDown,
-  Minus,
   ExternalLink,
   CloudSync,
   Flag,
@@ -24,7 +19,7 @@ import {
   IterationCw,
   Link2,
 } from "lucide-react";
-import { useTicketDetail, useJiraSprints, useTicketReviews } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
@@ -43,14 +38,8 @@ import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
 import { TicketReview } from "@/components/ticket-detail/TicketReview";
 import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
 import { TicketSidebar } from "@/components/ticket-detail/TicketSidebar";
+import { SearchModal } from "@/components/sprint-board/SearchModal";
 
-const PRIORITY_ICONS: Record<string, { Icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>; color: string }> = {
-  Highest: { Icon: ChevronsUp,   color: "#e5534b" },
-  High:    { Icon: ChevronUp,    color: "#ea8744" },
-  Medium:  { Icon: Minus,        color: "#eab308" },
-  Low:     { Icon: ChevronDown,  color: "#4a90d9" },
-  Lowest:  { Icon: ChevronsDown, color: "#94a3b8" },
-};
 
 export default function TicketDetailPage({
   params,
@@ -60,7 +49,7 @@ export default function TicketDetailPage({
   const { key } = use(params);
 
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
-  usePageTitle(apiData ? `${key} - ${apiData.title}` : key);
+  const pageTitle = usePageTitle(apiData ? `${key} - ${apiData.title}` : key);
 
   const ticket: Ticket | undefined = apiData ? {
     key: apiData.key,
@@ -152,7 +141,23 @@ export default function TicketDetailPage({
   const { data: reviewData } = useTicketReviews(key);
   const reviewCount = reviewData?.reviews?.length ?? 0;
 
+  const { data: activeSessions } = useActiveWriterSessions();
+  const hasActiveSession = activeSessions?.some((s) => s.ticketKey === key) ?? false;
+
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cmd+K opens search modal
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const handleTitleLocalEdit = useCallback((has: boolean) => setHasLocalTitleEdit(has), []);
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
@@ -227,11 +232,97 @@ export default function TicketDetailPage({
   const hasLocalEdits = hasLocalTitleEdit || hasLocalDescEdit;
 
   return (
-    <ErrorBoundary>
-    <div className="flex h-full">
+    <>
+      {pageTitle}
+      <ErrorBoundary>
+    <div className="flex h-full flex-col">
+
+      {/* Unified context header — matches Sprint Board header style */}
+      <div className="relative flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
+
+        <div className="relative flex min-w-0 flex-1 items-center gap-4">
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
+              <IssueTypeIcon type={ticket.type} size={16} />
+            </div>
+            <span className="font-mono text-sm font-medium text-white/55">{key}</span>
+          </div>
+
+          <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.12] to-transparent" />
+
+          <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+            {ticket.title}
+          </span>
+
+          <div className="flex shrink-0 items-center gap-2.5">
+            {(() => {
+              const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+              return (
+                <span
+                  className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                  style={{ backgroundColor: sc.bg, color: sc.text }}
+                >
+                  {ticket.jiraStatus}
+                </span>
+              );
+            })()}
+            {ticketSprintLabel && (
+              <span className="text-xs text-white/25">{ticketSprintLabel}</span>
+            )}
+          </div>
+        </div>
+
+        <div className="relative ml-4 flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleRefreshFromJira}
+            disabled={isRefreshing}
+            className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={isRefreshing ? "Syncing..." : "Refresh from Jira"}
+          >
+            <CloudSync size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
+          </button>
+          <a
+            href={getJiraUrl(key)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
+            title="Open in Jira"
+          >
+            <ExternalLink size={15} strokeWidth={1.5} />
+          </a>
+          <Link
+            href={`/tickets/${key}/write`}
+            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)] ${
+              hasActiveSession
+                ? "border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/25 hover:border-[var(--color-brand-500)]/60"
+                : "border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40"
+            }`}
+            style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
+          >
+            {hasActiveSession ? (
+              <>
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand-400)] opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
+                </span>
+                Resume session
+              </>
+            ) : (
+              <>
+                <NotebookPen size={13} strokeWidth={1.5} />
+                Story writer
+              </>
+            )}
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl px-8 py-6">
-          {/* Top bar: breadcrumb + actions */}
+          {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 border-b border-white/[0.06] pb-3">
             <nav className="flex items-center gap-2 text-xs">
               <Link
@@ -248,7 +339,7 @@ export default function TicketDetailPage({
                     href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
                     className="flex items-center gap-1 text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
-                    <IterationCw size={12} strokeWidth={1.5} className="shrink-0" />
+                    <IterationCw size={12} strokeWidth={1.5} className="shrink-0" style={{ color: "#d4904a" }} />
                     {ticketSprintLabel}
                   </Link>
                 </>
@@ -291,34 +382,6 @@ export default function TicketDetailPage({
                 </button>
               </span>
             </nav>
-            <div className="ml-auto flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleRefreshFromJira}
-                disabled={isRefreshing}
-                className="flex items-center justify-center rounded-md p-1.5 text-white/45 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
-                title={isRefreshing ? "Syncing..." : "Refresh from Jira"}
-              >
-                <CloudSync size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
-              </button>
-              <a
-                href={getJiraUrl(key)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center rounded-md p-1.5 text-white/45 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
-                title="Open in Jira"
-              >
-                <ExternalLink size={15} strokeWidth={1.5} />
-              </a>
-              <Link
-                href={`/tickets/${key}/write`}
-                className="ml-1 flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-              >
-                <NotebookPen size={13} strokeWidth={1.5} />
-                Story Writer
-              </Link>
-            </div>
           </div>
 
           {/* Conflict warning: clickable, opens conflict diff */}
@@ -366,18 +429,6 @@ export default function TicketDetailPage({
                     style={{ backgroundColor: sc.bg, color: sc.text }}
                   >
                     {ticket.jiraStatus}
-                  </span>
-                );
-              })()}
-              {(() => {
-                const priority = detail?.priority ?? "Medium";
-                const entry = PRIORITY_ICONS[priority];
-                if (!entry) return null;
-                const { Icon, color } = entry;
-                return (
-                  <span className="flex items-center gap-1 text-white/50">
-                    <Icon size={14} strokeWidth={2} style={{ color }} />
-                    <span style={{ color }}>{priority}</span>
                   </span>
                 );
               })()}
@@ -484,7 +535,14 @@ export default function TicketDetailPage({
       <div className="sticky top-0 min-h-full self-stretch overflow-y-auto">
         <TicketSidebar ticket={ticket} detail={detail} sprintLabel={ticketSprintLabel} onNavigateToReview={() => setActiveTab("review")} />
       </div>
+      </div>
     </div>
     </ErrorBoundary>
+    <SearchModal
+      open={searchOpen}
+      onClose={() => setSearchOpen(false)}
+      onSelectTicket={() => {}}
+    />
+    </>
   );
 }
