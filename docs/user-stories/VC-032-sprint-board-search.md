@@ -13,43 +13,64 @@ As the PO, I want a fast, fuzzy full-text search across all tickets in the local
 
 ## Core Concepts
 
-- **Inline search bar** is always visible in the sprint board toolbar. Typing in it triggers local DB search immediately. This covers 90% of use cases without any modal.
-- **Cmd+K / Ctrl+K** (or clicking the inline bar when already focused) opens an expanded **search modal** with more screen real estate, mode switching, and advanced options.
-- **Local search** queries the local SQLite database via a dedicated API route. This means it searches all tickets ever synced, not just those currently visible on the board.
-- **Fuzzy matching** is used for all text fields: minor typos and partial matches still surface results.
-- **Jira search** fires a JQL query via the Jira REST API and returns live results from Jira, including tickets not in the local DB.
+- **Inline search bar** is the first item in the FilterBar row, visually combined with the filter pills. Typing filters the ticket table directly — no dropdown or modal needed for everyday use.
+- **Results on the page**: matching tickets appear inline in the ticket table below; all other filters (status, epic, assignee, PO status) compose with the search query.
+- **Search button** in the sprint board content header (next to the Story writer button) opens the full modal.
+- **Cmd+K / Ctrl+K** anywhere on the sprint board page also opens the full modal.
+- **Local search** queries the local SQLite database via `GET /api/search/local` using Fuse.js fuzzy matching. Searches all tickets ever synced, not just the current sprint.
+- **Fuzzy matching** via Fuse.js (`threshold: 0.35`): minor typos and partial matches still surface results.
+- **Jira search** fires a JQL query via the Jira REST API and returns live results, including tickets not in the local DB.
 
 ---
 
 ## Interaction Model
 
 ```
-Sprint board toolbar
-┌─────────────────────────────────────────────────────┐
-│  [Sprints] [Filters]   [ Search tickets...  ⌘K ]   │
-└─────────────────────────────────────────────────────┘
-         │ typing here shows a small inline dropdown
-         │ Cmd+K (or click icon) → expands to full modal
+Content header
+┌─────────────────────────────────────────────────────────────────┐
+│  Sprint 42   3 Apr - 17 Apr    12 / 40 items    [Search] [Story writer] │
+└─────────────────────────────────────────────────────────────────┘
+
+FilterBar (always visible)
+┌──────────────────────────────────────────────────────────────────┐
+│  [ Search tickets... ] | [Status v] [Epic v] [Assignee v] ...   │
+└──────────────────────────────────────────────────────────────────┘
+         │ typing here filters the ticket table directly
+         │
+         ▼ ticket table updates live as you type
+
+Full modal (Cmd+K or "Search" button in header)
+┌───────────────────────────────────────────────────────────────┐
+│  [search input]                                      [X]      │
+│  Local | Jira                                                 │
+├────────────────────┬──────────────────────────────────────────┤
+│  Result list       │  Preview pane (active result)            │
+│  (scrollable)      │  - Key + status                          │
+│                    │  - Full summary                          │
+│                    │  - Sprint, assignee, priority, labels    │
+│                    │  - Description preview (250 chars)       │
+└────────────────────┴──────────────────────────────────────────┘
+│  ↑↓ navigate   ↵ open   esc close                            │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-### Inline bar (always visible)
+### Inline search bar (in FilterBar)
 
-- Compact search input in the sprint board toolbar, right-aligned.
-- Placeholder: "Search tickets... ⌘K"
-- Typing shows a small dropdown (max 6 results) directly below the bar.
-- Results in the dropdown are the same weighted/fuzzy local DB results.
-- Pressing `Enter` or `Cmd+K` while the bar is focused opens the full modal with the current query pre-filled.
-- Pressing `Escape` clears the inline bar and closes the dropdown.
+- Pill-shaped input, first item in the filter row, with search icon and clear button.
+- Typing filters the visible ticket list; query composes with status/epic/assignee filters.
+- Client-side text match on `key`, `title`, and `assignee.name` (min 2 chars).
+- `Escape` clears the query.
+- `Cmd+K` opens the full modal with the query pre-filled.
 
-### Full search modal (Cmd+K)
+### Full search modal (Cmd+K / "Search" button)
 
-- Full-width modal, vertically centred in the viewport, max-width ~680px.
-- Backdrop blur overlay, opens with a smooth scale+fade animation (transform + opacity only).
-- Input auto-focused, pre-filled with current inline query (if any).
-- Mode tabs at the top: **Local** (default) | **Jira**
-- Results list below input: max 8 visible at once, scrollable.
-- Keyboard navigation: `Arrow Up/Down` through results, `Enter` to open, `Escape` to close.
-- Closes on Escape, backdrop click, or after navigating to a result.
+- Opens from the "Search" button in the content header or via `Cmd+K` / `Ctrl+K`.
+- Modal positioned slightly above centre (`pt-[12vh]`), `max-w-[860px]`, backdrop blur overlay.
+- Input auto-focused; closes on `Escape` (window-level listener) or backdrop click.
+- Mode tabs: **Local** (default) | **Jira**
+- Two-column layout in Local mode: results list (340px) + preview pane (flex-1).
+- Preview pane appears automatically as you navigate with arrow keys.
+- Keyboard navigation: `Arrow Up/Down`, `Enter` to open ticket, `Escape` to close.
 
 ---
 
@@ -152,23 +173,27 @@ project = VPL AND text ~ "{query}" ORDER BY updated DESC
 
 The search UI should feel polished and fast, not generic.
 
-### Inline bar
+### Inline bar (in FilterBar)
 
-- Pill-shaped input with a subtle inset shadow and a faint search icon on the left.
-- On focus: border brightens with a soft glow using the brand accent color.
-- Dropdown: floating card with layered shadow (not flat `shadow-md`). Each row has hover state with a brand-tinted background.
-- Match highlights: `<mark>` styled with accent color at low opacity, no underline.
+- Pill-shaped input, first item in the FilterBar row, with search icon and `X` clear button.
+- On focus: border brightens with brand accent glow.
+- Typing filters the ticket table directly (no dropdown).
+- Match is client-side on `key`, `title`, `assignee.name`.
 
 ### Modal
 
-- Backdrop: `backdrop-blur-sm` + dark overlay at low opacity.
-- Modal card: slightly elevated surface (distinct from page background), rounded-xl.
-- Mode tabs: pill-style toggle, not full-width tabs.
-- Result rows: left-aligned ticket key in monospace with muted color, summary in normal weight, right-aligned sprint name + status badge.
-- Status badges: same color scheme as the sprint board ticket table.
-- Active/selected row: brand-accent left border + subtle background tint.
-- Empty state: centered illustration or icon + short hint text, not just "No results".
-- Loading state: animated skeleton rows (not a spinner in the middle of the list).
+- Opens via "Search" button in content header, or `Cmd+K` / `Ctrl+K`.
+- Backdrop: `backdrop-blur-sm` + dark overlay, positioned at `pt-[12vh]`.
+- Modal card: `max-w-[860px]`, `rounded-xl`, layered shadow.
+- Mode tabs: pill-style toggle — Local | Jira.
+- **Two-column layout** in Local mode: 340px results list + flex-1 preview pane.
+- Preview pane shows key, status, full summary, sprint name, assignee, priority, labels, description preview (250 chars).
+- Sprint names resolved via `sprintNameMap` (human-readable, not IDs).
+- Result rows: monospace key, summary with `<mark>` highlights, sprint name, status badge.
+- Active row: brand-accent left border + subtle background tint.
+- Loading state: animated skeleton rows.
+- Empty state: icon + hint text.
+- `Escape` closes via window-level capture listener (works regardless of focus state).
 
 ---
 

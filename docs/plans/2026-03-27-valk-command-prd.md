@@ -59,8 +59,9 @@ A board view of the current sprint's tickets with a PO layer on top.
 **Interactions:**
 - Click ticket to open detail view + activate in chat context
 - Inline edit PO metadata
-- Filter/group by: status, readiness, assignee, test status
+- Filter/group by: status, epic, assignee, PO status, sprint (All view)
 - Drag to reorder (PO priority, not synced to Jira)
+- **Search (VC-032):** inline search in the filter bar filters the ticket table live; full modal (`Cmd+K` or "Search" button in header) does fuzzy DB search across all sprints with a preview pane and Jira live search mode
 
 ### 3. Activity Feed
 

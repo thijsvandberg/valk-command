@@ -18,6 +18,13 @@ Low-level HTTP client for the Jira REST API v3 via the Atlassian API gateway (`a
 - Retry: exponential backoff (1s / 2s / 4s) on 429 and 5xx, respects `Retry-After` header, max 3 retries
 - Returns empty arrays when credentials are absent so the app can run without a Jira connection
 
+**Key methods:**
+- `getSprintIssues(sprintId)` — fetch all issues for a sprint via JQL
+- `getSprintTimestamps(sprintId)` — lightweight key+updated fetch for timestamp-first sync
+- `getIssuesByKeys(keys[])` — batch fetch by key list
+- `searchIssues(jql, fields?, maxResults?)` — ad-hoc JQL search, used by `GET /api/search/jira`
+- `checkJiraHealth()` — lightweight connectivity check (1-result search, no `/myself`)
+
 ### Sync Routes (`src/app/api/jira/`)
 
 | Route | Method | Purpose |
@@ -95,6 +102,33 @@ Full audit log page at `/sync-log` with type/status filters and pagination.
 | `useSyncStatus(limit)` | `/api/sync-log?limit=N` | 10s polling |
 | `useJiraHealth()` | `/api/jira/health` | 60s polling |
 | `useConflictCheck(key)` | `/api/jira/check-updated?key=X` | 60s dedup |
+
+## Search
+
+Sprint board search (VC-032) provides two search modes:
+
+### Local search (`GET /api/search/local`)
+
+Searches all tickets in the local SQLite database using [Fuse.js](https://www.fusejs.io/) fuzzy matching.
+
+- Covers: `ticket`, `ticketMetadata`, `jiraComment`, `poComment`, `ticketLocalEdit` tables
+- ADF descriptions and comments are stripped to plain text server-side before indexing
+- Fuse.js `threshold: 0.35`, `includeMatches: true` for highlight ranges
+- Field weights: `key` (1.0) > `summary` (0.8) > `localEditTitle` (0.7) > `notes/tags/labels` (0.5) > `assignee` (0.3) > `description` (0.15) > `jiraCommentBodies` (0.1)
+- Returns top 25 results with `key`, `summary`, `status`, `priority`, `assignee`, `sprintName`, `labels`, `descriptionPreview` (250 chars), `score`, `matches` (character ranges for highlighting)
+
+Used by:
+- FilterBar inline search (filters current sprint table, client-side text match on key/title/assignee)
+- SearchModal Local tab (full fuzzy DB search across all sprints)
+
+### Jira search (`GET /api/search/jira`)
+
+Queries live Jira data via `jiraClient.searchIssues()`.
+
+- `?q=text` auto-generates: `project = VPL AND text ~ "text" ORDER BY updated DESC`
+- `?jql=...` overrides the query entirely
+- Returns up to 25 results: `key`, `summary`, `status`, `assignee`, `sprintName`, `url`
+- Rate-limit guard: aborts previous in-flight request on new call
 
 ## Environment Variables
 
