@@ -2,8 +2,8 @@
 @import "../components/rich-editor/editor-styles.css";
 
 @theme {
-  --font-display: "Georgia", "Times New Roman", serif;
-  --font-body: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Georgia", sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 
   --color-brand-50: #eef7f0;
   --color-brand-100: #d5edd9;
@@ -25,6 +25,13 @@
 @layer base {
   html {
     font-size: 17px;
+  }
+
+  /* Next.js font variables are scoped to body; override the @theme tokens here
+     so that var(--font-bricolage) resolves correctly for all descendants. */
+  body {
+    --font-display: var(--font-bricolage, "Bricolage Grotesque"), "Georgia", sans-serif;
+    --font-body: var(--font-inter, "Inter"), "Segoe UI", system-ui, sans-serif;
   }
 }
 

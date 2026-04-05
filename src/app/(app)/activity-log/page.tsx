@@ -98,7 +98,7 @@ function statusLabel(status: ActivityLogEntry["status"]): string {
 }
 
 export default function ActivityLogPage() {
-  usePageTitle("Activity Log");
+  const pageTitle = usePageTitle("Activity Log");
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
@@ -161,7 +161,9 @@ export default function ActivityLogPage() {
   const hasMore = entries?.length === PAGE_SIZE;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <>
+      {pageTitle}
+      <div className="mx-auto max-w-5xl px-6 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-[var(--font-display)] text-2xl font-semibold tracking-[-0.03em] text-white">
@@ -333,6 +335,7 @@ export default function ActivityLogPage() {
         </button>
       </div>
     </div>
+    </>
   );
 }
 

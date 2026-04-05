@@ -226,6 +226,11 @@ export function SidePanel({
               >
                 <Link2 size={12} strokeWidth={1.5} />
               </button>
+              {ticket.editState === "draft" && (
+                <span className="flex items-center gap-1 rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-[10px] text-[#4a90d9]/50" title="Unsaved draft">
+                  draft
+                </span>
+              )}
               {ticket.editState === "local_edits" && (
                 <span className="flex items-center gap-1 rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-[10px] text-[#4a90d9]/70" title="Has local changes not yet pushed to Jira">
                   local changes

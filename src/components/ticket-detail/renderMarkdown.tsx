@@ -1,71 +1,64 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
+import Prism from "prismjs";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-jsx";
+import "prismjs/components/prism-tsx";
+import "prismjs/components/prism-php";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-sql";
+import "prismjs/components/prism-bash";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-markup";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-ruby";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-rust";
+import "prismjs/components/prism-csharp";
+import "prismjs/components/prism-yaml";
+import "prismjs/components/prism-kotlin";
+import "prismjs/components/prism-swift";
+import "prismjs/components/prism-scss";
 
-// Common Jira/Slack emoji shortnames mapped to their unicode characters
-const EMOJI_MAP: Record<string, string> = {
-  check_mark: "✅",
-  white_check_mark: "✅",
-  warning: "⚠️",
-  question_mark: "❓",
-  question: "❓",
-  info: "ℹ️",
-  information_source: "ℹ️",
-  star: "⭐",
-  heart: "❤️",
-  thumbsup: "👍",
-  thumbsdown: "👎",
-  slightly_smiling_face: "🙂",
-  smile: "😊",
-  grinning: "😀",
-  fire: "🔥",
-  rocket: "🚀",
-  tada: "🎉",
-  x: "❌",
-  memo: "📝",
-  bug: "🐛",
-  wrench: "🔧",
-  bulb: "💡",
-  zap: "⚡",
-  eyes: "👀",
-  clap: "👏",
-  pray: "🙏",
-  muscle: "💪",
-  wave: "👋",
-  point_right: "👉",
-  point_left: "👈",
-  point_up: "☝️",
-  point_down: "👇",
-  exclamation: "❗",
-  heavy_exclamation_mark: "❗",
-  100: "💯",
-  clock1: "🕐",
-  calendar: "📅",
-  link: "🔗",
-  lock: "🔒",
-  key: "🔑",
-  hammer: "🔨",
-  computer: "💻",
-  phone: "📱",
-  email: "📧",
-  mailbox: "📬",
-  package: "📦",
-  chart_with_upwards_trend: "📈",
-  chart_with_downwards_trend: "📉",
-  bar_chart: "📊",
-  checkered_flag: "🏁",
-  red_circle: "🔴",
-  large_orange_circle: "🟠",
-  large_yellow_circle: "🟡",
-  large_green_circle: "🟢",
-  large_blue_circle: "🔵",
-  purple_circle: "🟣",
+import { resolveEmoji } from "@/lib/emoji-shortcodes";
+
+// Maps common fence language identifiers to Prism grammar keys
+const PRISM_LANG_ALIASES: Record<string, string> = {
+  js: "javascript",
+  ts: "typescript",
+  py: "python",
+  rb: "ruby",
+  sh: "bash",
+  shell: "bash",
+  zsh: "bash",
+  html: "markup",
+  xml: "markup",
+  cs: "csharp",
+  yml: "yaml",
 };
 
-function resolveEmoji(shortName: string): string {
-  // Strip surrounding colons
-  const key = shortName.replace(/^:|:$/g, "");
-  return EMOJI_MAP[key] ?? shortName;
+function safeEscapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
+
+// Returns Prism-highlighted HTML for a single line, or escaped plain text as fallback.
+function highlightCodeLine(code: string, lang: string): string {
+  if (!lang || !code) return safeEscapeHtml(code);
+  const prismLang = PRISM_LANG_ALIASES[lang.toLowerCase()] ?? lang.toLowerCase();
+  const grammar = Prism.languages[prismLang];
+  if (!grammar) return safeEscapeHtml(code);
+  try {
+    return Prism.highlight(code, grammar, prismLang);
+  } catch {
+    return safeEscapeHtml(code);
+  }
+}
+
 
 function inlineFormat(text: string): ReactNode {
   const parts: ReactNode[] = [];
@@ -249,23 +242,40 @@ function renderTable(tableLines: string[], key: string): ReactNode {
 // Renders a code block with optional language label and line numbers
 function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode {
   return (
-    <div key={key} className="my-3 overflow-hidden rounded-lg border border-white/[0.06]">
-      {lang && (
-        <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.04] px-4 py-1.5">
-          <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-white/30">{lang}</span>
+    <div key={key} className="my-3 overflow-hidden rounded-xl" style={{ background: "rgba(0,0,0,0.28)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      {/* Header bar */}
+      <div className="flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}>
+        <div className="flex gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
         </div>
-      )}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        {lang && (
+          <span className="ml-1 font-mono text-[10px] font-medium uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.28)" }}>{lang}</span>
+        )}
+      </div>
+      {/* Code table */}
+      <div className="overflow-x-auto py-2">
+        <table className="border-collapse" style={{ tableLayout: "fixed", width: "100%" }}>
+          <colgroup>
+            {/* Fixed width for up to 3-digit line numbers */}
+            <col style={{ width: "3rem" }} />
+            <col />
+          </colgroup>
           <tbody>
             {lines.map((codeLine, li) => (
               <tr key={li} className="group">
-                <td className="select-none border-r border-white/[0.05] bg-white/[0.03] px-3 py-0 text-right font-mono text-[11px] leading-6 text-white/20 group-hover:text-white/30" style={{ minWidth: "2.5rem" }}>
+                <td
+                  className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-[11px] leading-[1.6rem]"
+                  style={{ color: "rgba(255,255,255,0.2)", borderColor: "rgba(255,255,255,0.05)", whiteSpace: "nowrap" }}
+                >
                   {li + 1}
                 </td>
-                <td className="bg-white/[0.02] px-4 py-0 font-mono text-[0.82em] leading-6 text-white/65 group-hover:bg-white/[0.03]">
-                  {codeLine || "\u00a0"}
-                </td>
+                <td
+                  className="rm-code-content py-0 pl-4 pr-6 font-mono text-[0.8125rem] leading-[1.6rem]"
+                  style={{ color: "rgba(255,255,255,0.72)", whiteSpace: "pre" }}
+                  dangerouslySetInnerHTML={{ __html: highlightCodeLine(codeLine, lang) || "\u00a0" }}
+                />
               </tr>
             ))}
           </tbody>
@@ -284,6 +294,8 @@ export function renderMarkdown(text: string): ReactNode[] {
   let calloutLines: string[] | null = null;
   let expandTitle: string | null = null;
   let expandLines: string[] | null = null;
+  let expandDepth = 0;
+  let calloutDepth = 0;
   let idx = 0;
 
   function parseListBlock(startIdx: number): { nodes: ListNode[]; nextIdx: number } {
@@ -337,6 +349,9 @@ export function renderMarkdown(text: string): ReactNode[] {
       i++;
     }
 
+    // Safety guard: always advance at least one line to prevent the caller
+    // from looping forever if this block matched nothing.
+    if (i === startIdx) i++;
     return { nodes, nextIdx: i };
   }
 
@@ -348,36 +363,47 @@ export function renderMarkdown(text: string): ReactNode[] {
     if (expandOpen && expandTitle === null && calloutType === null) {
       expandTitle = expandOpen[1].trim();
       expandLines = [];
+      expandDepth = 0;
       idx++;
       continue;
     }
     if (expandTitle !== null) {
       if (line.trim() === ":::") {
-        const inner = renderMarkdown((expandLines ?? []).join("\n"));
-        const title = expandTitle;
-        elements.push(
-          <details
-            key={`expand-${elements.length}`}
-            className="expand-block my-2 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.02]"
-          >
-            <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90">
-              <span className="flex items-center gap-2">
-                <svg
-                  className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
-                  style={{ transition: "transform 0.15s ease" }}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                >
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-                {title || "Details"}
-              </span>
-            </summary>
-            <div className="border-t border-white/[0.06] px-4 py-3">{inner}</div>
-          </details>
-        );
-        expandTitle = null;
-        expandLines = null;
+        if (expandDepth > 0) {
+          // Closing a nested fence inside the expand, not the expand itself
+          expandDepth--;
+          expandLines!.push(line);
+        } else {
+          const inner = renderMarkdown((expandLines ?? []).join("\n"));
+          const title = expandTitle;
+          elements.push(
+            <details
+              key={`expand-${elements.length}`}
+              className="expand-block my-2 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.02]"
+            >
+              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90">
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
+                    style={{ transition: "transform 0.15s ease" }}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                  {title || "Details"}
+                </span>
+              </summary>
+              <div className="border-t border-white/[0.06] px-4 py-3">{inner}</div>
+            </details>
+          );
+          expandTitle = null;
+          expandLines = null;
+        }
       } else {
+        // Track nested ::: fence openers inside the expand
+        if (/^:::(info|warning|error|note|success|expand)\b/.test(line.trim())) {
+          expandDepth++;
+        }
         expandLines!.push(line);
       }
       idx++;
@@ -389,28 +415,37 @@ export function renderMarkdown(text: string): ReactNode[] {
     if (calloutOpen && calloutType === null) {
       calloutType = calloutOpen[1];
       calloutLines = [];
+      calloutDepth = 0;
       idx++;
       continue;
     }
     if (calloutType !== null) {
       if (line.trim() === ":::") {
-        const style = CALLOUT_STYLES[calloutType] ?? CALLOUT_STYLES.info;
-        const inner = renderMarkdown((calloutLines ?? []).join("\n"));
-        elements.push(
-          <div
-            key={`callout-${elements.length}`}
-            className={`my-2 rounded-lg border-l-2 px-4 py-2.5 ${style.border} ${style.bg}`}
-          >
-            <div className="mb-1 flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">{style.label}</span>
+        if (calloutDepth > 0) {
+          calloutDepth--;
+          calloutLines!.push(line);
+        } else {
+          const style = CALLOUT_STYLES[calloutType] ?? CALLOUT_STYLES.info;
+          const inner = renderMarkdown((calloutLines ?? []).join("\n"));
+          elements.push(
+            <div
+              key={`callout-${elements.length}`}
+              className={`my-2 rounded-lg border-l-2 px-4 py-2.5 ${style.border} ${style.bg}`}
+            >
+              <div className="mb-1 flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${style.dot}`} />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">{style.label}</span>
+              </div>
+              <div>{inner}</div>
             </div>
-            <div>{inner}</div>
-          </div>
-        );
-        calloutType = null;
-        calloutLines = null;
+          );
+          calloutType = null;
+          calloutLines = null;
+        }
       } else {
+        if (/^:::(info|warning|error|note|success|expand)\b/.test(line.trim())) {
+          calloutDepth++;
+        }
         calloutLines!.push(line);
       }
       idx++;
@@ -434,6 +469,61 @@ export function renderMarkdown(text: string): ReactNode[] {
     if (codeBlockLines !== null) {
       codeBlockLines.push(line);
       idx++;
+      continue;
+    }
+
+    // Legacy: raw <details data-expand-title="..."> HTML stored before round-trip was fixed.
+    // Collect lines until closing </details> and render as an expand block.
+    if (line.trim().startsWith("<details") && line.includes("data-expand-title")) {
+      const htmlLines: string[] = [line];
+      if (!line.includes("</details>")) {
+        idx++;
+        while (idx < lines.length) {
+          htmlLines.push(lines[idx]);
+          if (lines[idx].includes("</details>")) {
+            idx++;
+            break;
+          }
+          idx++;
+        }
+      } else {
+        idx++;
+      }
+      const raw = htmlLines.join("\n");
+      const titleMatch = raw.match(/data-expand-title="([^"]*)"/);
+      const title = titleMatch ? titleMatch[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'") : "Details";
+      // Strip outer tags and inner summary/div wrappers to get plain text content
+      const stripped = raw
+        .replace(/<details[^>]*>/i, "")
+        .replace(/<\/details>/i, "")
+        .replace(/<summary[^>]*>[\s\S]*?<\/summary>/i, "")
+        .replace(/<\/?div[^>]*>/gi, "")
+        .replace(/<p>/gi, "")
+        .replace(/<\/p>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+        .trim();
+      const inner = renderMarkdown(stripped);
+      elements.push(
+        <details
+          key={`expand-${elements.length}`}
+          className="expand-block my-2 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.02]"
+        >
+          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90">
+            <span className="flex items-center gap-2">
+              <svg
+                className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
+                style={{ transition: "transform 0.15s ease" }}
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+              {title || "Details"}
+            </span>
+          </summary>
+          <div className="border-t border-white/[0.06] px-4 py-3">{inner}</div>
+        </details>
+      );
       continue;
     }
 
@@ -493,7 +583,9 @@ export function renderMarkdown(text: string): ReactNode[] {
     }
 
     // Unordered / ordered lists (with nesting)
-    const trimmed = line.trimStart();
+    // Use line.trim() (not trimStart) to match what parseListBlock uses internally,
+    // preventing a nextIdx === idx infinite loop on lines like "- " (empty list item from ADF).
+    const trimmed = line.trim();
     const isListStart = (/^- /.test(trimmed) && !/^- \[[ x]\] /.test(trimmed)) || /^\d+\.\s/.test(trimmed);
     if (isListStart) {
       const { nodes, nextIdx } = parseListBlock(idx);

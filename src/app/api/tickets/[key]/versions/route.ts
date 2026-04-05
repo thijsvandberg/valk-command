@@ -4,15 +4,23 @@ import { storyVersion } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const { searchParams } = new URL(request.url);
+  const metaOnly = searchParams.get("metaOnly") === "true";
 
-  const versions = await db
+  const rows = await db
     .select()
     .from(storyVersion)
     .where(eq(storyVersion.jiraKey, key));
 
-  return NextResponse.json(versions);
+  if (metaOnly) {
+    return NextResponse.json(
+      rows.map(({ description: _d, acceptanceCriteria: _ac, ...meta }) => meta),
+    );
+  }
+
+  return NextResponse.json(rows);
 }

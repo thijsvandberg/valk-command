@@ -120,10 +120,13 @@ function DiffPreviewContent() {
 export const dynamic = "force-dynamic";
 
 export default function DiffPreviewPage() {
-  usePageTitle("Diff Preview");
+  const pageTitle = usePageTitle("Diff Preview");
   return (
-    <Suspense fallback={<div className="flex h-full items-center justify-center"><span className="text-sm text-white/30">Loading...</span></div>}>
-      <DiffPreviewContent />
-    </Suspense>
+    <>
+      {pageTitle}
+      <Suspense fallback={<div className="flex h-full items-center justify-center"><span className="text-sm text-white/30">Loading...</span></div>}>
+        <DiffPreviewContent />
+      </Suspense>
+    </>
   );
 }

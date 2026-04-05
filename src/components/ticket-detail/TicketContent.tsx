@@ -5,9 +5,10 @@ import Link from "next/link";
 import type { Attachment, TicketDetail } from "@/types/ticket";
 import {
   Trash2,
-  CloudUpload,
   File,
   FileMinus,
+  CloudUpload,
+  Loader2,
 } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
@@ -23,93 +24,121 @@ import { RichEditor } from "@/components/rich-editor/RichEditor";
 export function EditableTitle({
   ticketKey,
   initialTitle,
+  serverLocalEdit,
   onLocalEdit,
+  onEditingChange,
 }: {
   ticketKey: string;
   initialTitle: string;
+  serverLocalEdit?: { value: string; isDraft: boolean };
   onLocalEdit: (hasEdit: boolean) => void;
+  onEditingChange?: (isEditing: boolean) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(initialTitle);
-  const [hasLocalEdit, setHasLocalEdit] = useState(false);
+  // Persisted local edit - only updated on save, drives the "Locally modified" badge
+  const [localValue, setLocalValue] = useState<string | null>(serverLocalEdit?.value ?? null);
+  // In-progress value while the textarea is open - never persisted until save
+  const [editDraft, setEditDraft] = useState<string>("");
+  // Ref mirror so save() always reads the latest draft regardless of closure age
+  const editDraftRef = useRef(editDraft);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const notifiedRef = useRef(false);
+  // Set before an intentional discard (Escape) so onBlur skips saving
+  const discardingRef = useRef(false);
+  // Set during an in-flight save so a subsequent onBlur doesn't double-save
+  const savingRef = useRef(false);
 
-  useEffect(() => {
-    async function loadLocalEdit() {
-      try {
-        const res = await fetch(`/api/tickets/${ticketKey}/local-edits`);
-        if (res.ok) {
-          const data = await res.json();
-          const titleEdit = data.find?.((e: { field: string }) => e.field === "title");
-          if (titleEdit) {
-            setValue(titleEdit.localValue);
-            setHasLocalEdit(true);
-            onLocalEdit(true);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load local title edit:", err);
-      }
-    }
-    loadLocalEdit();
-  }, [ticketKey, onLocalEdit]);
+  const hasLocalEdit = localValue !== null;
+  // Display value when not editing
+  const displayValue = localValue ?? initialTitle;
 
-  // When the Jira-synced title changes and there are no local edits, reflect the fresh value.
+  useEffect(() => { onEditingChange?.(editing); }, [editing, onEditingChange]);
+
+  // Notify parent once if we have a server-provided local edit
   useEffect(() => {
-    if (!hasLocalEdit) {
-      setValue(initialTitle);
+    if (serverLocalEdit && !notifiedRef.current) {
+      notifiedRef.current = true;
+      onLocalEdit(true);
     }
-  }, [initialTitle, hasLocalEdit]);
+  }, [serverLocalEdit, onLocalEdit]);
 
   useEffect(() => {
     if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-      // Auto-size height to match content
-      inputRef.current.style.height = "auto";
-      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+      const el = inputRef.current;
+      el.focus();
+      // Position cursor at end so backspace deletes one character at a time
+      el.setSelectionRange(el.value.length, el.value.length);
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
     }
   }, [editing]);
 
+  const startEditing = () => {
+    const draft = localValue ?? initialTitle;
+    setEditDraft(draft);
+    editDraftRef.current = draft;
+    // Reset in case a previous save fetch is still in-flight
+    savingRef.current = false;
+    setEditing(true);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value);
+    setEditDraft(e.target.value);
+    editDraftRef.current = e.target.value;
     e.target.style.height = "auto";
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
-  const save = useCallback(async () => {
+  const discard = () => {
+    discardingRef.current = true;
     setEditing(false);
-    if (value.trim() === initialTitle) {
-      setHasLocalEdit(false);
-      onLocalEdit(false);
-      return;
-    }
+    // editDraft is simply abandoned - localValue stays unchanged
+  };
+
+  const save = useCallback(async () => {
+    if (discardingRef.current) { discardingRef.current = false; return; }
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setEditing(false);
+    const draft = editDraftRef.current.trim();
     try {
+      // Empty title: discard silently, don't persist garbage
+      if (draft === "") {
+        return;
+      }
+      if (draft === initialTitle) {
+        setLocalValue(null);
+        onLocalEdit(false);
+        return;
+      }
       await fetch(`/api/tickets/${ticketKey}/local-edits`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: "title", localValue: value.trim() }),
+        body: JSON.stringify({ field: "title", localValue: draft }),
       });
-      setHasLocalEdit(true);
+      setLocalValue(draft);
       onLocalEdit(true);
     } catch (err) {
       console.error("Operation failed:", err);
+    } finally {
+      savingRef.current = false;
     }
-  }, [ticketKey, value, initialTitle, onLocalEdit]);
+  }, [ticketKey, initialTitle, onLocalEdit]);
 
   if (editing) {
     return (
       <textarea
         ref={inputRef}
         rows={1}
-        value={value}
+        value={editDraft}
         onChange={handleChange}
         onBlur={save}
         onKeyDown={(e) => {
           if (e.key === "Enter") { e.preventDefault(); save(); }
-          if (e.key === "Escape") { setValue(hasLocalEdit ? value : initialTitle); setEditing(false); }
+          if (e.key === "Escape") { e.preventDefault(); discard(); }
         }}
-        className="w-full resize-none overflow-hidden border-b-2 border-[var(--color-brand-500)]/40 bg-transparent font-[var(--font-display)] text-2xl font-semibold leading-tight tracking-[-0.02em] text-white outline-none"
+        className="w-full resize-none overflow-hidden border-b-2 border-[var(--color-brand-500)]/40 bg-transparent text-2xl font-bold leading-tight text-white outline-none"
+        style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.04em" }}
       />
     );
   }
@@ -117,11 +146,12 @@ export function EditableTitle({
   return (
     <div className="group flex items-start gap-2">
       <h1
-        onClick={() => setEditing(true)}
-        className="cursor-pointer font-[var(--font-display)] text-2xl font-semibold leading-tight tracking-[-0.02em] text-white hover:text-white/90"
+        onClick={startEditing}
+        className="cursor-pointer text-2xl font-bold leading-tight text-white hover:text-white/90"
+        style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.04em" }}
         title="Click to edit"
       >
-        {value}
+        {displayValue}
       </h1>
       {hasLocalEdit && (
         <span className="mt-1 shrink-0 rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
@@ -139,129 +169,142 @@ export function EditableTitle({
 export function EditableDescription({
   ticketKey,
   initialDescription,
+  serverLocalEdit,
   attachments,
   onLocalEdit,
-  hasConflict = false,
-  onViewDiff,
-  onRemoteChanged,
-  onPushSuccess,
+  onEditingChange,
+  onDiscard,
+  onPushToJira,
+  isPushing,
+  pushError,
+  showConflictWarning,
+  overrideConfirmed,
+  onOverrideChange,
 }: {
   ticketKey: string;
   initialDescription: string;
+  serverLocalEdit?: { value: string; isDraft: boolean };
   attachments?: Attachment[];
   onLocalEdit: (hasEdit: boolean) => void;
-  hasConflict?: boolean;
-  onViewDiff?: () => void;
-  /** Called when push detects remote changes. contentChanged indicates whether content or only metadata changed. */
-  onRemoteChanged?: (contentChanged: boolean) => void;
-  /** Called after a successful push so the parent can refresh ticket data. */
-  onPushSuccess?: () => void;
+  onEditingChange?: (isEditing: boolean) => void;
+  onDiscard?: () => void;
+  onPushToJira?: () => Promise<void>;
+  isPushing?: boolean;
+  pushError?: string | null;
+  showConflictWarning?: boolean;
+  overrideConfirmed?: boolean;
+  onOverrideChange?: (val: boolean) => void;
 }) {
+  const resolvedInitial = resolveLocalValue(serverLocalEdit?.value, initialDescription, attachments);
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(initialDescription);
-  const [hasLocalEdit, setHasLocalEdit] = useState(false);
-  const [pushing, setPushing] = useState(false);
-  const [pushError, setPushError] = useState<string | null>(null);
-  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+  const [localValue, setLocalValue] = useState<string | null>(resolvedInitial ?? null);
+  const [editIsDraft, setEditIsDraft] = useState(serverLocalEdit?.isDraft ?? false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notifiedDescRef = useRef(false);
 
-  // When the Jira-synced description changes and there are no local edits, reflect the fresh value.
+  const hasLocalEdit = localValue !== null;
+  const value = localValue ?? initialDescription;
+
+  useEffect(() => { onEditingChange?.(editing); }, [editing, onEditingChange]);
+
+  // Notify parent once if we have a server-provided local edit
   useEffect(() => {
-    if (!hasLocalEdit) {
-      setValue(initialDescription);
+    if (serverLocalEdit && !notifiedDescRef.current) {
+      notifiedDescRef.current = true;
+      onLocalEdit(true);
     }
-  }, [initialDescription, hasLocalEdit]);
+  }, [serverLocalEdit, onLocalEdit]);
 
-  useEffect(() => {
-    async function loadLocalEdit() {
+  // Auto-save draft on change (debounced)
+  const autoSaveDraft = useCallback((content: string) => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/tickets/${ticketKey}/local-edits`);
-        if (res.ok) {
-          const data = await res.json();
-          const descEdit = data.find?.((e: { field: string }) => e.field === "description");
-          if (descEdit) {
-            let localValue: string = descEdit.localValue;
-            // Resolve attachment placeholders using the synced attachment list
-            if (attachments && attachments.length > 0) {
-              const filenameToId = new Map(attachments.map((a) => [a.filename, a.id]));
-              localValue = localValue.replace(
-                /!\[([^\]]*)\]\(attachment[^)]*\)/g,
-                (_match: string, alt: string) => {
-                  const id = filenameToId.get(alt);
-                  return id ? `![${alt}](/api/attachments/${id})` : `![${alt}](attachment)`;
-                },
-              );
-            }
-            // Restore images that were stripped by TipTap before Image extension support was added.
-            // If initialDescription has resolved images but the local edit has none, re-append them.
-            const resolvedImageRe = /!\[[^\]]*\]\(\/api\/attachments\/[^)]+\)/;
-            const hasImages = (text: string) => resolvedImageRe.test(text);
-            if (hasImages(initialDescription) && !hasImages(localValue)) {
-              const imageLines = initialDescription
-                .split("\n")
-                .filter((line) => /^!\[[^\]]*\]\(\/api\/attachments\/[^)]+\)$/.test(line.trim()));
-              if (imageLines.length > 0) {
-                localValue = localValue.trimEnd() + "\n\n" + imageLines.join("\n");
-              }
-            }
-            setValue(localValue);
-            setHasLocalEdit(true);
-            onLocalEdit(true);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load local description edit:", err);
+        await fetch(`/api/tickets/${ticketKey}/local-edits`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field: "description", localValue: content.trim(), isDraft: true }),
+        });
+      } catch { /* ignore */ }
+    }, 800);
+  }, [ticketKey]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
+
+  // beforeunload: flush pending draft save synchronously
+  useEffect(() => {
+    function handleBeforeUnload() {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        // Use sendBeacon for a last-chance save
+        const body = JSON.stringify({ field: "description", localValue: value.trim(), isDraft: true });
+        navigator.sendBeacon(`/api/tickets/${ticketKey}/local-edits`, new Blob([body], { type: "application/json" }));
       }
     }
-    loadLocalEdit();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketKey, onLocalEdit]);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [ticketKey, value]);
+
+  const handleChange = useCallback((newValue: string) => {
+    setLocalValue(newValue);
+    if (newValue.trim() !== initialDescription.trim()) {
+      setEditIsDraft(true);
+      onLocalEdit(true);
+      autoSaveDraft(newValue);
+    }
+  }, [initialDescription, onLocalEdit, autoSaveDraft]);
+
+  const saveLocal = useCallback(async () => {
+    if (value.trim() === initialDescription.trim()) {
+      setLocalValue(null);
+      setEditIsDraft(false);
+      onLocalEdit(false);
+      // Clean up any draft
+      await fetch(`/api/tickets/${ticketKey}/local-edits?draftsOnly=true`, { method: "DELETE" });
+      return;
+    }
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    await fetch(`/api/tickets/${ticketKey}/local-edits`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ field: "description", localValue: value.trim() }),
+    });
+    setLocalValue(value.trim());
+    setEditIsDraft(false);
+    onLocalEdit(true);
+  }, [ticketKey, value, initialDescription, onLocalEdit]);
 
   const save = useCallback(async () => {
     setEditing(false);
-    if (value.trim() === initialDescription.trim()) {
-      setHasLocalEdit(false);
-      onLocalEdit(false);
-      return;
-    }
     try {
-      await fetch(`/api/tickets/${ticketKey}/local-edits`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: "description", localValue: value.trim() }),
-      });
-      setHasLocalEdit(true);
-      onLocalEdit(true);
+      await saveLocal();
     } catch (err) {
       console.error("Operation failed:", err);
     }
-  }, [ticketKey, value, initialDescription, onLocalEdit]);
+  }, [saveLocal]);
 
-  const handlePush = useCallback(async () => {
-    setPushing(true);
-    try {
-      const res = await fetch(`/api/tickets/${ticketKey}/push-to-jira`, { method: "POST" });
-      const data = await res.json();
-      if (data.conflict) {
-        if (onRemoteChanged) {
-          onRemoteChanged(data.contentChanged ?? true);
-        } else {
-          setPushError("Conflict: Jira was updated since your edit. Refresh the page to see the diff.");
-        }
-      } else if (data.success) {
-        setHasLocalEdit(false);
-        onLocalEdit(false);
-        setPushError(null);
-        setOverrideConfirmed(false);
-        onPushSuccess?.();
-      } else {
-        setPushError(data.error ?? "Push failed");
-      }
-    } catch {
-      setPushError("Failed to push to Jira");
-    } finally {
-      setPushing(false);
+  const handleDiscard = useCallback(() => {
+    setEditing(false);
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    if (hasLocalEdit || value.trim() !== initialDescription.trim()) {
+      onDiscard?.();
     }
-  }, [ticketKey, onRemoteChanged, onLocalEdit, onPushSuccess]);
+  }, [hasLocalEdit, value, initialDescription, onDiscard]);
+
+  const handlePushToJira = useCallback(async () => {
+    try {
+      await saveLocal();
+    } catch (err) {
+      console.error("Failed to save before push:", err);
+      return;
+    }
+    await onPushToJira?.();
+  }, [saveLocal, onPushToJira]);
 
   useEffect(() => {
     if (!editing) return;
@@ -275,32 +318,50 @@ export function EditableDescription({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [editing]);
 
+  const isDirtyOrLocal = hasLocalEdit || value.trim() !== initialDescription.trim();
+  const showPush = isDirtyOrLocal && !!onPushToJira;
+
   return (
-    <div className="mt-6">
-      {/* Header bar */}
-      <div className="flex items-center gap-2 border-b border-white/[0.06] pb-2">
-        <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">Description</h3>
-        {hasLocalEdit && !editing && (
-          <button
-            type="button"
-            onClick={onViewDiff}
-            className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            style={{ transition: "background-color 0.15s ease" }}
-            title="View diff in History tab"
-          >
-            Locally modified
-          </button>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          {/* Push to Jira (when local edits exist and not editing) */}
-          {hasLocalEdit && !editing && (
-            <>
-              {hasConflict && (
+    <div className={editing ? "mt-0" : "mt-6"}>
+      {/* Draft indicator badge */}
+      {!editing && hasLocalEdit && editIsDraft && (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-[#4a90d9]/20 bg-[#4a90d9]/[0.06] px-2.5 py-1 text-xs font-medium text-[#4a90d9]/80">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#4a90d9]/70" />
+            Unsaved changes
+          </span>
+        </div>
+      )}
+      {!editing && hasLocalEdit && !editIsDraft && (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)]">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]/70" />
+            Local edits
+          </span>
+        </div>
+      )}
+
+      {/* Content */}
+      {editing ? (
+        <RichEditor
+          value={value}
+          onChange={handleChange}
+          onSave={save}
+          placeholder="Write a description..."
+          minHeight={300}
+          stickyToolbar
+          fullWidthToolbar
+          actions={
+            <div className="flex items-center gap-1">
+              {pushError && (
+                <span className="text-[11px] text-[#e5534b]">{pushError}</span>
+              )}
+              {showConflictWarning && (
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={overrideConfirmed}
-                    onChange={(e) => setOverrideConfirmed(e.target.checked)}
+                    onChange={(e) => onOverrideChange?.(e.target.checked)}
                     className="h-3 w-3 rounded border-white/20 bg-white/[0.03] accent-[var(--color-brand-500)] cursor-pointer"
                   />
                   <span className="text-[10px] text-white/40">Override remote</span>
@@ -308,70 +369,87 @@ export function EditableDescription({
               )}
               <button
                 type="button"
-                disabled={pushing || (hasConflict && !overrideConfirmed)}
-                title={hasConflict && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
-                onClick={handlePush}
-                className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 py-1 text-[11px] font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={handleDiscard}
+                className="cursor-pointer flex items-center rounded h-7 px-2 text-[12px] font-medium text-white/35 hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+                style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
               >
-                <CloudUpload size={12} strokeWidth={1.5} />
-                {pushing ? "Pushing..." : "Push to Jira"}
-              </button>
-            </>
-          )}
-          {/* Edit mode: Save / Cancel */}
-          {editing && (
-            <>
-              <button
-                type="button"
-                onClick={() => { setEditing(false); }}
-                className="rounded-md px-3 py-1 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              >
-                Cancel
+                Discard
               </button>
               <button
                 type="button"
                 onClick={save}
-                className="rounded-md bg-[var(--color-brand-600)] px-3 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="cursor-pointer flex items-center rounded h-7 bg-white/[0.08] px-2.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.12] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
               >
                 Save
               </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Push error */}
-      {pushError && (
-        <p className="mt-1.5 text-xs text-[#e5534b]">{pushError}</p>
-      )}
-
-      {/* Content */}
-      {editing ? (
-        <div className="mt-3">
-          <RichEditor
-            value={value}
-            onChange={setValue}
-            placeholder="Write a description..."
-            minHeight={300}
-          />
-        </div>
+              {showPush && (
+                <button
+                  type="button"
+                  disabled={isPushing || (showConflictWarning && !overrideConfirmed)}
+                  title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
+                  onClick={handlePushToJira}
+                  className="cursor-pointer flex items-center gap-1 rounded h-7 bg-[var(--color-brand-600)] px-2.5 text-[12px] font-medium text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.15)]"
+                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                >
+                  {isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
+                  {isPushing ? "Pushing..." : "Push to Jira"}
+                </button>
+              )}
+            </div>
+          }
+        />
       ) : (
         <div
-          className="description-content group relative mt-3 cursor-pointer"
-          onClick={() => setEditing(true)}
+          className="description-content cursor-pointer"
+          onClick={(e) => {
+            if (window.getSelection()?.toString()) return;
+            if ((e.target as HTMLElement).closest("summary, a, button")) return;
+            setEditing(true);
+          }}
           title="Click to edit"
         >
           {renderMarkdown(value)}
-          <span className="pointer-events-none absolute -top-1 -right-1 rounded p-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/30">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </span>
         </div>
       )}
     </div>
   );
+}
+
+/** Resolve attachment placeholders in a local edit value. */
+function resolveLocalValue(
+  localValue: string | undefined,
+  initialDescription: string,
+  attachments?: Attachment[],
+): string | undefined {
+  if (!localValue) return undefined;
+
+  let resolved = localValue;
+
+  if (attachments && attachments.length > 0) {
+    const filenameToId = new Map(attachments.map((a) => [a.filename, a.id]));
+    resolved = resolved.replace(
+      /!\[([^\]]*)\]\(attachment[^)]*\)/g,
+      (_match: string, alt: string) => {
+        const id = filenameToId.get(alt);
+        return id ? `![${alt}](/api/attachments/${id})` : `![${alt}](attachment)`;
+      },
+    );
+  }
+
+  // Restore images that were stripped by TipTap
+  const resolvedImageRe = /!\[[^\]]*\]\(\/api\/attachments\/[^)]+\)/;
+  const hasImages = (text: string) => resolvedImageRe.test(text);
+  if (hasImages(initialDescription) && !hasImages(resolved)) {
+    const imageLines = initialDescription
+      .split("\n")
+      .filter((line) => /^!\[[^\]]*\]\(\/api\/attachments\/[^)]+\)$/.test(line.trim()));
+    if (imageLines.length > 0) {
+      resolved = resolved.trimEnd() + "\n\n" + imageLines.join("\n");
+    }
+  }
+
+  return resolved;
 }
 
 // ---------------------------------------------------------------------------

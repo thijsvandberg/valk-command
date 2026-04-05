@@ -82,6 +82,15 @@ export function useTicketVersions(ticketKey: string | null) {
   );
 }
 
+// Fetches only version metadata to get the count without loading full content
+export function useTicketVersionCount(ticketKey: string | null) {
+  return useSWR<unknown[]>(
+    ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/versions?metaOnly=true` : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
+  );
+}
+
 // Fetches comments (PO + Jira) for a ticket
 export function useTicketComments(ticketKey: string | null) {
   return useSWR(

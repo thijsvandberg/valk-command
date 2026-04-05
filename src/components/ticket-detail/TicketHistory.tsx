@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { ChevronRight, Save, Info, CloudUpload } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
+import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 
 function parseVersionDate(iso: string): number {
   const raw = iso.endsWith("Z") ? iso : `${iso}Z`;
@@ -34,15 +35,27 @@ function formatVersionDateShort(iso: string): string {
   });
 }
 
-function versionSourceTag(v: StoryVersion): string {
-  if (v.label === "draft") return "Draft";
-  if (v.label === "ai-draft") return "AI";
-  if (v.label === "current") return "Jira";
-  return "Jira";
-}
+function storyVersionToOption(v: StoryVersion): VersionOption {
+  const tag: VersionOption["tag"] =
+    v.label === "draft" ? "draft" :
+    v.label === "ai-draft" ? "ai-draft" :
+    v.label === "current" ? "current" : "jira";
 
-function versionLabel(v: StoryVersion): string {
-  return `v${v.versionNumber} (${versionSourceTag(v)})`;
+  const title =
+    v.label === "draft" ? "Local draft" :
+    v.label === "ai-draft" ? `AI Draft` :
+    `Version ${v.versionNumber}`;
+
+  return {
+    id: String(v.versionNumber),
+    label: `v${v.versionNumber}`,
+    versionNum: v.versionNumber,
+    title,
+    author: v.updatedBy,
+    avatarUrl: v.updatedByAvatar,
+    isoDate: v.date,
+    tag,
+  };
 }
 
 export interface TicketHistoryProps {
@@ -55,11 +68,14 @@ export interface TicketHistoryProps {
   onConflictResolved?: (action: "keep" | "discard") => void;
   /** When changed, resets the diff view back to the version list */
   resetKey?: number;
+  /** Called once versions finish loading, with the total count */
+  onVersionsLoaded?: (count: number) => void;
 }
 
-export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey }: TicketHistoryProps) {
+export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingContent, setLoadingContent] = useState(false);
 
   const [compareOld, setCompareOld] = useState<number | null>(null);
   const [compareNew, setCompareNew] = useState<number | null>(null);
@@ -81,9 +97,9 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     let cancelled = false;
 
     Promise.all([
-      fetch(`/api/tickets/${ticket.key}/versions`).then((r) => r.ok ? r.json() : []),
+      fetch(`/api/tickets/${ticket.key}/versions?metaOnly=true`).then((r) => r.ok ? r.json() : []),
       fetch(`/api/tickets/${ticket.key}/local-edits`).then((r) => r.ok ? r.json() : []),
-      fetch(`/api/tickets/${ticket.key}/story-writer`).then((r) => r.ok ? r.json() : { aiDrafts: [] }),
+      fetch(`/api/tickets/${ticket.key}/story-writer?draftsOnly=true`).then((r) => r.ok ? r.json() : { aiDrafts: [] }),
     ])
       .then(([versionData, editData, writerData]) => {
         if (cancelled) return;
@@ -93,10 +109,12 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
           const count = versionData.length;
           versionData.forEach((v: Record<string, unknown>, idx: number) => {
             versions.push({
+              id: (v.id as string) || undefined,
               versionNumber: 0,
               date: (v.createdAt as string) || new Date().toISOString(),
               contentHash: (v.contentHash as string) || "",
-              content: (v.description as string) || "",
+              // content is empty until the user opens the diff (lazy-loaded per version)
+              content: "",
               updatedBy: (v.updatedBy as string) ?? null,
               updatedByAvatar: (v.updatedByAvatar as string) ?? null,
               label: idx === count - 1 ? "current" : undefined,
@@ -140,6 +158,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
         versions.forEach((v, idx) => { v.versionNumber = idx + 1; });
 
         setTicketVersions(versions);
+        onVersionsLoaded?.(versions.length);
       })
       .catch((err) => {
         console.error("Failed to load versions:", err);
@@ -159,6 +178,38 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const jiraCurrent = sorted.find((v) => v.label === "current");
   const isDraftOutdated = !!(draft && jiraCurrent &&
     parseVersionDate(draft.date) < parseVersionDate(jiraCurrent.date));
+
+  // Lazy-load full content for Jira versions when the diff view is opened
+  useEffect(() => {
+    if (!showingDiff || compareOld === null || compareNew === null) return;
+
+    const needed = ticketVersions.filter(
+      (v) => v.id && !v.content && (v.versionNumber === compareOld || v.versionNumber === compareNew),
+    );
+    if (needed.length === 0) return;
+
+    let cancelled = false;
+    setLoadingContent(true);
+
+    Promise.all(
+      needed.map((v) =>
+        fetch(`/api/tickets/${ticket.key}/versions/${v.id}`).then((r) => r.ok ? r.json() : null),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const byId = new Map(results.filter(Boolean).map((r: Record<string, unknown>) => [r.id, r]));
+      setTicketVersions((prev) =>
+        prev.map((v) => {
+          const loaded = v.id ? byId.get(v.id) : undefined;
+          return loaded ? { ...v, content: (loaded.description as string) || "" } : v;
+        }),
+      );
+    }).finally(() => {
+      if (!cancelled) setLoadingContent(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [showingDiff, compareOld, compareNew, ticket.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize defaults once versions load
   useEffect(() => {
@@ -290,7 +341,14 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     }
   }, [ticket.key, onConflictResolved]);
 
-  const selectStyle = "rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/70 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none";
+  const oldOptions = useMemo(
+    () => sorted.filter((v) => v.versionNumber !== compareNew).map(storyVersionToOption),
+    [sorted, compareNew],
+  );
+  const newOptions = useMemo(
+    () => sorted.filter((v) => v.versionNumber !== compareOld).map(storyVersionToOption),
+    [sorted, compareOld],
+  );
 
   if (loading) {
     return (
@@ -323,33 +381,17 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
 
   const compareBar = (
     <div className="flex items-center gap-2">
-      <select
-        value={compareOld ?? ""}
-        onChange={(e) => handleOldChange(Number(e.target.value))}
-        className={selectStyle}
-      >
-        {sorted
-          .filter((v) => v.versionNumber !== compareNew)
-          .map((v) => (
-            <option key={v.versionNumber} value={v.versionNumber}>
-              v{v.versionNumber} ({versionSourceTag(v)}) - {formatVersionDateShort(v.date)}
-            </option>
-          ))}
-      </select>
-      <span className="text-xs text-white/20">vs</span>
-      <select
-        value={compareNew ?? ""}
-        onChange={(e) => handleNewChange(Number(e.target.value))}
-        className={selectStyle}
-      >
-        {sorted
-          .filter((v) => v.versionNumber !== compareOld)
-          .map((v) => (
-            <option key={v.versionNumber} value={v.versionNumber}>
-              v{v.versionNumber} ({versionSourceTag(v)}) - {formatVersionDateShort(v.date)}
-            </option>
-          ))}
-      </select>
+      <VersionPicker
+        options={oldOptions}
+        selectedId={compareOld !== null ? String(compareOld) : ""}
+        onSelect={(id) => handleOldChange(Number(id))}
+      />
+      <span className="shrink-0 text-xs text-white/25">vs</span>
+      <VersionPicker
+        options={newOptions}
+        selectedId={compareNew !== null ? String(compareNew) : ""}
+        onSelect={(id) => handleNewChange(Number(id))}
+      />
     </div>
   );
 
@@ -412,85 +454,96 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
             </div>
           )}
 
-          <StoryDiff
-            oldText={compareOldVersion.content}
-            newText={compareNewVersion.content}
-            mode="unified"
-            interactive
-            onResultChange={setMergeResult}
-            onStatsComputed={setDiffStats}
-          />
-
-          {/* Save bar */}
-          {mergeResult !== null && (
-            <div className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-600)]/[0.06] px-4 py-3">
-              <span className="text-xs text-white/50">Save the merged result as a local edit</span>
-              <button
-                type="button"
-                disabled={savingMerge}
-                onClick={handleSaveMerge}
-                className="ml-auto flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-              >
-                <Save size={13} strokeWidth={1.5} />
-                {savingMerge ? "Saving..." : "Save as local edit"}
-              </button>
+          {loadingContent ? (
+            <div className="mt-3 space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-4 animate-pulse rounded bg-white/[0.04]" style={{ width: `${70 + i * 8}%` }} />
+              ))}
             </div>
+          ) : (
+            <StoryDiff
+              oldText={compareOldVersion.content}
+              newText={compareNewVersion.content}
+              mode="unified"
+              interactive
+              onResultChange={setMergeResult}
+              onStatsComputed={setDiffStats}
+            />
           )}
 
-          {/* Action bar: context-dependent on what's being compared */}
+          {/* Sticky combined action footer */}
           {(() => {
             const draftInvolved =
               compareOldVersion?.label === "draft" || compareNewVersion?.label === "draft";
             const currentJiraInvolved =
               compareOldVersion?.label === "current" || compareNewVersion?.label === "current";
+            const showConflictActions = draftInvolved && currentJiraInvolved;
+            const showRevertActions = !draftInvolved && !!compareOldVersion && !!compareNewVersion;
 
-            // Draft vs current Jira: accept remote or overwrite with local
-            if (draftInvolved && currentJiraInvolved) {
-              return (
-                <div className="mt-4 flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-                  <button
-                    type="button"
-                    disabled={resolving}
-                    onClick={handleDiscardLocal}
-                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-                  >
-                    {resolving ? "Accepting..." : "Accept Jira version"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={resolving}
-                    onClick={metadataOnlyConflict ? handleForcePush : handleKeepAndPush}
-                    className="rounded-md border border-red-500/20 bg-red-500/[0.08] px-3 py-1.5 text-xs font-medium text-red-400 cursor-pointer hover:bg-red-500/[0.15] hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-                  >
-                    {resolving ? "Pushing..." : "Overwrite Jira with your draft"}
-                  </button>
-                </div>
-              );
-            }
+            if (!mergeResult && !showConflictActions && !showRevertActions) return null;
 
-            // Two Jira versions (no draft involved): offer revert to the older one
-            if (!draftInvolved && compareOldVersion && compareNewVersion) {
-              return (
-                <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+            return (
+              <div
+                className="sticky bottom-0 mt-4 flex items-center gap-4 border-t border-white/[0.06] bg-[var(--color-surface-base)]/95 px-0 py-4 backdrop-blur-sm"
+                style={{ boxShadow: "0 -8px 24px rgba(0,0,0,0.20)" }}
+              >
+                {showConflictActions && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={resolving}
+                      onClick={handleDiscardLocal}
+                      className="rounded-md border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                    >
+                      {resolving ? "Accepting..." : "Accept Jira version"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resolving}
+                      onClick={metadataOnlyConflict ? handleForcePush : handleKeepAndPush}
+                      className="rounded-md border border-red-500/20 bg-red-500/[0.08] px-4 py-2 text-xs font-medium text-red-400 cursor-pointer hover:bg-red-500/[0.15] hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                    >
+                      {resolving ? "Pushing..." : "Overwrite Jira with your draft"}
+                    </button>
+                  </>
+                )}
+                {showRevertActions && (
                   <span className="text-xs text-white/40">Revert:</span>
+                )}
+
+                {mergeResult !== null && !showConflictActions && (
+                  <span className="text-xs text-white/50">Apply merge selections as local edit</span>
+                )}
+
+                <div className="flex-1" />
+
+                {mergeResult !== null && (
+                  <button
+                    type="button"
+                    disabled={savingMerge}
+                    onClick={handleSaveMerge}
+                    className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                  >
+                    <Save size={13} strokeWidth={1.5} />
+                    {savingMerge ? "Applying..." : "Apply merge"}
+                  </button>
+                )}
+                {showRevertActions && compareOldVersion && (
                   <button
                     type="button"
                     disabled={resolving}
                     onClick={() => handleRevertTo(compareOldVersion)}
-                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
                   >
-                    {resolving ? "Reverting..." : `Revert to ${versionLabel(compareOldVersion)}`}
+                    {resolving ? "Reverting..." : `Revert to v${compareOldVersion.versionNumber}`}
                   </button>
-                </div>
-              );
-            }
-
-            // Draft vs older Jira version: just browsing, no actions
-            return null;
+                )}
+              </div>
+            );
           })()}
         </>
       ) : (

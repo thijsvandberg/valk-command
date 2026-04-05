@@ -63,7 +63,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     "/api/activity-log?limit=20",
     fetcher,
     {
-      refreshInterval: 10000,
+      // Poll faster when jobs are running, slower when idle
+      refreshInterval: (data) => {
+        const hasRunning = data?.some((e) => e.status === "running");
+        return hasRunning ? 5000 : 30000;
+      },
       revalidateOnFocus: true,
       onSuccess: (data) => {
         if (!initialized) {

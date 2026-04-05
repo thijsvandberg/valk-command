@@ -11,7 +11,6 @@ import {
   SlidersHorizontal,
   Clock,
   Users,
-  FileText,
   Menu,
   X,
   ChevronLeft,
@@ -54,11 +53,6 @@ const navItems = [
     href: "/stakeholder",
     icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
   },
-  {
-    label: "Changelog",
-    href: "/changelog",
-    icon: <FileText className="h-5 w-5" strokeWidth={1.5} />,
-  },
 ];
 
 const STORAGE_KEY = "sidebar-collapsed";
@@ -100,6 +94,7 @@ export default function Sidebar() {
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
+    if (href === "/sprint-board") return pathname.startsWith("/sprint-board") || pathname.startsWith("/tickets/");
     return pathname.startsWith(href);
   }
 
@@ -127,7 +122,7 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         data-testid="sidebar"
-        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-white/[0.06] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-white/[0.06] lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 lg:overflow-visible ${
           collapsed ? "w-[52px]" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
@@ -191,21 +186,19 @@ export default function Sidebar() {
           <SyncIndicator collapsed={collapsed} />
         </div>
 
-        {/* Collapse toggle (desktop only) */}
-        <div className={`hidden lg:flex ${collapsed ? "justify-center" : "px-3"} pb-4`}>
+        {/* Full-height collapse toggle strip (desktop only) */}
+        <div className="hidden lg:block absolute top-0 right-0 h-full w-px z-10">
+          <div className="absolute inset-0 bg-[var(--color-brand-600)]/25" />
           <button
             type="button"
             onClick={toggleCollapsed}
-            className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2 px-3 py-2 w-full"} rounded-lg text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]`}
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] border border-white/[0.08] text-white/30 cursor-pointer hover:text-white/70 hover:border-[var(--color-brand-500)]/50 focus-visible:outline-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <ChevronLeft
-              className={`h-4 w-4 shrink-0 ${collapsed ? "" : "rotate-180"}`}
+              className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
               strokeWidth={1.5}
             />
-            {!collapsed && (
-              <span className="text-xs font-[var(--font-body)]">Collapse</span>
-            )}
           </button>
         </div>
       </aside>

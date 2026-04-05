@@ -428,9 +428,6 @@ function HunkActionBar({
       className="flex items-center border-y"
       style={{ borderColor: st.borderColor, backgroundColor: st.bg }}
     >
-      {/* Gutter spacer to align with diff content */}
-      <div className="w-[100px] shrink-0" style={{ backgroundColor: C.gutterBg }} />
-
       <div className="flex flex-1 items-center gap-1 px-2 py-1.5">
         {decided ? (
           <>
@@ -446,7 +443,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onReset(hunkIndex)}
-              className={`${btnBase} ml-auto text-white/30 hover:bg-white/[0.06] hover:text-white/50`}
+              className={`${btnBase} text-white/30 hover:bg-white/[0.06] hover:text-white/50`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Clear decision"
             >
@@ -935,10 +932,10 @@ export function StoryDiff({
           type="button"
           onClick={() => setShowLineNumbers((v) => !v)}
           title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
-          className={`ml-auto flex items-center gap-1 rounded px-2 py-1 text-[11px] font-mono cursor-pointer transition-colors duration-150 ${
+          className={`ml-auto flex items-center gap-1 rounded px-2 py-1 text-[11px] font-mono cursor-pointer border transition-colors duration-150 ${
             showLineNumbers
-              ? "text-white/50 bg-white/[0.06]"
-              : "text-white/25 hover:text-white/45 hover:bg-white/[0.04]"
+              ? "text-white/50 bg-white/[0.08] border-white/[0.18]"
+              : "text-white/30 border-white/[0.08] hover:text-white/50 hover:border-white/[0.15] hover:bg-white/[0.04]"
           }`}
         >
           #

@@ -98,7 +98,7 @@ export interface TicketDetail {
   jiraComments: JiraComment[];
 }
 
-export type TicketEditState = "clean" | "local_edits" | "conflict";
+export type TicketEditState = "clean" | "draft" | "local_edits" | "conflict";
 
 export interface Ticket {
   key: string;
@@ -126,6 +126,7 @@ export interface Sprint {
 }
 
 export interface StoryVersion {
+  id?: string;
   versionNumber: number;
   date: string;
   contentHash: string;

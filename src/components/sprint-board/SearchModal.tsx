@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, ExternalLink, PanelRight, PanelRightClose, IterationCw, Zap } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { FuseResultMatch } from "fuse.js";
+import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import type { LocalSearchResult } from "@/app/api/search/local/route";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -209,44 +208,8 @@ function PreviewPane({
 
       {/* Description — plain, no card, divider above */}
       {result.description ? (
-        <div
-          className="border-t border-white/[0.06] pt-3 text-[12px] leading-relaxed"
-        >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0 text-white/50">{children}</p>,
-              h1: ({ children }) => <h1 className="mb-1 text-[13px] font-semibold text-white/70">{children}</h1>,
-              h2: ({ children }) => <h2 className="mb-1 text-[12px] font-semibold text-white/65">{children}</h2>,
-              h3: ({ children }) => <h3 className="mb-1 text-[12px] font-medium text-white/60">{children}</h3>,
-              ul: ({ children }) => <ul className="mb-2 list-disc pl-4 text-white/50">{children}</ul>,
-              ol: ({ children }) => <ol className="mb-2 list-decimal pl-4 text-white/50">{children}</ol>,
-              li: ({ children }) => <li className="mb-0.5">{children}</li>,
-              code: ({ children }) => (
-                <code
-                  className="rounded px-1 py-0.5 font-mono text-[11px]"
-                  style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "#a5b4fc" }}
-                >
-                  {children}
-                </code>
-              ),
-              strong: ({ children }) => <strong className="font-semibold text-white/70">{children}</strong>,
-              em: ({ children }) => <em className="italic text-white/45">{children}</em>,
-              a: ({ href, children }) => (
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2"
-                  style={{ color: "var(--color-brand-400)", transition: "color 120ms" }}
-                >
-                  {children}
-                </a>
-              ),
-            }}
-          >
-            {result.description}
-          </ReactMarkdown>
+        <div className="description-content border-t border-white/[0.06] pt-3" style={{ zoom: 0.8 }}>
+          {renderMarkdown(result.description)}
         </div>
       ) : (
         <p className="text-[12px] text-white/20 italic">No description</p>

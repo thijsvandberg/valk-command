@@ -16,6 +16,12 @@
   outline: none;
 }
 
+/* When the editor is used full-width (no card border), align text with the surrounding page padding */
+.rich-editor-wrapper--no-x-pad .tiptap {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .rich-editor-wrapper .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
@@ -31,7 +37,7 @@
   font-weight: 700;
   letter-spacing: -0.04em;
   color: rgba(255, 255, 255, 0.95);
-  margin: 2rem 0 1rem;
+  margin: 1rem 0 0.5rem;
 }
 
 .description-content h2,
@@ -41,7 +47,7 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   color: rgba(255, 255, 255, 0.95);
-  margin: 1.5rem 0 0.75rem;
+  margin: 0.75rem 0 0.375rem;
 }
 
 .description-content h3,
@@ -51,7 +57,7 @@
   font-weight: 600;
   letter-spacing: -0.02em;
   color: rgba(255, 255, 255, 0.92);
-  margin: 1.25rem 0 0.5rem;
+  margin: 0.625rem 0 0.25rem;
 }
 
 .description-content h4,
@@ -61,7 +67,7 @@
   font-weight: 600;
   letter-spacing: -0.01em;
   color: rgba(255, 255, 255, 0.88);
-  margin: 1rem 0 0.5rem;
+  margin: 0.5rem 0 0.25rem;
 }
 
 /* Paragraphs */
@@ -189,8 +195,8 @@
 .description-content hr,
 .rich-editor-wrapper .tiptap hr {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin: 1.5rem 0;
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+  margin: 0.75rem 0;
 }
 
 /* Callout blocks */
@@ -244,6 +250,206 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   display: block;
   margin: 0.75rem 0;
+}
+
+/* Expand block NodeView */
+.rich-editor-wrapper .tiptap .expand-block {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  margin: 0.75rem 0;
+  overflow: hidden;
+}
+
+.rich-editor-wrapper .tiptap .expand-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  user-select: none;
+}
+
+.rich-editor-wrapper .tiptap .expand-chevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.rich-editor-wrapper .tiptap .expand-title-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: text;
+  user-select: text;
+  min-width: 0;
+}
+
+.rich-editor-wrapper .tiptap .expand-title-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.rich-editor-wrapper .tiptap .expand-title-input:focus {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rich-editor-wrapper .tiptap .expand-content {
+  padding: 0.75rem 1rem;
+}
+
+/* Tables in TipTap editor */
+.rich-editor-wrapper .tiptap .tableWrapper {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.rich-editor-wrapper .tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.rich-editor-wrapper .tiptap th,
+.rich-editor-wrapper .tiptap td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  min-width: 80px;
+}
+
+.rich-editor-wrapper .tiptap th {
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.rich-editor-wrapper .tiptap td {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.rich-editor-wrapper .tiptap .selectedCell {
+  background: rgba(46, 145, 73, 0.08);
+}
+
+.rich-editor-wrapper .tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--color-brand-500);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.rich-editor-wrapper .tiptap .tableWrapper:hover .column-resize-handle {
+  opacity: 0.3;
+}
+
+/* ---- Prism syntax highlighting (scoped to renderMarkdown code cells) ---- */
+
+.rm-code-content .token.comment,
+.rm-code-content .token.prolog,
+.rm-code-content .token.doctype,
+.rm-code-content .token.cdata {
+  color: #6a9955;
+  font-style: italic;
+}
+
+.rm-code-content .token.string,
+.rm-code-content .token.char,
+.rm-code-content .token.attr-value,
+.rm-code-content .token.template-string {
+  color: #ce9178;
+}
+
+.rm-code-content .token.keyword,
+.rm-code-content .token.control,
+.rm-code-content .token.directive {
+  color: #569cd6;
+}
+
+.rm-code-content .token.number,
+.rm-code-content .token.boolean,
+.rm-code-content .token.constant {
+  color: #b5cea8;
+}
+
+.rm-code-content .token.function,
+.rm-code-content .token.function-name {
+  color: #dcdcaa;
+}
+
+.rm-code-content .token.class-name,
+.rm-code-content .token.type-definition {
+  color: #4ec9b0;
+}
+
+.rm-code-content .token.property,
+.rm-code-content .token.property-access {
+  color: #9cdcfe;
+}
+
+.rm-code-content .token.tag,
+.rm-code-content .token.selector {
+  color: #4ec9b0;
+}
+
+.rm-code-content .token.attr-name {
+  color: #9cdcfe;
+}
+
+.rm-code-content .token.operator,
+.rm-code-content .token.entity {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rm-code-content .token.punctuation,
+.rm-code-content .token.delimiter {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.rm-code-content .token.namespace {
+  color: #4ec9b0;
+  opacity: 0.85;
+}
+
+.rm-code-content .token.regex {
+  color: #d16969;
+}
+
+.rm-code-content .token.important,
+.rm-code-content .token.variable {
+  color: #c586c0;
+}
+
+.rm-code-content .token.builtin,
+.rm-code-content .token.symbol {
+  color: #569cd6;
+}
+
+.rm-code-content .token.url {
+  color: #ce9178;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rm-code-content .token.inserted {
+  color: #b5cea8;
+  background: rgba(181, 206, 168, 0.1);
+}
+
+.rm-code-content .token.deleted {
+  color: #d16969;
+  background: rgba(209, 105, 105, 0.1);
 }
 
 /* Selection */

@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { RefreshCw, CheckCircle2, AlertTriangle, ChevronUp, Square } from "lucide-react";
 import { useActivityContext, type ActivityState } from "@/contexts/ActivityContext";
-import { useActivityStatus } from "@/hooks/useSprintBoard";
 import type { ActivityLogEntry } from "@/types/ticket";
 
 function stateIcon(state: ActivityState, errorCount: number) {
@@ -73,8 +72,8 @@ function statusDot(status: ActivityLogEntry["status"]) {
 }
 
 export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
-  const { activityState, lastEntry, unacknowledgedErrors, runningEntries, cancelEntry, cancelAllEntries } = useActivityContext();
-  const { data: recentEntries } = useActivityStatus(8);
+  const { activityState, lastEntry, unacknowledgedErrors, runningEntries, logEntries, cancelEntry, cancelAllEntries } = useActivityContext();
+  const recentEntries = logEntries.slice(0, 8);
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 

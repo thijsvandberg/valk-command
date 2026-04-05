@@ -28,9 +28,9 @@ describe("RichEditor", () => {
     expect(container.querySelector(".rich-editor-root")).toBeTruthy();
   });
 
-  it("renders mode toggle buttons", () => {
+  it("renders mode toggle button", () => {
     render(<RichEditor value="" onChange={vi.fn()} />);
-    expect(screen.getByText("Rich Text")).toBeTruthy();
+    // Default is rich mode; the toggle shows "Markdown" to switch to it
     expect(screen.getByText("Markdown")).toBeTruthy();
   });
 

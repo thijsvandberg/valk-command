@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { storyWriterSession, ticket } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { storyWriterSession, ticket, message } from "@/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 export interface ActiveSession {
   sessionId: string;
@@ -23,7 +23,13 @@ export async function GET() {
       updatedAt: storyWriterSession.updatedAt,
     })
     .from(storyWriterSession)
-    .where(eq(storyWriterSession.status, "active"))
+    .where(
+      and(
+        eq(storyWriterSession.status, "active"),
+        // Only sessions where the user has actually sent at least one message
+        sql`EXISTS (SELECT 1 FROM ${message} WHERE ${message.conversationId} = ${storyWriterSession.conversationId})`,
+      ),
+    )
     .all();
 
   if (sessions.length === 0) {
@@ -31,7 +37,6 @@ export async function GET() {
   }
 
   // Enrich with ticket title + sprint name from local DB
-  const ticketKeys = sessions.map((s) => s.ticketKey);
   const tickets = await db.select().from(ticket).all();
   const ticketMap = new Map(tickets.map((t) => [t.jiraKey, t]));
 

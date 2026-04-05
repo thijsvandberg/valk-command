@@ -98,7 +98,7 @@ describe("PUT /api/sprint-slots", () => {
   });
 
   it("returns 400 when slotIndex is out of range", async () => {
-    const slots = [{ slotIndex: 5, sprintId: "s134", sprintName: "BT: 134" }];
+    const slots = [{ slotIndex: 8, sprintId: "s134", sprintName: "BT: 134" }];
     const response = await PUT(putRequest(slots));
     expect(response.status).toBe(400);
   });

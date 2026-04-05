@@ -48,7 +48,9 @@ export const ticket = sqliteTable("ticket", {
   jiraCreatedAt: text("jira_created_at"),
   jiraUpdatedAt: text("jira_updated_at"),
   lastSyncedAt: text("last_synced_at"),
-});
+}, (table) => [
+  index("ticket_sprint_name_idx").on(table.sprintName),
+]);
 
 export const ticketMetadata = sqliteTable("ticket_metadata", {
   jiraKey: text("jira_key")
@@ -170,6 +172,7 @@ export const ticketLocalEdit = sqliteTable("ticket_local_edit", {
   field: text("field", { enum: ["title", "description"] }).notNull(),
   localValue: text("local_value").notNull(),
   baseJiraVersion: text("base_jira_version"),
+  isDraft: integer("is_draft", { mode: "boolean" }).notNull().default(false),
   modifiedAt: text("modified_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -315,6 +318,8 @@ export const storyWriterSession = sqliteTable("story_writer_session", {
   }).notNull().default("active"),
   localDraft: text("local_draft"),
   baseVersionHash: text("base_version_hash"),
+  targetTicketKey: text("target_ticket_key"),
+  targetLocalDraft: text("target_local_draft"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -336,6 +341,9 @@ export const storyWriterDraft = sqliteTable("story_writer_draft", {
   content: text("content").notNull(),
   messageId: text("message_id")
     .references(() => message.id, { onDelete: "set null" }),
+  storySlot: text("story_slot", { enum: ["original", "target"] })
+    .notNull()
+    .default("original"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -343,6 +351,26 @@ export const storyWriterDraft = sqliteTable("story_writer_draft", {
   index("story_writer_draft_session_id_idx").on(table.sessionId),
 ]);
 
+// Full execution log for a story writer task: prompt, tool calls, responses
+export const storyWriterExecutionLog = sqliteTable("story_writer_execution_log", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => storyWriterSession.id, { onDelete: "cascade" }),
+  taskId: text("task_id").notNull(),
+  conversationId: text("conversation_id").notNull(),
+  ticketKey: text("ticket_key").notNull(),
+  // JSON array of RawLogEntry from valk-remote-workspace
+  log: text("log").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("story_writer_execution_log_session_id_idx").on(table.sessionId),
+  index("story_writer_execution_log_task_id_idx").on(table.taskId),
+]);
+
 export type StoryWriterSessionRow = typeof storyWriterSession.$inferSelect;
 export type NewStoryWriterSessionRow = typeof storyWriterSession.$inferInsert;
 export type StoryWriterDraftRow = typeof storyWriterDraft.$inferSelect;
+export type StoryWriterExecutionLogRow = typeof storyWriterExecutionLog.$inferSelect;

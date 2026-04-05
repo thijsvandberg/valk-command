@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { storyWriterSession, storyWriterDraft, message } from "@/db/schema";
+import { storyWriterSession, storyWriterDraft, storyWriterExecutionLog, message } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { extractStoryDraft } from "@/lib/story-draft-parser";
+import { extractStoryDrafts } from "@/lib/story-draft-parser";
+import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -53,39 +54,98 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
   }
 
-  // Extract draft from output
-  const draftContent = extractStoryDraft(output);
+  // Extract original and optional target drafts from output
+  const { originalDraft, targetDraft } = extractStoryDrafts(output);
 
-  if (!draftContent) {
+  if (!originalDraft && !targetDraft) {
     return NextResponse.json({
-      draftId: null,
-      draftIndex: null,
+      originalDraftId: null,
+      targetDraftId: null,
       hasDraft: false,
     });
   }
 
-  // Determine next draft index
+  // Determine next draft index across all slots for this session
   const maxIndex = await db
     .select({ maxIdx: sql<number>`max(${storyWriterDraft.draftIndex})` })
     .from(storyWriterDraft)
     .where(eq(storyWriterDraft.sessionId, session.id))
     .get();
 
-  const nextIndex = (maxIndex?.maxIdx ?? -1) + 1;
-  const draftId = randomUUID();
+  let nextIndex = (maxIndex?.maxIdx ?? -1) + 1;
+  let originalDraftId: string | null = null;
+  let targetDraftId: string | null = null;
 
-  await db.insert(storyWriterDraft).values({
-    id: draftId,
-    sessionId: session.id,
-    draftIndex: nextIndex,
-    content: draftContent,
-    messageId: savedMessageId,
-  });
+  if (originalDraft) {
+    originalDraftId = randomUUID();
+    await db.insert(storyWriterDraft).values({
+      id: originalDraftId,
+      sessionId: session.id,
+      draftIndex: nextIndex,
+      content: originalDraft,
+      storySlot: "original",
+      messageId: savedMessageId,
+    });
+    nextIndex += 1;
+  }
+
+  if (targetDraft) {
+    targetDraftId = randomUUID();
+    await db.insert(storyWriterDraft).values({
+      id: targetDraftId,
+      sessionId: session.id,
+      draftIndex: nextIndex,
+      content: targetDraft,
+      storySlot: "target",
+      messageId: savedMessageId,
+    });
+  }
+
+  // Fetch and store the raw execution log from the workspace
+  if (taskId) {
+    try {
+      await fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key);
+    } catch {
+      // Non-critical: log fetch failure must not affect the draft save
+    }
+  }
 
   return NextResponse.json({
-    draftId,
-    draftIndex: nextIndex,
+    originalDraftId,
+    targetDraftId,
     hasDraft: true,
+  });
+}
+
+async function fetchAndStoreExecutionLog(
+  sessionId: string,
+  taskId: string,
+  conversationId: string,
+  ticketKey: string,
+): Promise<void> {
+  const res = await fetch(agentUrl(`/api/tasks/${taskId}/log`), {
+    headers: agentHeaders(),
+  });
+  if (!res.ok) return;
+
+  const log = await res.json();
+  if (!Array.isArray(log) || log.length === 0) return;
+
+  // Deduplicate: skip if a log for this taskId already exists
+  const existing = await db
+    .select({ id: storyWriterExecutionLog.id })
+    .from(storyWriterExecutionLog)
+    .where(eq(storyWriterExecutionLog.taskId, taskId))
+    .get();
+  if (existing) return;
+
+  await db.insert(storyWriterExecutionLog).values({
+    id: randomUUID(),
+    sessionId,
+    taskId,
+    conversationId,
+    ticketKey,
+    log: JSON.stringify(log),
   });
 }
 

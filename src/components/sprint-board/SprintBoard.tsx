@@ -141,6 +141,7 @@ export default function SprintBoard() {
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [barsCollapsed, setBarsCollapsed] = useLocalStorage("sprint-bars-collapsed", false);
 
   const [compareMode, setCompareMode] = useState(false);
   const [showStoryWriterLauncher, setShowStoryWriterLauncher] = useState(false);
@@ -231,7 +232,7 @@ export default function SprintBoard() {
   const slotsInitialized = useRef(false);
 
   const activeSprint = isAllView ? null : sprints.find((s) => s.id === activeSprintId);
-  const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `Sprint Board - ${activeSprint.name}` : "Sprint Board");
+  const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
 
@@ -703,7 +704,7 @@ export default function SprintBoard() {
           </div>
         )}
 
-        {/* Sprint Slots */}
+        {/* Sprint Slots — always visible, hosts the filter toggle */}
         <SprintSlots
           slotSprints={slotSprints}
           activeSlot={activeSlot}
@@ -723,41 +724,48 @@ export default function SprintBoard() {
           ephemeralSprintId={ephemeralSprintId}
           ephemeralIsActive={ephemeralIsActive}
           onEphemeralClick={handleEphemeralClick}
+          filtersCollapsed={barsCollapsed}
+          onToggleFilters={() => setBarsCollapsed((v) => !v)}
         />
 
-        {/* Filter bar with integrated search */}
-        <div className="border-b border-white/[0.06]">
-          <FilterBar
-            statusFilter={statusFilter}
-            epicFilter={epicFilter}
-            assigneeFilter={assigneeFilter}
-            poStatusFilter={poStatusFilter}
-            onStatusFilterChange={setStatusFilter}
-            onEpicFilterChange={setEpicFilter}
-            onAssigneeFilterChange={setAssigneeFilter}
-            onPoStatusFilterChange={setPoStatusFilter}
-            statusOptions={statusOptions}
-            epicOptions={epicOptions}
-            assigneeOptions={assigneeOptions}
-            {... (isAllView ? {
-              sprintFilter,
-              onSprintFilterChange: setSprintFilter,
-              sprintOptions,
-              sprintNameMap,
-            } : {})}
-            sortField={sortField}
-            sortDir={sortDir}
-            onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
-            visibleColumns={visibleColumns}
-            onColumnToggle={handleColumnToggle}
-            noBorder
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        </div>
+        {/* Filter bar + analytics (collapsible together) */}
+        {!barsCollapsed && (
+          <>
+            {/* Filter bar with integrated search */}
+            <div className="border-b border-white/[0.06]">
+              <FilterBar
+                statusFilter={statusFilter}
+                epicFilter={epicFilter}
+                assigneeFilter={assigneeFilter}
+                poStatusFilter={poStatusFilter}
+                onStatusFilterChange={setStatusFilter}
+                onEpicFilterChange={setEpicFilter}
+                onAssigneeFilterChange={setAssigneeFilter}
+                onPoStatusFilterChange={setPoStatusFilter}
+                statusOptions={statusOptions}
+                epicOptions={epicOptions}
+                assigneeOptions={assigneeOptions}
+                {... (isAllView ? {
+                  sprintFilter,
+                  onSprintFilterChange: setSprintFilter,
+                  sprintOptions,
+                  sprintNameMap,
+                } : {})}
+                sortField={sortField}
+                sortDir={sortDir}
+                onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
+                visibleColumns={visibleColumns}
+                onColumnToggle={handleColumnToggle}
+                noBorder
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            </div>
 
-        {/* Sprint analytics */}
-        {!ticketsLoading && <SprintAnalytics tickets={allTickets} />}
+            {/* Sprint analytics */}
+            {!ticketsLoading && <SprintAnalytics tickets={allTickets} />}
+          </>
+        )}
 
         {ticketsLoading && (
           <div className="flex flex-1 items-center justify-center">

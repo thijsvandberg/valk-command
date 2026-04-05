@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
 import { SprintListModal } from "./SprintListModal";
-import { ChevronRight, List, Plus, RefreshCw } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, List, RefreshCw, LayoutGrid } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -192,10 +192,10 @@ function SortableTab({
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className={`relative flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`relative flex items-center gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
-            ? "bg-[var(--color-surface-base)] text-white border border-white/[0.08] border-b-transparent -mb-px after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-[var(--color-brand-400)] after:rounded-full"
-            : "text-white/35 hover:text-white/55 hover:bg-white/[0.02] active:bg-white/[0.04]"
+            ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
+            : "text-white/35 hover:text-white/60 active:text-white/50"
         }`}
         {...attributes}
         {...listeners}
@@ -212,8 +212,10 @@ function SortableTab({
 export function SprintSlots({
   slotSprints,
   activeSlot,
+  allActive,
   sprints,
   onSlotClick,
+  onAllClick,
   editingSlot,
   onSlotEdit,
   onSprintSelect,
@@ -223,11 +225,18 @@ export function SprintSlots({
   onSprintListSelect,
   onAddSlotWithSprint,
   onReorderSlots,
+  ephemeralSprintId = null,
+  ephemeralIsActive = false,
+  onEphemeralClick,
+  filtersCollapsed = false,
+  onToggleFilters,
 }: {
   slotSprints: string[];
   activeSlot: number;
+  allActive: boolean;
   sprints: Sprint[];
   onSlotClick: (idx: number) => void;
+  onAllClick: () => void;
   editingSlot: number | null;
   onSlotEdit: (idx: number) => void;
   onSprintSelect: (sprintId: string) => void;
@@ -237,9 +246,12 @@ export function SprintSlots({
   onSprintListSelect: (sprintId: string) => void;
   onAddSlotWithSprint: (sprintId: string) => void;
   onReorderSlots: (activeId: string, overId: string) => void;
+  ephemeralSprintId?: string | null;
+  ephemeralIsActive?: boolean;
+  onEphemeralClick?: () => void;
+  filtersCollapsed?: boolean;
+  onToggleFilters?: () => void;
 }) {
-  const [addModalOpen, setAddModalOpen] = useState(false);
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
@@ -253,7 +265,25 @@ export function SprintSlots({
   }
 
   return (
-    <div className="flex items-center gap-1 border-b border-white/[0.06] px-5 pt-4 pb-0">
+    <div className="flex h-[50px] items-stretch gap-1 border-b border-white/[0.06] px-5">
+      {/* All tab — always first, visually distinct with icon */}
+      <button
+        type="button"
+        onClick={onAllClick}
+        className={`relative flex items-center gap-1.5 px-3 py-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          allActive
+            ? "text-[var(--color-brand-400)] after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
+            : "text-white/40 hover:text-white/65"
+        }`}
+        title="Show all tickets across sprints"
+      >
+        <LayoutGrid className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+        All
+      </button>
+
+      {/* Divider between All and sprint tabs */}
+      <span className="mx-1 h-4 w-px bg-white/[0.07] self-center shrink-0" />
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -292,34 +322,31 @@ export function SprintSlots({
         </SortableContext>
       </DndContext>
 
-      {/* Add slot button - opens sprint modal */}
-      {slotSprints.length < 4 && (
-        <div className="relative ml-1">
+      {/* Ephemeral (unpinned) sprint tab */}
+      {ephemeralSprintId && (() => {
+        const eSprint = sprints.find((s) => s.id === ephemeralSprintId);
+        if (!eSprint) return null;
+        return (
           <button
             type="button"
-            onClick={() => setAddModalOpen((v) => !v)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
-            title="Pin a sprint"
+            onClick={onEphemeralClick}
+            title="Temporary view — not pinned"
+            className={`relative flex items-center gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 ${
+              ephemeralIsActive
+                ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)]/60 after:rounded-full"
+                : "text-white/30 hover:text-white/55"
+            }`}
           >
-            <Plus className="h-4 w-4" strokeWidth={1.5} />
+            {eSprint.state === "active" && (
+              <span className={`h-1.5 w-1.5 rounded-full ${ephemeralIsActive ? "bg-[var(--color-brand-400)]/60" : "bg-white/15"}`} />
+            )}
+            <span className="italic">{eSprint.name}</span>
           </button>
-          {addModalOpen && (
-            <SprintListModal
-              onClose={() => setAddModalOpen(false)}
-              onSelect={(id) => {
-                onSprintListSelect(id);
-                setAddModalOpen(false);
-              }}
-              onPin={(id) => onAddSlotWithSprint(id)}
-              pinnedIds={new Set(slotSprints)}
-              alignLeft
-            />
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Right side: sprint list + refresh */}
-      <div className="ml-auto flex items-center gap-2 pb-2.5">
+      <div className="ml-auto flex items-center gap-2">
         {/* Sprint list button */}
         <div className="relative">
           <SprintListButton
@@ -329,19 +356,36 @@ export function SprintSlots({
           />
         </div>
 
-        {/* Refresh board */}
-        <button
-          type="button"
-          disabled={syncing}
-          onClick={onRefresh}
-          className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <RefreshCw
-            className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
-            strokeWidth={1.5}
-          />
-          {syncing ? "Syncing..." : "Refresh"}
-        </button>
+        {/* Refresh board - hidden in All view since syncing all sprints at once is not practical */}
+        {!allActive && (
+          <button
+            type="button"
+            disabled={syncing}
+            onClick={onRefresh}
+            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
+              strokeWidth={1.5}
+            />
+            {syncing ? "Syncing..." : "Refresh"}
+          </button>
+        )}
+
+        {/* Toggle filter bar + analytics visibility */}
+        {onToggleFilters && (
+          <button
+            type="button"
+            onClick={onToggleFilters}
+            title={filtersCollapsed ? "Show filters" : "Hide filters"}
+            className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+          >
+            {filtersCollapsed
+              ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+              : <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+            }
+          </button>
+        )}
       </div>
     </div>
   );

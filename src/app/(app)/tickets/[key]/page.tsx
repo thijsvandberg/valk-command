@@ -9,17 +9,18 @@ import {
 } from "@/types/ticket";
 import {
   ExternalLink,
-  CloudSync,
+  CloudDownload,
+  CloudUpload,
   Flag,
   Loader2,
   AlertTriangle,
   NotebookPen,
   Zap,
-  KanbanSquare,
   IterationCw,
   Link2,
+  Trash2,
 } from "lucide-react";
-import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
@@ -82,6 +83,9 @@ export default function TicketDetailPage({
     jiraComments: apiData.jiraComments ?? [],
   } : undefined;
 
+  // Local edits are now included in the API response to avoid flicker
+  const localEdits: Record<string, { value: string; isDraft: boolean }> | undefined = apiData?.localEdits;
+
   // Auto-fetch from Jira when ticket is not in local DB
   const [jiraCheckState, setJiraCheckState] = useState<"idle" | "checking" | "not-found">("idle");
   const jiraCheckStarted = useRef(false);
@@ -114,38 +118,52 @@ export default function TicketDetailPage({
 
   const [hasLocalTitleEdit, setHasLocalTitleEdit] = useState(false);
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [isDescEditing, setIsDescEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "history" | "review" | "refinement">("content");
   const [showConflictDiff, setShowConflictDiff] = useState(false);
   const [metadataOnlyConflict, setMetadataOnlyConflict] = useState(false);
-  const [versionCount, setVersionCount] = useState(0);
   const [historyResetKey, setHistoryResetKey] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadVersionCount() {
-      try {
-        const res = await fetch(`/api/tickets/${key}/versions`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data) && data.length > 0) {
-          setVersionCount(data.length);
-        }
-      } catch (err) {
-        console.error("Failed to load version count:", err);
-      }
-    }
-    loadVersionCount();
-    return () => { cancelled = true; };
-  }, [key]);
 
   const { data: reviewData } = useTicketReviews(key);
   const reviewCount = reviewData?.reviews?.length ?? 0;
 
-  const { data: activeSessions } = useActiveWriterSessions();
+  const { data: versionMeta } = useTicketVersionCount(key);
+  const versionCount = versionMeta?.length ?? 0;
+
+  const { data: activeSessions, mutate: mutateActiveSessions } = useActiveWriterSessions();
   const hasActiveSession = activeSessions?.some((s) => s.ticketKey === key) ?? false;
+
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+
+  const handleDeleteSession = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDeletingSession(true);
+    try {
+      // Optimistically remove from UI immediately
+      await mutateActiveSessions(
+        (current) => current?.filter((s) => s.ticketKey !== key) ?? [],
+        { revalidate: false },
+      );
+      await fetch(`/api/tickets/${key}/story-writer?deleteConversation=true`, { method: "DELETE" });
+      await mutateActiveSessions();
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+      await mutateActiveSessions();
+    } finally {
+      setIsDeletingSession(false);
+    }
+  }, [key, mutateActiveSessions]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const [isPushing, setIsPushing] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+  const [draftDiscardKey, setDraftDiscardKey] = useState(0);
 
   // Cmd+K opens search modal
   useEffect(() => {
@@ -170,6 +188,45 @@ export default function TicketDetailPage({
     setMetadataOnlyConflict(!contentChanged);
     mutateTicket();
   }, [mutateTicket]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    try {
+      await fetch(`/api/tickets/${key}/local-edits`, { method: "DELETE" });
+      setHasLocalTitleEdit(false);
+      setHasLocalDescEdit(false);
+      setPushError(null);
+      setOverrideConfirmed(false);
+      // Remount editables so they reflect fresh Jira state
+      setDraftDiscardKey((k) => k + 1);
+      await mutateTicket();
+    } catch (err) {
+      console.error("Failed to discard draft:", err);
+    }
+  }, [key, mutateTicket]);
+
+  const handlePushToJira = useCallback(async () => {
+    setIsPushing(true);
+    setPushError(null);
+    try {
+      const res = await fetch(`/api/tickets/${key}/push-to-jira`, { method: "POST" });
+      const data = await res.json();
+      if (data.conflict) {
+        handleRemoteChanged(data.contentChanged ?? true);
+      } else if (data.success) {
+        setHasLocalTitleEdit(false);
+        setHasLocalDescEdit(false);
+        setOverrideConfirmed(false);
+        setDraftDiscardKey((k) => k + 1);
+        await mutateTicket();
+      } else {
+        setPushError(data.error ?? "Push failed");
+      }
+    } catch {
+      setPushError("Failed to push to Jira");
+    } finally {
+      setIsPushing(false);
+    }
+  }, [key, handleRemoteChanged, mutateTicket]);
 
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);
@@ -230,6 +287,9 @@ export default function TicketDetailPage({
   }
 
   const hasLocalEdits = hasLocalTitleEdit || hasLocalDescEdit;
+  const isEditing = isTitleEditing || isDescEditing;
+  const isDraftOnly = ticket?.editState === "draft";
+  const showPushButton = hasLocalEdits && !showConflictWarning && !isEditing && !isDraftOnly;
 
   return (
     <>
@@ -241,19 +301,56 @@ export default function TicketDetailPage({
       <div className="relative flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
         <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
 
-        <div className="relative flex min-w-0 flex-1 items-center gap-4">
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-              <IssueTypeIcon type={ticket.type} size={16} />
-            </div>
-            <span className="font-mono text-sm font-medium text-white/55">{key}</span>
+        <div className="relative flex min-w-0 flex-1 items-center gap-3">
+          {/* Issue type icon — anchored left */}
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
+            <IssueTypeIcon type={ticket.type} size={16} />
           </div>
 
+          <span className="shrink-0 font-mono text-sm font-medium text-white/40">{key}</span>
           <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.12] to-transparent" />
-
           <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
             {ticket.title}
           </span>
+
+          {/* Sprint / epic — right of title, before status */}
+          {(ticketSprintId || ticket.epic) && (
+            <nav className="hidden lg:flex shrink-0 items-center gap-2 text-[11px]">
+              {ticketSprintId && (
+                <Tooltip content={ticketSprintLabel || "Sprint"}>
+                  <Link
+                    href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
+                    className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{ color: "#d4904a", opacity: 0.55 }}
+                  >
+                    <IterationCw size={12} strokeWidth={1.5} />
+                    <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
+                  </Link>
+                </Tooltip>
+              )}
+              {ticketSprintId && ticket.epic && (
+                <span className="text-white/[0.10] select-none">/</span>
+              )}
+              {ticket.epic && (
+                <Tooltip content={ticket.epic}>
+                  {ticket.epicKey ? (
+                    <Link
+                      href={`/tickets/${ticket.epicKey}`}
+                      className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      style={{ color: "#9b6cd4", opacity: 0.55 }}
+                    >
+                      <Zap size={12} strokeWidth={1.5} />
+                      <span className="max-w-[90px] truncate">{ticket.epicKey}</span>
+                    </Link>
+                  ) : (
+                    <span className="flex items-center gap-1" title={ticket.epic} style={{ color: "#9b6cd4", opacity: 0.55 }}>
+                      <Zap size={12} strokeWidth={1.5} />
+                    </span>
+                  )}
+                </Tooltip>
+              )}
+            </nav>
+          )}
 
           <div className="flex shrink-0 items-center gap-2.5">
             {(() => {
@@ -267,21 +364,34 @@ export default function TicketDetailPage({
                 </span>
               );
             })()}
-            {ticketSprintLabel && (
-              <span className="text-xs text-white/25">{ticketSprintLabel}</span>
-            )}
           </div>
         </div>
 
         <div className="relative ml-4 flex shrink-0 items-center gap-1.5">
+          {showPushButton && (
+            <button
+              type="button"
+              onClick={handlePushToJira}
+              disabled={isPushing}
+              className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.25)]"
+              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              title="Push local edits to Jira"
+            >
+              {isPushing
+                ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+                : <CloudUpload size={13} strokeWidth={1.5} />
+              }
+              Push to Jira
+            </button>
+          )}
           <button
             type="button"
             onClick={handleRefreshFromJira}
             disabled={isRefreshing}
             className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
-            title={isRefreshing ? "Syncing..." : "Refresh from Jira"}
+            title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
           >
-            <CloudSync size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
+            <CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
           </button>
           <a
             href={getJiraUrl(key)}
@@ -292,97 +402,98 @@ export default function TicketDetailPage({
           >
             <ExternalLink size={15} strokeWidth={1.5} />
           </a>
-          <Link
-            href={`/tickets/${key}/write`}
-            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)] ${
-              hasActiveSession
-                ? "border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/25 hover:border-[var(--color-brand-500)]/60"
-                : "border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40"
-            }`}
-            style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
-          >
-            {hasActiveSession ? (
-              <>
+          {hasActiveSession ? (
+            <div
+              className="group/session flex items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+              style={{ transition: "border-color 0.15s ease" }}
+            >
+              <Link
+                href={`/tickets/${key}/write`}
+                className="flex items-center gap-1.5 rounded-l-md px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              >
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand-400)] opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
                 </span>
                 Resume session
-              </>
-            ) : (
-              <>
-                <NotebookPen size={13} strokeWidth={1.5} />
-                Story writer
-              </>
-            )}
-          </Link>
+              </Link>
+              <div className="h-4 w-px bg-[var(--color-brand-500)]/25" />
+              <button
+                type="button"
+                onClick={handleDeleteSession}
+                disabled={isDeletingSession}
+                className="flex items-center justify-center rounded-r-md px-2 py-1 text-[var(--color-brand-400)]/35 cursor-pointer hover:text-red-400/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
+                title="Delete session"
+              >
+                {isDeletingSession
+                  ? <Loader2 size={11} strokeWidth={1.5} className="animate-spin" />
+                  : <Trash2 size={11} strokeWidth={1.5} />
+                }
+              </button>
+            </div>
+          ) : (
+            <Link
+              href={`/tickets/${key}/write`}
+              className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+              style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
+            >
+              <NotebookPen size={13} strokeWidth={1.5} />
+              Story writer
+            </Link>
+          )}
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-      <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-8 py-6">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 border-b border-white/[0.06] pb-3">
-            <nav className="flex items-center gap-2 text-xs">
-              <Link
-                href="/sprint-board"
-                className="flex items-center gap-1 text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
+          {/* Tab bar - scoped to content column only, not spanning sidebar */}
+          <div className="border-b border-white/[0.06]">
+          <div className="mx-auto flex h-[50px] max-w-4xl items-stretch gap-1 px-8">
+            {([
+              { id: "content" as const, label: "Content" },
+              { id: "history" as const, label: "History", badge: versionCount },
+              { id: "review" as const, label: "Review", badge: reviewCount || undefined },
+              { id: "refinement" as const, label: "Refinement" },
+            ]).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  if (tab.id === "history" && activeTab === "history") {
+                    setHistoryResetKey((k) => k + 1);
+                  }
+                  setActiveTab(tab.id);
+                }}
+                className={`relative flex items-center gap-1.5 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  activeTab === tab.id
+                    ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
+                    : "text-white/35 hover:text-white/60 active:text-white/50"
+                }`}
               >
-                <KanbanSquare size={12} strokeWidth={1.5} className="shrink-0" />
-                Sprint Board
-              </Link>
-              {ticketSprintId && (
-                <>
-                  <span className="text-white/15">/</span>
-                  <Link
-                    href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                    className="flex items-center gap-1 text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                  >
-                    <IterationCw size={12} strokeWidth={1.5} className="shrink-0" style={{ color: "#d4904a" }} />
-                    {ticketSprintLabel}
-                  </Link>
-                </>
-              )}
-              {ticket.epic && (
-                <>
-                  <span className="text-white/15">/</span>
-                  <Tooltip content={ticket.epic}>
-                    {ticket.epicKey ? (
-                      <Link
-                        href={`/tickets/${ticket.epicKey}`}
-                        className="flex items-center gap-1 text-white/40 cursor-pointer hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                      >
-                        <Zap size={12} strokeWidth={1.5} className="shrink-0 text-[#9b6cd4]" />
-                        <span className="max-w-[140px] truncate">{ticket.epic}</span>
-                      </Link>
-                    ) : (
-                      <span className="flex items-center gap-1 text-white/40">
-                        <Zap size={12} strokeWidth={1.5} className="shrink-0 text-[#9b6cd4]" />
-                        <span className="max-w-[140px] truncate">{ticket.epic}</span>
-                      </span>
-                    )}
-                  </Tooltip>
-                </>
-              )}
-              <span className="text-white/15">/</span>
-              <span className="group/key flex items-center gap-1.5 font-mono text-white/60">
-                <IssueTypeIcon type={ticket.type} size={14} />
-                {key}
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/tickets/${key}`);
-                  }}
-                  className="text-white/0 group-hover/key:text-white/25 cursor-pointer hover:!text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.9]"
-                  style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
-                  title="Copy link"
-                >
-                  <Link2 size={15} strokeWidth={1.5} />
-                </button>
-              </span>
-            </nav>
+                {tab.label}
+                {tab.badge !== undefined && (
+                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
+                    tab.id === "review" && tab.badge > 0
+                      ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
+                      : activeTab === tab.id
+                        ? "bg-white/[0.10] text-white/50"
+                        : "bg-white/[0.06] text-white/30"
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
+          </div>
+
+          {/* Portal target: full-width editor toolbar mounts here when editing a description */}
+          <div id="ticket-toolbar-portal" className="relative z-10 shrink-0" />
+
+          <div className="flex-1 overflow-y-auto" style={{ overflowX: "hidden" }}>
+          <div className={`mx-auto max-w-4xl px-8 ${activeTab === "history" ? "pt-6" : isDescEditing ? "pb-6" : "py-6"}`}>
 
           {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
@@ -406,13 +517,16 @@ export default function TicketDetailPage({
           )}
 
           {/* Header */}
-          <div className="mt-4">
+          <div className={isDescEditing ? "hidden" : "mt-4"}>
 
             <div className="mt-3 flex items-start gap-2.5">
               <EditableTitle
+                key={draftDiscardKey}
                 ticketKey={key}
                 initialTitle={ticket.title}
+                serverLocalEdit={localEdits?.title}
                 onLocalEdit={handleTitleLocalEdit}
+                onEditingChange={setIsTitleEditing}
               />
               {ticket.flagged && (
                 <Flag size={16} className="mt-2 shrink-0 text-[#e5534b]" fill="currentColor" strokeWidth={0} />
@@ -420,86 +534,34 @@ export default function TicketDetailPage({
             </div>
 
             {/* Metadata strip */}
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-              {(() => {
-                const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-                return (
-                  <span
-                    className="inline-flex items-center rounded-md px-2 py-0.5 font-medium"
-                    style={{ backgroundColor: sc.bg, color: sc.text }}
-                  >
-                    {ticket.jiraStatus}
-                  </span>
-                );
-              })()}
-              <span className="flex items-center gap-1 text-white/40">
-                <span className="text-white/20">Points</span>
-                <span className="tabular-nums text-white/60">{ticket.storyPoints ?? "--"}</span>
-              </span>
-              {ticket.assignee && (
+            {ticket.assignee && (
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
                 <span className="flex items-center gap-1.5 text-white/40">
                   <Avatar assignee={ticket.assignee} size={18} />
                   <span className="truncate">{ticket.assignee.name}</span>
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
-          </div>
-
-          {/* Tab bar */}
-          <div className="mt-6 flex items-center gap-1 border-b border-white/[0.06]">
-            {([
-              { id: "content" as const, label: "Content" },
-              { id: "history" as const, label: "History", badge: versionCount },
-              { id: "review" as const, label: "Review", badge: reviewCount || undefined },
-              { id: "refinement" as const, label: "Refinement" },
-            ]).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  if (tab.id === "history" && activeTab === "history") {
-                    setHistoryResetKey((k) => k + 1);
-                  }
-                  setActiveTab(tab.id);
-                }}
-                className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  activeTab === tab.id
-                    ? "text-white/80"
-                    : "text-white/30 hover:text-white/50"
-                }`}
-                style={{ transition: "color 0.15s ease" }}
-              >
-                {tab.label}
-                {tab.badge !== undefined && (
-                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
-                    tab.id === "review" && tab.badge > 0
-                      ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
-                      : activeTab === tab.id
-                        ? "bg-white/[0.10] text-white/50"
-                        : "bg-white/[0.06] text-white/30"
-                  }`}>
-                    {tab.badge}
-                  </span>
-                )}
-                {activeTab === tab.id && (
-                  <span className="absolute right-0 bottom-0 left-0 h-0.5 rounded-full bg-[var(--color-brand-500)]" />
-                )}
-              </button>
-            ))}
           </div>
 
           {activeTab === "content" && (
             <>
               <EditableDescription
+                key={draftDiscardKey}
                 ticketKey={key}
                 initialDescription={detail?.description ?? "No description available."}
+                serverLocalEdit={localEdits?.description}
                 attachments={detail?.attachments}
                 onLocalEdit={handleDescLocalEdit}
-                hasConflict={showConflictWarning}
-                onViewDiff={() => setActiveTab("history")}
-                onRemoteChanged={handleRemoteChanged}
-                onPushSuccess={() => { mutateTicket(); }}
+                onEditingChange={setIsDescEditing}
+                onDiscard={handleDiscardDraft}
+                onPushToJira={handlePushToJira}
+                isPushing={isPushing}
+                pushError={pushError}
+                showConflictWarning={showConflictWarning}
+                overrideConfirmed={overrideConfirmed}
+                onOverrideChange={setOverrideConfirmed}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {detail && <SubtasksSection subtasks={detail.subtasks} />}
@@ -528,12 +590,13 @@ export default function TicketDetailPage({
           {activeTab === "review" && <TicketReview ticketKey={key} />}
           {activeTab === "refinement" && <TicketRefinement ticketKey={key} />}
 
-          <div className="h-12" />
+          {activeTab !== "history" && <div className="h-12" />}
         </div>
-      </div>
+          </div>
+        </div>
 
-      <div className="sticky top-0 min-h-full self-stretch overflow-y-auto">
-        <TicketSidebar ticket={ticket} detail={detail} sprintLabel={ticketSprintLabel} onNavigateToReview={() => setActiveTab("review")} />
+      <div className="sticky top-0 min-h-full self-stretch overflow-visible">
+        <TicketSidebar ticket={ticket} detail={detail} onNavigateToReview={() => setActiveTab("review")} />
       </div>
       </div>
     </div>

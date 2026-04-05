@@ -233,12 +233,14 @@ function SortableTicketRow({
   someChecked,
   isDragActive,
   col,
+  showSprintColumn,
+  sprintNameMap,
   poStatuses,
   selectedTicket,
   onHoverRow,
   onLeaveRow,
   onSelectTicket,
-  onToggleCheck,
+  onCheckboxClick,
   onPoStatusChange,
   reviewPopoverKey,
   onToggleReviewPopover,
@@ -252,12 +254,14 @@ function SortableTicketRow({
   someChecked: boolean;
   isDragActive: boolean;
   col: (id: ColumnId) => boolean;
+  showSprintColumn: boolean;
+  sprintNameMap: Record<string, string>;
   poStatuses: Record<string, POStatus>;
   selectedTicket: string | null;
   onHoverRow: (key: string | null) => void;
   onLeaveRow: () => void;
   onSelectTicket: (key: string | null) => void;
-  onToggleCheck: (key: string) => void;
+  onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
   reviewPopoverKey: string | null;
   onToggleReviewPopover: (key: string) => void;
@@ -314,7 +318,7 @@ function SortableTicketRow({
         className="cursor-pointer select-none py-2 pl-1 pr-1"
         onClick={(e) => {
           e.stopPropagation();
-          onToggleCheck(ticket.key);
+          onCheckboxClick(ticket.key, ticketIdx, e.shiftKey);
         }}
       >
         <div
@@ -340,6 +344,12 @@ function SortableTicketRow({
         <td className="py-2 pr-3 font-mono text-xs text-white/50">
           <span className="flex items-center gap-1.5">
             {ticket.key}
+            {ticket.editState === "draft" && (
+              <span
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#4a90d9]/40"
+                title="Unsaved draft"
+              />
+            )}
             {ticket.editState === "local_edits" && (
               <span
                 className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#4a90d9]/70"
@@ -383,6 +393,14 @@ function SortableTicketRow({
           >
             {ticket.jiraStatus}
           </span>
+        </td>
+      )}
+
+      {showSprintColumn && (
+        <td className="py-2 pr-3 text-xs text-white/35 truncate max-w-[140px]">
+          {ticket.sprintId
+            ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId)
+            : <span className="text-white/15">—</span>}
         </td>
       )}
 
@@ -454,8 +472,11 @@ export function TicketTable({
   someChecked,
   allChecked,
   visibleColumns,
+  showSprintColumn,
+  sprintNameMap,
   poStatuses,
   onToggleCheck,
+  onRangeCheck,
   onToggleAll,
   onSelectTicket,
   onHoverRow,
@@ -472,8 +493,11 @@ export function TicketTable({
   someChecked: boolean;
   allChecked: boolean;
   visibleColumns: Set<ColumnId>;
+  showSprintColumn?: boolean;
+  sprintNameMap?: Record<string, string>;
   poStatuses: Record<string, POStatus>;
   onToggleCheck: (key: string) => void;
+  onRangeCheck: (keys: string[], checked: boolean) => void;
   onToggleAll: () => void;
   onSelectTicket: (key: string | null) => void;
   onHoverRow: (key: string | null) => void;
@@ -484,6 +508,8 @@ export function TicketTable({
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  // Tracks the last checkbox interaction for shift+click range selection
+  const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [reviewPopoverKey, setReviewPopoverKey] = useState<string | null>(null);
@@ -491,6 +517,21 @@ export function TicketTable({
   const handleToggleReviewPopover = useCallback((key: string) => {
     setReviewPopoverKey((prev) => (prev === key ? null : key));
   }, []);
+
+  const handleCheckboxClick = useCallback((key: string, idx: number, shiftKey: boolean) => {
+    const anchor = lastCheckRef.current;
+    if (shiftKey && anchor !== null) {
+      const from = Math.min(anchor.idx, idx);
+      const to = Math.max(anchor.idx, idx);
+      const rangeKeys = tickets.slice(from, to + 1).map((t) => t.key);
+      onRangeCheck(rangeKeys, anchor.checked);
+      // Keep anchor so repeated shift+clicks extend from the same point
+    } else {
+      const willBeChecked = !checkedTickets.has(key);
+      lastCheckRef.current = { idx, checked: willBeChecked };
+      onToggleCheck(key);
+    }
+  }, [tickets, checkedTickets, onToggleCheck, onRangeCheck]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -545,6 +586,7 @@ export function TicketTable({
               {col("title") && <th className="py-2.5 pr-3">Title</th>}
               {col("epic") && <th className="w-36 py-2.5 pr-3">Epic</th>}
               {col("jiraStatus") && <th className="w-28 py-2.5 pr-3">Status</th>}
+              {showSprintColumn && <th className="w-36 py-2.5 pr-3">Sprint</th>}
               {col("points") && <th className="w-12 py-2.5 pr-3 text-center">Pts</th>}
               {col("assignee") && <th className="w-10 py-2.5 pr-3" />}
               {col("flagged") && <th className="w-8 py-2.5 pr-2" />}
@@ -567,12 +609,14 @@ export function TicketTable({
                   someChecked={someChecked}
                   isDragActive={activeDragId !== null}
                   col={col}
+                  showSprintColumn={showSprintColumn ?? false}
+                  sprintNameMap={sprintNameMap ?? {}}
                   poStatuses={poStatuses}
                   selectedTicket={selectedTicket}
                   onHoverRow={onHoverRow}
                   onLeaveRow={onLeaveRow}
                   onSelectTicket={onSelectTicket}
-                  onToggleCheck={onToggleCheck}
+                  onCheckboxClick={handleCheckboxClick}
                   onPoStatusChange={onPoStatusChange}
                   reviewPopoverKey={reviewPopoverKey}
                   onToggleReviewPopover={handleToggleReviewPopover}

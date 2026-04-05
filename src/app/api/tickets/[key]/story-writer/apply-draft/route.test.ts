@@ -78,15 +78,15 @@ Let me know what you think.`;
 
     expect(res.status).toBe(200);
     expect(data.hasDraft).toBe(true);
-    expect(data.draftIndex).toBe(0);
-    expect(data.draftId).toBeTruthy();
+    expect(data.originalDraftId).toBeTruthy();
+    expect(data.targetDraftId).toBeNull();
 
-    // AI draft should be saved
     const drafts = testDb.select().from(storyWriterDraft)
       .where(eq(storyWriterDraft.sessionId, sessionId))
       .all();
     expect(drafts).toHaveLength(1);
     expect(drafts[0].content).toContain("As a guest");
+    expect(drafts[0].storySlot).toBe("original");
 
     // localDraft should NOT be modified
     const session = testDb.select().from(storyWriterSession)
@@ -115,12 +115,13 @@ Let me know what you think.`;
     );
     const data = await res.json();
 
-    expect(data.draftIndex).toBe(1);
+    expect(data.originalDraftId).toBeTruthy();
 
     const drafts = testDb.select().from(storyWriterDraft)
       .where(eq(storyWriterDraft.sessionId, sessionId))
       .all();
     expect(drafts).toHaveLength(2);
+    expect(drafts[1].draftIndex).toBe(1);
   });
 
   it("returns hasDraft=false when no draft tags in output", async () => {
@@ -135,7 +136,8 @@ Let me know what you think.`;
     const data = await res.json();
 
     expect(data.hasDraft).toBe(false);
-    expect(data.draftId).toBeNull();
+    expect(data.originalDraftId).toBeNull();
+    expect(data.targetDraftId).toBeNull();
   });
 
   it("saves assistant message and links it to the draft", async () => {
@@ -156,9 +158,46 @@ Let me know what you think.`;
     expect(messages).toHaveLength(1);
     expect(messages[0].role).toBe("assistant");
 
-    // Draft should reference the message
     const drafts = testDb.select().from(storyWriterDraft).all();
     expect(drafts[0].messageId).toBe(messages[0].id);
+  });
+
+  it("extracts both original and target drafts in split mode output", async () => {
+    const { sessionId } = seedSession(testDb, "VPL-100");
+
+    const output = `
+<story-draft>
+Revised original story content
+</story-draft>
+
+<story-draft slot="target">
+New target story content
+</story-draft>
+    `;
+
+    const res = await POST(
+      makeRequest("http://localhost:3100/api/tickets/VPL-100/story-writer/apply-draft", {
+        output,
+        taskId: "task_split",
+      }),
+      makeParams("VPL-100"),
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.hasDraft).toBe(true);
+    expect(data.originalDraftId).toBeTruthy();
+    expect(data.targetDraftId).toBeTruthy();
+
+    const drafts = testDb.select().from(storyWriterDraft)
+      .where(eq(storyWriterDraft.sessionId, sessionId))
+      .all();
+    expect(drafts).toHaveLength(2);
+
+    const origDraft = drafts.find((d) => d.storySlot === "original");
+    const tgtDraft = drafts.find((d) => d.storySlot === "target");
+    expect(origDraft?.content).toContain("Revised original");
+    expect(tgtDraft?.content).toContain("New target");
   });
 });
 

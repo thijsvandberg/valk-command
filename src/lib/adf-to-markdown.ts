@@ -195,12 +195,16 @@ function convertList(node: AdfNode, style: "bullet" | "ordered"): string {
     .map((item, i) => {
       const prefix = style === "bullet" ? "- " : `${i + 1}. `;
       const inner = convertChildren(item).trim();
+      // Skip empty list items (no content) to avoid producing "- " lines
+      // that trigger an infinite loop in the markdown renderer.
+      if (!inner) return null;
       const lines = inner.split("\n");
       const indented = lines
         .map((line, li) => (li === 0 ? `${prefix}${line}` : `  ${line}`))
         .join("\n");
       return indented;
     })
+    .filter((s): s is string => s !== null)
     .join("\n");
 }
 

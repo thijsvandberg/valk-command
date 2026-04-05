@@ -4,12 +4,15 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   FileText, GitCompare, Trash2,
-  ChevronLeft, ChevronRight, History, Eye, Columns2, PanelLeftClose, PanelRightClose,
+  ChevronLeft, ChevronRight,
+  History, Eye, Columns2, PanelLeftClose, PanelRightClose,
 } from "lucide-react";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { StoryDiff, type HunkState } from "@/components/story-diff/StoryDiff";
 import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import { useTicketVersions } from "@/hooks/useSprintBoard";
+import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 import type { StoryWriterDraftRow } from "@/db/schema";
 import type { Ticket } from "@/types/ticket";
 
@@ -18,12 +21,21 @@ type DiffViewMode = "diff" | "plain";
 type DiffLayout = "full" | "side-by-side";
 type CollapsedPane = null | "original" | "target";
 
-interface RightVersion {
-  id: string;
-  label: string;
+// RightVersion extends VersionOption with story-writer-specific fields
+interface RightVersion extends VersionOption {
   content: string;
   isDraft?: boolean;
   draftDbId?: string;
+}
+
+// Raw row shape returned by /api/tickets/[key]/versions
+interface StoredVersionRow {
+  id: string;
+  description: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedByAvatar: string | null;
+  contentHash: string;
 }
 
 interface StoryWriterEditorProps {
@@ -93,19 +105,15 @@ function DiffPane({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2">
+      <div className="flex h-10 items-center gap-2 border-b border-white/[0.06] px-3">
         <span className="shrink-0 text-xs text-white/30">Your draft</span>
         <span className="text-white/20">↔</span>
 
-        <select
-          value={diffNewId}
-          onChange={(e) => onDiffNewIdChange(e.target.value)}
-          className="min-w-0 rounded-md bg-[var(--color-surface-floating)] px-2 py-1 text-xs text-white/70 border border-white/[0.08] focus:border-[var(--color-brand-500)]/40 focus:outline-none cursor-pointer"
-        >
-          {rightVersions.map((v) => (
-            <option key={v.id} value={v.id}>{v.label}</option>
-          ))}
-        </select>
+        <VersionPicker
+          options={rightVersions}
+          selectedId={diffNewId}
+          onSelect={onDiffNewIdChange}
+        />
 
         <div className="ml-auto flex items-center gap-1">
           <button
@@ -733,6 +741,8 @@ export function StoryWriterEditor({
   onTargetDraftChange,
   onDismissTargetDraft,
 }: StoryWriterEditorProps) {
+  const { data: versionsData } = useTicketVersions(ticket.key);
+
   const [activeTab, setActiveTab] = useState<EditorTab>("editor");
   const [diffViewMode, setDiffViewMode] = useState<DiffViewMode>("diff");
   const [diffNewId, setDiffNewId] = useState("");
@@ -758,9 +768,43 @@ export function StoryWriterEditor({
 
   const rightVersions = useMemo<RightVersion[]>(() => {
     const versions: RightVersion[] = [];
-    if (baseDescription) {
-      versions.push({ id: "jira", label: "Jira version", content: baseDescription });
+
+    // Build stored version list sorted ascending (oldest = v1)
+    const rawRows = Array.isArray(versionsData) ? (versionsData as StoredVersionRow[]) : [];
+    const sortedRows = [...rawRows].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    if (sortedRows.length > 0) {
+      const total = sortedRows.length;
+      // Newest-first in dropdown
+      for (let i = total - 1; i >= 0; i--) {
+        const row = sortedRows[i];
+        const vNum = i + 1;
+        const isCurrent = i === total - 1;
+        versions.push({
+          id: `stored-${row.id}`,
+          label: isCurrent ? `v${vNum} (current)` : `v${vNum}`,
+          content: row.description,
+          group: "Jira versions",
+          versionNum: vNum,
+          title: `Version ${vNum}`,
+          author: row.updatedBy,
+          avatarUrl: row.updatedByAvatar,
+          isoDate: row.createdAt,
+          tag: isCurrent ? "current" : "jira",
+        });
+      }
+    } else if (baseDescription) {
+      versions.push({
+        id: "jira",
+        label: "Jira version",
+        content: baseDescription,
+        title: "Jira version",
+        tag: "current",
+      });
     }
+
     for (const draft of aiDrafts) {
       versions.push({
         id: `ai-${draft.id}`,
@@ -768,10 +812,16 @@ export function StoryWriterEditor({
         content: draft.content,
         isDraft: true,
         draftDbId: draft.id,
+        group: aiDrafts.length > 0 ? "AI Drafts" : undefined,
+        title: `AI Draft ${draft.draftIndex + 1}`,
+        author: null,
+        avatarUrl: null,
+        isoDate: draft.createdAt,
+        tag: "ai-draft",
       });
     }
     return versions;
-  }, [baseDescription, aiDrafts]);
+  }, [baseDescription, aiDrafts, versionsData]);
 
   useEffect(() => {
     if (!diffNewId && rightVersions.length > 0) {
@@ -846,7 +896,9 @@ export function StoryWriterEditor({
     (draftDbId: string) => {
       onDismissDraft(draftDbId);
       if (aiDrafts.length <= 1) {
-        setDiffNewId(baseDescription ? "jira" : "");
+        // Fall back to the first non-draft version in the list (first stored version or "jira")
+        const fallback = rightVersions.find((v) => !v.isDraft);
+        setDiffNewId(fallback?.id ?? "");
       } else {
         const newIdx = Math.max(0, selectedDraftIdx - 1);
         setSelectedDraftIdx(newIdx);
@@ -854,7 +906,7 @@ export function StoryWriterEditor({
         if (next) setDiffNewId(`ai-${next.id}`);
       }
     },
-    [onDismissDraft, aiDrafts, selectedDraftIdx, baseDescription],
+    [onDismissDraft, aiDrafts, selectedDraftIdx, rightVersions],
   );
 
   const handleSplitMouseDown = useCallback(() => {
@@ -930,8 +982,8 @@ export function StoryWriterEditor({
   return (
     <div className="flex h-full flex-col">
       {/* Tab bar */}
-      <div className="flex items-center border-b border-white/[0.06] px-4">
-        <div className="flex items-center gap-0.5">
+      <div className="flex h-[50px] items-stretch gap-1 border-b border-white/[0.06] px-5">
+        <div className="flex items-stretch gap-1">
           <TabButton
             active={activeTab === "editor"}
             onClick={() => handleTabChange("editor")}
@@ -1042,17 +1094,16 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors duration-150 ${
-        active ? "text-white/85" : "text-white/35 hover:text-white/55"
+      className={`relative flex items-center gap-1.5 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        active
+          ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
+          : "text-white/35 hover:text-white/60 active:text-white/50"
       }`}
     >
       {icon}
       {label}
       {badge && (
         <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]" />
-      )}
-      {active && (
-        <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[var(--color-brand-500)]" />
       )}
     </button>
   );

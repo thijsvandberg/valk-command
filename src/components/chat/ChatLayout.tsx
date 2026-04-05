@@ -41,7 +41,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
   const workspaceTask = useWorkspaceTask();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
-  usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
+  const pageTitle = usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
 
   const handleCreate = useCallback(async () => {
     const conversation = await createConversation();
@@ -146,7 +146,9 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages]);
 
   return (
-    <div className="noise-overlay relative flex h-full overflow-hidden">
+    <>
+      {pageTitle}
+      <div className="noise-overlay relative flex h-full overflow-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute top-[-20%] left-[15%] h-[600px] w-[600px] rounded-full bg-[radial-gradient(circle,var(--color-brand-900)_0%,transparent_70%)] opacity-30" />
         <div className="absolute bottom-[-10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,var(--color-brand-950)_0%,transparent_70%)] opacity-50" />
@@ -240,5 +242,6 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         )}
       </div>
     </div>
+    </>
   );
 }

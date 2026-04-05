@@ -33,7 +33,7 @@ export async function PUT(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { field, localValue, baseJiraVersion } = body;
+  const { field, localValue, baseJiraVersion, isDraft } = body;
 
   if (!field || !["title", "description"].includes(field)) {
     return NextResponse.json(
@@ -50,6 +50,7 @@ export async function PUT(
   }
 
   const now = new Date().toISOString();
+  const draftFlag = isDraft === true;
 
   const existing = await db
     .select()
@@ -68,9 +69,12 @@ export async function PUT(
   }
 
   if (existing) {
+    // When saving (isDraft=false) over a draft, promote it.
+    // When auto-saving (isDraft=true) over a saved edit, keep it saved.
+    const newDraftFlag = draftFlag && existing.isDraft;
     await db
       .update(ticketLocalEdit)
-      .set({ localValue, modifiedAt: now, baseJiraVersion: resolvedBase })
+      .set({ localValue, modifiedAt: now, baseJiraVersion: resolvedBase, isDraft: newDraftFlag })
       .where(eq(ticketLocalEdit.id, existing.id));
   } else {
     await db.insert(ticketLocalEdit).values({
@@ -79,6 +83,7 @@ export async function PUT(
       field: field as "title" | "description",
       localValue,
       baseJiraVersion: resolvedBase,
+      isDraft: draftFlag,
       modifiedAt: now,
     });
   }
@@ -89,39 +94,72 @@ export async function PUT(
     .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, field)))
     .get();
 
-  await logActivity({
-    type: "local-edit",
-    scope: key,
-    summary: `Edited ${field}`,
-  });
+  if (!draftFlag) {
+    await logActivity({
+      type: "local-edit",
+      scope: key,
+      summary: `Edited ${field}`,
+    });
+  }
 
   return NextResponse.json(result);
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const url = new URL(request.url);
+  const draftsOnly = url.searchParams.get("draftsOnly") === "true";
 
-  await db
-    .delete(ticketLocalEdit)
-    .where(eq(ticketLocalEdit.ticketKey, key));
+  if (draftsOnly) {
+    await db
+      .delete(ticketLocalEdit)
+      .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.isDraft, true)));
+  } else {
+    await db
+      .delete(ticketLocalEdit)
+      .where(eq(ticketLocalEdit.ticketKey, key));
 
-  await logActivity({
-    type: "local-edit",
-    scope: key,
-    summary: "Discarded all local edits",
-  });
+    await logActivity({
+      type: "local-edit",
+      scope: key,
+      summary: "Discarded all local edits",
+    });
+  }
 
   return NextResponse.json({ success: true });
 }
 
 export async function PATCH(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = await request.json();
+  } catch {
+    // No body is fine for rebase
+  }
+
+  // Promote drafts to saved edits
+  if (body.promoteDrafts === true) {
+    await db
+      .update(ticketLocalEdit)
+      .set({ isDraft: false, modifiedAt: new Date().toISOString() })
+      .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.isDraft, true)));
+
+    await logActivity({
+      type: "local-edit",
+      scope: key,
+      summary: "Saved draft as local edit",
+    });
+
+    return NextResponse.json({ success: true });
+  }
 
   // Rebase: update baseJiraVersion on all local edits to match the latest stored version
   const latestVersion = await db.query.storyVersion.findFirst({

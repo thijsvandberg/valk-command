@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { GET } from "./route";
+import { invalidateSearchCache } from "@/lib/search-index-cache";
 
 // Mock the database module
 vi.mock("@/db", () => ({
@@ -22,7 +23,10 @@ vi.mock("@/lib/adf-to-markdown", () => ({
 
 const { db } = await import("@/db");
 
-// Helper to chain the drizzle mock: select().from().all()
+// Helper to chain the drizzle mock: select().from().all() and select().from().where().get()
+// Order of .all() calls matches the Promise.all in buildIndex:
+// [0] tickets, [1] metadata, [2] jiraComments, [3] poComments, [4] localEdits
+// The appSetting query uses .where().get() and is handled separately.
 function setupDbMock(
   tickets: unknown[],
   metadata: unknown[],
@@ -36,6 +40,9 @@ function setupDbMock(
   (db.select as Mock).mockImplementation(() => ({
     from: () => ({
       all: () => Promise.resolve(responses[callCount++] ?? []),
+      where: () => ({
+        get: () => Promise.resolve(null),
+      }),
     }),
   }));
 }
@@ -47,6 +54,8 @@ function makeRequest(q: string) {
 describe("GET /api/search/local", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear module-level cache so each test builds a fresh index from its own mock data
+    invalidateSearchCache();
   });
 
   it("returns empty results when query is shorter than 2 chars", async () => {

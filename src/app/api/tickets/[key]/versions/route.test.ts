@@ -82,6 +82,34 @@ describe("GET /api/tickets/[key]/versions", () => {
     expect(data[1].description).toBe("Updated description");
   });
 
+  it("returns only metadata when metaOnly=true", async () => {
+    seedTicket(testDb, "VPL-100");
+
+    testDb
+      .insert(storyVersion)
+      .values({
+        id: "sv-1",
+        jiraKey: "VPL-100",
+        description: "Some long description",
+        acceptanceCriteria: "Some AC",
+        contentHash: "abc123",
+      })
+      .run();
+
+    const response = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-100/versions?metaOnly=true"),
+      makeParams("VPL-100"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toHaveLength(1);
+    expect(data[0].id).toBe("sv-1");
+    expect(data[0].contentHash).toBe("abc123");
+    expect(data[0]).not.toHaveProperty("description");
+    expect(data[0]).not.toHaveProperty("acceptanceCriteria");
+  });
+
   it("does not return versions from other tickets", async () => {
     seedTicket(testDb, "VPL-100");
     seedTicket(testDb, "VPL-200");

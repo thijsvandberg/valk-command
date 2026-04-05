@@ -219,6 +219,18 @@ export { requestTimestamps as _requestTimestamps };
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 500;
 
+export class JiraApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly statusText: string,
+    public readonly responseBody: string,
+    public readonly path: string,
+  ) {
+    super(`Jira API ${status} ${statusText} on ${path}: ${responseBody}`);
+    this.name = "JiraApiError";
+  }
+}
+
 function isRetryable(status: number): boolean {
   return status === 429 || status === 503;
 }
@@ -260,10 +272,10 @@ async function withRetry<T>(
 
       const body = await res.text().catch(() => "");
       console.error(`Jira API error: ${res.status} ${res.statusText} path=${path} body=${body}`);
-      throw new Error("Jira API request failed");
+      throw new JiraApiError(res.status, res.statusText, body, path);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
-      if (err instanceof Error && err.message === "Jira API request failed") throw err;
+      if (err instanceof JiraApiError) throw err;
 
       // Network errors / timeouts are retryable
       if (attempt < MAX_RETRIES) {

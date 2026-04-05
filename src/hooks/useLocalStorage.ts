@@ -17,7 +17,13 @@ export function useLocalStorage<T>(
   key: string,
   defaultValue: T,
 ): [T, (value: T | ((prev: T) => T)) => void] {
-  const [storedValue, setStoredValue] = useState<T>(() => readValue(key, defaultValue));
+  // Initialize with defaultValue to match SSR output, then hydrate from localStorage
+  const [storedValue, setStoredValue] = useState<T>(defaultValue);
+
+  useEffect(() => {
+    setStoredValue(readValue(key, defaultValue));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {

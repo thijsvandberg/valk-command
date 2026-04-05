@@ -4,7 +4,9 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   CloudUpload,
+  CloudDownload,
   Save,
+  Check,
   Trash2,
   Loader2,
   Star,
@@ -13,14 +15,19 @@ import {
   PanelLeftOpen,
   Scissors,
   NotebookPen,
+  IterationCw,
+  Zap,
+  ScrollText,
 } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { getJiraUrl } from "@/components/sprint-board/TicketTable";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { StoryWriterChat } from "./StoryWriterChat";
 import { StoryWriterEditor } from "./StoryWriterEditor";
 import { SplitStoryPicker } from "./SplitStoryPicker";
+import { ExecutionLogViewer } from "./ExecutionLogViewer";
 
 const PANEL_STORAGE_KEY = "storyWriterChatWidth";
 const PANEL_COLLAPSED_KEY = "storyWriterChatCollapsed";
@@ -52,9 +59,20 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
   const [pushing, setPushing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pulling, setPulling] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [isDraftDirty, setIsDraftDirty] = useState(false);
+  // Tracks whether a local save exists that hasn't been pushed to Jira yet.
+  // Stays true after "Save draft" until a successful push clears it.
+  const [hasLocalSave, setHasLocalSave] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Incremented on every user edit; lets async operations detect concurrent edits.
+  const editVersionRef = useRef(0);
+  const initialDirtyChecked = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [showLogs, setShowLogs] = useState(false);
 
   // Split mode state
   const [splitModeVisible, setSplitModeVisible] = useState(false);
@@ -67,6 +85,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   // without the drag-resize effect needing chatWidth as a dependency.
   const chatWidthRef = useRef(chatWidth);
   useEffect(() => { chatWidthRef.current = chatWidth; }, [chatWidth]);
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
 
   // Fetch target ticket title when targetTicketKey is available
   const targetTicketKey = writer.session?.targetTicketKey ?? null;
@@ -84,6 +103,15 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [targetTicketKey]);
+
+  // Check initial dirty state once session and ticket data are both loaded.
+  // If localDraft differs from the Jira description, the user made edits in a prior session.
+  useEffect(() => {
+    if (!initialDirtyChecked.current && writer.session && ticketData) {
+      initialDirtyChecked.current = true;
+      setIsDraftDirty((writer.session.localDraft ?? "") !== (ticketData.description ?? ""));
+    }
+  }, [writer.session, ticketData]);
 
   // Build messageId -> draftId map for chat badges (both original + target drafts)
   const messageDraftMap = useMemo(() => {
@@ -130,16 +158,34 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
   const handleSaveDraft = useCallback(async () => {
     setSaving(true);
+    const versionAtSave = editVersionRef.current;
     await writer.saveDraft();
     setSaving(false);
+    setHasLocalSave(true);
+    setShowSaved(true);
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => {
+      setShowSaved(false);
+      // Only clear dirty if the user didn't make new edits while saving
+      if (editVersionRef.current === versionAtSave) {
+        setIsDraftDirty(false);
+      }
+    }, 2000);
   }, [writer]);
 
   const handlePush = useCallback(async () => {
     setPushing(true);
     setPushError(null);
+    const versionAtPush = editVersionRef.current;
     try {
       const result = await writer.pushToJira();
-      if (result.conflict) {
+      if (result.success) {
+        // Only clear dirty if the user didn't make new edits while pushing
+        if (editVersionRef.current === versionAtPush) {
+          setIsDraftDirty(false);
+        }
+        setHasLocalSave(false);
+      } else if (result.conflict) {
         setPushError(result.contentChanged
           ? "Jira was updated externally. Review the diff on the ticket detail page."
           : "Metadata changed in Jira. Try pushing again.");
@@ -164,6 +210,32 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       return next;
     });
   }, []);
+
+  const handleDraftChange = useCallback((content: string) => {
+    editVersionRef.current += 1;
+    setIsDraftDirty(true);
+    if (showSaved) {
+      setShowSaved(false);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    }
+    writer.updateLocalDraft(content);
+  }, [writer, showSaved]);
+
+  const handlePullFromJira = useCallback(async () => {
+    setPulling(true);
+    try {
+      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/pull-from-jira`, { method: "POST" });
+      if (!res.ok) throw new Error("Request failed");
+      const data = await res.json();
+      if (typeof data.description === "string") {
+        handleDraftChange(data.description);
+      }
+    } catch {
+      // silently ignore; user can retry
+    } finally {
+      setPulling(false);
+    }
+  }, [ticketKey, handleDraftChange]);
 
   const handleViewDraft = useCallback((draftId: string) => {
     setActiveDraftId(draftId);
@@ -224,19 +296,13 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
           {/* Ticket breadcrumb */}
           {ticketData && (
-            <div className="flex items-center gap-2 min-w-0">
-              <Link
-                href={`/tickets/${ticketKey}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.04] px-2.5 py-1 shrink-0 hover:bg-white/[0.07] hover:border-white/[0.12] transition-colors duration-150 cursor-pointer"
-              >
-                <IssueTypeIcon type={ticketData.type} size={13} />
-                <span className="text-[13px] font-semibold text-[var(--color-brand-400)]/85 hover:text-[var(--color-brand-400)]">
-                  {ticketKey}
-                </span>
-              </Link>
-              <span className="text-[13px] text-white/45 truncate">
+            <div className="flex items-center gap-2 min-w-0 leading-none" style={{ fontSize: "15px" }}>
+              <IssueTypeIcon type={ticketData.type} size={14} />
+              <span className="font-mono font-semibold text-white/90 shrink-0">
+                {ticketKey}
+              </span>
+              <span className="text-white/30 shrink-0">–</span>
+              <span className="min-w-0 truncate font-semibold text-white/90">
                 {ticketData.title}
               </span>
             </div>
@@ -245,7 +311,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
         <div className="flex items-center gap-2">
           {latestReview && (
-            <div className="flex items-center gap-1 rounded-md bg-white/[0.04] px-2 py-1 text-[11px] text-white/40 border border-white/[0.04]">
+            <div className="flex items-center gap-1 rounded-md bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/40 border border-white/[0.04]">
               <Star size={11} strokeWidth={1.5} />
               {Math.round(latestReview.overallScore)}
             </div>
@@ -268,40 +334,76 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             </button>
           )}
 
-          <a
-            href={getJiraUrl(ticketKey)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-white/50 hover:text-white/70 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
-          >
-            <ExternalLink size={13} strokeWidth={1.5} />
-            Jira
-          </a>
+          <Tooltip content="Open in Jira">
+            <a
+              href={getJiraUrl(ticketKey)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex size-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] text-white/50 hover:text-white/70 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
+            >
+              <ExternalLink size={13} strokeWidth={1.5} />
+            </a>
+          </Tooltip>
 
-          <button
-            onClick={handleSaveDraft}
-            disabled={saving || !writer.session?.localDraft}
-            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} strokeWidth={1.5} />}
-            Save draft
-          </button>
+          <Tooltip content="Pull latest description from Jira">
+            <button
+              type="button"
+              onClick={handlePullFromJira}
+              disabled={pulling}
+              className="flex size-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70 cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {pulling ? <Loader2 size={13} className="animate-spin" /> : <CloudDownload size={13} strokeWidth={1.5} />}
+            </button>
+          </Tooltip>
+
+          {(isDraftDirty || hasLocalSave) && writer.messages.length === 0 && (
+            <button
+              onClick={() => handleDelete(true)}
+              className="flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1.5 text-xs text-white/30 hover:text-red-400/70 hover:bg-red-500/[0.06] cursor-pointer transition-colors duration-150"
+            >
+              <Trash2 size={13} strokeWidth={1.5} />
+              Discard draft
+            </button>
+          )}
+
+          {isDraftDirty && (
+            <button
+              onClick={handleSaveDraft}
+              disabled={saving || showSaved}
+              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
+                showSaved
+                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                  : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
+              }`}
+            >
+              {saving
+                ? <Loader2 size={13} className="animate-spin" />
+                : showSaved
+                ? <Check size={13} strokeWidth={2} />
+                : <Save size={13} strokeWidth={1.5} />
+              }
+              {showSaved ? "Saved" : "Save draft"}
+            </button>
+          )}
 
           <button
             onClick={handlePush}
-            disabled={pushing || !writer.session?.localDraft}
-            className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-transform duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={pushing || (!isDraftDirty && !hasLocalSave)}
+            className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
             Push to Jira
           </button>
 
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-white/30 hover:text-red-400/70 hover:bg-red-500/[0.06] cursor-pointer transition-colors duration-150"
-          >
-            <Trash2 size={13} strokeWidth={1.5} />
-          </button>
+          {writer.messages.length > 0 && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1.5 text-xs text-white/30 hover:text-red-400/70 hover:bg-red-500/[0.06] cursor-pointer transition-colors duration-150"
+            >
+              <Trash2 size={13} strokeWidth={1.5} />
+              Delete session
+            </button>
+          )}
         </div>
       </div>
 
@@ -318,43 +420,67 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
         {chatCollapsed ? (
           <div
             style={{ width: COLLAPSED_STRIP_WIDTH }}
-            className="flex shrink-0 flex-col items-center border-r border-white/[0.06] bg-[var(--color-surface-base)] pt-2"
+            className="flex shrink-0 flex-col border-r border-white/[0.06] bg-[var(--color-surface-base)]"
           >
-            <button
-              type="button"
-              onClick={handleToggleChat}
-              title="Expand chat"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-white/30 cursor-pointer hover:text-white/60 hover:bg-white/[0.06] transition-colors duration-150"
-            >
-              <PanelLeftOpen size={15} strokeWidth={1.5} />
-            </button>
+            <div className="border-b border-white/[0.06]">
+              <button
+                type="button"
+                onClick={handleToggleChat}
+                title="Expand chat"
+                className="flex h-[2.5rem] w-full items-center justify-center text-white/30 cursor-pointer hover:text-white/60 hover:bg-white/[0.06] transition-colors duration-150"
+              >
+                <PanelLeftOpen size={14} strokeWidth={1.5} />
+              </button>
+            </div>
           </div>
         ) : (
           <>
             <div style={{ width: chatWidth }} className="flex shrink-0 flex-col border-r border-white/[0.06]">
-              <div className="flex items-center justify-end border-b border-white/[0.04] px-2 py-1">
+              <div className="flex h-[50px] items-center justify-between border-b border-white/[0.06] px-4">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowLogs(false)}
+                    className={`rounded px-2 py-1 text-[10px] font-medium transition-colors duration-150 cursor-pointer ${!showLogs ? "text-white/70 bg-white/[0.06]" : "text-white/30 hover:text-white/50 hover:bg-white/[0.04]"}`}
+                  >
+                    Chat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogs(true)}
+                    className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium transition-colors duration-150 cursor-pointer ${showLogs ? "text-white/70 bg-white/[0.06]" : "text-white/30 hover:text-white/50 hover:bg-white/[0.04]"}`}
+                  >
+                    <ScrollText size={10} strokeWidth={1.5} />
+                    Logs
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={handleToggleChat}
                   title="Collapse chat"
-                  className="flex h-6 w-6 items-center justify-center rounded text-white/25 cursor-pointer hover:text-white/50 hover:bg-white/[0.06] transition-colors duration-150"
+                  className="flex h-6 w-6 items-center justify-center rounded text-white/30 cursor-pointer hover:text-white/55 hover:bg-white/[0.06] transition-colors duration-150"
                 >
-                  <PanelLeftClose size={13} strokeWidth={1.5} />
+                  <PanelLeftClose size={14} strokeWidth={1.5} />
                 </button>
               </div>
-              <StoryWriterChat
-                messages={writer.messages}
-                status={writer.status}
-                streamProgress={writer.streamProgress}
-                streamError={writer.streamError}
-                codebaseResearch={writer.codebaseResearch}
-                onCodebaseResearchChange={writer.setCodbaseResearch}
-                model={writer.model}
-                onModelChange={writer.setModel}
-                onSend={writer.sendMessage}
-                messageDraftMap={messageDraftMap}
-                onViewDraft={handleViewDraft}
-              />
+              {showLogs ? (
+                <ExecutionLogViewer ticketKey={ticketKey} />
+              ) : (
+                <StoryWriterChat
+                  messages={writer.messages}
+                  status={writer.status}
+                  streamProgress={writer.streamProgress}
+                  streamError={writer.streamError}
+                  usage={writer.usage}
+                  codebaseResearch={writer.codebaseResearch}
+                  onCodebaseResearchChange={writer.setCodbaseResearch}
+                  model={writer.model}
+                  onModelChange={writer.setModel}
+                  onSend={writer.sendMessage}
+                  messageDraftMap={messageDraftMap}
+                  onViewDraft={handleViewDraft}
+                />
+              )}
             </div>
 
             {/* Resize handle */}
@@ -389,7 +515,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 editState: ticketData?.editState ?? "clean",
                 notes: "",
               }}
-              onDraftChange={writer.updateLocalDraft}
+              onDraftChange={handleDraftChange}
               onDismissDraft={writer.dismissDraft}
               activeDraftId={activeDraftId}
               splitModeVisible={splitModeVisible}
@@ -409,26 +535,25 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       </div>
 
       {/* Footer bar */}
-      <div className="flex items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-1.5">
-        <div className="flex items-center gap-3">
+      {(writer.aiDrafts.length > 0 || targetTicketKey || writer.messages.length > 0) && (
+        <div className="flex items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-1.5">
+          <div className="flex items-center gap-3">
+            {writer.aiDrafts.length > 0 && (
+              <span className="text-xs text-white/30">
+                {writer.aiDrafts.length} draft{writer.aiDrafts.length !== 1 ? "s" : ""}
+              </span>
+            )}
+            {targetTicketKey && (
+              <span className="text-xs text-[var(--color-brand-400)]/60">
+                Split: {targetTicketKey}
+              </span>
+            )}
+          </div>
           <span className="text-xs text-white/25">
-            {writer.session ? "Session active" : "No session"}
+            {writer.messages.length > 0 ? `${writer.messages.length} messages` : ""}
           </span>
-          {writer.aiDrafts.length > 0 && (
-            <span className="text-xs text-white/25">
-              {writer.aiDrafts.length} draft{writer.aiDrafts.length !== 1 ? "s" : ""}
-            </span>
-          )}
-          {targetTicketKey && (
-            <span className="text-xs text-[var(--color-brand-400)]/50">
-              Split: {targetTicketKey}
-            </span>
-          )}
         </div>
-        <span className="text-xs text-white/20">
-          {writer.messages.length > 0 ? `${writer.messages.length} messages` : ""}
-        </span>
-      </div>
+      )}
 
       {/* Delete confirmation */}
       {showDeleteConfirm && (

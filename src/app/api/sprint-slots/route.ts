@@ -23,9 +23,9 @@ export async function PUT(request: Request) {
   }
 
   for (const slot of body) {
-    if (typeof slot.slotIndex !== "number" || slot.slotIndex < 0 || slot.slotIndex > 3) {
+    if (typeof slot.slotIndex !== "number" || slot.slotIndex < 0 || slot.slotIndex > 7) {
       return NextResponse.json(
-        { error: "slotIndex must be a number between 0 and 3" },
+        { error: "slotIndex must be a number between 0 and 7" },
         { status: 400 },
       );
     }

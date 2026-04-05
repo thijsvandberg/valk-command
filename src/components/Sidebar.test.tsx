@@ -29,7 +29,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("valk-command")).toBeInTheDocument();
   });
 
-  it("renders all 8 navigation items", () => {
+  it("renders all 7 navigation items", () => {
     render(<Sidebar />);
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Chat")).toBeInTheDocument();
@@ -38,7 +38,6 @@ describe("Sidebar", () => {
     expect(screen.getByText("Refinement")).toBeInTheDocument();
     expect(screen.getByText("Jobs")).toBeInTheDocument();
     expect(screen.getByText("Stakeholder")).toBeInTheDocument();
-    expect(screen.getByText("Changelog")).toBeInTheDocument();
   });
 
   it("all navigation links point to correct routes", () => {
@@ -54,7 +53,6 @@ describe("Sidebar", () => {
       "/refinement",
       "/jobs",
       "/stakeholder",
-      "/changelog",
     ]);
   });
 

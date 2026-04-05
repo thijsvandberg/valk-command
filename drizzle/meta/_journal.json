@@ -113,6 +113,41 @@
       "when": 1775673600000,
       "tag": "0015_ticket_epic_key",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1775760000000,
+      "tag": "0016_story_writer_split",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1775846400000,
+      "tag": "0017_activity_log_story_writer_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1775932800000,
+      "tag": "0018_ticket_sprint_name_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1776019200000,
+      "tag": "0019_add_local_edit_is_draft",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1776105600000,
+      "tag": "0020_story_writer_execution_log",
+      "breakpoints": true
     }
   ]
 }

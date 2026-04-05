@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketLocalEdit, storyVersion } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Ticket, IssueType, JiraStatus, POStatus, Assignee, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 
@@ -44,14 +44,27 @@ export async function GET(request: Request) {
     ? await query.where(eq(ticket.sprintName, sprintId))
     : await query;
 
-  // Batch-fetch local edits and latest versions for edit state computation
+  // Batch-fetch local edits and latest versions for edit state computation.
+  // Only fetch for the tickets in this sprint to avoid full table scans.
   const allKeys = rows.map(({ t }) => t.jiraKey);
   const [allLocalEdits, allVersions] = await Promise.all([
     allKeys.length > 0
-      ? db.select().from(ticketLocalEdit)
+      ? db.select({
+          id: ticketLocalEdit.id,
+          ticketKey: ticketLocalEdit.ticketKey,
+          field: ticketLocalEdit.field,
+          localValue: ticketLocalEdit.localValue,
+          baseJiraVersion: ticketLocalEdit.baseJiraVersion,
+          isDraft: ticketLocalEdit.isDraft,
+          modifiedAt: ticketLocalEdit.modifiedAt,
+        }).from(ticketLocalEdit).where(inArray(ticketLocalEdit.ticketKey, allKeys))
       : Promise.resolve([]),
     allKeys.length > 0
-      ? db.select().from(storyVersion)
+      ? db.select({
+          jiraKey: storyVersion.jiraKey,
+          contentHash: storyVersion.contentHash,
+          createdAt: storyVersion.createdAt,
+        }).from(storyVersion).where(inArray(storyVersion.jiraKey, allKeys))
       : Promise.resolve([]),
   ]);
 
@@ -62,21 +75,14 @@ export async function GET(request: Request) {
     editsByKey.set(edit.ticketKey, existing);
   }
 
-  const latestHashByKey = new Map<string, string>();
-  for (const v of allVersions) {
-    const existing = latestHashByKey.get(v.jiraKey);
-    if (!existing) {
-      latestHashByKey.set(v.jiraKey, v.contentHash);
-    }
-  }
-
-  // Re-compute with proper ordering (latest version = most recent createdAt)
+  // Build latestHash per ticket by sorting versions descending by createdAt
   const versionsByKey = new Map<string, { contentHash: string; createdAt: string }[]>();
   for (const v of allVersions) {
     const existing = versionsByKey.get(v.jiraKey) ?? [];
     existing.push({ contentHash: v.contentHash, createdAt: v.createdAt });
     versionsByKey.set(v.jiraKey, existing);
   }
+  const latestHashByKey = new Map<string, string>();
   for (const [key, versions] of versionsByKey) {
     versions.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     latestHashByKey.set(key, versions[0].contentHash);

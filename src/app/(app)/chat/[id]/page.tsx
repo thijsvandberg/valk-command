@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import ChatLayout from "@/components/chat/ChatLayout";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { MessageCircle } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 const PO_STATUS_COLORS: Record<string, { dot: string }> = {
@@ -99,17 +100,21 @@ export default function ChatConversationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const pageTitle = usePageTitle("Chat");
   return (
-    <ErrorBoundary>
-      <Suspense
-        fallback={
-          <div className="h-full">
-            <ChatLayout conversationId={id} />
-          </div>
-        }
-      >
-        <ChatConversationPageInner conversationId={id} />
-      </Suspense>
-    </ErrorBoundary>
+    <>
+      {pageTitle}
+      <ErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="h-full">
+              <ChatLayout conversationId={id} />
+            </div>
+          }
+        >
+          <ChatConversationPageInner conversationId={id} />
+        </Suspense>
+      </ErrorBoundary>
+    </>
   );
 }

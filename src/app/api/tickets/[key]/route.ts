@@ -164,9 +164,16 @@ export async function GET(
     jiraComments,
   };
 
+  // Include local edits so the client can render the correct version immediately
+  const localEditMap: Record<string, { value: string; isDraft: boolean }> = {};
+  for (const edit of localEdits) {
+    localEditMap[edit.field] = { value: edit.localValue, isDraft: edit.isDraft };
+  }
+
   return NextResponse.json({
     ...ticketBase,
     ...detail,
     metadata: meta ?? null,
+    localEdits: localEditMap,
   });
 }

@@ -6,12 +6,14 @@ import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCrite
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
+import { invalidateSearchCache } from "@/lib/search-index-cache";
 
 function normalizeIssueType(name: string): string {
   const lower = name.toLowerCase();
   if (lower.includes("bug")) return "bug";
   if (lower.includes("sub")) return "subtask";
   if (lower.includes("story")) return "story";
+  if (lower.includes("spike")) return "spike";
   return "task";
 }
 
@@ -289,6 +291,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
+    invalidateSearchCache();
     return NextResponse.json({
       ok: true,
       count: results.length,
@@ -369,6 +372,7 @@ async function syncSprint(sprintId: string | null, strategy: string) {
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
+    invalidateSearchCache();
     return NextResponse.json({
       ok: true,
       count: results.length,

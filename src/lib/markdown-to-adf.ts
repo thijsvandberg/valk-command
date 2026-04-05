@@ -45,8 +45,16 @@ export function markdownToAdf(markdown: string): AdfNode {
       const fenceArg = fenceMatch[2].trim();
       const innerLines: string[] = [];
       i++;
-      while (i < lines.length && lines[i].trim() !== ":::") {
-        innerLines.push(lines[i]);
+      let fenceDepth = 0;
+      while (i < lines.length) {
+        const innerLine = lines[i];
+        if (innerLine.trim() === ":::") {
+          if (fenceDepth === 0) break; // this is the closing ::: for the current fence
+          fenceDepth--;
+        } else if (/^:::(info|warning|error|note|success|expand)\b/.test(innerLine.trim())) {
+          fenceDepth++;
+        }
+        innerLines.push(innerLine);
         i++;
       }
       i++; // skip closing :::
@@ -122,37 +130,11 @@ export function markdownToAdf(markdown: string): AdfNode {
       continue;
     }
 
-    // Bullet list
-    if (/^[-*]\s/.test(line)) {
-      const items: AdfNode[] = [];
-      while (i < lines.length && /^[-*]\s/.test(lines[i])) {
-        items.push({
-          type: "listItem",
-          content: [{
-            type: "paragraph",
-            content: parseInline(lines[i].replace(/^[-*]\s/, "")),
-          }],
-        });
-        i++;
-      }
-      content.push({ type: "bulletList", content: items });
-      continue;
-    }
-
-    // Ordered list
-    if (/^\d+\.\s/.test(line)) {
-      const items: AdfNode[] = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
-        items.push({
-          type: "listItem",
-          content: [{
-            type: "paragraph",
-            content: parseInline(lines[i].replace(/^\d+\.\s/, "")),
-          }],
-        });
-        i++;
-      }
-      content.push({ type: "orderedList", content: items });
+    // List (bullet or ordered) — handles nested indentation recursively
+    if (/^[-*]\s/.test(line) || /^\d+\.\s/.test(line)) {
+      const result = parseListBlock(lines, i, 0);
+      content.push(result.node);
+      i = result.nextIdx;
       continue;
     }
 
@@ -258,6 +240,123 @@ function parseTable(tableLines: string[]): AdfNode | null {
   };
 }
 
+// Recursively parses a list block (bullet or ordered) with full nesting support.
+// baseIndent is the column offset of the list markers at this level.
+function parseListBlock(
+  lines: string[],
+  startIdx: number,
+  baseIndent: number,
+): { node: AdfNode; nextIdx: number } {
+  const firstTrimmed = lines[startIdx].trimStart();
+  const isBullet = /^[-*]\s/.test(firstTrimmed);
+  const listType = isBullet ? "bulletList" : "orderedList";
+
+  const items: AdfNode[] = [];
+  let i = startIdx;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Skip blank lines between sibling items
+    if (trimmed === "") {
+      i++;
+      continue;
+    }
+
+    const lineIndent = line.length - line.trimStart().length;
+    const isOurItem =
+      lineIndent === baseIndent &&
+      (isBullet ? /^[-*]\s/.test(trimmed) : /^\d+\.\s/.test(trimmed));
+
+    if (!isOurItem) break;
+
+    const itemText = isBullet
+      ? trimmed.replace(/^[-*]\s/, "")
+      : trimmed.replace(/^\d+\.\s/, "");
+
+    i++;
+
+    const itemContent: AdfNode[] = [];
+    let textLines: string[] = [itemText];
+
+    // Collect content belonging to this item: continuation text and nested lists
+    while (i < lines.length) {
+      const nextLine = lines[i];
+      const nextTrimmed = nextLine.trim();
+
+      if (nextTrimmed === "") {
+        // Blank line: peek ahead to see if content continues at child indent
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim() === "") j++;
+        if (j >= lines.length) {
+          i = j;
+          break;
+        }
+        const peekIndent = lines[j].length - lines[j].trimStart().length;
+        if (peekIndent < baseIndent + 2) break;
+        i++;
+        continue;
+      }
+
+      const nextIndent = nextLine.length - nextLine.trimStart().length;
+
+      if (nextIndent < baseIndent + 2) break;
+
+      // Nested list at the direct child indent
+      if (
+        nextIndent === baseIndent + 2 &&
+        (/^[-*]\s/.test(nextTrimmed) || /^\d+\.\s/.test(nextTrimmed))
+      ) {
+        // Flush accumulated text as a paragraph before the nested list
+        if (textLines.length > 0) {
+          const paraNodes: AdfNode[] = [];
+          textLines.forEach((l, li) => {
+            if (li > 0) paraNodes.push({ type: "hardBreak" });
+            paraNodes.push(...parseInline(l));
+          });
+          itemContent.push({ type: "paragraph", content: paraNodes });
+          textLines = [];
+        }
+        const nested = parseListBlock(lines, i, baseIndent + 2);
+        itemContent.push(nested.node);
+        i = nested.nextIdx;
+      } else {
+        // Continuation text for the current list item
+        textLines.push(nextTrimmed);
+        i++;
+      }
+    }
+
+    // Flush any remaining text lines as a paragraph
+    if (textLines.length > 0) {
+      const paraNodes: AdfNode[] = [];
+      textLines.forEach((l, li) => {
+        if (li > 0) paraNodes.push({ type: "hardBreak" });
+        paraNodes.push(...parseInline(l));
+      });
+      itemContent.push({ type: "paragraph", content: paraNodes });
+    }
+
+    items.push({ type: "listItem", content: itemContent });
+  }
+
+  return { node: { type: listType, content: items }, nextIdx: i };
+}
+
+// Jira ADF textColor only accepts hex (#RGB or #RRGGBB). Convert rgb/rgba to hex.
+function toHexColor(color: string): string {
+  if (color.startsWith("#")) return color;
+  const m = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (m) {
+    return "#" + [m[1], m[2], m[3]]
+      .map((v) => parseInt(v, 10).toString(16).padStart(2, "0"))
+      .join("");
+  }
+  // Named colors: fall back as-is (Jira may or may not accept them)
+  return color;
+}
+
 function parseInline(text: string): AdfNode[] {
   const nodes: AdfNode[] = [];
   let remaining = text;
@@ -266,7 +365,8 @@ function parseInline(text: string): AdfNode[] {
     // Colored text {color:#hex}text{color} — parse inner content and add color mark to each node
     const colorMatch = remaining.match(/^\{color:(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\}(.*?)\{color\}/);
     if (colorMatch) {
-      const color = colorMatch[1];
+      // Jira ADF textColor requires hex; convert rgb/rgba if needed
+      const color = toHexColor(colorMatch[1]);
       const innerNodes = parseInline(colorMatch[2]);
       for (const node of innerNodes) {
         if (node.type === "text") {
@@ -281,7 +381,13 @@ function parseInline(text: string): AdfNode[] {
     // Bold+italic ***text***  (must come before bold and italic)
     const boldItalicMatch = remaining.match(/^\*\*\*(.+?)\*\*\*/);
     if (boldItalicMatch) {
-      nodes.push({ type: "text", text: boldItalicMatch[1], marks: [{ type: "strong" }, { type: "em" }] });
+      const innerNodes = parseInline(boldItalicMatch[1]);
+      for (const node of innerNodes) {
+        if (node.type === "text") {
+          node.marks = [{ type: "strong" }, { type: "em" }, ...(node.marks ?? [])];
+        }
+      }
+      nodes.push(...innerNodes);
       remaining = remaining.slice(boldItalicMatch[0].length);
       continue;
     }
@@ -289,7 +395,13 @@ function parseInline(text: string): AdfNode[] {
     // Bold **text**
     const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
     if (boldMatch) {
-      nodes.push({ type: "text", text: boldMatch[1], marks: [{ type: "strong" }] });
+      const innerNodes = parseInline(boldMatch[1]);
+      for (const node of innerNodes) {
+        if (node.type === "text") {
+          node.marks = [{ type: "strong" }, ...(node.marks ?? [])];
+        }
+      }
+      nodes.push(...innerNodes);
       remaining = remaining.slice(boldMatch[0].length);
       continue;
     }
@@ -312,7 +424,13 @@ function parseInline(text: string): AdfNode[] {
     // Italic *text*
     const italicMatch = remaining.match(/^\*(.+?)\*/);
     if (italicMatch) {
-      nodes.push({ type: "text", text: italicMatch[1], marks: [{ type: "em" }] });
+      const innerNodes = parseInline(italicMatch[1]);
+      for (const node of innerNodes) {
+        if (node.type === "text") {
+          node.marks = [{ type: "em" }, ...(node.marks ?? [])];
+        }
+      }
+      nodes.push(...innerNodes);
       remaining = remaining.slice(italicMatch[0].length);
       continue;
     }
