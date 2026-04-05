@@ -139,6 +139,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       // Follow-up message: resume the existing workspace conversation
       const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
 
+      // Always inject the current draft so the workspace AI has context even if it lost
+      // its conversation history (happens when the remote session is evicted).
+      const draftContext = session.localDraft
+        ? `\n\n[Current story draft]\n${session.localDraft}\n[End of draft]`
+        : "";
+
       // In split mode, remind the AI of the split context and expected output format
       let splitReminder = "";
       if (session.targetTicketKey) {
@@ -153,7 +159,7 @@ export async function POST(request: Request, { params }: RouteContext) {
           method: "POST",
           headers: agentHeaders(),
           body: JSON.stringify({
-            content: `${researchFlag}\n\n${content}${splitReminder}`,
+            content: `${researchFlag}${draftContext}\n\n${content}${splitReminder}`,
             model,
           }),
         },
