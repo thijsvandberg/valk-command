@@ -682,6 +682,37 @@ export class JiraClient {
   }
 
   /**
+   * Create an issue link between two Jira issues.
+   * linkType defaults to "Relates". Use "split to" for split story relationships.
+   * inwardIssue is the source, outwardIssue is the destination (e.g. original "split to" target).
+   */
+  async createIssueLink(sourceKey: string, targetKey: string, linkType = "Relates"): Promise<void> {
+    if (!isConfigured()) return;
+
+    await jiraPost<void>("/rest/api/3/issueLink", {
+      type: { name: linkType },
+      inwardIssue: { key: sourceKey },
+      outwardIssue: { key: targetKey },
+    });
+  }
+
+  /**
+   * Delete a Jira issue link by ID.
+   */
+  async deleteIssueLink(linkId: string): Promise<void> {
+    if (!isConfigured()) return;
+
+    const cfg = getConfig();
+    const url = `${cfg.baseUrl}/rest/api/3/issueLink/${linkId}`;
+    const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
+
+    await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Basic ${auth}` },
+    });
+  }
+
+  /**
    * Whether the client is talking to a real Jira instance.
    */
   get isLive(): boolean {

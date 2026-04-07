@@ -3,18 +3,40 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
-  FileText, GitCompare, Trash2,
+  FileText, GitCompare, Trash2, Check,
   ChevronLeft, ChevronRight,
   History, Eye, Columns2, PanelLeftClose, PanelRightClose,
 } from "lucide-react";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
-import { StoryDiff, type HunkState } from "@/components/story-diff/StoryDiff";
+import { StoryDiff, type HunkState, type StoryDiffHandle } from "@/components/story-diff/StoryDiff";
 import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { useTicketVersions } from "@/hooks/useSprintBoard";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 import type { StoryWriterDraftRow } from "@/db/schema";
 import type { Ticket } from "@/types/ticket";
+
+// ---------------------------------------------------------------------------
+// TitleInput: inline-editable title field
+// ---------------------------------------------------------------------------
+
+interface TitleInputProps {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}
+
+function TitleInput({ value, onChange, placeholder = "Story title..." }: TitleInputProps) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full bg-transparent px-4 pt-4 pb-1 font-[var(--font-display)] text-[1.35rem] font-semibold leading-snug tracking-tight text-white/90 placeholder:text-white/20 focus:outline-none"
+    />
+  );
+}
 
 type EditorTab = "editor" | "diff" | "history";
 type DiffViewMode = "diff" | "plain";
@@ -40,19 +62,23 @@ interface StoredVersionRow {
 
 interface StoryWriterEditorProps {
   localDraft: string;
+  localTitle?: string;
   baseDescription: string;
   aiDrafts: StoryWriterDraftRow[];
   ticket: Ticket;
   onDraftChange: (content: string) => void;
+  onTitleChange?: (title: string) => void;
   onDismissDraft: (draftId: string) => void;
   activeDraftId?: string | null;
   // Split mode props
   splitModeVisible?: boolean;
   targetTicketKey?: string | null;
   targetLocalDraft?: string | null;
+  targetLocalTitle?: string | null;
   targetAiDrafts?: StoryWriterDraftRow[];
   targetTicketTitle?: string | null;
   onTargetDraftChange?: (content: string) => void;
+  onTargetTitleChange?: (title: string) => void;
   onDismissTargetDraft?: (draftId: string) => void;
 }
 
@@ -102,46 +128,42 @@ function DiffPane({
 }: DiffPaneProps) {
   const selected = rightVersions.find((v) => v.id === diffNewId);
   const isAiDraft = selected?.isDraft ?? false;
+  const diffRef = useRef<StoryDiffHandle>(null);
+  const [diffStats, setDiffStats] = useState<{ changeHunkCount: number; decidedCount: number } | null>(null);
+
+  const pendingHunkCount = diffStats ? diffStats.changeHunkCount - diffStats.decidedCount : 0;
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-10 items-center gap-2 border-b border-white/[0.06] px-3">
-        <span className="shrink-0 text-xs text-white/30">Your draft</span>
-        <span className="text-white/20">↔</span>
-
         <VersionPicker
           options={rightVersions}
           selectedId={diffNewId}
           onSelect={onDiffNewIdChange}
         />
 
-        <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onDiffViewModeChange("plain")}
-            title="Preview the selected version"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors duration-150 ${
-              diffViewMode === "plain"
-                ? "bg-white/[0.08] text-white/70"
-                : "text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-            }`}
-          >
-            <Eye size={11} strokeWidth={1.5} />
-            Preview
-          </button>
-          <button
-            type="button"
-            onClick={() => onDiffViewModeChange("diff")}
-            title="Show diff"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors duration-150 ${
-              diffViewMode === "diff"
-                ? "bg-white/[0.08] text-white/70"
-                : "text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-            }`}
-          >
-            <GitCompare size={11} strokeWidth={1.5} />
-            Diff
-          </button>
+        <div className="ml-auto flex items-center gap-2">
+          {diffViewMode === "plain" ? (
+            <button
+              type="button"
+              onClick={() => onDiffViewModeChange("diff")}
+              title="Show diff"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium cursor-pointer text-white/35 hover:text-white/55 hover:bg-white/[0.04] transition-colors duration-150"
+            >
+              <GitCompare size={11} strokeWidth={1.5} />
+              Diff
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onDiffViewModeChange("plain")}
+              title="Preview the selected version"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium cursor-pointer text-white/35 hover:text-white/55 hover:bg-white/[0.04] transition-colors duration-150"
+            >
+              <Eye size={11} strokeWidth={1.5} />
+              Preview
+            </button>
+          )}
         </div>
       </div>
 
@@ -169,15 +191,27 @@ function DiffPane({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => selected?.draftDbId && onDismissDraft(selected.draftDbId)}
-            title="Remove this AI draft"
-            className="flex items-center gap-1 rounded-md bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/40 border border-white/[0.06] cursor-pointer hover:text-red-400/70 hover:bg-red-500/[0.06] active:scale-95 transition-transform duration-150"
-          >
-            <Trash2 size={11} strokeWidth={2} />
-            Dismiss
-          </button>
+          <div className="flex items-center gap-1.5">
+            {pendingHunkCount > 0 && (
+              <button
+                type="button"
+                onClick={() => diffRef.current?.acceptAll()}
+                className="flex items-center gap-1 rounded-md bg-[var(--color-brand-600)]/15 px-2.5 py-1 text-[11px] font-medium text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/20 cursor-pointer hover:bg-[var(--color-brand-600)]/25 active:scale-95 transition-transform duration-150"
+              >
+                <Check size={11} strokeWidth={2} />
+                Accept {pendingHunkCount} remaining
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => selected?.draftDbId && onDismissDraft(selected.draftDbId)}
+              title="Remove this AI draft"
+              className="flex items-center gap-1 rounded-md bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/40 border border-white/[0.06] cursor-pointer hover:text-red-400/70 hover:bg-red-500/[0.06] active:scale-95 transition-transform duration-150"
+            >
+              <Trash2 size={11} strokeWidth={2} />
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
@@ -186,23 +220,30 @@ function DiffPane({
           <div className="flex h-full items-center justify-center text-xs text-white/25">
             {rightVersions.length === 0 ? "No versions to compare" : "Select a version"}
           </div>
-        ) : diffViewMode === "plain" ? (
-          <div className="description-content px-1 py-2">
-            {renderMarkdown(selected.content)}
-          </div>
         ) : (
-          <StoryDiff
-            key={`${diffNewId}-${snapshotKey}`}
-            oldText={baseSnapshot}
-            newText={selected.content}
-            oldLabel="Your draft"
-            newLabel={selected.label}
-            interactive
-            pendingIsOld
-            onResultChange={onResultChange}
-            hunkStates={hunkStates}
-            onHunkStatesChange={onHunkStatesChange}
-          />
+          <>
+            {diffViewMode === "plain" && (
+              <div className="description-content px-1 py-2">
+                {renderMarkdown(selected.content)}
+              </div>
+            )}
+            <div className={diffViewMode === "plain" ? "hidden" : ""}>
+              <StoryDiff
+                ref={diffRef}
+                key={`${diffNewId}-${snapshotKey}`}
+                oldText={baseSnapshot}
+                newText={selected.content}
+                oldLabel="Current"
+                newLabel={selected.label}
+                interactive
+                pendingIsOld
+                onResultChange={onResultChange}
+                hunkStates={hunkStates}
+                onHunkStatesChange={onHunkStatesChange}
+                onStatsComputed={setDiffStats}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -233,7 +274,9 @@ interface SplitModeLayoutProps {
   targetDraft: string;
   targetAiDrafts: StoryWriterDraftRow[];
   onOriginalDraftChange: (content: string) => void;
+  onOriginalTitleChange?: (title: string) => void;
   onTargetDraftChange: (content: string) => void;
+  onTargetTitleChange?: (title: string) => void;
   onDismissOriginalDraft: (draftId: string) => void;
   onDismissTargetDraft: (draftId: string) => void;
 }
@@ -249,7 +292,9 @@ function SplitModeLayout({
   targetDraft,
   targetAiDrafts,
   onOriginalDraftChange,
+  onOriginalTitleChange,
   onTargetDraftChange,
+  onTargetTitleChange,
   onDismissOriginalDraft,
   onDismissTargetDraft,
 }: SplitModeLayoutProps) {
@@ -272,7 +317,7 @@ function SplitModeLayout({
   // Per-pane diff state
   const [origDiffState, setOrigDiffState] = useState<SplitPaneDiffState>({
     diffNewId: "",
-    diffViewMode: "diff",
+    diffViewMode: "plain",
     hunkStates: {},
     selectedDraftIdx: 0,
     baseSnapshot: originalDraft,
@@ -280,7 +325,7 @@ function SplitModeLayout({
   });
   const [targetDiffState, setTargetDiffState] = useState<SplitPaneDiffState>({
     diffNewId: "",
-    diffViewMode: "diff",
+    diffViewMode: "plain",
     hunkStates: {},
     selectedDraftIdx: 0,
     baseSnapshot: targetDraft,
@@ -398,7 +443,15 @@ function SplitModeLayout({
         />
         <div className="flex flex-1 overflow-hidden">
           <div style={{ width: splitModeWidth }} className="shrink-0 overflow-hidden border-r border-white/[0.06]">
-            <RichEditor value={targetDraft} onChange={onTargetDraftChange} placeholder="Story description..." borderless />
+            <RichEditor
+              value={targetDraft}
+              onChange={onTargetDraftChange}
+              placeholder="Story description..."
+              borderless
+              slotBeforeContent={onTargetTitleChange
+                ? <TitleInput value={targetTitle} onChange={onTargetTitleChange} />
+                : undefined}
+            />
           </div>
           <div
             onMouseDown={handleSplitModeMouseDown}
@@ -454,7 +507,15 @@ function SplitModeLayout({
         />
         <div className="flex flex-1 overflow-hidden">
           <div style={{ width: splitModeWidth }} className="shrink-0 overflow-hidden border-r border-white/[0.06]">
-            <RichEditor value={originalDraft} onChange={onOriginalDraftChange} placeholder="Story description..." borderless />
+            <RichEditor
+              value={originalDraft}
+              onChange={onOriginalDraftChange}
+              placeholder="Story description..."
+              borderless
+              slotBeforeContent={onOriginalTitleChange
+                ? <TitleInput value={originalTitle} onChange={onOriginalTitleChange} />
+                : undefined}
+            />
           </div>
           <div
             onMouseDown={handleSplitModeMouseDown}
@@ -511,7 +572,15 @@ function SplitModeLayout({
           />
           <div className="flex-1 overflow-hidden">
             {origPaneView === "editor" ? (
-              <RichEditor value={originalDraft} onChange={onOriginalDraftChange} placeholder="Story description..." borderless />
+              <RichEditor
+                value={originalDraft}
+                onChange={onOriginalDraftChange}
+                placeholder="Story description..."
+                borderless
+                slotBeforeContent={onOriginalTitleChange
+                  ? <TitleInput value={originalTitle} onChange={onOriginalTitleChange} />
+                  : undefined}
+              />
             ) : (
               <DiffPane
                 baseSnapshot={origDiffState.baseSnapshot}
@@ -560,7 +629,15 @@ function SplitModeLayout({
           />
           <div className="flex-1 overflow-hidden">
             {targetPaneView === "editor" ? (
-              <RichEditor value={targetDraft} onChange={onTargetDraftChange} placeholder="Story description..." borderless />
+              <RichEditor
+                value={targetDraft}
+                onChange={onTargetDraftChange}
+                placeholder="Story description..."
+                borderless
+                slotBeforeContent={onTargetTitleChange
+                  ? <TitleInput value={targetTitle} onChange={onTargetTitleChange} />
+                  : undefined}
+              />
             ) : (
               targetRightVersions.length > 0 ? (
                 <DiffPane
@@ -727,24 +804,28 @@ function SplitPaneHeader({
 
 export function StoryWriterEditor({
   localDraft,
+  localTitle,
   baseDescription,
   aiDrafts,
   ticket,
   onDraftChange,
+  onTitleChange,
   onDismissDraft,
   activeDraftId,
   splitModeVisible,
   targetTicketKey,
   targetLocalDraft,
+  targetLocalTitle,
   targetAiDrafts = [],
   targetTicketTitle,
   onTargetDraftChange,
+  onTargetTitleChange,
   onDismissTargetDraft,
 }: StoryWriterEditorProps) {
   const { data: versionsData } = useTicketVersions(ticket.key);
 
   const [activeTab, setActiveTab] = useState<EditorTab>("editor");
-  const [diffViewMode, setDiffViewMode] = useState<DiffViewMode>("diff");
+  const [diffViewMode, setDiffViewMode] = useState<DiffViewMode>("plain");
   const [diffNewId, setDiffNewId] = useState("");
   const [diffHunkStates, setDiffHunkStates] = useState<Record<number, HunkState>>({});
   const [selectedDraftIdx, setSelectedDraftIdx] = useState(0);
@@ -962,22 +1043,28 @@ export function StoryWriterEditor({
       <div className="flex h-full flex-col">
         <SplitModeLayout
           originalKey={ticket.key}
-          originalTitle={ticket.title}
+          originalTitle={localTitle ?? ticket.title}
           originalDraft={localDraft}
           originalAiDrafts={aiDrafts}
           originalBaseDescription={baseDescription}
           targetKey={targetTicketKey}
-          targetTitle={targetTicketTitle ?? targetTicketKey}
+          targetTitle={targetLocalTitle ?? targetTicketTitle ?? targetTicketKey}
           targetDraft={targetLocalDraft ?? ""}
           targetAiDrafts={targetAiDrafts}
           onOriginalDraftChange={onDraftChange}
+          onOriginalTitleChange={onTitleChange}
           onTargetDraftChange={onTargetDraftChange ?? (() => {})}
+          onTargetTitleChange={onTargetTitleChange}
           onDismissOriginalDraft={onDismissDraft}
           onDismissTargetDraft={onDismissTargetDraft ?? (() => {})}
         />
       </div>
     );
   }
+
+  const titleSlot = onTitleChange
+    ? <TitleInput value={localTitle ?? ticket.title} onChange={onTitleChange} />
+    : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -1031,6 +1118,7 @@ export function StoryWriterEditor({
             onChange={onDraftChange}
             placeholder="Story description..."
             borderless
+            slotBeforeContent={titleSlot}
           />
         </div>
       )}
@@ -1053,6 +1141,7 @@ export function StoryWriterEditor({
               onChange={onDraftChange}
               placeholder="Story description..."
               borderless
+              slotBeforeContent={titleSlot}
             />
           </div>
           <div

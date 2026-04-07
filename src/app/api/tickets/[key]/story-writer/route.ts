@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit } from "@/db/schema";
+import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit, relatedStoryCandidate } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
@@ -25,7 +25,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       .get();
 
     if (!session) {
-      return NextResponse.json({ session: null, messages: [], aiDrafts: [] });
+      return NextResponse.json({ session: null, messages: [], aiDrafts: [], relatedCandidates: [] });
     }
 
     const aiDrafts = await db.select().from(storyWriterDraft)
@@ -33,8 +33,12 @@ export async function GET(request: Request, { params }: RouteContext) {
       .orderBy(storyWriterDraft.draftIndex)
       .all();
 
+    const relatedCandidates = await db.select().from(relatedStoryCandidate)
+      .where(eq(relatedStoryCandidate.sessionId, session.id))
+      .all();
+
     if (draftsOnly) {
-      return NextResponse.json({ session, messages: [], aiDrafts });
+      return NextResponse.json({ session, messages: [], aiDrafts, relatedCandidates });
     }
 
     const messages = await db.select().from(message)
@@ -42,7 +46,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       .orderBy(message.timestamp)
       .all();
 
-    return NextResponse.json({ session, messages, aiDrafts });
+    return NextResponse.json({ session, messages, aiDrafts, relatedCandidates });
   } catch (err) {
     console.error("[story-writer GET]", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -81,7 +85,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
-    const [latestVersion, descLocalEdit] = await Promise.all([
+    const [latestVersion, descLocalEdit, titleLocalEdit] = await Promise.all([
       db.query.storyVersion.findFirst({
         where: eq(storyVersion.jiraKey, key),
         orderBy: [desc(storyVersion.createdAt)],
@@ -89,10 +93,14 @@ export async function POST(_request: Request, { params }: RouteContext) {
       db.select().from(ticketLocalEdit).where(
         and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, "description")),
       ).get(),
+      db.select().from(ticketLocalEdit).where(
+        and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, "title")),
+      ).get(),
     ]);
 
-    // Use local edit (draft or saved) over raw Jira description
+    // Use local edit (draft or saved) over raw Jira description/title
     const initialDraft = descLocalEdit?.localValue ?? ticketRow.description ?? "";
+    const initialTitle = titleLocalEdit?.localValue ?? ticketRow.title ?? "";
 
     // Reuse existing conversation for this ticket to avoid duplicates in the sidebar
     const existingConversation = await db
@@ -121,6 +129,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
       conversationId,
       status: "active",
       localDraft: initialDraft,
+      localTitle: initialTitle,
       baseVersionHash: latestVersion?.contentHash ?? null,
     });
 
@@ -175,8 +184,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (typeof body.localDraft === "string") {
     updates.localDraft = body.localDraft;
   }
+  if (typeof body.localTitle === "string") {
+    updates.localTitle = body.localTitle;
+  }
   if (typeof body.targetLocalDraft === "string") {
     updates.targetLocalDraft = body.targetLocalDraft;
+  }
+  if (typeof body.targetLocalTitle === "string") {
+    updates.targetLocalTitle = body.targetLocalTitle;
   }
   if (body.clearSplit === true) {
     updates.targetTicketKey = null;

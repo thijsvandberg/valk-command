@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import useSWR from "swr";
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
+import type { IssueType } from "@/types/ticket";
+import type { QuickPromptsConfig } from "@/app/api/settings/quick-prompts/route";
 import {
   Loader2,
   SendHorizontal,
@@ -12,11 +15,17 @@ import {
   Target,
   Code2,
   Zap,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  GripHorizontal,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import type { WorkspaceUsage } from "@/hooks/useStoryWriter";
+import type { RelatedStoryCandidateRow } from "@/db/schema";
 
 interface StoryWriterChatProps {
   messages: Message[];
@@ -24,15 +33,22 @@ interface StoryWriterChatProps {
   streamProgress: string;
   streamError: string | null;
   usage: WorkspaceUsage | null;
+  lastResponseDurationMs: number | null;
+  localDraft: string | null;
   codebaseResearch: boolean;
   onCodebaseResearchChange: (v: boolean) => void;
   model: string;
   onModelChange: (m: string) => void;
-  onSend: (content: string) => Promise<boolean>;
-  /** Map messageId -> draftId for messages that produced an AI draft */
+  onSend: (content: string, skill?: string) => Promise<boolean>;
+  onFindRelated?: () => void;
+  onOpenRelatedPanel?: () => void;
+  onStoryKeyClick?: (key: string) => void;
+  relatedCandidates?: RelatedStoryCandidateRow[];
+  onLinkCandidate?: (candidateId: string, isLinked: boolean) => Promise<void>;
   messageDraftMap: Record<string, string>;
-  /** Opens the AI draft in plain view */
+  draftContentMap: Record<string, string>;
   onViewDraft?: (draftId: string) => void;
+  issueType?: IssueType;
 }
 
 const MODEL_OPTIONS = [
@@ -59,8 +75,8 @@ const QUICK_ACTIONS: {
     id: "find-related",
     label: "Find Related",
     icon: Search,
-    prompt: "",
-    enabled: false,
+    prompt: "Find related stories",
+    enabled: true,
   },
   {
     id: "match-epic",
@@ -78,36 +94,164 @@ const QUICK_ACTIONS: {
   },
 ];
 
-const SUGGESTIONS: {
-  label: string;
-  text: string;
-  enableCodebase?: boolean;
-}[] = [
-  { label: "Add test scenarios", text: "Add test scenarios" },
-  { label: "Find related stories", text: "Find related stories in the backlog that overlap with or relate to this story" },
-  { label: "Technical analysis", text: "Do a technical analysis of this story. Identify affected code areas, dependencies, and potential risks.", enableCodebase: true },
-];
+const promptsFetcher = (url: string) => fetch(url).then((r) => r.json());
+
+const MESSAGE_COLLAPSE_HEIGHT = 200;
+
+function RelatedStoriesInline({
+  candidates,
+  onLink,
+  onOpenPanel,
+}: {
+  candidates: RelatedStoryCandidateRow[];
+  onLink: (candidateId: string, isLinked: boolean) => Promise<void>;
+  onOpenPanel?: () => void;
+}) {
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+
+  if (candidates.length === 0) return null;
+
+  const handleLink = async (id: string, isLinked: boolean) => {
+    setLinkingId(id);
+    await onLink(id, isLinked);
+    setLinkingId(null);
+  };
+
+  const jiraBase = "https://new-story.atlassian.net/browse/";
+
+  return (
+    <div className="mt-2 rounded-lg border border-[var(--color-brand-500)]/12 bg-[var(--color-brand-500)]/[0.03] overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.05]">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-white/35">
+          Related Stories
+        </span>
+        {onOpenPanel && (
+          <button
+            type="button"
+            onClick={onOpenPanel}
+            className="text-[10px] text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
+          >
+            Open panel
+          </button>
+        )}
+      </div>
+      <div className="divide-y divide-white/[0.04]">
+        {candidates.map((c) => (
+          <div key={c.id} className="flex items-center gap-2 px-3 py-2">
+            <span className={`shrink-0 text-[10px] font-bold tabular-nums w-6 text-right ${c.score >= 80 ? "text-emerald-400" : c.score >= 60 ? "text-amber-400" : "text-white/35"}`}>
+              {c.score}
+            </span>
+            <a
+              href={c.jiraUrl ?? `${jiraBase}${c.jiraKey}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] shrink-0 transition-colors duration-100"
+            >
+              {c.jiraKey}
+            </a>
+            <span className="min-w-0 flex-1 truncate text-[11px] text-white/60">
+              {c.title}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleLink(c.id, !c.isLinked)}
+              disabled={linkingId === c.id}
+              className={`shrink-0 flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium cursor-pointer transition-colors duration-150 disabled:opacity-50 ${
+                c.isLinked
+                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                  : "border-white/[0.10] text-white/35 hover:border-[var(--color-brand-500)]/20 hover:text-[var(--color-brand-400)]"
+              }`}
+            >
+              {linkingId === c.id ? (
+                <Loader2 size={9} className="animate-spin" />
+              ) : (
+                <Link2 size={9} strokeWidth={1.5} />
+              )}
+              {c.isLinked ? "Linked" : "Link"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  if (isToday) return `${hh}:${mm}`;
+  const day = date.getDate();
+  const month = date.toLocaleString("en", { month: "short" });
+  return `${day} ${month} ${hh}:${mm}`;
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainSeconds = Math.round(seconds % 60);
+  return `${minutes}m ${remainSeconds}s`;
+}
 
 function ChatMessage({
   message,
   draftId,
+  draftContent,
   onViewDraft,
+  isLastAssistant,
+  lastResponseDurationMs,
+  onStoryKeyClick,
 }: {
   message: Message;
   draftId?: string;
+  draftContent?: string;
   onViewDraft?: (draftId: string) => void;
+  isLastAssistant?: boolean;
+  lastResponseDurationMs?: number | null;
+  onStoryKeyClick?: (key: string) => void;
 }) {
   const isUser = message.role === "user";
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [draftExpanded, setDraftExpanded] = useState(false);
+
+  const handleContentClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onStoryKeyClick) return;
+    const anchor = (e.target as HTMLElement).closest("a");
+    if (!anchor) return;
+    // Let CMD/CTRL+click open in new tab normally
+    if (e.metaKey || e.ctrlKey) return;
+    const href = anchor.getAttribute("href") ?? "";
+    const match = href.match(/atlassian\.net\/browse\/([A-Z]+-\d+)/);
+    if (!match) return;
+    e.preventDefault();
+    onStoryKeyClick(match[1]);
+  }, [onStoryKeyClick]);
 
   const displayContent = message.content
     .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
+    .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
     .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "")
     .trim();
 
   const draftOnly = !displayContent && !!draftId;
 
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    setIsOverflowing(el.scrollHeight > MESSAGE_COLLAPSE_HEIGHT);
+  }, [displayContent]);
+
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`group flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[88%] rounded-xl text-sm leading-[1.75] ${
           draftOnly
@@ -118,19 +262,123 @@ function ChatMessage({
         }`}
       >
         {displayContent && (
-          <div className="description-content chat-markdown">{renderMarkdown(displayContent)}</div>
+          <div>
+            <div
+              ref={contentRef}
+              onClick={handleContentClick}
+              className="description-content chat-markdown overflow-hidden transition-[max-height] duration-300 ease-out"
+              style={!expanded && isOverflowing ? { maxHeight: MESSAGE_COLLAPSE_HEIGHT } : undefined}
+            >
+              {renderMarkdown(displayContent)}
+            </div>
+            {isOverflowing && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className={`flex items-center gap-1 text-[11px] cursor-pointer transition-colors duration-150 ${
+                  expanded
+                    ? "mt-1 text-white/35 hover:text-white/55"
+                    : "-mt-1 pt-3 text-white/45 hover:text-white/65 border-t border-white/[0.06] w-full"
+                }`}
+              >
+                {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                {expanded ? "Show less" : "Show more"}
+              </button>
+            )}
+          </div>
         )}
         {draftId && (
-          <button
-            type="button"
-            onClick={() => onViewDraft?.(draftId)}
-            className={`${displayContent ? "mt-2.5" : ""} flex items-center gap-1.5 rounded-md bg-[var(--color-brand-500)]/10 px-2.5 py-1.5 text-xs font-medium text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/20 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:scale-[0.98] transition-transform duration-150`}
-          >
-            <FileText size={12} strokeWidth={1.5} />
-            Draft updated
-          </button>
+          <div className={`${displayContent ? "mt-2.5" : ""} rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]`}>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setDraftExpanded((v) => !v)}
+                className="flex flex-1 items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 rounded-t-lg transition-colors duration-150"
+              >
+                <FileText size={12} strokeWidth={1.5} />
+                Draft updated
+                {draftExpanded ? <ChevronUp size={11} className="ml-auto" /> : <ChevronDown size={11} className="ml-auto" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => onViewDraft?.(draftId)}
+                className="px-2.5 py-1.5 text-[10px] text-[var(--color-brand-400)]/60 cursor-pointer hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                title="Open in editor"
+              >
+                Open
+              </button>
+            </div>
+            {draftExpanded && draftContent && (
+              <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2.5 max-h-[300px] overflow-y-auto">
+                <div className="description-content chat-markdown text-xs leading-[1.7] text-white/70">
+                  {renderMarkdown(draftContent)}
+                </div>
+              </div>
+            )}
+          </div>
         )}
+        {/* Timestamp + duration footer */}
+        <div className={`flex items-center gap-2 mt-1.5 ${displayContent || draftId ? "" : "hidden"}`}>
+          <span className="text-[10px] text-white/0 group-hover:text-white/30 transition-colors duration-200 select-none tabular-nums">
+            {formatTimestamp(message.timestamp)}
+          </span>
+          {isLastAssistant && lastResponseDurationMs != null && (
+            <span className="flex items-center gap-0.5 text-[10px] text-white/30 select-none tabular-nums">
+              <Clock size={9} strokeWidth={1.5} />
+              {formatDuration(lastResponseDurationMs)}
+            </span>
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function DraftCard({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    setIsOverflowing(el.scrollHeight > 120);
+  }, [content]);
+
+  if (!content) return null;
+
+  return (
+    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02]">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
+      >
+        <FileText size={12} strokeWidth={1.5} className="text-white/30 shrink-0" />
+        <span className="text-[11px] font-medium text-white/45">Current draft</span>
+        <span className="ml-auto">
+          {expanded ? (
+            <ChevronUp size={12} className="text-white/25" />
+          ) : (
+            <ChevronDown size={12} className="text-white/25" />
+          )}
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t border-white/[0.06] px-3 py-2.5">
+          <div className="relative">
+            <div
+              ref={contentRef}
+              className={`description-content chat-markdown text-xs leading-[1.7] text-white/70 overflow-hidden ${
+                !isOverflowing ? "" : ""
+              }`}
+              style={isOverflowing ? { maxHeight: "none" } : undefined}
+            >
+              {renderMarkdown(content)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -142,7 +390,7 @@ function QuickActionsPopover({
   onClose,
   disabled,
 }: {
-  onSelect: (prompt: string) => void;
+  onSelect: (prompt: string, actionId: string) => void;
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
@@ -183,7 +431,7 @@ function QuickActionsPopover({
               <button
                 key={action.id}
                 type="button"
-                onClick={() => action.enabled && onSelect(action.prompt)}
+                onClick={() => action.enabled && onSelect(action.prompt, action.id)}
                 disabled={!action.enabled}
                 className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
                   action.enabled
@@ -211,21 +459,60 @@ export function StoryWriterChat({
   streamProgress,
   streamError,
   usage,
+  lastResponseDurationMs,
+  localDraft,
   codebaseResearch,
   onCodebaseResearchChange,
   model,
   onModelChange,
   onSend,
+  onFindRelated,
+  onOpenRelatedPanel,
+  onStoryKeyClick,
+  relatedCandidates,
+  onLinkCandidate,
   messageDraftMap,
+  draftContentMap,
   onViewDraft,
+  issueType = "story",
 }: StoryWriterChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputWrapperRef = useRef<HTMLDivElement>(null);
+
+  const { data: promptsData } = useSWR<{ prompts: QuickPromptsConfig }>(
+    "/api/settings/quick-prompts",
+    promptsFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+  const quickPrompts = promptsData?.prompts[issueType] ?? [];
+
+  // Manual resize state for textarea
+  const [manualInputHeight, setManualInputHeight] = useState<number | null>(null);
+  const resizeDragging = useRef(false);
+  const resizeStartY = useRef(0);
+  const resizeStartH = useRef(0);
 
   const isStreaming = status === "streaming" || status === "sending";
+
+  // Find the last assistant message index
+  const lastAssistantIdx = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return i;
+    }
+    return -1;
+  })();
+
+  // Find the last message that contained a <related-stories> block (anchors inline panel to that message)
+  const lastRelatedMsgIdx = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant" && messages[i].content.includes("<related-stories>")) return i;
+    }
+    return -1;
+  })();
 
   // Auto-scroll on new messages or progress
   useEffect(() => {
@@ -235,11 +522,45 @@ export function StoryWriterChat({
     });
   }, [messages.length, streamProgress]);
 
+  // Manual resize handlers
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      if (!resizeDragging.current) return;
+      const delta = resizeStartY.current - e.clientY;
+      const newHeight = Math.max(60, Math.min(400, resizeStartH.current + delta));
+      setManualInputHeight(newHeight);
+    }
+
+    function handleMouseUp() {
+      if (!resizeDragging.current) return;
+      resizeDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeDragging.current = true;
+    resizeStartY.current = e.clientY;
+    resizeStartH.current = inputWrapperRef.current?.offsetHeight ?? 100;
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     const trimmed = inputValue.trim();
     if (!trimmed || sending || isStreaming) return;
     setSending(true);
     setInputValue("");
+    setManualInputHeight(null);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     const success = await onSend(trimmed);
@@ -264,10 +585,13 @@ export function StoryWriterChat({
   }, []);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         <div className="space-y-3">
+          {/* Draft card */}
+          {localDraft && <DraftCard content={localDraft} />}
+
           {messages.length === 0 && status === "ready" && (
             <div className="flex flex-col items-center gap-3 py-16">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] border border-white/[0.06]">
@@ -278,13 +602,26 @@ export function StoryWriterChat({
               </p>
             </div>
           )}
-          {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              message={msg}
-              draftId={messageDraftMap[msg.id]}
-              onViewDraft={onViewDraft}
-            />
+          {messages.map((msg, idx) => (
+            <div key={msg.id}>
+              <ChatMessage
+                message={msg}
+                draftId={messageDraftMap[msg.id]}
+                draftContent={messageDraftMap[msg.id] ? draftContentMap[messageDraftMap[msg.id]] : undefined}
+                onViewDraft={onViewDraft}
+                isLastAssistant={idx === lastAssistantIdx}
+                lastResponseDurationMs={lastResponseDurationMs}
+                onStoryKeyClick={onStoryKeyClick}
+              />
+              {/* Inline related stories anchored to the message that triggered find-related */}
+              {idx === lastRelatedMsgIdx && relatedCandidates && relatedCandidates.length > 0 && onLinkCandidate && (
+                <RelatedStoriesInline
+                  candidates={relatedCandidates}
+                  onLink={onLinkCandidate}
+                  onOpenPanel={onOpenRelatedPanel}
+                />
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -309,49 +646,19 @@ export function StoryWriterChat({
       )}
 
       {/* Footer: presets + input */}
-      <div className="border-t border-white/[0.06]">
+      <div className="shrink-0 border-t border-white/[0.06]">
         {/* Presets row */}
         <div className="px-3 pt-2.5 pb-1.5">
           <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.06em] text-white/35">
             Quick prompts
           </p>
           <div className="flex flex-wrap items-center gap-1">
-            {/* Improve my story: compound chip with codebase toggle */}
-            <div className={`flex items-center rounded-md overflow-hidden border transition-colors duration-150 ${
-              codebaseResearch
-                ? "border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06]"
-                : "border-white/[0.08] bg-white/[0.03]"
-            }`}>
+            {quickPrompts.map((s) => (
               <button
-                type="button"
-                onClick={() => fillInput("Improve my story")}
-                disabled={isStreaming || sending}
-                className="px-3 py-1.5 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 active:scale-[0.97] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Improve my story
-              </button>
-              <div className="w-px h-3.5 bg-white/[0.08]" />
-              <button
-                type="button"
-                onClick={() => onCodebaseResearchChange(!codebaseResearch)}
-                disabled={isStreaming || sending}
-                title={codebaseResearch ? "Codebase research on" : "Codebase research off"}
-                className={`flex items-center px-2 py-1.5 cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${
-                  codebaseResearch
-                    ? "text-[var(--color-brand-400)]"
-                    : "text-white/35 hover:text-white/60"
-                }`}
-              >
-                <Code2 size={11} strokeWidth={1.5} />
-              </button>
-            </div>
-
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s.label}
+                key={s.id}
                 type="button"
                 onClick={() => {
-                  if (s.enableCodebase) onCodebaseResearchChange(true);
+                  onCodebaseResearchChange(s.enableCodebase === true);
                   fillInput(s.text);
                 }}
                 disabled={isStreaming || sending}
@@ -366,25 +673,43 @@ export function StoryWriterChat({
         {/* Input */}
         <div className="px-3 pb-2.5 pt-1">
           <div className="flex flex-col rounded-xl border border-white/[0.10] bg-white/[0.03] focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
-            <textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe what to improve..."
-              disabled={isStreaming || sending}
-              rows={3}
-              className="flex-1 resize-none bg-transparent px-3.5 pt-3 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/40 focus:outline-none disabled:opacity-50"
-            />
+            {/* Resize handle at top */}
+            <div
+              onMouseDown={handleResizeMouseDown}
+              className="flex h-3 cursor-row-resize items-center justify-center opacity-0 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
+            >
+              <GripHorizontal size={12} className="text-white/25" />
+            </div>
+            <div ref={inputWrapperRef} style={manualInputHeight ? { height: manualInputHeight } : undefined}>
+              <textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  if (!manualInputHeight) {
+                    e.target.style.height = "auto";
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 300)}px`;
+                  }
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Describe what to improve..."
+                disabled={isStreaming || sending}
+                rows={2}
+                className="w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/40 focus:outline-none disabled:opacity-50"
+              />
+            </div>
             {/* Bottom toolbar inside input */}
             <div className="flex items-center justify-between px-2 pb-2 pt-0.5">
               <div className="flex items-center gap-2">
                 <QuickActionsPopover
-                  onSelect={(prompt) => { fillInput(prompt); setShowActions(false); }}
+                  onSelect={(prompt, actionId) => {
+                    setShowActions(false);
+                    if (actionId === "find-related") {
+                      onFindRelated?.();
+                    } else {
+                      fillInput(prompt);
+                    }
+                  }}
                   open={showActions}
                   onToggle={() => setShowActions((v) => !v)}
                   onClose={() => setShowActions(false)}
@@ -410,6 +735,20 @@ export function StoryWriterChat({
                   title="Switch model"
                 >
                   {MODEL_OPTIONS.find((o) => o.value === model)?.label ?? "Sonnet"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCodebaseResearchChange(!codebaseResearch)}
+                  disabled={isStreaming || sending}
+                  title={codebaseResearch ? "Codebase research on" : "Codebase research off"}
+                  className={`flex h-7 items-center gap-1 rounded-md border px-2.5 text-[10px] cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${
+                    codebaseResearch
+                      ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                      : "border-white/[0.10] bg-white/[0.04] text-white/40 hover:text-white/65 hover:border-white/[0.15] hover:bg-white/[0.07]"
+                  }`}
+                >
+                  <Code2 size={11} strokeWidth={1.5} />
+                  Codebase
                 </button>
                 <button
                   type="button"

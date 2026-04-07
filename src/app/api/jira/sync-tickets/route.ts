@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, activityLog, ticketAttachment, ticketSubtask, ticketLink, jiraComment } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, isNull } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
@@ -167,25 +167,57 @@ async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: Abort
     });
   }
 
-  // Sync issue links: replace all for this ticket
-  await db.delete(ticketLink).where(eq(ticketLink.ticketKey, issue.key));
+  // Sync issue links: only remove Jira-sourced rows; preserve locally-created links (no jiraLinkId)
+  // so that split links and other local-only links survive the sync cycle.
+  await db.delete(ticketLink).where(
+    and(eq(ticketLink.ticketKey, issue.key), isNotNull(ticketLink.jiraLinkId)),
+  );
   const issuelinks = fields.issuelinks ?? [];
   for (const link of issuelinks) {
     const linked = link.inwardIssue ?? link.outwardIssue;
     if (!linked) continue;
     const relation = link.inwardIssue ? link.type.inward : link.type.outward;
-    await db.insert(ticketLink).values({
-      id: `link-${issue.key}-${link.id}`,
-      ticketKey: issue.key,
-      jiraLinkId: link.id,
-      relation,
-      linkedKey: linked.key,
-      title: linked.fields.summary,
-      type: normalizeIssueType(linked.fields.issuetype.name),
-      status: normalizeStatus(linked.fields.status.name),
-      assignee: linked.fields.assignee?.displayName ?? null,
-      assigneeAvatar: linked.fields.assignee?.avatarUrls?.["48x48"] ?? null,
-    });
+
+    // If a locally-created link already exists for this pair, upgrade it with Jira's
+    // data (relation label, jiraLinkId) instead of inserting a duplicate row.
+    const localLink = await db
+      .select({ id: ticketLink.id })
+      .from(ticketLink)
+      .where(
+        and(
+          eq(ticketLink.ticketKey, issue.key),
+          eq(ticketLink.linkedKey, linked.key),
+          isNull(ticketLink.jiraLinkId),
+        ),
+      )
+      .get();
+
+    if (localLink) {
+      await db.update(ticketLink)
+        .set({
+          jiraLinkId: link.id,
+          relation,
+          title: linked.fields.summary,
+          type: normalizeIssueType(linked.fields.issuetype.name),
+          status: normalizeStatus(linked.fields.status.name),
+          assignee: linked.fields.assignee?.displayName ?? null,
+          assigneeAvatar: linked.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+        })
+        .where(eq(ticketLink.id, localLink.id));
+    } else {
+      await db.insert(ticketLink).values({
+        id: `link-${issue.key}-${link.id}`,
+        ticketKey: issue.key,
+        jiraLinkId: link.id,
+        relation,
+        linkedKey: linked.key,
+        title: linked.fields.summary,
+        type: normalizeIssueType(linked.fields.issuetype.name),
+        status: normalizeStatus(linked.fields.status.name),
+        assignee: linked.fields.assignee?.displayName ?? null,
+        assigneeAvatar: linked.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+      });
+    }
   }
 
   // Sync inline comments (from the already-fetched issue data)

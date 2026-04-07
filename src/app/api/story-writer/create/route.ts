@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket } from "@/db/schema";
+import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -29,6 +29,8 @@ export async function POST(request: Request) {
       summary: title,
       sprintId: body.sprintId,
       issueType,
+      // Empty ADF doc prevents Jira from applying its default issue type template
+      description: { type: "doc", version: 1, content: [] },
     });
     newKey = result.key;
   } catch (err) {
@@ -44,6 +46,11 @@ export async function POST(request: Request) {
     title,
     type: issueType,
     status: "TO DO",
+  });
+
+  await db.insert(ticketMetadata).values({
+    jiraKey: newKey,
+    poStatus: "Uitwerken",
   });
 
   await logActivity({

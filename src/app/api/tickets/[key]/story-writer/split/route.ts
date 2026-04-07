@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { storyWriterSession, ticket, ticketLink } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { storyWriterSession, ticket, ticketLink, ticketMetadata } from "@/db/schema";
+import { eq, and, isNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
@@ -76,6 +76,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       const result = await jiraClient.createIssue({
         summary: splitTitle,
         sprintId: body.sprintId,
+        // Empty ADF doc prevents Jira from applying its default issue type template
+        description: { type: "doc", version: 1, content: [] },
       });
       newJiraKey = result.key;
     } catch (err) {
@@ -94,29 +96,53 @@ export async function POST(request: Request, { params }: RouteContext) {
       status: "TO DO",
     });
 
-    // Bidirectional links so both stories know about each other
-    await db.insert(ticketLink).values([
-      {
-        id: randomUUID(),
-        ticketKey: key,
-        relation: "split",
-        linkedKey: newJiraKey,
-        title: splitTitle,
-        type: "story",
-        status: "TO DO",
-      },
-      {
-        id: randomUUID(),
-        ticketKey: newJiraKey,
-        relation: "split-from",
-        linkedKey: key,
-        title: originalTicket.title,
-        type: originalTicket.type ?? "story",
-        status: originalTicket.status,
-      },
-    ]);
+    await db.insert(ticketMetadata).values({
+      jiraKey: newJiraKey,
+      poStatus: "Uitwerken",
+    });
 
     targetKey = newJiraKey;
+  }
+
+  // Upsert bidirectional split links (both "create new" and "link existing" paths).
+  // Use "split to" / "is split from" to match Jira's relation labels.
+  // Only create if a local-only link does not already exist for this pair (avoids duplicates).
+  const targetTicket = await db.select().from(ticket).where(eq(ticket.jiraKey, targetKey)).get();
+
+  const forwardExists = await db
+    .select({ id: ticketLink.id })
+    .from(ticketLink)
+    .where(and(eq(ticketLink.ticketKey, key), eq(ticketLink.linkedKey, targetKey), isNull(ticketLink.jiraLinkId)))
+    .get();
+
+  if (!forwardExists) {
+    await db.insert(ticketLink).values({
+      id: randomUUID(),
+      ticketKey: key,
+      relation: "split to",
+      linkedKey: targetKey,
+      title: targetTicket?.title ?? targetKey,
+      type: "story",
+      status: targetTicket?.status ?? "TO DO",
+    });
+  }
+
+  const reverseExists = await db
+    .select({ id: ticketLink.id })
+    .from(ticketLink)
+    .where(and(eq(ticketLink.ticketKey, targetKey), eq(ticketLink.linkedKey, key), isNull(ticketLink.jiraLinkId)))
+    .get();
+
+  if (!reverseExists) {
+    await db.insert(ticketLink).values({
+      id: randomUUID(),
+      ticketKey: targetKey,
+      relation: "is split from",
+      linkedKey: key,
+      title: originalTicket.title,
+      type: originalTicket.type ?? "story",
+      status: originalTicket.status,
+    });
   }
 
   // Update session with target

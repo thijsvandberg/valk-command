@@ -30,6 +30,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const codebaseResearch = body.codebaseResearch === true;
   const model = typeof body.model === "string" ? body.model : undefined;
+  const skill = typeof body.skill === "string" ? body.skill : null;
 
   const session = await db
     .select()
@@ -77,7 +78,23 @@ export async function POST(request: Request, { params }: RouteContext) {
     let taskData: { id?: string; error?: string };
     let status: number;
 
-    if (isFirstMessage) {
+    if (skill === "find-related") {
+      // Invoke the find-related skill with the ticket key as the search source.
+      // Uses the existing conversationId regardless of whether this is the first message.
+      const res = await fetch(agentUrl("/api/tasks"), {
+        method: "POST",
+        headers: agentHeaders(),
+        body: JSON.stringify({
+          skill: "find-related",
+          args: { args: key },
+          conversationId: session.conversationId,
+          model,
+        }),
+      });
+
+      status = res.status;
+      taskData = await res.json();
+    } else if (isFirstMessage) {
       // First message: invoke the write-story-draft skill with enriched context
       const ticketRow = await db
         .select()
@@ -120,7 +137,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       }
 
       const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
-      contextParts.push(`${researchFlag}\n\nUser request: ${content}`);
+      contextParts.push(
+        `${researchFlag}\n\nUser request: ${content}\n\n` +
+        `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.`
+      );
 
       const res = await fetch(agentUrl("/api/tasks"), {
         method: "POST",
@@ -159,7 +179,7 @@ export async function POST(request: Request, { params }: RouteContext) {
           method: "POST",
           headers: agentHeaders(),
           body: JSON.stringify({
-            content: `${researchFlag}${draftContext}\n\n${content}${splitReminder}`,
+            content: `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question.]`,
             model,
           }),
         },

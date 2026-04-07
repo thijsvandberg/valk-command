@@ -141,6 +141,22 @@ function convertNode(node: AdfNode): string {
   }
 }
 
+// Splits trailing punctuation and whitespace out of bold/italic content so that
+// markdown-it correctly identifies the closing delimiter. markdown-it fails to
+// close `**` when it is immediately preceded by punctuation (e.g. **Discuss:**
+// does not render as bold because `:**` is treated as an ambiguous closer).
+function splitTrailing(text: string): { inner: string; punct: string; space: string } {
+  const space = text.match(/(\s+)$/)?.[1] ?? "";
+  const withoutSpace = space ? text.slice(0, -space.length) : text;
+  // Move trailing punctuation outside only when there is a word character before it,
+  // so that purely-punctuation content (e.g. bold(":")) is left unchanged.
+  const punctMatch = withoutSpace.match(/^([\s\S]*\w)([^\w\s]+)$/);
+  if (punctMatch) {
+    return { inner: punctMatch[1], punct: punctMatch[2], space };
+  }
+  return { inner: withoutSpace, punct: "", space };
+}
+
 function applyMarks(text: string, marks?: AdfMark[]): string {
   if (!marks || marks.length === 0) return text;
 
@@ -148,16 +164,16 @@ function applyMarks(text: string, marks?: AdfMark[]): string {
   for (const mark of marks) {
     switch (mark.type) {
       case "strong": {
-        // CommonMark forbids trailing spaces inside ** delimiters
-        const trail = result.match(/(\s+)$/)?.[1] ?? "";
-        const inner = trail ? result.slice(0, -trail.length) : result;
-        result = `**${inner}**${trail}`;
+        // Trailing whitespace must be outside ** (CommonMark rule).
+        // Also move trailing punctuation outside: markdown-it fails to close `**`
+        // when preceded by punctuation and followed by whitespace (e.g. **Discuss:**).
+        const { inner, punct, space } = splitTrailing(result);
+        result = `**${inner}**${punct}${space}`;
         break;
       }
       case "em": {
-        const trail = result.match(/(\s+)$/)?.[1] ?? "";
-        const inner = trail ? result.slice(0, -trail.length) : result;
-        result = `*${inner}*${trail}`;
+        const { inner, punct, space } = splitTrailing(result);
+        result = `*${inner}*${punct}${space}`;
         break;
       }
       case "code":

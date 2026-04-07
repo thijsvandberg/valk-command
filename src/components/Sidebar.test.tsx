@@ -53,6 +53,7 @@ describe("Sidebar", () => {
       "/refinement",
       "/jobs",
       "/stakeholder",
+      "/settings",
     ]);
   });
 

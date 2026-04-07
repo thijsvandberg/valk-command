@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   Clock,
   Users,
+  Settings,
   Menu,
   X,
   ChevronLeft,
@@ -52,6 +53,11 @@ const navItems = [
     label: "Stakeholder",
     href: "/stakeholder",
     icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
+  },
+  {
+    label: "Settings",
+    href: "/settings",
+    icon: <Settings className="h-5 w-5" strokeWidth={1.5} />,
   },
 ];
 

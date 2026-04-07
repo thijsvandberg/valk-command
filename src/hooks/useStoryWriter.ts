@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
+import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow } from "@/db/schema";
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
 
@@ -16,17 +16,21 @@ interface UseStoryWriterReturn {
   messages: Message[];
   aiDrafts: StoryWriterDraftRow[];
   targetAiDrafts: StoryWriterDraftRow[];
+  relatedCandidates: RelatedStoryCandidateRow[];
   status: StoryWriterStatus;
   streamProgress: string;
   streamError: string | null;
   usage: WorkspaceUsage | null;
+  lastResponseDurationMs: number | null;
   codebaseResearch: boolean;
   setCodbaseResearch: (v: boolean) => void;
   model: string;
   setModel: (m: string) => void;
-  sendMessage: (content: string) => Promise<boolean>;
+  sendMessage: (content: string, skill?: string) => Promise<boolean>;
   updateLocalDraft: (content: string) => void;
+  updateLocalTitle: (title: string) => void;
   updateTargetLocalDraft: (content: string) => void;
+  updateTargetLocalTitle: (title: string) => void;
   acceptDraft: (draftId: string) => Promise<void>;
   dismissDraft: (draftId: string) => Promise<void>;
   activateSplit: (targetKey?: string, sprintId?: string) => Promise<{ targetTicketKey: string }>;
@@ -35,18 +39,29 @@ interface UseStoryWriterReturn {
   pushToJira: () => Promise<{ success: boolean; conflict?: boolean; contentChanged?: boolean }>;
   deleteSession: (deleteConversation?: boolean) => Promise<void>;
   refreshSession: () => Promise<void>;
+  linkCandidate: (candidateId: string, isLinked: boolean) => Promise<void>;
 }
 
 export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
-  const [session, setSession] = useState<StoryWriterSessionRow | null>(null);
+  const [session, setSessionState] = useState<StoryWriterSessionRow | null>(null);
+  const setSession = useCallback((v: StoryWriterSessionRow | null | ((prev: StoryWriterSessionRow | null) => StoryWriterSessionRow | null)) => {
+    setSessionState((prev) => {
+      const next = typeof v === "function" ? v(prev) : v;
+      sessionRef.current = next;
+      return next;
+    });
+  }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [allDrafts, setAllDrafts] = useState<StoryWriterDraftRow[]>([]);
+  const [relatedCandidates, setRelatedCandidates] = useState<RelatedStoryCandidateRow[]>([]);
   const [status, setStatus] = useState<StoryWriterStatus>("loading");
   const [streamProgress, setStreamProgress] = useState("");
   const [streamError, setStreamError] = useState<string | null>(null);
   const [codebaseResearch, setCodbaseResearch] = useState(false);
   const [model, setModel] = useState("claude-sonnet-4-6");
   const [usage, setUsage] = useState<WorkspaceUsage | null>(null);
+  const [lastResponseDurationMs, setLastResponseDurationMs] = useState<number | null>(null);
+  const sendStartRef = useRef<number | null>(null);
 
   const codebaseResearchRef = useRef(codebaseResearch);
   codebaseResearchRef.current = codebaseResearch;
@@ -55,8 +70,11 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const unmountedRef = useRef(false);
+  const sessionRef = useRef<StoryWriterSessionRow | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const targetSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const targetTitleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const apiBase = `/api/tickets/${encodeURIComponent(ticketKey)}/story-writer`;
@@ -70,7 +88,9 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
       unmountedRef.current = true;
       eventSourceRef.current?.close();
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
       if (targetSaveTimerRef.current) clearTimeout(targetSaveTimerRef.current);
+      if (targetTitleSaveTimerRef.current) clearTimeout(targetTitleSaveTimerRef.current);
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, []);
@@ -91,6 +111,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
           setSession(data.session);
           setMessages(data.messages);
           setAllDrafts(data.aiDrafts ?? []);
+          setRelatedCandidates(data.relatedCandidates ?? []);
           setStatus("ready");
         } else {
           const createRes = await fetch(apiBase, { method: "POST" });
@@ -105,6 +126,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
               setSession(retryData.session);
               setMessages(retryData.messages ?? []);
               setAllDrafts(retryData.aiDrafts ?? []);
+              setRelatedCandidates(retryData.relatedCandidates ?? []);
             } else {
               throw new Error("Failed to create session");
             }
@@ -137,17 +159,20 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
           setSession(data.session);
           setMessages(data.messages);
           setAllDrafts(data.aiDrafts ?? []);
+          setRelatedCandidates(data.relatedCandidates ?? []);
         }
       }
     } catch { /* ignore */ }
   }, [apiBase]);
 
-  const sendMessage = useCallback(async (content: string): Promise<boolean> => {
+  const sendMessage = useCallback(async (content: string, skill?: string): Promise<boolean> => {
     if (!session) return false;
 
     setStatus("sending");
     setStreamError(null);
     setStreamProgress("");
+    setLastResponseDurationMs(null);
+    sendStartRef.current = Date.now();
 
     if (pollTimerRef.current) {
       clearTimeout(pollTimerRef.current);
@@ -172,6 +197,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
           content,
           codebaseResearch: codebaseResearchRef.current,
           model: modelRef.current,
+          ...(skill ? { skill } : {}),
         }),
       });
 
@@ -220,16 +246,36 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
           setStreamError("Draft received but could not be saved");
         }
 
+        // Parse and store any related story candidates from the output
+        try {
+          const relatedRes = await fetch(`${apiBase}/apply-related`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ output, taskId }),
+          });
+          if (relatedRes.ok) {
+            const relatedData = await relatedRes.json();
+            if (!unmountedRef.current && relatedData.candidates?.length > 0) {
+              setRelatedCandidates(relatedData.candidates);
+            }
+          }
+        } catch { /* non-critical */ }
+
         await refreshSession();
         if (!unmountedRef.current) {
+          if (sendStartRef.current) {
+            setLastResponseDurationMs(Date.now() - sendStartRef.current);
+            sendStartRef.current = null;
+          }
           setStatus("ready");
           setStreamProgress("");
         }
       };
 
-      const POLL_DELAY_MS = 5_000;
+      const POLL_DELAY_MS = 2_000;
       const POLL_INTERVAL_MS = 3_000;
-      const MAX_POLL_MS = 90_000;
+      // find-related can take 3-5 minutes; give all requests 5 minutes before timing out
+      const MAX_POLL_MS = 300_000;
       const pollStart = Date.now();
 
       const pollTask = async () => {
@@ -246,16 +292,19 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
         try {
           const pollRes = await fetch(`/api/workspace-tasks/${taskId}`);
           if (!pollRes.ok) {
+            if (!unmountedRef.current) {
+              setStreamProgress("Waiting for workspace...");
+            }
             pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
             return;
           }
           const task = await pollRes.json();
           if (task.status === "completed" && task.output) {
-            const inputTokens = task.inputTokens ?? task.usage?.inputTokens;
-            const outputTokens = task.outputTokens ?? task.usage?.outputTokens;
-            const cost = task.cost ?? task.usage?.cost;
-            if (inputTokens !== undefined && outputTokens !== undefined && !unmountedRef.current) {
-              setUsage({ inputTokens, outputTokens, cost: cost ?? 0 });
+            const inputTokens = task.inputTokens ?? task.usage?.inputTokens ?? 0;
+            const outputTokens = task.outputTokens ?? task.usage?.outputTokens ?? 0;
+            const cost = task.cost ?? task.usage?.cost ?? 0;
+            if (!unmountedRef.current) {
+              setUsage({ inputTokens, outputTokens, cost });
             }
             await applyResult(task.output);
           } else if (task.status === "failed") {
@@ -266,9 +315,17 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
               setStreamProgress("");
             }
           } else {
+            if (!unmountedRef.current) {
+              const elapsed = Math.round((Date.now() - pollStart) / 1000);
+              setStreamProgress(`Processing on workspace... (${elapsed}s)`);
+            }
             pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
           }
         } catch {
+          if (!unmountedRef.current) {
+            const elapsed = Math.round((Date.now() - pollStart) / 1000);
+            setStreamProgress(`Reconnecting... (${elapsed}s)`);
+          }
           pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
         }
       };
@@ -298,11 +355,11 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
           cost?: number;
           usage?: { inputTokens?: number; outputTokens?: number; cost?: number };
         };
-        const inputTokens = data.inputTokens ?? data.usage?.inputTokens;
-        const outputTokens = data.outputTokens ?? data.usage?.outputTokens;
-        const cost = data.cost ?? data.usage?.cost;
-        if (inputTokens !== undefined && outputTokens !== undefined && !unmountedRef.current) {
-          setUsage({ inputTokens, outputTokens, cost: cost ?? 0 });
+        const inputTokens = data.inputTokens ?? data.usage?.inputTokens ?? 0;
+        const outputTokens = data.outputTokens ?? data.usage?.outputTokens ?? 0;
+        const cost = data.cost ?? data.usage?.cost ?? 0;
+        if (!unmountedRef.current) {
+          setUsage({ inputTokens, outputTokens, cost });
         }
         await applyResult(data.output);
       });
@@ -384,6 +441,56 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     }, 500);
   }, [apiBase]);
 
+  const updateLocalTitle = useCallback((title: string) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      if (title === prev.localTitle) return prev;
+      return { ...prev, localTitle: title };
+    });
+
+    if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
+    titleSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch(apiBase, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ localTitle: title }),
+        });
+        await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field: "title", localValue: title, isDraft: true }),
+        });
+      } catch { /* ignore */ }
+    }, 500);
+  }, [apiBase, ticketKey]);
+
+  const updateTargetLocalTitle = useCallback((title: string) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      if (title === prev.targetLocalTitle) return prev;
+      return { ...prev, targetLocalTitle: title };
+    });
+
+    if (targetTitleSaveTimerRef.current) clearTimeout(targetTitleSaveTimerRef.current);
+    targetTitleSaveTimerRef.current = setTimeout(async () => {
+      try {
+        const targetKey = sessionRef.current?.targetTicketKey ?? null;
+        if (!targetKey) return;
+        await fetch(apiBase, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetLocalTitle: title }),
+        });
+        await fetch(`/api/tickets/${encodeURIComponent(targetKey)}/local-edits`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field: "title", localValue: title, isDraft: true }),
+        });
+      } catch { /* ignore */ }
+    }, 500);
+  }, [apiBase]);
+
   const acceptDraft = useCallback(async (draftId: string) => {
     try {
       const res = await fetch(apiBase, {
@@ -426,7 +533,13 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
       throw new Error(body.error ?? "Failed to activate split mode");
     }
     const data = await res.json();
-    await refreshSession();
+    // Apply session from the split response immediately so targetTicketKey is available
+    // synchronously before the caller sets splitModeVisible. refreshSession runs
+    // fire-and-forget to pick up messages/drafts without blocking.
+    if (data.session && !unmountedRef.current) {
+      setSession(data.session);
+    }
+    void refreshSession();
     return { targetTicketKey: data.targetTicketKey };
   }, [apiBase, refreshSession]);
 
@@ -442,34 +555,97 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
   }, [apiBase, refreshSession]);
 
   const saveDraft = useCallback(async () => {
-    if (!session?.localDraft) return;
-    // Save as a non-draft local edit (isDraft=false is the default when omitted)
-    await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ field: "description", localValue: session.localDraft }),
-    });
+    if (!session) return;
+    const saves: Promise<unknown>[] = [];
+    if (session.localDraft) {
+      saves.push(fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field: "description", localValue: session.localDraft }),
+      }));
+    }
+    if (session.localTitle) {
+      saves.push(fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field: "title", localValue: session.localTitle }),
+      }));
+    }
+    if (session.targetTicketKey) {
+      if (session.targetLocalDraft) {
+        saves.push(fetch(`/api/tickets/${encodeURIComponent(session.targetTicketKey)}/local-edits`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field: "description", localValue: session.targetLocalDraft }),
+        }));
+      }
+      if (session.targetLocalTitle) {
+        saves.push(fetch(`/api/tickets/${encodeURIComponent(session.targetTicketKey)}/local-edits`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field: "title", localValue: session.targetLocalTitle }),
+        }));
+      }
+    }
+    await Promise.all(saves);
   }, [session, ticketKey]);
 
   const pushToJira = useCallback(async () => {
-    if (!session?.localDraft) return { success: false };
+    const hasOriginal = !!(session?.localDraft || session?.localTitle);
+    const targetKey = session?.targetTicketKey ?? null;
+    const hasTarget = !!(targetKey && (session?.targetLocalDraft || session?.targetLocalTitle));
+
+    if (!hasOriginal && !hasTarget) return { success: false };
 
     await saveDraft();
 
-    const pushRes = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/push-to-jira`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
+    let result = { success: true, conflict: false, contentChanged: false };
 
-    const data = await pushRes.json();
+    if (hasOriginal) {
+      const pushRes = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/push-to-jira`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await pushRes.json();
+      if (!data.success) result = data;
+    }
 
-    if (data.success) {
+    if (hasTarget && targetKey) {
+      const targetPushRes = await fetch(`/api/tickets/${encodeURIComponent(targetKey)}/push-to-jira`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const targetData = await targetPushRes.json();
+      // Only override result if target push failed and original succeeded
+      if (!targetData.success && result.success) result = targetData;
+    }
+
+    if (result.success) {
       await refreshSession();
     }
 
-    return data;
+    return result;
   }, [session, ticketKey, saveDraft, refreshSession]);
+
+  const linkCandidate = useCallback(async (candidateId: string, isLinked: boolean) => {
+    try {
+      const res = await fetch(`${apiBase}/apply-related`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId, isLinked }),
+      });
+      if (res.ok) {
+        const { candidate } = await res.json();
+        if (!unmountedRef.current && candidate) {
+          setRelatedCandidates((prev) =>
+            prev.map((c) => (c.id === candidateId ? candidate : c)),
+          );
+        }
+      }
+    } catch { /* ignore */ }
+  }, [apiBase]);
 
   const deleteSession = useCallback(async (deleteConversation = false) => {
     const url = deleteConversation ? `${apiBase}?deleteConversation=true` : apiBase;
@@ -487,17 +663,21 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     messages,
     aiDrafts,
     targetAiDrafts,
+    relatedCandidates,
     status,
     streamProgress,
     streamError,
     usage,
+    lastResponseDurationMs,
     codebaseResearch,
     setCodbaseResearch,
     model,
     setModel,
     sendMessage,
     updateLocalDraft,
+    updateLocalTitle,
     updateTargetLocalDraft,
+    updateTargetLocalTitle,
     acceptDraft,
     dismissDraft,
     activateSplit,
@@ -506,5 +686,6 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     pushToJira,
     deleteSession,
     refreshSession,
+    linkCandidate,
   };
 }

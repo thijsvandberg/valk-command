@@ -317,9 +317,11 @@ export const storyWriterSession = sqliteTable("story_writer_session", {
     enum: ["active", "completed", "discarded"],
   }).notNull().default("active"),
   localDraft: text("local_draft"),
+  localTitle: text("local_title"),
   baseVersionHash: text("base_version_hash"),
   targetTicketKey: text("target_ticket_key"),
   targetLocalDraft: text("target_local_draft"),
+  targetLocalTitle: text("target_local_title"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -370,7 +372,32 @@ export const storyWriterExecutionLog = sqliteTable("story_writer_execution_log",
   index("story_writer_execution_log_task_id_idx").on(table.taskId),
 ]);
 
+// Related story candidates found by the find-related skill for a story writer session
+export const relatedStoryCandidate = sqliteTable("related_story_candidate", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => storyWriterSession.id, { onDelete: "cascade" }),
+  ticketKey: text("ticket_key").notNull(),
+  jiraKey: text("jira_key").notNull(),
+  score: integer("score").notNull(),
+  title: text("title").notNull(),
+  issueType: text("issue_type"),
+  status: text("status").notNull(),
+  jiraUrl: text("jira_url"),
+  updatedDate: text("updated_date"),
+  matchReason: text("match_reason"),
+  isLinked: integer("is_linked", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("related_story_candidate_session_id_idx").on(table.sessionId),
+  index("related_story_candidate_ticket_key_idx").on(table.ticketKey),
+]);
+
 export type StoryWriterSessionRow = typeof storyWriterSession.$inferSelect;
 export type NewStoryWriterSessionRow = typeof storyWriterSession.$inferInsert;
 export type StoryWriterDraftRow = typeof storyWriterDraft.$inferSelect;
 export type StoryWriterExecutionLogRow = typeof storyWriterExecutionLog.$inferSelect;
+export type RelatedStoryCandidateRow = typeof relatedStoryCandidate.$inferSelect;

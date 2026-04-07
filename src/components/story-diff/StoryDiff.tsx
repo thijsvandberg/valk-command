@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import fastDiff from "fast-diff";
 import { ChevronDown, Check, X, Pencil, RotateCcw } from "lucide-react";
 
@@ -32,6 +32,10 @@ export interface StoryDiffProps {
 }
 
 export type { HunkState };
+
+export interface StoryDiffHandle {
+  acceptAll: () => void;
+}
 
 type LineType = "equal" | "insert" | "delete";
 
@@ -780,7 +784,7 @@ function SplitDiff({
 // Main component
 // -----------------------------------------------------------------------
 
-export function StoryDiff({
+export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function StoryDiff({
   oldText,
   newText,
   oldLabel,
@@ -792,7 +796,7 @@ export function StoryDiff({
   hunkStates: controlledHunkStates,
   onHunkStatesChange,
   pendingIsOld = false,
-}: StoryDiffProps) {
+}, ref) {
   const { hunks, stats } = useMemo(() => {
     if (oldText === newText || (oldText === "" && newText === "")) {
       return { hunks: [] as DiffHunk[], stats: { added: 0, removed: 0, modified: 0 } };
@@ -864,6 +868,8 @@ export function StoryDiff({
     });
     setHunkStates(next);
   }, [hunks, hunkStates, setHunkStates]);
+
+  useImperativeHandle(ref, () => ({ acceptAll: onAcceptAll }), [onAcceptAll]);
 
   const interactiveCallbacks: InteractiveCallbacks | undefined = interactive
     ? { states: hunkStates, editingHunk, onAccept, onReject, onEdit, onSaveEdit, onCancelEdit, onReset, onAcceptAll }
@@ -949,4 +955,4 @@ export function StoryDiff({
       )}
     </div>
   );
-}
+});

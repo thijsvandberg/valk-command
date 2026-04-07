@@ -18,6 +18,7 @@ import {
   IterationCw,
   Zap,
   ScrollText,
+  Network,
 } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
@@ -28,6 +29,7 @@ import { StoryWriterChat } from "./StoryWriterChat";
 import { StoryWriterEditor } from "./StoryWriterEditor";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { ExecutionLogViewer } from "./ExecutionLogViewer";
+import { RelatedStoriesPanel } from "./RelatedStoriesPanel";
 
 const PANEL_STORAGE_KEY = "storyWriterChatWidth";
 const PANEL_COLLAPSED_KEY = "storyWriterChatCollapsed";
@@ -35,6 +37,7 @@ const DEFAULT_CHAT_WIDTH = 420;
 const MIN_CHAT_WIDTH = 280;
 const MAX_CHAT_WIDTH = 640;
 const COLLAPSED_STRIP_WIDTH = 40;
+const RELATED_PANEL_WIDTH = 300;
 
 interface StoryWriterLayoutProps {
   ticketKey: string;
@@ -73,6 +76,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(false);
+  const [relatedPanelOpen, setRelatedPanelOpen] = useState(false);
+  const [relatedPanelSelectedKey, setRelatedPanelSelectedKey] = useState<string | null>(null);
 
   // Split mode state
   const [splitModeVisible, setSplitModeVisible] = useState(false);
@@ -89,6 +94,15 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
   // Fetch target ticket title when targetTicketKey is available
   const targetTicketKey = writer.session?.targetTicketKey ?? null;
+
+  // Auto-open split pane when a target ticket is present (covers page reload and fresh create)
+  const prevTargetKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (targetTicketKey && prevTargetKey.current !== targetTicketKey) {
+      setSplitModeVisible(true);
+    }
+    prevTargetKey.current = targetTicketKey;
+  }, [targetTicketKey]);
   useEffect(() => {
     if (!targetTicketKey) {
       setTargetTicketTitle(null);
@@ -105,23 +119,27 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   }, [targetTicketKey]);
 
   // Check initial dirty state once session and ticket data are both loaded.
-  // If localDraft differs from the Jira description, the user made edits in a prior session.
+  // If localDraft or localTitle differs from Jira, the user made edits in a prior session.
   useEffect(() => {
     if (!initialDirtyChecked.current && writer.session && ticketData) {
       initialDirtyChecked.current = true;
-      setIsDraftDirty((writer.session.localDraft ?? "") !== (ticketData.description ?? ""));
+      const descDirty = (writer.session.localDraft ?? "") !== (ticketData.description ?? "");
+      const titleDirty = !!(writer.session.localTitle && writer.session.localTitle !== ticketData.title);
+      setIsDraftDirty(descDirty || titleDirty);
     }
   }, [writer.session, ticketData]);
 
-  // Build messageId -> draftId map for chat badges (both original + target drafts)
-  const messageDraftMap = useMemo(() => {
-    const map: Record<string, string> = {};
+  // Build messageId -> draftId map and draftId -> content map for chat
+  const { messageDraftMap, draftContentMap } = useMemo(() => {
+    const msgMap: Record<string, string> = {};
+    const contentMap: Record<string, string> = {};
     for (const draft of [...writer.aiDrafts, ...writer.targetAiDrafts]) {
       if (draft.messageId) {
-        map[draft.messageId] = draft.id;
+        msgMap[draft.messageId] = draft.id;
       }
+      contentMap[draft.id] = draft.content;
     }
-    return map;
+    return { messageDraftMap: msgMap, draftContentMap: contentMap };
   }, [writer.aiDrafts, writer.targetAiDrafts]);
 
   // Drag resize for chat panel
@@ -221,6 +239,36 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     writer.updateLocalDraft(content);
   }, [writer, showSaved]);
 
+  const handleTitleChange = useCallback((title: string) => {
+    editVersionRef.current += 1;
+    setIsDraftDirty(true);
+    if (showSaved) {
+      setShowSaved(false);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    }
+    writer.updateLocalTitle(title);
+  }, [writer, showSaved]);
+
+  const handleTargetDraftChange = useCallback((content: string) => {
+    editVersionRef.current += 1;
+    setIsDraftDirty(true);
+    if (showSaved) {
+      setShowSaved(false);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    }
+    writer.updateTargetLocalDraft(content);
+  }, [writer, showSaved]);
+
+  const handleTargetTitleChange = useCallback((title: string) => {
+    editVersionRef.current += 1;
+    setIsDraftDirty(true);
+    if (showSaved) {
+      setShowSaved(false);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    }
+    writer.updateTargetLocalTitle(title);
+  }, [writer, showSaved]);
+
   const handlePullFromJira = useCallback(async () => {
     setPulling(true);
     try {
@@ -241,6 +289,25 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     setActiveDraftId(draftId);
     setTimeout(() => setActiveDraftId(null), 100);
   }, []);
+
+  const handleFindRelated = useCallback(async () => {
+    setRelatedPanelOpen(true);
+    await writer.sendMessage("Find related stories", "find-related");
+  }, [writer]);
+
+  const handleStoryKeyClick = useCallback((key: string) => {
+    setRelatedPanelOpen(true);
+    setRelatedPanelSelectedKey(key);
+  }, []);
+
+  // Auto-open related panel when candidates arrive for the first time
+  const prevCandidatesLength = useRef(writer.relatedCandidates.length);
+  useEffect(() => {
+    if (writer.relatedCandidates.length > 0 && prevCandidatesLength.current === 0) {
+      setRelatedPanelOpen(true);
+    }
+    prevCandidatesLength.current = writer.relatedCandidates.length;
+  }, [writer.relatedCandidates.length]);
 
   const handleSplitButtonClick = useCallback(() => {
     if (!targetTicketKey) {
@@ -277,7 +344,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   return (
     <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
       {/* Header */}
-      <div className="relative flex items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5 overflow-hidden">
+      <div className="relative flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5 overflow-hidden">
         {/* Ambient glow from icon */}
         <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.10)_0%,transparent_70%)]" />
 
@@ -303,7 +370,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               </span>
               <span className="text-white/30 shrink-0">–</span>
               <span className="min-w-0 truncate font-semibold text-white/90">
-                {ticketData.title}
+                {writer.session?.localTitle ?? ticketData.title}
               </span>
             </div>
           )}
@@ -315,6 +382,28 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               <Star size={11} strokeWidth={1.5} />
               {Math.round(latestReview.overallScore)}
             </div>
+          )}
+
+          {/* Related stories button */}
+          {writer.session && (
+            <button
+              type="button"
+              onClick={() => setRelatedPanelOpen((v) => !v)}
+              title="Related stories"
+              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+                relatedPanelOpen
+                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                  : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
+              }`}
+            >
+              <Network size={13} strokeWidth={1.5} />
+              Related
+              {writer.relatedCandidates.length > 0 && (
+                <span className="ml-0.5 tabular-nums text-[10px] opacity-70">
+                  {writer.relatedCandidates.length}
+                </span>
+              )}
+            </button>
           )}
 
           {/* Split story button */}
@@ -435,8 +524,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           </div>
         ) : (
           <>
-            <div style={{ width: chatWidth }} className="flex shrink-0 flex-col border-r border-white/[0.06]">
-              <div className="flex h-[50px] items-center justify-between border-b border-white/[0.06] px-4">
+            <div style={{ width: chatWidth }} className="flex shrink-0 flex-col overflow-hidden border-r border-white/[0.06]">
+              <div className="flex h-[50px] shrink-0 items-center justify-between border-b border-white/[0.06] px-4">
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
@@ -464,7 +553,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 </button>
               </div>
               {showLogs ? (
-                <ExecutionLogViewer ticketKey={ticketKey} />
+                <ExecutionLogViewer ticketKey={ticketKey} isStreaming={writer.status === "streaming" || writer.status === "sending"} />
               ) : (
                 <StoryWriterChat
                   messages={writer.messages}
@@ -472,13 +561,22 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                   streamProgress={writer.streamProgress}
                   streamError={writer.streamError}
                   usage={writer.usage}
+                  lastResponseDurationMs={writer.lastResponseDurationMs}
+                  localDraft={writer.session?.localDraft ?? null}
                   codebaseResearch={writer.codebaseResearch}
                   onCodebaseResearchChange={writer.setCodbaseResearch}
                   model={writer.model}
                   onModelChange={writer.setModel}
                   onSend={writer.sendMessage}
+                  onFindRelated={handleFindRelated}
+                  onOpenRelatedPanel={() => setRelatedPanelOpen(true)}
+                  onStoryKeyClick={handleStoryKeyClick}
+                  relatedCandidates={writer.relatedCandidates}
+                  onLinkCandidate={writer.linkCandidate}
                   messageDraftMap={messageDraftMap}
+                  draftContentMap={draftContentMap}
                   onViewDraft={handleViewDraft}
+                  issueType={ticketData?.type ?? "story"}
                 />
               )}
             </div>
@@ -494,10 +592,11 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
         )}
 
         {/* Editor panel */}
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {writer.session ? (
             <StoryWriterEditor
               localDraft={writer.session.localDraft ?? ""}
+              localTitle={writer.session.localTitle ?? ticketData?.title ?? ""}
               baseDescription={baseDescription}
               aiDrafts={writer.aiDrafts}
               ticket={{
@@ -516,14 +615,17 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 notes: "",
               }}
               onDraftChange={handleDraftChange}
+              onTitleChange={handleTitleChange}
               onDismissDraft={writer.dismissDraft}
               activeDraftId={activeDraftId}
               splitModeVisible={splitModeVisible}
               targetTicketKey={targetTicketKey}
               targetLocalDraft={writer.session.targetLocalDraft}
+              targetLocalTitle={writer.session.targetLocalTitle ?? undefined}
               targetAiDrafts={writer.targetAiDrafts}
               targetTicketTitle={targetTicketTitle}
-              onTargetDraftChange={writer.updateTargetLocalDraft}
+              onTargetDraftChange={handleTargetDraftChange}
+              onTargetTitleChange={handleTargetTitleChange}
               onDismissTargetDraft={writer.dismissDraft}
             />
           ) : (
@@ -532,11 +634,33 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             </div>
           )}
         </div>
+
+        {/* Related stories panel */}
+        {relatedPanelOpen && (
+          <>
+            <div className="w-px shrink-0 bg-white/[0.06]" />
+            <div
+              style={{ width: RELATED_PANEL_WIDTH }}
+              className="flex shrink-0 flex-col overflow-hidden border-l-0 bg-[var(--color-surface-base)]"
+            >
+              <RelatedStoriesPanel
+                candidates={writer.relatedCandidates}
+                onLink={writer.linkCandidate}
+                onClose={() => {
+                  setRelatedPanelOpen(false);
+                  setRelatedPanelSelectedKey(null);
+                }}
+                selectedKey={relatedPanelSelectedKey}
+                onSelectedKeyChange={setRelatedPanelSelectedKey}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer bar */}
       {(writer.aiDrafts.length > 0 || targetTicketKey || writer.messages.length > 0) && (
-        <div className="flex items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-1.5">
+        <div className="flex shrink-0 items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-1.5">
           <div className="flex items-center gap-3">
             {writer.aiDrafts.length > 0 && (
               <span className="text-xs text-white/30">

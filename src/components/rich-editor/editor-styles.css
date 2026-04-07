@@ -166,7 +166,7 @@
 /* Bold & italic */
 .description-content strong,
 .rich-editor-wrapper .tiptap strong {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .description-content em,
@@ -456,4 +456,10 @@
 .description-content ::selection,
 .rich-editor-wrapper .tiptap ::selection {
   background: rgba(46, 145, 73, 0.3);
+}
+
+/* Node selection highlight for callout/expand blocks */
+.rich-editor-wrapper .tiptap .callout-block.ProseMirror-selectednode {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 1px;
 }

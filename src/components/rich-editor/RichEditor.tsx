@@ -38,10 +38,25 @@ interface RichEditorProps {
   stickyToolbar?: boolean;
   /** Breaks the toolbar out to the full width of the nearest CSS container, with buttons centered at max-w-4xl */
   fullWidthToolbar?: boolean;
+  /** Rendered inside the scroll container, above the editor content */
+  slotBeforeContent?: React.ReactNode;
 }
 
 function markdownToEditorHtml(markdown: string): string {
-  return calloutMarkdownToHtml(expandEmojiShortcodes(markdown));
+  // Normalize bold delimiters that end with trailing punctuation to prevent markdown-it
+  // from failing to close them. Two cases need handling:
+  //
+  // 1. `**word:**` (original ADF form): colon is inside the closing **, which some
+  //    parsers treat as an ambiguous right-flanking delimiter → move colon outside.
+  //
+  // 2. `**word****:**` (corrupted DB form after a bad round-trip): the colon ended up
+  //    wrapped in its own failed bold pair **:**. Strip **:** → bare colon.
+  //
+  // Apply (2) first because it simplifies the string before (1) runs.
+  const normalized = markdown
+    .replace(/\*\*:\*\*/g, ":")
+    .replace(/\*\*([^*\n]+):\*\*/g, "**$1**:");
+  return calloutMarkdownToHtml(expandEmojiShortcodes(normalized));
 }
 
 function getInitialMode(): EditorMode {
@@ -88,6 +103,7 @@ export function RichEditor({
   actions,
   stickyToolbar = false,
   fullWidthToolbar = false,
+  slotBeforeContent,
 }: RichEditorProps) {
   const [mode, setMode] = useState<EditorMode>(getInitialMode);
   const suppressRef = useRef(false);
@@ -218,27 +234,30 @@ export function RichEditor({
     <div className={rootClasses}>
       {isPortaled ? createPortal(toolbarEl, portalTarget!) : toolbarEl}
 
-      {mode === "rich" ? (
-        <EditorContent
-          editor={editor}
-          className={`rich-editor-wrapper ${borderless ? "flex-1 overflow-y-auto" : ""} ${fullWidthToolbar ? "rich-editor-wrapper--no-x-pad" : ""}`}
-        />
-      ) : (
-        <textarea
-          value={value}
-          onChange={handleMarkdownChange}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-              e.preventDefault();
-              onSave?.();
-            }
-          }}
-          placeholder={placeholder}
-          className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none ${borderless ? "flex-1 resize-none" : "resize-y"}`}
-          style={borderless ? undefined : { minHeight: `${minHeight}px` }}
-          spellCheck={false}
-        />
-      )}
+      <div className={borderless ? "flex-1 overflow-y-auto" : ""}>
+        {slotBeforeContent}
+        {mode === "rich" ? (
+          <EditorContent
+            editor={editor}
+            className={`rich-editor-wrapper ${fullWidthToolbar ? "rich-editor-wrapper--no-x-pad" : ""}`}
+          />
+        ) : (
+          <textarea
+            value={value}
+            onChange={handleMarkdownChange}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                onSave?.();
+              }
+            }}
+            placeholder={placeholder}
+            className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none ${borderless ? "resize-none" : "resize-y"}`}
+            style={borderless ? undefined : { minHeight: `${minHeight}px` }}
+            spellCheck={false}
+          />
+        )}
+      </div>
     </div>
   );
 }

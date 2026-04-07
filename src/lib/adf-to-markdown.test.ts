@@ -367,7 +367,8 @@ describe("adfToMarkdown", () => {
       ],
     };
     const result = adfToMarkdown(adf);
-    expect(result).toContain("**Discuss:** Valk Verrast");
+    // Trailing punctuation is moved outside ** so markdown-it correctly closes the bold delimiter.
+    expect(result).toContain("**Discuss**: Valk Verrast");
     expect(result).not.toContain("**Discuss: **");
   });
 

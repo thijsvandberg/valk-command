@@ -20,12 +20,14 @@ const EXPECTED_ROUTES = [
   { path: "/tickets/[key]", file: "src/app/(app)/tickets/[key]/page.tsx", name: "Ticket Detail" },
   { path: "/tickets/[key]/write", file: "src/app/(app)/tickets/[key]/write/page.tsx", name: "Story Writer" },
   { path: "/activity-log", file: "src/app/(app)/activity-log/page.tsx", name: "Activity Log" },
+  { path: "/settings", file: "src/app/(app)/settings/page.tsx", name: "Settings" },
 ];
 
 // API route manifest: ensures search API route files exist
 const EXPECTED_API_ROUTES = [
   { path: "/api/search/local", file: "src/app/api/search/local/route.ts", name: "Local Search API" },
   { path: "/api/search/jira", file: "src/app/api/search/jira/route.ts", name: "Jira Search API" },
+  { path: "/api/settings/quick-prompts", file: "src/app/api/settings/quick-prompts/route.ts", name: "Quick Prompts Settings API" },
 ];
 
 const ROOT = join(__dirname, "../..");
