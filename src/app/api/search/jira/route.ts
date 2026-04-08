@@ -23,6 +23,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ issues: [] });
   }
 
+  if (jqlOverride.length > 1000) {
+    return NextResponse.json({ error: "JQL query too long" }, { status: 400 });
+  }
+
   // Cancel any previous in-flight request before starting a new one
   if (inFlightController) {
     inFlightController.abort();

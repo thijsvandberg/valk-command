@@ -233,18 +233,21 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     eventSourceRef.current = es;
 
     es.addEventListener("progress", (e) => {
-      const data = JSON.parse(e.data) as { message: string };
+      let data: { message: string };
+      try { data = JSON.parse(e.data); } catch { return; }
       if (!unmountedRef.current) setStreamProgress(data.message);
     });
 
     es.addEventListener("tool_call", (e) => {
-      const data = JSON.parse(e.data) as { tool: string };
+      let data: { tool: string };
+      try { data = JSON.parse(e.data); } catch { return; }
       const name = data.tool.replace(/^mcp__jira__/, "").replace(/^mcp__/, "").replace(/_/g, " ");
       if (!unmountedRef.current) setStreamProgress(`Using ${name}...`);
     });
 
     es.addEventListener("result", async (e) => {
-      const data = JSON.parse(e.data) as Record<string, unknown>;
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(e.data); } catch { return; }
       const usageRecord = (data.usage ?? {}) as Record<string, unknown>;
       const inputTokens = (data.inputTokens ?? usageRecord.inputTokens ?? data.input_tokens ?? usageRecord.input_tokens ?? 0) as number;
       const outputTokens = (data.outputTokens ?? usageRecord.outputTokens ?? data.output_tokens ?? usageRecord.output_tokens ?? 0) as number;

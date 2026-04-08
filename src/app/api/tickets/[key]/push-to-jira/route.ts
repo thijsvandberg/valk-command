@@ -81,7 +81,8 @@ export async function POST(
 
     if (localTicket.jiraUpdatedAt !== remoteUpdated) {
       // Remote changed since our mirror. Update mirror first, then check for conflict.
-      await fetch(new URL("/api/jira/sync-tickets", "http://localhost:3100"), {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3100";
+      await fetch(new URL("/api/jira/sync-tickets", appUrl), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticketKeys: [key] }),
@@ -124,11 +125,11 @@ export async function POST(
     }
 
     // Push to Jira
-    console.log("push-to-jira payload:", JSON.stringify(fields, null, 2));
     await jiraClient.updateIssue(key, fields);
 
     // Refresh mirror from Jira after push
-    await fetch(new URL("/api/jira/sync-tickets", "http://localhost:3100"), {
+    const refreshUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3100";
+    await fetch(new URL("/api/jira/sync-tickets", refreshUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ticketKeys: [key] }),

@@ -31,24 +31,29 @@ export async function POST(
 ) {
   const { key } = await params;
 
-  let body: any;
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  if (typeof body.content !== "string" || !body.content.trim()) {
+  if (typeof body.content !== "string" || !(body.content as string).trim()) {
     return NextResponse.json(
       { error: "content is required and must be a non-empty string" },
       { status: 400 },
     );
   }
-  if (body.content.length > 10000) {
+  const content = (body.content as string).trim();
+  if (content.length > 10000) {
     return NextResponse.json(
       { error: "content must not exceed 10000 characters" },
       { status: 400 },
     );
   }
+
+  const author = typeof body.author === "string" && body.author.trim().length > 0
+    ? body.author.trim().slice(0, 100)
+    : "Product Owner";
 
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -56,8 +61,8 @@ export async function POST(
   await db.insert(poComment).values({
     id,
     ticketKey: key,
-    author: body.author || "Product Owner",
-    content: body.content.trim(),
+    author,
+    content,
     createdAt: now,
   });
 

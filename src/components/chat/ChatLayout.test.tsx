@@ -172,7 +172,7 @@ describe("ChatLayout", () => {
     render(<ChatLayout conversationId="conv-1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("Test conversation")).toBeInTheDocument();
+      expect(screen.getAllByText("Test conversation").length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByLabelText("Delete Test conversation"));

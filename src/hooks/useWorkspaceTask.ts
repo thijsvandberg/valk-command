@@ -107,17 +107,19 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         eventSourceRef.current = es;
 
         es.addEventListener("status", (e) => {
-          const data = JSON.parse(e.data) as Record<string, unknown>;
+          try {
+            JSON.parse(e.data);
+          } catch { return; }
           safeSetState((s) => ({
             ...s,
             status: "streaming",
             progressText: `Running ${skill}...`,
-            ...(data.sessionId ? {} : {}),
           }));
         });
 
         es.addEventListener("progress", (e) => {
-          const data = JSON.parse(e.data) as { message: string };
+          let data: { message: string };
+          try { data = JSON.parse(e.data); } catch { return; }
           safeSetState((s) => ({
             ...s,
             progressText: data.message,
@@ -125,7 +127,8 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         });
 
         es.addEventListener("tool_call", (e) => {
-          const data = JSON.parse(e.data) as ToolCallEvent;
+          let data: ToolCallEvent;
+          try { data = JSON.parse(e.data); } catch { return; }
           safeSetState((s) => ({
             ...s,
             toolCalls: [...s.toolCalls, data],
@@ -134,7 +137,8 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         });
 
         es.addEventListener("result", (e) => {
-          const data = JSON.parse(e.data) as { output: string; status: string };
+          let data: { output: string; status: string };
+          try { data = JSON.parse(e.data); } catch { return; }
           safeSetState((s) => ({
             ...s,
             status: "completed",
@@ -147,7 +151,13 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
 
         es.addEventListener("error", (e) => {
           if (e instanceof MessageEvent) {
-            const data = JSON.parse(e.data) as { message: string };
+            let data: { message: string };
+            try { data = JSON.parse(e.data); } catch {
+              safeSetState((s) => ({ ...s, status: "failed", error: "Unknown error", progressText: "" }));
+              es.close();
+              eventSourceRef.current = null;
+              return;
+            }
             safeSetState((s) => ({
               ...s,
               status: "failed",
