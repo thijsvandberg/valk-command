@@ -104,26 +104,6 @@ export default function SprintBoard() {
     return activeIdx >= 0 ? activeIdx : 0;
   }, [searchParams, slotSprints, sprints]);
 
-  const setActiveSlot = useCallback((slot: number) => {
-    const sprintId = slotSprints[slot];
-    if (!sprintId) return;
-    setEphemeralSprintId(null);
-    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sprint", sprintId);
-    params.delete("view");
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [slotSprints, searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
-
-  const handleAllClick = useCallback(() => {
-    setEphemeralSprintId(null);
-    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sprint", "__all__");
-    params.delete("view");
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
-
   // Ephemeral sprint: shown as a temporary tab when selected from the sprint list, not persisted to slots
   const [ephemeralSprintId, setEphemeralSprintId] = useState<string | null>(null);
   const ephemeralIsActive = !isAllView && ephemeralSprintId !== null && searchParams.get("sprint") === ephemeralSprintId;
@@ -191,6 +171,26 @@ export default function SprintBoard() {
   interface StoredFilters { status: string[]; epic: string[]; assignee: string[]; poStatus: string[]; editState: string[] }
   const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [], editState: [] };
   const [storedFilters, setStoredFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
+
+  const setActiveSlot = useCallback((slot: number) => {
+    const sprintId = slotSprints[slot];
+    if (!sprintId) return;
+    setEphemeralSprintId(null);
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sprint", sprintId);
+    params.delete("view");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [slotSprints, searchParams, router, setStoredFilters]);
+
+  const handleAllClick = useCallback(() => {
+    setEphemeralSprintId(null);
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sprint", "__all__");
+    params.delete("view");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, router, setStoredFilters]);
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
   const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
@@ -351,7 +351,7 @@ export default function SprintBoard() {
       }
     });
     return sorted;
-  }, [filteredTickets, sortField, sortDir, poPriorityOrder]);
+  }, [filteredTickets, sortField, sortDir, poPriorityOrder, poStatuses]);
 
   const selected = tickets.find((t) => t.key === selectedTicket);
 
@@ -542,7 +542,7 @@ export default function SprintBoard() {
     params.set("sprint", sprintId);
     params.delete("view");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
+  }, [searchParams, router, setStoredFilters]);
 
   const handleEphemeralClick = useCallback(() => {
     if (!ephemeralSprintId) return;
@@ -551,7 +551,7 @@ export default function SprintBoard() {
     params.set("sprint", ephemeralSprintId);
     params.delete("view");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [ephemeralSprintId, searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
+  }, [ephemeralSprintId, searchParams, router, setStoredFilters]);
 
   const handleAddSlotWithSprint = useCallback((sprintId: string) => {
     setSlotSprints((prev) => {

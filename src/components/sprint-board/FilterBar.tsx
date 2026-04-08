@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
-import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
+import { getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
 import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
 
 // -- PO Status colors (needed for filter rendering) --

@@ -619,7 +619,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         }
       }
     }
-  }, [focusedPanel, activeIdx, resultCount, mode, localResults, jiraResults, previewEnabled, loadingJira, onClose, onSelectTicket, runJiraSearch, router]);
+  }, [focusedPanel, activeIdx, resultCount, mode, localResults, jiraResults, previewEnabled, loadingJira, onClose, runJiraSearch, router]);
 
   // Scroll active row into view
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import type { Ticket, Sprint, POStatus } from "@/types/ticket";
-import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
 import { SidePanel } from "./SidePanel";
@@ -345,8 +345,14 @@ export function MultiSprintView({
   const [leftOverride, setLeftOverride] = useState<{ sprintId: string; tickets: Ticket[] } | null>(null);
   const [rightOverride, setRightOverride] = useState<{ sprintId: string; tickets: Ticket[] } | null>(null);
 
-  const leftTickets = (leftOverride?.sprintId === leftSprint ? leftOverride.tickets : null) ?? leftApiTickets ?? [];
-  const rightTickets = (rightOverride?.sprintId === rightSprint ? rightOverride.tickets : null) ?? rightApiTickets ?? [];
+  const leftTickets = useMemo(
+    () => (leftOverride?.sprintId === leftSprint ? leftOverride.tickets : null) ?? leftApiTickets ?? [],
+    [leftOverride, leftSprint, leftApiTickets],
+  );
+  const rightTickets = useMemo(
+    () => (rightOverride?.sprintId === rightSprint ? rightOverride.tickets : null) ?? rightApiTickets ?? [],
+    [rightOverride, rightSprint, rightApiTickets],
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());

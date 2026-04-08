@@ -7,7 +7,7 @@ import Link from "next/link";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTable";
-import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
 import { CloudSync, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
 
