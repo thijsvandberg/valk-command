@@ -26,11 +26,6 @@ vi.mock("@/lib/jira-client", () => ({
   extractAcceptanceCriteria: () => null,
 }));
 
-vi.mock("@/lib/sync-abort", () => ({
-  registerSync: () => new AbortController(),
-  unregisterSync: () => {},
-}));
-
 vi.mock("@/lib/adf-to-markdown", () => ({
   adfToMarkdown: (doc: unknown) => (typeof doc === "string" ? doc : ""),
 }));
