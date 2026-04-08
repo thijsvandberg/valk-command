@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, forwardRef } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import { EPIC_COLORS, getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
 import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
@@ -26,6 +26,11 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useVirtualizer } from "@tanstack/react-virtual";
+
+const VIRTUALIZE_THRESHOLD = 200;
+const ROW_HEIGHT_ESTIMATE = 40;
+const VIRTUALIZER_OVERSCAN = 20;
 
 type EditState = "draft" | "local_edits" | "conflict";
 
@@ -264,6 +269,9 @@ export function POStatusCell({
 // -- Drag handle (visible on hover) --
 
 function DragHandle({ listeners, attributes }: { listeners?: ReturnType<typeof useSortable>["listeners"]; attributes?: ReturnType<typeof useSortable>["attributes"] }) {
+  if (!listeners) {
+    return <td className="w-5 py-2 pl-1 pr-0" />;
+  }
   return (
     <td
       className="w-5 py-2 pl-1 pr-0 opacity-0 transition-opacity duration-100 group-hover/row:opacity-100 cursor-grab active:cursor-grabbing"
@@ -275,30 +283,9 @@ function DragHandle({ listeners, attributes }: { listeners?: ReturnType<typeof u
   );
 }
 
-// -- Sortable row wrapper --
+// -- Shared row props --
 
-function SortableTicketRow({
-  ticket,
-  ticketIdx,
-  isChecked,
-  isHovered,
-  isSelected,
-  isFocused,
-  someChecked,
-  isDragActive,
-  col,
-  showSprintColumn,
-  sprintNameMap,
-  poStatuses,
-  selectedTicket,
-  onHoverRow,
-  onLeaveRow,
-  onSelectTicket,
-  onCheckboxClick,
-  onPoStatusChange,
-  reviewPopoverKey,
-  onToggleReviewPopover,
-}: {
+interface TicketRowBaseProps {
   ticket: Ticket;
   ticketIdx: number;
   isChecked: boolean;
@@ -319,30 +306,56 @@ function SortableTicketRow({
   onPoStatusChange: (key: string, status: POStatus) => void;
   reviewPopoverKey: string | null;
   onToggleReviewPopover: (key: string) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: ticket.key });
+  rowStyle?: React.CSSProperties;
+  dragListeners?: ReturnType<typeof useSortable>["listeners"];
+  dragAttributes?: ReturnType<typeof useSortable>["attributes"];
+  "data-index"?: number;
+}
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition ?? undefined,
-    ...(ticket.flagged ? { boxShadow: "inset 4px 0 0 #e5534b" } : {}),
-    ...(isDragging ? { opacity: 0.4, zIndex: 10 } : {}),
-  };
+// -- Ticket row (forwardRef for virtualizer measurement) --
 
+const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(function TicketRow(
+  {
+    ticket,
+    ticketIdx,
+    isChecked,
+    isHovered,
+    isSelected,
+    isFocused,
+    someChecked,
+    isDragActive,
+    col,
+    showSprintColumn,
+    sprintNameMap,
+    poStatuses,
+    selectedTicket,
+    onHoverRow,
+    onLeaveRow,
+    onSelectTicket,
+    onCheckboxClick,
+    onPoStatusChange,
+    reviewPopoverKey,
+    onToggleReviewPopover,
+    rowStyle,
+    dragListeners,
+    dragAttributes,
+    "data-index": dataIndex,
+  },
+  ref
+) {
   const showCheckbox = isChecked || isHovered || someChecked;
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
 
+  const style: React.CSSProperties = {
+    ...(ticket.flagged ? { boxShadow: "inset 4px 0 0 #e5534b" } : {}),
+    ...rowStyle,
+  };
+
   return (
     <tr
-      ref={setNodeRef}
+      ref={ref}
+      data-index={dataIndex}
       style={style}
       onMouseEnter={() => onHoverRow(ticket.key)}
       onMouseLeave={onLeaveRow}
@@ -364,8 +377,7 @@ function SortableTicketRow({
           : ""
       } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""}`}
     >
-      {/* Drag handle */}
-      <DragHandle listeners={listeners} attributes={attributes} />
+      <DragHandle listeners={dragListeners} attributes={dragAttributes} />
 
       {/* Checkbox */}
       <td
@@ -497,6 +509,35 @@ function SortableTicketRow({
         </td>
       )}
     </tr>
+  );
+});
+
+// -- Sortable row wrapper (used when drag-and-drop is enabled) --
+
+function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "dragListeners" | "dragAttributes" | "data-index">) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.ticket.key });
+
+  const rowStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition ?? undefined,
+    ...(isDragging ? { opacity: 0.4, zIndex: 10 } : {}),
+  };
+
+  return (
+    <TicketRow
+      {...props}
+      ref={setNodeRef}
+      rowStyle={rowStyle}
+      dragListeners={listeners}
+      dragAttributes={attributes}
+    />
   );
 }
 
@@ -646,8 +687,208 @@ export function TicketTable({
     }
   }, [onReorder]);
 
+  const enableVirtualization = tickets.length > VIRTUALIZE_THRESHOLD;
   const ticketIds = tickets.map((t) => t.key);
   const activeTicket = activeDragId ? tickets.find((t) => t.key === activeDragId) : null;
+
+  const rowVirtualizer = useVirtualizer({
+    count: enableVirtualization ? tickets.length : 0,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => ROW_HEIGHT_ESTIMATE,
+    overscan: VIRTUALIZER_OVERSCAN,
+  });
+
+  const virtualRows = enableVirtualization ? rowVirtualizer.getVirtualItems() : [];
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const paddingBottom = virtualRows.length > 0
+    ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+    : 0;
+
+  // Shared row props factory to avoid repetition between virtualized and non-virtualized paths
+  const makeRowProps = useCallback((ticket: Ticket, ticketIdx: number) => ({
+    ticket,
+    ticketIdx,
+    isChecked: checkedTickets.has(ticket.key),
+    isHovered: hoveredRow === ticket.key,
+    isSelected: selectedTicket === ticket.key,
+    isFocused: focusedTicketIdx === ticketIdx,
+    someChecked,
+    isDragActive: activeDragId !== null,
+    col,
+    showSprintColumn: showSprintColumn ?? false,
+    sprintNameMap: sprintNameMap ?? {},
+    poStatuses,
+    selectedTicket,
+    onHoverRow,
+    onLeaveRow,
+    onSelectTicket,
+    onCheckboxClick: handleCheckboxClick,
+    onPoStatusChange,
+    reviewPopoverKey,
+    onToggleReviewPopover: handleToggleReviewPopover,
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, showSprintColumn, sprintNameMap, poStatuses, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover]);
+
+  const theadContent = (
+    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
+      <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
+        <th className="w-5 py-2.5 pl-1" />
+        <th className="w-10 py-2.5 pl-1 pr-1">
+          <div
+            className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
+              someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={allChecked}
+              onChange={onToggleAll}
+              className="h-3.5 w-3.5 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
+              ref={(el) => {
+                if (el) el.indeterminate = someChecked && !allChecked;
+              }}
+            />
+          </div>
+        </th>
+        {col("type") && <th className="w-8 py-2.5 pr-2" />}
+        {col("key") && (
+          <th className="group/th w-24 py-2.5 pr-3">
+            <button type="button" onClick={() => handleColumnSort("key")} className="flex items-center cursor-pointer hover:text-white/60">
+              Key<SortIndicator colId="key" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {col("title") && (
+          <th className="group/th py-2.5 pr-3">
+            <button type="button" onClick={() => handleColumnSort("title")} className="flex items-center cursor-pointer hover:text-white/60">
+              Title<SortIndicator colId="title" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {col("epic") && (
+          <th className="group/th w-36 py-2.5 pr-3">
+            <button type="button" onClick={() => handleColumnSort("epic")} className="flex items-center cursor-pointer hover:text-white/60">
+              Epic<SortIndicator colId="epic" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {col("jiraStatus") && (
+          <th className="group/th w-28 py-2.5 pr-3">
+            <button type="button" onClick={() => handleColumnSort("jiraStatus")} className="flex items-center cursor-pointer hover:text-white/60">
+              Status<SortIndicator colId="jiraStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {showSprintColumn && <th className="w-36 py-2.5 pr-3">Sprint</th>}
+        {col("points") && (
+          <th className="group/th w-12 py-2.5 pr-3 text-center">
+            <button type="button" onClick={() => handleColumnSort("points")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
+              Pts<SortIndicator colId="points" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {col("assignee") && (
+          <th className="group/th w-10 py-2.5 pr-3">
+            <button type="button" onClick={() => handleColumnSort("assignee")} className="flex items-center cursor-pointer hover:text-white/60">
+              <SortIndicator colId="assignee" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {col("flagged") && <th className="w-8 py-2.5 pr-2" />}
+        {col("poStatus") && (
+          <th className="group/th w-10 py-2.5 pr-2 text-center">
+            <button type="button" onClick={() => handleColumnSort("poStatus")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
+              PO<SortIndicator colId="poStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {col("quality") && (
+          <th className="group/th w-16 py-2.5 pr-3">
+            <button type="button" onClick={() => handleColumnSort("quality")} className="flex items-center cursor-pointer hover:text-white/60">
+              Quality<SortIndicator colId="quality" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+            </button>
+          </th>
+        )}
+        {col("notes") && <th className="w-8 py-2.5 pr-5" />}
+      </tr>
+    </thead>
+  );
+
+  const virtualizedTable = (
+    <table className="w-full border-collapse text-sm">
+      {theadContent}
+      <tbody>
+        {paddingTop > 0 && (
+          <tr><td style={{ height: paddingTop, padding: 0, border: "none" }} /></tr>
+        )}
+        {virtualRows.map((virtualRow) => {
+          const ticket = tickets[virtualRow.index];
+          return (
+            <TicketRow
+              key={ticket.key}
+              ref={rowVirtualizer.measureElement}
+              data-index={virtualRow.index}
+              {...makeRowProps(ticket, virtualRow.index)}
+            />
+          );
+        })}
+        {paddingBottom > 0 && (
+          <tr><td style={{ height: paddingBottom, padding: 0, border: "none" }} /></tr>
+        )}
+      </tbody>
+    </table>
+  );
+
+  const dndTable = (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <table className="w-full border-collapse text-sm">
+        {theadContent}
+        <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
+          <tbody>
+            {tickets.map((ticket, ticketIdx) => (
+              <SortableTicketRow
+                key={ticket.key}
+                {...makeRowProps(ticket, ticketIdx)}
+              />
+            ))}
+          </tbody>
+        </SortableContext>
+      </table>
+      <DragOverlay>
+        {activeTicket && (
+          <table className="w-full border-collapse text-sm">
+            <tbody>
+              <tr className="bg-[var(--color-surface-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-lg border border-white/[0.08]">
+                <td className="w-5 py-2 pl-1" />
+                <td className="py-2 pl-1 pr-1">
+                  <div className="flex h-6 w-6 items-center justify-center" />
+                </td>
+                {col("type") && (
+                  <td className="py-2 pr-2">
+                    <IssueTypeIcon type={activeTicket.type} />
+                  </td>
+                )}
+                {col("key") && (
+                  <td className="py-2 pr-3 font-mono text-xs text-white/50">
+                    {activeTicket.key}
+                  </td>
+                )}
+                {col("title") && (
+                  <td className="max-w-0 truncate py-2 pr-3 text-white/80">
+                    {activeTicket.title}
+                  </td>
+                )}
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
 
   return (
     <div
@@ -656,155 +897,7 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-            <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
-              <th className="w-5 py-2.5 pl-1" />
-              <th className="w-10 py-2.5 pl-1 pr-1">
-                <div
-                  className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
-                    someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={allChecked}
-                    onChange={onToggleAll}
-                    className="h-3.5 w-3.5 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
-                    ref={(el) => {
-                      if (el) el.indeterminate = someChecked && !allChecked;
-                    }}
-                  />
-                </div>
-              </th>
-              {col("type") && <th className="w-8 py-2.5 pr-2" />}
-              {col("key") && (
-                <th className="group/th w-24 py-2.5 pr-3">
-                  <button type="button" onClick={() => handleColumnSort("key")} className="flex items-center cursor-pointer hover:text-white/60">
-                    Key<SortIndicator colId="key" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {col("title") && (
-                <th className="group/th py-2.5 pr-3">
-                  <button type="button" onClick={() => handleColumnSort("title")} className="flex items-center cursor-pointer hover:text-white/60">
-                    Title<SortIndicator colId="title" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {col("epic") && (
-                <th className="group/th w-36 py-2.5 pr-3">
-                  <button type="button" onClick={() => handleColumnSort("epic")} className="flex items-center cursor-pointer hover:text-white/60">
-                    Epic<SortIndicator colId="epic" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {col("jiraStatus") && (
-                <th className="group/th w-28 py-2.5 pr-3">
-                  <button type="button" onClick={() => handleColumnSort("jiraStatus")} className="flex items-center cursor-pointer hover:text-white/60">
-                    Status<SortIndicator colId="jiraStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {showSprintColumn && <th className="w-36 py-2.5 pr-3">Sprint</th>}
-              {col("points") && (
-                <th className="group/th w-12 py-2.5 pr-3 text-center">
-                  <button type="button" onClick={() => handleColumnSort("points")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
-                    Pts<SortIndicator colId="points" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {col("assignee") && (
-                <th className="group/th w-10 py-2.5 pr-3">
-                  <button type="button" onClick={() => handleColumnSort("assignee")} className="flex items-center cursor-pointer hover:text-white/60">
-                    <SortIndicator colId="assignee" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {col("flagged") && <th className="w-8 py-2.5 pr-2" />}
-              {col("poStatus") && (
-                <th className="group/th w-10 py-2.5 pr-2 text-center">
-                  <button type="button" onClick={() => handleColumnSort("poStatus")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
-                    PO<SortIndicator colId="poStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {col("quality") && (
-                <th className="group/th w-16 py-2.5 pr-3">
-                  <button type="button" onClick={() => handleColumnSort("quality")} className="flex items-center cursor-pointer hover:text-white/60">
-                    Quality<SortIndicator colId="quality" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-                  </button>
-                </th>
-              )}
-              {col("notes") && <th className="w-8 py-2.5 pr-5" />}
-            </tr>
-          </thead>
-          <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
-            <tbody>
-              {tickets.map((ticket, ticketIdx) => (
-                <SortableTicketRow
-                  key={ticket.key}
-                  ticket={ticket}
-                  ticketIdx={ticketIdx}
-                  isChecked={checkedTickets.has(ticket.key)}
-                  isHovered={hoveredRow === ticket.key}
-                  isSelected={selectedTicket === ticket.key}
-                  isFocused={focusedTicketIdx === ticketIdx}
-                  someChecked={someChecked}
-                  isDragActive={activeDragId !== null}
-                  col={col}
-                  showSprintColumn={showSprintColumn ?? false}
-                  sprintNameMap={sprintNameMap ?? {}}
-                  poStatuses={poStatuses}
-                  selectedTicket={selectedTicket}
-                  onHoverRow={onHoverRow}
-                  onLeaveRow={onLeaveRow}
-                  onSelectTicket={onSelectTicket}
-                  onCheckboxClick={handleCheckboxClick}
-                  onPoStatusChange={onPoStatusChange}
-                  reviewPopoverKey={reviewPopoverKey}
-                  onToggleReviewPopover={handleToggleReviewPopover}
-                />
-              ))}
-            </tbody>
-          </SortableContext>
-        </table>
-        <DragOverlay>
-          {activeTicket && (
-            <table className="w-full border-collapse text-sm">
-              <tbody>
-                <tr className="bg-[var(--color-surface-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-lg border border-white/[0.08]">
-                  <td className="w-5 py-2 pl-1" />
-                  <td className="py-2 pl-1 pr-1">
-                    <div className="flex h-6 w-6 items-center justify-center" />
-                  </td>
-                  {col("type") && (
-                    <td className="py-2 pr-2">
-                      <IssueTypeIcon type={activeTicket.type} />
-                    </td>
-                  )}
-                  {col("key") && (
-                    <td className="py-2 pr-3 font-mono text-xs text-white/50">
-                      {activeTicket.key}
-                    </td>
-                  )}
-                  {col("title") && (
-                    <td className="max-w-0 truncate py-2 pr-3 text-white/80">
-                      {activeTicket.title}
-                    </td>
-                  )}
-                </tr>
-              </tbody>
-            </table>
-          )}
-        </DragOverlay>
-      </DndContext>
+      {enableVirtualization ? virtualizedTable : dndTable}
       {tickets.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Sheet className="mb-4 h-12 w-12 text-white/10" strokeWidth={1} />

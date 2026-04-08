@@ -14,7 +14,7 @@ export type QuickPromptsConfig = Record<string, QuickPrompt[]>;
 
 const SETTING_KEY = "story_writer_quick_prompts";
 
-export const DEFAULT_PROMPTS: QuickPromptsConfig = {
+const DEFAULT_PROMPTS: QuickPromptsConfig = {
   story: [
     {
       id: "d-story-0",

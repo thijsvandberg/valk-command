@@ -904,12 +904,10 @@ export function StoryWriterEditor({
     return versions;
   }, [baseDescription, aiDrafts, versionsData]);
 
-  useEffect(() => {
-    if (!diffNewId && rightVersions.length > 0) {
-      const latestAi = [...rightVersions].reverse().find((v) => v.isDraft);
-      setDiffNewId(latestAi?.id ?? rightVersions[0].id);
-    }
-  }, [rightVersions, diffNewId]);
+  if (!diffNewId && rightVersions.length > 0) {
+    const latestAi = [...rightVersions].reverse().find((v) => v.isDraft);
+    setDiffNewId(latestAi?.id ?? rightVersions[0].id);
+  }
 
   if (activeDraftId) {
     const versionId = `ai-${activeDraftId}`;

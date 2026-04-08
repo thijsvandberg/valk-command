@@ -25,7 +25,7 @@ const mockUsePathname = vi.mocked(usePathname);
 describe("Sidebar", () => {
   it("renders the logo and app name", () => {
     render(<Sidebar />);
-    expect(screen.getByText("vc")).toBeInTheDocument();
+    expect(screen.getAllByText("vc").length).toBeGreaterThan(0);
     expect(screen.getByText("valk-command")).toBeInTheDocument();
   });
 

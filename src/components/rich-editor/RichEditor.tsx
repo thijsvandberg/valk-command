@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -109,12 +109,9 @@ export function RichEditor({
   const [mode, setMode] = useState<EditorMode>(getInitialMode);
   const suppressRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    if (fullWidthToolbar && stickyToolbar) {
-      setPortalTarget(document.getElementById("ticket-toolbar-portal"));
-    }
-  }, [fullWidthToolbar, stickyToolbar]);
+  const portalTarget = fullWidthToolbar && stickyToolbar && typeof document !== "undefined"
+    ? document.getElementById("ticket-toolbar-portal")
+    : null;
   // Stable ref so the TipTap keydown handler never needs to be re-registered
   const onSaveRef = useRef(onSave);
   useEffect(() => { onSaveRef.current = onSave; }, [onSave]);

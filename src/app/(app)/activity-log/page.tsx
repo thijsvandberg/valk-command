@@ -55,6 +55,7 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
     "push-to-jira": "Push to Jira",
     "bulk-action": "Bulk action",
     "story-writer": "Story writer",
+    "incremental-sync": "Incremental sync",
   };
   return labels[type] ?? type;
 }

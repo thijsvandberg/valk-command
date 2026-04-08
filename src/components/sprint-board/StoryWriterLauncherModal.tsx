@@ -216,17 +216,18 @@ function SessionSelectDropdown({
     setOpen(true);
   };
 
-  useEffect(() => { if (!open) setFocused(0); }, [open]);
+  const closePanel = useCallback(() => { setOpen(false); setFocused(0); }, []);
+
   useEffect(() => { itemRefs.current[focused]?.scrollIntoView({ block: "nearest" }); }, [focused]);
 
   useEffect(() => {
     if (!open) return;
     const fn = (e: MouseEvent) => {
-      if (!panelRef.current?.contains(e.target as Node) && !triggerRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!panelRef.current?.contains(e.target as Node) && !triggerRef.current?.contains(e.target as Node)) closePanel();
     };
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
-  }, [open]);
+  }, [open, closePanel]);
 
   const nav = (e: React.KeyboardEvent) => {
     if (!open) {
@@ -235,13 +236,13 @@ function SessionSelectDropdown({
     }
     if (e.key === "ArrowDown")  { e.preventDefault(); setFocused((i) => Math.min(i + 1, options.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setFocused((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); if (options[focused]) { onChange(options[focused].value); setOpen(false); } }
-    else if (e.key === "Escape") { e.preventDefault(); setOpen(false); triggerRef.current?.focus(); }
+    else if (e.key === "Enter") { e.preventDefault(); if (options[focused]) { onChange(options[focused].value); closePanel(); } }
+    else if (e.key === "Escape") { e.preventDefault(); closePanel(); triggerRef.current?.focus(); }
   };
 
   return (
     <>
-      <button ref={triggerRef} type="button" onClick={() => open ? setOpen(false) : openPanel()} onKeyDown={nav}
+      <button ref={triggerRef} type="button" onClick={() => open ? closePanel() : openPanel()} onKeyDown={nav}
         className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-[13px] text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/50"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >

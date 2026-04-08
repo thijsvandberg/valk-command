@@ -14,7 +14,6 @@ import {
   Settings,
   Menu,
   X,
-  ChevronLeft,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 
@@ -128,13 +127,23 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         data-testid="sidebar"
-        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-white/[0.06] lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 lg:overflow-visible ${
+        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-white/[0.06] lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 ${
           collapsed ? "w-[52px]" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        {/* Header — height matches main content header (py-3.5 + h-8 icon) */}
+        {/* Header */}
         <div className={`flex items-center border-b border-white/[0.06] py-3.5 ${collapsed ? "justify-center px-2" : "gap-3 px-5"}`}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(46,145,73,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(46,145,73,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-all duration-150"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <span className="font-[var(--font-display)] text-[13px] font-black tracking-tighter text-white">
+              vc
+            </span>
+          </button>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(46,145,73,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] lg:hidden">
             <span className="font-[var(--font-display)] text-[13px] font-black tracking-tighter text-white">
               vc
             </span>
@@ -158,7 +167,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-1.5" : "px-3"}`} aria-label="Main navigation">
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-1 pt-2">
             {navItems.map((item) => {
               const active = isActive(item.href);
               return (
@@ -188,25 +197,12 @@ export default function Sidebar() {
         </nav>
 
         {/* Sync status */}
-        <div className={`${collapsed ? "px-1.5" : "px-3"} pb-2`}>
+        <div className={`${collapsed ? "px-1.5 flex justify-center" : "px-3"} pb-2`}>
           <SyncIndicator collapsed={collapsed} />
         </div>
 
-        {/* Full-height collapse toggle strip (desktop only) */}
-        <div className="hidden lg:block absolute top-0 right-0 h-full w-px z-10">
-          <div className="absolute inset-0 bg-[var(--color-brand-600)]/25" />
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] border border-white/[0.08] text-white/30 cursor-pointer hover:text-white/70 hover:border-[var(--color-brand-500)]/50 focus-visible:outline-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <ChevronLeft
-              className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
-              strokeWidth={1.5}
-            />
-          </button>
-        </div>
+        {/* Sidebar right edge accent */}
+        <div className="hidden lg:block absolute top-0 right-0 h-full w-px bg-[var(--color-brand-600)]/25" />
       </aside>
     </>
   );
