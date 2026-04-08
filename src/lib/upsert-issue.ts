@@ -59,9 +59,54 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
 
   const now = new Date().toISOString();
 
+  // Pre-read: gather current DB state outside the write transaction
   const existing = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, issue.key),
   });
+  const meta = await db.query.ticketMetadata.findFirst({
+    where: (m, { eq: eqFn }) => eqFn(m.jiraKey, issue.key),
+  });
+  const hash = contentHash(fields.description, ac);
+  const latestVersion = await db.query.storyVersion.findFirst({
+    where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, issue.key),
+    orderBy: (sv, { desc }) => [desc(sv.createdAt)],
+  });
+
+  // HTTP call: fetch change author outside the transaction to avoid holding the write lock
+  const needsNewVersion = !latestVersion || latestVersion.contentHash !== hash;
+  const changeAuthor = needsNewVersion && latestVersion
+    ? await jiraClient.getLastChangeAuthor(issue.key, _signal)
+    : null;
+
+  const attachments: JiraAttachment[] = issue.fields.attachment ?? [];
+  const existingAttachments = new Map(
+    (await db
+      .select({ id: ticketAttachment.id, jiraAttachmentId: ticketAttachment.jiraAttachmentId, jiraUrl: ticketAttachment.jiraUrl })
+      .from(ticketAttachment)
+      .where(eq(ticketAttachment.ticketKey, issue.key))
+      .all()
+    ).map((a) => [a.jiraAttachmentId, a]),
+  );
+
+  const issuelinks = fields.issuelinks ?? [];
+  const localLinks = await db
+    .select({ id: ticketLink.id, linkedKey: ticketLink.linkedKey })
+    .from(ticketLink)
+    .where(
+      and(eq(ticketLink.ticketKey, issue.key), isNull(ticketLink.jiraLinkId)),
+    )
+    .all();
+  const localLinkMap = new Map(localLinks.map((l) => [l.linkedKey, l.id]));
+
+  const inlineComments = fields.comment?.comments ?? [];
+  const existingCommentIds = new Set(
+    (await db
+      .select({ jiraCommentId: jiraComment.jiraCommentId })
+      .from(jiraComment)
+      .where(eq(jiraComment.ticketKey, issue.key))
+      .all()
+    ).map((c) => c.jiraCommentId),
+  );
 
   const ticketData = {
     jiraKey: issue.key,
@@ -86,153 +131,128 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     lastSyncedAt: now,
   };
 
-  if (existing) {
-    await db.update(ticket).set(ticketData).where(eq(ticket.jiraKey, issue.key));
-  } else {
-    await db.insert(ticket).values(ticketData);
-  }
-
-  const meta = await db.query.ticketMetadata.findFirst({
-    where: (m, { eq: eqFn }) => eqFn(m.jiraKey, issue.key),
-  });
-  if (!meta) {
-    await db.insert(ticketMetadata).values({ jiraKey: issue.key });
-  }
-
-  const hash = contentHash(fields.description, ac);
-  const latestVersion = await db.query.storyVersion.findFirst({
-    where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, issue.key),
-    orderBy: (sv, { desc }) => [desc(sv.createdAt)],
-  });
-
-  if (!latestVersion || latestVersion.contentHash !== hash) {
-    const changeAuthor = latestVersion
-      ? await jiraClient.getLastChangeAuthor(issue.key, _signal)
-      : null;
-
-    await db.insert(storyVersion).values({
-      id: `sv-${issue.key}-${Date.now()}`,
-      jiraKey: issue.key,
-      description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
-      acceptanceCriteria: ac,
-      contentHash: hash,
-      updatedBy: changeAuthor?.name ?? null,
-      updatedByAvatar: changeAuthor?.avatar ?? null,
-    });
-  }
-
-  const attachments: JiraAttachment[] = issue.fields.attachment ?? [];
-  for (const att of attachments) {
-    const existingAtt = await db.query.ticketAttachment.findFirst({
-      where: (a, { eq: eqFn }) => eqFn(a.jiraAttachmentId, att.id),
-    });
-    if (!existingAtt) {
-      await db.insert(ticketAttachment).values({
-        id: `att-${att.id}`,
-        ticketKey: issue.key,
-        jiraAttachmentId: att.id,
-        filename: att.filename,
-        mimeType: att.mimeType,
-        size: att.size,
-        jiraUrl: att.content ?? null,
-      });
-    } else if (!existingAtt.jiraUrl && att.content) {
-      await db.update(ticketAttachment)
-        .set({ jiraUrl: att.content })
-        .where(eq(ticketAttachment.id, existingAtt.id));
-    }
-  }
-
-  await db.delete(ticketSubtask).where(eq(ticketSubtask.ticketKey, issue.key));
-  const subtasks = fields.subtasks ?? [];
-  for (const sub of subtasks) {
-    await db.insert(ticketSubtask).values({
-      id: `sub-${issue.key}-${sub.key}`,
-      ticketKey: issue.key,
-      subtaskKey: sub.key,
-      title: sub.fields.summary,
-      type: normalizeIssueType(sub.fields.issuetype.name),
-      status: normalizeStatus(sub.fields.status.name),
-      assignee: sub.fields.assignee?.displayName ?? null,
-      assigneeAvatar: sub.fields.assignee?.avatarUrls?.["48x48"] ?? null,
-    });
-  }
-
-  await db.delete(ticketLink).where(
-    and(eq(ticketLink.ticketKey, issue.key), isNotNull(ticketLink.jiraLinkId)),
-  );
-  const issuelinks = fields.issuelinks ?? [];
-  for (const link of issuelinks) {
-    const linked = link.inwardIssue ?? link.outwardIssue;
-    if (!linked) continue;
-    const relation = link.inwardIssue ? link.type.inward : link.type.outward;
-
-    const localLink = await db
-      .select({ id: ticketLink.id })
-      .from(ticketLink)
-      .where(
-        and(
-          eq(ticketLink.ticketKey, issue.key),
-          eq(ticketLink.linkedKey, linked.key),
-          isNull(ticketLink.jiraLinkId),
-        ),
-      )
-      .get();
-
-    if (localLink) {
-      await db.update(ticketLink)
-        .set({
-          jiraLinkId: link.id,
-          relation,
-          title: linked.fields.summary,
-          type: normalizeIssueType(linked.fields.issuetype.name),
-          status: normalizeStatus(linked.fields.status.name),
-          assignee: linked.fields.assignee?.displayName ?? null,
-          assigneeAvatar: linked.fields.assignee?.avatarUrls?.["48x48"] ?? null,
-        })
-        .where(eq(ticketLink.id, localLink.id));
+  // All DB writes in a single transaction for SQLite performance
+  db.transaction((tx) => {
+    // Ticket upsert
+    if (existing) {
+      tx.update(ticket).set(ticketData).where(eq(ticket.jiraKey, issue.key)).run();
     } else {
-      await db.insert(ticketLink).values({
-        id: `link-${issue.key}-${link.id}`,
+      tx.insert(ticket).values(ticketData).run();
+    }
+
+    // Metadata
+    if (!meta) {
+      tx.insert(ticketMetadata).values({ jiraKey: issue.key }).run();
+    }
+
+    // Story version
+    if (needsNewVersion) {
+      tx.insert(storyVersion).values({
+        id: `sv-${issue.key}-${Date.now()}`,
+        jiraKey: issue.key,
+        description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
+        acceptanceCriteria: ac,
+        contentHash: hash,
+        updatedBy: changeAuthor?.name ?? null,
+        updatedByAvatar: changeAuthor?.avatar ?? null,
+      }).run();
+    }
+
+    // Attachments
+    for (const att of attachments) {
+      const existingAtt = existingAttachments.get(att.id);
+      if (!existingAtt) {
+        tx.insert(ticketAttachment).values({
+          id: `att-${att.id}`,
+          ticketKey: issue.key,
+          jiraAttachmentId: att.id,
+          filename: att.filename,
+          mimeType: att.mimeType,
+          size: att.size,
+          jiraUrl: att.content ?? null,
+        }).run();
+      } else if (!existingAtt.jiraUrl && att.content) {
+        tx.update(ticketAttachment)
+          .set({ jiraUrl: att.content })
+          .where(eq(ticketAttachment.id, existingAtt.id))
+          .run();
+      }
+    }
+
+    // Subtasks: replace all
+    tx.delete(ticketSubtask).where(eq(ticketSubtask.ticketKey, issue.key)).run();
+    const subtasks = fields.subtasks ?? [];
+    for (const sub of subtasks) {
+      tx.insert(ticketSubtask).values({
+        id: `sub-${issue.key}-${sub.key}`,
         ticketKey: issue.key,
+        subtaskKey: sub.key,
+        title: sub.fields.summary,
+        type: normalizeIssueType(sub.fields.issuetype.name),
+        status: normalizeStatus(sub.fields.status.name),
+        assignee: sub.fields.assignee?.displayName ?? null,
+        assigneeAvatar: sub.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+      }).run();
+    }
+
+    // Links: delete Jira-sourced, then upsert
+    tx.delete(ticketLink).where(
+      and(eq(ticketLink.ticketKey, issue.key), isNotNull(ticketLink.jiraLinkId)),
+    ).run();
+    for (const link of issuelinks) {
+      const linked = link.inwardIssue ?? link.outwardIssue;
+      if (!linked) continue;
+      const relation = link.inwardIssue ? link.type.inward : link.type.outward;
+      const localLinkId = localLinkMap.get(linked.key);
+
+      const linkData = {
         jiraLinkId: link.id,
         relation,
-        linkedKey: linked.key,
         title: linked.fields.summary,
         type: normalizeIssueType(linked.fields.issuetype.name),
         status: normalizeStatus(linked.fields.status.name),
         assignee: linked.fields.assignee?.displayName ?? null,
         assigneeAvatar: linked.fields.assignee?.avatarUrls?.["48x48"] ?? null,
-      });
-    }
-  }
+      };
 
-  const inlineComments = fields.comment?.comments ?? [];
-  for (const comment of inlineComments) {
-    const contentMarkdown = typeof comment.body === "string"
-      ? comment.body
-      : adfToMarkdown(comment.body);
-    const authorName = comment.author?.displayName ?? "Unknown";
-    const authorAvatar = comment.author?.avatarUrls?.["48x48"] ?? null;
-    const existingComment = await db.query.jiraComment.findFirst({
-      where: (c, { eq: eqFn }) => eqFn(c.jiraCommentId, comment.id),
-    });
-    if (existingComment) {
-      await db.update(jiraComment)
-        .set({ content: contentMarkdown, authorName, authorAvatar })
-        .where(eq(jiraComment.jiraCommentId, comment.id));
-    } else {
-      await db.insert(jiraComment).values({
-        id: `jc-${comment.id}`,
-        ticketKey: issue.key,
-        jiraCommentId: comment.id,
-        authorName,
-        authorAvatar,
-        content: contentMarkdown,
-        createdAt: comment.created,
-      });
+      if (localLinkId) {
+        tx.update(ticketLink).set(linkData).where(eq(ticketLink.id, localLinkId)).run();
+      } else {
+        tx.insert(ticketLink).values({
+          id: `link-${issue.key}-${link.id}`,
+          ticketKey: issue.key,
+          linkedKey: linked.key,
+          ...linkData,
+        }).run();
+      }
     }
-  }
+
+    // Comments
+    for (const comment of inlineComments) {
+      const contentMarkdown = typeof comment.body === "string"
+        ? comment.body
+        : adfToMarkdown(comment.body);
+      const authorName = comment.author?.displayName ?? "Unknown";
+      const authorAvatar = comment.author?.avatarUrls?.["48x48"] ?? null;
+
+      if (existingCommentIds.has(comment.id)) {
+        tx.update(jiraComment)
+          .set({ content: contentMarkdown, authorName, authorAvatar })
+          .where(eq(jiraComment.jiraCommentId, comment.id))
+          .run();
+      } else {
+        tx.insert(jiraComment).values({
+          id: `jc-${comment.id}`,
+          ticketKey: issue.key,
+          jiraCommentId: comment.id,
+          authorName,
+          authorAvatar,
+          content: contentMarkdown,
+          createdAt: comment.created,
+        }).run();
+      }
+    }
+  });
 
   return {
     key: issue.key,

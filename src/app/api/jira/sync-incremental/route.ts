@@ -3,8 +3,10 @@ import { db } from "@/db";
 import { ticket, appSetting, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
+import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
+import { upsertSetting } from "@/lib/upsert-setting";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 const COOLDOWN_KEY = "jira_sync_last_run";
@@ -60,10 +62,12 @@ export async function POST() {
   // Mark this run timestamp before doing any work
   await upsertSetting(COOLDOWN_KEY, new Date().toISOString());
 
+  const syncId = `inc-sync-${crypto.randomUUID()}`;
+  const controller = registerSync(syncId);
   const watermark = watermarkRow.value;
 
   try {
-    const changed = await jiraClient.getUpdatedSince(watermark);
+    const changed = await jiraClient.getUpdatedSince(watermark, controller.signal);
 
     if (changed.length === 0) {
       return NextResponse.json({ ok: true, count: 0, remaining: 0, watermark });
@@ -89,7 +93,7 @@ export async function POST() {
     const remaining = totalStale - batch.length;
 
     const staleKeys = batch.map((item) => item.key);
-    const issues = await jiraClient.getIssuesByKeys(staleKeys);
+    const issues = await jiraClient.getIssuesByKeys(staleKeys, controller.signal);
 
     const existingTickets = await db
       .select({ jiraKey: ticket.jiraKey, sprintName: ticket.sprintName })
@@ -102,7 +106,7 @@ export async function POST() {
     const results = [];
     for (const issue of issues) {
       const existingSprintName = sprintMap.get(issue.key) || "";
-      const info = await upsertIssue(issue, existingSprintName);
+      const info = await upsertIssue(issue, existingSprintName, controller.signal);
       results.push(info);
 
       if (issue.fields.updated) {
@@ -116,7 +120,7 @@ export async function POST() {
 
     const remainingSuffix = remaining > 0 ? `, ${remaining} remaining` : "";
     await db.insert(activityLog).values({
-      id: `inc-sync-${crypto.randomUUID()}`,
+      id: syncId,
       type: "incremental-sync",
       scope: `${results.length} tickets`,
       status: "success",
@@ -134,21 +138,16 @@ export async function POST() {
       tickets: results.map((r) => r.key),
     });
   } catch (err) {
+    // Clear cooldown so the next poll isn't blocked after a failure
+    await upsertSetting(COOLDOWN_KEY, new Date(0).toISOString());
+
     if (err instanceof DOMException && err.name === "AbortError") {
       return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } finally {
+    unregisterSync(syncId);
   }
 }
 
-async function upsertSetting(key: string, value: string) {
-  const existing = await db.query.appSetting.findFirst({
-    where: (row, { eq: eqFn }) => eqFn(row.key, key),
-  });
-  if (existing) {
-    await db.update(appSetting).set({ value }).where(eq(appSetting.key, key));
-  } else {
-    await db.insert(appSetting).values({ key, value });
-  }
-}

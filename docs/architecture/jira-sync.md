@@ -23,11 +23,13 @@ Watermark-based background sync that runs automatically every 150 seconds while 
 **Key properties:**
 - Watermark advances progressively per ticket, so partial failures resume cleanly
 - Cap of 50 per run protects against rate limits
+- Server-side 120s cooldown prevents rapid re-fires; cooldown resets on failure so the next poll is not blocked
+- Cancellable via the abort registry (same pattern as sprint/ticket sync)
 - Only logs to activity_log when tickets are actually synced (count > 0)
 - Status tracked client-side via `useIncrementalSync` hook and shown in SyncIndicator banner
 - First sync requires a watermark set by a full sprint sync; without it returns `needsFullSync: true`
 
-**Date format:** Jira JQL requires `"yyyy-MM-dd HH:mm"` format. The watermark (stored as ISO 8601) is converted before querying.
+**Date format:** Jira JQL requires `"yyyy-MM-dd HH:mm"` format (minute precision only). The watermark (stored as ISO 8601) is converted before querying and shifted back by 1 minute to prevent missing tickets updated within the same minute as the watermark. The local timestamp comparison deduplicates any overlap.
 
 ### Sprint Sync (manual/on-demand)
 
@@ -65,7 +67,7 @@ Low-level HTTP client for the Jira REST API v3 via the Atlassian API gateway (`a
 
 ### Shared Upsert Logic (`src/lib/upsert-issue.ts`)
 
-Extracted upsert function shared between sprint sync and incremental sync. Handles:
+Extracted upsert function shared between sprint sync and incremental sync. Pre-reads current state, fetches changelog author outside the write path, then batches all DB writes in a single SQLite transaction. Handles:
 - Ticket data upsert (insert or update)
 - Metadata row creation
 - Story version tracking (content hash comparison, changelog author lookup)
@@ -110,7 +112,7 @@ Client-side hook that drives the incremental sync polling:
 
 - Calls `POST /api/jira/sync-incremental` every 150 seconds
 - Runs immediately on mount, then on interval
-- Pauses when tab is hidden, resumes immediately when tab becomes visible
+- Pauses when tab is hidden; triggers an immediate sync on `visibilitychange` when the tab becomes visible again
 - Returns `{ remaining, lastSyncAt, lastSyncCount }` for UI display
 - Uses a stable ref for the callback to avoid effect re-mounting loops
 - Revalidates SWR ticket caches when changes are found

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { mutate as globalMutate } from "swr";
 
 const INTERVAL_MS = 150_000;
@@ -18,6 +18,7 @@ interface IncrementalSyncResult {
 /**
  * Polls POST /api/jira/sync-incremental every 150s via setInterval.
  * Server enforces a 120s cooldown, so duplicate client calls are harmless.
+ * Triggers an immediate sync when the tab becomes visible.
  */
 export function useIncrementalSync(onSyncComplete?: () => void) {
   const onCompleteRef = useRef(onSyncComplete);
@@ -27,57 +28,67 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [lastSyncCount, setLastSyncCount] = useState(0);
 
-  useEffect(() => {
-    let mounted = true;
-    let running = false;
+  const runningRef = useRef(false);
+  const mountedRef = useRef(true);
 
-    async function runSync() {
-      if (running) return;
-      if (document.visibilityState !== "visible") return;
+  const runSync = useCallback(async () => {
+    if (runningRef.current) return;
+    if (document.visibilityState !== "visible") return;
 
-      running = true;
-      try {
-        const res = await fetch("/api/jira/sync-incremental", { method: "POST" });
-        if (!res.ok || !mounted) return;
+    runningRef.current = true;
+    try {
+      const res = await fetch("/api/jira/sync-incremental", { method: "POST" });
+      if (!res.ok || !mountedRef.current) return;
 
-        const data: IncrementalSyncResult = await res.json();
-        if (!mounted) return;
+      const data: IncrementalSyncResult = await res.json();
+      if (!mountedRef.current) return;
 
-        if (data.skipped) {
-          setLastSyncAt(new Date().toISOString());
-          setRemaining(data.remaining ?? 0);
-          setLastSyncCount(data.count ?? 0);
-          return;
-        }
-
-        setRemaining(data.remaining ?? 0);
+      if (data.skipped) {
         setLastSyncAt(new Date().toISOString());
-        setLastSyncCount(data.ok ? (data.count ?? 0) : 0);
-
-        if (data.ok && data.count && data.count > 0) {
-          globalMutate((key: unknown) =>
-            typeof key === "string" && (
-              key.startsWith("/api/tickets") ||
-              key.startsWith("/api/activity-log")
-            ),
-          );
-          onCompleteRef.current?.();
-        }
-      } catch {
-        // Background sync, fail silently
-      } finally {
-        running = false;
+        setRemaining(data.remaining ?? 0);
+        setLastSyncCount(data.count ?? 0);
+        return;
       }
+
+      setRemaining(data.remaining ?? 0);
+      setLastSyncAt(new Date().toISOString());
+      setLastSyncCount(data.ok ? (data.count ?? 0) : 0);
+
+      if (data.ok && data.count && data.count > 0) {
+        globalMutate((key: unknown) =>
+          typeof key === "string" && (
+            key.startsWith("/api/tickets") ||
+            key.startsWith("/api/activity-log")
+          ),
+        );
+        onCompleteRef.current?.();
+      }
+    } catch {
+      // Background sync, fail silently
+    } finally {
+      runningRef.current = false;
     }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
 
     runSync();
     const id = setInterval(runSync, INTERVAL_MS);
 
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        runSync();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       clearInterval(id);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [runSync]);
 
   return { remaining, lastSyncAt, lastSyncCount };
 }

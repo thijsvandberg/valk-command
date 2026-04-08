@@ -149,8 +149,12 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     async (type: "sprint" | "tickets" | "comments", scope?: string) => {
       const endpoint = SYNC_ENDPOINTS[type];
       const params = scope ? `?sprintId=${encodeURIComponent(scope)}` : "";
-      await fetch(`${endpoint}${params}`, { method: "POST" });
+      const res = await fetch(`${endpoint}${params}`, { method: "POST" });
       mutateActivityLog();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Sync failed (${res.status})`);
+      }
     },
     [mutateActivityLog],
   );

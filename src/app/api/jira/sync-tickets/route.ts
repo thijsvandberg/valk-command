@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, activityLog, appSetting } from "@/db/schema";
+import { ticket, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { jiraClient, extractSprint, type JiraIssue } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
+import { upsertSetting } from "@/lib/upsert-setting";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 
@@ -194,14 +195,7 @@ async function syncSprint(sprintId: string | null, strategy: string) {
 }
 
 async function updateWatermark(value: string) {
-  const existing = await db.query.appSetting.findFirst({
-    where: (row, { eq: eqFn }) => eqFn(row.key, WATERMARK_KEY),
-  });
-  if (existing) {
-    await db.update(appSetting).set({ value }).where(eq(appSetting.key, WATERMARK_KEY));
-  } else {
-    await db.insert(appSetting).values({ key: WATERMARK_KEY, value });
-  }
+  await upsertSetting(WATERMARK_KEY, value);
 }
 
 /**

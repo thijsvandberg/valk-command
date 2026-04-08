@@ -675,8 +675,10 @@ export class JiraClient {
     }
 
     const cfg = getConfig();
-    // Jira JQL requires "yyyy-MM-dd HH:mm" format, not ISO 8601
-    const d = new Date(watermark);
+    // Jira JQL only supports minute precision ("yyyy-MM-dd HH:mm").
+    // Subtract 1 minute so we don't miss tickets updated in the same minute
+    // as the watermark. The caller deduplicates via local timestamp comparison.
+    const d = new Date(new Date(watermark).getTime() - 60_000);
     const jqlDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     const jql = `project = ${cfg.projectKey} AND updated > "${jqlDate}" ORDER BY updated ASC`;
     let all: Array<{ key: string; updated: string }> = [];
