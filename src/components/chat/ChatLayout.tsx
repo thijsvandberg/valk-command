@@ -148,10 +148,31 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   return (
     <>
       {pageTitle}
-      <div className="noise-overlay relative flex h-full overflow-hidden">
+      <div className="noise-overlay relative flex flex-col h-full overflow-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute top-[-20%] left-[15%] h-[600px] w-[600px] rounded-full bg-[radial-gradient(circle,var(--color-brand-900)_0%,transparent_70%)] opacity-30" />
         <div className="absolute bottom-[-10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,var(--color-brand-950)_0%,transparent_70%)] opacity-50" />
+      </div>
+
+      {/* Unified context header */}
+      <div className="relative z-10 flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
+        <div className="relative flex items-center gap-3 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
+            <MessageCircle size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+          </div>
+          <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+            {activeConv ? activeConv.title : "Chat"}
+          </span>
+          {activeConv && (
+            <>
+              <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.12] to-transparent" />
+              <span className="text-sm text-white/35">
+                {messages.length} messages
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Mobile sidebar toggle */}
@@ -173,36 +194,37 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         />
       )}
 
-      {/* Conversation sidebar */}
-      <aside
-        data-testid="chat-sidebar"
-        className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-white/[0.06] bg-[var(--color-surface-elevated)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Mobile close button */}
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(false)}
-          className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md lg:hidden cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-          aria-label="Close conversations"
+      <div className="relative z-10 flex flex-1 overflow-hidden min-h-0">
+        {/* Conversation sidebar */}
+        <aside
+          data-testid="chat-sidebar"
+          className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-white/[0.06] bg-[var(--color-surface-elevated)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
+            sidebarOpen ? "translate-x-0" : "translate-x-full"
+          }`}
         >
-          <X className="h-4 w-4 text-white/50" strokeWidth={1.5} />
-        </button>
+          {/* Mobile close button */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md lg:hidden cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+            aria-label="Close conversations"
+          >
+            <X className="h-4 w-4 text-white/50" strokeWidth={1.5} />
+          </button>
 
-        <ConversationList
-          conversations={conversations}
-          activeId={activeId}
-          loading={convLoading}
-          error={convError}
-          onSelect={handleSelect}
-          onCreate={handleCreate}
-          onDelete={handleDelete}
-        />
-      </aside>
+          <ConversationList
+            conversations={conversations}
+            activeId={activeId}
+            loading={convLoading}
+            error={convError}
+            onSelect={handleSelect}
+            onCreate={handleCreate}
+            onDelete={handleDelete}
+          />
+        </aside>
 
-      {/* Main chat area */}
-      <div className="relative z-10 flex flex-1 flex-col min-w-0">
+        {/* Main chat area */}
+        <div className="flex flex-1 flex-col min-w-0">
         <WorkspaceStatus />
         {/* Story Writer link when conversation is linked to a ticket */}
         {activeConv?.relatedTicket && (
@@ -240,6 +262,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
             </p>
           </div>
         )}
+        </div>
       </div>
     </div>
     </>

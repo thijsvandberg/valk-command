@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Code2, Save, GripVertical } from "lucide-react";
+import { Plus, Trash2, Code2, Save, GripVertical, Settings2 } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -183,19 +183,27 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-8 py-6 border-b border-white/[0.06]">
-        <div>
-          <h1 className="text-lg font-semibold text-white/90 tracking-tight">Settings</h1>
-          <p className="mt-0.5 text-sm text-white/40">Configure story writer behavior per issue type</p>
+      {/* Unified context header */}
+      <div className="relative flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
+        <div className="relative flex items-center gap-3 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
+            <Settings2 size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+          </div>
+          <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+            Settings
+          </span>
         </div>
-        <button
-          onClick={save}
-          disabled={saving || saved}
-          className="flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-4 py-2 text-sm font-medium text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/20 active:scale-[0.97] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-        >
-          <Save size={14} strokeWidth={1.5} />
-          {saving ? "Saving..." : saved ? "Saved" : "Save changes"}
-        </button>
+        <div className="relative">
+          <button
+            onClick={save}
+            disabled={saving || saved}
+            className="flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/20 active:scale-[0.97] transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <Save size={13} strokeWidth={1.5} />
+            {saving ? "Saving..." : saved ? "Saved" : "Save changes"}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-8 py-6">
