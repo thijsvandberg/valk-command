@@ -349,7 +349,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
 
     init();
     return () => { cancelled = true; };
-  }, [apiBase]);
+  }, [apiBase, setSession]);
 
   const refreshSession = useCallback(async () => {
     try {
@@ -364,7 +364,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
         }
       }
     } catch { /* ignore */ }
-  }, [apiBase]);
+  }, [apiBase, setSession]);
 
   refreshSessionRef.current = refreshSession;
 
@@ -420,7 +420,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
       setStatus("ready");
       return false;
     }
-  }, [session, apiBase, refreshSession, startTaskMonitoring]);
+  }, [session, apiBase, startTaskMonitoring]);
 
   const updateLocalDraft = useCallback((content: string) => {
     setSession((prev) => {
@@ -448,7 +448,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
         });
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase, ticketKey]);
+  }, [apiBase, ticketKey, setSession]);
 
   const updateTargetLocalDraft = useCallback((content: string) => {
     setSession((prev) => {
@@ -467,7 +467,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
         });
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase]);
+  }, [apiBase, setSession]);
 
   const updateLocalTitle = useCallback((title: string) => {
     setSession((prev) => {
@@ -491,7 +491,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
         });
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase, ticketKey]);
+  }, [apiBase, ticketKey, setSession]);
 
   const updateTargetLocalTitle = useCallback((title: string) => {
     setSession((prev) => {
@@ -517,7 +517,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
         });
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase]);
+  }, [apiBase, setSession]);
 
   const acceptDraft = useCallback(async (draftId: string) => {
     try {
@@ -539,7 +539,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
         }
       }
     } catch { /* ignore */ }
-  }, [apiBase, ticketKey]);
+  }, [apiBase, ticketKey, setSession]);
 
   const dismissDraft = useCallback(async (draftId: string) => {
     try {
@@ -569,7 +569,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     }
     void refreshSession();
     return { targetTicketKey: data.targetTicketKey };
-  }, [apiBase, refreshSession]);
+  }, [apiBase, refreshSession, setSession]);
 
   const deactivateSplit = useCallback(async () => {
     try {
@@ -684,7 +684,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
       setAllDrafts([]);
       setStatus("idle");
     }
-  }, [apiBase]);
+  }, [apiBase, setSession]);
 
   return {
     session,

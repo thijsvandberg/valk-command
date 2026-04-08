@@ -46,9 +46,10 @@ export function useTicketDetail(ticketKey: string | null) {
   );
 
   const checkedRef = useRef<string | null>(null);
+  const { data, mutate } = swr;
 
   useEffect(() => {
-    if (!ticketKey || !swr.data) return;
+    if (!ticketKey || !data) return;
     if (checkedRef.current === ticketKey) return;
     checkedRef.current = ticketKey;
 
@@ -63,12 +64,12 @@ export function useTicketDetail(ticketKey: string | null) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ticketKeys: [ticketKey] }),
         });
-        swr.mutate();
+        mutate();
       })
       .catch(() => { /* background check, fail silently */ });
 
     return () => { cancelled = true; };
-  }, [ticketKey, swr.data]);
+  }, [ticketKey, data, mutate]);
 
   return swr;
 }

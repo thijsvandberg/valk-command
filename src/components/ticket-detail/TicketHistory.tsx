@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { ChevronRight, Save, Info, CloudUpload } from "lucide-react";
@@ -76,6 +76,8 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
+  const onVersionsLoadedRef = useRef(onVersionsLoaded);
+  onVersionsLoadedRef.current = onVersionsLoaded;
 
   const [compareOld, setCompareOld] = useState<number | null>(null);
   const [compareNew, setCompareNew] = useState<number | null>(null);
@@ -158,7 +160,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
         versions.forEach((v, idx) => { v.versionNumber = idx + 1; });
 
         setTicketVersions(versions);
-        onVersionsLoaded?.(versions.length);
+        onVersionsLoadedRef.current?.(versions.length);
       })
       .catch((err) => {
         console.error("Failed to load versions:", err);

@@ -48,7 +48,6 @@ export const ExpandExtension = Node.create({
       markdown: {
         // Serialize expand nodes directly to :::expand fences so tiptap-markdown
         // doesn't fall back to HTML (which loses nested callout children).
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         serialize(state: any, node: any) {
           state.write(`:::expand ${node.attrs.title || ""}\n`);
           state.renderContent(node);

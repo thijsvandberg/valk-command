@@ -384,7 +384,6 @@ function SplitModeLayout({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOrigDiffNewIdChange = useCallback((id: string) => {
@@ -846,6 +845,8 @@ export function StoryWriterEditor({
   });
   const splitDragging = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
+  const splitWidthRef = useRef(splitWidth);
+  useEffect(() => { splitWidthRef.current = splitWidth; }, [splitWidth]);
 
   const rightVersions = useMemo<RightVersion[]>(() => {
     const versions: RightVersion[] = [];
@@ -1006,7 +1007,7 @@ export function StoryWriterEditor({
       splitDragging.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      localStorage.setItem(SPLIT_WIDTH_KEY, String(splitWidth));
+      localStorage.setItem(SPLIT_WIDTH_KEY, String(splitWidthRef.current));
     }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -1014,7 +1015,7 @@ export function StoryWriterEditor({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [splitWidth]);
+  }, []);
 
   const hasDrafts = aiDrafts.length > 0;
 
