@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, appSetting } from "@/db/schema";
+import { ticket, appSetting, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
@@ -84,6 +84,17 @@ export async function POST() {
     }
 
     invalidateSearchCache();
+
+    const remainingSuffix = remaining > 0 ? `, ${remaining} remaining` : "";
+    await db.insert(activityLog).values({
+      id: `inc-sync-${crypto.randomUUID()}`,
+      type: "incremental-sync",
+      scope: `${results.length} tickets`,
+      status: "success",
+      summary: `${results.length} ticket${results.length === 1 ? "" : "s"} synced${remainingSuffix}`,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({
       ok: true,

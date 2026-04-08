@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { mutate as globalMutate } from "swr";
 
 const INTERVAL_MS = 150_000;
@@ -16,48 +16,51 @@ interface IncrementalSyncResult {
 
 /**
  * Triggers POST /api/jira/sync-incremental every 150s while the tab is visible.
- * When tickets are synced, revalidates SWR caches so the UI updates.
- * Returns the number of remaining tickets that still need syncing.
+ * Runs once immediately on mount, then every INTERVAL_MS.
+ * Returns sync status for the UI.
  */
 export function useIncrementalSync(onSyncComplete?: () => void) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runningRef = useRef(false);
+  const onCompleteRef = useRef(onSyncComplete);
+  onCompleteRef.current = onSyncComplete;
+
   const [remaining, setRemaining] = useState(0);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [lastSyncCount, setLastSyncCount] = useState(0);
 
-  const runSync = useCallback(async () => {
-    if (runningRef.current) return;
-    if (document.visibilityState !== "visible") return;
-
-    runningRef.current = true;
-    try {
-      const res = await fetch("/api/jira/sync-incremental", { method: "POST" });
-      if (!res.ok) return;
-
-      const data: IncrementalSyncResult = await res.json();
-
-      setRemaining(data.remaining ?? 0);
-      setLastSyncAt(new Date().toISOString());
-      setLastSyncCount(data.ok ? (data.count ?? 0) : 0);
-
-      if (data.ok && data.count && data.count > 0) {
-        globalMutate((key: unknown) =>
-          typeof key === "string" && (
-            key.startsWith("/api/tickets") ||
-            key.startsWith("/api/activity-log")
-          ),
-        );
-        onSyncComplete?.();
-      }
-    } catch {
-      // Background sync, fail silently
-    } finally {
-      runningRef.current = false;
-    }
-  }, [onSyncComplete]);
-
   useEffect(() => {
+    async function runSync() {
+      if (runningRef.current) return;
+      if (document.visibilityState !== "visible") return;
+
+      runningRef.current = true;
+      try {
+        const res = await fetch("/api/jira/sync-incremental", { method: "POST" });
+        if (!res.ok) return;
+
+        const data: IncrementalSyncResult = await res.json();
+
+        setRemaining(data.remaining ?? 0);
+        setLastSyncAt(new Date().toISOString());
+        setLastSyncCount(data.ok ? (data.count ?? 0) : 0);
+
+        if (data.ok && data.count && data.count > 0) {
+          globalMutate((key: unknown) =>
+            typeof key === "string" && (
+              key.startsWith("/api/tickets") ||
+              key.startsWith("/api/activity-log")
+            ),
+          );
+          onCompleteRef.current?.();
+        }
+      } catch {
+        // Background sync, fail silently
+      } finally {
+        runningRef.current = false;
+      }
+    }
+
     function scheduleNext() {
       timerRef.current = setTimeout(async () => {
         await runSync();
@@ -93,7 +96,7 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
         timerRef.current = null;
       }
     };
-  }, [runSync]);
+  }, []);
 
   return { remaining, lastSyncAt, lastSyncCount };
 }
