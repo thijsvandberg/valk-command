@@ -32,8 +32,6 @@ export async function POST() {
     if (elapsed < COOLDOWN_MS) {
       return NextResponse.json({
         ok: true,
-        count: 0,
-        remaining: 0,
         skipped: true,
         cooldownRemaining: Math.ceil((COOLDOWN_MS - elapsed) / 1000),
       });

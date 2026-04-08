@@ -41,7 +41,13 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
         if (!res.ok || !mounted) return;
 
         const data: IncrementalSyncResult = await res.json();
-        if (!mounted || data.skipped) return;
+        if (!mounted) return;
+
+        if (data.skipped) {
+          // Cooldown hit: mark that we checked, but preserve existing remaining count
+          setLastSyncAt(new Date().toISOString());
+          return;
+        }
 
         setRemaining(data.remaining ?? 0);
         setLastSyncAt(new Date().toISOString());
