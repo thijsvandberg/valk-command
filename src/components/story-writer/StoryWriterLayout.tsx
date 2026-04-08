@@ -19,6 +19,7 @@ import {
   Zap,
   ScrollText,
   Network,
+  MoreHorizontal,
 } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
@@ -76,6 +77,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [relatedPanelOpen, setRelatedPanelOpen] = useState(false);
   const [relatedPanelSelectedKey, setRelatedPanelSelectedKey] = useState<string | null>(null);
 
@@ -91,6 +94,17 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const chatWidthRef = useRef(chatWidth);
   useEffect(() => { chatWidthRef.current = chatWidth; }, [chatWidth]);
   useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
+
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showMoreMenu]);
 
   // Fetch target ticket title when targetTicketKey is available
   const targetTicketKey = writer.session?.targetTicketKey ?? null;
@@ -171,7 +185,6 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSaveDraft = useCallback(async () => {
@@ -344,7 +357,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   return (
     <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
       {/* Header */}
-      <div className="relative flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5 overflow-hidden">
+      <div className="relative flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
         {/* Ambient glow from icon */}
         <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.10)_0%,transparent_70%)]" />
 
@@ -384,76 +397,109 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             </div>
           )}
 
-          {/* Related stories button */}
-          {writer.session && (
+          {/* More actions menu */}
+          <div ref={moreMenuRef} className="relative">
             <button
               type="button"
-              onClick={() => setRelatedPanelOpen((v) => !v)}
-              title="Related stories"
-              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
-                relatedPanelOpen
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+              onClick={() => setShowMoreMenu((v) => !v)}
+              title="More actions"
+              className={`flex size-7 items-center justify-center rounded-md border cursor-pointer transition-colors duration-150 ${
+                showMoreMenu
+                  ? "border-white/[0.12] bg-white/[0.08] text-white/70"
                   : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
               }`}
             >
-              <Network size={13} strokeWidth={1.5} />
-              Related
-              {writer.relatedCandidates.length > 0 && (
-                <span className="ml-0.5 tabular-nums text-[10px] opacity-70">
-                  {writer.relatedCandidates.length}
-                </span>
-              )}
+              <MoreHorizontal size={14} strokeWidth={1.5} />
             </button>
-          )}
 
-          {/* Split story button */}
-          {writer.session && (
-            <button
-              type="button"
-              onClick={handleSplitButtonClick}
-              title={splitButtonLabel}
-              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
-                splitModeVisible && targetTicketKey
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                  : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
-              }`}
-            >
-              <Scissors size={13} strokeWidth={1.5} />
-              {splitButtonLabel}
-            </button>
-          )}
+            {showMoreMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-30">
+                {writer.session && (
+                  <button
+                    type="button"
+                    onClick={() => { setRelatedPanelOpen((v) => !v); setShowMoreMenu(false); }}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
+                      relatedPanelOpen
+                        ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
+                        : "text-white/65 hover:bg-white/[0.06] hover:text-white/85"
+                    }`}
+                  >
+                    <Network size={13} strokeWidth={1.5} className="shrink-0" />
+                    <span>Related stories</span>
+                    {writer.relatedCandidates.length > 0 && (
+                      <span className="ml-auto tabular-nums text-[10px] opacity-60">
+                        {writer.relatedCandidates.length}
+                      </span>
+                    )}
+                  </button>
+                )}
 
-          <Tooltip content="Open in Jira">
-            <a
-              href={getJiraUrl(ticketKey)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex size-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] text-white/50 hover:text-white/70 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
-            >
-              <ExternalLink size={13} strokeWidth={1.5} />
-            </a>
-          </Tooltip>
+                {writer.session && (
+                  <button
+                    type="button"
+                    onClick={() => { handleSplitButtonClick(); setShowMoreMenu(false); }}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
+                      splitModeVisible && targetTicketKey
+                        ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
+                        : "text-white/65 hover:bg-white/[0.06] hover:text-white/85"
+                    }`}
+                  >
+                    <Scissors size={13} strokeWidth={1.5} className="shrink-0" />
+                    <span>{splitButtonLabel}</span>
+                  </button>
+                )}
 
-          <Tooltip content="Pull latest description from Jira">
-            <button
-              type="button"
-              onClick={handlePullFromJira}
-              disabled={pulling}
-              className="flex size-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70 cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {pulling ? <Loader2 size={13} className="animate-spin" /> : <CloudDownload size={13} strokeWidth={1.5} />}
-            </button>
-          </Tooltip>
+                <div className="mx-2 my-1 h-px bg-white/[0.06]" />
 
-          {(isDraftDirty || hasLocalSave) && writer.messages.length === 0 && (
-            <button
-              onClick={() => handleDelete(true)}
-              className="flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1.5 text-xs text-white/30 hover:text-red-400/70 hover:bg-red-500/[0.06] cursor-pointer transition-colors duration-150"
-            >
-              <Trash2 size={13} strokeWidth={1.5} />
-              Discard draft
-            </button>
-          )}
+                <a
+                  href={getJiraUrl(ticketKey)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowMoreMenu(false)}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                >
+                  <ExternalLink size={13} strokeWidth={1.5} className="shrink-0" />
+                  <span>Open in Jira</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => { handlePullFromJira(); setShowMoreMenu(false); }}
+                  disabled={pulling}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {pulling ? <Loader2 size={13} className="animate-spin shrink-0" /> : <CloudDownload size={13} strokeWidth={1.5} className="shrink-0" />}
+                  <span>Pull from Jira</span>
+                </button>
+
+                {(((isDraftDirty || hasLocalSave) && writer.messages.length === 0) || writer.messages.length > 0) && (
+                  <div className="mx-2 my-1 h-px bg-white/[0.06]" />
+                )}
+
+                {(isDraftDirty || hasLocalSave) && writer.messages.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { handleDelete(true); setShowMoreMenu(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/45 cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
+                  >
+                    <Trash2 size={13} strokeWidth={1.5} className="shrink-0" />
+                    <span>Discard draft</span>
+                  </button>
+                )}
+
+                {writer.messages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowDeleteConfirm(true); setShowMoreMenu(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/45 cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
+                  >
+                    <Trash2 size={13} strokeWidth={1.5} className="shrink-0" />
+                    <span>Delete session</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {isDraftDirty && (
             <button
@@ -483,16 +529,6 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             {pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
             Push to Jira
           </button>
-
-          {writer.messages.length > 0 && (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1.5 text-xs text-white/30 hover:text-red-400/70 hover:bg-red-500/[0.06] cursor-pointer transition-colors duration-150"
-            >
-              <Trash2 size={13} strokeWidth={1.5} />
-              Delete session
-            </button>
-          )}
         </div>
       </div>
 
@@ -542,6 +578,14 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     <ScrollText size={10} strokeWidth={1.5} />
                     Logs
                   </button>
+                  {(writer.aiDrafts.length > 0 || writer.messages.length > 0) && (
+                    <span className="ml-2 text-[10px] text-white/25 tabular-nums">
+                      {[
+                        writer.aiDrafts.length > 0 && `${writer.aiDrafts.length} draft${writer.aiDrafts.length !== 1 ? "s" : ""}`,
+                        writer.messages.length > 0 && `${writer.messages.length} msg`,
+                      ].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -576,6 +620,9 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                   messageDraftMap={messageDraftMap}
                   draftContentMap={draftContentMap}
                   onViewDraft={handleViewDraft}
+                  onOpenLogs={(taskId) => {
+                    setShowLogs(true);
+                  }}
                   issueType={ticketData?.type ?? "story"}
                 />
               )}
@@ -657,27 +704,6 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           </>
         )}
       </div>
-
-      {/* Footer bar */}
-      {(writer.aiDrafts.length > 0 || targetTicketKey || writer.messages.length > 0) && (
-        <div className="flex shrink-0 items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-1.5">
-          <div className="flex items-center gap-3">
-            {writer.aiDrafts.length > 0 && (
-              <span className="text-xs text-white/30">
-                {writer.aiDrafts.length} draft{writer.aiDrafts.length !== 1 ? "s" : ""}
-              </span>
-            )}
-            {targetTicketKey && (
-              <span className="text-xs text-[var(--color-brand-400)]/60">
-                Split: {targetTicketKey}
-              </span>
-            )}
-          </div>
-          <span className="text-xs text-white/25">
-            {writer.messages.length > 0 ? `${writer.messages.length} messages` : ""}
-          </span>
-        </div>
-      )}
 
       {/* Delete confirmation */}
       {showDeleteConfirm && (

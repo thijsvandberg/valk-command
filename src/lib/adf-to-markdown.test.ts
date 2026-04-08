@@ -322,6 +322,31 @@ describe("adfToMarkdown", () => {
     expect(adfToMarkdown(adf)).toBe("");
   });
 
+  it("converts taskList with TODO and DONE items", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "taskList",
+          attrs: { localId: "abc" },
+          content: [
+            {
+              type: "taskItem",
+              attrs: { localId: "1", state: "TODO" },
+              content: [{ type: "text", text: "Unchecked item" }],
+            },
+            {
+              type: "taskItem",
+              attrs: { localId: "2", state: "DONE" },
+              content: [{ type: "text", text: "Checked item" }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(adfToMarkdown(adf)).toBe("- [] Unchecked item\n- [x] Checked item");
+  });
+
   it("converts panel nodes to callout fence syntax", () => {
     const adf = {
       type: "doc",

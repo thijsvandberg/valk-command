@@ -15,6 +15,7 @@ import { TableCell } from "@tiptap/extension-table";
 import { Markdown } from "tiptap-markdown";
 import { CalloutExtension } from "./callout-extension";
 import { ExpandExtension } from "./expand-extension";
+import { SelectionDecorationExtension } from "./selection-decoration";
 import { calloutMarkdownToHtml, htmlToCalloutMarkdown } from "./callout-markdown";
 import { expandEmojiShortcodes } from "@/lib/emoji-shortcodes";
 import { Toolbar } from "./Toolbar";
@@ -107,6 +108,7 @@ export function RichEditor({
 }: RichEditorProps) {
   const [mode, setMode] = useState<EditorMode>(getInitialMode);
   const suppressRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
     if (fullWidthToolbar && stickyToolbar) {
@@ -145,6 +147,7 @@ export function RichEditor({
       }),
       CalloutExtension,
       ExpandExtension,
+      SelectionDecorationExtension,
     ],
     content: markdownToEditorHtml(value),
     editorProps: {
@@ -199,6 +202,20 @@ export function RichEditor({
     [onChange]
   );
 
+  // Auto-resize textarea to fit content on mount and value changes
+  useEffect(() => {
+    if (mode !== "markdown" || !textareaRef.current) return;
+    const el = textareaRef.current;
+    el.style.height = "auto";
+    if (borderless) {
+      // Fill at least the full visible container, expand beyond for long content
+      const containerHeight = el.parentElement?.clientHeight ?? 0;
+      el.style.height = `${Math.max(containerHeight, el.scrollHeight)}px`;
+    } else {
+      el.style.height = `${Math.max(minHeight, el.scrollHeight)}px`;
+    }
+  }, [value, mode, borderless, minHeight]);
+
   const rootClasses = borderless
     ? `rich-editor-root flex h-full flex-col overflow-hidden ${className}`
     : fullWidthToolbar
@@ -243,6 +260,7 @@ export function RichEditor({
           />
         ) : (
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={handleMarkdownChange}
             onKeyDown={(e) => {
@@ -252,7 +270,7 @@ export function RichEditor({
               }
             }}
             placeholder={placeholder}
-            className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none ${borderless ? "resize-none" : "resize-y"}`}
+            className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none ${borderless ? "min-h-full resize-none" : "resize-y"}`}
             style={borderless ? undefined : { minHeight: `${minHeight}px` }}
             spellCheck={false}
           />

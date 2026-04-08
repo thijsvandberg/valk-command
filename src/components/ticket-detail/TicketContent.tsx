@@ -754,7 +754,7 @@ export function CommentsSection({
                     <Trash2 size={14} strokeWidth={1.2} />
                   </button>
                 </div>
-                <p className="mt-1 text-sm leading-[1.7] text-white/50">{comment.content}</p>
+                <div className="description-content mt-1 text-sm leading-[1.7] text-white/50">{renderMarkdown(comment.content)}</div>
               </div>
             </div>
           ))}
@@ -783,7 +783,7 @@ export function CommentsSection({
                     <span className="text-xs font-medium text-white/60">{comment.authorName}</span>
                     <span className="text-[10px] text-white/25">{new Date(comment.createdAt).toLocaleString()}</span>
                   </div>
-                  <p className="mt-1 text-sm leading-[1.7] text-white/50">{comment.content}</p>
+                  <div className="description-content mt-1 text-sm leading-[1.7] text-white/50">{renderMarkdown(comment.content)}</div>
                 </div>
               </div>
             ))}

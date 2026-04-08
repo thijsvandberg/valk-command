@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { RefreshCw, CheckCircle2, AlertTriangle, ChevronUp, Square } from "lucide-react";
+import { RefreshCw, CheckCircle2, AlertTriangle, ChevronUp, Square, CloudDownload, CheckCheck } from "lucide-react";
 import { useActivityContext, type ActivityState } from "@/contexts/ActivityContext";
 import type { ActivityLogEntry } from "@/types/ticket";
 
-function stateIcon(state: ActivityState, errorCount: number) {
-  if (state === "syncing") {
+function stateIcon(state: ActivityState, errorCount: number, syncRemaining: number, hasChecked: boolean) {
+  if (!hasChecked || state === "syncing") {
     return (
       <RefreshCw
         className="h-3.5 w-3.5 text-[var(--color-brand-400)] animate-spin"
@@ -22,6 +22,14 @@ function stateIcon(state: ActivityState, errorCount: number) {
       />
     );
   }
+  if (syncRemaining > 0) {
+    return (
+      <CloudDownload
+        className="h-3.5 w-3.5 text-[var(--color-brand-400)]"
+        strokeWidth={2}
+      />
+    );
+  }
   return (
     <CheckCircle2
       className="h-3.5 w-3.5 text-[var(--color-brand-500)]/60"
@@ -30,9 +38,11 @@ function stateIcon(state: ActivityState, errorCount: number) {
   );
 }
 
-function stateLabel(state: ActivityState): string {
+function stateLabel(state: ActivityState, syncRemaining: number, hasChecked: boolean): string {
+  if (!hasChecked) return "Checking...";
   if (state === "syncing") return "Active...";
   if (state === "error") return "Error";
+  if (syncRemaining > 0) return `Catching up (${syncRemaining})`;
   return "All clear";
 }
 
@@ -60,6 +70,7 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
     "push-to-jira": "Push to Jira",
     "bulk-action": "Bulk action",
     "story-writer": "Story writer",
+    "incremental-sync": "Incremental sync",
   };
   return labels[type] ?? type;
 }
@@ -72,7 +83,7 @@ function statusDot(status: ActivityLogEntry["status"]) {
 }
 
 export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
-  const { activityState, lastEntry, unacknowledgedErrors, runningEntries, logEntries, cancelEntry, cancelAllEntries } = useActivityContext();
+  const { activityState, lastEntry, unacknowledgedErrors, runningEntries, logEntries, incrementalSyncRemaining, incrementalSyncLastAt, incrementalSyncLastCount, cancelEntry, cancelAllEntries } = useActivityContext();
   const recentEntries = logEntries.slice(0, 8);
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -89,6 +100,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
   }, [expanded]);
 
   const errorCount = unacknowledgedErrors.length;
+  const hasChecked = incrementalSyncLastAt !== null;
 
   return (
     <div className="relative" ref={panelRef}>
@@ -98,10 +110,10 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
         onClick={() => setExpanded((v) => !v)}
         className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2.5 px-3 py-2 w-full"} rounded-lg text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] transition-colors duration-150`}
         aria-label="Activity status"
-        title={collapsed ? stateLabel(activityState) : undefined}
+        title={collapsed ? stateLabel(activityState, incrementalSyncRemaining, hasChecked) : undefined}
       >
         <span className="relative shrink-0">
-          {stateIcon(activityState, errorCount)}
+          {stateIcon(activityState, errorCount, incrementalSyncRemaining, hasChecked)}
           {errorCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black leading-none">
               {errorCount > 9 ? "9+" : errorCount}
@@ -111,8 +123,8 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
         {!collapsed && (
           <>
             <span className="flex-1 text-left text-xs font-[var(--font-body)] truncate">
-              {stateLabel(activityState)}
-              {lastEntry?.completedAt && activityState === "idle" && (
+              {stateLabel(activityState, incrementalSyncRemaining, hasChecked)}
+              {lastEntry?.completedAt && activityState === "idle" && incrementalSyncRemaining === 0 && hasChecked && (
                 <span className="text-white/20 ml-1.5">{timeAgo(lastEntry.completedAt)}</span>
               )}
             </span>
@@ -143,6 +155,40 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
                 <Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />
                 Stop all
               </button>
+            )}
+          </div>
+          <div className="px-3 py-2 flex items-center gap-2 border-b border-white/[0.06]">
+            {!incrementalSyncLastAt ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 text-white/20 animate-spin shrink-0" strokeWidth={2} />
+                <span className="text-[11px] text-white/30 font-[var(--font-body)]">
+                  Checking Jira...
+                </span>
+              </>
+            ) : incrementalSyncRemaining > 0 ? (
+              <>
+                <CloudDownload className="h-3.5 w-3.5 text-[var(--color-brand-400)] shrink-0" strokeWidth={2} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] text-[var(--color-brand-300)] font-[var(--font-body)]">
+                    {incrementalSyncRemaining} ticket{incrementalSyncRemaining === 1 ? "" : "s"} still catching up
+                  </span>
+                  <div className="text-[10px] text-white/20 font-[var(--font-body)] mt-0.5">
+                    Last sync {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <CheckCheck className="h-3.5 w-3.5 text-[var(--color-brand-500)]/60 shrink-0" strokeWidth={2} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] text-white/30 font-[var(--font-body)]">
+                    Jira sync up to date
+                  </span>
+                  <div className="text-[10px] text-white/20 font-[var(--font-body)] mt-0.5">
+                    Last check {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <ul className="max-h-[240px] overflow-y-auto">

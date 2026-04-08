@@ -34,12 +34,12 @@ export async function PUT(
   if (body.poStatus !== undefined) {
     const validStatuses = [
       null,
-      "New",
-      "In Progress",
-      "Awaiting Feedback",
-      "Ready for Refinement",
+      "Nieuw",
+      "Uitwerken",
+      "Wachten op feedback",
+      "Klaar voor refinement",
       "Ready",
-      "Parked",
+      "Geparkeerd",
     ];
     if (!validStatuses.includes(body.poStatus)) {
       return NextResponse.json(

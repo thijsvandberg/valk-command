@@ -8,7 +8,7 @@ import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
-import { useTicketReviews } from "@/hooks/useSprintBoard";
+import { useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -36,6 +36,9 @@ export function TicketSidebar({
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useLocalStorage("ticket-sidebar-collapsed", false);
+
+  const { data: sprints } = useJiraSprints();
+  const sprintName = sprints?.find((s) => String(s.id) === ticket.sprintId)?.name ?? null;
 
   const { data: reviewData } = useTicketReviews(ticket.key);
   const latestReview = reviewData?.reviews?.[0] ?? null;
@@ -177,6 +180,11 @@ export function TicketSidebar({
               <DetailRow label="Points">
                 <span className="tabular-nums">{ticket.storyPoints ?? "--"}</span>
               </DetailRow>
+              {sprintName && (
+                <DetailRow label="Sprint">
+                  <span className="truncate">{sprintName}</span>
+                </DetailRow>
+              )}
               {/* Quality score with visual bar */}
               <div className="py-2">
                 <button

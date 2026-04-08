@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
 import { SprintListModal } from "./SprintListModal";
 import { ChevronRight, ChevronDown, ChevronUp, List, RefreshCw, LayoutGrid } from "lucide-react";
+import type { SavedView } from "./FilterBar";
 import {
   DndContext,
   closestCenter,
@@ -230,6 +231,9 @@ export function SprintSlots({
   onEphemeralClick,
   filtersCollapsed = false,
   onToggleFilters,
+  savedViews = [],
+  activeViewId = null,
+  onViewClick,
 }: {
   slotSprints: string[];
   activeSlot: number;
@@ -251,6 +255,9 @@ export function SprintSlots({
   onEphemeralClick?: () => void;
   filtersCollapsed?: boolean;
   onToggleFilters?: () => void;
+  savedViews?: SavedView[];
+  activeViewId?: string | null;
+  onViewClick?: (view: SavedView) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -281,7 +288,26 @@ export function SprintSlots({
         All
       </button>
 
-      {/* Divider between All and sprint tabs */}
+      {/* Saved view tabs */}
+      {savedViews.length > 0 && savedViews.map((view) => {
+        const isActive = activeViewId === view.id;
+        return (
+          <button
+            key={view.id}
+            type="button"
+            onClick={() => onViewClick?.(view)}
+            className={`relative flex items-center px-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              isActive
+                ? "text-[var(--color-brand-400)] after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
+                : "text-white/40 hover:text-white/65"
+            }`}
+          >
+            {view.title}
+          </button>
+        );
+      })}
+
+      {/* Divider between All/saved views and sprint tabs */}
       <span className="mx-1 h-4 w-px bg-white/[0.07] self-center shrink-0" />
 
       <DndContext
@@ -296,7 +322,7 @@ export function SprintSlots({
           {slotSprints.map((sprintId, idx) => {
             const sprint = sprints.find((s) => s.id === sprintId);
             if (!sprint) return null;
-            const isActive = idx === activeSlot;
+            const isActive = !activeViewId && idx === activeSlot;
             return (
               <div key={sprintId} className="relative">
                 <SortableTab

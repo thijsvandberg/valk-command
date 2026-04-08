@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import type { IssueType } from "@/types/ticket";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -303,12 +304,16 @@ function SessionSelectDropdown({
 // ---------------------------------------------------------------------------
 
 function StatusBadge({ status }: { status: string }) {
-  const cls =
-    status === "In Progress" || status === "IN PROGRESS" ? "bg-[rgba(46,145,73,0.12)] text-[#4aaa60]" :
-    status === "Done"        || status === "DONE"        ? "bg-[rgba(46,145,73,0.2)] text-[#2e9149]"  :
-    status === "TEST"                                    ? "bg-[rgba(234,179,8,0.1)] text-[#eab308]"  :
-                                                           "bg-white/[0.06] text-white/35";
-  return <span className={`shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium tracking-wide ${cls}`}>{status}</span>;
+  const upper = status.toUpperCase();
+  const color = JIRA_STATUS_COLORS[upper as keyof typeof JIRA_STATUS_COLORS] ?? { bg: "rgba(255,255,255,0.06)", text: "rgba(255,255,255,0.35)" };
+  return (
+    <span
+      className="shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium tracking-wide"
+      style={{ backgroundColor: color.bg, color: color.text }}
+    >
+      {status}
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------

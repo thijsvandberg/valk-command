@@ -203,6 +203,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     const taskId = taskData.id ?? "";
+
+    // Persist the taskId so the client can detect and resume monitoring on page reload
+    if (taskId) {
+      await db
+        .update(message)
+        .set({ workspaceTaskId: taskId })
+        .where(eq(message.id, messageId));
+    }
+
     return NextResponse.json({
       messageId,
       taskId,

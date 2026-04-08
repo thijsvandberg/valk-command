@@ -162,6 +162,13 @@
       "when": 1744200000000,
       "tag": "0022_story_writer_local_title",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1744300000000,
+      "tag": "0023_activity_log_incremental_sync_type",
+      "breakpoints": true
     }
   ]
 }

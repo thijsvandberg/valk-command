@@ -313,7 +313,7 @@ export function renderMarkdown(text: string): ReactNode[] {
         while (next < lines.length && lines[next].trim() === "") next++;
         if (next < lines.length) {
           const nextTrimmed = lines[next].trim();
-          const nextIsList = (/^- /.test(nextTrimmed) && !/^- \[[ x]\] /.test(nextTrimmed)) || /^\d+\.\s/.test(nextTrimmed);
+          const nextIsList = (/^- /.test(nextTrimmed) && !/^- \[\][ ]/.test(nextTrimmed) && !/^- \[[ x]\] /.test(nextTrimmed)) || /^\d+\.\s/.test(nextTrimmed);
           if (nextIsList) {
             i = next;
             continue;
@@ -323,7 +323,7 @@ export function renderMarkdown(text: string): ReactNode[] {
       }
 
       const indent = getIndentLevel(line);
-      const isUnordered = /^- /.test(trimmed) && !/^- \[[ x]\] /.test(trimmed);
+      const isUnordered = /^- /.test(trimmed) && !/^- \[\][ ]/.test(trimmed) && !/^- \[[ x]\] /.test(trimmed);
       const isOrdered = /^\d+\.\s/.test(trimmed);
 
       if (!isUnordered && !isOrdered) break;
@@ -556,9 +556,10 @@ export function renderMarkdown(text: string): ReactNode[] {
       continue;
     }
 
-    // Task lists
-    if (line.trimStart().startsWith("- [ ] ")) {
-      const content = line.trimStart().slice(6);
+    // Task lists — support both "- [] " (Jira format) and "- [ ] " (standard markdown)
+    if (line.trimStart().startsWith("- [] ") || line.trimStart().startsWith("- [ ] ")) {
+      const trimStart = line.trimStart();
+      const content = trimStart.startsWith("- [] ") ? trimStart.slice(5) : trimStart.slice(6);
       elements.push(
         <div key={`cb-${idx}`} className="my-1 flex items-start gap-2">
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-white/[0.12] bg-white/[0.03]" />
@@ -586,7 +587,7 @@ export function renderMarkdown(text: string): ReactNode[] {
     // Use line.trim() (not trimStart) to match what parseListBlock uses internally,
     // preventing a nextIdx === idx infinite loop on lines like "- " (empty list item from ADF).
     const trimmed = line.trim();
-    const isListStart = (/^- /.test(trimmed) && !/^- \[[ x]\] /.test(trimmed)) || /^\d+\.\s/.test(trimmed);
+    const isListStart = (/^- /.test(trimmed) && !/^- \[\][ ]/.test(trimmed) && !/^- \[[ x]\] /.test(trimmed)) || /^\d+\.\s/.test(trimmed);
     if (isListStart) {
       const { nodes, nextIdx } = parseListBlock(idx);
       if (nodes.length > 0) {

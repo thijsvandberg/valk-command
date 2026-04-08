@@ -31,7 +31,7 @@ export const DEFAULT_PROMPTS: QuickPromptsConfig = {
     {
       id: "d-story-3",
       label: "Suggest title",
-      text: "Suggest 3 concise, action-oriented titles for this user story. Each title should start with a verb, be under 10 words, and clearly describe the user value.",
+      text: "Suggest 3 concise, action-oriented titles for this user story. Each title should start with a verb, be under 12 words, and clearly describe the user value.",
     },
   ],
   bug: [
@@ -50,7 +50,7 @@ export const DEFAULT_PROMPTS: QuickPromptsConfig = {
     {
       id: "d-bug-3",
       label: "Suggest title",
-      text: "Suggest 3 clear, specific bug report titles for this issue. Each title should describe the broken behavior and its context in under 10 words, without using the word 'bug'.",
+      text: "Suggest 3 clear, specific bug report titles for this issue. Each title should describe the broken behavior and its context in under 12 words, without using the word 'bug'.",
     },
   ],
   task: [
@@ -63,7 +63,7 @@ export const DEFAULT_PROMPTS: QuickPromptsConfig = {
     {
       id: "d-task-2",
       label: "Suggest title",
-      text: "Suggest 3 concise titles for this task. Each title should start with a verb, be under 8 words, and clearly state what needs to be done.",
+      text: "Suggest 3 concise titles for this task. Each title should start with a verb, be under 12 words, and clearly state what needs to be done.",
     },
   ],
   subtask: [
@@ -75,7 +75,7 @@ export const DEFAULT_PROMPTS: QuickPromptsConfig = {
     {
       id: "d-subtask-1",
       label: "Suggest title",
-      text: "Suggest 3 short, specific titles for this subtask. Each title should start with a verb, be under 6 words, and describe one concrete piece of work.",
+      text: "Suggest 3 short, specific titles for this subtask. Each title should start with a verb, be under 12 words, and describe one concrete piece of work.",
     },
   ],
   spike: [

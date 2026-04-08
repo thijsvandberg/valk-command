@@ -115,6 +115,7 @@ export interface Ticket {
   editState: TicketEditState;
   notes: string;
   sprintId?: string;
+  jiraUpdatedAt?: string | null;
 }
 
 export interface Sprint {

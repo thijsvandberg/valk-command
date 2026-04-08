@@ -101,13 +101,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
   }
 
-  // Fetch and store the raw execution log from the workspace
+  // Fetch and store the raw execution log from the workspace in the background.
+  // This is non-critical and can be slow, so we don't block the response on it.
   if (taskId) {
-    try {
-      await fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key);
-    } catch {
-      // Non-critical: log fetch failure must not affect the draft save
-    }
+    fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key).catch(() => {});
   }
 
   return NextResponse.json({

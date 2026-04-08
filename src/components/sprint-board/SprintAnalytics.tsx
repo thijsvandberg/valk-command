@@ -2,20 +2,19 @@
 
 import { useState, useMemo } from "react";
 import type { Ticket, JiraStatus } from "@/types/ticket";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { ChevronRight, BarChart2 } from "lucide-react";
 
-const STATUS_COLORS: Record<JiraStatus, string> = {
-  "TO DO": "#94a3b8",
-  "IN PROGRESS": "#4aaa60",
-  TEST: "#eab308",
-  DONE: "#2e9149",
-};
+const STATUS_COLORS: Record<JiraStatus, string> = Object.fromEntries(
+  Object.entries(JIRA_STATUS_COLORS).map(([k, v]) => [k, v.text])
+) as Record<JiraStatus, string>;
 
 const STATUS_LABELS: Record<JiraStatus, string> = {
   "TO DO": "To Do",
   "IN PROGRESS": "In Progress",
   TEST: "Test",
   DONE: "Done",
+  DEPRECATED: "Deprecated",
 };
 
 export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
@@ -33,6 +32,7 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
       "IN PROGRESS": 0,
       TEST: 0,
       DONE: 0,
+      DEPRECATED: 0,
     };
     tickets.forEach((t) => {
       map[t.jiraStatus] += t.storyPoints || 0;

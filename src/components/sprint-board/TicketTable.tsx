@@ -6,8 +6,9 @@ import { EPIC_COLORS, getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
-import { Minus, Sparkles, Pencil, CircleDot, Check, Pause, GripVertical, Flag, MessageSquare, Sheet, Clock } from "lucide-react";
+import { Minus, Sparkles, Pencil, CircleDot, Check, Pause, GripVertical, Flag, MessageSquare, Sheet, Clock, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { ReviewPopover } from "./ReviewPopover";
+import type { SortField, SortDir } from "./FilterBar";
 import {
   DndContext,
   closestCenter,
@@ -25,6 +26,68 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+type EditState = "draft" | "local_edits" | "conflict";
+
+const EDIT_STATE_CONFIG: Record<EditState, { dotClass: string; accent: string; label: string; description: string }> = {
+  draft: {
+    dotClass: "bg-[#4a90d9]/40",
+    accent: "#4a90d9",
+    label: "Unsaved draft",
+    description: "A draft is in progress but has not been saved to Jira yet.",
+  },
+  local_edits: {
+    dotClass: "bg-[#4a90d9]/70",
+    accent: "#4a90d9",
+    label: "Local changes",
+    description: "This ticket has local edits that are pending sync to Jira.",
+  },
+  conflict: {
+    dotClass: "bg-[#ea8744]/70",
+    accent: "#ea8744",
+    label: "Conflict",
+    description: "Jira was updated after your local edit. Review and resolve before saving.",
+  },
+};
+
+function EditStateDot({ state }: { state: EditState }) {
+  const cfg = EDIT_STATE_CONFIG[state];
+  return (
+    <span className="group/dot relative inline-flex cursor-default">
+      <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />
+      <span
+        className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-3 w-48 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover/dot:opacity-100"
+        role="tooltip"
+      >
+        {/* Arrow */}
+        <span
+          className="absolute -bottom-[5px] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45"
+          style={{
+            backgroundColor: "rgb(22,22,34)",
+            borderRight: "1px solid rgba(255,255,255,0.07)",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+          }}
+        />
+        {/* Panel */}
+        <span
+          className="font-sans relative flex flex-col overflow-hidden rounded-lg"
+          style={{
+            backgroundColor: "rgb(22,22,34)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.3)",
+          }}
+        >
+          {/* Accent top bar */}
+          <span className="h-[2px] w-full shrink-0" style={{ backgroundColor: cfg.accent, opacity: 0.6 }} />
+          <span className="flex flex-col gap-1 px-3 py-2.5">
+            <span className="text-[11px] font-semibold tracking-wide text-white/90">{cfg.label}</span>
+            <span className="text-[10.5px] leading-relaxed text-white/40">{cfg.description}</span>
+          </span>
+        </span>
+      </span>
+    </span>
+  );
+}
 
 // Build external Jira URL for a given ticket key
 function getJiraUrl(ticketKey: string): string {
@@ -344,24 +407,9 @@ function SortableTicketRow({
         <td className="py-2 pr-3 font-mono text-xs text-white/50">
           <span className="flex items-center gap-1.5">
             {ticket.key}
-            {ticket.editState === "draft" && (
-              <span
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#4a90d9]/40"
-                title="Unsaved draft"
-              />
-            )}
-            {ticket.editState === "local_edits" && (
-              <span
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#4a90d9]/70"
-                title="Has local changes"
-              />
-            )}
-            {ticket.editState === "conflict" && (
-              <span
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#ea8744]/70"
-                title="Conflict: Jira updated since local edit"
-              />
-            )}
+            {ticket.editState === "draft" && <EditStateDot state="draft" />}
+            {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
+            {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
           </span>
         </td>
       )}
@@ -463,6 +511,46 @@ function SortableTicketRow({
 
 // -- Ticket table --
 
+// Sort indicator shown next to sortable column headers
+function SortIndicator({
+  colId,
+  sortField,
+  sortDir,
+  isSortable,
+}: {
+  colId: ColumnId;
+  sortField?: SortField;
+  sortDir?: SortDir;
+  isSortable: boolean;
+}) {
+  if (!isSortable) return null;
+  const field = COLUMN_SORT_FIELDS[colId];
+  if (!field) return null;
+  if (field !== sortField) {
+    return <ArrowUpDown className="ml-1 h-3 w-3 opacity-0 group-hover/th:opacity-30" strokeWidth={1.5} />;
+  }
+  return sortDir === "asc"
+    ? <ArrowUp className="ml-1 h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={1.5} />
+    : <ArrowDown className="ml-1 h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={1.5} />;
+}
+
+// Maps column IDs to their corresponding sort fields
+const COLUMN_SORT_FIELDS: Partial<Record<ColumnId, SortField>> = {
+  key: "key",
+  title: "title",
+  epic: "epic",
+  jiraStatus: "jiraStatus",
+  points: "points",
+  assignee: "assignee",
+  poStatus: "poStatus",
+  quality: "quality",
+};
+
+// Default sort direction per sort field
+function defaultSortDir(field: SortField): SortDir {
+  return field === "quality" || field === "points" || field === "lastChanged" ? "desc" : "asc";
+}
+
 export function TicketTable({
   tickets,
   checkedTickets,
@@ -484,6 +572,9 @@ export function TicketTable({
   onPoStatusChange,
   onTableKeyDown,
   onReorder,
+  sortField,
+  sortDir,
+  onSortChange,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -505,6 +596,9 @@ export function TicketTable({
   onPoStatusChange: (key: string, status: POStatus) => void;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
+  sortField?: SortField;
+  sortDir?: SortDir;
+  onSortChange?: (field: SortField, dir: SortDir) => void;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -513,6 +607,17 @@ export function TicketTable({
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [reviewPopoverKey, setReviewPopoverKey] = useState<string | null>(null);
+
+  // Clicking a sortable column header toggles direction if already active, else sets with default direction
+  const handleColumnSort = useCallback((colId: ColumnId) => {
+    const field = COLUMN_SORT_FIELDS[colId];
+    if (!field || !onSortChange) return;
+    if (field === sortField) {
+      onSortChange(field, sortDir === "asc" ? "desc" : "asc");
+    } else {
+      onSortChange(field, defaultSortDir(field));
+    }
+  }, [sortField, sortDir, onSortChange]);
 
   const handleToggleReviewPopover = useCallback((key: string) => {
     setReviewPopoverKey((prev) => (prev === key ? null : key));
@@ -568,30 +673,84 @@ export function TicketTable({
       >
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-            <tr className="border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
+            <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
               <th className="w-5 py-2.5 pl-1" />
               <th className="w-10 py-2.5 pl-1 pr-1">
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={onToggleAll}
-                  className="h-3.5 w-3.5 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
-                  ref={(el) => {
-                    if (el) el.indeterminate = someChecked && !allChecked;
-                  }}
-                />
+                <div
+                  className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
+                    someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={onToggleAll}
+                    className="h-3.5 w-3.5 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
+                    ref={(el) => {
+                      if (el) el.indeterminate = someChecked && !allChecked;
+                    }}
+                  />
+                </div>
               </th>
               {col("type") && <th className="w-8 py-2.5 pr-2" />}
-              {col("key") && <th className="w-24 py-2.5 pr-3">Key</th>}
-              {col("title") && <th className="py-2.5 pr-3">Title</th>}
-              {col("epic") && <th className="w-36 py-2.5 pr-3">Epic</th>}
-              {col("jiraStatus") && <th className="w-28 py-2.5 pr-3">Status</th>}
+              {col("key") && (
+                <th className="group/th w-24 py-2.5 pr-3">
+                  <button type="button" onClick={() => handleColumnSort("key")} className="flex items-center cursor-pointer hover:text-white/60">
+                    Key<SortIndicator colId="key" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
+              {col("title") && (
+                <th className="group/th py-2.5 pr-3">
+                  <button type="button" onClick={() => handleColumnSort("title")} className="flex items-center cursor-pointer hover:text-white/60">
+                    Title<SortIndicator colId="title" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
+              {col("epic") && (
+                <th className="group/th w-36 py-2.5 pr-3">
+                  <button type="button" onClick={() => handleColumnSort("epic")} className="flex items-center cursor-pointer hover:text-white/60">
+                    Epic<SortIndicator colId="epic" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
+              {col("jiraStatus") && (
+                <th className="group/th w-28 py-2.5 pr-3">
+                  <button type="button" onClick={() => handleColumnSort("jiraStatus")} className="flex items-center cursor-pointer hover:text-white/60">
+                    Status<SortIndicator colId="jiraStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
               {showSprintColumn && <th className="w-36 py-2.5 pr-3">Sprint</th>}
-              {col("points") && <th className="w-12 py-2.5 pr-3 text-center">Pts</th>}
-              {col("assignee") && <th className="w-10 py-2.5 pr-3" />}
+              {col("points") && (
+                <th className="group/th w-12 py-2.5 pr-3 text-center">
+                  <button type="button" onClick={() => handleColumnSort("points")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
+                    Pts<SortIndicator colId="points" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
+              {col("assignee") && (
+                <th className="group/th w-10 py-2.5 pr-3">
+                  <button type="button" onClick={() => handleColumnSort("assignee")} className="flex items-center cursor-pointer hover:text-white/60">
+                    <SortIndicator colId="assignee" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
               {col("flagged") && <th className="w-8 py-2.5 pr-2" />}
-              {col("poStatus") && <th className="w-10 py-2.5 pr-2 text-center">PO</th>}
-              {col("quality") && <th className="w-16 py-2.5 pr-3">Quality</th>}
+              {col("poStatus") && (
+                <th className="group/th w-10 py-2.5 pr-2 text-center">
+                  <button type="button" onClick={() => handleColumnSort("poStatus")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
+                    PO<SortIndicator colId="poStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
+              {col("quality") && (
+                <th className="group/th w-16 py-2.5 pr-3">
+                  <button type="button" onClick={() => handleColumnSort("quality")} className="flex items-center cursor-pointer hover:text-white/60">
+                    Quality<SortIndicator colId="quality" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+                  </button>
+                </th>
+              )}
               {col("notes") && <th className="w-8 py-2.5 pr-5" />}
             </tr>
           </thead>

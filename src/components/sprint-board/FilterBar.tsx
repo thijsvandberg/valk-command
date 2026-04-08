@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "../shared/StatusBadge";
-import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X } from "lucide-react";
+import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
 
 // -- PO Status colors (needed for filter rendering) --
 
@@ -16,12 +16,36 @@ export const PO_STATUS_COLORS: Record<string, { bg: string; text: string; dot: s
   Geparkeerd: { bg: "rgba(100, 100, 120, 0.08)", text: "#64648a", dot: "#64648a" },
 };
 
+// Edit state display config for filter labels
+export const EDIT_STATE_OPTIONS: { value: string; label: string; dotClass: string }[] = [
+  { value: "draft", label: "Unsaved draft", dotClass: "bg-[#4a90d9]/40" },
+  { value: "local_edits", label: "Local changes", dotClass: "bg-[#4a90d9]/70" },
+  { value: "conflict", label: "Conflict", dotClass: "bg-[#ea8744]/70" },
+];
+
 // ---------------------------------------------------------------------------
 // Sort types (exported for reuse)
 // ---------------------------------------------------------------------------
 
-export type SortField = "rank" | "quality" | "points" | "key";
+export type SortField = "rank" | "quality" | "points" | "key" | "title" | "epic" | "jiraStatus" | "assignee" | "poStatus" | "lastChanged";
 export type SortDir = "asc" | "desc";
+
+// ---------------------------------------------------------------------------
+// Saved view type (exported for reuse in SprintSlots / SprintBoard)
+// ---------------------------------------------------------------------------
+
+export interface SavedView {
+  id: string;
+  title: string;
+  filters: {
+    status: string[];
+    epic: string[];
+    assignee: string[];
+    poStatus: string[];
+    editState: string[];
+  };
+  sort: { field: SortField; direction: SortDir };
+}
 
 // ---------------------------------------------------------------------------
 // Column types (exported for reuse)
@@ -160,6 +184,18 @@ function FilterDropdown({
 // Sort dropdown
 // ---------------------------------------------------------------------------
 
+const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDir }[] = [
+  { field: "rank", label: "Jira rank (default)", defaultDir: "asc" },
+  { field: "lastChanged", label: "Last changed", defaultDir: "desc" },
+  { field: "quality", label: "Quality score", defaultDir: "desc" },
+  { field: "points", label: "Story points", defaultDir: "desc" },
+  { field: "key", label: "Ticket key", defaultDir: "asc" },
+  { field: "title", label: "Title", defaultDir: "asc" },
+  { field: "jiraStatus", label: "Jira status", defaultDir: "asc" },
+  { field: "assignee", label: "Assignee", defaultDir: "asc" },
+  { field: "poStatus", label: "PO status", defaultDir: "asc" },
+];
+
 function SortDropdown({
   field,
   direction,
@@ -183,15 +219,7 @@ function SortDropdown({
   }, [open]);
 
   const isActive = field !== "rank";
-
-  const options: { field: SortField; label: string }[] = [
-    { field: "rank", label: "Jira rank (default)" },
-    { field: "quality", label: "Quality score" },
-    { field: "points", label: "Story points" },
-    { field: "key", label: "Ticket key" },
-  ];
-
-  const activeLabel = options.find((o) => o.field === field)?.label ?? "Sort";
+  const activeLabel = SORT_OPTIONS.find((o) => o.field === field)?.label ?? "Sort";
 
   return (
     <div ref={ref} className="relative">
@@ -216,7 +244,7 @@ function SortDropdown({
 
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-          {options.map((opt) => (
+          {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.field}
               type="button"
@@ -224,7 +252,7 @@ function SortDropdown({
                 if (opt.field === field) {
                   onChange(opt.field, direction === "asc" ? "desc" : "asc");
                 } else {
-                  onChange(opt.field, opt.field === "quality" || opt.field === "points" ? "desc" : "asc");
+                  onChange(opt.field, opt.defaultDir);
                 }
                 setOpen(false);
               }}
@@ -457,6 +485,91 @@ export function SprintFilterBar({
 }
 
 // ---------------------------------------------------------------------------
+// Save view popover
+// ---------------------------------------------------------------------------
+
+function SaveViewPopover({
+  onSave,
+  onClose,
+  onDelete,
+  initialTitle = "",
+  isUpdate = false,
+}: {
+  onSave: (title: string) => void;
+  onClose: () => void;
+  onDelete?: () => void;
+  initialTitle?: string;
+  isUpdate?: boolean;
+}) {
+  const [title, setTitle] = useState(initialTitle);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (title.trim()) {
+      onSave(title.trim());
+      onClose();
+    }
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3)]"
+    >
+      <p className="mb-2 text-[11px] font-medium text-white/40">
+        {isUpdate ? "Update saved view" : "Save current filter view"}
+      </p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="View name..."
+          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/50"
+          style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" }}
+        />
+        <button
+          type="submit"
+          disabled={!title.trim()}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--color-brand-500)] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer hover:bg-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ transition: "background-color 100ms" }}
+        >
+          <Check className="h-3 w-3" strokeWidth={2} />
+          {isUpdate ? "Update view" : "Save view"}
+        </button>
+        {isUpdate && onDelete && (
+          <>
+            <div className="h-px bg-white/[0.06]" />
+            <button
+              type="button"
+              onClick={() => { onDelete(); onClose(); }}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-400/70 cursor-pointer hover:bg-red-500/10 hover:text-red-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+              style={{ transition: "background-color 100ms, color 100ms" }}
+            >
+              <X className="h-3 w-3" strokeWidth={1.5} />
+              Delete view
+            </button>
+          </>
+        )}
+      </form>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // FilterBar component
 // ---------------------------------------------------------------------------
 
@@ -465,10 +578,12 @@ export function FilterBar({
   epicFilter,
   assigneeFilter,
   poStatusFilter,
+  editStateFilter,
   onStatusFilterChange,
   onEpicFilterChange,
   onAssigneeFilterChange,
   onPoStatusFilterChange,
+  onEditStateFilterChange,
   statusOptions,
   epicOptions,
   assigneeOptions,
@@ -484,15 +599,20 @@ export function FilterBar({
   noBorder = false,
   searchQuery,
   onSearchChange,
+  onSaveView,
+  onDeleteView,
+  activeView,
 }: {
   statusFilter: Set<string>;
   epicFilter: Set<string>;
   assigneeFilter: Set<string>;
   poStatusFilter: Set<string>;
+  editStateFilter: Set<string>;
   onStatusFilterChange: (next: Set<string>) => void;
   onEpicFilterChange: (next: Set<string>) => void;
   onAssigneeFilterChange: (next: Set<string>) => void;
   onPoStatusFilterChange: (next: Set<string>) => void;
+  onEditStateFilterChange: (next: Set<string>) => void;
   statusOptions: string[];
   epicOptions: string[];
   assigneeOptions: string[];
@@ -508,8 +628,32 @@ export function FilterBar({
   noBorder?: boolean;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  onSaveView?: (title: string) => void;
+  onDeleteView?: () => void;
+  activeView?: SavedView | null;
 }) {
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const saveViewRef = useRef<HTMLDivElement>(null);
+
   const poStatusOptions = PO_STATUS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string);
+  const editStateValues = EDIT_STATE_OPTIONS.map((o) => o.value);
+
+  const hasActiveFilters =
+    statusFilter.size > 0 ||
+    epicFilter.size > 0 ||
+    assigneeFilter.size > 0 ||
+    poStatusFilter.size > 0 ||
+    editStateFilter.size > 0 ||
+    (sprintFilter?.size ?? 0) > 0;
+
+  function handleClearAll() {
+    onStatusFilterChange(new Set());
+    onEpicFilterChange(new Set());
+    onAssigneeFilterChange(new Set());
+    onPoStatusFilterChange(new Set());
+    onEditStateFilterChange(new Set());
+    if (onSprintFilterChange) onSprintFilterChange(new Set());
+  }
 
   return (
     <div className={`flex h-[50px] items-center gap-2 px-5${noBorder ? "" : " border-b border-white/[0.06]"}`}>
@@ -596,6 +740,21 @@ export function FilterBar({
           );
         }}
       />
+      <FilterDropdown
+        label="Changes"
+        options={editStateValues}
+        selected={editStateFilter}
+        onChange={onEditStateFilterChange}
+        renderOption={(v) => {
+          const cfg = EDIT_STATE_OPTIONS.find((o) => o.value === v);
+          return (
+            <span className="flex items-center gap-2">
+              <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg?.dotClass ?? ""}`} />
+              {cfg?.label ?? v}
+            </span>
+          );
+        }}
+      />
       {sprintFilter && onSprintFilterChange && sprintOptions && sprintNameMap && (
         <SprintFilterBar
           sprintOptions={sprintOptions}
@@ -604,12 +763,61 @@ export function FilterBar({
           sprintNameMap={sprintNameMap}
         />
       )}
+
+      {/* Clear all filters */}
+      {hasActiveFilters && (
+        <button
+          type="button"
+          onClick={handleClearAll}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white/35 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 80ms, color 80ms" }}
+          title="Clear all filters"
+        >
+          <X className="h-3 w-3" strokeWidth={1.5} />
+          Clear all
+        </button>
+      )}
+
       <div className="flex-1" />
+
       <SortDropdown
         field={sortField}
         direction={sortDir}
         onChange={onSortChange}
       />
+
+      {/* Save view */}
+      {onSaveView && (
+        <div ref={saveViewRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setSaveViewOpen((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
+              activeView
+                ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10"
+                : "text-white/35 hover:bg-white/[0.04] hover:text-white/60"
+            }`}
+            style={{ transition: "background-color 120ms, color 120ms, transform 80ms" }}
+            title={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
+          >
+            <Bookmark
+              className="h-3.5 w-3.5"
+              strokeWidth={1.5}
+              fill={activeView ? "currentColor" : "none"}
+            />
+          </button>
+          {saveViewOpen && (
+            <SaveViewPopover
+              onSave={(title) => onSaveView(title)}
+              onClose={() => setSaveViewOpen(false)}
+              onDelete={onDeleteView}
+              initialTitle={activeView?.title ?? ""}
+              isUpdate={!!activeView}
+            />
+          )}
+        </div>
+      )}
+
       <ColumnToggle visible={visibleColumns} onChange={onColumnToggle} />
     </div>
   );

@@ -8,6 +8,7 @@ import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { MessageCircle } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
 
 const PO_STATUS_COLORS: Record<string, { dot: string }> = {
   Nieuw: { dot: "#94a3b8" },
@@ -18,19 +19,12 @@ const PO_STATUS_COLORS: Record<string, { dot: string }> = {
   Geparkeerd: { dot: "#64648a" },
 };
 
-const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  "TO DO": { bg: "rgba(148, 163, 184, 0.12)", text: "#94a3b8" },
-  "IN PROGRESS": { bg: "rgba(46, 145, 73, 0.15)", text: "#4aaa60" },
-  TEST: { bg: "rgba(234, 179, 8, 0.15)", text: "#eab308" },
-  DONE: { bg: "rgba(46, 145, 73, 0.25)", text: "#2e9149" },
-};
-
 function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
   const { data: ticketData } = useTicketDetail(ticketKey);
 
   if (!ticketData) return null;
 
-  const jiraColor = JIRA_STATUS_COLORS[ticketData.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+  const jiraColor = JIRA_STATUS_COLORS[ticketData.jiraStatus as keyof typeof JIRA_STATUS_COLORS] ?? JIRA_STATUS_COLORS["TO DO"];
   const poColor = ticketData.poStatus ? PO_STATUS_COLORS[ticketData.poStatus] : null;
 
   const description = ticketData.description ?? "";

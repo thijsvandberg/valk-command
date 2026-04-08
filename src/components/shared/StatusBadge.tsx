@@ -1,11 +1,5 @@
 import type { JiraStatus } from "@/types/ticket";
-
-const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  "TO DO": { bg: "rgba(148, 163, 184, 0.12)", text: "#94a3b8" },
-  "IN PROGRESS": { bg: "rgba(46, 145, 73, 0.15)", text: "#4aaa60" },
-  TEST: { bg: "rgba(234, 179, 8, 0.15)", text: "#eab308" },
-  DONE: { bg: "rgba(46, 145, 73, 0.25)", text: "#2e9149" },
-};
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
 
 export { JIRA_STATUS_COLORS };
 

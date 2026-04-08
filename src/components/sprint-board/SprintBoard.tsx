@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Ticket, POStatus, Sprint } from "@/types/ticket";
 import { SprintSlots } from "./SprintSlots";
-import { FilterBar, type SortField, type SortDir, type ColumnId, DEFAULT_VISIBLE } from "./FilterBar";
+import { FilterBar, type SortField, type SortDir, type ColumnId, DEFAULT_VISIBLE, type SavedView } from "./FilterBar";
 import { TicketTable } from "./TicketTable";
 import { BulkActionBar } from "./BulkActionBar";
 import { SidePanel } from "./SidePanel";
@@ -29,7 +29,7 @@ function mapJiraSprints(raw: { id: number; name: string; state: string; startDat
     return { id: String(s.id), name: s.name, dateRange, state, ticketCount: 0 };
   });
 }
-import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search } from "lucide-react";
+import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark } from "lucide-react";
 import { StoryWriterLauncherModal } from "./StoryWriterLauncherModal";
 import { mutate as globalMutate } from "swr";
 
@@ -108,17 +108,21 @@ export default function SprintBoard() {
     const sprintId = slotSprints[slot];
     if (!sprintId) return;
     setEphemeralSprintId(null);
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
     const params = new URLSearchParams(searchParams.toString());
     params.set("sprint", sprintId);
+    params.delete("view");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [slotSprints, searchParams, router]);
+  }, [slotSprints, searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
 
   const handleAllClick = useCallback(() => {
     setEphemeralSprintId(null);
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
     const params = new URLSearchParams(searchParams.toString());
     params.set("sprint", "__all__");
+    params.delete("view");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [searchParams, router]);
+  }, [searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
 
   // Ephemeral sprint: shown as a temporary tab when selected from the sprint list, not persisted to slots
   const [ephemeralSprintId, setEphemeralSprintId] = useState<string | null>(null);
@@ -184,13 +188,14 @@ export default function SprintBoard() {
   }, []);
 
   // Filter state (restored from localStorage)
-  interface StoredFilters { status: string[]; epic: string[]; assignee: string[]; poStatus: string[] }
-  const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [] };
+  interface StoredFilters { status: string[]; epic: string[]; assignee: string[]; poStatus: string[]; editState: string[] }
+  const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [], editState: [] };
   const [storedFilters, setStoredFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
   const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
   const poStatusFilter = useMemo(() => new Set(storedFilters.poStatus), [storedFilters.poStatus]);
+  const editStateFilter = useMemo(() => new Set(storedFilters.editState ?? []), [storedFilters.editState]);
   const setStatusFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, status: [...v] }));
   }, [setStoredFilters]);
@@ -203,6 +208,14 @@ export default function SprintBoard() {
   const setPoStatusFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, poStatus: [...v] }));
   }, [setStoredFilters]);
+  const setEditStateFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, editState: [...v] }));
+  }, [setStoredFilters]);
+
+  // Saved views — active view is URL-driven (?view=<id>)
+  const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>("sprint-board-saved-views", []);
+  const activeViewId = searchParams.get("view");
+  const activeView = activeViewId ? (savedViews.find((v) => v.id === activeViewId) ?? null) : null;
 
   // Sprint filter - only used in All view, not persisted
   const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
@@ -228,7 +241,7 @@ export default function SprintBoard() {
     return map;
   }, [sprints]);
 
-  const activeSprintId = isAllView ? "__all__" : ephemeralIsActive ? ephemeralSprintId! : slotSprints[activeSlot];
+  const activeSprintId = (isAllView || activeViewId) ? "__all__" : ephemeralIsActive ? ephemeralSprintId! : slotSprints[activeSlot];
   const slotsInitialized = useRef(false);
 
   const activeSprint = isAllView ? null : sprints.find((s) => s.id === activeSprintId);
@@ -270,6 +283,7 @@ export default function SprintBoard() {
         const current = poStatuses[t.key] ?? null;
         if (!current || !poStatusFilter.has(current)) return false;
       }
+      if (editStateFilter.size > 0 && !editStateFilter.has(t.editState)) return false;
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
       if (searchQuery.trim().length >= 2) {
         const q = searchQuery.toLowerCase();
@@ -280,7 +294,7 @@ export default function SprintBoard() {
       }
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, poStatuses, isAllView, sprintFilter, searchQuery]);
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, poStatuses, isAllView, sprintFilter, searchQuery]);
 
   // Apply sort (PO priority order takes precedence when sorting by rank)
   const tickets = useMemo(() => {
@@ -312,8 +326,25 @@ export default function SprintBoard() {
           const bPts = b.storyPoints ?? -1;
           return (aPts - bPts) * dir;
         }
-        case "key": {
+        case "key":
           return a.key.localeCompare(b.key) * dir;
+        case "title":
+          return a.title.localeCompare(b.title) * dir;
+        case "epic":
+          return (a.epic ?? "").localeCompare(b.epic ?? "") * dir;
+        case "jiraStatus":
+          return a.jiraStatus.localeCompare(b.jiraStatus) * dir;
+        case "assignee":
+          return (a.assignee?.name ?? "").localeCompare(b.assignee?.name ?? "") * dir;
+        case "poStatus": {
+          const aPo = poStatuses[a.key] ?? "";
+          const bPo = poStatuses[b.key] ?? "";
+          return aPo.localeCompare(bPo) * dir;
+        }
+        case "lastChanged": {
+          const aDate = a.jiraUpdatedAt ?? "";
+          const bDate = b.jiraUpdatedAt ?? "";
+          return (aDate as string).localeCompare(bDate as string) * dir;
         }
         default:
           return 0;
@@ -331,7 +362,7 @@ export default function SprintBoard() {
   const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
   const totalPoints = allTickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0);
 
-  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || sprintFilter.size > 0;
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || editStateFilter.size > 0 || sprintFilter.size > 0;
 
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
@@ -505,19 +536,22 @@ export default function SprintBoard() {
   );
 
   const handleSprintListSelect = useCallback((sprintId: string) => {
-    // Show as ephemeral (temporary, non-persisted) tab
     setEphemeralSprintId(sprintId);
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
     const params = new URLSearchParams(searchParams.toString());
     params.set("sprint", sprintId);
+    params.delete("view");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [searchParams, router]);
+  }, [searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
 
   const handleEphemeralClick = useCallback(() => {
     if (!ephemeralSprintId) return;
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
     const params = new URLSearchParams(searchParams.toString());
     params.set("sprint", ephemeralSprintId);
+    params.delete("view");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [ephemeralSprintId, searchParams, router]);
+  }, [ephemeralSprintId, searchParams, router]); // setStoredFilters is stable, omitted to avoid TDZ
 
   const handleAddSlotWithSprint = useCallback((sprintId: string) => {
     setSlotSprints((prev) => {
@@ -539,6 +573,62 @@ export default function SprintBoard() {
     setPoStatuses((prev) => ({ ...prev, [key]: status }));
     saveTicketMetadata(key, { poStatus: status });
   }, []);
+
+  const currentFiltersSnapshot = useCallback(() => ({
+    status: [...statusFilter],
+    epic: [...epicFilter],
+    assignee: [...assigneeFilter],
+    poStatus: [...poStatusFilter],
+    editState: [...editStateFilter],
+  }), [statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter]);
+
+  const handleSaveView = useCallback((title: string) => {
+    if (activeViewId) {
+      // Overwrite existing saved view
+      setSavedViews((prev) => prev.map((v) =>
+        v.id === activeViewId
+          ? { ...v, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir } }
+          : v
+      ));
+    } else {
+      // Create new saved view and navigate to its URL
+      const id = crypto.randomUUID();
+      const view: SavedView = {
+        id,
+        title,
+        filters: currentFiltersSnapshot(),
+        sort: { field: sortField, direction: sortDir },
+      };
+      setSavedViews((prev) => [...prev, view]);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("view", id);
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, setSavedViews, searchParams, router]);
+
+  const handleViewClick = useCallback((view: SavedView) => {
+    setStoredFilters({
+      status: view.filters.status,
+      epic: view.filters.epic,
+      assignee: view.filters.assignee,
+      poStatus: view.filters.poStatus,
+      editState: view.filters.editState ?? [],
+    });
+    setStoredSort({ field: view.sort.field, direction: view.sort.direction });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", view.id);
+    params.delete("sprint");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [setStoredFilters, setStoredSort, searchParams, router]);
+
+  const handleDeleteView = useCallback((id: string) => {
+    setSavedViews((prev) => prev.filter((v) => v.id !== id));
+    if (activeViewId === id) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("view");
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [setSavedViews, activeViewId, searchParams, router]);
 
   const handleRefresh = useCallback(async () => {
     setSyncing(true);
@@ -628,8 +718,8 @@ export default function SprintBoard() {
       {pageTitle}
       <div className="flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Unified context header — always at top, shows either All view or current sprint info */}
-        {(isAllView || activeSprint) && (
+        {/* Unified context header — always at top, shows either All view, current sprint, or saved view info */}
+        {(isAllView || activeSprint || activeView) && (
           <div className="relative flex items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5 overflow-hidden">
             <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
 
@@ -638,27 +728,29 @@ export default function SprintBoard() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
                   {isAllView
                     ? <LayoutGrid size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                    : activeView
+                    ? <Bookmark size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" fill="currentColor" />
                     : <CalendarRange size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
                   }
                 </div>
                 <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-                  {isAllView ? "All tickets" : activeSprint!.name}
+                  {isAllView ? "All tickets" : activeView ? activeView.title : activeSprint!.name}
                 </span>
               </div>
 
               {!ticketsLoading && (
                 <>
                   <div className="h-6 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent shrink-0" />
-                  {!isAllView && activeSprint!.dateRange && (
+                  {!isAllView && !activeView && activeSprint!.dateRange && (
                     <span className="text-sm text-white/30 shrink-0">{activeSprint!.dateRange}</span>
                   )}
                   <span className="text-sm text-white/35">
                     {hasActiveFilters ? `${tickets.length} / ${allTickets.length}` : allTickets.length} items
                   </span>
-                  {!isAllView && totalPoints > 0 && (
+                  {!isAllView && !activeView && totalPoints > 0 && (
                     <span className="text-sm text-white/25">{totalPoints} pts</span>
                   )}
-                  {!isAllView && (
+                  {!isAllView && !activeView && (
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className="rounded bg-white/[0.06] px-1.5 py-0.5 tabular-nums text-white/40">{todoCount}</span>
                       <span className="rounded bg-[rgba(46,145,73,0.12)] px-1.5 py-0.5 tabular-nums text-[#4aaa60]">{inProgressCount}</span>
@@ -673,7 +765,7 @@ export default function SprintBoard() {
             </div>
 
             <div className="relative flex items-center gap-2">
-              {!isAllView && (
+              {!isAllView && !activeView && (
                 <button
                   type="button"
                   onClick={() => setCompareMode(true)}
@@ -708,7 +800,7 @@ export default function SprintBoard() {
         <SprintSlots
           slotSprints={slotSprints}
           activeSlot={activeSlot}
-          allActive={isAllView}
+          allActive={isAllView && !activeViewId}
           sprints={sprints}
           onSlotClick={setActiveSlot}
           onAllClick={handleAllClick}
@@ -726,6 +818,9 @@ export default function SprintBoard() {
           onEphemeralClick={handleEphemeralClick}
           filtersCollapsed={barsCollapsed}
           onToggleFilters={() => setBarsCollapsed((v) => !v)}
+          savedViews={savedViews}
+          activeViewId={activeViewId}
+          onViewClick={handleViewClick}
         />
 
         {/* Filter bar + analytics (collapsible together) */}
@@ -738,10 +833,12 @@ export default function SprintBoard() {
                 epicFilter={epicFilter}
                 assigneeFilter={assigneeFilter}
                 poStatusFilter={poStatusFilter}
+                editStateFilter={editStateFilter}
                 onStatusFilterChange={setStatusFilter}
                 onEpicFilterChange={setEpicFilter}
                 onAssigneeFilterChange={setAssigneeFilter}
                 onPoStatusFilterChange={setPoStatusFilter}
+                onEditStateFilterChange={setEditStateFilter}
                 statusOptions={statusOptions}
                 epicOptions={epicOptions}
                 assigneeOptions={assigneeOptions}
@@ -759,6 +856,9 @@ export default function SprintBoard() {
                 noBorder
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
+                onSaveView={handleSaveView}
+                onDeleteView={activeViewId ? () => handleDeleteView(activeViewId) : undefined}
+                activeView={activeView}
               />
             </div>
 
@@ -785,7 +885,7 @@ export default function SprintBoard() {
           someChecked={someChecked}
           allChecked={allChecked}
           visibleColumns={visibleColumns}
-          showSprintColumn={isAllView}
+          showSprintColumn={isAllView || !!activeViewId}
           sprintNameMap={sprintNameMap}
           poStatuses={poStatuses}
           onToggleCheck={toggleCheck}
@@ -797,6 +897,9 @@ export default function SprintBoard() {
           onPoStatusChange={handlePoStatusChange}
           onTableKeyDown={handleTableKeyDown}
           onReorder={handleReorder}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
         />}
 
         {/* Bulk action bar */}

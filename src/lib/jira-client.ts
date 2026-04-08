@@ -665,6 +665,38 @@ export class JiraClient {
   }
 
   /**
+   * Fetch keys + updated timestamps for all issues updated after a given watermark.
+   * Used by the incremental sync to detect which tickets changed project-wide.
+   * Returns results sorted by updated ASC so the watermark can be advanced progressively.
+   */
+  async getUpdatedSince(watermark: string, signal?: AbortSignal): Promise<Array<{ key: string; updated: string }>> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const cfg = getConfig();
+    // Jira JQL requires "yyyy-MM-dd HH:mm" format, not ISO 8601
+    const d = new Date(watermark);
+    const jqlDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    const jql = `project = ${cfg.projectKey} AND updated > "${jqlDate}" ORDER BY updated ASC`;
+    let all: Array<{ key: string; updated: string }> = [];
+    let pageToken: string | undefined;
+
+    while (true) {
+      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=updated&maxResults=100${tokenParam}`,
+        signal,
+      );
+      all = all.concat(result.issues.map((i) => ({ key: i.key, updated: i.fields.updated })));
+      if (result.isLast !== false || !result.nextPageToken) break;
+      pageToken = result.nextPageToken;
+    }
+
+    return all;
+  }
+
+  /**
    * Search Jira issues via JQL. Used by the sprint board search modal.
    * Returns up to maxResults issues (default 25).
    */

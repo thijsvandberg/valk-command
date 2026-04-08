@@ -463,3 +463,20 @@
   outline: 2px solid var(--color-brand-500);
   outline-offset: 1px;
 }
+
+/* Node selection highlight for images */
+.rich-editor-wrapper .tiptap .editor-image.ProseMirror-selectednode {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+/* Included in a text selection range — matches the ::selection background color */
+.rich-editor-wrapper .tiptap .editor-image.in-text-selection {
+  outline: 2px solid rgba(46, 145, 73, 0.6);
+  outline-offset: 2px;
+}
+
+.rich-editor-wrapper .tiptap .callout-block.in-text-selection {
+  outline: 2px solid rgba(46, 145, 73, 0.6);
+  outline-offset: 1px;
+}

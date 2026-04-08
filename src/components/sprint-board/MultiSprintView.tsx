@@ -238,12 +238,12 @@ function DroppableSprintColumn({
             </span>
           )}
           <div className="flex shrink-0 items-center gap-1 text-xs">
-            <span className="rounded bg-white/[0.05] px-1.5 py-0.5 tabular-nums text-white/35">{todoCount}</span>
-            <span className="rounded bg-[rgba(46,145,73,0.12)] px-1.5 py-0.5 tabular-nums text-[#4aaa60]">{inProgressCount}</span>
+            <span className="status-count-badge status-count-todo">{todoCount}</span>
+            <span className="status-count-badge status-count-progress">{inProgressCount}</span>
             {testCount > 0 && (
-              <span className="rounded bg-[rgba(234,179,8,0.12)] px-1.5 py-0.5 tabular-nums text-[#eab308]">{testCount}</span>
+              <span className="status-count-badge status-count-test">{testCount}</span>
             )}
-            <span className="rounded bg-[rgba(46,145,73,0.2)] px-1.5 py-0.5 tabular-nums text-[#2e9149]">{doneCount}</span>
+            <span className="status-count-badge status-count-done">{doneCount}</span>
           </div>
         </div>
 

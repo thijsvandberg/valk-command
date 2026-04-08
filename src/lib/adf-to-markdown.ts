@@ -47,7 +47,11 @@ function convertNode(node: AdfNode): string {
     case "orderedList":
       return convertList(node, "ordered") + "\n";
 
+    case "taskList":
+      return convertTaskList(node) + "\n";
+
     case "listItem":
+    case "taskItem":
       return convertChildren(node);
 
     case "codeBlock": {
@@ -219,6 +223,20 @@ function convertList(node: AdfNode, style: "bullet" | "ordered"): string {
         .map((line, li) => (li === 0 ? `${prefix}${line}` : `  ${line}`))
         .join("\n");
       return indented;
+    })
+    .filter((s): s is string => s !== null)
+    .join("\n");
+}
+
+function convertTaskList(node: AdfNode): string {
+  if (!node.content) return "";
+  return node.content
+    .map((item) => {
+      const state = (item.attrs?.state as string) || "TODO";
+      const prefix = state === "DONE" ? "- [x] " : "- [] ";
+      const inner = convertChildren(item).trim();
+      if (!inner) return null;
+      return `${prefix}${inner}`;
     })
     .filter((s): s is string => s !== null)
     .join("\n");

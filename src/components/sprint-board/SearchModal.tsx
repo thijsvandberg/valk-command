@@ -267,6 +267,7 @@ function LocalResultRow({
   onSelect,
   onHover,
   sprintNameMap,
+  showKey,
 }: {
   result: LocalSearchResult;
   active: boolean;
@@ -274,6 +275,7 @@ function LocalResultRow({
   onSelect: (newTab: boolean) => void;
   onHover: () => void;
   sprintNameMap?: Record<string, string>;
+  showKey: boolean;
 }) {
   const displaySprintName = result.sprintName
     ? (sprintNameMap?.[result.sprintName] ?? result.sprintName)
@@ -304,8 +306,18 @@ function LocalResultRow({
         <HighlightedText text={result.summary} matches={result.matches} fieldName="summary" />
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
-        {displaySprintName && (
-          <span className="text-xs text-white/25 hidden sm:block truncate max-w-[140px]">{displaySprintName}</span>
+        {(showKey || displaySprintName) && (
+          <span className="hidden sm:flex items-center gap-1.5">
+            {showKey && (
+              <span className="font-mono text-[11px] text-white/45 tracking-tight">{result.key}</span>
+            )}
+            {showKey && displaySprintName && (
+              <span className="text-white/15 text-[11px]">·</span>
+            )}
+            {displaySprintName && (
+              <span className="text-[11px] text-white/20 truncate max-w-[140px]">{displaySprintName}</span>
+            )}
+          </span>
         )}
         <StatusBadge status={result.status} />
       </span>
@@ -318,39 +330,68 @@ function LocalResultRow({
 // ---------------------------------------------------------------------------
 
 function JiraResultRow({
-  issue, active, onSelect, onHover,
+  issue, active, onSelect, onHover, showKey,
 }: {
   issue: JiraSearchResult;
   active: boolean;
-  onSelect: () => void;
+  onSelect: (newTab: boolean) => void;
   onHover: () => void;
+  showKey: boolean;
 }) {
   return (
-    <button
-      type="button"
-      className="group relative flex w-full items-center gap-3 px-6 py-3.5 text-left focus-visible:outline-none cursor-pointer"
+    <a
+      href={`/tickets/${issue.key}`}
+      onClick={(e) => {
+        const newTab = e.metaKey || e.ctrlKey;
+        if (!newTab) e.preventDefault();
+        onSelect(newTab);
+      }}
+      onMouseMove={onHover}
+      className="group relative flex w-full items-center gap-3 px-6 py-3.5 focus-visible:outline-none"
       style={{
+        display: "flex",
+        textDecoration: "none",
         backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
+        cursor: "pointer",
       }}
-      onClick={onSelect}
-      onMouseMove={onHover}
     >
       {!active && (
         <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
       )}
       <span className="min-w-0 flex-1 truncate text-[14px] text-white/75">{issue.summary}</span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
-        {issue.sprintName && (
-          <span className="text-xs text-white/25 hidden sm:block truncate max-w-[140px]">{issue.sprintName}</span>
+        {(showKey || issue.sprintName) && (
+          <span className="hidden sm:flex items-center gap-1.5">
+            {showKey && (
+              <span className="font-mono text-[11px] text-white/45 tracking-tight">{issue.key}</span>
+            )}
+            {showKey && issue.sprintName && (
+              <span className="text-white/15 text-[11px]">·</span>
+            )}
+            {issue.sprintName && (
+              <span className="text-[11px] text-white/20 truncate max-w-[140px]">{issue.sprintName}</span>
+            )}
+          </span>
         )}
         <StatusBadge status={issue.status} />
-        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: "rgba(96, 165, 250, 0.12)", color: "#60a5fa" }}>
-          Jira
-        </span>
-        <ExternalLink className="h-3 w-3 text-white/20" strokeWidth={1.5} />
+        {issue.url && (
+          <a
+            href={issue.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium cursor-pointer"
+            style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "#60a5fa", transition: "background-color 120ms" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.2)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.1)")}
+          >
+            Open in Jira
+            <ExternalLink className="h-2.5 w-2.5" strokeWidth={1.5} />
+          </a>
+        )}
       </span>
-    </button>
+    </a>
   );
 }
 
@@ -579,7 +620,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         if (loadingJira) return;
         if (jiraResults.length > 0) {
           const issue = jiraResults[activeIdx];
-          if (issue) { onSelectTicket(issue.key); onClose(); }
+          if (issue) { router.push(`/tickets/${issue.key}`); onClose(); }
         } else {
           runJiraSearch();
         }
@@ -742,6 +783,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                       }}
                       onHover={() => setActiveIdx(i)}
                       sprintNameMap={sprintNameMap}
+                      showKey={!showPreview}
                     />
                   </div>
                 ))}
@@ -754,8 +796,17 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     <JiraResultRow
                       issue={issue}
                       active={i === activeIdx}
-                      onSelect={() => { onSelectTicket(issue.key); onClose(); }}
+                      onSelect={(newTab) => {
+                        if (newTab) {
+                          window.open(`/tickets/${issue.key}`, "_blank", "noopener,noreferrer");
+                          window.focus();
+                        } else {
+                          router.push(`/tickets/${issue.key}`);
+                          onClose();
+                        }
+                      }}
                       onHover={() => setActiveIdx(i)}
+                      showKey={!showPreview}
                     />
                   </div>
                 ))}

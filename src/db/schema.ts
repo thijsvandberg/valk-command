@@ -238,7 +238,7 @@ export const activityLog = sqliteTable("activity_log", {
     enum: [
       "sprint-sync", "ticket-sync", "single-ticket", "comment-sync", "webhook",
       "review", "metadata-update", "local-edit", "push-to-jira", "bulk-action",
-      "story-writer",
+      "story-writer", "incremental-sync",
     ],
   }).notNull(),
   scope: text("scope"),

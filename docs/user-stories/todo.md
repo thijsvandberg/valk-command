@@ -7,7 +7,6 @@ scenario package uitwerken, voor test agent
 
 
 ---
-
 Chat: in de system prompt misschien toevoegen dat de AI zelf geen schrijrechten heeft, dus voorstellen om zelf dingen aan te passen gaat nooit werken.
 
 ---------------------------------------
@@ -41,14 +40,12 @@ App toolbar met verschllende pane voorbeelden: CHAT    <chat actions: logs> | Ed
   - chat window altijd links
   - editor altijd midden of links (als chat verborgen is)
 
-Ik wil de chat in de story writer verbeteren:
-- Je moet de "Draft" ook in de chat kunnen bekijken, nu zie je alleen een knopje. Je wil dit als chat bericht (in markdown), in de editor kunnen bekijken.
-- toon de totale tijd tot dat de reactie van de ai kwam.
-- De chat responses vanuit de valk remote workspace moet niet alleen een draft (dus draft knopje) returnen, maar ook een kort begeleidend berichtje, en wanneer relevant: een vervolg vraag.
-- [x] als je veel aan het typen bent, dan moet het chat input veld automatisch groter worden.
-- [x] Je moet het chat input veld zelf ook groter kunnen maken
-- [x] Voeg in de chat berichten ook subtiel een tijd toe (verzonden en ontvangen). Evt achter een hover / "i" tje oid.
-- [x] Lange berichten moeten afgekort worden, en moet een nette uitklap knop bij
+
+
+
+
+
+
 
 - Per-type skills: zie VC-033
 
@@ -57,3 +54,28 @@ Ik wil de chat in de story writer verbeteren:
 Ik wil in de story writer chat related stories kunnen opzoeken. Deze moeten vervolgens doorgegeven worden aan VC. In VC chat, moet dit netjes (incl score) gepresenteerd worden en moet je de links aan kunnen klikken. Deze moeten in de sidepannel (rechts) openen. en met CMD click moet de story single view in nieuw tabblad geopend worden. Deze related storires moet je via de chat en de sidebar view kunnen markeren om te linken aan de story als related story.
 Er is al een skill: /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace/.claude/skills/find-related.md, deze moet omgebouwd worden.
 Deze find related kan via de quick actions (achter het knopje) in de chat worden gestart.
+
+### Sprint board
+- Right click context menu
+- In all / saved tab een modus dat hij per sprint groeppeert, zodat je met drag&drop een item kunt verplaatsen naar een andere sprint
+- De volgorde van jira in een sprint moet ook de volgorde zijn in een sprint board op VC, tenzij er een sorting actief is.
+- De drag & drop volgorde veranderen werkt niet. Het updaten van de volgorde moet ook bijgewerkt worden in Jira.
+
+### Editor
+- Met / moet je makkelijk een note etc kunnen toevoegen
+
+### Chat & Story writer
+
+
+### Misc
+- Bij een epic moet je de children kunnen zien
+
+
+### Logs
+- Logs moeten na 7 dagen gecleared worden
+- Als er een warning in de logs staat, moet de counter/badge gecleared worden als je de logviewer geopend hebt
+
+
+ Claude
+ - Reageer in beknopte berichten
+ - Niet te technisch

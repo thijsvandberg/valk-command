@@ -11,6 +11,7 @@ import {
 } from "react";
 import useSWR from "swr";
 import { useJiraHealth } from "@/hooks/useSprintBoard";
+import { useIncrementalSync } from "@/hooks/useIncrementalSync";
 import type { ActivityLogEntry } from "@/types/ticket";
 
 export type ActivityState = "idle" | "syncing" | "error";
@@ -28,6 +29,9 @@ interface ActivityContextValue {
   jiraOnline: boolean;
   toasts: Toast[];
   runningEntries: ActivityLogEntry[];
+  incrementalSyncRemaining: number;
+  incrementalSyncLastAt: string | null;
+  incrementalSyncLastCount: number;
   triggerSync: (type: "sprint" | "tickets" | "comments", scope?: string) => Promise<void>;
   cancelEntry: (id: string) => Promise<void>;
   cancelAllEntries: () => Promise<void>;
@@ -94,6 +98,12 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   );
 
   const { data: health, mutate: mutateHealth } = useJiraHealth();
+
+  const {
+    remaining: incrementalSyncRemaining,
+    lastSyncAt: incrementalSyncLastAt,
+    lastSyncCount: incrementalSyncLastCount,
+  } = useIncrementalSync(mutateActivityLog);
 
   const toasts = useMemo(
     () => toastEntries.filter((t) => !dismissedIds.has(t.id)),
@@ -185,6 +195,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         lastEntry,
         unacknowledgedErrors,
         runningEntries,
+        incrementalSyncRemaining,
+        incrementalSyncLastAt,
+        incrementalSyncLastCount,
         logEntries: entries,
         jiraOnline,
         toasts,

@@ -17,9 +17,12 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  Clock,
   GripHorizontal,
   Link2,
+  AlertCircle,
+  RotateCcw,
+  Info,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useCallback } from "react";
@@ -48,6 +51,7 @@ interface StoryWriterChatProps {
   messageDraftMap: Record<string, string>;
   draftContentMap: Record<string, string>;
   onViewDraft?: (draftId: string) => void;
+  onOpenLogs?: (taskId: string) => void;
   issueType?: IssueType;
 }
 
@@ -96,7 +100,29 @@ const QUICK_ACTIONS: {
 
 const promptsFetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const MESSAGE_COLLAPSE_HEIGHT = 200;
+const SHOW_MORE_WORD_THRESHOLD = 80;
+const TRUNCATE_WORD_COUNT = 40;
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter((s) => s.length > 0).length;
+}
+
+function truncateAtWords(text: string, maxWords: number): string {
+  const parts = text.split(/(\s+)/);
+  let count = 0;
+  let idx = 0;
+  for (; idx < parts.length; idx++) {
+    const w = parts[idx].trim();
+    if (w.length > 0) {
+      count++;
+      if (count >= maxWords) {
+        idx++;
+        break;
+      }
+    }
+  }
+  return parts.slice(0, idx).join("") + "...";
+}
 
 function RelatedStoriesInline({
   candidates,
@@ -200,26 +226,94 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainSeconds}s`;
 }
 
+function MessageInfoButton({
+  message,
+  logsTaskId,
+  onOpenLogs,
+  isUser,
+}: {
+  message: Message;
+  logsTaskId: string | null;
+  onOpenLogs?: (taskId: string) => void;
+  isUser: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0 self-end mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Message info"
+        className={`flex size-[22px] items-center justify-center rounded-full border cursor-pointer transition-colors duration-150 ${
+          open
+            ? "border-white/[0.15] bg-white/[0.10] text-white/70"
+            : "border-white/[0.08] bg-white/[0.04] text-white/35 hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white/60"
+        }`}
+      >
+        <Info size={11} strokeWidth={1.5} />
+      </button>
+
+      {open && (
+        <div
+          className={`absolute bottom-full mb-2 w-52 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-20 p-3 ${
+            isUser ? "left-0" : "right-0"
+          }`}
+        >
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-white/35">Sent</span>
+              <span className="text-[11px] tabular-nums text-white/65">{formatTimestamp(message.timestamp)}</span>
+            </div>
+
+            {logsTaskId && onOpenLogs && (
+              <>
+                <div className="h-px bg-white/[0.06]" />
+                <button
+                  type="button"
+                  onClick={() => { onOpenLogs(logsTaskId); setOpen(false); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-white/50 hover:text-white/80 hover:bg-white/[0.06] cursor-pointer transition-colors duration-150"
+                >
+                  <ExternalLink size={11} strokeWidth={1.5} className="shrink-0" />
+                  View execution logs
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChatMessage({
   message,
   draftId,
   draftContent,
   onViewDraft,
-  isLastAssistant,
-  lastResponseDurationMs,
+  logsTaskId,
+  onOpenLogs,
   onStoryKeyClick,
 }: {
   message: Message;
   draftId?: string;
   draftContent?: string;
   onViewDraft?: (draftId: string) => void;
-  isLastAssistant?: boolean;
-  lastResponseDurationMs?: number | null;
+  logsTaskId?: string | null;
+  onOpenLogs?: (taskId: string) => void;
   onStoryKeyClick?: (key: string) => void;
 }) {
   const isUser = message.role === "user";
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [draftExpanded, setDraftExpanded] = useState(false);
 
@@ -243,17 +337,22 @@ function ChatMessage({
     .trim();
 
   const draftOnly = !displayContent && !!draftId;
-
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    setIsOverflowing(el.scrollHeight > MESSAGE_COLLAPSE_HEIGHT);
-  }, [displayContent]);
+  const isLong = countWords(displayContent) > SHOW_MORE_WORD_THRESHOLD;
+  const truncatedContent = isLong ? truncateAtWords(displayContent, TRUNCATE_WORD_COUNT) : displayContent;
 
   return (
-    <div className={`group flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`group flex items-end gap-1.5 ${isUser ? "justify-end" : "justify-start"}`}>
+      {isUser && (displayContent || draftId) && (
+        <MessageInfoButton
+          message={message}
+          logsTaskId={logsTaskId ?? null}
+          onOpenLogs={onOpenLogs}
+          isUser={true}
+        />
+      )}
+
       <div
-        className={`max-w-[88%] rounded-xl text-sm leading-[1.75] ${
+        className={`max-w-[85%] rounded-xl text-sm leading-[1.75] ${
           draftOnly
             ? ""
             : isUser
@@ -264,21 +363,19 @@ function ChatMessage({
         {displayContent && (
           <div>
             <div
-              ref={contentRef}
               onClick={handleContentClick}
-              className="description-content chat-markdown overflow-hidden transition-[max-height] duration-300 ease-out"
-              style={!expanded && isOverflowing ? { maxHeight: MESSAGE_COLLAPSE_HEIGHT } : undefined}
+              className="description-content chat-markdown"
             >
-              {renderMarkdown(displayContent)}
+              {renderMarkdown(expanded ? displayContent : truncatedContent)}
             </div>
-            {isOverflowing && (
+            {isLong && (
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
                 className={`flex items-center gap-1 text-[11px] cursor-pointer transition-colors duration-150 ${
                   expanded
                     ? "mt-1 text-white/35 hover:text-white/55"
-                    : "-mt-1 pt-3 text-white/45 hover:text-white/65 border-t border-white/[0.06] w-full"
+                    : "mt-1 text-white/45 hover:text-white/65"
                 }`}
               >
                 {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
@@ -317,19 +414,16 @@ function ChatMessage({
             )}
           </div>
         )}
-        {/* Timestamp + duration footer */}
-        <div className={`flex items-center gap-2 mt-1.5 ${displayContent || draftId ? "" : "hidden"}`}>
-          <span className="text-[10px] text-white/0 group-hover:text-white/30 transition-colors duration-200 select-none tabular-nums">
-            {formatTimestamp(message.timestamp)}
-          </span>
-          {isLastAssistant && lastResponseDurationMs != null && (
-            <span className="flex items-center gap-0.5 text-[10px] text-white/30 select-none tabular-nums">
-              <Clock size={9} strokeWidth={1.5} />
-              {formatDuration(lastResponseDurationMs)}
-            </span>
-          )}
-        </div>
       </div>
+
+      {!isUser && (displayContent || draftId) && (
+        <MessageInfoButton
+          message={message}
+          logsTaskId={logsTaskId ?? null}
+          onOpenLogs={onOpenLogs}
+          isUser={false}
+        />
+      )}
     </div>
   );
 }
@@ -474,6 +568,7 @@ export function StoryWriterChat({
   messageDraftMap,
   draftContentMap,
   onViewDraft,
+  onOpenLogs,
   issueType = "story",
 }: StoryWriterChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -497,6 +592,7 @@ export function StoryWriterChat({
   const resizeStartH = useRef(0);
 
   const isStreaming = status === "streaming" || status === "sending";
+  const isBusy = isStreaming || sending;
 
   // Find the last assistant message index
   const lastAssistantIdx = (() => {
@@ -505,6 +601,27 @@ export function StoryWriterChat({
     }
     return -1;
   })();
+
+  // For each message, compute which workspace task ID it's associated with (for log linking)
+  const messageLogsTaskIds = messages.map((msg, idx) => {
+    if (msg.role === "user") return msg.workspaceTaskId ?? null;
+    // For assistant messages: find the preceding user message's task ID
+    for (let i = idx - 1; i >= 0; i--) {
+      if (messages[i].role === "user" && messages[i].workspaceTaskId) {
+        return messages[i].workspaceTaskId ?? null;
+      }
+    }
+    return null;
+  });
+
+  // Detect a dangling user message: last message is from the user and we're not streaming
+  const unansweredIdx =
+    !isStreaming &&
+    status === "ready" &&
+    messages.length > 0 &&
+    messages[messages.length - 1].role === "user"
+      ? messages.length - 1
+      : -1;
 
   // Find the last message that contained a <related-stories> block (anchors inline panel to that message)
   const lastRelatedMsgIdx = (() => {
@@ -527,7 +644,7 @@ export function StoryWriterChat({
     function handleMouseMove(e: MouseEvent) {
       if (!resizeDragging.current) return;
       const delta = resizeStartY.current - e.clientY;
-      const newHeight = Math.max(60, Math.min(400, resizeStartH.current + delta));
+      const newHeight = Math.max(28, Math.min(400, resizeStartH.current + delta));
       setManualInputHeight(newHeight);
     }
 
@@ -581,8 +698,16 @@ export function StoryWriterChat({
 
   const fillInput = useCallback((text: string) => {
     setInputValue(text);
-    setTimeout(() => textareaRef.current?.focus(), 0);
-  }, []);
+    // Trigger auto-grow after state update settles
+    setTimeout(() => {
+      const el = textareaRef.current;
+      if (el && !manualInputHeight) {
+        el.style.height = "auto";
+        el.style.height = `${Math.min(el.scrollHeight, 300)}px`;
+      }
+      el?.focus();
+    }, 0);
+  }, [manualInputHeight]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -609,10 +734,18 @@ export function StoryWriterChat({
                 draftId={messageDraftMap[msg.id]}
                 draftContent={messageDraftMap[msg.id] ? draftContentMap[messageDraftMap[msg.id]] : undefined}
                 onViewDraft={onViewDraft}
-                isLastAssistant={idx === lastAssistantIdx}
-                lastResponseDurationMs={lastResponseDurationMs}
+                logsTaskId={messageLogsTaskIds[idx]}
+                onOpenLogs={onOpenLogs}
                 onStoryKeyClick={onStoryKeyClick}
               />
+              {/* Duration line after last assistant message */}
+              {idx === lastAssistantIdx && lastResponseDurationMs != null && (
+                <div className="mt-1 pl-1">
+                  <span className="text-[10px] text-white/25 select-none">
+                    ✻ Responded in {formatDuration(lastResponseDurationMs)}
+                  </span>
+                </div>
+              )}
               {/* Inline related stories anchored to the message that triggered find-related */}
               {idx === lastRelatedMsgIdx && relatedCandidates && relatedCandidates.length > 0 && onLinkCandidate && (
                 <RelatedStoriesInline
@@ -620,6 +753,23 @@ export function StoryWriterChat({
                   onLink={onLinkCandidate}
                   onOpenPanel={onOpenRelatedPanel}
                 />
+              )}
+              {/* Unanswered message indicator */}
+              {idx === unansweredIdx && (
+                <div className="flex justify-end mt-1">
+                  <div className="flex items-center gap-2 px-2 py-1">
+                    <AlertCircle size={11} className="shrink-0 text-amber-500/50" strokeWidth={1.5} />
+                    <span className="text-[10px] text-white/35">No response received</span>
+                    <button
+                      type="button"
+                      onClick={() => onSend(msg.content)}
+                      className="flex items-center gap-1 rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/45 cursor-pointer hover:bg-white/[0.08] hover:text-white/70 transition-colors duration-150"
+                    >
+                      <RotateCcw size={9} strokeWidth={2} />
+                      Retry
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           ))}
@@ -658,10 +808,11 @@ export function StoryWriterChat({
                 key={s.id}
                 type="button"
                 onClick={() => {
+                  if (inputValue.trim()) return;
                   onCodebaseResearchChange(s.enableCodebase === true);
                   fillInput(s.text);
                 }}
-                disabled={isStreaming || sending}
+                disabled={isBusy}
                 className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/65 cursor-pointer hover:bg-white/[0.07] hover:text-white/85 hover:border-white/[0.12] active:scale-[0.97] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {s.label}
@@ -676,11 +827,11 @@ export function StoryWriterChat({
             {/* Resize handle at top */}
             <div
               onMouseDown={handleResizeMouseDown}
-              className="flex h-3 cursor-row-resize items-center justify-center opacity-0 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
+              className="flex h-3 cursor-row-resize items-center justify-center opacity-35 hover:opacity-80 transition-opacity duration-150"
             >
-              <GripHorizontal size={12} className="text-white/25" />
+              <GripHorizontal size={12} className="text-white/40" />
             </div>
-            <div ref={inputWrapperRef} style={manualInputHeight ? { height: manualInputHeight } : undefined}>
+            <div ref={inputWrapperRef} style={manualInputHeight ? { height: manualInputHeight } : undefined} className={manualInputHeight ? "overflow-hidden" : undefined}>
               <textarea
                 ref={textareaRef}
                 value={inputValue}
@@ -693,9 +844,8 @@ export function StoryWriterChat({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Describe what to improve..."
-                disabled={isStreaming || sending}
-                rows={2}
-                className="w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/40 focus:outline-none disabled:opacity-50"
+                rows={1}
+                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/40 focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
               />
             </div>
             {/* Bottom toolbar inside input */}
@@ -713,9 +863,9 @@ export function StoryWriterChat({
                   open={showActions}
                   onToggle={() => setShowActions((v) => !v)}
                   onClose={() => setShowActions(false)}
-                  disabled={isStreaming || sending}
+                  disabled={isBusy}
                 />
-                {usage && (
+                {usage && (usage.inputTokens > 0 || usage.outputTokens > 0) && (
                   <span className="text-[10px] text-white/40 tabular-nums">
                     {(usage.inputTokens / 1000).toFixed(1)}k&nbsp;in&nbsp;·&nbsp;{(usage.outputTokens / 1000).toFixed(1)}k&nbsp;out
                     {usage.cost > 0 && <>&nbsp;·&nbsp;${usage.cost.toFixed(4)}</>}
@@ -730,7 +880,7 @@ export function StoryWriterChat({
                     const next = (current + 1) % MODEL_OPTIONS.length;
                     onModelChange(MODEL_OPTIONS[next].value);
                   }}
-                  disabled={isStreaming || sending}
+                  disabled={isBusy}
                   className="flex h-7 items-center gap-1 rounded-md border border-white/[0.10] bg-white/[0.04] px-2.5 font-mono text-[10px] tracking-[0.04em] text-white/55 cursor-pointer hover:text-white/75 hover:border-white/[0.15] hover:bg-white/[0.07] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Switch model"
                 >
@@ -739,7 +889,7 @@ export function StoryWriterChat({
                 <button
                   type="button"
                   onClick={() => onCodebaseResearchChange(!codebaseResearch)}
-                  disabled={isStreaming || sending}
+                  disabled={isBusy}
                   title={codebaseResearch ? "Codebase research on" : "Codebase research off"}
                   className={`flex h-7 items-center gap-1 rounded-md border px-2.5 text-[10px] cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${
                     codebaseResearch
@@ -753,10 +903,10 @@ export function StoryWriterChat({
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={!inputValue.trim() || sending || isStreaming}
+                  disabled={!inputValue.trim() || isBusy}
                   className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--color-brand-600)] text-white shadow-[0_1px_4px_rgba(46,145,73,0.15)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-transform duration-150 disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:bg-[var(--color-brand-600)]"
                 >
-                  {sending || isStreaming ? (
+                  {isBusy ? (
                     <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
                   ) : (
                     <SendHorizontal className="h-3 w-3" strokeWidth={2} />
