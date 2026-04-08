@@ -7,18 +7,37 @@ import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
 
 const WATERMARK_KEY = "jira_sync_watermark";
+const COOLDOWN_KEY = "jira_sync_last_run";
 const BATCH_LIMIT = 50;
+const COOLDOWN_MS = 120_000;
 
 /**
  * POST /api/jira/sync-incremental
  *
- * Watermark-based incremental sync. Lightweight background operation that
- * does NOT write to the activity log (status is tracked client-side via
- * the useIncrementalSync hook and shown in the SyncIndicator banner).
+ * Watermark-based incremental sync with server-side cooldown.
+ * Rejects requests within 120s of the last run to prevent rapid re-fires
+ * regardless of client behavior.
  */
 export async function POST() {
   if (!jiraClient.isLive) {
     return NextResponse.json({ ok: false, error: "Jira not configured" }, { status: 503 });
+  }
+
+  // Server-side cooldown: reject if last run was too recent
+  const lastRunRow = await db.query.appSetting.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.key, COOLDOWN_KEY),
+  });
+  if (lastRunRow) {
+    const elapsed = Date.now() - new Date(lastRunRow.value).getTime();
+    if (elapsed < COOLDOWN_MS) {
+      return NextResponse.json({
+        ok: true,
+        count: 0,
+        remaining: 0,
+        skipped: true,
+        cooldownRemaining: Math.ceil((COOLDOWN_MS - elapsed) / 1000),
+      });
+    }
   }
 
   const watermarkRow = await db.query.appSetting.findFirst({
@@ -32,6 +51,9 @@ export async function POST() {
       error: "No watermark found. Run a full sprint sync first.",
     }, { status: 200 });
   }
+
+  // Mark this run timestamp before doing any work
+  await upsertSetting(COOLDOWN_KEY, new Date().toISOString());
 
   const watermark = watermarkRow.value;
 
@@ -53,7 +75,7 @@ export async function POST() {
 
     if (staleItems.length === 0) {
       const latestTimestamp = changed[changed.length - 1].updated;
-      await setWatermark(latestTimestamp);
+      await upsertSetting(WATERMARK_KEY, latestTimestamp);
       return NextResponse.json({ ok: true, count: 0, remaining: 0, watermark: latestTimestamp });
     }
 
@@ -79,7 +101,7 @@ export async function POST() {
       results.push(info);
 
       if (issue.fields.updated) {
-        await setWatermark(issue.fields.updated);
+        await upsertSetting(WATERMARK_KEY, issue.fields.updated);
       }
     }
 
@@ -113,13 +135,13 @@ export async function POST() {
   }
 }
 
-async function setWatermark(value: string) {
+async function upsertSetting(key: string, value: string) {
   const existing = await db.query.appSetting.findFirst({
-    where: (row, { eq: eqFn }) => eqFn(row.key, WATERMARK_KEY),
+    where: (row, { eq: eqFn }) => eqFn(row.key, key),
   });
   if (existing) {
-    await db.update(appSetting).set({ value }).where(eq(appSetting.key, WATERMARK_KEY));
+    await db.update(appSetting).set({ value }).where(eq(appSetting.key, key));
   } else {
-    await db.insert(appSetting).values({ key: WATERMARK_KEY, value });
+    await db.insert(appSetting).values({ key, value });
   }
 }
