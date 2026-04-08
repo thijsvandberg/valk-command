@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
-import { EPIC_COLORS, getEpicColor, PO_STATUS_OPTIONS } from "@/types/ticket";
+import { EPIC_COLORS, getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
 import { PO_STATUS_COLORS, type ColumnId } from "./FilterBar";
 import { IssueTypeIcon } from "../shared/IssueTypeIcon";
 import { Avatar } from "../shared/Avatar";
@@ -99,15 +99,6 @@ function getJiraUrl(ticketKey: string): string {
 
 export { getJiraUrl };
 
-// -- JIRA status colors (inline for table rendering) --
-
-const JIRA_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  "TO DO": { bg: "rgba(148, 163, 184, 0.12)", text: "#94a3b8" },
-  "IN PROGRESS": { bg: "rgba(46, 145, 73, 0.15)", text: "#4aaa60" },
-  TEST: { bg: "rgba(234, 179, 8, 0.15)", text: "#eab308" },
-  DONE: { bg: "rgba(46, 145, 73, 0.25)", text: "#2e9149" },
-  DEPRECATED: { bg: "rgba(239, 68, 68, 0.12)", text: "#ef4444" },
-};
 
 // -- Quality score badge (clickable to show review popover) --
 

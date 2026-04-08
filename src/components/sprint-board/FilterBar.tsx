@@ -687,7 +687,7 @@ export function FilterBar({
         selected={statusFilter}
         onChange={onStatusFilterChange}
         renderOption={(v) => {
-          const color = JIRA_STATUS_COLORS[v];
+          const color = JIRA_STATUS_COLORS[v as keyof typeof JIRA_STATUS_COLORS];
           return (
             <span className="flex items-center gap-2">
               <span

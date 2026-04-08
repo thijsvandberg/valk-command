@@ -2,7 +2,7 @@
 // All mock-data and story-diff types are now sourced from here.
 
 export type IssueType = "task" | "bug" | "story" | "subtask" | "spike";
-export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE";
+export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED";
 export type POStatus =
   | null
   | "Nieuw"
@@ -24,9 +24,10 @@ export const PO_STATUS_OPTIONS: { value: POStatus; label: string }[] = [
 
 export const JIRA_STATUS_COLORS: Record<JiraStatus, { bg: string; text: string }> = {
   "TO DO": { bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8" },
-  "IN PROGRESS": { bg: "rgba(59, 130, 246, 0.15)", text: "#60a5fa" },
-  TEST: { bg: "rgba(168, 85, 247, 0.15)", text: "#c084fc" },
+  "IN PROGRESS": { bg: "rgba(56, 152, 210, 0.15)", text: "#58b4e6" },
+  TEST: { bg: "rgba(120, 90, 220, 0.15)", text: "#9b7ee8" },
   DONE: { bg: "rgba(34, 197, 94, 0.15)", text: "#4ade80" },
+  DEPRECATED: { bg: "rgba(120, 160, 120, 0.12)", text: "#7a9a7a" },
 };
 
 export const EPIC_COLORS: Record<string, { bg: string; text: string }> = {
