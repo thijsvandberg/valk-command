@@ -8,6 +8,7 @@ import { upsertIssue } from "@/lib/upsert-issue";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 const COOLDOWN_KEY = "jira_sync_last_run";
+const LAST_RESULT_KEY = "jira_sync_last_result";
 const BATCH_LIMIT = 50;
 const COOLDOWN_MS = 120_000;
 
@@ -30,9 +31,15 @@ export async function POST() {
   if (lastRunRow) {
     const elapsed = Date.now() - new Date(lastRunRow.value).getTime();
     if (elapsed < COOLDOWN_MS) {
+      const lastResultRow = await db.query.appSetting.findFirst({
+        where: (row, { eq: eqFn }) => eqFn(row.key, LAST_RESULT_KEY),
+      });
+      const lastResult = lastResultRow ? JSON.parse(lastResultRow.value) : {};
       return NextResponse.json({
         ok: true,
         skipped: true,
+        count: lastResult.count ?? 0,
+        remaining: lastResult.remaining ?? 0,
         cooldownRemaining: Math.ceil((COOLDOWN_MS - elapsed) / 1000),
       });
     }
@@ -104,6 +111,8 @@ export async function POST() {
     }
 
     invalidateSearchCache();
+
+    await upsertSetting(LAST_RESULT_KEY, JSON.stringify({ count: results.length, remaining }));
 
     const remainingSuffix = remaining > 0 ? `, ${remaining} remaining` : "";
     await db.insert(activityLog).values({

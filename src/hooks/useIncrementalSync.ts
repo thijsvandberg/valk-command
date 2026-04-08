@@ -22,7 +22,6 @@ interface IncrementalSyncResult {
 export function useIncrementalSync(onSyncComplete?: () => void) {
   const onCompleteRef = useRef(onSyncComplete);
   onCompleteRef.current = onSyncComplete;
-  const runningRef = useRef(false);
 
   const [remaining, setRemaining] = useState(0);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
@@ -30,12 +29,13 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
 
   useEffect(() => {
     let mounted = true;
+    let running = false;
 
     async function runSync() {
-      if (runningRef.current) return;
+      if (running) return;
       if (document.visibilityState !== "visible") return;
 
-      runningRef.current = true;
+      running = true;
       try {
         const res = await fetch("/api/jira/sync-incremental", { method: "POST" });
         if (!res.ok || !mounted) return;
@@ -44,8 +44,9 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
         if (!mounted) return;
 
         if (data.skipped) {
-          // Cooldown hit: mark that we checked, but preserve existing remaining count
           setLastSyncAt(new Date().toISOString());
+          setRemaining(data.remaining ?? 0);
+          setLastSyncCount(data.count ?? 0);
           return;
         }
 
@@ -65,7 +66,7 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
       } catch {
         // Background sync, fail silently
       } finally {
-        runningRef.current = false;
+        running = false;
       }
     }
 
