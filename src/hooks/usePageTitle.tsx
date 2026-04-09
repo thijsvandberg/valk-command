@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 
-const SUFFIX = " | Valk Command";
+const SUFFIX = " | Bridge";
 
 /**
  * Sets the page title via both React 19 <title> hoisting (initial render)

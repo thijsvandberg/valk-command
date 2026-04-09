@@ -1,4 +1,4 @@
-# valk-command
+# Bridge
 
 PO Command Center for Valk Platform. See [docs/plans/2026-03-27-valk-command-prd.md](docs/plans/2026-03-27-valk-command-prd.md) for the full product spec.
 

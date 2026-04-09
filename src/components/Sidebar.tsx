@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { Button } from "@/components/ui/Button";
+import { BridgeMark } from "@/components/shared/BridgeMark";
 
 const navItems = [
   {
@@ -132,26 +133,22 @@ export default function Sidebar() {
           collapsed ? "w-[52px]" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        {/* Header */}
-        <div className={`flex items-center border-b border-white/[0.06] py-3.5 ${collapsed ? "justify-center px-2" : "gap-3 px-5"}`}>
+        {/* Header - no bottom border so it flows into ViewHeader */}
+        <div className={`flex items-center py-3.5 ${collapsed ? "justify-center px-2" : "gap-2.5 px-4"}`}>
           <button
             type="button"
             onClick={toggleCollapsed}
-            className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(46,145,73,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-all duration-150"
+            className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(26,111,194,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-all duration-150 text-white"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <span className="font-[var(--font-display)] text-[13px] font-black tracking-tighter text-white">
-              vc
-            </span>
+            <BridgeMark size={18} />
           </button>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(46,145,73,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] lg:hidden">
-            <span className="font-[var(--font-display)] text-[13px] font-black tracking-tighter text-white">
-              vc
-            </span>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(26,111,194,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] text-white lg:hidden">
+            <BridgeMark size={18} />
           </div>
           {!collapsed && (
             <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-              valk-command
+              Bridge
             </span>
           )}
 

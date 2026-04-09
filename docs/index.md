@@ -1,4 +1,4 @@
-# valk-command docs
+# Bridge docs
 
 PO Command Center for Valk Platform.
 

@@ -5,33 +5,33 @@
   --font-display: "Bricolage Grotesque", "Georgia", sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 
-  --color-brand-50: #eef7f0;
-  --color-brand-100: #d5edd9;
-  --color-brand-200: #addbb5;
-  --color-brand-300: #7ac48a;
-  --color-brand-400: #4aaa60;
-  --color-brand-500: #2e9149;
-  --color-brand-600: #22753a;
-  --color-brand-700: #1d5d30;
-  --color-brand-800: #1a4a29;
-  --color-brand-900: #173d24;
-  --color-brand-950: #0a2213;
+  --color-brand-50: #e8f1fb;
+  --color-brand-100: #c4dcf5;
+  --color-brand-200: #96c2ed;
+  --color-brand-300: #5ea4e3;
+  --color-brand-400: #3389d8;
+  --color-brand-500: #1a6fc2;
+  --color-brand-600: #155a9e;
+  --color-brand-700: #10447a;
+  --color-brand-800: #0c3259;
+  --color-brand-900: #08223d;
+  --color-brand-950: #051526;
 
-  --color-secondary-50: #eef1ff;
-  --color-secondary-100: #dce4ff;
-  --color-secondary-200: #c0d0ff;
-  --color-secondary-300: #93adff;
-  --color-secondary-400: #6486fc;
-  --color-secondary-500: #3d5af8;
-  --color-secondary-600: #2738ed;
-  --color-secondary-700: #1f28d9;
-  --color-secondary-800: #2024b0;
-  --color-secondary-900: #21238b;
-  --color-secondary-950: #181854;
+  --color-secondary-50: #ecfdf8;
+  --color-secondary-100: #cffaeb;
+  --color-secondary-200: #9ff4d8;
+  --color-secondary-300: #63e9c0;
+  --color-secondary-400: #34d4a5;
+  --color-secondary-500: #18b88a;
+  --color-secondary-600: #0f946e;
+  --color-secondary-700: #0b7358;
+  --color-secondary-800: #095943;
+  --color-secondary-900: #073d2f;
+  --color-secondary-950: #04261d;
 
-  --color-surface-base: #0c0f14;
-  --color-surface-elevated: #131820;
-  --color-surface-floating: #1a2030;
+  --color-surface-base: #070b12;
+  --color-surface-elevated: #0c1219;
+  --color-surface-floating: #131c28;
 }
 
 @layer base {

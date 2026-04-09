@@ -15,8 +15,8 @@ const bricolage = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Valk Command",
-    default: "Valk Command",
+    template: "%s | Bridge",
+    default: "Bridge",
   },
   description: "PO Command Center for Valk Platform",
 };
