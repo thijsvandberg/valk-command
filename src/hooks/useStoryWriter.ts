@@ -56,6 +56,8 @@ export function useStoryWriter(ticketKey: string) {
     } catch { /* ignore */ }
   }, [apiBase, setSession]);
 
+  const startMonitoringRef = useRef<((taskId: string, progressMessage?: string) => void) | null>(null);
+
   const monitoring = useTaskMonitoring({
     apiBase,
     unmountedRef,
@@ -67,6 +69,8 @@ export function useStoryWriter(ticketKey: string) {
     onRelatedCandidates: setRelatedCandidates,
     refreshSession,
   });
+
+  useEffect(() => { startMonitoringRef.current = monitoring.startMonitoring; }, [monitoring.startMonitoring]);
 
   const drafts = useStoryWriterDrafts({
     apiBase,
@@ -109,7 +113,7 @@ export function useStoryWriter(ticketKey: string) {
             ? loadedMsgs.some((m: Message) => m.role === "assistant" && m.timestamp > lastUserMsg.timestamp)
             : true;
           if (lastUserMsg?.workspaceTaskId && !hasFollowingAssistant && !cancelled) {
-            monitoring.startMonitoring(lastUserMsg.workspaceTaskId, "Resuming...");
+            startMonitoringRef.current?.(lastUserMsg.workspaceTaskId, "Resuming...");
           } else {
             setStatus("ready");
           }
@@ -148,7 +152,7 @@ export function useStoryWriter(ticketKey: string) {
 
     init();
     return () => { cancelled = true; };
-  }, [apiBase, setSession, monitoring]);
+  }, [apiBase, setSession]);
 
   const sendMessage = useCallback(async (content: string, skill?: string): Promise<boolean> => {
     if (!session) return false;

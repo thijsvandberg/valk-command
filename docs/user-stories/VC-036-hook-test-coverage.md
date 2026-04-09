@@ -1,6 +1,6 @@
 # VC-036: Missing Hook Test Coverage
 
-**Status:** Open
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
@@ -14,26 +14,19 @@
 | `useConversations.ts` | Yes | Low |
 | `useLocalStorage.ts` | Yes | Low |
 | `useMessages.ts` | Yes | Medium |
-| `usePageTitle.tsx` | Yes | Low |
-| `useIncrementalSync.ts` | No | High (background polling, abort signals) |
-| `useJobs.ts` | No | Medium (CRUD + optimistic updates) |
-| `useSprintBoard.ts` | No | High (13 exports, SWR composition) |
-| `useStoryWriter.ts` | No | Very High (722 lines, SSE streaming, state machine) |
-| `useWorkspaceHealth.ts` | No | Medium (polling, health state) |
-| `useWorkspaceTask.ts` | No | High (streaming, task lifecycle) |
-| `useStoryWriter.ts` | No | Very High |
+| `usePageTitle.tsx` | Yes (added) | Low |
+| `useIncrementalSync.ts` | Yes (added) | High |
+| `useJobs.ts` | Yes (added) | Medium |
+| `useSprintBoard.ts` | Yes (added) | High |
+| `useStoryWriter.ts` | Yes (added) | Very High |
+| `useStoryWriterDrafts.ts` | Yes (added) | Medium |
+| `useTaskMonitoring.ts` | Yes (added) | High |
+| `useWorkspaceHealth.ts` | Yes (added) | Medium |
+| `useWorkspaceTask.ts` | Yes (added) | High |
 
 ## Acceptance Criteria
 
-- [ ] Test file exists for every hook in `src/hooks/`
-- [ ] Tests cover the primary success and error paths
-- [ ] Tests use `@testing-library/react` renderHook pattern
-- [ ] All tests pass in CI
-
-## Priority Order
-
-1. `useStoryWriter` (most complex, highest risk)
-2. `useSprintBoard` (most exports, widely used)
-3. `useIncrementalSync` (background sync logic)
-4. `useWorkspaceTask` (streaming logic)
-5. `useWorkspaceHealth`, `useJobs` (simpler)
+- [x] Test file exists for every hook in `src/hooks/`
+- [x] Tests cover the primary success and error paths
+- [x] Tests use `@testing-library/react` renderHook pattern
+- [x] All tests pass in CI
