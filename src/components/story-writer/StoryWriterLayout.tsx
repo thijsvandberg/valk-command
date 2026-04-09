@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
+import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -47,6 +48,7 @@ interface StoryWriterLayoutProps {
 
 export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const writer = useStoryWriter(ticketKey);
+  const { notify } = useNotification();
   const { data: ticketData } = useTicketDetail(ticketKey);
   const { data: reviewData } = useTicketReviews(ticketKey);
   const latestReview = reviewData?.reviews?.[0];
@@ -132,6 +134,21 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [targetTicketKey]);
+
+  // Notify when a story writer response completes while tab is hidden
+  const prevWriterStatus = useRef(writer.status);
+  useEffect(() => {
+    if (prevWriterStatus.current === "streaming" && writer.status === "ready") {
+      notify("Story Writer response ready", {
+        body: ticketKey,
+        tag: "story-writer-response",
+        onClick: () => {
+          window.focus();
+        },
+      });
+    }
+    prevWriterStatus.current = writer.status;
+  }, [writer.status, notify, ticketKey]);
 
   // Check initial dirty state once session and ticket data are both loaded.
   // If localDraft or localTitle differs from Jira, the user made edits in a prior session.

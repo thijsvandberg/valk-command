@@ -1,13 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Settings2, MessageSquare, Clock } from "lucide-react";
+import { Settings2, MessageSquare, Clock, Bell } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { TabBar, TabLink } from "@/components/shared/TabBar";
 
 const TABS = [
   { href: "/settings/prompts", label: "Quick Prompts", icon: MessageSquare },
   { href: "/settings/scheduler", label: "Scheduled Tasks", icon: Clock },
+  { href: "/settings/notifications", label: "Notifications", icon: Bell },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

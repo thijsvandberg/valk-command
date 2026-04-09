@@ -23,11 +23,8 @@ const EXPECTED_ROUTES = [
   { path: "/settings", file: "src/app/(app)/settings/page.tsx", name: "Settings" },
   { path: "/settings/prompts", file: "src/app/(app)/settings/prompts/page.tsx", name: "Settings Prompts" },
   { path: "/settings/scheduler", file: "src/app/(app)/settings/scheduler/page.tsx", name: "Settings Scheduler" },
-  { path: "/dev/button-audit", file: "src/app/(app)/dev/button-audit/page.tsx", name: "Button Audit (temp)" },
-  { path: "/dev/headers", file: "src/app/(app)/dev/headers/page.tsx", name: "Header Audit (temp)" },
-  { path: "/header-text", file: "src/app/(app)/header-text/page.tsx", name: "Header Text Audit (temp)" },
-  { path: "/explore-theme", file: "src/app/(app)/explore-theme/page.tsx", name: "Theme Explorer (temp)" },
-  { path: "/explore-theme/logo", file: "src/app/(app)/explore-theme/logo/page.tsx", name: "Logo Explorer (temp)" },
+  { path: "/settings/notifications", file: "src/app/(app)/settings/notifications/page.tsx", name: "Settings Notifications" },
+  { path: "/dev/header-variants", file: "src/app/(app)/dev/header-variants/page.tsx", name: "Dev Header Variants" },
 ];
 
 // API route manifest: ensures search API route files exist

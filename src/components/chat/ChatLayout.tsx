@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
 import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
+import { useNotification } from "@/hooks/useNotification";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { parseSkillInvocation, parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import ConversationList from "./ConversationList";
@@ -42,6 +43,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   } = useMessages(activeId);
 
   const workspaceTask = useWorkspaceTask();
+  const { notify } = useNotification();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
   const pageTitle = usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
 
@@ -113,6 +115,12 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
     savedTaskRef.current = workspaceTask.taskId;
 
+    const firstLine = workspaceTask.output.split("\n").find((l) => l.trim())?.slice(0, 120) ?? "";
+    notify("Chat response ready", {
+      body: firstLine,
+      tag: "chat-response",
+    });
+
     const displayContent = workspaceTask.output;
 
     fetch(`/api/conversations/${activeId}/messages`, {
@@ -145,7 +153,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         }).catch(() => {});
       }
     }
-  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages]);
+  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages, notify]);
 
   return (
     <>
