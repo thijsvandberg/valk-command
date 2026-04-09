@@ -1,6 +1,6 @@
 # VC-034: Shared UI Primitives
 
-**Status:** Open
+**Status:** In Progress
 **Priority:** High
 
 ## Description
@@ -42,14 +42,14 @@ All variants use `rounded-xl`.
 
 ### Acceptance Criteria
 
-- [ ] Create `src/components/shared/Card.tsx` with the 4 variants above
-- [ ] Add tests in `src/components/shared/Card.test.tsx`
-- [ ] Migrate usages:
-  - [ ] `JobsPanel.tsx` job rows (line ~31), form container (line ~114), empty state card (line ~215)
-  - [ ] `SprintInsights.tsx` main container (line ~63), stat cards (line ~88)
-  - [ ] `RelatedStoriesPanel.tsx` candidate cards (line ~76)
-  - [ ] `BulkActionBar.tsx` dropdown menu (line ~52)
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Create `src/components/shared/Card.tsx` with the 4 variants above
+- [x] Add tests in `src/components/shared/Card.test.tsx`
+- [x] Migrate usages:
+  - [x] `JobsPanel.tsx` job rows (line ~31), form container (line ~114), empty state card (line ~215)
+  - [x] `SprintInsights.tsx` stat cards (line ~88) -- main container skipped: uses `bg-[var(--color-surface-elevated)]` which doesn't match any Card variant
+  - [ ] `RelatedStoriesPanel.tsx` candidate cards (line ~76) -- skipped: conditional selected/unselected styling too custom for Card
+  - [x] `BulkActionBar.tsx` dropdown menu (line ~52)
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 

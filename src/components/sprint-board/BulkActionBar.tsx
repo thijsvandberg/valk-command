@@ -6,6 +6,7 @@ import { PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS } from "./FilterBar";
 import { POStatusIcon } from "./TicketTable";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/shared/Card";
 
 export function BulkActionBar({
   count,
@@ -51,7 +52,7 @@ export function BulkActionBar({
           Set PO Status
         </Button>
         {showStatusDropdown && (
-          <div className="absolute bottom-full left-0 z-50 mb-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          <Card variant="floating" className="absolute bottom-full left-0 z-50 mb-1 w-52 py-1">
             {PO_STATUS_OPTIONS.map((opt) => {
               const optColors = opt.value ? PO_STATUS_COLORS[opt.value] : null;
               return (
@@ -71,7 +72,7 @@ export function BulkActionBar({
                 </button>
               );
             })}
-          </div>
+          </Card>
         )}
       </div>
       <Button

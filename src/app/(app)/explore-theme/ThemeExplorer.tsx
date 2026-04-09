@@ -649,7 +649,7 @@ export function ThemeExplorer() {
               >
                 <div className="w-3 h-3 rounded-full" style={{ background: t.brand[500] }} />
                 <span style={{ fontFamily: "var(--font-display)" }}>{t.name}</span>
-                {t.accent[500] !== t.brand[500] && (
+                {(t.accent[500] as string) !== (t.brand[500] as string) && (
                   <div className="w-2.5 h-2.5 rounded-full -ml-1" style={{ background: t.accent[500] }} />
                 )}
               </button>

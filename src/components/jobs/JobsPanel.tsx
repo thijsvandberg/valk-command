@@ -5,6 +5,7 @@ import { useJobs } from "@/hooks/useJobs";
 import type { ScheduledJob } from "@/db/schema";
 import { isValidCron } from "@/lib/cron";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/shared/Card";
 
 interface CreateFormState {
   name: string;
@@ -29,7 +30,7 @@ function JobRow({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 transition-colors hover:bg-white/[0.05]">
+    <Card className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.05]">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-[var(--font-display)] text-sm font-semibold text-white truncate">
@@ -69,7 +70,7 @@ function JobRow({
           Delete
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -108,10 +109,8 @@ function CreateForm({ onSubmit, onCancel }: CreateFormProps) {
   const labelClass = "block text-xs font-medium text-white/50 mb-1";
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 space-y-4"
-    >
+    <Card className="p-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <h3 className="font-[var(--font-display)] text-sm font-semibold text-white">New scheduled job</h3>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -170,6 +169,7 @@ function CreateForm({ onSubmit, onCancel }: CreateFormProps) {
         </Button>
       </div>
     </form>
+    </Card>
   );
 }
 
@@ -214,10 +214,10 @@ export default function JobsPanel() {
       )}
 
       {!loading && jobs.length === 0 && !showForm && (
-        <div className="rounded-xl border border-dashed border-white/[0.08] px-6 py-12 text-center">
+        <Card variant="dashed" className="px-6 py-12 text-center">
           <p className="text-sm text-white/30">No scheduled jobs yet.</p>
           <p className="mt-1 text-xs text-white/20">Create a job to automate recurring workspace tasks.</p>
-        </div>
+        </Card>
       )}
 
       <div className="space-y-2">

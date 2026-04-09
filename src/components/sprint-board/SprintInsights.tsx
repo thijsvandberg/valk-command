@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Ticket } from "@/types/ticket";
 import { Clock, ChevronDown } from "lucide-react";
+import { Card } from "@/components/shared/Card";
 
 // ---------------------------------------------------------------------------
 // Insight computation from existing ticket data
@@ -85,7 +86,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
         <div className="border-t border-white/[0.04] px-4 py-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {/* Stale stories */}
-            <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2.5">
+            <Card variant="subtle" className="px-3 py-2.5">
               <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
                 Stale Stories
               </div>
@@ -98,10 +99,10 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 </span>
                 <span className="text-[10px] text-white/20">outdated scores</span>
               </div>
-            </div>
+            </Card>
 
             {/* Unreviewed */}
-            <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2.5">
+            <Card variant="subtle" className="px-3 py-2.5">
               <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
                 Unreviewed
               </div>
@@ -114,10 +115,10 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 </span>
                 <span className="text-[10px] text-white/20">no score</span>
               </div>
-            </div>
+            </Card>
 
             {/* Blocked */}
-            <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2.5">
+            <Card variant="subtle" className="px-3 py-2.5">
               <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
                 Blocked
               </div>
@@ -130,10 +131,10 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 </span>
                 <span className="text-[10px] text-white/20">flagged</span>
               </div>
-            </div>
+            </Card>
 
             {/* Average quality */}
-            <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2.5">
+            <Card variant="subtle" className="px-3 py-2.5">
               <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
                 Avg Quality
               </div>
@@ -152,7 +153,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                   <span className="text-sm text-white/15">--</span>
                 )}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       )}
