@@ -2,4 +2,4 @@ export { EditableTitle, EditableDescription, AttachmentsSection, SubtasksSection
 export { TicketHistory } from "./TicketHistory";
 export { TicketReview } from "./TicketReview";
 export { TicketSidebar } from "./TicketSidebar";
-export { SectionHeader } from "./SectionHeader";
+export { SectionHeader } from "@/components/shared/SectionHeader";

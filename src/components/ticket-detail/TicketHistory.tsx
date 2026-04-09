@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { ChevronRight, Save, Info, CloudUpload, Download } from "lucide-react";
-import { SectionHeader } from "./SectionHeader";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 

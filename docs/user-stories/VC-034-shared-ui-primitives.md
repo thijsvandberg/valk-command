@@ -133,12 +133,12 @@ Already exists at `src/components/ticket-detail/SectionHeader.tsx`. Move it to `
 
 ### Acceptance Criteria
 
-- [ ] Move `SectionHeader.tsx` from `ticket-detail/` to `shared/`
-- [ ] Update all imports in `ticket-detail/` files (TicketContent, TicketHistory, TicketReview)
-- [ ] Migrate inline section headers that match this pattern:
-  - [ ] `JobsPanel.tsx` "New scheduled job" h3 (line ~116)
-  - [ ] `TicketRefinement.tsx` "Ready for Refinement" h3 (line ~101)
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Move `SectionHeader.tsx` from `ticket-detail/` to `shared/`
+- [x] Update all imports in `ticket-detail/` files (TicketContent, TicketHistory, TicketReview)
+- [x] Migrate inline section headers that match this pattern:
+  - [ ] `JobsPanel.tsx` -- skipped: no border-b, different layout
+  - [ ] `TicketRefinement.tsx` -- skipped: has flex justify-between layout with badge, incompatible with SectionHeader's self-contained border
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 

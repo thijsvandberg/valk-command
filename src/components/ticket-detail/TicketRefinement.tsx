@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Check } from "lucide-react";
-import { SectionHeader } from "./SectionHeader";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 
 interface TeamEstimate {
   member: string;

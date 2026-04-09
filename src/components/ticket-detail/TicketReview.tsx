@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { mutate as globalMutate } from "swr";
 import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
-import { SectionHeader } from "./SectionHeader";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import type { StoredReview } from "@/types/ticket";
 
