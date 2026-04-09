@@ -1,6 +1,6 @@
 # VC-028: PWA with Tabbed Application Mode
 
-**Status:** Open
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -17,24 +17,24 @@ As the PO, I want to install Valk Command as a PWA with tabbed application mode 
 ## Acceptance Criteria
 
 ### Phase 1: Basic PWA installability
-- [ ] Add `manifest.webmanifest` with app name, colors, icons, and display settings
-- [ ] Add manifest link and required meta tags to the root layout
-- [ ] Add a minimal service worker that satisfies Chrome's installability criteria
-- [ ] Register the service worker from the client
+- [x] Add `manifest.webmanifest` with app name, colors, icons, and display settings
+- [x] Add manifest link and required meta tags to the root layout
+- [x] Add a minimal service worker that satisfies Chrome's installability criteria
+- [x] Register the service worker from the client
 - [ ] App is installable via Chrome's "Install app" prompt
-- [ ] Installed app shows "Valk Command" in the Dock with the correct icon
+- [ ] Installed app shows "Bridge" in the Dock with the correct icon
 
 ### Phase 2: Tabbed mode
-- [ ] Set `display_override: ["tabbed"]` in the manifest
-- [ ] Configure `tab_strip` settings for home tab behavior
+- [x] Set `display_override: ["tabbed"]` in the manifest
+- [x] Configure `tab_strip` settings for home tab behavior
 - [ ] Verify Cmd+T opens a new tab within the PWA window
 - [ ] Verify navigating between views works correctly within tabs
 - [ ] Verify fallback to `standalone` works on unsupported browsers
 
 ### Phase 3: App icons
-- [ ] Generate icon set in required sizes (192x192, 512x512 minimum)
-- [ ] Add maskable icon variant for Android
-- [ ] Add Apple touch icon for Safari/iOS
+- [x] Generate icon set in required sizes (192x192, 512x512 minimum)
+- [x] Add maskable icon variant for Android
+- [x] Add Apple touch icon for Safari/iOS
 
 ## Technical Notes
 
