@@ -17,10 +17,11 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
-import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
+import { LoadingState } from "@/components/shared/LoadingState";
 
 export default function SprintBoard() {
   const { data: rawJiraSprints } = useJiraSprints();
@@ -401,12 +402,7 @@ export default function SprintBoard() {
         )}
 
         {ticketsLoading && (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 size={32} strokeWidth={2} className="animate-spin text-white/20" />
-              <span className="text-sm text-white/30">Loading tickets...</span>
-            </div>
-          </div>
+          <LoadingState variant="spinner" label="Loading tickets..." />
         )}
 
         {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} />}

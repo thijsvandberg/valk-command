@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import type { Message } from "@/types/chat";
 import type { ReviewStoryData } from "@/lib/agent-client";
 import { InlineAlert } from "@/components/shared/InlineAlert";
+import { LoadingState } from "@/components/shared/LoadingState";
 
 interface MessageListProps {
   messages: Message[];
@@ -243,11 +244,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
   }, [messages]);
 
   if (loading && messages.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center" role="status">
-        <span className="text-sm text-white/30">Loading messages...</span>
-      </div>
-    );
+    return <LoadingState label="Loading messages..." />;
   }
 
   if (error) {

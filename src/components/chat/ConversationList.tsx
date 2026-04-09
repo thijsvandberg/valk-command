@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
+import { LoadingState } from "@/components/shared/LoadingState";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -47,9 +48,7 @@ export default function ConversationList({
       )}
 
       {loading && conversations.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center py-8" role="status">
-          <span className="text-sm text-white/30">Loading...</span>
-        </div>
+        <LoadingState className="py-8" />
       ) : conversations.length === 0 ? (
         <EmptyState title="No conversations yet" className="px-2 py-8" />
       ) : (

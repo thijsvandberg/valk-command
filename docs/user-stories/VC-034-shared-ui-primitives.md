@@ -266,13 +266,13 @@ interface LoadingStateProps {
 
 ### Acceptance Criteria
 
-- [ ] Create `src/components/shared/LoadingState.tsx`
-- [ ] Add tests in `src/components/shared/LoadingState.test.tsx`
-- [ ] Migrate usages:
-  - [ ] `ConversationList.tsx` loading state (line ~47)
-  - [ ] `MessageList.tsx` loading state (line ~244)
-  - [ ] `SprintBoard.tsx` loading state (line ~407)
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Create `src/components/shared/LoadingState.tsx`
+- [x] Add tests in `src/components/shared/LoadingState.test.tsx`
+- [x] Migrate usages:
+  - [x] `ConversationList.tsx` loading state (line ~47)
+  - [x] `MessageList.tsx` loading state (line ~244)
+  - [x] `SprintBoard.tsx` loading state (line ~407)
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 
