@@ -10,7 +10,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  let body: any;
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
@@ -48,10 +48,10 @@ export async function POST(request: Request) {
   const id = randomUUID();
   const job = {
     id,
-    name: body.name.trim(),
-    cronExpression: body.cronExpression.trim(),
-    skillName: body.skillName.trim(),
-    enabled: body.enabled ?? true,
+    name: (body.name as string).trim(),
+    cronExpression: (body.cronExpression as string).trim(),
+    skillName: (body.skillName as string).trim(),
+    enabled: (body.enabled as boolean | undefined) ?? true,
     lastRunAt: null,
     lastResultSummary: null,
   };

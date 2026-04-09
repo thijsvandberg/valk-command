@@ -35,7 +35,7 @@ export async function PUT(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  let body: any;
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {

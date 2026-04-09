@@ -691,6 +691,7 @@ export function TicketTable({
   const ticketIds = tickets.map((t) => t.key);
   const activeTicket = activeDragId ? tickets.find((t) => t.key === activeDragId) : null;
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: enableVirtualization ? tickets.length : 0,
     getScrollElement: () => tableContainerRef.current,

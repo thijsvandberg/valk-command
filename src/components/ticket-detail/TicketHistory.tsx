@@ -582,6 +582,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                   style={{ transition: "background-color 0.15s ease" }}
                 >
                   {version.updatedByAvatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={version.updatedByAvatar}
                       alt={version.updatedBy ?? ""}

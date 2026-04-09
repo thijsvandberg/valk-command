@@ -18,7 +18,7 @@ export async function PUT(
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  let body: any;
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
@@ -41,7 +41,7 @@ export async function PUT(
       "Ready",
       "Geparkeerd",
     ];
-    if (!validStatuses.includes(body.poStatus)) {
+    if (!validStatuses.includes(body.poStatus as string | null)) {
       return NextResponse.json(
         { error: "Invalid poStatus value" },
         { status: 400 },

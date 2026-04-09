@@ -114,6 +114,6 @@ describe("GET /api/search/jira", () => {
     const res = await GET(makeRequest({ q: "query" }));
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toContain("Jira unreachable");
+    expect(body.error).toBe("Search failed");
   });
 });

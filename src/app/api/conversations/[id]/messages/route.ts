@@ -22,7 +22,7 @@ export async function POST(
     );
   }
 
-  let body: any;
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
@@ -36,7 +36,7 @@ export async function POST(
     );
   }
 
-  if (!body.role || !VALID_ROLES.includes(body.role)) {
+  if (!body.role || !VALID_ROLES.includes(body.role as typeof VALID_ROLES[number])) {
     return NextResponse.json(
       { error: "role is required and must be 'user' or 'assistant'" },
       { status: 400 },
@@ -49,7 +49,7 @@ export async function POST(
     conversationId: id,
     role: body.role as (typeof VALID_ROLES)[number],
     content: body.content.trim(),
-    workspaceTaskId: body.workspaceTaskId ?? null,
+    workspaceTaskId: (body.workspaceTaskId as string | undefined) ?? null,
   };
 
   await db.insert(message).values(msg);

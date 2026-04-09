@@ -24,9 +24,25 @@ export async function GET(
 
   const email = process.env.JIRA_EMAIL;
   const token = process.env.JIRA_API_TOKEN;
+  const jiraBaseUrl = process.env.NEXT_PUBLIC_JIRA_BASE_URL ?? "";
 
   if (!email || !token) {
     return new NextResponse(null, { status: 503 });
+  }
+
+  // Validate the URL points to the configured Jira instance to prevent SSRF
+  try {
+    const parsed = new URL(att.jiraUrl);
+    const base = new URL(jiraBaseUrl || "https://new-story.atlassian.net");
+    if (parsed.hostname !== base.hostname) {
+      console.error("[attachments] SSRF blocked: URL hostname mismatch", parsed.hostname);
+      return new NextResponse(null, { status: 403 });
+    }
+    if (parsed.protocol !== "https:") {
+      return new NextResponse(null, { status: 403 });
+    }
+  } catch {
+    return new NextResponse(null, { status: 400 });
   }
 
   const auth = Buffer.from(`${email}:${token}`).toString("base64");
@@ -35,6 +51,7 @@ export async function GET(
   try {
     upstream = await fetch(att.jiraUrl, {
       headers: { Authorization: `Basic ${auth}` },
+      signal: AbortSignal.timeout(30_000),
     });
   } catch {
     return new NextResponse(null, { status: 502 });
@@ -44,11 +61,15 @@ export async function GET(
     return new NextResponse(null, { status: upstream.status });
   }
 
+  const sanitizedFilename = att.filename
+    .replace(/["\\\0]/g, "_")
+    .slice(0, 255);
+
   return new NextResponse(upstream.body, {
     headers: {
       "Content-Type": att.mimeType,
       "Cache-Control": "private, max-age=3600",
-      "Content-Disposition": `inline; filename="${att.filename}"`,
+      "Content-Disposition": `inline; filename="${sanitizedFilename}"`,
     },
   });
 }

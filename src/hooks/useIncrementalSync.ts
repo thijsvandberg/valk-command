@@ -30,14 +30,19 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
 
   const runningRef = useRef(false);
   const mountedRef = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
 
   const runSync = useCallback(async () => {
     if (runningRef.current) return;
     if (document.visibilityState !== "visible") return;
 
     runningRef.current = true;
+    abortRef.current = new AbortController();
     try {
-      const res = await fetch("/api/jira/sync-incremental", { method: "POST" });
+      const res = await fetch("/api/jira/sync-incremental", {
+        method: "POST",
+        signal: abortRef.current.signal,
+      });
       if (!res.ok || !mountedRef.current) return;
 
       const data: IncrementalSyncResult = await res.json();
@@ -85,6 +90,7 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
 
     return () => {
       mountedRef.current = false;
+      abortRef.current?.abort();
       clearInterval(id);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };

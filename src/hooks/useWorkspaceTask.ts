@@ -102,9 +102,22 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
           taskId,
         }));
 
-        // Open SSE stream
+        // Open SSE stream with a 5-minute timeout to detect hung tasks
         const es = new EventSource(`/api/workspace-tasks/${taskId}/stream`);
         eventSourceRef.current = es;
+
+        const streamTimeout = setTimeout(() => {
+          es.close();
+          eventSourceRef.current = null;
+          safeSetState((s) => ({
+            ...s,
+            status: "failed",
+            error: "Task timed out after 5 minutes",
+            progressText: "",
+          }));
+        }, 5 * 60 * 1000);
+
+        const clearStreamTimeout = () => clearTimeout(streamTimeout);
 
         es.addEventListener("status", (e) => {
           try {
@@ -137,6 +150,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         });
 
         es.addEventListener("result", (e) => {
+          clearStreamTimeout();
           let data: { output: string; status: string };
           try { data = JSON.parse(e.data); } catch { return; }
           safeSetState((s) => ({
@@ -150,6 +164,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         });
 
         es.addEventListener("error", (e) => {
+          clearStreamTimeout();
           if (e instanceof MessageEvent) {
             let data: { message: string };
             try { data = JSON.parse(e.data); } catch {
@@ -177,6 +192,7 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         });
 
         es.addEventListener("done", () => {
+          clearStreamTimeout();
           es.close();
           eventSourceRef.current = null;
         });

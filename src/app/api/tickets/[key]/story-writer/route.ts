@@ -49,7 +49,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ session, messages, aiDrafts, relatedCandidates });
   } catch (err) {
     console.error("[story-writer GET]", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load story writer session" }, { status: 500 });
   }
 }
 
@@ -148,7 +148,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ session, messages: [], aiDrafts: [] }, { status: 201 });
   } catch (err) {
     console.error("[story-writer POST]", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create story writer session" }, { status: 500 });
   }
 }
 

@@ -62,7 +62,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ issues: [] });
     }
     console.error("[search/jira GET]", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Search failed" }, { status: 500 });
   } finally {
     inFlightController = null;
   }

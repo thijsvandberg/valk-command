@@ -26,21 +26,25 @@ export async function PUT(
 ) {
   const { key } = await params;
 
-  let body: any;
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { field, localValue, baseJiraVersion, isDraft } = body;
+  const rawField = body.field;
+  const localValue = body.localValue;
+  const baseJiraVersion = body.baseJiraVersion as string | undefined;
+  const isDraft = body.isDraft;
 
-  if (!field || !["title", "description"].includes(field)) {
+  if (!rawField || !["title", "description"].includes(rawField as string)) {
     return NextResponse.json(
       { error: "field must be 'title' or 'description'" },
       { status: 400 },
     );
   }
+  const field = rawField as "title" | "description";
 
   if (typeof localValue !== "string") {
     return NextResponse.json(
@@ -59,7 +63,7 @@ export async function PUT(
     .get();
 
   // Resolve baseJiraVersion: use explicit value, keep existing, or look up latest
-  let resolvedBase = baseJiraVersion ?? existing?.baseJiraVersion ?? null;
+  let resolvedBase: string | null = baseJiraVersion ?? existing?.baseJiraVersion ?? null;
   if (!resolvedBase) {
     const latestVersion = await db.query.storyVersion.findFirst({
       where: eq(storyVersion.jiraKey, key),
