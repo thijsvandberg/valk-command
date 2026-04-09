@@ -1,0 +1,128 @@
+"use client";
+
+import Link from "next/link";
+import { FileText, GitCompare } from "lucide-react";
+
+export interface SplitPaneHeaderProps {
+  ticketKey: string;
+  title: string;
+  slot: "original" | "target";
+  collapseIcon: React.ReactNode;
+  onCollapse: () => void;
+  collapseTitle: string;
+  showOriginalButton?: boolean;
+  onShowOriginal?: () => void;
+  showTargetButton?: boolean;
+  onShowTarget?: () => void;
+  paneView?: "editor" | "diff";
+  onPaneViewChange?: (v: "editor" | "diff") => void;
+  hasDrafts?: boolean;
+}
+
+export function SplitPaneHeader({
+  ticketKey,
+  title,
+  slot,
+  collapseIcon,
+  onCollapse,
+  collapseTitle,
+  showOriginalButton,
+  onShowOriginal,
+  showTargetButton,
+  onShowTarget,
+  paneView,
+  onPaneViewChange,
+  hasDrafts,
+}: SplitPaneHeaderProps) {
+  return (
+    <div className="flex items-center gap-2 border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-3 py-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/tickets/${ticketKey}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-xs font-semibold text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
+          >
+            {ticketKey}
+          </Link>
+          <span
+            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+              slot === "original"
+                ? "bg-white/[0.06] text-white/40"
+                : "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]/70"
+            }`}
+          >
+            {slot === "original" ? "Original" : "Split target"}
+          </span>
+        </div>
+        <p className="truncate text-xs text-white/50 leading-tight mt-0.5">{title}</p>
+      </div>
+
+      <div className="flex items-center gap-1">
+        {onPaneViewChange && (
+          <div className="flex items-center gap-0.5 rounded-md bg-white/[0.04] p-0.5">
+            <button
+              type="button"
+              onClick={() => onPaneViewChange("editor")}
+              title="Editor"
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors duration-150 ${
+                paneView === "editor"
+                  ? "bg-[var(--color-surface-floating)] text-white/70 shadow-sm"
+                  : "text-white/35 hover:text-white/55"
+              }`}
+            >
+              <FileText size={11} strokeWidth={1.5} />
+              Editor
+            </button>
+            <button
+              type="button"
+              onClick={() => onPaneViewChange("diff")}
+              title="Diff"
+              className={`relative flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors duration-150 ${
+                paneView === "diff"
+                  ? "bg-[var(--color-surface-floating)] text-white/70 shadow-sm"
+                  : "text-white/35 hover:text-white/55"
+              }`}
+            >
+              <GitCompare size={11} strokeWidth={1.5} />
+              Diff
+              {hasDrafts && paneView !== "diff" && (
+                <span className="absolute right-0.5 top-0.5 h-1 w-1 rounded-full bg-[var(--color-brand-400)]" />
+              )}
+            </button>
+          </div>
+        )}
+
+        {showOriginalButton && onShowOriginal && (
+          <button
+            type="button"
+            onClick={onShowOriginal}
+            title="Show original story"
+            className="rounded px-2 py-1 text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
+          >
+            Show original
+          </button>
+        )}
+        {showTargetButton && onShowTarget && (
+          <button
+            type="button"
+            onClick={onShowTarget}
+            title="Show split target story"
+            className="rounded px-2 py-1 text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
+          >
+            Show target
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onCollapse}
+          title={collapseTitle}
+          className="flex items-center justify-center rounded p-1 text-white/30 hover:text-white/55 hover:bg-white/[0.05] cursor-pointer transition-colors duration-150"
+        >
+          {collapseIcon}
+        </button>
+      </div>
+    </div>
+  );
+}

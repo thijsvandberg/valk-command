@@ -4,45 +4,12 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow } from "@/db/schema";
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
+import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
+import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
 
-export interface WorkspaceUsage {
-  inputTokens: number;
-  outputTokens: number;
-  cost: number;
-}
+export type { WorkspaceUsage } from "./useTaskMonitoring";
 
-interface UseStoryWriterReturn {
-  session: StoryWriterSessionRow | null;
-  messages: Message[];
-  aiDrafts: StoryWriterDraftRow[];
-  targetAiDrafts: StoryWriterDraftRow[];
-  relatedCandidates: RelatedStoryCandidateRow[];
-  status: StoryWriterStatus;
-  streamProgress: string;
-  streamError: string | null;
-  usage: WorkspaceUsage | null;
-  lastResponseDurationMs: number | null;
-  codebaseResearch: boolean;
-  setCodbaseResearch: (v: boolean) => void;
-  model: string;
-  setModel: (m: string) => void;
-  sendMessage: (content: string, skill?: string) => Promise<boolean>;
-  updateLocalDraft: (content: string) => void;
-  updateLocalTitle: (title: string) => void;
-  updateTargetLocalDraft: (content: string) => void;
-  updateTargetLocalTitle: (title: string) => void;
-  acceptDraft: (draftId: string) => Promise<void>;
-  dismissDraft: (draftId: string) => Promise<void>;
-  activateSplit: (targetKey?: string, sprintId?: string) => Promise<{ targetTicketKey: string }>;
-  deactivateSplit: () => Promise<void>;
-  saveDraft: () => Promise<void>;
-  pushToJira: () => Promise<{ success: boolean; conflict?: boolean; contentChanged?: boolean }>;
-  deleteSession: (deleteConversation?: boolean) => Promise<void>;
-  refreshSession: () => Promise<void>;
-  linkCandidate: (candidateId: string, isLinked: boolean) => Promise<void>;
-}
-
-export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
+export function useStoryWriter(ticketKey: string) {
   const [session, setSessionState] = useState<StoryWriterSessionRow | null>(null);
   const setSession = useCallback((v: StoryWriterSessionRow | null | ((prev: StoryWriterSessionRow | null) => StoryWriterSessionRow | null)) => {
     setSessionState((prev) => {
@@ -61,232 +28,62 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
   const [model, setModel] = useState("claude-sonnet-4-6");
   const [usage, setUsage] = useState<WorkspaceUsage | null>(null);
   const [lastResponseDurationMs, setLastResponseDurationMs] = useState<number | null>(null);
-  const sendStartRef = useRef<number | null>(null);
 
   const codebaseResearchRef = useRef(codebaseResearch);
   codebaseResearchRef.current = codebaseResearch;
   const modelRef = useRef(model);
   modelRef.current = model;
-
-  const eventSourceRef = useRef<EventSource | null>(null);
   const unmountedRef = useRef(false);
   const sessionRef = useRef<StoryWriterSessionRow | null>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const titleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const targetSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const targetTitleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startTaskMonitoringRef = useRef<((taskId: string, progressMessage?: string) => void) | null>(null);
-  const refreshSessionRef = useRef<() => Promise<void>>(async () => {});
 
   const apiBase = `/api/tickets/${encodeURIComponent(ticketKey)}/story-writer`;
 
-  // Derived draft lists split by slot
   const aiDrafts = allDrafts.filter((d) => d.storySlot === "original");
   const targetAiDrafts = allDrafts.filter((d) => d.storySlot === "target");
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const res = await fetch(apiBase);
+      if (res.ok) {
+        const data = await res.json();
+        if (!unmountedRef.current) {
+          setSession(data.session);
+          setMessages(data.messages);
+          setAllDrafts(data.aiDrafts ?? []);
+          setRelatedCandidates(data.relatedCandidates ?? []);
+        }
+      }
+    } catch { /* ignore */ }
+  }, [apiBase, setSession]);
+
+  const monitoring = useTaskMonitoring({
+    apiBase,
+    unmountedRef,
+    onStatus: setStatus,
+    onProgress: setStreamProgress,
+    onError: setStreamError,
+    onUsage: setUsage,
+    onDuration: setLastResponseDurationMs,
+    onRelatedCandidates: setRelatedCandidates,
+    refreshSession,
+  });
+
+  const drafts = useStoryWriterDrafts({
+    apiBase,
+    ticketKey,
+    sessionRef,
+    unmountedRef,
+    setSession,
+    setAllDrafts,
+    refreshSession,
+  });
 
   useEffect(() => {
     return () => {
       unmountedRef.current = true;
-      eventSourceRef.current?.close();
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
-      if (targetSaveTimerRef.current) clearTimeout(targetSaveTimerRef.current);
-      if (targetTitleSaveTimerRef.current) clearTimeout(targetTitleSaveTimerRef.current);
-      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      drafts.clearTimers();
     };
-  }, []);
-
-  const startTaskMonitoring = useCallback((taskId: string, progressMessage = "Starting...") => {
-    const streamUrl = `/api/workspace-tasks/${taskId}/stream`;
-
-    setStatus("streaming");
-    setStreamProgress(progressMessage);
-
-    const resultHandled = { current: false };
-
-    const applyResult = async (output: string) => {
-      if (resultHandled.current || unmountedRef.current) return;
-      resultHandled.current = true;
-
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
-      if (pollTimerRef.current) {
-        clearTimeout(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-
-      let applied = false;
-      for (let attempt = 0; attempt < 2 && !applied; attempt++) {
-        try {
-          const applyRes = await fetch(`${apiBase}/apply-draft`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ output, taskId, assistantContent: output }),
-          });
-          applied = applyRes.ok;
-        } catch { /* retry */ }
-      }
-
-      if (!applied && !unmountedRef.current) {
-        setStreamError("Draft received but could not be saved");
-      }
-
-      try {
-        const relatedRes = await fetch(`${apiBase}/apply-related`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ output, taskId }),
-        });
-        if (relatedRes.ok) {
-          const relatedData = await relatedRes.json();
-          if (!unmountedRef.current && relatedData.candidates?.length > 0) {
-            setRelatedCandidates(relatedData.candidates);
-          }
-        }
-      } catch { /* non-critical */ }
-
-      await refreshSessionRef.current();
-      if (!unmountedRef.current) {
-        if (sendStartRef.current) {
-          setLastResponseDurationMs(Date.now() - sendStartRef.current);
-          sendStartRef.current = null;
-        }
-        setStatus("ready");
-        setStreamProgress("");
-      }
-    };
-
-    const POLL_DELAY_MS = 2_000;
-    const POLL_INTERVAL_MS = 3_000;
-    // find-related can take 3-5 minutes; give all requests 5 minutes before timing out
-    const MAX_POLL_MS = 300_000;
-    const pollStart = Date.now();
-
-    const pollTask = async () => {
-      if (resultHandled.current || unmountedRef.current) return;
-      if (Date.now() - pollStart > MAX_POLL_MS) {
-        if (!resultHandled.current && !unmountedRef.current) {
-          setStreamError("Request timed out");
-          setStatus("ready");
-          setStreamProgress("");
-        }
-        return;
-      }
-
-      try {
-        const pollRes = await fetch(`/api/workspace-tasks/${taskId}`);
-        if (pollRes.status === 404) {
-          // Task expired on the workspace — show the unanswered indicator so user can retry
-          if (!resultHandled.current && !unmountedRef.current) {
-            resultHandled.current = true;
-            setStatus("ready");
-            setStreamProgress("");
-          }
-          return;
-        }
-        if (!pollRes.ok) {
-          if (!unmountedRef.current) {
-            setStreamProgress("Waiting for workspace...");
-          }
-          pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
-          return;
-        }
-        const task = await pollRes.json();
-        if (task.status === "completed" && task.output) {
-          const taskRecord = task as Record<string, unknown>;
-          const usageRecord = (taskRecord.usage ?? {}) as Record<string, unknown>;
-          const inputTokens = (taskRecord.inputTokens ?? usageRecord.inputTokens ?? taskRecord.input_tokens ?? usageRecord.input_tokens ?? 0) as number;
-          const outputTokens = (taskRecord.outputTokens ?? usageRecord.outputTokens ?? taskRecord.output_tokens ?? usageRecord.output_tokens ?? 0) as number;
-          const cost = (taskRecord.cost ?? usageRecord.cost ?? 0) as number;
-          if (!unmountedRef.current) {
-            setUsage({ inputTokens, outputTokens, cost });
-          }
-          await applyResult(task.output);
-        } else if (task.status === "failed") {
-          if (!resultHandled.current && !unmountedRef.current) {
-            resultHandled.current = true;
-            setStreamError(task.error ?? "Task failed on workspace");
-            setStatus("ready");
-            setStreamProgress("");
-          }
-        } else {
-          if (!unmountedRef.current) {
-            const elapsed = Math.round((Date.now() - pollStart) / 1000);
-            setStreamProgress(`Processing on workspace... (${elapsed}s)`);
-          }
-          pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
-        }
-      } catch {
-        if (!unmountedRef.current) {
-          const elapsed = Math.round((Date.now() - pollStart) / 1000);
-          setStreamProgress(`Reconnecting... (${elapsed}s)`);
-        }
-        pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
-      }
-    };
-
-    pollTimerRef.current = setTimeout(pollTask, POLL_DELAY_MS);
-
-    eventSourceRef.current?.close();
-    const es = new EventSource(streamUrl);
-    eventSourceRef.current = es;
-
-    es.addEventListener("progress", (e) => {
-      let data: { message: string };
-      try { data = JSON.parse(e.data); } catch { return; }
-      if (!unmountedRef.current) setStreamProgress(data.message);
-    });
-
-    es.addEventListener("tool_call", (e) => {
-      let data: { tool: string };
-      try { data = JSON.parse(e.data); } catch { return; }
-      const name = data.tool.replace(/^mcp__jira__/, "").replace(/^mcp__/, "").replace(/_/g, " ");
-      if (!unmountedRef.current) setStreamProgress(`Using ${name}...`);
-    });
-
-    es.addEventListener("result", async (e) => {
-      let data: Record<string, unknown>;
-      try { data = JSON.parse(e.data); } catch { return; }
-      const usageRecord = (data.usage ?? {}) as Record<string, unknown>;
-      const inputTokens = (data.inputTokens ?? usageRecord.inputTokens ?? data.input_tokens ?? usageRecord.input_tokens ?? 0) as number;
-      const outputTokens = (data.outputTokens ?? usageRecord.outputTokens ?? data.output_tokens ?? usageRecord.output_tokens ?? 0) as number;
-      const cost = (data.cost ?? usageRecord.cost ?? 0) as number;
-      const output = data.output as string;
-      if (!unmountedRef.current) {
-        setUsage({ inputTokens, outputTokens, cost });
-      }
-      // Only apply if output is non-empty; otherwise the poll will pick up the real result
-      // when the task completes. Calling applyResult with falsy output sets resultHandled=true
-      // prematurely and blocks the poll from ever applying the real output.
-      if (output) {
-        await applyResult(output);
-      }
-    });
-
-    es.addEventListener("error", (e) => {
-      es.close();
-      eventSourceRef.current = null;
-      if (e instanceof MessageEvent) {
-        try {
-          const data = JSON.parse(e.data) as { message: string };
-          if (!resultHandled.current && !unmountedRef.current) {
-            setStreamError(data.message);
-          }
-        } catch { /* not structured, polling will handle it */ }
-      } else if (!resultHandled.current) {
-        if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
-        pollTimerRef.current = setTimeout(pollTask, 1_000);
-      }
-    });
-
-    es.addEventListener("done", () => {
-      es.close();
-      eventSourceRef.current = null;
-    });
-  }, [apiBase]);
-
-  startTaskMonitoringRef.current = startTaskMonitoring;
+  }, [drafts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -306,14 +103,13 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
           setAllDrafts(data.aiDrafts ?? []);
           setRelatedCandidates(data.relatedCandidates ?? []);
 
-          // Auto-resume monitoring if the last user message has a pending task with no response
           const loadedMsgs: Message[] = data.messages ?? [];
           const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
           const hasFollowingAssistant = lastUserMsg
             ? loadedMsgs.some((m: Message) => m.role === "assistant" && m.timestamp > lastUserMsg.timestamp)
             : true;
           if (lastUserMsg?.workspaceTaskId && !hasFollowingAssistant && !cancelled) {
-            startTaskMonitoringRef.current?.(lastUserMsg.workspaceTaskId, "Resuming...");
+            monitoring.startMonitoring(lastUserMsg.workspaceTaskId, "Resuming...");
           } else {
             setStatus("ready");
           }
@@ -352,24 +148,7 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
 
     init();
     return () => { cancelled = true; };
-  }, [apiBase, setSession]);
-
-  const refreshSession = useCallback(async () => {
-    try {
-      const res = await fetch(apiBase);
-      if (res.ok) {
-        const data = await res.json();
-        if (!unmountedRef.current) {
-          setSession(data.session);
-          setMessages(data.messages);
-          setAllDrafts(data.aiDrafts ?? []);
-          setRelatedCandidates(data.relatedCandidates ?? []);
-        }
-      }
-    } catch { /* ignore */ }
-  }, [apiBase, setSession]);
-
-  refreshSessionRef.current = refreshSession;
+  }, [apiBase, setSession, monitoring]);
 
   const sendMessage = useCallback(async (content: string, skill?: string): Promise<boolean> => {
     if (!session) return false;
@@ -378,11 +157,11 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     setStreamError(null);
     setStreamProgress("");
     setLastResponseDurationMs(null);
-    sendStartRef.current = Date.now();
+    monitoring.sendStartRef.current = Date.now();
 
-    if (pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
+    if (monitoring.pollTimerRef.current) {
+      clearTimeout(monitoring.pollTimerRef.current);
+      monitoring.pollTimerRef.current = null;
     }
 
     const tempMsg: Message = {
@@ -415,143 +194,14 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
       }
 
       const { taskId } = await res.json();
-
-      startTaskMonitoring(taskId);
+      monitoring.startMonitoring(taskId);
       return true;
     } catch {
       setStreamError("Failed to send message");
       setStatus("ready");
       return false;
     }
-  }, [session, apiBase, startTaskMonitoring]);
-
-  const updateLocalDraft = useCallback((content: string) => {
-    setSession((prev) => {
-      if (!prev) return prev;
-      if (!content && prev.localDraft) return prev;
-      if (content === prev.localDraft) return prev;
-      return { ...prev, localDraft: content };
-    });
-
-    if (!content) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        // Save to session (for story writer state)
-        await fetch(apiBase, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ localDraft: content }),
-        });
-        // Also auto-save as draft to ticketLocalEdit (unified draft system)
-        await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field: "description", localValue: content, isDraft: true }),
-        });
-      } catch { /* ignore */ }
-    }, 500);
-  }, [apiBase, ticketKey, setSession]);
-
-  const updateTargetLocalDraft = useCallback((content: string) => {
-    setSession((prev) => {
-      if (!prev) return prev;
-      if (content === prev.targetLocalDraft) return prev;
-      return { ...prev, targetLocalDraft: content };
-    });
-
-    if (targetSaveTimerRef.current) clearTimeout(targetSaveTimerRef.current);
-    targetSaveTimerRef.current = setTimeout(async () => {
-      try {
-        await fetch(apiBase, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targetLocalDraft: content }),
-        });
-      } catch { /* ignore */ }
-    }, 500);
-  }, [apiBase, setSession]);
-
-  const updateLocalTitle = useCallback((title: string) => {
-    setSession((prev) => {
-      if (!prev) return prev;
-      if (title === prev.localTitle) return prev;
-      return { ...prev, localTitle: title };
-    });
-
-    if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
-    titleSaveTimerRef.current = setTimeout(async () => {
-      try {
-        await fetch(apiBase, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ localTitle: title }),
-        });
-        await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field: "title", localValue: title, isDraft: true }),
-        });
-      } catch { /* ignore */ }
-    }, 500);
-  }, [apiBase, ticketKey, setSession]);
-
-  const updateTargetLocalTitle = useCallback((title: string) => {
-    setSession((prev) => {
-      if (!prev) return prev;
-      if (title === prev.targetLocalTitle) return prev;
-      return { ...prev, targetLocalTitle: title };
-    });
-
-    if (targetTitleSaveTimerRef.current) clearTimeout(targetTitleSaveTimerRef.current);
-    targetTitleSaveTimerRef.current = setTimeout(async () => {
-      try {
-        const targetKey = sessionRef.current?.targetTicketKey ?? null;
-        if (!targetKey) return;
-        await fetch(apiBase, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targetLocalTitle: title }),
-        });
-        await fetch(`/api/tickets/${encodeURIComponent(targetKey)}/local-edits`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field: "title", localValue: title, isDraft: true }),
-        });
-      } catch { /* ignore */ }
-    }, 500);
-  }, [apiBase, setSession]);
-
-  const acceptDraft = useCallback(async (draftId: string) => {
-    try {
-      const res = await fetch(apiBase, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acceptDraftId: draftId }),
-      });
-      if (res.ok) {
-        const { session: updated } = await res.json();
-        if (!unmountedRef.current) setSession(updated);
-        // Sync accepted AI draft to ticketLocalEdit as a draft
-        if (updated?.localDraft) {
-          await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ field: "description", localValue: updated.localDraft, isDraft: true }),
-          });
-        }
-      }
-    } catch { /* ignore */ }
-  }, [apiBase, ticketKey, setSession]);
-
-  const dismissDraft = useCallback(async (draftId: string) => {
-    try {
-      await fetch(`${apiBase}/apply-draft?draftId=${draftId}`, { method: "DELETE" });
-      if (!unmountedRef.current) {
-        setAllDrafts((prev) => prev.filter((d) => d.id !== draftId));
-      }
-    } catch { /* ignore */ }
-  }, [apiBase]);
+  }, [session, apiBase, monitoring]);
 
   const activateSplit = useCallback(async (targetKey?: string, sprintId?: string): Promise<{ targetTicketKey: string }> => {
     const res = await fetch(`${apiBase}/split`, {
@@ -564,9 +214,6 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
       throw new Error(body.error ?? "Failed to activate split mode");
     }
     const data = await res.json();
-    // Apply session from the split response immediately so targetTicketKey is available
-    // synchronously before the caller sets splitModeVisible. refreshSession runs
-    // fire-and-forget to pick up messages/drafts without blocking.
     if (data.session && !unmountedRef.current) {
       setSession(data.session);
     }
@@ -584,81 +231,6 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
       await refreshSession();
     } catch { /* ignore */ }
   }, [apiBase, refreshSession]);
-
-  const saveDraft = useCallback(async () => {
-    if (!session) return;
-    const saves: Promise<unknown>[] = [];
-    if (session.localDraft) {
-      saves.push(fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: "description", localValue: session.localDraft }),
-      }));
-    }
-    if (session.localTitle) {
-      saves.push(fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: "title", localValue: session.localTitle }),
-      }));
-    }
-    if (session.targetTicketKey) {
-      if (session.targetLocalDraft) {
-        saves.push(fetch(`/api/tickets/${encodeURIComponent(session.targetTicketKey)}/local-edits`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field: "description", localValue: session.targetLocalDraft }),
-        }));
-      }
-      if (session.targetLocalTitle) {
-        saves.push(fetch(`/api/tickets/${encodeURIComponent(session.targetTicketKey)}/local-edits`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field: "title", localValue: session.targetLocalTitle }),
-        }));
-      }
-    }
-    await Promise.all(saves);
-  }, [session, ticketKey]);
-
-  const pushToJira = useCallback(async () => {
-    const hasOriginal = !!(session?.localDraft || session?.localTitle);
-    const targetKey = session?.targetTicketKey ?? null;
-    const hasTarget = !!(targetKey && (session?.targetLocalDraft || session?.targetLocalTitle));
-
-    if (!hasOriginal && !hasTarget) return { success: false };
-
-    await saveDraft();
-
-    let result = { success: true, conflict: false, contentChanged: false };
-
-    if (hasOriginal) {
-      const pushRes = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/push-to-jira`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const data = await pushRes.json();
-      if (!data.success) result = data;
-    }
-
-    if (hasTarget && targetKey) {
-      const targetPushRes = await fetch(`/api/tickets/${encodeURIComponent(targetKey)}/push-to-jira`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const targetData = await targetPushRes.json();
-      // Only override result if target push failed and original succeeded
-      if (!targetData.success && result.success) result = targetData;
-    }
-
-    if (result.success) {
-      await refreshSession();
-    }
-
-    return result;
-  }, [session, ticketKey, saveDraft, refreshSession]);
 
   const linkCandidate = useCallback(async (candidateId: string, isLinked: boolean) => {
     try {
@@ -689,6 +261,9 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     }
   }, [apiBase, setSession]);
 
+  const saveDraft = useCallback(() => drafts.saveDraft(session), [drafts, session]);
+  const pushToJira = useCallback(() => drafts.pushToJira(session), [drafts, session]);
+
   return {
     session,
     messages,
@@ -705,12 +280,12 @@ export function useStoryWriter(ticketKey: string): UseStoryWriterReturn {
     model,
     setModel,
     sendMessage,
-    updateLocalDraft,
-    updateLocalTitle,
-    updateTargetLocalDraft,
-    updateTargetLocalTitle,
-    acceptDraft,
-    dismissDraft,
+    updateLocalDraft: drafts.updateLocalDraft,
+    updateLocalTitle: drafts.updateLocalTitle,
+    updateTargetLocalDraft: drafts.updateTargetLocalDraft,
+    updateTargetLocalTitle: drafts.updateTargetLocalTitle,
+    acceptDraft: drafts.acceptDraft,
+    dismissDraft: drafts.dismissDraft,
     activateSplit,
     deactivateSplit,
     saveDraft,

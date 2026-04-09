@@ -1,0 +1,275 @@
+"use client";
+
+import { useState, useCallback, useMemo } from "react";
+import type { Ticket, POStatus } from "@/types/ticket";
+import type { SortField, SortDir, ColumnId, SavedView } from "@/components/sprint-board/FilterBar";
+import { DEFAULT_VISIBLE } from "@/components/sprint-board/FilterBar";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSearchParams, useRouter } from "next/navigation";
+
+export interface StoredFilters {
+  status: string[];
+  epic: string[];
+  assignee: string[];
+  poStatus: string[];
+  editState: string[];
+}
+
+export interface StoredSort {
+  field: SortField;
+  direction: SortDir;
+}
+
+const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [], editState: [] };
+
+export function useSprintBoardFilters(
+  allTickets: Ticket[],
+  poStatuses: Record<string, POStatus>,
+  isAllView: boolean,
+  poPriorityOrder: string[] | null,
+) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [storedFilters, setStoredFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
+  const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
+  const [storedColumns, setStoredColumns] = useLocalStorage<ColumnId[]>("sprint-board-columns", [...DEFAULT_VISIBLE]);
+  const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>("sprint-board-saved-views", []);
+  const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
+  const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
+  const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
+  const poStatusFilter = useMemo(() => new Set(storedFilters.poStatus), [storedFilters.poStatus]);
+  const editStateFilter = useMemo(() => new Set(storedFilters.editState ?? []), [storedFilters.editState]);
+
+  const setStatusFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, status: [...v] }));
+  }, [setStoredFilters]);
+  const setEpicFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, epic: [...v] }));
+  }, [setStoredFilters]);
+  const setAssigneeFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, assignee: [...v] }));
+  }, [setStoredFilters]);
+  const setPoStatusFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, poStatus: [...v] }));
+  }, [setStoredFilters]);
+  const setEditStateFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, editState: [...v] }));
+  }, [setStoredFilters]);
+
+  const activeViewId = searchParams.get("view");
+  const activeView = activeViewId ? (savedViews.find((v) => v.id === activeViewId) ?? null) : null;
+
+  const sortField = storedSort.field;
+  const sortDir = storedSort.direction;
+  const setSortField = useCallback((f: SortField) => {
+    setStoredSort((prev) => ({ ...prev, field: f }));
+  }, [setStoredSort]);
+  const setSortDir = useCallback((d: SortDir) => {
+    setStoredSort((prev) => ({ ...prev, direction: d }));
+  }, [setStoredSort]);
+
+  const visibleColumns = useMemo(() => new Set(storedColumns), [storedColumns]);
+  const setVisibleColumns = useCallback((updater: (prev: Set<ColumnId>) => Set<ColumnId>) => {
+    setStoredColumns((prev) => [...updater(new Set(prev))]);
+  }, [setStoredColumns]);
+
+  const statusOptions = useMemo(() => [...new Set(allTickets.map((t) => t.jiraStatus))], [allTickets]);
+  const epicOptions = useMemo(() => [...new Set(allTickets.map((t) => t.epic).filter(Boolean) as string[])], [allTickets]);
+  const assigneeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.assignee?.name).filter(Boolean) as string[])], [allTickets]);
+  const sprintOptions = useMemo(
+    () => [...new Set(allTickets.map((t) => t.sprintId).filter(Boolean) as string[])],
+    [allTickets],
+  );
+
+  const filteredTickets = useMemo(() => {
+    return allTickets.filter((t) => {
+      if (statusFilter.size > 0 && !statusFilter.has(t.jiraStatus)) return false;
+      if (epicFilter.size > 0 && (!t.epic || !epicFilter.has(t.epic))) return false;
+      if (assigneeFilter.size > 0) {
+        const name = t.assignee?.name;
+        if (!name || !assigneeFilter.has(name)) return false;
+      }
+      if (poStatusFilter.size > 0) {
+        const current = poStatuses[t.key] ?? null;
+        if (!current || !poStatusFilter.has(current)) return false;
+      }
+      if (editStateFilter.size > 0 && !editStateFilter.has(t.editState)) return false;
+      if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
+      if (searchQuery.trim().length >= 2) {
+        const q = searchQuery.toLowerCase();
+        const matchesKey = t.key.toLowerCase().includes(q);
+        const matchesTitle = t.title.toLowerCase().includes(q);
+        const matchesAssignee = t.assignee?.name?.toLowerCase().includes(q) ?? false;
+        if (!matchesKey && !matchesTitle && !matchesAssignee) return false;
+      }
+      return true;
+    });
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, poStatuses, isAllView, sprintFilter, searchQuery]);
+
+  const sortedTickets = useMemo(() => {
+    if (sortField === "rank") {
+      if (poPriorityOrder && poPriorityOrder.length > 0) {
+        const orderMap = new Map(poPriorityOrder.map((key, idx) => [key, idx]));
+        const sorted = [...filteredTickets];
+        sorted.sort((a, b) => {
+          const aIdx = orderMap.get(a.key) ?? Infinity;
+          const bIdx = orderMap.get(b.key) ?? Infinity;
+          return aIdx - bIdx;
+        });
+        return sorted;
+      }
+      return filteredTickets;
+    }
+    const sorted = [...filteredTickets];
+    const dir = sortDir === "asc" ? 1 : -1;
+
+    sorted.sort((a, b) => {
+      switch (sortField) {
+        case "quality": {
+          const aScore = a.qualityScore ?? -1;
+          const bScore = b.qualityScore ?? -1;
+          return (aScore - bScore) * dir;
+        }
+        case "points": {
+          const aPts = a.storyPoints ?? -1;
+          const bPts = b.storyPoints ?? -1;
+          return (aPts - bPts) * dir;
+        }
+        case "key":
+          return a.key.localeCompare(b.key) * dir;
+        case "title":
+          return a.title.localeCompare(b.title) * dir;
+        case "epic":
+          return (a.epic ?? "").localeCompare(b.epic ?? "") * dir;
+        case "jiraStatus":
+          return a.jiraStatus.localeCompare(b.jiraStatus) * dir;
+        case "assignee":
+          return (a.assignee?.name ?? "").localeCompare(b.assignee?.name ?? "") * dir;
+        case "poStatus": {
+          const aPo = poStatuses[a.key] ?? "";
+          const bPo = poStatuses[b.key] ?? "";
+          return aPo.localeCompare(bPo) * dir;
+        }
+        case "lastChanged": {
+          const aDate = a.jiraUpdatedAt ?? "";
+          const bDate = b.jiraUpdatedAt ?? "";
+          return (aDate as string).localeCompare(bDate as string) * dir;
+        }
+        default:
+          return 0;
+      }
+    });
+    return sorted;
+  }, [filteredTickets, sortField, sortDir, poPriorityOrder, poStatuses]);
+
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || editStateFilter.size > 0 || sprintFilter.size > 0;
+
+  const handleColumnToggle = useCallback((id: ColumnId, show: boolean) => {
+    setVisibleColumns((prev) => {
+      const next = new Set(prev);
+      if (show) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, [setVisibleColumns]);
+
+  const currentFiltersSnapshot = useCallback(() => ({
+    status: [...statusFilter],
+    epic: [...epicFilter],
+    assignee: [...assigneeFilter],
+    poStatus: [...poStatusFilter],
+    editState: [...editStateFilter],
+  }), [statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter]);
+
+  const resetFilters = useCallback(() => {
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
+  }, [setStoredFilters]);
+
+  const handleSaveView = useCallback((title: string) => {
+    if (activeViewId) {
+      setSavedViews((prev) => prev.map((v) =>
+        v.id === activeViewId
+          ? { ...v, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir } }
+          : v
+      ));
+    } else {
+      const id = crypto.randomUUID();
+      setSavedViews((prev) => [...prev, { id, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir } }]);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("view", id);
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, setSavedViews, searchParams, router]);
+
+  const handleViewClick = useCallback((view: SavedView) => {
+    setStoredFilters({
+      status: view.filters.status,
+      epic: view.filters.epic,
+      assignee: view.filters.assignee,
+      poStatus: view.filters.poStatus,
+      editState: view.filters.editState ?? [],
+    });
+    setStoredSort({ field: view.sort.field, direction: view.sort.direction });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", view.id);
+    params.delete("sprint");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [setStoredFilters, setStoredSort, searchParams, router]);
+
+  const handleDeleteView = useCallback((id: string) => {
+    setSavedViews((prev) => prev.filter((v) => v.id !== id));
+    if (activeViewId === id) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("view");
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [setSavedViews, activeViewId, searchParams, router]);
+
+  return {
+    storedFilters,
+    setStoredFilters,
+    storedSort,
+    setStoredSort,
+    statusFilter,
+    epicFilter,
+    assigneeFilter,
+    poStatusFilter,
+    editStateFilter,
+    setStatusFilter,
+    setEpicFilter,
+    setAssigneeFilter,
+    setPoStatusFilter,
+    setEditStateFilter,
+    sprintFilter,
+    setSprintFilter,
+    searchQuery,
+    setSearchQuery,
+    savedViews,
+    setSavedViews,
+    activeViewId,
+    activeView,
+    sortField,
+    sortDir,
+    setSortField,
+    setSortDir,
+    visibleColumns,
+    setVisibleColumns,
+    handleColumnToggle,
+    statusOptions,
+    epicOptions,
+    assigneeOptions,
+    sprintOptions,
+    filteredTickets,
+    sortedTickets,
+    hasActiveFilters,
+    currentFiltersSnapshot,
+    resetFilters,
+    handleSaveView,
+    handleViewClick,
+    handleDeleteView,
+  };
+}

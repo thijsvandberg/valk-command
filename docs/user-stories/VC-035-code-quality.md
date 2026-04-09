@@ -1,6 +1,6 @@
 # VC-035: Code Quality - Hook and Component Decomposition
 
-**Status:** Open
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
@@ -28,11 +28,11 @@ Several hooks and components have grown beyond maintainable size. This story cov
 
 ## Acceptance Criteria
 
-- [ ] No hook file exceeds 300 lines
-- [ ] No component file exceeds 500 lines
-- [ ] All existing tests still pass after splitting
-- [ ] No behavioral changes (pure refactor)
-- [ ] Import paths updated across the codebase
+- [x] No hook file exceeds 300 lines
+- [x] No component file exceeds 500 lines
+- [x] All existing tests still pass after splitting
+- [x] No behavioral changes (pure refactor)
+- [x] Import paths updated across the codebase
 
 ## Notes
 
