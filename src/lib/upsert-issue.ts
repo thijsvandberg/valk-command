@@ -110,6 +110,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
 
   const ticketData = {
     jiraKey: issue.key,
+    jiraId: issue.id,
     title: fields.summary,
     type: normalizeIssueType(fields.issuetype.name),
     status: normalizeStatus(fields.status.name),

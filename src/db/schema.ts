@@ -29,6 +29,7 @@ export const message = sqliteTable("message", {
 
 export const ticket = sqliteTable("ticket", {
   jiraKey: text("jira_key").primaryKey(),
+  jiraId: text("jira_id"),
   title: text("title").notNull(),
   type: text("type"),
   status: text("status").notNull(),

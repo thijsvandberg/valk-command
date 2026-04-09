@@ -1,0 +1,1 @@
+ALTER TABLE `ticket` ADD `jira_id` text;
