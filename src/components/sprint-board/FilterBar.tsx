@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
-import { ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
 // -- PO Status colors (needed for filter rendering) --
 
@@ -69,116 +70,7 @@ export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[]
 
 export const DEFAULT_VISIBLE: ColumnId[] = ["type", "key", "title", "epic", "jiraStatus", "points", "assignee", "flagged", "poStatus", "quality", "notes"];
 
-// ---------------------------------------------------------------------------
-// Multi-select filter dropdown (reusable)
-// ---------------------------------------------------------------------------
-
-function FilterDropdown({
-  label,
-  options,
-  selected,
-  onChange,
-  renderOption,
-}: {
-  label: string;
-  options: string[];
-  selected: Set<string>;
-  onChange: (next: Set<string>) => void;
-  renderOption?: (value: string) => React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [open]);
-
-  const isActive = selected.size > 0;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
-          isActive
-            ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
-            : "border-white/[0.07] bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/75 hover:border-white/[0.12]"
-        }`}
-        style={{ transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms" }}
-      >
-        {label}
-        {isActive && (
-          <span
-            className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold"
-            style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
-          >
-            {selected.size}
-          </span>
-        )}
-        <ChevronDown className={`h-3.5 w-3.5 shrink-0 opacity-40 ${open ? "rotate-180" : ""}`} strokeWidth={1.5} style={{ transition: "transform 150ms" }} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 z-50 mt-1.5 w-60 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
-          <button
-            type="button"
-            onClick={() => onChange(new Set())}
-            className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-white/35 cursor-pointer hover:bg-white/[0.04] hover:text-white/55"
-            style={{ transition: "background-color 80ms, color 80ms" }}
-          >
-            <X className="h-3 w-3" strokeWidth={1.5} />
-            Clear filter
-          </button>
-          <div className="my-1 h-px bg-white/[0.05]" />
-          {options.map((opt) => {
-            const checked = selected.has(opt);
-            return (
-              <label
-                key={opt}
-                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-[13px] text-white/65 cursor-pointer hover:bg-white/[0.04] hover:text-white/85"
-                style={{ transition: "background-color 80ms, color 80ms" }}
-              >
-                <span
-                  className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
-                  style={{
-                    backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
-                    borderColor: checked ? "var(--color-brand-500)" : "rgba(255,255,255,0.18)",
-                    transition: "background-color 100ms, border-color 100ms",
-                  }}
-                >
-                  {checked && (
-                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
-                    const next = new Set(selected);
-                    if (e.target.checked) next.add(opt);
-                    else next.delete(opt);
-                    onChange(next);
-                  }}
-                  className="sr-only"
-                />
-                {renderOption ? renderOption(opt) : <span>{opt}</span>}
-              </label>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+// FilterDropdown is imported from @/components/shared/FilterDropdown
 
 // ---------------------------------------------------------------------------
 // Sort dropdown
@@ -374,115 +266,7 @@ function ColumnToggle({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Sprint filter dropdown (used in All view, styled like FilterDropdown)
-// ---------------------------------------------------------------------------
-
-export function SprintFilterBar({
-  sprintOptions,
-  sprintFilter,
-  onSprintFilterChange,
-  sprintNameMap,
-}: {
-  sprintOptions: string[];
-  sprintFilter: Set<string>;
-  onSprintFilterChange: (next: Set<string>) => void;
-  sprintNameMap: Record<string, string>;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [open]);
-
-  const isActive = sprintFilter.size > 0;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
-          isActive
-            ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
-            : "border-white/[0.07] bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/75 hover:border-white/[0.12]"
-        }`}
-        style={{ transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms" }}
-      >
-        Sprint
-        {isActive && (
-          <span
-            className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold"
-            style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
-          >
-            {sprintFilter.size}
-          </span>
-        )}
-        <ChevronDown className={`h-3.5 w-3.5 shrink-0 opacity-40 ${open ? "rotate-180" : ""}`} strokeWidth={1.5} style={{ transition: "transform 150ms" }} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
-          <button
-            type="button"
-            onClick={() => onSprintFilterChange(new Set())}
-            className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-white/35 cursor-pointer hover:bg-white/[0.04] hover:text-white/55"
-            style={{ transition: "background-color 80ms, color 80ms" }}
-          >
-            <X className="h-3 w-3" strokeWidth={1.5} />
-            Clear filter
-          </button>
-          <div className="my-1 h-px bg-white/[0.05]" />
-          {sprintOptions.map((id) => {
-            const name = sprintNameMap[id] ?? id;
-            const checked = sprintFilter.has(id);
-            return (
-              <label
-                key={id}
-                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-[13px] text-white/65 cursor-pointer hover:bg-white/[0.04] hover:text-white/85"
-                style={{ transition: "background-color 80ms, color 80ms" }}
-              >
-                <span
-                  className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
-                  style={{
-                    backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
-                    borderColor: checked ? "var(--color-brand-500)" : "rgba(255,255,255,0.18)",
-                    transition: "background-color 100ms, border-color 100ms",
-                  }}
-                >
-                  {checked && (
-                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
-                    const next = new Set(sprintFilter);
-                    if (e.target.checked) next.add(id);
-                    else next.delete(id);
-                    onSprintFilterChange(next);
-                  }}
-                  className="sr-only"
-                />
-                {name}
-              </label>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+// SprintFilterBar replaced by shared FilterDropdown with searchable + labelMap
 
 // ---------------------------------------------------------------------------
 // Save view popover
@@ -704,6 +488,8 @@ export function FilterBar({
         options={epicOptions}
         selected={epicFilter}
         onChange={onEpicFilterChange}
+        searchable
+        searchPlaceholder="Search epics..."
         renderOption={(v) => {
           const color = getEpicColor(v);
           return (
@@ -721,6 +507,8 @@ export function FilterBar({
         options={assigneeOptions}
         selected={assigneeFilter}
         onChange={onAssigneeFilterChange}
+        searchable
+        searchPlaceholder="Search assignees..."
       />
       <FilterDropdown
         label="PO Status"
@@ -756,11 +544,16 @@ export function FilterBar({
         }}
       />
       {sprintFilter && onSprintFilterChange && sprintOptions && sprintNameMap && (
-        <SprintFilterBar
-          sprintOptions={sprintOptions}
-          sprintFilter={sprintFilter}
-          onSprintFilterChange={onSprintFilterChange}
-          sprintNameMap={sprintNameMap}
+        <FilterDropdown
+          label="Sprint"
+          options={sprintOptions}
+          selected={sprintFilter}
+          onChange={onSprintFilterChange}
+          searchable
+          searchPlaceholder="Search sprints..."
+          labelMap={sprintNameMap}
+          widthClass="w-64"
+          renderOption={(id) => <span>{sprintNameMap[id] ?? id}</span>}
         />
       )}
 
