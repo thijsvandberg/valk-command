@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ArrowUp, ArrowDown, ArrowUpDown, Sheet } from "lucide-react";
 import {
   DndContext,
@@ -380,11 +381,12 @@ export function TicketTable({
     >
       {enableVirtualization ? virtualizedTable : dndTable}
       {tickets.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Sheet className="mb-4 h-12 w-12 text-white/10" strokeWidth={1} />
-          <p className="text-sm font-medium text-white/30">No tickets in this sprint</p>
-          <p className="mt-1 text-xs text-white/15">Tickets will appear here once they are added to the sprint in Jira</p>
-        </div>
+        <EmptyState
+          icon={<Sheet className="h-6 w-6 text-white/10" strokeWidth={1} />}
+          title="No tickets in this sprint"
+          description="Tickets will appear here once they are added to the sprint in Jira"
+          className="py-16"
+        />
       )}
     </div>
   );

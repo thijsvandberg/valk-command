@@ -72,15 +72,15 @@ interface EmptyStateProps {
 
 ### Acceptance Criteria
 
-- [ ] Create `src/components/shared/EmptyState.tsx`
-- [ ] Add tests in `src/components/shared/EmptyState.test.tsx`
-- [ ] Migrate usages:
-  - [ ] `ChatEmptyState.tsx` - refactor to wrap `EmptyState` (keep the file as a thin wrapper if it has custom icon styling)
-  - [ ] `TicketTable.tsx` empty state (line ~382)
-  - [ ] `JobsPanel.tsx` empty state (line ~214, uses `Card variant="dashed"` as wrapper)
-  - [ ] `ConversationList.tsx` empty state (line ~51)
-  - [ ] `SearchResultParts.tsx` `EmptyState` component - replace with shared version
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Create `src/components/shared/EmptyState.tsx`
+- [x] Add tests in `src/components/shared/EmptyState.test.tsx`
+- [x] Migrate usages:
+  - [ ] `ChatEmptyState.tsx` -- skipped: uses significantly different typography (text-lg heading with font-display vs shared text-sm)
+  - [x] `TicketTable.tsx` empty state (line ~382)
+  - [x] `JobsPanel.tsx` empty state (line ~214, uses `Card variant="dashed"` as wrapper)
+  - [x] `ConversationList.tsx` empty state (line ~51)
+  - [ ] `SearchResultParts.tsx` -- skipped: has conditional query/mode logic too specific for shared component
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 

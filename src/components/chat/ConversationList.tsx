@@ -3,6 +3,7 @@
 import type { Conversation } from "@/types/chat";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -49,9 +50,7 @@ export default function ConversationList({
           <span className="text-sm text-white/30">Loading...</span>
         </div>
       ) : conversations.length === 0 ? (
-        <div className="px-2 py-8 text-center text-sm text-white/30">
-          No conversations yet
-        </div>
+        <EmptyState title="No conversations yet" className="px-2 py-8" />
       ) : (
         <ul className="flex-1 overflow-y-auto px-2 pb-2" role="listbox" aria-label="Conversation list">
           {conversations.map((conversation) => {

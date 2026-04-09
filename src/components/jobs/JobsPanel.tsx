@@ -6,6 +6,7 @@ import type { ScheduledJob } from "@/db/schema";
 import { isValidCron } from "@/lib/cron";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface CreateFormState {
   name: string;
@@ -214,9 +215,11 @@ export default function JobsPanel() {
       )}
 
       {!loading && jobs.length === 0 && !showForm && (
-        <Card variant="dashed" className="px-6 py-12 text-center">
-          <p className="text-sm text-white/30">No scheduled jobs yet.</p>
-          <p className="mt-1 text-xs text-white/20">Create a job to automate recurring workspace tasks.</p>
+        <Card variant="dashed" className="px-6 py-12">
+          <EmptyState
+            title="No scheduled jobs yet."
+            description="Create a job to automate recurring workspace tasks."
+          />
         </Card>
       )}
 
