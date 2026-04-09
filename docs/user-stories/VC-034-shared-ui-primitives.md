@@ -114,16 +114,16 @@ Renders:
 
 ### Acceptance Criteria
 
-- [ ] Create `src/components/shared/PageIntro.tsx`
-- [ ] Add tests in `src/components/shared/PageIntro.test.tsx`
-- [ ] Migrate usages:
-  - [ ] `src/app/(app)/page.tsx` (Dashboard)
-  - [ ] `src/app/(app)/jobs/page.tsx` (Scheduled Jobs)
-  - [ ] `src/app/(app)/refinement/page.tsx` (Refinement)
-  - [ ] `src/app/(app)/tests/page.tsx` (Test Center)
-  - [ ] `src/app/(app)/stakeholder/page.tsx` (Stakeholder)
-  - [ ] `src/app/(app)/activity-log/page.tsx` (Activity Log, uses slightly smaller variant: verify if it should match the others or stay different)
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Create `src/components/shared/PageIntro.tsx`
+- [x] Add tests in `src/components/shared/PageIntro.test.tsx`
+- [x] Migrate usages:
+  - [x] `src/app/(app)/page.tsx` (Dashboard)
+  - [x] `src/app/(app)/jobs/page.tsx` (Scheduled Jobs)
+  - [x] `src/app/(app)/refinement/page.tsx` (Refinement)
+  - [ ] `src/app/(app)/tests/page.tsx` -- skipped: file does not exist
+  - [x] `src/app/(app)/stakeholder/page.tsx` (Stakeholder)
+  - [ ] `src/app/(app)/activity-log/page.tsx` -- skipped: intentionally different style (text-2xl font-semibold, different spacing)
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 

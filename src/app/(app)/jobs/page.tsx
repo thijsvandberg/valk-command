@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import JobsPanel from "@/components/jobs/JobsPanel";
+import { PageIntro } from "@/components/shared/PageIntro";
 
 export const metadata: Metadata = { title: "Scheduled Jobs" };
 
@@ -12,12 +13,10 @@ export default function JobsPage() {
       </div>
 
       <div className="relative z-10 px-8 py-8 lg:px-12 lg:py-10">
-        <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] text-white">
-          Scheduled Jobs
-        </h1>
-        <p className="mt-2 max-w-lg font-[var(--font-body)] text-base leading-[1.7] text-white/50">
-          Manage recurring workspace tasks and scheduled automation jobs for the remote agent.
-        </p>
+        <PageIntro
+          title="Scheduled Jobs"
+          description="Manage recurring workspace tasks and scheduled automation jobs for the remote agent."
+        />
 
         <div className="mt-8">
           <JobsPanel />
