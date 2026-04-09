@@ -106,7 +106,7 @@ export function TicketSidebar({
   return (
     <div
       className="relative shrink-0 transition-[width] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-      style={{ width: collapsed ? 0 : SIDEBAR_WIDTH, minHeight: "100%" }}
+      style={{ width: collapsed ? 0 : SIDEBAR_WIDTH, height: "100%" }}
     >
       {/* Toggle button — floats over content when collapsed */}
       <Button
