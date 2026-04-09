@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
-import { useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
+import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
+import { DevPanel } from "@/components/ticket-detail/DevPanel";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -43,6 +44,7 @@ export function TicketSidebar({
   const sprintName = sprints?.find((s) => String(s.id) === ticket.sprintId)?.name ?? null;
 
   const { data: reviewData } = useTicketReviews(ticket.key);
+  const { data: devInfo, isLoading: devInfoLoading } = useDevInfo(ticket.key);
   const latestReview = reviewData?.reviews?.[0] ?? null;
   const currentVersionHash = reviewData?.currentVersionHash ?? null;
   const isReviewOutdated = latestReview && currentVersionHash
@@ -349,6 +351,9 @@ export function TicketSidebar({
               </div>
             </div>
           </div>
+
+          {/* Development panel */}
+          <DevPanel data={devInfo} isLoading={devInfoLoading} />
         </div>
       )}
     </div>

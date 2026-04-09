@@ -30,21 +30,21 @@ API (readonly) key in .env.local `BITBUCKET_API_TOKEN`
 
 ### Phase 2: Development panel component
 
-- [ ] New component `src/components/ticket-detail/DevPanel.tsx`
-- [ ] Collapsible section header "Development" with a chevron toggle (collapsed by default if no data, expanded if data exists)
-- [ ] Loading skeleton while fetching
-- [ ] Empty state: "No development activity linked to this ticket"
-- [ ] Branches section: list each branch name with a link icon pointing to Bitbucket, last commit message + relative date below
-- [ ] Pull requests section: each PR with title, author, and a status badge (`OPEN` in amber, `MERGED` in green, `DECLINED` in red/muted)
-- [ ] Commits section: shows count and most recent commit (message truncated to 80 chars, date, author)
-- [ ] Builds section: each build with name, status icon (checkmark green / cross red / spinner for in-progress), and link to pipeline run
-- [ ] Counts in the section header (e.g. "2 branches · 1 PR · 38 commits · 1 build")
+- [x] New component `src/components/ticket-detail/DevPanel.tsx`
+- [x] Collapsible section header "Development" with a chevron toggle (collapsed by default if no data, expanded if data exists)
+- [x] Loading skeleton while fetching
+- [x] Empty state: "No development activity linked to this ticket"
+- [x] Branches section: list each branch name with a link icon pointing to Bitbucket, last commit message + relative date below
+- [x] Pull requests section: each PR with title, author, and a status badge (`OPEN` in amber, `MERGED` in green, `DECLINED` in red/muted)
+- [x] Commits section: shows count and most recent commit (message truncated to 80 chars, date, author)
+- [x] Builds section: each build with name, status icon (checkmark green / cross red / spinner for in-progress), and link to pipeline run
+- [x] Counts in the section header (e.g. "2 branches · 1 PR · 38 commits · 1 build")
 
 ### Phase 3: Integration in ticket sidebar
 
-- [ ] `DevPanel` is rendered in `TicketSidebar` below the existing metadata fields
-- [ ] Data is fetched client-side (SWR or `useEffect`) — not blocking the ticket page load
-- [ ] Panel respects the existing sidebar's visual style (same spacing, font size, section dividers)
+- [x] `DevPanel` is rendered in `TicketSidebar` below the existing metadata fields
+- [x] Data is fetched client-side (SWR or `useEffect`) — not blocking the ticket page load
+- [x] Panel respects the existing sidebar's visual style (same spacing, font size, section dividers)
 
 ## Technical Notes
 

@@ -1,6 +1,7 @@
 import useSWR, { mutate as globalMutate } from "swr";
 import { useRef, useMemo, useEffect, useCallback } from "react";
 import type { Ticket, ActivityLogEntry, StoredReview } from "@/types/ticket";
+import type { DevInfoPayload } from "@/app/api/tickets/[key]/dev-info/route";
 
 // Generic JSON fetcher for SWR
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
@@ -187,6 +188,15 @@ export function useTicketReviews(ticketKey: string | null) {
   );
 
   return { ...swr, saveReview, deleteReview };
+}
+
+// Fetches Bitbucket development info (branches, PRs, commits, builds) for a ticket
+export function useDevInfo(ticketKey: string | null) {
+  return useSWR<DevInfoPayload>(
+    ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/dev-info` : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
+  );
 }
 
 export interface ActiveSession {
