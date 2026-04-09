@@ -80,6 +80,6 @@ describe("SprintBoardPage", () => {
 
   it("renders the refresh button", () => {
     render(<SprintBoardPage />);
-    expect(screen.getByText("Refresh")).toBeInTheDocument();
+    expect(screen.getByTitle("Refresh board")).toBeInTheDocument();
   });
 });
