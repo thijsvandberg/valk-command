@@ -38,10 +38,9 @@ src/app/          Next.js App Router pages and layouts
 src/components/   Reusable components
 docs/             Project documentation
   plans/          PRDs and specs
-  user-stories/   Feature specs (VC-XXX-name.md)
+  user-stories/   Feature specs (BRDG-XXX-name.md)
   architecture/   Technical architecture docs
   investigations/ Ad-hoc research
-  agent-orchestrator/  AO usage docs (cli, config, lifecycle, workflow)
   todo.md         Backlog
 ```
 
@@ -77,49 +76,3 @@ docs/             Project documentation
 - **CRITICAL: Only ONE test process at a time.** Never run multiple `vitest`/`npm run test` commands in parallel or in quick succession. This is a 16GB RAM machine; concurrent vitest processes cause swap thrashing. Always wait for a test run to fully complete before starting another.
 - **Running tests correctly:** Run `npx vitest run` in the foreground without pipes (`| tail`, `| grep`). Do NOT run tests in background mode. Do NOT use `sleep && cat` to poll for output. Just run the command and wait for it to finish (~20s).
 
-## Agent Orchestrator
-
-This project is managed by Agent Orchestrator (AO). Workers are spawned via `ao spawn` to implement issues autonomously.
-
-See `docs/agent-orchestrator/` for full AO documentation:
-- [CLI reference](docs/agent-orchestrator/cli-reference.md)
-- [Config reference](docs/agent-orchestrator/config-reference.md)
-- [Lifecycle](docs/agent-orchestrator/lifecycle.md)
-- [Workflow](docs/agent-orchestrator/workflow.md)
-
-### Monitoring
-
-- `/ao` - Single monitoring pass: health check, unstick zombies, log findings, track token/model efficiency
-- `/loop 3m /ao` - Continuous monitoring while AO runs. Stop the loop to stop monitoring.
-- Feedback logs: `docs/agent-orchestrator/feedback/YYYY-MM-DD.md` (per-date findings)
-- Patterns: `docs/agent-orchestrator/feedback/patterns.md` (cross-date recurring observations)
-
-### Preparing work for AO
-
-1. Define the feature (user story in `docs/user-stories/VC-XXX-name.md`)
-2. Create a GitHub Issue with clear description + acceptance criteria
-3. Dependencies between issues MUST use exact format: `Depends on #N` (not freetext like "depends on database setup")
-4. Add `ao:ready` label to approve the issue for automatic agent pickup
-5. `ao spawn <issue-number>` to dispatch a worker manually (skips label check)
-6. Worker builds, PRs, handles CI/review feedback autonomously
-7. Pipeline proceeds via event-driven hooks: PR created -> code review -> PO -> merge (see `docs/architecture/event-driven-pipeline.md`)
-
-### Agent Mode (for AO workers)
-
-When this project is worked on by an AO worker agent:
-- Do NOT ask for confirmation. Start working immediately.
-- Do NOT discuss or propose plans. Implement directly.
-- When done: commit, push your branch, and create a PR targeting `dev`.
-- Do NOT push directly to `dev` or `main`. All changes go through a PR.
-- Do NOT merge PRs. Only the merge agent (via nudge pipeline) handles merging.
-- When modifying layouts, routing, or shared components: verify all existing pages still render by running the full test suite.
-- When adding a new route: add it to the EXPECTED_ROUTES manifest in `src/app/routes.test.tsx`.
-- If something is unclear in the issue, make a reasonable decision and document it in the PR description.
-
-## Containment Rules
-
-CRITICAL: This is an isolated agent environment. The following are strictly forbidden for AO workers:
-
-- Do NOT use Slack, Gmail, Google Calendar, Atlassian, or any external messaging tools
-- ONLY interact with: the local filesystem, git, gh CLI, and npm
-- Do NOT modify `.claude/settings.json`, `.claude/metadata-updater.sh`, or `tools/scripts/pipeline-driver.sh`. These are pipeline infrastructure managed by the PO.

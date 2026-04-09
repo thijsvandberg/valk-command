@@ -31,7 +31,7 @@ class MockEventSource {
   }
 }
 
-const TICKET_KEY = "VC-100";
+const TICKET_KEY = "BRDG-100";
 const API_BASE = `/api/tickets/${TICKET_KEY}/story-writer`;
 
 const mockSession = {

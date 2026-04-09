@@ -1,9 +1,9 @@
-# VC-020: API Route Hardening
+# BRDG-020: API Route Hardening
 
 **Status:** Done
 **Priority:** High
 **Estimate:** Small
-**Depends on:** VC-018
+**Depends on:** BRDG-018
 
 ## Description
 

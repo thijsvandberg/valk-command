@@ -1,11 +1,11 @@
-# VC-012: Jira Write-Back
+# BRDG-012: Jira Write-Back
 
 **Status:** Not Started
 **Priority:** Medium
 
 ## Description
 
-Push local changes from valk-command back to Jira. Builds on the local editing and conflict resolution layer from VC-011.
+Push local changes from valk-command back to Jira. Builds on the local editing and conflict resolution layer from BRDG-011.
 
 ## Acceptance Criteria
 
@@ -18,5 +18,5 @@ Push local changes from valk-command back to Jira. Builds on the local editing a
 
 ## Dependencies
 
-- VC-011 (local editing & conflict resolution must be in place)
+- BRDG-011 (local editing & conflict resolution must be in place)
 - Jira API write scopes

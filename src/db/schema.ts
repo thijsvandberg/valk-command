@@ -62,7 +62,7 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
     enum: ["not_ready", "in_progress", "ready"],
   }).notNull().default("not_ready"),
   qualityScore: real("quality_score"),
-  // qualityStale removed in VC-017: staleness is now computed from local edits vs Jira mirror
+  // qualityStale removed in BRDG-017: staleness is now computed from local edits vs Jira mirror
   effortScores: text("effort_scores"),
   poNotes: text("po_notes"),
   poPriority: integer("po_priority"),

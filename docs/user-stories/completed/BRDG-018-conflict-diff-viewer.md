@@ -1,12 +1,12 @@
-# VC-018: Conflict Diff Viewer and Resolution
+# BRDG-018: Conflict Diff Viewer and Resolution
 
 **Status:** Done
 **Priority:** High
-**Depends on:** VC-017 (Stale Detection Rework)
+**Depends on:** BRDG-017 (Stale Detection Rework)
 
 ## Description
 
-The conflict state from VC-017 shows a warning but lacks proper tooling to resolve it. The diff viewer currently shows version history (Jira sync snapshots), but does not compare local edits against the latest Jira version. Users need to see exactly what changed and choose how to resolve.
+The conflict state from BRDG-017 shows a warning but lacks proper tooling to resolve it. The diff viewer currently shows version history (Jira sync snapshots), but does not compare local edits against the latest Jira version. Users need to see exactly what changed and choose how to resolve.
 
 The current diff implementation had several structural problems that made it unreliable for real conflict resolution:
 

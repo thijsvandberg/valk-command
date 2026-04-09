@@ -236,12 +236,14 @@ export function SprintSlots({
   }
 
   return (
-    <div className="flex h-[50px] items-stretch gap-1 border-b border-white/[0.06] px-5">
-      {/* All tab — always first, visually distinct with icon */}
+    <div className="flex h-[50px] items-stretch border-b border-white/[0.06] px-5">
+      {/* Scrollable tab area */}
+      <div className="flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* All tab -- always first, visually distinct with icon */}
       <button
         type="button"
         onClick={onAllClick}
-        className={`relative flex items-center gap-1.5 px-3 py-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`relative flex shrink-0 items-center gap-1.5 px-3 py-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
             ? "text-[var(--color-brand-400)] after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
             : "text-white/40 hover:text-white/65"
@@ -260,7 +262,7 @@ export function SprintSlots({
             key={view.id}
             type="button"
             onClick={() => onViewClick?.(view)}
-            className={`relative flex items-center px-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            className={`relative flex shrink-0 items-center px-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
                 ? "text-[var(--color-brand-400)] after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
                 : "text-white/40 hover:text-white/65"
@@ -288,7 +290,7 @@ export function SprintSlots({
             if (!sprint) return null;
             const isActive = !activeViewId && idx === activeSlot;
             return (
-              <div key={sprintId} className="relative">
+              <div key={sprintId} className="relative shrink-0">
                 <SortableTab
                   sprintId={sprintId}
                   sprint={sprint}
@@ -320,8 +322,8 @@ export function SprintSlots({
           <button
             type="button"
             onClick={onEphemeralClick}
-            title="Temporary view — not pinned"
-            className={`relative flex items-center gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 ${
+            title="Temporary view -- not pinned"
+            className={`relative flex shrink-0 items-center gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 ${
               ephemeralIsActive
                 ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)]/60 after:rounded-full"
                 : "text-white/30 hover:text-white/55"
@@ -334,9 +336,10 @@ export function SprintSlots({
           </button>
         );
       })()}
+      </div>
 
       {/* Right side: refresh + toggle filters */}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
         {/* Refresh board - hidden in All view since syncing all sprints at once is not practical */}
         {!allActive && (
           <Button

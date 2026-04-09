@@ -1,4 +1,4 @@
-# VC-002: Sprint Board
+# BRDG-002: Sprint Board
 
 **Status:** Complete
 **Priority:** High
@@ -119,7 +119,7 @@ As a PO, I want a sprint backlog view that mirrors the Jira sprint backlog layou
 - [x] Persist view preferences in localStorage (columns, sort, filters)
 - [x] Bulk actions wired to backend
 - [x] Review-story trigger from board
-- [x] Story history diff view (implemented via VC-004)
+- [x] Story history diff view (implemented via BRDG-004)
 - [x] Chat integration from side panel
 
 ## Technical Notes

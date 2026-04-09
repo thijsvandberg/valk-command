@@ -1,13 +1,13 @@
-# VC-009: Remaining Items & E2E Findings
+# BRDG-009: Remaining Items & E2E Findings
 
 **Status:** Not Started
 **Priority:** Medium
 
 ## Description
 
-Remaining open items from VC-008, plus new issues and improvements discovered during e2e verification on 2026-03-31.
+Remaining open items from BRDG-008, plus new issues and improvements discovered during e2e verification on 2026-03-31.
 
-## Remaining from VC-008 (not yet built)
+## Remaining from BRDG-008 (not yet built)
 
 ### Sprint Board
 - [ ] Burndown/burnup mini chart
@@ -66,7 +66,7 @@ Remaining open items from VC-008, plus new issues and improvements discovered du
 
 4. **Sprint Insights component not visible**: The SprintInsights component was created but may not be integrated into the main SprintBoard layout yet. Verify and wire up.
 
-5. **VC-006 Phase 4 still open**: Rich text editor (TipTap) is built but not integrated into ticket detail description editing or PO notes. Current editors are still plain textareas.
+5. **BRDG-006 Phase 4 still open**: Rich text editor (TipTap) is built but not integrated into ticket detail description editing or PO notes. Current editors are still plain textareas.
 
 ## Improvements Identified
 
@@ -89,4 +89,4 @@ Remaining open items from VC-008, plus new issues and improvements discovered du
 - Jira API credentials (for real data integration)
 - valk-agent workspace (for full agent integration)
 - WebSocket infrastructure (for real-time features)
-- VC-006 completion (for rich editor integration)
+- BRDG-006 completion (for rich editor integration)

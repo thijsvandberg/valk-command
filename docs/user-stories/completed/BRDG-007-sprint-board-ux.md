@@ -1,8 +1,8 @@
-# VC-007: Sprint Board UX Improvements
+# BRDG-007: Sprint Board UX Improvements
 
 **Status:** Complete
 **Priority:** Medium
-**Parent:** VC-002 (Sprint Board)
+**Parent:** BRDG-002 (Sprint Board)
 
 ## Description
 
@@ -47,4 +47,4 @@ As a PO, I want improved navigation and interaction patterns on the sprint board
 
 ## Dependencies
 
-- VC-002 Sprint Board (Phase 1-3 complete)
+- BRDG-002 Sprint Board (Phase 1-3 complete)

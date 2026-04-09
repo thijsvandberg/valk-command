@@ -1,9 +1,9 @@
-# VC-021: Jira Sync Resilience
+# BRDG-021: Jira Sync Resilience
 
 **Status:** Done
 **Priority:** High
 **Estimate:** Medium
-**Depends on:** VC-019, VC-020
+**Depends on:** BRDG-019, BRDG-020
 
 ## Description
 

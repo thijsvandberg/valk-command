@@ -1,4 +1,4 @@
-# VC-004: Story Diff View
+# BRDG-004: Story Diff View
 
 **Status:** Complete
 **Priority:** Medium
@@ -9,7 +9,7 @@ As a PO, I want to see a unified diff of story changes between versions, so I ca
 
 ## Context
 
-Jira REST API does not provide previous versions of the description field. The changelog endpoint shows that a field changed (timestamp + author) but not the full old value. We track versions ourselves: every sync that detects a description change stores a new snapshot in the `story_version` table (from VC-002). History starts from our first sync; anything before is unknown.
+Jira REST API does not provide previous versions of the description field. The changelog endpoint shows that a field changed (timestamp + author) but not the full old value. We track versions ourselves: every sync that detects a description change stores a new snapshot in the `story_version` table (from BRDG-002). History starts from our first sync; anything before is unknown.
 
 The diff covers the entire Jira description field, which typically contains: user story, acceptance criteria, scenarios, design notes, and any other content the team puts there.
 
@@ -21,7 +21,7 @@ The diff covers the entire Jira description field, which typically contains: use
 - Clicking opens the diff view inline in the side panel, replacing the normal content
 - "Back" button returns to normal side panel view
 
-### Full Page Ticket View (VC-003)
+### Full Page Ticket View (BRDG-003)
 - History tab showing version list
 - Click a version to see diff with previous version
 - Select any two versions to compare
@@ -102,7 +102,7 @@ Acceptance Criteria:
 - [x] Fetch versions from API
 
 ### Phase 3: Full Page Integration
-- [x] History tab in ticket detail view (VC-003)
+- [x] History tab in ticket detail view (BRDG-003)
 - [x] Version list with metadata
 - [x] Two-version selector (dropdowns or checkboxes)
 - [x] Diff rendering in full page width
@@ -116,9 +116,9 @@ Acceptance Criteria:
 
 ## Dependencies
 
-- VC-002 Sprint Board (story_version table, side panel)
-- VC-003 Ticket Detail View (full page view, history tab)
-- `story_version` table must be populated by Jira sync (VC-002 Phase 3)
+- BRDG-002 Sprint Board (story_version table, side panel)
+- BRDG-003 Ticket Detail View (full page view, history tab)
+- `story_version` table must be populated by Jira sync (BRDG-002 Phase 3)
 
 ## Technical Notes
 

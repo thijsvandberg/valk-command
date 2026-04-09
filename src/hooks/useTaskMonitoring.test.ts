@@ -43,7 +43,7 @@ class MockEventSource {
   }
 }
 
-const API_BASE = "/api/tickets/VC-100/story-writer";
+const API_BASE = "/api/tickets/BRDG-100/story-writer";
 
 function createOptions(overrides: Partial<Record<string, unknown>> = {}) {
   return {

@@ -1,9 +1,9 @@
-# VC-019: Database Integrity & Performance
+# BRDG-019: Database Integrity & Performance
 
 **Status:** Done
 **Priority:** High
 **Estimate:** Medium
-**Depends on:** VC-018
+**Depends on:** BRDG-018
 
 ## Description
 

@@ -1,8 +1,8 @@
-# VC-031: Story Split Mode
+# BRDG-031: Story Split Mode
 
 **Status:** Implemented
 **Priority:** High
-**Parent:** VC-025 (Story Writer)
+**Parent:** BRDG-025 (Story Writer)
 
 ---
 

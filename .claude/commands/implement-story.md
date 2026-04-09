@@ -2,13 +2,13 @@ Implement a user story end-to-end. Pick up the story, work through all checkboxe
 
 ## Input
 
-$ARGUMENTS should be a story ID like `VC-XXX`. Find the matching file in `docs/user-stories/` (check both root and `completed/` subdirectory).
+$ARGUMENTS should be a story ID like `BRDG-XXX`. Find the matching file in `docs/user-stories/` (check both root and `completed/` subdirectory).
 
 ## Workflow
 
 ### 1. Read the story
 
-- Find and read `docs/user-stories/VC-XXX-*.md` (or `completed/VC-XXX-*.md`)
+- Find and read `docs/user-stories/BRDG-XXX-*.md` (or `completed/BRDG-XXX-*.md`)
 - Understand all acceptance criteria and checkboxes
 - If the story references other files (PRD, architecture docs), read those too
 
@@ -42,7 +42,7 @@ After all checkboxes are done:
 ### 5. Handle problems found along the way
 
 - **Small issues** (typos, minor bugs, small refactors): fix them directly
-- **Larger issues** that need discussion: create a new user story in `docs/user-stories/` using the standard `VC-XXX-name.md` format
+- **Larger issues** that need discussion: create a new user story in `docs/user-stories/` using the standard `BRDG-XXX-name.md` format
 - **Observations, tech debt, findings**: write to `docs/investigations/YYYY-MM-DD-<topic>.md`
 
 ### 6. Report

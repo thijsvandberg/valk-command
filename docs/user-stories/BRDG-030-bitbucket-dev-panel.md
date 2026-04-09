@@ -1,4 +1,4 @@
-# VC-030: Bitbucket Development Panel in Ticket Detail
+# BRDG-030: Bitbucket Development Panel in Ticket Detail
 
 **Status:** Open
 **Priority:** Medium
@@ -8,6 +8,7 @@
 As the PO, I want to see Bitbucket development activity linked to a Jira ticket directly in the ticket detail view, so I can assess implementation progress (branches, commits, pull requests, builds) without leaving valk-command.
 
 ## Core Concepts
+API (readonly) key in .env.local `BITBUCKET_API_TOKEN`
 
 - **Development panel**: A collapsible sidebar section in the ticket detail view, mirroring the "Development" panel in Jira
 - **Data source**: Jira's development info API (`/rest/dev-status/latest/issue/detail`) returns branches, commits, PRs, and build statuses linked to a ticket via the Bitbucket integration Jira already has configured

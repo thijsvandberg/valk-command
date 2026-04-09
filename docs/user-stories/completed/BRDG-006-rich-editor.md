@@ -1,4 +1,4 @@
-# VC-006: Rich Text Editor for Story Descriptions
+# BRDG-006: Rich Text Editor for Story Descriptions
 
 **Status:** In Progress
 **Priority:** Medium
@@ -73,7 +73,7 @@ It can span multiple lines.
 
 ## Usage Locations
 
-- Ticket description editing (VC-003 Phase 4, replaces current textarea)
+- Ticket description editing (BRDG-003 Phase 4, replaces current textarea)
 - PO Notes editing (in side panel and detail view)
 - PO Comments (if we want rich formatting there too, future)
 
@@ -101,9 +101,9 @@ It can span multiple lines.
 - [x] Last used mode persisted in localStorage
 
 ### Phase 4: Integration
-- [ ] Replace description textarea in ticket detail view (VC-003)
+- [ ] Replace description textarea in ticket detail view (BRDG-003)
 - [ ] Replace PO Notes textarea in side panel and detail rail
-- [ ] Ensure local edit tracking (VC-003 Phase 4) works with new editor
+- [ ] Ensure local edit tracking (BRDG-003 Phase 4) works with new editor
 - [ ] Update description rendering to support callout blocks
 
 ## Technical Notes
@@ -116,4 +116,4 @@ It can span multiple lines.
 
 ## Dependencies
 
-- VC-003 Ticket Detail View (editing infrastructure)
+- BRDG-003 Ticket Detail View (editing infrastructure)

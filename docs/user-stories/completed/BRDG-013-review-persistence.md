@@ -1,4 +1,4 @@
-# VC-013: Persist and Display Story Review Results
+# BRDG-013: Persist and Display Story Review Results
 
 **Status:** Done
 **Priority:** High
@@ -74,4 +74,4 @@ Additionally, when a story is fetched or reviewed in Chat mode, the results must
 
 ## Dependencies
 
-- Depends on VC-011 (Jira integration) for real story content hashes from synced data
+- Depends on BRDG-011 (Jira integration) for real story content hashes from synced data

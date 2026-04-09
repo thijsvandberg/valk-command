@@ -1,4 +1,4 @@
-# VC-024: History & Diff UX Rework
+# BRDG-024: History & Diff UX Rework
 
 **Status:** Done
 **Priority:** High

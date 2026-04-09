@@ -1,11 +1,11 @@
-# VC-005: Sprint Board Improvements & Bug Fixes
+# BRDG-005: Sprint Board Improvements & Bug Fixes
 
 **Status:** Complete
 **Priority:** Medium
 
 ## Description
 
-Collection of improvements, bug fixes, and polish items identified during the initial sprint board build (VC-002/003/004).
+Collection of improvements, bug fixes, and polish items identified during the initial sprint board build (BRDG-002/003/004).
 
 ## Issues Found During Verification
 
@@ -41,7 +41,7 @@ Collection of improvements, bug fixes, and polish items identified during the in
 
 2. **Per-ticket story versions**: Replace MOCK_VERSIONS with API-driven versions fetched per ticket from the story_version table.
 
-3. **Two-version selector in History tab**: The VC-004 spec mentions comparing any two versions via checkboxes or dropdowns. Currently only sequential comparison is supported. Add arbitrary version comparison.
+3. **Two-version selector in History tab**: The BRDG-004 spec mentions comparing any two versions via checkboxes or dropdowns. Currently only sequential comparison is supported. Add arbitrary version comparison.
 
 5. **Keyboard navigation**: (FIXED) Added keyboard shortcuts: Up/Down arrow to navigate between tickets (with focus outline), Enter to open/close side panel for focused ticket, Escape to close side panel. Only active when the table container has focus.
 
@@ -61,7 +61,7 @@ Collection of improvements, bug fixes, and polish items identified during the in
 
 ## Dependencies
 
-- VC-002 Sprint Board (bulk action infrastructure)
-- VC-003 Ticket Detail View (empty states, loading)
-- VC-004 Story Diff (arbitrary version comparison)
+- BRDG-002 Sprint Board (bulk action infrastructure)
+- BRDG-003 Ticket Detail View (empty states, loading)
+- BRDG-004 Story Diff (arbitrary version comparison)
 - valk-agent REST API (for review-story trigger)

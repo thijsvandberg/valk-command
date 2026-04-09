@@ -1,4 +1,4 @@
-# VC-025: Story Writer
+# BRDG-025: Story Writer
 
 **Status:** In Progress
 **Priority:** High
@@ -11,8 +11,8 @@ As the PO, I want to improve Jira story descriptions by chatting with the remote
 
 - **Conversational**: First message triggers the `write-story-draft` skill on the workspace, follow-ups resume the same CLI session
 - **Two-draft model**: Remote draft (from workspace) and local draft (user edits), with merge UI when they diverge
-- **Hybrid session persistence**: Workspace is stateful (CLI sessions on disk), VC stores conversation mirror, recovery on session loss sends current state (not full history)
-- **Push from VC**: Uses existing markdown-to-ADF conversion and push-to-jira endpoint
+- **Hybrid session persistence**: Workspace is stateful (CLI sessions on disk), Bridge stores conversation mirror, recovery on session loss sends current state (not full history)
+- **Push from Bridge**: Uses existing markdown-to-ADF conversion and push-to-jira endpoint
 
 ## Acceptance Criteria
 
@@ -58,11 +58,11 @@ As the PO, I want to improve Jira story descriptions by chatting with the remote
 - Plan file: `~/.claude/plans/wiggly-frolicking-tarjan.md`
 - Two systems kept strictly separate: valk-command (this repo) and valk-remote-workspace
 - Reuses: RichEditor, StoryDiff (interactive mode), MessageList/Input, ReviewPopover, useWorkspaceTask, push-to-jira
-- `<story-draft>` tags as contract between workspace skill and VC frontend
+- `<story-draft>` tags as contract between workspace skill and Bridge frontend
 
 ## Dependencies
 
-- Existing push-to-jira flow (VC-017, VC-024)
-- Existing review system (VC-013)
-- Existing rich editor (VC-006)
-- Existing story diff (VC-004)
+- Existing push-to-jira flow (BRDG-017, BRDG-024)
+- Existing review system (BRDG-013)
+- Existing rich editor (BRDG-006)
+- Existing story diff (BRDG-004)

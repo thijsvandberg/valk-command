@@ -1,4 +1,4 @@
-# VC-026: Import Jira Description History
+# BRDG-026: Import Jira Description History
 
 **Status:** Done
 **Priority:** Medium
@@ -7,7 +7,7 @@
 
 As the PO, I want to fetch the full description change history from Jira for a ticket, so I can see all historical description versions in the History tab, not just the ones captured during sync.
 
-Currently, VC only stores a new StoryVersion when a sync cycle detects a content hash change. This means description changes that happened before VC was set up, or between sync intervals, are invisible. The Jira changelog API has the complete history, but we only fetch the most recent entry (`getLastChangeAuthor`).
+Currently, Bridge only stores a new StoryVersion when a sync cycle detects a content hash change. This means description changes that happened before Bridge was set up, or between sync intervals, are invisible. The Jira changelog API has the complete history, but we only fetch the most recent entry (`getLastChangeAuthor`).
 
 This feature adds a button to the History tab that imports all historical description changes from Jira's changelog into the local version store.
 
@@ -52,6 +52,6 @@ Only description field changes. Title/summary changes are out of scope.
 
 ## Dependencies
 
-- Existing version storage (VC-004, VC-024)
+- Existing version storage (BRDG-004, BRDG-024)
 - Jira client (`src/lib/jira-client.ts`)
 - TicketHistory component (`src/components/ticket-detail/TicketHistory.tsx`)

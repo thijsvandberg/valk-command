@@ -159,7 +159,7 @@ Incremental syncs only write to the log when tickets are actually synced (count 
 
 ## Search
 
-Sprint board search (VC-032) provides two search modes:
+Sprint board search (BRDG-032) provides two search modes:
 
 ### Local search (`GET /api/search/local`)
 

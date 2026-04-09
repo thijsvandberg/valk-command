@@ -1,8 +1,8 @@
-# VC-016: Jira Webhook Receiver
+# BRDG-016: Jira Webhook Receiver
 
 **Status:** Backlog (Nice to have)
 **Priority:** Low
-**Depends on:** VC-011 (Real Jira Integration)
+**Depends on:** BRDG-011 (Real Jira Integration)
 
 ## Description
 

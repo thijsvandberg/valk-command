@@ -1,8 +1,8 @@
-# VC-017: Stale Detection Rework
+# BRDG-017: Stale Detection Rework
 
 **Status:** In Progress
 **Priority:** High
-**Depends on:** VC-011 (Real Jira Integration)
+**Depends on:** BRDG-011 (Real Jira Integration)
 
 ## Description
 
@@ -79,8 +79,8 @@ else:
 - [x] Side panel: orange "Conflict" warning with "View diff" link
 - [x] Ticket table: orange dot next to key
 - [x] Single view: warning banner with diff viewer
-- Moved to VC-018: Diff viewer shows local edits vs latest Jira version
-- Moved to VC-018: User can choose "Keep local" / "Discard local"
+- Moved to BRDG-018: Diff viewer shows local edits vs latest Jira version
+- Moved to BRDG-018: User can choose "Keep local" / "Discard local"
 
 ### Push to Jira flow
 - [x] Pre-push check: verify mirror is up-to-date with remote (compare `jiraUpdatedAt` with Jira API). If not, update mirror first and re-evaluate state (may become conflict)

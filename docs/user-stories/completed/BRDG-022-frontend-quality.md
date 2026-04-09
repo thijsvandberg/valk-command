@@ -1,9 +1,9 @@
-# VC-022: Frontend Quality & Component Health
+# BRDG-022: Frontend Quality & Component Health
 
 **Status:** Done
 **Priority:** Medium
 **Estimate:** Large
-**Depends on:** VC-018
+**Depends on:** BRDG-018
 
 ## Description
 

@@ -1,4 +1,4 @@
-# VC-028: PWA with Tabbed Application Mode
+# BRDG-028: PWA with Tabbed Application Mode
 
 **Status:** In Progress
 **Priority:** Medium
@@ -45,6 +45,6 @@ As the PO, I want to install Valk Command as a PWA with tabbed application mode 
 
 ## Out of Scope (for now)
 - Offline caching / offline-first support
-- Push notifications via service worker (covered by VC-027)
+- Push notifications via service worker (covered by BRDG-027)
 - App store distribution (Google Play TWA, Microsoft Store)
 - Custom install prompt UI

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { ColumnToggle } from "@/components/sprint-board/FilterBar";
@@ -25,8 +25,61 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { TicketRow, SortableTicketRow } from "@/components/sprint-board/TicketRow";
 import { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl } from "@/components/sprint-board/TicketTableCells";
+import { DEFAULT_COLUMN_WIDTHS } from "@/hooks/useColumnWidths";
 
 export { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl };
+
+// -- Resize handle for column headers --
+
+function ResizeHandle({
+  colId,
+  onResize,
+  onReset,
+}: {
+  colId: string;
+  onResize: (colId: string, width: number) => void;
+  onReset: (colId: string) => void;
+}) {
+  const handleMouseDown = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const th = (e.target as HTMLElement).closest("th");
+    if (!th) return;
+    const startX = e.clientX;
+    const startWidth = th.getBoundingClientRect().width;
+
+    function onMouseMove(ev: MouseEvent) {
+      const newWidth = Math.max(24, startWidth + ev.clientX - startX);
+      onResize(colId, Math.round(newWidth));
+    }
+    function onMouseUp() {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, [colId, onResize]);
+
+  const handleDoubleClick = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onReset(colId);
+  }, [colId, onReset]);
+
+  return (
+    <div
+      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 group/resize"
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
+    >
+      <div className="absolute right-0 top-1 bottom-1 w-px bg-white/0 group-hover/resize:bg-white/20 transition-colors duration-100" />
+    </div>
+  );
+}
 
 const VIRTUALIZE_THRESHOLD = 200;
 const ROW_HEIGHT_ESTIMATE = 40;
@@ -94,6 +147,9 @@ export function TicketTable({
   sortDir,
   onSortChange,
   onColumnToggle,
+  columnWidths,
+  onColumnResize,
+  onColumnResetWidth,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -119,8 +175,14 @@ export function TicketTable({
   sortDir?: SortDir;
   onSortChange?: (field: SortField, dir: SortDir) => void;
   onColumnToggle?: (id: ColumnId, show: boolean) => void;
+  columnWidths?: Record<string, number>;
+  onColumnResize?: (colId: string, width: number) => void;
+  onColumnResetWidth?: (colId: string) => void;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
+  const colW = useCallback((id: string): number | undefined => {
+    return columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
+  }, [columnWidths]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
@@ -213,6 +275,10 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
   }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, showSprintColumn, sprintNameMap, poStatuses, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover]);
 
+  const rh = onColumnResize && onColumnResetWidth
+    ? (id: string) => <ResizeHandle colId={id} onResize={onColumnResize} onReset={onColumnResetWidth} />
+    : () => null;
+
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
       <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
@@ -234,66 +300,79 @@ export function TicketTable({
             />
           </div>
         </th>
-        {col("type") && <th className="w-8 py-2.5 pr-2" />}
+        {col("type") && <th className="py-2.5 pr-2" style={{ width: colW("type") }} />}
         {col("key") && (
-          <th className="group/th w-24 py-2.5 pr-3">
+          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("key") }}>
             <button type="button" onClick={() => handleColumnSort("key")} className="flex items-center cursor-pointer hover:text-white/60">
               Key<SortIndicator colId="key" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("key")}
           </th>
         )}
         {col("title") && (
-          <th className="group/th py-2.5 pr-3">
+          <th className="group/th relative py-2.5 pr-3" style={colW("title") ? { width: colW("title") } : undefined}>
             <button type="button" onClick={() => handleColumnSort("title")} className="flex items-center cursor-pointer hover:text-white/60">
               Title<SortIndicator colId="title" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("title")}
           </th>
         )}
         {col("epic") && (
-          <th className="group/th w-36 py-2.5 pr-3">
+          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("epic") }}>
             <button type="button" onClick={() => handleColumnSort("epic")} className="flex items-center cursor-pointer hover:text-white/60">
               Epic<SortIndicator colId="epic" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("epic")}
           </th>
         )}
         {col("jiraStatus") && (
-          <th className="group/th w-28 py-2.5 pr-3">
+          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("jiraStatus") }}>
             <button type="button" onClick={() => handleColumnSort("jiraStatus")} className="flex items-center cursor-pointer hover:text-white/60">
               Status<SortIndicator colId="jiraStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("jiraStatus")}
           </th>
         )}
-        {showSprintColumn && <th className="w-36 py-2.5 pr-3">Sprint</th>}
+        {showSprintColumn && (
+          <th className="relative py-2.5 pr-3" style={{ width: colW("sprint") }}>
+            Sprint
+            {rh("sprint")}
+          </th>
+        )}
         {col("points") && (
-          <th className="group/th w-12 py-2.5 pr-3 text-center">
+          <th className="group/th relative py-2.5 pr-3 text-center" style={{ width: colW("points") }}>
             <button type="button" onClick={() => handleColumnSort("points")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
               Pts<SortIndicator colId="points" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("points")}
           </th>
         )}
         {col("assignee") && (
-          <th className="group/th w-10 py-2.5 pr-3">
+          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("assignee") }}>
             <button type="button" onClick={() => handleColumnSort("assignee")} className="flex items-center cursor-pointer hover:text-white/60">
               <SortIndicator colId="assignee" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("assignee")}
           </th>
         )}
-        {col("flagged") && <th className="w-8 py-2.5 pr-2" />}
+        {col("flagged") && <th className="py-2.5 pr-2" style={{ width: colW("flagged") }} />}
         {col("poStatus") && (
-          <th className="group/th w-10 py-2.5 pr-2 text-center">
+          <th className="group/th relative py-2.5 pr-2 text-center" style={{ width: colW("poStatus") }}>
             <button type="button" onClick={() => handleColumnSort("poStatus")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
               PO<SortIndicator colId="poStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("poStatus")}
           </th>
         )}
         {col("quality") && (
-          <th className="group/th w-16 py-2.5 pr-3">
+          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("quality") }}>
             <button type="button" onClick={() => handleColumnSort("quality")} className="flex items-center cursor-pointer hover:text-white/60">
               QS<SortIndicator colId="quality" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
+            {rh("quality")}
           </th>
         )}
-        {col("notes") && <th className="w-8 py-2.5 pr-2" />}
+        {col("notes") && <th className="py-2.5 pr-2" style={{ width: colW("notes") }} />}
         {onColumnToggle && (
           <th className="w-8 py-2.5 pr-5">
             <div className="flex justify-end">
@@ -306,7 +385,7 @@ export function TicketTable({
   );
 
   const virtualizedTable = (
-    <table className="w-full border-collapse text-sm">
+    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
       {theadContent}
       <tbody>
         {paddingTop > 0 && (
@@ -337,7 +416,7 @@ export function TicketTable({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
         {theadContent}
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           <tbody>

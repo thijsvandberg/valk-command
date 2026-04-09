@@ -5,7 +5,7 @@ import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
 
 const mockSession: StoryWriterSessionRow = {
   id: "session-1",
-  ticketKey: "VC-100",
+  ticketKey: "BRDG-100",
   conversationId: "conv-1",
   status: "active",
   localDraft: null,
@@ -18,8 +18,8 @@ const mockSession: StoryWriterSessionRow = {
   updatedAt: "2026-04-01T10:00:00.000Z",
 };
 
-const API_BASE = "/api/tickets/VC-100/story-writer";
-const TICKET_KEY = "VC-100";
+const API_BASE = "/api/tickets/BRDG-100/story-writer";
+const TICKET_KEY = "BRDG-100";
 
 type DraftOptions = Parameters<typeof useStoryWriterDrafts>[0];
 
@@ -285,7 +285,7 @@ describe("useStoryWriterDrafts", () => {
       const sessionWithBothDrafts: StoryWriterSessionRow = {
         ...mockSession,
         localDraft: "original desc",
-        targetTicketKey: "VC-200",
+        targetTicketKey: "BRDG-200",
         targetLocalDraft: "target desc",
       };
 
@@ -302,7 +302,7 @@ describe("useStoryWriterDrafts", () => {
         expect.objectContaining({ method: "POST" }),
       );
       expect(fetch).toHaveBeenCalledWith(
-        `/api/tickets/VC-200/push-to-jira`,
+        `/api/tickets/BRDG-200/push-to-jira`,
         expect.objectContaining({ method: "POST" }),
       );
     });
@@ -341,7 +341,7 @@ describe("useStoryWriterDrafts", () => {
         ...mockSession,
         localDraft: "desc",
         localTitle: "title",
-        targetTicketKey: "VC-200",
+        targetTicketKey: "BRDG-200",
         targetLocalDraft: "target desc",
         targetLocalTitle: "target title",
       };
@@ -366,13 +366,13 @@ describe("useStoryWriterDrafts", () => {
         }),
       );
       expect(fetch).toHaveBeenCalledWith(
-        `/api/tickets/VC-200/local-edits`,
+        `/api/tickets/BRDG-200/local-edits`,
         expect.objectContaining({
           body: JSON.stringify({ field: "description", localValue: "target desc", isDraft: false }),
         }),
       );
       expect(fetch).toHaveBeenCalledWith(
-        `/api/tickets/VC-200/local-edits`,
+        `/api/tickets/BRDG-200/local-edits`,
         expect.objectContaining({
           body: JSON.stringify({ field: "title", localValue: "target title", isDraft: false }),
         }),

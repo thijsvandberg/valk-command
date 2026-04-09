@@ -1,4 +1,4 @@
-# VC-015: Sprint Sync Improvements
+# BRDG-015: Sprint Sync Improvements
 
 **Status:** Done
 **Priority:** Medium

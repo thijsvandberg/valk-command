@@ -1,4 +1,4 @@
-# VC-003: Ticket Detail View
+# BRDG-003: Ticket Detail View
 
 **Status:** In Progress
 **Priority:** High
@@ -16,7 +16,7 @@ As a PO, I want a full ticket detail view that shows all Jira ticket information
 
 ## Side Panel
 
-The existing side panel (from VC-002) serves as a quick preview. It shows:
+The existing side panel (from BRDG-002) serves as a quick preview. It shows:
 - Ticket header (type icon, key, title)
 - Status badges (Jira status, epic, points)
 - Assignee
@@ -134,7 +134,7 @@ Accessible from the full page ticket view via a "History" tab or button.
 
 ## Database Requirements
 
-Uses existing tables from VC-002:
+Uses existing tables from BRDG-002:
 - `ticket` - cached Jira data
 - `ticket_metadata` - PO metadata
 - `story_version` - description version tracking
@@ -204,5 +204,5 @@ New tables needed:
 
 ## Dependencies
 
-- VC-002 Sprint Board (side panel, API endpoints, DB schema)
+- BRDG-002 Sprint Board (side panel, API endpoints, DB schema)
 - Jira REST API access (Phase 3+ for real data)

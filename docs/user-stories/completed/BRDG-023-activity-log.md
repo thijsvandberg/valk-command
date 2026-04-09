@@ -1,4 +1,4 @@
-# VC-023: Rename Sync Log to Activity Log
+# BRDG-023: Rename Sync Log to Activity Log
 
 **Status:** Done
 **Priority:** Medium

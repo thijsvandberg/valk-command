@@ -1,4 +1,4 @@
-# VC-032: Sprint Board Search
+# BRDG-032: Sprint Board Search
 
 **Status:** Done
 **Priority:** Medium

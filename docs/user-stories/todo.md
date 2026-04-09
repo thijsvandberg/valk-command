@@ -2,7 +2,7 @@
 
 # User Story Backlog (scratch notes)
 
-Notes and ideas for future user stories. Items that are fleshed out get promoted to their own `VC-XXX-name.md` file.
+Notes and ideas for future user stories. Items that are fleshed out get promoted to their own `BRDG-XXX-name.md` file.
 
 ## Story Writer
 
@@ -10,7 +10,7 @@ Notes and ideas for future user stories. Items that are fleshed out get promoted
 - **Header structure**: (1) Story writer action bar (split/save/push/discard), (2) Application list with pane toggle, (3) App toolbar showing active apps per pane with their actions.
 - **View toggle buttons**: Chat, Editor, Diff, History as toggle buttons. Click to show/hide each view. Chat always left, Editor always center or left if Chat hidden.
 - **Related stories in chat**: Look up related stories via chat. Present with scores, clickable links that open in side panel. CMD+click opens in new tab. Mark stories as related via chat or sidebar. Uses existing find-related skill (`/Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace/.claude/skills/find-related.md`), needs rebuild. Accessible via quick actions button in chat.
-- **Per-type skills**: See VC-033.
+- **Per-type skills**: See BRDG-033.
 - **acceptanceCriteria field**: Stored in ticket and storyVersion tables, synced from Jira custom field. Included in contentHash calculation but no UI to edit separately. Effectively null if not used in Jira. Evaluate whether to clean up.
 
 ## Sprint Board
@@ -35,4 +35,3 @@ Notes and ideas for future user stories. Items that are fleshed out get promoted
 
 
 ## Search
-- Tickets in actieve sprint moeten een hogere weging krijgen, en dus hoger staan.

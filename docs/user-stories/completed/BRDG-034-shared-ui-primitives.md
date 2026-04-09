@@ -1,4 +1,4 @@
-# VC-034: Shared UI Primitives
+# BRDG-034: Shared UI Primitives
 
 **Status:** Done
 **Priority:** High

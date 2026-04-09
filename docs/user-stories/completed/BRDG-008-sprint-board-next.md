@@ -1,11 +1,11 @@
-# VC-008: Sprint Board Next Steps
+# BRDG-008: Sprint Board Next Steps
 
 **Status:** In Progress
 **Priority:** Medium
 
 ## Description
 
-Follow-up improvements and new features for the sprint board, ticket detail view, and story diff after the initial build (VC-002 through VC-007).
+Follow-up improvements and new features for the sprint board, ticket detail view, and story diff after the initial build (BRDG-002 through BRDG-007).
 
 ## Real Data Integration
 

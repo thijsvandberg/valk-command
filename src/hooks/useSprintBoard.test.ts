@@ -20,7 +20,7 @@ function swrWrapper({ children }: { children: ReactNode }) {
 }
 
 const mockTicket = {
-  key: "VC-101",
+  key: "BRDG-101",
   title: "Implement login",
   type: "story",
   epic: "AUTH",
@@ -37,7 +37,7 @@ const mockTicket = {
 };
 
 const mockTicketDetail = {
-  key: "VC-101",
+  key: "BRDG-101",
   title: "Implement login",
   description: "As a user I want to log in",
   reporter: null,
@@ -64,7 +64,7 @@ const mockReviewsResponse = {
   reviews: [
     {
       id: "rev-1",
-      ticketKey: "VC-101",
+      ticketKey: "BRDG-101",
       createdAt: "2026-04-05T10:00:00.000Z",
       source: "ticket-detail",
       storyVersionHash: "abc123",
@@ -149,7 +149,7 @@ describe("useTicketDetail", () => {
   it("fetches ticket detail by key", async () => {
     vi.spyOn(global, "fetch").mockImplementation(async (url) => {
       const urlStr = typeof url === "string" ? url : url.toString();
-      if (urlStr === "/api/tickets/VC-101") {
+      if (urlStr === "/api/tickets/BRDG-101") {
         return { ok: true, json: async () => mockTicketDetail } as Response;
       }
       // Background staleness check
@@ -159,12 +159,12 @@ describe("useTicketDetail", () => {
       return { ok: false } as Response;
     });
 
-    const { result } = renderHook(() => useTicketDetail("VC-101"), { wrapper: swrWrapper });
+    const { result } = renderHook(() => useTicketDetail("BRDG-101"), { wrapper: swrWrapper });
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data).toEqual(mockTicketDetail);
-    expect(fetch).toHaveBeenCalledWith("/api/tickets/VC-101");
+    expect(fetch).toHaveBeenCalledWith("/api/tickets/BRDG-101");
   });
 
   it("does not fetch when ticketKey is null", async () => {
@@ -179,7 +179,7 @@ describe("useTicketDetail", () => {
   it("triggers sync when background check finds stale data", async () => {
     vi.spyOn(global, "fetch").mockImplementation(async (url) => {
       const urlStr = typeof url === "string" ? url : url.toString();
-      if (urlStr === "/api/tickets/VC-101") {
+      if (urlStr === "/api/tickets/BRDG-101") {
         return { ok: true, json: async () => mockTicketDetail } as Response;
       }
       if (urlStr.startsWith("/api/jira/check-updated")) {
@@ -191,7 +191,7 @@ describe("useTicketDetail", () => {
       return { ok: false } as Response;
     });
 
-    renderHook(() => useTicketDetail("VC-101"), { wrapper: swrWrapper });
+    renderHook(() => useTicketDetail("BRDG-101"), { wrapper: swrWrapper });
 
     // Wait for the background staleness check and sync to fire
     await waitFor(() => {
@@ -245,12 +245,12 @@ describe("useTicketReviews", () => {
       json: async () => mockReviewsResponse,
     } as Response);
 
-    const { result } = renderHook(() => useTicketReviews("VC-101"), { wrapper: swrWrapper });
+    const { result } = renderHook(() => useTicketReviews("BRDG-101"), { wrapper: swrWrapper });
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data).toEqual(mockReviewsResponse);
-    expect(fetch).toHaveBeenCalledWith("/api/tickets/VC-101/reviews");
+    expect(fetch).toHaveBeenCalledWith("/api/tickets/BRDG-101/reviews");
   });
 
   it("does not fetch when ticketKey is null", async () => {
@@ -269,17 +269,17 @@ describe("useTicketReviews", () => {
       const urlStr = typeof url === "string" ? url : url.toString();
       const method = init && typeof init === "object" && "method" in init ? init.method : "GET";
 
-      if (urlStr === "/api/tickets/VC-101/reviews" && method === "GET") {
+      if (urlStr === "/api/tickets/BRDG-101/reviews" && method === "GET") {
         return { ok: true, json: async () => mockReviewsResponse } as Response;
       }
-      if (urlStr === "/api/tickets/VC-101/reviews" && method === "POST") {
+      if (urlStr === "/api/tickets/BRDG-101/reviews" && method === "POST") {
         return { ok: true, json: async () => savedReview } as Response;
       }
       // Revalidation calls
       return { ok: true, json: async () => null } as Response;
     });
 
-    const { result } = renderHook(() => useTicketReviews("VC-101"), { wrapper: swrWrapper });
+    const { result } = renderHook(() => useTicketReviews("BRDG-101"), { wrapper: swrWrapper });
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 
@@ -309,16 +309,16 @@ describe("useTicketReviews", () => {
       const urlStr = typeof url === "string" ? url : url.toString();
       const method = init && typeof init === "object" && "method" in init ? init.method : "GET";
 
-      if (urlStr === "/api/tickets/VC-101/reviews" && method === "GET") {
+      if (urlStr === "/api/tickets/BRDG-101/reviews" && method === "GET") {
         return { ok: true, json: async () => mockReviewsResponse } as Response;
       }
-      if (urlStr === "/api/tickets/VC-101/reviews/rev-1" && method === "DELETE") {
+      if (urlStr === "/api/tickets/BRDG-101/reviews/rev-1" && method === "DELETE") {
         return { ok: true, json: async () => ({}) } as Response;
       }
       return { ok: true, json: async () => null } as Response;
     });
 
-    const { result } = renderHook(() => useTicketReviews("VC-101"), { wrapper: swrWrapper });
+    const { result } = renderHook(() => useTicketReviews("BRDG-101"), { wrapper: swrWrapper });
 
     await waitFor(() => expect(result.current.data).toBeDefined());
 

@@ -1,4 +1,4 @@
-# VC-035: Code Quality - Hook and Component Decomposition
+# BRDG-035: Code Quality - Hook and Component Decomposition
 
 **Status:** Completed
 **Priority:** Medium

@@ -1,4 +1,4 @@
-# VC-029: Bookmarks
+# BRDG-029: Bookmarks
 
 **Status:** Open
 **Priority:** Medium

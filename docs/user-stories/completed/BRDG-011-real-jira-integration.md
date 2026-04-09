@@ -1,4 +1,4 @@
-# VC-011: Real Jira Integration (Read-Only)
+# BRDG-011: Real Jira Integration (Read-Only)
 
 **Status:** In Progress (Phase 5 done, remaining items are nice-to-have / future work)
 **Priority:** High
@@ -50,10 +50,10 @@ Replace all mock/stub Jira data with live Jira API reads. One-directional: Jira 
 - [x] Visual indicator when local data is stale vs fresh
 
 ### Real-time Inbound Updates
-Moved to VC-016 (nice to have). The app works fully without webhooks via polling and manual sync triggers.
-- [ ] Webhook receiver (`POST /api/jira/webhook`) for ticket changes, comments, status transitions (see VC-016)
-- [ ] Webhook signature validation (see VC-016)
-- [ ] Deduplication of webhook events vs polling data (see VC-016)
+Moved to BRDG-016 (nice to have). The app works fully without webhooks via polling and manual sync triggers.
+- [ ] Webhook receiver (`POST /api/jira/webhook`) for ticket changes, comments, status transitions (see BRDG-016)
+- [ ] Webhook signature validation (see BRDG-016)
+- [ ] Deduplication of webhook events vs polling data (see BRDG-016)
 
 ### Sync Feedback (app-level)
 - [x] Persistent sync indicator visible across all views (sidebar or topbar)
@@ -124,7 +124,7 @@ Moved to VC-016 (nice to have). The app works fully without webhooks via polling
 - Sync log page (`/sync-log`): paginated table with type and status filters
 - Enhanced sync-log API: added type, status, and offset query parameters
 - Sidebar: added Sync Log nav item
-- Webhook receiver moved to separate VC-016 (nice to have)
+- Webhook receiver moved to separate BRDG-016 (nice to have)
 
 ### Auth + Config Fix (2026-04-01)
 - Switched to Atlassian API gateway with JIRA_CLOUD_ID (matching jira-mcp auth pattern)

@@ -1,4 +1,4 @@
-# VC-010: Migrate to Lucide Icons
+# BRDG-010: Migrate to Lucide Icons
 
 **Status:** Done
 **Priority:** Low

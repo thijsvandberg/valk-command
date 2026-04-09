@@ -9,17 +9,11 @@
     "start": "next start --port 3100",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "generate:changelog": "node tools/scripts/generate-changelog.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "ao": "ao start valk-command",
-    "ao:stop": "ao stop valk-command",
-    "ao:status": "ao status",
-    "ao:nudge": "tools/scripts/pipeline-driver.sh",
-    "promote": "gh pr create --base main --head dev --title 'Promote dev to main' --body 'Merge accumulated changes from dev into main.' || gh pr view dev --json url --jq .url"
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

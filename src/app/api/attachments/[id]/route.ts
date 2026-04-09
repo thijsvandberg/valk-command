@@ -30,15 +30,22 @@ export async function GET(
     return new NextResponse(null, { status: 503 });
   }
 
-  // Validate the URL points to the configured Jira instance to prevent SSRF
+  // Validate the URL points to Atlassian infrastructure to prevent SSRF.
+  // Jira Cloud serves attachment content from both the tenant domain
+  // (e.g. new-story.atlassian.net) and the API gateway (api.atlassian.com).
   try {
     const parsed = new URL(att.jiraUrl);
-    const base = new URL(jiraBaseUrl || "https://new-story.atlassian.net");
-    if (parsed.hostname !== base.hostname) {
-      console.error("[attachments] SSRF blocked: URL hostname mismatch", parsed.hostname);
+    if (parsed.protocol !== "https:") {
       return new NextResponse(null, { status: 403 });
     }
-    if (parsed.protocol !== "https:") {
+    const base = new URL(jiraBaseUrl || "https://new-story.atlassian.net");
+    const allowedHostnames = new Set([
+      base.hostname,
+      "api.atlassian.com",
+      "api.media.atlassian.com",
+    ]);
+    if (!allowedHostnames.has(parsed.hostname)) {
+      console.error("[attachments] SSRF blocked: URL hostname mismatch", parsed.hostname);
       return new NextResponse(null, { status: 403 });
     }
   } catch {

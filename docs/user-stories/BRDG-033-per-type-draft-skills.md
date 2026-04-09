@@ -1,4 +1,4 @@
-# VC-033: Per-type draft skills for Story Writer
+# BRDG-033: Per-type draft skills for Story Writer
 
 **Status:** Backlog
 **Priority:** Medium
@@ -15,7 +15,7 @@ The current `write-story-draft` skill contains all formats in one prompt. Claude
 
 - Create separate skill files: `write-story-draft.md`, `write-bug-draft.md`, `write-spike-draft.md`, `write-task-draft.md` in valk-remote-workspace
 - Register all four skills in `skills.ts`
-- VC selects the skill based on `ticket.type` when starting a story writer session and when sending the first message
+- Bridge selects the skill based on `ticket.type` when starting a story writer session and when sending the first message
 - Each skill file retains the shared sections (product context, codebase research flag, Jira access, writing guidelines, tone) but only includes its own format
 - Existing `write-story-draft` skill becomes the Story-specific skill (clean up the type-assessment section and remove other formats)
 

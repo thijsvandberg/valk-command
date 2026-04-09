@@ -6,12 +6,8 @@ dist/
 .env
 .env.local
 .DS_Store
-docs/agent-orchestrator/cli-reference.md
-docs/agent-orchestrator/config-reference.md
-docs/agent-orchestrator/lifecycle.md
-docs/agent-orchestrator/workflow.md
 docs/investigations/2026-03-28-project-setup-session.md
 *.db
 *.db-wal
 *.db-shm
-.ao-events/
+deleted/

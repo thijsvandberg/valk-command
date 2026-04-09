@@ -1,4 +1,4 @@
-# VC-034: Story Writer Streaming Resilience
+# BRDG-034: Story Writer Streaming Resilience
 
 **Status:** Completed
 **Priority:** High

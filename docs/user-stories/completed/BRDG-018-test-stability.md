@@ -1,4 +1,4 @@
-# VC-018: Test Stability & CI Reliability
+# BRDG-018: Test Stability & CI Reliability
 
 **Status:** Done
 **Priority:** Critical

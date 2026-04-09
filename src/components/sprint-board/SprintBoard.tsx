@@ -23,6 +23,7 @@ import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { useColumnWidths } from "@/hooks/useColumnWidths";
 
 export default function SprintBoard() {
   const { data: rawJiraSprints } = useJiraSprints();
@@ -77,6 +78,7 @@ export default function SprintBoard() {
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
 
+  const { widths: columnWidths, setColumnWidth, resetColumnWidth } = useColumnWidths();
   const f = useSprintBoardFilters(allTickets, poStatuses, isAllView, poPriorityOrder);
   const tickets = f.sortedTickets;
 
@@ -413,7 +415,7 @@ export default function SprintBoard() {
           <LoadingState variant="spinner" label="Loading tickets..." />
         )}
 
-        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} onColumnToggle={f.handleColumnToggle} />}
+        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} onColumnToggle={f.handleColumnToggle} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} />}
 
         {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
       </div>

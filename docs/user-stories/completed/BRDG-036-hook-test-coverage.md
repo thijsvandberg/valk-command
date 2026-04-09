@@ -1,4 +1,4 @@
-# VC-036: Missing Hook Test Coverage
+# BRDG-036: Missing Hook Test Coverage
 
 **Status:** Completed
 **Priority:** Medium

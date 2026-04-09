@@ -1,4 +1,4 @@
-# VC-001: App Shell and Navigation
+# BRDG-001: App Shell and Navigation
 
 **Status:** Not Started
 **Priority:** High
