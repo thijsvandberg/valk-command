@@ -1,6 +1,6 @@
 # BRDG-030: Bitbucket Development Panel in Ticket Detail
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
