@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FileText, GitCompare } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 export interface SplitPaneHeaderProps {
   ticketKey: string;
@@ -95,33 +96,36 @@ export function SplitPaneHeader({
         )}
 
         {showOriginalButton && onShowOriginal && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onShowOriginal}
             title="Show original story"
-            className="rounded px-2 py-1 text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
+            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
           >
             Show original
-          </button>
+          </Button>
         )}
         {showTargetButton && onShowTarget && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onShowTarget}
             title="Show split target story"
-            className="rounded px-2 py-1 text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
+            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
           >
             Show target
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={collapseIcon}
           onClick={onCollapse}
           title={collapseTitle}
-          className="flex items-center justify-center rounded p-1 text-white/30 hover:text-white/55 hover:bg-white/[0.05] cursor-pointer transition-colors duration-150"
-        >
-          {collapseIcon}
-        </button>
+          className="border-0 bg-transparent text-white/30 hover:text-white/55 hover:bg-white/[0.05]"
+        />
       </div>
     </div>
   );

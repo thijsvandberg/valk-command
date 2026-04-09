@@ -5,6 +5,7 @@ import type { POStatus } from "@/types/ticket";
 import { PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS } from "./FilterBar";
 import { POStatusIcon } from "./TicketTable";
+import { Button } from "@/components/ui/Button";
 
 export function BulkActionBar({
   count,
@@ -41,13 +42,14 @@ export function BulkActionBar({
       </span>
       <div className="h-3.5 w-px bg-white/[0.08]" />
       <div ref={statusRef} className="relative">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="md"
           onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-          className="rounded-md px-2.5 py-1 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+          className="border-0 text-white/60 hover:text-white"
         >
           Set PO Status
-        </button>
+        </Button>
         {showStatusDropdown && (
           <div className="absolute bottom-full left-0 z-50 mb-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
             {PO_STATUS_OPTIONS.map((opt) => {
@@ -72,29 +74,32 @@ export function BulkActionBar({
           </div>
         )}
       </div>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="md"
         disabled={isRefreshing}
         onClick={onRefreshFromJira}
-        className="rounded-md px-2.5 py-1 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
+        className="border-0 text-white/60 hover:text-white"
       >
         {isRefreshing ? "Syncing..." : "Refresh from Jira"}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="ghost"
+        size="md"
         onClick={onReviewStory}
-        className="rounded-md px-2.5 py-1 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+        className="border-0 text-white/60 hover:text-white"
       >
         Review Story
-      </button>
+      </Button>
       <div className="flex-1" />
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={onClear}
-        className="text-xs text-white/30 cursor-pointer hover:text-white/50"
+        className="border-0 bg-transparent text-white/30 hover:text-white/50 hover:bg-transparent"
       >
         Clear
-      </button>
+      </Button>
     </div>
   );
 }

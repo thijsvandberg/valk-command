@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useJobs } from "@/hooks/useJobs";
 import type { ScheduledJob } from "@/db/schema";
 import { isValidCron } from "@/lib/cron";
+import { Button } from "@/components/ui/Button";
 
 interface CreateFormState {
   name: string;
@@ -53,22 +54,20 @@ function JobRow({
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <button
+        <Button
+          variant={job.enabled ? "ghost" : "soft"}
+          size="sm"
           onClick={() => onToggle(job.id, !job.enabled)}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30 ${
-            job.enabled
-              ? "bg-white/[0.08] text-white/70 hover:bg-white/[0.14] active:bg-white/[0.18]"
-              : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 active:bg-emerald-500/40"
-          }`}
         >
           {job.enabled ? "Pause" : "Enable"}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
           onClick={() => onDelete(job.id)}
-          className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-400/70 transition-colors hover:bg-red-500/10 hover:text-red-400 active:bg-red-500/20 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500/30"
         >
           Delete
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -153,20 +152,22 @@ function CreateForm({ onSubmit, onCancel }: CreateFormProps) {
         </div>
       </div>
       <div className="flex gap-2 justify-end">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="lg"
           onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80 active:bg-white/[0.10] cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/20"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
+          variant="primary"
+          size="lg"
           disabled={submitting || Boolean(cronError)}
-          className="rounded-lg bg-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white shadow-[0_2px_8px_0_var(--color-brand-900)] transition-colors hover:bg-[var(--color-brand-500)] active:bg-[var(--color-brand-700)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           {submitting ? "Creating..." : "Create job"}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -198,12 +199,13 @@ export default function JobsPanel() {
           {loading ? "Loading..." : `${jobs.length} job${jobs.length === 1 ? "" : "s"}`}
         </span>
         {!showForm && (
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             onClick={() => setShowForm(true)}
-            className="rounded-lg bg-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white shadow-[0_2px_8px_0_var(--color-brand-900)] transition-colors hover:bg-[var(--color-brand-500)] active:bg-[var(--color-brand-700)] cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             New job
-          </button>
+          </Button>
         )}
       </div>
 

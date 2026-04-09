@@ -5,6 +5,7 @@ import { mutate as globalMutate } from "swr";
 import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "./SectionHeader";
+import { Button } from "@/components/ui/Button";
 import type { StoredReview } from "@/types/ticket";
 
 function getScoreColor(score: number): string {
@@ -248,18 +249,17 @@ function ReviewHistoryItem({
         <div className="border-t border-white/[0.04] px-4 py-3 space-y-4">
           <ReviewDetail review={review} currentVersionHash={currentVersionHash} />
           <div className="flex justify-end">
-            <button
-              type="button"
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(review.id);
               }}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[#e5534b]/60 cursor-pointer hover:bg-[#e5534b]/10 hover:text-[#e5534b] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#e5534b] active:scale-[0.97]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              icon={<Trash2 size={11} strokeWidth={1.5} />}
             >
-              <Trash2 size={11} strokeWidth={1.5} />
               Delete
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -282,22 +282,21 @@ function DeleteConfirmModal({
           This will permanently remove this review from the history. The quality score will update to reflect the most recent remaining review.
         </p>
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="md"
             onClick={onCancel}
-            className="rounded-md px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-            style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="destructive"
+            size="md"
             onClick={onConfirm}
-            className="rounded-md bg-[#e5534b] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[#d04840] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e5534b] active:scale-[0.98]"
-            style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+            className="!bg-[#e5534b] !text-white hover:!bg-[#d04840]"
           >
             Delete
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -356,34 +355,26 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
             <ReviewDetail review={latestReview} currentVersionHash={currentVersionHash} />
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="md"
               onClick={handleAgentReview}
               disabled={agentReviewing}
-              className="flex items-center gap-2 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-4 py-2 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              icon={agentReviewing
+                ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                : <Sparkles size={14} strokeWidth={1.2} />
+              }
             >
-              {agentReviewing ? (
-                <>
-                  <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-                  Reviewing...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} strokeWidth={1.2} />
-                  Re-review
-                </>
-              )}
-            </button>
-            <button
-              type="button"
+              {agentReviewing ? "Reviewing..." : "Re-review"}
+            </Button>
+            <Button
+              variant="destructive"
+              size="md"
               onClick={() => setDeleteTarget(latestReview.id)}
-              className="flex items-center gap-1 rounded-md px-3 py-2 text-xs text-[#e5534b]/60 cursor-pointer hover:bg-[#e5534b]/10 hover:text-[#e5534b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e5534b] active:scale-[0.98]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              icon={<Trash2 size={12} strokeWidth={1.5} />}
             >
-              <Trash2 size={12} strokeWidth={1.5} />
               Delete
-            </button>
+            </Button>
           </div>
           {reviewError && (
             <p className="mt-2 text-xs text-[#e5534b]/70">{reviewError}</p>
@@ -394,25 +385,18 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
           <SectionHeader title="Review" />
           <div className="mt-3">
             <p className="mb-3 text-sm text-white/25">No review yet</p>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="md"
               onClick={handleAgentReview}
               disabled={agentReviewing}
-              className="flex items-center gap-2 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-4 py-2 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              icon={agentReviewing
+                ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                : <Sparkles size={14} strokeWidth={1.2} />
+              }
             >
-              {agentReviewing ? (
-                <>
-                  <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-                  Reviewing...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} strokeWidth={1.2} />
-                  Review Story via Agent
-                </>
-              )}
-            </button>
+              {agentReviewing ? "Reviewing..." : "Review Story via Agent"}
+            </Button>
             {reviewError && (
               <p className="mt-2 text-xs text-[#e5534b]/70">{reviewError}</p>
             )}

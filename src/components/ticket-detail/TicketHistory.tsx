@@ -5,6 +5,7 @@ import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { ChevronRight, Save, Info, CloudUpload, Download } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
+import { Button } from "@/components/ui/Button";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 
 function parseVersionDate(iso: string): number {
@@ -490,16 +491,16 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                   Jira was updated (e.g. status transition, comment, or field change) but the description content is unchanged.
                 </p>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="md"
                 disabled={resolving}
                 onClick={handleForcePush}
-                className="flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                className="shrink-0"
+                icon={<CloudUpload size={13} strokeWidth={1.5} />}
               >
-                <CloudUpload size={13} strokeWidth={1.5} />
                 {resolving ? "Pushing..." : "Push to Jira"}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -538,24 +539,23 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
               >
                 {showConflictActions && (
                   <>
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="md"
                       disabled={resolving}
                       onClick={handleDiscardLocal}
-                      className="rounded-md border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
                     >
                       {resolving ? "Accepting..." : "Accept Jira version"}
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="md"
                       disabled={resolving}
                       onClick={metadataOnlyConflict ? handleForcePush : handleKeepAndPush}
-                      className="rounded-md border border-red-500/20 bg-red-500/[0.08] px-4 py-2 text-xs font-medium text-red-400 cursor-pointer hover:bg-red-500/[0.15] hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                      className="!border !border-red-500/20 !bg-red-500/[0.08] hover:!bg-red-500/[0.15]"
                     >
                       {resolving ? "Pushing..." : "Overwrite Jira with your draft"}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {showRevertActions && (
@@ -569,27 +569,25 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                 <div className="flex-1" />
 
                 {mergeResult !== null && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="primary"
+                    size="md"
                     disabled={savingMerge}
                     onClick={handleSaveMerge}
-                    className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                    icon={<Save size={13} strokeWidth={1.5} />}
                   >
-                    <Save size={13} strokeWidth={1.5} />
                     {savingMerge ? "Applying..." : "Apply merge"}
-                  </button>
+                  </Button>
                 )}
                 {showRevertActions && compareOldVersion && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="md"
                     disabled={resolving}
                     onClick={() => handleRevertTo(compareOldVersion)}
-                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/60 cursor-pointer hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
                   >
                     {resolving ? "Reverting..." : `Revert to v${compareOldVersion.versionNumber}`}
-                  </button>
+                  </Button>
                 )}
               </div>
             );
@@ -605,17 +603,16 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                 {sorted.length}
               </span>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={importing}
               onClick={handleImportHistory}
-              className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/50 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               title="Import full description history from Jira"
+              icon={<Download size={12} strokeWidth={1.5} className={importing ? "animate-pulse" : ""} />}
             >
-              <Download size={12} strokeWidth={1.5} className={importing ? "animate-pulse" : ""} />
               {importing ? "Importing..." : "Import Jira history"}
-            </button>
+            </Button>
           </div>
 
           {/* Import result feedback */}

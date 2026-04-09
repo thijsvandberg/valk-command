@@ -15,6 +15,7 @@ import { TitleInput } from "@/components/story-writer/TitleInput";
 import { DiffPane, type DiffPaneProps, type RightVersion, type StoredVersionRow, type DiffViewMode } from "@/components/story-writer/DiffPane";
 import { SplitModeLayout } from "@/components/story-writer/SplitModeLayout";
 import { TabButton } from "@/components/story-writer/TabButton";
+import { Button } from "@/components/ui/Button";
 
 export type EditorTab = "editor" | "diff" | "history";
 type DiffLayout = "full" | "side-by-side";
@@ -331,19 +332,20 @@ export function StoryWriterEditor({
         </div>
 
         {activeTab === "diff" && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="md"
+            icon={<Columns2 size={13} strokeWidth={1.5} />}
             onClick={handleDiffLayoutToggle}
             title={diffLayout === "full" ? "Switch to side-by-side view" : "Switch to full-width view"}
-            className={`ml-auto flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+            className={`ml-auto ${
               diffLayout === "side-by-side"
                 ? "border-white/[0.10] bg-white/[0.06] text-white/75"
-                : "border-white/[0.05] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+                : ""
             }`}
           >
-            <Columns2 size={13} strokeWidth={1.5} />
             Side by side
-          </button>
+          </Button>
         )}
       </div>
 

@@ -14,6 +14,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "./SectionHeader";
+import { Button } from "@/components/ui/Button";
 import { renderMarkdown } from "./renderMarkdown";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 
@@ -372,34 +373,34 @@ export function EditableDescription({
                   <span className="text-[10px] text-white/40">Override remote</span>
                 </label>
               )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="md"
                 onClick={handleDiscard}
-                className="cursor-pointer flex items-center rounded h-7 px-2 text-[12px] font-medium text-white/35 hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-                style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
+                className="!text-white/35 hover:!text-white/60 !text-[12px]"
               >
                 Discard
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
                 onClick={save}
-                className="cursor-pointer flex items-center rounded h-7 bg-white/[0.08] px-2.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.12] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                className="!bg-white/[0.08] !text-white/70 hover:!bg-white/[0.12] hover:!text-white !text-[12px]"
               >
                 Save
-              </button>
+              </Button>
               {showPush && (
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="md"
                   disabled={isPushing || (showConflictWarning && !overrideConfirmed)}
                   title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
                   onClick={handlePushToJira}
-                  className="cursor-pointer flex items-center gap-1 rounded h-7 bg-[var(--color-brand-600)] px-2.5 text-[12px] font-medium text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.15)]"
-                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                  icon={isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
+                  className="!text-[12px]"
                 >
-                  {isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
                   {isPushing ? "Pushing..." : "Push to Jira"}
-                </button>
+                </Button>
               )}
             </div>
           }
@@ -728,13 +729,13 @@ export function CommentsSection({
               />
               {newComment.trim() && (
                 <div className="mt-1.5 flex justify-end">
-                  <button
-                    type="button"
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={handleAddComment}
-                    className="rounded-md bg-[var(--color-brand-600)] px-3 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                   >
                     Comment
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -750,14 +751,15 @@ export function CommentsSection({
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-white/60">{comment.author || "Product Owner"}</span>
                   <span className="text-[10px] text-white/25">{new Date(comment.createdAt).toLocaleString()}</span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    iconOnly
                     onClick={() => handleDeleteComment(comment.id)}
-                    className="ml-auto hidden text-white/20 cursor-pointer hover:text-[#e5534b] group-hover:block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="ml-auto hidden group-hover:flex !text-white/20 hover:!text-[#e5534b]"
                     title="Delete comment"
-                  >
-                    <Trash2 size={14} strokeWidth={1.2} />
-                  </button>
+                    icon={<Trash2 size={14} strokeWidth={1.2} />}
+                  />
                 </div>
                 <div className="description-content mt-1 text-sm leading-[1.7] text-white/50">{renderMarkdown(comment.content)}</div>
               </div>

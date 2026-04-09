@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { X, Link2, Link2Off, ExternalLink, ChevronLeft, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 
@@ -190,14 +191,15 @@ function TicketDetail({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<ChevronLeft size={13} strokeWidth={1.5} />}
           onClick={onBack}
-          className="flex items-center gap-1 text-[11px] text-white/40 hover:text-white/70 cursor-pointer transition-colors duration-150"
+          className="border-0 bg-transparent text-white/40 hover:text-white/70"
         >
-          <ChevronLeft size={13} strokeWidth={1.5} />
           Back
-        </button>
+        </Button>
         <span className="font-mono text-[11px] font-semibold text-white/60">{jiraKey}</span>
         <a
           href={`/tickets/${jiraKey}/write`}
@@ -286,13 +288,14 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
             </span>
           )}
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={<X size={13} strokeWidth={1.5} />}
           onClick={onClose}
-          className="flex h-6 w-6 items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/[0.06] cursor-pointer transition-colors duration-150"
-        >
-          <X size={13} strokeWidth={1.5} />
-        </button>
+          className="border-0 bg-transparent text-white/30 hover:text-white/60"
+        />
       </div>
 
       {selectedKey ? (

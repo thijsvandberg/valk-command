@@ -32,6 +32,7 @@ import { SplitStoryPicker } from "./SplitStoryPicker";
 import { ExecutionLogViewer } from "./ExecutionLogViewer";
 import { RelatedStoriesPanel } from "./RelatedStoriesPanel";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { Button } from "@/components/ui/Button";
 
 const PANEL_STORAGE_KEY = "storyWriterChatWidth";
 const PANEL_COLLAPSED_KEY = "storyWriterChatCollapsed";
@@ -388,29 +389,27 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             </button>
           )}
 
-          <button
+          <Button
+            variant="primary"
+            size="md"
+            icon={pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
             onClick={handlePush}
             disabled={pushing || (!isDraftDirty && !hasLocalSave)}
-            className="flex h-7 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
             Push to Jira
-          </button>
+          </Button>
 
           {/* More actions menu */}
           <div ref={moreMenuRef} className="relative">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              icon={<MoreHorizontal size={14} strokeWidth={1.5} />}
               onClick={() => setShowMoreMenu((v) => !v)}
               title="More actions"
-              className={`flex size-7 items-center justify-center rounded-md border cursor-pointer transition-colors duration-150 ${
-                showMoreMenu
-                  ? "border-white/[0.12] bg-white/[0.08] text-white/70"
-                  : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
-              }`}
-            >
-              <MoreHorizontal size={14} strokeWidth={1.5} />
-            </button>
+              className={showMoreMenu ? "border-white/[0.12] bg-white/[0.08] text-white/70" : ""}
+            />
 
             {showMoreMenu && (
               <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
@@ -534,14 +533,14 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             className="flex shrink-0 flex-col border-r border-white/[0.06] bg-[var(--color-surface-base)]"
           >
             <div className="border-b border-white/[0.06]">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                iconOnly
+                icon={<PanelLeftOpen size={14} strokeWidth={1.5} />}
                 onClick={handleToggleChat}
                 title="Expand chat"
-                className="flex h-[2.5rem] w-full items-center justify-center text-white/30 cursor-pointer hover:text-white/60 hover:bg-white/[0.06] transition-colors duration-150"
-              >
-                <PanelLeftOpen size={14} strokeWidth={1.5} />
-              </button>
+                className="border-0 bg-transparent h-[2.5rem] w-full rounded-none text-white/30 hover:text-white/60"
+              />
             </div>
           </div>
         ) : (
@@ -573,14 +572,15 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  icon={<PanelLeftClose size={14} strokeWidth={1.5} />}
                   onClick={handleToggleChat}
                   title="Collapse chat"
-                  className="flex h-6 w-6 items-center justify-center rounded text-white/30 cursor-pointer hover:text-white/55 hover:bg-white/[0.06] transition-colors duration-150"
-                >
-                  <PanelLeftClose size={14} strokeWidth={1.5} />
-                </button>
+                  className="border-0 bg-transparent text-white/30 hover:text-white/55"
+                />
               </div>
               {showLogs ? (
                 <ExecutionLogViewer ticketKey={ticketKey} isStreaming={writer.status === "streaming" || writer.status === "sending"} />
@@ -702,24 +702,29 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               This will discard the current drafts and AI suggestions. You can optionally keep the conversation history.
             </p>
             <div className="mt-5 flex items-center justify-end gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="md"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="rounded-md px-3 py-1.5 text-xs text-white/50 hover:text-white/70 hover:bg-white/[0.04] cursor-pointer transition-colors duration-150"
+                className="border-0"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
                 onClick={() => handleDelete(false)}
-                className="rounded-md bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/70 border border-white/[0.08] cursor-pointer hover:bg-white/[0.08] active:scale-95 transition-transform duration-150"
               >
                 Discard, keep chat
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="md"
                 onClick={() => handleDelete(true)}
-                className="rounded-md bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 border border-red-500/20 cursor-pointer hover:bg-red-500/20 active:scale-95 transition-transform duration-150"
+                className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
               >
                 Delete everything
-              </button>
+              </Button>
             </div>
           </div>
         </div>

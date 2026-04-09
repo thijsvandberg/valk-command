@@ -2,6 +2,7 @@
 
 import type { Conversation } from "@/types/chat";
 import { Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -28,14 +29,13 @@ export default function ConversationList({
         <h2 className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-white/70">
           Conversations
         </h2>
-        <button
-          type="button"
+        <Button
+          variant="soft"
+          iconOnly
+          icon={<Plus className="h-4 w-4" strokeWidth={2} />}
           onClick={onCreate}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-transform duration-150"
           aria-label="New conversation"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2} />
-        </button>
+        />
       </div>
 
       {error && (
@@ -72,14 +72,14 @@ export default function ConversationList({
                       {conversation.title}
                     </span>
                   </button>
-                  <button
-                    type="button"
+                  <Button
+                    variant="destructive"
+                    iconOnly
+                    icon={<Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
                     onClick={() => onDelete(conversation.id)}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 cursor-pointer hover:bg-white/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] [li:hover_&]:opacity-100"
+                    className="shrink-0 opacity-0 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 [li:hover_&]:opacity-100"
                     aria-label={`Delete ${conversation.title}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-white/40" strokeWidth={1.5} />
-                  </button>
+                  />
                 </div>
               </li>
             );

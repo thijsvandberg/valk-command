@@ -20,6 +20,7 @@ import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardF
 import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { Button } from "@/components/ui/Button";
 
 export default function SprintBoard() {
   const { data: rawJiraSprints } = useJiraSprints();
@@ -283,25 +284,20 @@ export default function SprintBoard() {
               : f.activeView ? <Bookmark size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" fill="currentColor" />
               : <CalendarRange size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
             actions={<>
-              <button type="button" onClick={() => setShowStoryWriterLauncher(true)} className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/25 transition-colors duration-150 shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
-                <NotebookPen className="h-3 w-3" strokeWidth={1.5} />Story writer
-              </button>
-              <button type="button" onClick={() => setSearchModalOpen(true)} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="Search tickets (⌘K)">
-                <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
+              <Button variant="soft" size="md" icon={<NotebookPen className="h-3 w-3" strokeWidth={1.5} />} onClick={() => setShowStoryWriterLauncher(true)} className="shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
+                Story writer
+              </Button>
+              <Button variant="secondary" size="md" iconOnly icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => setSearchModalOpen(true)} title="Search tickets (⌘K)" />
               <div ref={headerMenuRef} className="relative">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="md"
+                  iconOnly
+                  icon={<MoreHorizontal size={14} strokeWidth={1.5} />}
                   onClick={() => setHeaderMenuOpen((v) => !v)}
                   title="More options"
-                  className={`flex size-7 items-center justify-center rounded-md border cursor-pointer transition-colors duration-150 ${
-                    headerMenuOpen
-                      ? "border-white/[0.12] bg-white/[0.08] text-white/70"
-                      : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
-                  }`}
-                >
-                  <MoreHorizontal size={14} strokeWidth={1.5} />
-                </button>
+                  className={headerMenuOpen ? "border-white/[0.12] bg-white/[0.08] text-white/70" : ""}
+                />
                 {headerMenuOpen && (
                   <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
                     <button

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { RefreshCw, CheckCircle2, AlertTriangle, ChevronUp, Square, CloudDownload, CheckCheck } from "lucide-react";
 import { useActivityContext, type ActivityState } from "@/contexts/ActivityContext";
 import type { ActivityLogEntry } from "@/types/ticket";
+import { Button } from "@/components/ui/Button";
 
 function stateIcon(state: ActivityState, errorCount: number, syncRemaining: number, hasChecked: boolean) {
   if (!hasChecked || state === "syncing") {
@@ -147,14 +148,15 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
               Recent activity
             </span>
             {runningEntries.length > 0 && (
-              <button
-                type="button"
+              <Button
+                variant="destructive"
+                size="sm"
+                icon={<Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />}
                 onClick={(e) => { e.stopPropagation(); cancelAllEntries(); }}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-red-400/80 cursor-pointer hover:bg-red-400/10 hover:text-red-400 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400 active:scale-95 transition-colors duration-150 font-[var(--font-body)]"
+                className="font-[var(--font-body)]"
               >
-                <Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />
                 Stop all
-              </button>
+              </Button>
             )}
           </div>
           <div className="px-3 py-2 flex items-center gap-2 border-b border-white/[0.06]">
@@ -223,14 +225,15 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
                     </div>
                   )}
                   {entry.status === "running" && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      icon={<Square className="h-2 w-2" strokeWidth={2} fill="currentColor" />}
                       onClick={(e) => { e.stopPropagation(); cancelEntry(entry.id); }}
-                      className="mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-red-400/70 cursor-pointer hover:bg-red-400/10 hover:text-red-400 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400 active:scale-95 transition-colors duration-150 font-[var(--font-body)]"
+                      className="mt-1 font-[var(--font-body)]"
                     >
-                      <Square className="h-2 w-2" strokeWidth={2} fill="currentColor" />
                       Cancel
-                    </button>
+                    </Button>
                   )}
                 </div>
               </li>

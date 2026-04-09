@@ -17,6 +17,18 @@
   --color-brand-900: #173d24;
   --color-brand-950: #0a2213;
 
+  --color-secondary-50: #eef1ff;
+  --color-secondary-100: #dce4ff;
+  --color-secondary-200: #c0d0ff;
+  --color-secondary-300: #93adff;
+  --color-secondary-400: #6486fc;
+  --color-secondary-500: #3d5af8;
+  --color-secondary-600: #2738ed;
+  --color-secondary-700: #1f28d9;
+  --color-secondary-800: #2024b0;
+  --color-secondary-900: #21238b;
+  --color-secondary-950: #181854;
+
   --color-surface-base: #0c0f14;
   --color-surface-elevated: #131820;
   --color-surface-floating: #1a2030;

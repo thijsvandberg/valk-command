@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, PanelRight, PanelRightClose } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 import type { LocalSearchResult } from "@/app/api/search/local/route";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
@@ -348,13 +349,13 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               Jira
             </button>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="md"
+            iconOnly
+            icon={<X className="h-4 w-4" strokeWidth={1.5} />}
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 cursor-pointer hover:text-white/60 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:text-white/80"
-          >
-            <X className="h-4 w-4" strokeWidth={1.5} />
-          </button>
+          />
         </div>
 
         {mode === "jira" && (
@@ -376,15 +377,15 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runJiraSearch(); } }}
               />
             )}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={runJiraSearch}
               disabled={loadingJira}
-              className="ml-auto rounded px-3 py-1 text-xs font-medium cursor-pointer disabled:opacity-50"
-              style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
+              className="ml-auto"
             >
               {loadingJira ? "Searching..." : "Search"}
-            </button>
+            </Button>
           </div>
         )}
 

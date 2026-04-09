@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { useActivityContext } from "@/contexts/ActivityContext";
+import { Button } from "@/components/ui/Button";
 
 export function ActivityToast() {
   const { toasts, dismissToast, acknowledgeError } = useActivityContext();
@@ -86,14 +87,15 @@ function ToastItem({
           {isError ? (error ?? "Unknown error") : isCancelled ? "Cancelled by user" : (summary ?? "Done")}
         </p>
       </div>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
+        iconOnly
+        icon={<X className="h-3.5 w-3.5" strokeWidth={2} />}
         onClick={onDismiss}
-        className="shrink-0 mt-0.5 p-0.5 rounded text-white/20 cursor-pointer hover:text-white/50 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-90 transition-colors duration-150"
+        className="shrink-0 mt-0.5 text-white/20 hover:text-white/50 border-0"
         aria-label="Dismiss"
-      >
-        <X className="h-3.5 w-3.5" strokeWidth={2} />
-      </button>
+      />
     </div>
   );
 }

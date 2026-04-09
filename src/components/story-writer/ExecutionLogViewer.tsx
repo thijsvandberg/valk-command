@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { ChevronDown, ChevronRight, Loader2, RefreshCw, Terminal, Wrench, FileText, AlertCircle, Cpu } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface LogEntry {
   type: "prompt" | "system" | "text" | "tool_use" | "tool_result" | "result" | "error";
@@ -282,15 +283,16 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
         <span className="text-xs font-medium text-white/45">Execution logs</span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={<RefreshCw size={12} className={loading ? "animate-spin" : ""} />}
           onClick={load}
           disabled={loading}
-          className="flex h-6 w-6 items-center justify-center rounded text-white/35 cursor-pointer hover:text-white/60 hover:bg-white/[0.06] transition-colors duration-150 disabled:opacity-40"
           title="Refresh"
-        >
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-        </button>
+          className="border-0 bg-transparent text-white/35 hover:text-white/60"
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3">

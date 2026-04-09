@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Code2, Save, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import {
   DndContext,
   closestCenter,
@@ -69,24 +70,23 @@ function SortablePromptRow({
           placeholder="Button label"
           className="w-44 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/40 transition-colors duration-150"
         />
-        <button
+        <Button
+          variant={prompt.enableCodebase ? "soft" : "ghost"}
+          size="md"
+          icon={<Code2 size={11} strokeWidth={1.5} />}
           onClick={() => onUpdate(prompt.id, "enableCodebase", !prompt.enableCodebase)}
           title="Toggle codebase research"
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors duration-150 cursor-pointer ${
-            prompt.enableCodebase
-              ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-              : "border-white/[0.08] bg-white/[0.03] text-white/35 hover:text-white/60"
-          }`}
         >
-          <Code2 size={11} strokeWidth={1.5} />
           Codebase
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="destructive"
+          size="md"
+          iconOnly
+          icon={<Trash2 size={14} strokeWidth={1.5} />}
           onClick={() => onRemove(prompt.id)}
-          className="ml-auto rounded-lg p-1.5 text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors duration-150 cursor-pointer"
-        >
-          <Trash2 size={14} strokeWidth={1.5} />
-        </button>
+          className="ml-auto"
+        />
       </div>
       <textarea
         value={prompt.text}
@@ -188,14 +188,15 @@ export default function PromptsPage() {
         <h2 className="text-sm font-medium text-white/50 uppercase tracking-[0.06em]">
           Story Writer Quick Prompts
         </h2>
-        <button
+        <Button
+          variant="soft"
+          size="md"
+          icon={<Save size={13} strokeWidth={1.5} />}
           onClick={save}
           disabled={saving || saved}
-          className="flex h-7 items-center gap-2 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-3 text-xs font-medium text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/20 active:scale-[0.97] transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
-          <Save size={13} strokeWidth={1.5} />
           {saving ? "Saving..." : saved ? "Saved" : "Save changes"}
-        </button>
+        </Button>
       </div>
 
       <TabBar className="mb-6">
@@ -240,13 +241,15 @@ export default function PromptsPage() {
             </SortableContext>
           </DndContext>
 
-          <button
+          <Button
+            variant="dashed"
+            size="md"
+            icon={<Plus size={14} strokeWidth={1.5} />}
             onClick={addPrompt}
-            className="flex items-center gap-2 self-start rounded-lg border border-dashed border-white/[0.12] px-3 py-2 text-sm text-white/40 hover:text-white/65 hover:border-white/[0.22] transition-colors duration-150 cursor-pointer mt-1"
+            className="self-start mt-1"
           >
-            <Plus size={14} strokeWidth={1.5} />
             Add prompt
-          </button>
+          </Button>
         </div>
       )}
     </>

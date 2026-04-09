@@ -8,6 +8,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { SidePanel } from "./SidePanel";
 import { CalendarRange, RefreshCw, X, Columns2, GripVertical, ChevronDown, Search } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
 import {
   DndContext,
@@ -248,16 +249,16 @@ function DroppableSprintColumn({
           </div>
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={<RefreshCw size={13} strokeWidth={1.5} className={syncing ? "animate-spin" : ""} />}
           onClick={onRefresh}
           disabled={syncing}
-          className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.05] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
           title="Refresh from Jira"
-        >
-          <RefreshCw size={13} strokeWidth={1.5} className={syncing ? "animate-spin" : ""} />
-        </button>
+          className="shrink-0"
+        />
       </div>
 
       {/* Table */}
@@ -534,15 +535,14 @@ export function MultiSprintView({
                 </button>
               )}
             </div>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
               onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               title="Close compare view"
-            >
-              <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-            </button>
+            />
           </>}
         >
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>

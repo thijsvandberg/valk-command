@@ -14,6 +14,7 @@ import {
   Square,
   Ban,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import type { ActivityLogEntry } from "@/types/ticket";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
@@ -185,14 +186,15 @@ export default function ActivityLogPage() {
             onChange={handleStatusChange}
           />
           {entries?.some((e) => e.status === "running") && (
-            <button
-              type="button"
+            <Button
+              variant="destructive"
+              size="sm"
+              icon={<Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />}
               onClick={() => cancelAllSyncs()}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-400/20 text-xs text-red-400/80 cursor-pointer hover:bg-red-400/10 hover:text-red-400 hover:border-red-400/30 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400 active:scale-95 transition-colors duration-150 font-[var(--font-body)]"
+              className="ml-auto"
             >
-              <Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />
               Stop all
-            </button>
+            </Button>
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -285,15 +287,16 @@ export default function ActivityLogPage() {
                 {statusLabel(entry.status)}
               </span>
               {entry.status === "running" && (
-                <button
-                  type="button"
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  icon={<Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />}
                   onClick={() => cancelSync(entry.id)}
-                  className="ml-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-red-400/70 cursor-pointer hover:bg-red-400/10 hover:text-red-400 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400 active:scale-95 transition-colors duration-150 font-[var(--font-body)]"
                   title="Cancel this sync"
+                  className="ml-1"
                 >
-                  <Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />
                   Cancel
-                </button>
+                </Button>
               )}
             </div>
 
@@ -315,25 +318,25 @@ export default function ActivityLogPage() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between mt-4">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
           disabled={offset === 0}
-          className="px-3 py-1.5 rounded-lg text-xs font-[var(--font-body)] text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 disabled:opacity-30 disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
         >
           Previous
-        </button>
+        </Button>
         <span className="text-[11px] text-white/20 font-[var(--font-body)]">
           Showing {offset + 1} - {offset + (entries?.length ?? 0)}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setOffset(offset + PAGE_SIZE)}
           disabled={!hasMore}
-          className="px-3 py-1.5 rounded-lg text-xs font-[var(--font-body)] text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 disabled:opacity-30 disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
         >
           Next
-        </button>
+        </Button>
       </div>
     </div>
     </>

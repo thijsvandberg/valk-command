@@ -14,6 +14,7 @@ import TaskProgress from "./TaskProgress";
 import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { MessageCircle, X, PenLine } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 
 interface ChatLayoutProps {
@@ -171,14 +172,15 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       </ViewHeader>
 
       {/* Mobile sidebar toggle */}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="lg"
+        iconOnly
+        icon={<MessageCircle className="h-5 w-5" strokeWidth={1.5} />}
         onClick={() => setSidebarOpen(true)}
-        className="fixed top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)] border border-white/[0.06] lg:hidden cursor-pointer hover:bg-[var(--color-surface-floating)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+        className="fixed top-4 right-4 z-30 lg:hidden"
         aria-label="Open conversations"
-      >
-        <MessageCircle className="h-5 w-5 text-white/70" strokeWidth={1.5} />
-      </button>
+      />
 
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -198,14 +200,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           }`}
         >
           {/* Mobile close button */}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            iconOnly
+            icon={<X className="h-4 w-4" strokeWidth={1.5} />}
             onClick={() => setSidebarOpen(false)}
-            className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md lg:hidden cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+            className="absolute top-4 right-4 z-10 lg:hidden"
             aria-label="Close conversations"
-          >
-            <X className="h-4 w-4 text-white/50" strokeWidth={1.5} />
-          </button>
+          />
 
           <ConversationList
             conversations={conversations}

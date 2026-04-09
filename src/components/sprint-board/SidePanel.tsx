@@ -10,6 +10,7 @@ import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTableCells";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
 import { CloudSync, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 // -- Simple markdown renderer for panel description --
 
@@ -213,19 +214,20 @@ export function SidePanel({
               <span className="font-mono text-sm font-medium text-white/70">
                 {ticket.key}
               </span>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                icon={<Link2 size={12} strokeWidth={1.5} />}
                 onClick={async () => {
                   const url = getJiraUrl(ticket.key);
                   const text = `${ticket.title} - ${url}`;
                   await navigator.clipboard.writeText(text);
                   onShowToast("Link copied");
                 }}
-                className="flex h-5 w-5 items-center justify-center rounded text-white/0 cursor-pointer group-hover/key:text-white/30 hover:!text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-90"
+                className="text-white/0 group-hover/key:text-white/30 hover:!text-white/60"
                 title="Copy Jira link"
-              >
-                <Link2 size={12} strokeWidth={1.5} />
-              </button>
+              />
               {ticket.editState === "draft" && (
                 <span className="flex items-center gap-1 rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-[10px] text-[#4a90d9]/50" title="Unsaved draft">
                   draft
@@ -241,54 +243,50 @@ export function SidePanel({
               {/* Write Story */}
               <a
                 href={`/tickets/${ticket.key}/write`}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/50 cursor-pointer bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
                 title="Write story"
-                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               >
                 <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
               </a>
               {/* Sync ticket from Jira */}
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
+                iconOnly
+                icon={<CloudSync className={`h-3.5 w-3.5 ${syncingTicket ? "animate-spin" : ""}`} strokeWidth={1.5} />}
                 disabled={syncingTicket}
                 onClick={handleSyncTicket}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Sync ticket from Jira"
-              >
-                <CloudSync
-                  className={`h-3.5 w-3.5 ${syncingTicket ? "animate-spin" : ""}`}
-                  strokeWidth={1.5}
-                />
-              </button>
+              />
               {/* Full width toggle */}
-              <button
-                type="button"
-                onClick={toggleFullWidth}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-                title={isFullWidth ? "Restore panel width" : "Expand to full width"}
-              >
-                {isFullWidth
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                icon={isFullWidth
                   ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
                   : <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
                 }
-              </button>
+                onClick={toggleFullWidth}
+                title={isFullWidth ? "Restore panel width" : "Expand to full width"}
+              />
               {/* Open in valk-command new tab */}
               <a
                 href={`/tickets/${ticket.key}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-secondary-300)] cursor-pointer bg-[var(--color-secondary-500)]/15 border border-[var(--color-secondary-500)]/25 hover:bg-[var(--color-secondary-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-secondary-400)] active:scale-[0.97] transition-colors duration-150"
                 title="Open in new tab"
               >
                 <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />
               </a>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
                 onClick={onClose}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
+              />
             </div>
           </div>
 
@@ -412,17 +410,17 @@ export function SidePanel({
               Actions
             </h3>
             <div className="mt-3 flex flex-col gap-2">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="lg"
+                icon={<CheckSquare className="h-4 w-4 shrink-0 text-white/40" strokeWidth={1.5} />}
                 onClick={() => {
                   onShowToast(`Review story queued for ${ticket.key}`);
                 }}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-                style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+                className="justify-start px-3 text-sm text-white/60 hover:text-white/80"
               >
-                <CheckSquare className="h-4 w-4 shrink-0 text-white/40" strokeWidth={1.5} />
                 Review Story
-              </button>
+              </Button>
               <a
                 href={`/chat?ticket=${ticket.key}`}
                 className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"

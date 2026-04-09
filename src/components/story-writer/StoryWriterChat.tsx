@@ -19,6 +19,7 @@ import {
   RotateCcw,
   type LucideIcon,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import type { WorkspaceUsage } from "@/hooks/useStoryWriter";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
 import {
@@ -299,14 +300,15 @@ export function StoryWriterChat({
                   <div className="flex items-center gap-2 px-2 py-1">
                     <AlertCircle size={11} className="shrink-0 text-amber-500/50" strokeWidth={1.5} />
                     <span className="text-[10px] text-white/35">No response received</span>
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={<RotateCcw size={9} strokeWidth={2} />}
                       onClick={() => onSend(msg.content)}
-                      className="flex items-center gap-1 rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/45 cursor-pointer hover:bg-white/[0.08] hover:text-white/70 transition-colors duration-150"
+                      className="text-[10px] text-white/45 hover:text-white/70"
                     >
-                      <RotateCcw size={9} strokeWidth={2} />
                       Retry
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -339,19 +341,20 @@ export function StoryWriterChat({
           </p>
           <div className="flex flex-wrap items-center gap-1">
             {quickPrompts.map((s) => (
-              <button
+              <Button
                 key={s.id}
-                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   if (inputValue.trim()) return;
                   onCodebaseResearchChange(s.enableCodebase === true);
                   fillInput(s.text);
                 }}
                 disabled={isBusy}
-                className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/65 cursor-pointer hover:bg-white/[0.07] hover:text-white/85 hover:border-white/[0.12] active:scale-[0.97] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/65 hover:bg-white/[0.07] hover:text-white/85 hover:border-white/[0.12]"
               >
                 {s.label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -406,45 +409,49 @@ export function StoryWriterChat({
                 )}
               </div>
               <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="md"
                   onClick={() => {
                     const current = MODEL_OPTIONS.findIndex((o) => o.value === model);
                     const next = (current + 1) % MODEL_OPTIONS.length;
                     onModelChange(MODEL_OPTIONS[next].value);
                   }}
                   disabled={isBusy}
-                  className="flex h-7 items-center gap-1 rounded-md border border-white/[0.10] bg-white/[0.04] px-2.5 font-mono text-[10px] tracking-[0.04em] text-white/55 cursor-pointer hover:text-white/75 hover:border-white/[0.15] hover:bg-white/[0.07] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="border-white/[0.10] bg-white/[0.04] font-mono text-[10px] tracking-[0.04em] text-white/55 hover:text-white/75 hover:border-white/[0.15] hover:bg-white/[0.07]"
                   title="Switch model"
                 >
                   {MODEL_OPTIONS.find((o) => o.value === model)?.label ?? "Sonnet"}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant={codebaseResearch ? "soft" : "ghost"}
+                  size="md"
+                  icon={<Code2 size={11} strokeWidth={1.5} />}
                   onClick={() => onCodebaseResearchChange(!codebaseResearch)}
                   disabled={isBusy}
                   title={codebaseResearch ? "Codebase research on" : "Codebase research off"}
-                  className={`flex h-7 items-center gap-1 rounded-md border px-2.5 text-[10px] cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  className={`text-[10px] ${
                     codebaseResearch
-                      ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                      ? ""
                       : "border-white/[0.10] bg-white/[0.04] text-white/40 hover:text-white/65 hover:border-white/[0.15] hover:bg-white/[0.07]"
                   }`}
                 >
-                  <Code2 size={11} strokeWidth={1.5} />
                   Codebase
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  iconOnly
+                  icon={
+                    isBusy ? (
+                      <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
+                    ) : (
+                      <SendHorizontal className="h-3 w-3" strokeWidth={2} />
+                    )
+                  }
                   onClick={handleSubmit}
                   disabled={!inputValue.trim() || isBusy}
-                  className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--color-brand-600)] text-white shadow-[0_1px_4px_rgba(46,145,73,0.15)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-transform duration-150 disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:bg-[var(--color-brand-600)]"
-                >
-                  {isBusy ? (
-                    <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
-                  ) : (
-                    <SendHorizontal className="h-3 w-3" strokeWidth={2} />
-                  )}
-                </button>
+                />
               </div>
             </div>
           </div>

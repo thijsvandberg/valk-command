@@ -42,6 +42,7 @@ import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
 import { TicketSidebar } from "@/components/ticket-detail/TicketSidebar";
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
+import { Button } from "@/components/ui/Button";
 
 
 export default function TicketDetailPage({
@@ -304,35 +305,34 @@ export default function TicketDetailPage({
         actions={
           <div className="ml-4 flex shrink-0 items-center gap-1.5">
             {showPushButton && (
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="md"
                 onClick={handlePushToJira}
                 disabled={isPushing}
-                className="flex h-7 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.25)]"
-                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 title="Push local edits to Jira"
-              >
-                {isPushing
+                icon={isPushing
                   ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
                   : <CloudUpload size={13} strokeWidth={1.5} />
                 }
+              >
                 Push to Jira
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="md"
+              iconOnly
               onClick={handleRefreshFromJira}
               disabled={isRefreshing}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
               title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
-            >
-              <CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
-            </button>
+              icon={<CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />}
+            />
             <a
               href={getJiraUrl(key)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-secondary-300)] cursor-pointer bg-[var(--color-secondary-500)]/15 border border-[var(--color-secondary-500)]/25 hover:bg-[var(--color-secondary-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-secondary-400)] active:scale-[0.97] transition-colors duration-150"
               title="Open in Jira"
             >
               <ExternalLink size={15} strokeWidth={1.5} />
@@ -354,19 +354,19 @@ export default function TicketDetailPage({
                   Resume session
                 </Link>
                 <div className="h-4 w-px bg-[var(--color-brand-500)]/25" />
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="md"
+                  iconOnly
                   onClick={handleDeleteSession}
                   disabled={isDeletingSession}
-                  className="flex h-7 items-center justify-center rounded-r-md px-2 text-[var(--color-brand-400)]/35 cursor-pointer hover:text-red-400/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
+                  className="!rounded-l-none !rounded-r-md !border-0 !text-[var(--color-brand-400)]/35 hover:!text-red-400/80"
                   title="Delete session"
-                >
-                  {isDeletingSession
+                  icon={isDeletingSession
                     ? <Loader2 size={11} strokeWidth={1.5} className="animate-spin" />
                     : <Trash2 size={11} strokeWidth={1.5} />
                   }
-                </button>
+                />
               </div>
             ) : (
               <Link

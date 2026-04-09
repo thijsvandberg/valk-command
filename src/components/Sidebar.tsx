@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
+import { Button } from "@/components/ui/Button";
 
 const navItems = [
   {
@@ -106,14 +107,14 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile toggle button */}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        iconOnly
+        icon={<Menu className="h-5 w-5 text-white/70" strokeWidth={1.5} />}
         onClick={() => setMobileOpen(true)}
-        className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-surface-elevated)] border border-white/[0.06] lg:hidden cursor-pointer hover:bg-[var(--color-surface-floating)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+        className="fixed top-4 left-4 z-50 h-10 w-10 rounded-lg bg-[var(--color-surface-elevated)] border-white/[0.06] lg:hidden hover:bg-[var(--color-surface-floating)]"
         aria-label="Open sidebar"
-      >
-        <Menu className="h-5 w-5 text-white/70" strokeWidth={1.5} />
-      </button>
+      />
 
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -155,14 +156,14 @@ export default function Sidebar() {
           )}
 
           {/* Mobile close button */}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            iconOnly
+            icon={<X className="h-4 w-4 text-white/50" strokeWidth={1.5} />}
             onClick={() => setMobileOpen(false)}
-            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg lg:hidden cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+            className="ml-auto h-8 w-8 rounded-lg lg:hidden border-transparent hover:bg-white/[0.06]"
             aria-label="Close sidebar"
-          >
-            <X className="h-4 w-4 text-white/50" strokeWidth={1.5} />
-          </button>
+          />
         </div>
 
         {/* Navigation */}

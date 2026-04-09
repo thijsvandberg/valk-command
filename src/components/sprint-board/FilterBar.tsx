@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
 import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { Button } from "@/components/ui/Button";
 
 // -- PO Status colors (needed for filter rendering) --
 
@@ -115,24 +116,20 @@ function SortDropdown({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
+      <Button
+        variant={isActive ? "soft" : "ghost"}
+        size="md"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
-          isActive
-            ? "border border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)] hover:bg-[var(--color-brand-500)]/15"
-            : "text-white/40 hover:bg-white/[0.04] hover:text-white/60"
-        }`}
-        style={{ transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms" }}
+        icon={<ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"}
       >
-        <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
         {isActive ? activeLabel : "Sort"}
         {isActive && (
           direction === "asc"
             ? <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
             : <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
         )}
-      </button>
+      </Button>
 
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
@@ -212,16 +209,16 @@ function ColumnToggle({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="md"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-        style={{ transition: "background-color 120ms, color 120ms, transform 80ms" }}
+        icon={<Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
         title="Toggle columns"
+        className="border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"
       >
-        <Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />
         Columns
-      </button>
+      </Button>
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
           {COLUMNS.map((col) => {
@@ -325,27 +322,29 @@ function SaveViewPopover({
           className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/50"
           style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" }}
         />
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="sm"
+          icon={<Check className="h-3 w-3" strokeWidth={2} />}
           disabled={!title.trim()}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--color-brand-500)] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer hover:bg-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ transition: "background-color 100ms" }}
+          className="w-full"
         >
-          <Check className="h-3 w-3" strokeWidth={2} />
           {isUpdate ? "Update view" : "Save view"}
-        </button>
+        </Button>
         {isUpdate && onDelete && (
           <>
             <div className="h-px bg-white/[0.06]" />
-            <button
+            <Button
               type="button"
+              variant="destructive"
+              size="sm"
+              icon={<X className="h-3 w-3" strokeWidth={1.5} />}
               onClick={() => { onDelete(); onClose(); }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-400/70 cursor-pointer hover:bg-red-500/10 hover:text-red-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
-              style={{ transition: "background-color 100ms, color 100ms" }}
+              className="w-full"
             >
-              <X className="h-3 w-3" strokeWidth={1.5} />
               Delete view
-            </button>
+            </Button>
           </>
         )}
       </form>
@@ -559,16 +558,17 @@ export function FilterBar({
 
       {/* Clear all filters */}
       {hasActiveFilters && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
+          icon={<X className="h-3 w-3" strokeWidth={1.5} />}
           onClick={handleClearAll}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white/35 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "background-color 80ms, color 80ms" }}
+          className="border-0 bg-transparent"
           title="Clear all filters"
         >
-          <X className="h-3 w-3" strokeWidth={1.5} />
           Clear all
-        </button>
+        </Button>
       )}
 
       <div className="flex-1" />
@@ -582,23 +582,15 @@ export function FilterBar({
       {/* Save view */}
       {onSaveView && (
         <div ref={saveViewRef} className="relative">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="md"
+            iconOnly
             onClick={() => setSaveViewOpen((v) => !v)}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
-              activeView
-                ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10"
-                : "text-white/35 hover:bg-white/[0.04] hover:text-white/60"
-            }`}
-            style={{ transition: "background-color 120ms, color 120ms, transform 80ms" }}
+            icon={<Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} fill={activeView ? "currentColor" : "none"} />}
             title={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
-          >
-            <Bookmark
-              className="h-3.5 w-3.5"
-              strokeWidth={1.5}
-              fill={activeView ? "currentColor" : "none"}
-            />
-          </button>
+            className={`border-0 bg-transparent ${activeView ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10" : "text-white/35 hover:bg-white/[0.04] hover:text-white/60"}`}
+          />
           {saveViewOpen && (
             <SaveViewPopover
               onSave={(title) => onSaveView(title)}

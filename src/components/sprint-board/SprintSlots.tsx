@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
 import { ChevronRight, ChevronDown, ChevronUp, RefreshCw, LayoutGrid } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import type { SavedView } from "./FilterBar";
 import {
   DndContext,
@@ -338,33 +339,36 @@ export function SprintSlots({
       <div className="ml-auto flex items-center gap-2">
         {/* Refresh board - hidden in All view since syncing all sprints at once is not practical */}
         {!allActive && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="md"
+            iconOnly
             disabled={syncing}
             onClick={onRefresh}
             title={syncing ? "Syncing..." : "Refresh board"}
-            className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
-              strokeWidth={1.5}
-            />
-          </button>
+            icon={
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
+                strokeWidth={1.5}
+              />
+            }
+          />
         )}
 
         {/* Toggle filter bar + analytics visibility */}
         {onToggleFilters && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="md"
+            iconOnly
             onClick={onToggleFilters}
             title={filtersCollapsed ? "Show filters" : "Hide filters"}
-            className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
-          >
-            {filtersCollapsed
-              ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
-              : <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+            icon={
+              filtersCollapsed
+                ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+                : <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.5} />
             }
-          </button>
+          />
         )}
       </div>
     </div>

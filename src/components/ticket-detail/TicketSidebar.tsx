@@ -5,6 +5,7 @@ import type { Ticket, POStatus, TicketDetail } from "@/types/ticket";
 import { PO_STATUS_OPTIONS } from "@/types/ticket";
 import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
+import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
@@ -105,19 +106,22 @@ export function TicketSidebar({
       style={{ width: collapsed ? 0 : SIDEBAR_WIDTH, minHeight: "100%" }}
     >
       {/* Toggle button — floats over content when collapsed */}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly
         onClick={() => setCollapsed((v) => !v)}
-        className={`absolute top-1/2 -translate-y-1/2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-surface-elevated)] border border-white/[0.08] text-white/30 cursor-pointer hover:text-white/70 hover:border-[var(--color-brand-500)]/50 focus-visible:outline-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150 ${
+        className={`absolute top-1/2 -translate-y-1/2 z-20 !rounded-full bg-[var(--color-surface-elevated)] !border-white/[0.08] !text-white/30 hover:!text-white/70 hover:!border-[var(--color-brand-500)]/50 ${
           collapsed ? "-left-5" : "left-0 -translate-x-1/2"
         }`}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        <ChevronRight
-          className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
-          strokeWidth={1.5}
-        />
-      </button>
+        icon={
+          <ChevronRight
+            className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
+            strokeWidth={1.5}
+          />
+        }
+      />
 
       {/* Left edge line */}
       <div className={`absolute top-0 left-0 h-full w-px bg-white/[0.06] transition-opacity duration-200 ${collapsed ? "opacity-0" : "opacity-100"}`} />

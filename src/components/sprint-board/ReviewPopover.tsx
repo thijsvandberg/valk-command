@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { CheckCircle2, AlertTriangle, RefreshCw, Sparkles, X } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import type { StoredReview } from "@/types/ticket";
 
@@ -62,19 +63,18 @@ function FreshnessIndicator({
         <AlertTriangle size={12} strokeWidth={1.5} />
         <span>Based on v{review.storyVersionNumber} (outdated)</span>
       </div>
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={<RefreshCw size={10} strokeWidth={1.5} className={reviewing ? "animate-spin" : ""} />}
         onClick={(e) => {
           e.stopPropagation();
           onReReview();
         }}
         disabled={reviewing}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
       >
-        <RefreshCw size={10} strokeWidth={1.5} className={reviewing ? "animate-spin" : ""} />
         Re-review
-      </button>
+      </Button>
     </div>
   );
 }
@@ -169,13 +169,13 @@ export function ReviewPopover({
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-medium text-white/40">Quality Review</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={<X size={12} strokeWidth={1.5} className="text-white/30" />}
             onClick={onClose}
-            className="flex h-5 w-5 items-center justify-center rounded cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-          >
-            <X size={12} strokeWidth={1.5} className="text-white/30" />
-          </button>
+          />
         </div>
 
         {latestReview ? (
@@ -248,25 +248,18 @@ export function ReviewPopover({
           /* Empty state */
           <div className="flex flex-col items-center py-4">
             <p className="mb-3 text-xs text-white/30">No review yet</p>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="md"
+              icon={reviewing
+                ? <RefreshCw size={12} strokeWidth={1.5} className="animate-spin" />
+                : <Sparkles size={12} strokeWidth={1.2} />
+              }
               onClick={handleRunReview}
               disabled={reviewing}
-              className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
             >
-              {reviewing ? (
-                <>
-                  <RefreshCw size={12} strokeWidth={1.5} className="animate-spin" />
-                  Reviewing...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={12} strokeWidth={1.2} />
-                  Run Review
-                </>
-              )}
-            </button>
+              {reviewing ? "Reviewing..." : "Run Review"}
+            </Button>
           </div>
         )}
       </div>

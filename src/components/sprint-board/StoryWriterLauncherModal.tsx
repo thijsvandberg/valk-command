@@ -7,6 +7,7 @@ import {
   Search, ArrowRight, History, Check, Trash2, IterationCw, Zap,
 } from "lucide-react";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
+import { Button } from "@/components/ui/Button";
 import type { IssueType } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 
@@ -514,11 +515,14 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               <p className="text-[11px] text-white/30 mt-0.5">Create, resume, or open a story</p>
             </div>
           </div>
-          <button type="button" onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-white/25 hover:text-white/50 hover:bg-white/[0.05] cursor-pointer transition-colors duration-100"
-          >
-            <X size={14} strokeWidth={1.5} />
-          </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={<X size={14} strokeWidth={1.5} />}
+            onClick={onClose}
+            className="text-white/25"
+          />
         </div>
 
         {/* ── Mode tabs ── */}
@@ -665,14 +669,14 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <StatusBadge status={s.status} />
-                          <button
-                            type="button"
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            iconOnly
+                            icon={<Trash2 size={12} strokeWidth={1.5} />}
                             onClick={(e) => { e.stopPropagation(); deleteSession(s.sessionId); }}
-                            className="flex h-6 w-6 items-center justify-center rounded text-red-500/40 hover:text-red-400 hover:bg-red-500/[0.10] cursor-pointer transition-colors duration-100"
                             title="Dismiss session"
-                          >
-                            <Trash2 size={12} strokeWidth={1.5} />
-                          </button>
+                          />
                         </div>
                       </div>
                     );
@@ -720,14 +724,14 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <StatusBadge status={selectedSession.status} />
-                          <button
-                            type="button"
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            iconOnly
+                            icon={<Trash2 size={12} strokeWidth={1.5} />}
                             onClick={() => deleteSession(selectedSession.sessionId)}
-                            className="flex h-6 w-6 items-center justify-center rounded text-red-500/40 hover:text-red-400 hover:bg-red-500/[0.10] cursor-pointer transition-colors duration-100"
                             title="Dismiss session"
-                          >
-                            <Trash2 size={12} strokeWidth={1.5} />
-                          </button>
+                          />
                         </div>
                       </div>
                     </div>
@@ -803,20 +807,26 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
           {/* ── Actions ── */}
           <div className="mt-4 flex items-center justify-end gap-2">
-            <button type="button" onClick={onClose} disabled={creating}
-              className="px-3.5 py-1.5 text-[13px] font-medium text-white/40 hover:text-white/65 disabled:opacity-40 cursor-pointer transition-colors duration-120 rounded-md hover:bg-white/[0.04]"
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={onClose}
+              disabled={creating}
             >
               Cancel
-            </button>
-            <button type="button" onClick={handleConfirm} disabled={creating || !canConfirm}
-              className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-500)] px-3.5 py-1.5 text-[13px] font-medium text-white disabled:opacity-35 hover:bg-[var(--color-brand-400)] active:scale-[0.98] cursor-pointer transition-all duration-120 shadow-[0_2px_8px_rgba(46,145,73,0.3)]"
-            >
-              {creating
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              icon={creating
                 ? <span className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white/80 animate-spin" />
                 : <ArrowRight size={12} strokeWidth={2} />
               }
-              {mode === "new" ? (creating ? "Creating…" : "Create & open") : mode === "session" ? "Resume session" : "Open story writer"}
-            </button>
+              onClick={handleConfirm}
+              disabled={creating || !canConfirm}
+            >
+              {mode === "new" ? (creating ? "Creating..." : "Create & open") : mode === "session" ? "Resume session" : "Open story writer"}
+            </Button>
           </div>
 
         </div>

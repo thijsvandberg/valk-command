@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import fastDiff from "fast-diff";
 import { ChevronDown, Check, X, Pencil, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 // -----------------------------------------------------------------------
 // Types
@@ -532,22 +533,20 @@ function HunkEditor({
         rows={3}
       />
       <div className="mt-2 flex items-center gap-2">
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => onSave(text)}
-          className="rounded-md bg-[var(--color-brand-600)] px-3 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-          style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
         >
           Save edit
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onCancel}
-          className="rounded-md px-3 py-1 text-xs font-medium text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -925,14 +924,14 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
       <div className="flex items-center gap-3">
         <DiffSummary stats={stats} />
         {interactive && pendingIsOld && pendingHunkCount > 0 && (
-          <button
-            type="button"
+          <Button
+            variant="soft"
+            size="sm"
+            icon={<Check size={11} strokeWidth={2} />}
             onClick={onAcceptAll}
-            className="flex items-center gap-1 rounded-md bg-[var(--color-brand-600)]/15 px-2.5 py-1 text-[11px] font-medium text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/20 cursor-pointer hover:bg-[var(--color-brand-600)]/25 active:scale-95 transition-transform duration-150"
           >
-            <Check size={11} strokeWidth={2} />
             Accept {pendingHunkCount} remaining
-          </button>
+          </Button>
         )}
         <button
           type="button"

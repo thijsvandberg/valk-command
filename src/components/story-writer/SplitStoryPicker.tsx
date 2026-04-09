@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Scissors, X, Plus, Link, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface SprintSlot {
   slotIndex: number;
@@ -81,13 +82,14 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               <p className="text-[11px] text-white/35 mt-0.5">Select or create the target story</p>
             </div>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={<X size={15} strokeWidth={1.5} />}
             onClick={onClose}
-            className="rounded-md p-1 text-white/30 hover:text-white/55 hover:bg-white/[0.05] cursor-pointer transition-colors duration-150"
-          >
-            <X size={15} strokeWidth={1.5} />
-          </button>
+            className="border-0 bg-transparent text-white/30 hover:text-white/55 hover:bg-white/[0.05]"
+          />
         </div>
 
         {/* Mode selector */}
@@ -188,27 +190,27 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
 
         {/* Actions */}
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="lg"
             onClick={onClose}
             disabled={loading}
-            className="rounded-md border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/50 hover:text-white/70 hover:bg-white/[0.04] disabled:opacity-40 cursor-pointer transition-colors duration-150"
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={loading}
-            className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-500)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-[var(--color-brand-400)] active:scale-[0.98] cursor-pointer transition-colors duration-150"
-          >
-            {loading ? (
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={loading ? (
               <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white/80 animate-spin" />
             ) : (
               <Scissors size={13} strokeWidth={2} />
             )}
+            onClick={handleConfirm}
+            disabled={loading}
+          >
             {mode === "create" ? "Create & split" : "Link & split"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

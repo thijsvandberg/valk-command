@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { StoryDiff } from "./StoryDiff";
 import type { DiffMode } from "./StoryDiff";
 import type { StoryVersion } from "@/types/ticket";
@@ -92,15 +93,14 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<ChevronLeft size={14} className="text-white/40" strokeWidth={1.5} />}
           onClick={onBack}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
         >
-          <ChevronLeft size={14} className="text-white/40" strokeWidth={1.5} />
           Back
-        </button>
+        </Button>
 
         <div className="flex items-center gap-1">
           {/* Diff mode toggle */}
@@ -133,26 +133,24 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
             </button>
           </div>
 
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handlePrev}
             disabled={!canPrev}
             title="Previous version (Left arrow / k)"
-            className="rounded-md px-2 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
           >
             Prev
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleNext}
             disabled={!canNext}
             title="Next version (Right arrow / j)"
-            className="rounded-md px-2 py-1 text-xs text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
           >
             Next
-          </button>
+          </Button>
         </div>
       </div>
 

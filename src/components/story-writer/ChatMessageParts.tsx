@@ -16,6 +16,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 
 export const SHOW_MORE_WORD_THRESHOLD = 80;
@@ -422,19 +423,20 @@ export function QuickActionsPopover({
 
   return (
     <div ref={popoverRef} className="relative">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly
+        icon={<Zap size={14} strokeWidth={1.5} />}
         onClick={onToggle}
         disabled={disabled}
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border cursor-pointer transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
+        className={`shrink-0 ${
           open
             ? "bg-white/[0.10] border-white/[0.15] text-white/80"
             : "bg-white/[0.04] border-white/[0.10] text-white/55 hover:text-white/75 hover:bg-white/[0.08]"
         }`}
         title="AI actions"
-      >
-        <Zap size={14} strokeWidth={1.5} />
-      </button>
+      />
 
       {open && (
         <div className="absolute bottom-full left-0 mb-1.5 w-52 rounded-lg border border-white/[0.10] bg-[var(--color-surface-floating)] py-1 shadow-xl shadow-black/30">

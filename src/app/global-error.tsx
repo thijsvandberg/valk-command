@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Button } from "@/components/ui/Button";
 
 export default function GlobalError({
   error,
@@ -21,12 +22,9 @@ export default function GlobalError({
           <p className="max-w-md text-center text-sm text-white/60">
             A critical error occurred. Please try reloading the page.
           </p>
-          <button
-            onClick={reset}
-            className="rounded-lg bg-white/[0.06] px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/[0.1] cursor-pointer"
-          >
+          <Button variant="ghost" size="lg" onClick={reset}>
             Try again
-          </button>
+          </Button>
         </div>
       </body>
     </html>

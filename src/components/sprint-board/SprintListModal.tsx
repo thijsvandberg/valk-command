@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { X, Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 type Tab = "sprints" | "history" | "hidden";
 
@@ -208,13 +209,14 @@ export function SprintListModal({
           ))}
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={<X className="h-3 w-3" strokeWidth={1.5} />}
           onClick={onClose}
-          className="mb-1 flex h-6 w-6 items-center justify-center rounded-md text-white/25 cursor-pointer hover:bg-white/[0.06] hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
-        >
-          <X className="h-3 w-3" strokeWidth={1.5} />
-        </button>
+          className="mb-1 text-white/25"
+        />
       </div>
 
       <div className="px-3 pt-3 pb-1">
@@ -331,31 +333,21 @@ export function SprintListModal({
               </span>
             </div>
           )}
-          <button
-            type="button"
+          <Button
+            variant={syncCount !== null ? "soft" : "ghost"}
+            size="md"
             disabled={syncing}
             onClick={handleSync}
-            className={`flex w-full items-center justify-center gap-2 rounded-md border py-1.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed ${
-              syncCount !== null
-                ? "border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-                : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.05] hover:text-white/70 active:bg-white/[0.07] disabled:opacity-40"
-            }`}
+            icon={syncCount !== null
+              ? <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
+              : <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} strokeWidth={1.5} />
+            }
+            className="w-full"
           >
-            {syncCount !== null ? (
-              <>
-                <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
-                Synced {syncCount} sprint{syncCount === 1 ? "" : "s"}
-              </>
-            ) : (
-              <>
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
-                  strokeWidth={1.5}
-                />
-                {syncing ? "Syncing..." : syncLabel}
-              </>
-            )}
-          </button>
+            {syncCount !== null
+              ? `Synced ${syncCount} sprint${syncCount === 1 ? "" : "s"}`
+              : syncing ? "Syncing..." : syncLabel}
+          </Button>
         </div>
       )}
 
