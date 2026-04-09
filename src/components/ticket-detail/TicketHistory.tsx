@@ -7,6 +7,7 @@ import { ChevronRight, Save, Info, CloudUpload, Download } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
+import { Tag } from "@/components/shared/Tag";
 
 function parseVersionDate(iso: string): number {
   const raw = iso.endsWith("Z") ? iso : `${iso}Z`;
@@ -669,24 +670,16 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
                           : `Version ${version.versionNumber}`}
                       </span>
                       {version.label === "current" && (
-                        <span className="rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
-                          Jira
-                        </span>
+                        <Tag color="brand">Jira</Tag>
                       )}
                       {version.label === "draft" && (
-                        <span className="rounded bg-[#4a90d9]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#4a90d9]">
-                          Draft
-                        </span>
+                        <Tag color="blue">Draft</Tag>
                       )}
                       {version.label === "ai-draft" && (
-                        <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] font-medium text-purple-400">
-                          AI
-                        </span>
+                        <Tag color="purple">AI</Tag>
                       )}
                       {isOutdated && (
-                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-                          Outdated
-                        </span>
+                        <Tag color="amber">Outdated</Tag>
                       )}
                       {version.updatedBy && (
                         <span className="text-xs text-white/30">{version.updatedBy}</span>

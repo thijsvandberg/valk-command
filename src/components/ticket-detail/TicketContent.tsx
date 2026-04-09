@@ -17,6 +17,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { renderMarkdown } from "./renderMarkdown";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
+import { Tag } from "@/components/shared/Tag";
 
 // ---------------------------------------------------------------------------
 // Editable title
@@ -155,9 +156,7 @@ export function EditableTitle({
         {displayValue}
       </h1>
       {hasLocalEdit && (
-        <span className="mt-1 shrink-0 rounded bg-[var(--color-brand-500)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
-          Locally modified
-        </span>
+        <Tag color="brand" className="mt-1 shrink-0">Locally modified</Tag>
       )}
     </div>
   );

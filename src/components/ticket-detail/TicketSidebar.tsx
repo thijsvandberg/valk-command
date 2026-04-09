@@ -11,6 +11,7 @@ import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
 import { useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { Tag } from "@/components/shared/Tag";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -249,9 +250,7 @@ export function TicketSidebar({
                 <DetailRow label="Labels">
                   <div className="flex flex-wrap justify-end gap-1">
                     {detail.labels.map((l) => (
-                      <span key={l} className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/40">
-                        {l}
-                      </span>
+                      <Tag key={l}>{l}</Tag>
                     ))}
                   </div>
                 </DetailRow>
@@ -260,9 +259,7 @@ export function TicketSidebar({
                 <DetailRow label="Components">
                   <div className="flex flex-wrap justify-end gap-1">
                     {detail.components.map((c) => (
-                      <span key={c} className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/40">
-                        {c}
-                      </span>
+                      <Tag key={c}>{c}</Tag>
                     ))}
                   </div>
                 </DetailRow>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check } from "lucide-react";
+import { Tag } from "@/components/shared/Tag";
 
 export interface VersionOption {
   id: string;
@@ -72,24 +73,16 @@ function VersionPickerItem({
             {option.title ?? option.label}
           </span>
           {option.tag === "current" && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]">
-              Jira
-            </span>
+            <Tag color="brand" className="font-semibold leading-none">Jira</Tag>
           )}
           {option.tag === "jira" && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-medium leading-none bg-white/[0.05] text-white/35">
-              Jira
-            </span>
+            <Tag color="neutral" className="leading-none">Jira</Tag>
           )}
           {option.tag === "ai-draft" && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none bg-blue-500/15 text-blue-400">
-              Draft
-            </span>
+            <Tag color="blue" className="font-semibold leading-none">Draft</Tag>
           )}
           {option.tag === "draft" && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none bg-purple-500/15 text-purple-400">
-              Draft
-            </span>
+            <Tag color="purple" className="font-semibold leading-none">Draft</Tag>
           )}
           {option.author && (
             <span className="text-[12px] text-white/45 truncate">{option.author}</span>

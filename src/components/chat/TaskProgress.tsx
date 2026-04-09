@@ -1,6 +1,7 @@
 "use client";
 
 import type { TaskStreamStatus } from "@/hooks/useWorkspaceTask";
+import { Tag } from "@/components/shared/Tag";
 
 interface ToolCallEvent {
   tool: string;
@@ -57,12 +58,9 @@ export default function TaskProgress({
         {toolCalls.length > 0 && status === "streaming" && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {toolCalls.slice(-5).map((tc) => (
-              <span
-                key={tc.id}
-                className="inline-flex items-center rounded-md bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/30 border border-white/[0.04]"
-              >
+              <Tag key={tc.id} className="border border-white/[0.04] text-[11px] text-white/30">
                 {formatToolName(tc.tool)}
-              </span>
+              </Tag>
             ))}
           </div>
         )}

@@ -194,15 +194,15 @@ Default styling: `rounded px-1.5 py-0.5 text-[10px] font-medium`. Color sets `bg
 
 ### Acceptance Criteria
 
-- [ ] Create `src/components/shared/Tag.tsx`
-- [ ] Add tests in `src/components/shared/Tag.test.tsx`
-- [ ] Migrate usages:
-  - [ ] `VersionPicker.tsx` "Jira" / "Draft" / "AI Draft" tags (lines ~74-93)
-  - [ ] `TicketHistory.tsx` version label tags (lines ~674-693)
-  - [ ] `TicketSidebar.tsx` label and component chips (lines ~248-261)
-  - [ ] `TaskProgress.tsx` tool call chips (lines ~60-65)
-  - [ ] `TicketContent.tsx` "Locally modified" indicator (line ~155)
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Create `src/components/shared/Tag.tsx`
+- [x] Add tests in `src/components/shared/Tag.test.tsx`
+- [x] Migrate usages:
+  - [x] `VersionPicker.tsx` "Jira" / "Draft" / "AI Draft" tags (lines ~74-93)
+  - [x] `TicketHistory.tsx` version label tags (lines ~674-693)
+  - [x] `TicketSidebar.tsx` label and component chips (lines ~248-261)
+  - [x] `TaskProgress.tsx` tool call chips (lines ~60-65)
+  - [x] `TicketContent.tsx` "Locally modified" indicator (line ~155)
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 
