@@ -1,6 +1,6 @@
 # VC-034: Shared UI Primitives
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** High
 
 ## Description
