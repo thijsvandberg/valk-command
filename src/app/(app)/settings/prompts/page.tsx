@@ -19,6 +19,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { TextInput } from "@/components/shared/TextInput";
+import { TextArea } from "@/components/shared/TextArea";
 import { TabBar, Tab } from "@/components/shared/TabBar";
 import type { IssueType } from "@/types/ticket";
 import type { QuickPrompt, QuickPromptsConfig } from "@/app/api/settings/quick-prompts/route";
@@ -64,11 +66,11 @@ function SortablePromptRow({
         >
           <GripVertical size={14} strokeWidth={1.5} />
         </button>
-        <input
+        <TextInput
           value={prompt.label}
           onChange={(e) => onUpdate(prompt.id, "label", e.target.value)}
           placeholder="Button label"
-          className="w-44 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/40 transition-colors duration-150"
+          className="w-44"
         />
         <Button
           variant={prompt.enableCodebase ? "soft" : "ghost"}
@@ -88,12 +90,12 @@ function SortablePromptRow({
           className="ml-auto"
         />
       </div>
-      <textarea
+      <TextArea
         value={prompt.text}
         onChange={(e) => onUpdate(prompt.id, "text", e.target.value)}
         placeholder="Prompt text sent to the AI..."
         rows={2}
-        className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/40 transition-colors duration-150 leading-[1.6]"
+        className="resize-none"
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/tic
 import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/shared/TextInput";
 
 // -- PO Status colors (needed for filter rendering) --
 
@@ -313,13 +314,11 @@ function SaveViewPopover({
         {isUpdate ? "Update saved view" : "Save current filter view"}
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <input
+        <TextInput
           ref={inputRef}
-          type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="View name..."
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/50"
           style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" }}
         />
         <Button

@@ -231,18 +231,18 @@ When `icon` is provided, add left padding and position the icon absolutely.
 
 ### Acceptance Criteria
 
-- [ ] Create `src/components/shared/TextInput.tsx`
-- [ ] Create `src/components/shared/TextArea.tsx`
-- [ ] Add tests for both
-- [ ] Migrate usages (TextInput):
-  - [ ] `SprintListModal.tsx` search input (line ~221)
-  - [ ] `FilterBar.tsx` search input (line ~447) and save-view input (line ~319)
-  - [ ] `FilterDropdown.tsx` search input (line ~114)
-  - [ ] `settings/prompts/page.tsx` label input (line ~66)
-- [ ] Migrate usages (TextArea):
-  - [ ] `MessageInput.tsx` chat textarea (line ~52)
-  - [ ] `settings/prompts/page.tsx` prompt textarea (line ~91)
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Create `src/components/shared/TextInput.tsx`
+- [x] Create `src/components/shared/TextArea.tsx`
+- [x] Add tests for both
+- [x] Migrate usages (TextInput):
+  - [x] `SprintListModal.tsx` search input (line ~221)
+  - [x] `FilterBar.tsx` save-view input (line ~319) -- search input skipped: has custom clear button overlay and fixed sizing
+  - [ ] `FilterDropdown.tsx` search input -- skipped: intentionally unstyled (bg-transparent inside custom search chrome)
+  - [x] `settings/prompts/page.tsx` label input (line ~66)
+- [x] Migrate usages (TextArea):
+  - [ ] `MessageInput.tsx` -- skipped: very custom (rounded-xl, auto-grow, different bg)
+  - [x] `settings/prompts/page.tsx` prompt textarea (line ~91)
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 

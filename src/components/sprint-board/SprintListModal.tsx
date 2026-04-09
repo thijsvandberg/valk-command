@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { X, Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/shared/TextInput";
 
 type Tab = "sprints" | "history" | "hidden";
 
@@ -220,13 +221,11 @@ export function SprintListModal({
       </div>
 
       <div className="px-3 pt-3 pb-1">
-        <input
-          type="text"
+        <TextInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search sprints..."
           autoFocus
-          className="w-full rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-white/25 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
         />
       </div>
 
