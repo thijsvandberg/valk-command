@@ -493,7 +493,7 @@ export default function TicketDetailPage({
           <div id="ticket-toolbar-portal" className="relative z-10 shrink-0" />
 
           <div className="flex-1 overflow-y-auto" style={{ overflowX: "hidden" }}>
-          <div className={`mx-auto max-w-4xl px-8 ${activeTab === "history" ? "pt-6" : isDescEditing ? "pb-6" : "py-6"}`}>
+          <div className={`mx-auto max-w-4xl px-8 ${activeTab === "history" ? "pt-6" : "py-6"}`}>
 
           {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
@@ -516,8 +516,9 @@ export default function TicketDetailPage({
             </button>
           )}
 
-          {/* Header */}
-          <div className={isDescEditing ? "hidden" : "mt-4"}>
+          {/* Header - content tab only */}
+          {activeTab === "content" && (
+          <div className={isDescEditing ? "hidden" : "mt-3"}>
 
             <div className="mt-3 flex items-start gap-2.5">
               <EditableTitle
@@ -544,6 +545,7 @@ export default function TicketDetailPage({
             )}
 
           </div>
+          )}
 
           {activeTab === "content" && (
             <>

@@ -12,14 +12,14 @@
 
 /* Editor-only: padding, outline, placeholder */
 .rich-editor-wrapper .tiptap {
-  padding: 1rem;
+  padding: 2.5rem;
   outline: none;
 }
 
-/* When the editor is used full-width (no card border), align text with the surrounding page padding */
+/* When the editor is used full-width (no card border), the surrounding page container
+   provides all padding — zero out the tiptap's own padding to match .description-content */
 .rich-editor-wrapper--no-x-pad .tiptap {
-  padding-left: 0;
-  padding-right: 0;
+  padding: 0;
 }
 
 .rich-editor-wrapper .tiptap p.is-editor-empty:first-child::before {

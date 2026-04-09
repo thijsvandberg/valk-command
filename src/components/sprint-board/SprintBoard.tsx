@@ -17,7 +17,8 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
-import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark } from "lucide-react";
+import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
+import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 
 export default function SprintBoard() {
   const { data: rawJiraSprints } = useJiraSprints();
@@ -50,9 +51,13 @@ export default function SprintBoard() {
   const [poPriorityOrder, setPoPriorityOrder] = useLocalStorage<string[] | null>("sprint-board-po-priority", null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [barsCollapsed, setBarsCollapsed] = useLocalStorage("sprint-bars-collapsed", false);
+  const [analyticsVisible, setAnalyticsVisible] = useLocalStorage("sprint-analytics-visible", false);
   const [compareMode, setCompareMode] = useState(false);
   const [showStoryWriterLauncher, setShowStoryWriterLauncher] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [sprintsModalOpen, setSprintsModalOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,6 +113,15 @@ export default function SprintBoard() {
     window.addEventListener("valk:openSearch", onOpenSearch);
     return () => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("valk:openSearch", onOpenSearch); };
   }, []);
+
+  useEffect(() => {
+    if (!headerMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) setHeaderMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [headerMenuOpen]);
 
   const navigateToSprint = useCallback((sprintId: string) => {
     f.resetFilters();
@@ -296,14 +310,43 @@ export default function SprintBoard() {
               )}
             </div>
             <div className="relative flex items-center gap-2">
-              {!isAllView && !f.activeView && (
-                <button type="button" onClick={() => setCompareMode(true)} className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-xs text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]">
-                  <Columns2 className="h-3 w-3" strokeWidth={1.5} />Compare
-                </button>
-              )}
-              <button type="button" onClick={() => setSearchModalOpen(true)} className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-xs text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="Search tickets (⌘K)">
-                <Search className="h-3 w-3" strokeWidth={1.5} />Search
+              <button type="button" onClick={() => setSearchModalOpen(true)} className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="Search tickets (⌘K)">
+                <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
               </button>
+              <div ref={headerMenuRef} className="relative">
+                <button type="button" onClick={() => setHeaderMenuOpen((v) => !v)} className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="More options">
+                  <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </button>
+                {headerMenuOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-44 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+                    <button type="button" onClick={() => { setAnalyticsVisible((v) => !v); setHeaderMenuOpen(false); }} className="flex w-full items-center justify-between px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
+                      <span className="flex items-center gap-2">
+                        <BarChart2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        Analytics
+                      </span>
+                      {analyticsVisible && <Check className="h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={2} />}
+                    </button>
+                    {!isAllView && !f.activeView && (
+                      <button type="button" onClick={() => { setCompareMode(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
+                        <Columns2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        Compare
+                      </button>
+                    )}
+                    <button type="button" onClick={() => { setSprintsModalOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
+                      <List className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      Sprints
+                    </button>
+                  </div>
+                )}
+                {sprintsModalOpen && (
+                  <SprintListModal
+                    onClose={() => setSprintsModalOpen(false)}
+                    onSelect={handleSprintListSelect}
+                    onPin={handleAddSlotWithSprint}
+                    pinnedIds={new Set(slotSprints)}
+                  />
+                )}
+              </div>
               <button type="button" onClick={() => setShowStoryWriterLauncher(true)} className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/25 transition-colors duration-150 shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
                 <NotebookPen className="h-3 w-3" strokeWidth={1.5} />Story writer
               </button>
@@ -311,14 +354,14 @@ export default function SprintBoard() {
           </div>
         )}
 
-        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onSprintListSelect={handleSprintListSelect} onAddSlotWithSprint={handleAddSlotWithSprint} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} />
+        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} />
 
         {!barsCollapsed && (
           <>
             <div className="border-b border-white/[0.06]">
               <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} visibleColumns={f.visibleColumns} onColumnToggle={f.handleColumnToggle} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
             </div>
-            {!ticketsLoading && <SprintAnalytics tickets={allTickets} />}
+            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
           </>
         )}
 

@@ -1,3 +1,5 @@
+@CLAUDE: DO NOT ALTER THIS FILE WITHOUT EXPLICIT PERMISSION
+
 # User Story Backlog (scratch notes)
 
 Notes and ideas for future user stories. Items that are fleshed out get promoted to their own `VC-XXX-name.md` file.
@@ -25,6 +27,9 @@ Notes and ideas for future user stories. Items that are fleshed out get promoted
 ## Chat
 
 - System prompt should clarify that the AI has no write access, so suggesting self-modifications will not work
+- Note dat stories in begrijpelijk EN geschreven moeten worden. EN level B2/C1?
+- Skill moet ook al kennis hebben van ADF formatting rules
+
 
 ## Misc
 

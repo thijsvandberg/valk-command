@@ -665,9 +665,10 @@ export function renderMarkdown(text: string): ReactNode[] {
       continue;
     }
 
-    // Empty line
+    // Empty lines are structural separators from the ADF->markdown conversion.
+    // Block elements (headings, paragraphs) already have CSS margins, so we skip
+    // empty lines rather than adding spacer divs that would cause double-spacing.
     if (line.trim() === "") {
-      elements.push(<div key={`br-${idx}`} className="h-2" />);
       idx++;
       continue;
     }

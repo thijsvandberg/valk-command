@@ -322,7 +322,7 @@ export function EditableDescription({
   const showPush = isDirtyOrLocal && !!onPushToJira;
 
   return (
-    <div className={editing ? "mt-0" : "mt-6"}>
+    <div className="mt-6">
       {/* Draft indicator badge */}
       {!editing && hasLocalEdit && editIsDraft && (
         <div className="mb-3 flex items-center gap-2">

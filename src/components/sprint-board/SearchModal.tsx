@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, PanelRight, PanelRightClose } from "lucide-react";
+
 import type { LocalSearchResult } from "@/app/api/search/local/route";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import type { SearchMode, FocusedPanel } from "@/components/sprint-board/SearchResultParts";
@@ -13,6 +14,20 @@ import {
   JiraResultRow,
   EmptyState,
 } from "@/components/sprint-board/SearchResultParts";
+
+function parseJiraKeyFromInput(input: string): string | null {
+  const trimmed = input.trim();
+  // Match /browse/VPL-44481 path segment
+  const browseMatch = trimmed.match(/\/browse\/([A-Za-z]+-\d+)/);
+  if (browseMatch) return browseMatch[1].toUpperCase();
+  // Match ?selectedIssue=VPL-44481 or &selectedIssue=VPL-44481 query param
+  const selectedIssueMatch = trimmed.match(/[?&]selectedIssue=([A-Za-z]+-\d+)/);
+  if (selectedIssueMatch) return selectedIssueMatch[1].toUpperCase();
+  // Match standalone key: VPL-44481 (no other text)
+  const keyMatch = trimmed.match(/^([A-Za-z]+-\d+)$/);
+  if (keyMatch) return keyMatch[1].toUpperCase();
+  return null;
+}
 
 interface SearchModalProps {
   open: boolean;
@@ -39,6 +54,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const [previewEnabled, setPreviewEnabled] = useState(false);
   const [previewWidth, setPreviewWidth] = useState(520);
   const [focusedPanel, setFocusedPanel] = useState<FocusedPanel>("list");
+  const [fetchingKey, setFetchingKey] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -98,6 +114,12 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [open, onClose]);
 
+  // Detect Jira key or URL in the active search input (computed early so hooks below can use it)
+  const activeInputValue = mode === "local" ? query : (jiraQuery || query);
+  const detectedKey = parseJiraKeyFromInput(activeInputValue);
+  // When a URL is pasted, search by just the key so the local index can match it
+  const effectiveLocalQuery = detectedKey ?? query;
+
   const runLocalSearch = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setLocalResults([]); return; }
     if (localAbortRef.current) localAbortRef.current.abort();
@@ -121,9 +143,12 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   useEffect(() => {
     if (!open || mode !== "local") return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => runLocalSearch(query), 150);
+    debounceRef.current = setTimeout(() => runLocalSearch(effectiveLocalQuery), 150);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, mode, open, runLocalSearch]);
+  // effectiveLocalQuery is derived from query + detectedKey (which is derived from query),
+  // so listing it here is correct and avoids stale closures when a URL is pasted.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveLocalQuery, mode, open, runLocalSearch]);
 
   const runJiraSearch = useCallback(async () => {
     const q = jiraQuery.trim() || query.trim();
@@ -151,6 +176,31 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       setLoadingJira(false);
     }
   }, [query, jiraQuery, jiraJql]);
+
+  const navigateToKey = useCallback(async (key: string, newTab: boolean) => {
+    const existsLocally = localResults.some((r) => r.key === key);
+    if (!existsLocally) {
+      setFetchingKey(true);
+      try {
+        await fetch("/api/jira/sync-tickets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketKeys: [key] }),
+        });
+      } catch {
+        // Navigate anyway even if the fetch failed
+      } finally {
+        setFetchingKey(false);
+      }
+    }
+    if (newTab) {
+      window.open(`/tickets/${key}`, "_blank", "noopener,noreferrer");
+      window.focus();
+    } else {
+      router.push(`/tickets/${key}`);
+      onClose();
+    }
+  }, [localResults, router, onClose]);
 
   const resultCount = mode === "local" ? localResults.length : jiraResults.length;
 
@@ -196,6 +246,12 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     }
     if (e.key === "Enter") {
       e.preventDefault();
+      // When a Jira key or URL is detected, Enter always navigates directly to that ticket.
+      // If the ticket is not in the local DB, it is fetched from Jira first.
+      if (detectedKey) {
+        navigateToKey(detectedKey, e.shiftKey);
+        return;
+      }
       if (mode === "local") {
         const result = localResults[activeIdx];
         if (result) {
@@ -217,7 +273,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         }
       }
     }
-  }, [focusedPanel, activeIdx, resultCount, mode, localResults, jiraResults, previewEnabled, loadingJira, onClose, runJiraSearch, router]);
+  }, [focusedPanel, activeIdx, resultCount, mode, localResults, jiraResults, previewEnabled, loadingJira, detectedKey, navigateToKey, onClose, runJiraSearch, router]);
 
   useEffect(() => {
     if (activeIdx < 0) return;
@@ -330,6 +386,26 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               {loadingJira ? "Searching..." : "Search"}
             </button>
           </div>
+        )}
+
+        {detectedKey && (
+          <button
+            type="button"
+            onClick={() => !fetchingKey && navigateToKey(detectedKey, false)}
+            disabled={fetchingKey}
+            className="w-full flex items-center gap-2.5 border-b border-white/[0.06] px-5 py-2 text-left cursor-pointer disabled:cursor-default"
+            style={{ backgroundColor: "rgba(74, 170, 96, 0.07)" }}
+          >
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold"
+              style={{ backgroundColor: "rgba(74, 170, 96, 0.18)", color: "var(--color-brand-400)" }}
+            >
+              {detectedKey}
+            </span>
+            <span className="text-[11px] text-white/40">
+              {fetchingKey ? "Downloading from Jira..." : "Press Enter to open directly"}
+            </span>
+          </button>
         )}
 
         <div className="flex" style={{ minHeight: showPreview ? 340 : undefined }}>

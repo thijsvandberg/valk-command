@@ -202,7 +202,7 @@ export default function Sidebar() {
         </div>
 
         {/* Sidebar right edge accent */}
-        <div className="hidden lg:block absolute top-0 right-0 h-full w-px bg-[var(--color-brand-600)]/25" />
+        <div className="hidden lg:block absolute top-0 right-0 h-full w-px bg-white/[0.06]" />
       </aside>
     </>
   );

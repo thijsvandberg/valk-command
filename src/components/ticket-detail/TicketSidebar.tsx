@@ -120,7 +120,7 @@ export function TicketSidebar({
       </button>
 
       {/* Left edge line */}
-      <div className={`absolute top-0 left-0 h-full w-px bg-[var(--color-brand-600)]/25 transition-opacity duration-200 ${collapsed ? "opacity-0" : "opacity-100"}`} />
+      <div className={`absolute top-0 left-0 h-full w-px bg-white/[0.06] transition-opacity duration-200 ${collapsed ? "opacity-0" : "opacity-100"}`} />
 
       {/* Sidebar content */}
       {!collapsed && (

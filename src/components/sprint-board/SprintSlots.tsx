@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
-import { SprintListModal } from "./SprintListModal";
-import { ChevronRight, ChevronDown, ChevronUp, List, RefreshCw, LayoutGrid } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, RefreshCw, LayoutGrid } from "lucide-react";
 import type { SavedView } from "./FilterBar";
 import {
   DndContext,
@@ -124,38 +123,6 @@ function SprintSelector({
   );
 }
 
-function SprintListButton({
-  onSelect,
-  onPin,
-  pinnedIds,
-}: {
-  onSelect: (sprintId: string, sprintName: string) => void;
-  onPin: (sprintId: string) => void;
-  pinnedIds: Set<string>;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
-      >
-        <List className="h-3.5 w-3.5" strokeWidth={1.5} />
-        Sprints
-      </button>
-      {open && (
-        <SprintListModal
-          onClose={() => setOpen(false)}
-          onSelect={onSelect}
-          onPin={onPin}
-          pinnedIds={pinnedIds}
-        />
-      )}
-    </>
-  );
-}
-
 // -- Sortable tab item --
 
 function SortableTab({
@@ -223,8 +190,6 @@ export function SprintSlots({
   onEditClose,
   syncing,
   onRefresh,
-  onSprintListSelect,
-  onAddSlotWithSprint,
   onReorderSlots,
   ephemeralSprintId = null,
   ephemeralIsActive = false,
@@ -247,8 +212,6 @@ export function SprintSlots({
   onEditClose: () => void;
   syncing: boolean;
   onRefresh: () => void;
-  onSprintListSelect: (sprintId: string) => void;
-  onAddSlotWithSprint: (sprintId: string) => void;
   onReorderSlots: (activeId: string, overId: string) => void;
   ephemeralSprintId?: string | null;
   ephemeralIsActive?: boolean;
@@ -371,30 +334,21 @@ export function SprintSlots({
         );
       })()}
 
-      {/* Right side: sprint list + refresh */}
+      {/* Right side: refresh + toggle filters */}
       <div className="ml-auto flex items-center gap-2">
-        {/* Sprint list button */}
-        <div className="relative">
-          <SprintListButton
-            onSelect={(id) => onSprintListSelect(id)}
-            onPin={(id) => onAddSlotWithSprint(id)}
-            pinnedIds={new Set(slotSprints)}
-          />
-        </div>
-
         {/* Refresh board - hidden in All view since syncing all sprints at once is not practical */}
         {!allActive && (
           <button
             type="button"
             disabled={syncing}
             onClick={onRefresh}
-            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={syncing ? "Syncing..." : "Refresh board"}
+            className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/50 cursor-pointer hover:bg-white/[0.04] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <RefreshCw
               className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
               strokeWidth={1.5}
             />
-            {syncing ? "Syncing..." : "Refresh"}
           </button>
         )}
 
