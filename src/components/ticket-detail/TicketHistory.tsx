@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Ticket, StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
-import { ChevronRight, Save, Info, CloudUpload } from "lucide-react";
+import { ChevronRight, Save, Info, CloudUpload, Download } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 
@@ -86,6 +86,8 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const [mergeResult, setMergeResult] = useState<string | null>(null);
   const [savingMerge, setSavingMerge] = useState(false);
   const [diffStats, setDiffStats] = useState<{ added: number; removed: number; modified: number; changeHunkCount: number; decidedCount: number } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; total: number } | null>(null);
 
   useEffect(() => {
     if (resetKey !== undefined) {
@@ -343,6 +345,51 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     }
   }, [ticket.key, onConflictResolved]);
 
+  const handleImportHistory = useCallback(async () => {
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await fetch(`/api/tickets/${ticket.key}/versions/import`, { method: "POST" });
+      if (!res.ok) {
+        console.error("Import failed:", res.status);
+        return;
+      }
+      const data = await res.json();
+      setImportResult(data);
+      if (data.imported > 0) {
+        // Refresh the version list
+        const versionsRes = await fetch(`/api/tickets/${ticket.key}/versions?metaOnly=true`);
+        if (versionsRes.ok) {
+          const versionData = await versionsRes.json();
+          if (Array.isArray(versionData)) {
+            const versions: StoryVersion[] = [];
+            const count = versionData.length;
+            versionData.forEach((v: Record<string, unknown>, idx: number) => {
+              versions.push({
+                id: (v.id as string) || undefined,
+                versionNumber: 0,
+                date: (v.createdAt as string) || new Date().toISOString(),
+                contentHash: (v.contentHash as string) || "",
+                content: "",
+                updatedBy: (v.updatedBy as string) ?? null,
+                updatedByAvatar: (v.updatedByAvatar as string) ?? null,
+                label: idx === count - 1 ? "current" : undefined,
+              });
+            });
+            versions.sort((a, b) => parseVersionDate(a.date) - parseVersionDate(b.date));
+            versions.forEach((v, idx) => { v.versionNumber = idx + 1; });
+            setTicketVersions(versions);
+            onVersionsLoadedRef.current?.(versions.length);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to import Jira history:", err);
+    } finally {
+      setImporting(false);
+    }
+  }, [ticket.key]);
+
   const oldOptions = useMemo(
     () => sorted.filter((v) => v.versionNumber !== compareNew).map(storyVersionToOption),
     [sorted, compareNew],
@@ -551,14 +598,34 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
       ) : (
         <>
           {/* Header */}
-          <div className="flex items-center border-b border-white/[0.06] pb-2">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
             <div className="flex items-center gap-2">
               <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">History</h3>
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/[0.06] px-1.5 text-[10px] font-medium tabular-nums text-white/40">
                 {sorted.length}
               </span>
             </div>
+            <button
+              type="button"
+              disabled={importing}
+              onClick={handleImportHistory}
+              className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/50 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              title="Import full description history from Jira"
+            >
+              <Download size={12} strokeWidth={1.5} className={importing ? "animate-pulse" : ""} />
+              {importing ? "Importing..." : "Import Jira history"}
+            </button>
           </div>
+
+          {/* Import result feedback */}
+          {importResult && (
+            <div className="mt-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-xs text-white/50">
+              {importResult.imported > 0
+                ? `Imported ${importResult.imported} version${importResult.imported !== 1 ? "s" : ""} from Jira${importResult.skipped > 0 ? ` (${importResult.skipped} already existed)` : ""}.`
+                : "History is up to date. No new versions found in Jira."}
+            </div>
+          )}
 
           {/* Compare dropdowns */}
           {sorted.length > 1 && (

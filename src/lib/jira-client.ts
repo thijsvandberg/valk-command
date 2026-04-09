@@ -747,11 +747,108 @@ export class JiraClient {
   }
 
   /**
+   * Fetch the full description changelog for an issue with pagination.
+   * Returns all historical description changes from the Jira changelog.
+   * Each entry contains the plaintext toString value (not ADF).
+   */
+  async getDescriptionChangelog(key: string, signal?: AbortSignal): Promise<Array<{
+    description: string;
+    author: string;
+    avatar: string | null;
+    created: string;
+  }>> {
+    if (!isConfigured()) return [];
+
+    const results: Array<{
+      description: string;
+      author: string;
+      avatar: string | null;
+      created: string;
+    }> = [];
+
+    let startAt = 0;
+    const maxResults = 100;
+
+    while (true) {
+      if (signal?.aborted) {
+        throw new DOMException("The operation was aborted", "AbortError");
+      }
+
+      const page = await jiraFetch<{
+        startAt: number;
+        maxResults: number;
+        total: number;
+        isLast: boolean;
+        values: Array<{
+          author: { displayName: string; avatarUrls?: Record<string, string> };
+          created: string;
+          items: Array<{
+            field: string;
+            fieldtype: string;
+            fromString: string | null;
+            toString: string | null;
+          }>;
+        }>;
+      }>(
+        `/rest/api/3/issue/${key}/changelog?startAt=${startAt}&maxResults=${maxResults}`,
+        signal,
+      );
+
+      results.push(...filterDescriptionChanges(page.values));
+
+      if (page.isLast !== false || startAt + page.values.length >= page.total) break;
+      startAt += page.values.length;
+    }
+
+    return results;
+  }
+
+  /**
    * Whether the client is talking to a real Jira instance.
    */
   get isLive(): boolean {
     return isConfigured();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Exported helpers (for testing)
+// ---------------------------------------------------------------------------
+
+export interface ChangelogEntry {
+  author: { displayName: string; avatarUrls?: Record<string, string> };
+  created: string;
+  items: Array<{
+    field: string;
+    fieldtype: string;
+    fromString: string | null;
+    toString: string | null;
+  }>;
+}
+
+export interface DescriptionChange {
+  description: string;
+  author: string;
+  avatar: string | null;
+  created: string;
+}
+
+/** Filter raw Jira changelog entries to only description field changes. */
+export function filterDescriptionChanges(entries: ChangelogEntry[]): DescriptionChange[] {
+  const results: DescriptionChange[] = [];
+  for (const entry of entries) {
+    for (const item of entry.items) {
+      if (item.field === "description" && item.toString !== null) {
+        results.push({
+          description: item.toString,
+          author: entry.author.displayName,
+          avatar: entry.author.avatarUrls?.["48x48"] ?? null,
+          created: entry.created,
+        });
+      }
+    }
+  }
+  return results;
 }
 
 // Re-export field constants for use in sync routes

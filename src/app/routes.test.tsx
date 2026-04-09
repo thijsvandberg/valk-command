@@ -21,6 +21,9 @@ const EXPECTED_ROUTES = [
   { path: "/tickets/[key]/write", file: "src/app/(app)/tickets/[key]/write/page.tsx", name: "Story Writer" },
   { path: "/activity-log", file: "src/app/(app)/activity-log/page.tsx", name: "Activity Log" },
   { path: "/settings", file: "src/app/(app)/settings/page.tsx", name: "Settings" },
+  { path: "/settings/prompts", file: "src/app/(app)/settings/prompts/page.tsx", name: "Settings Prompts" },
+  { path: "/settings/scheduler", file: "src/app/(app)/settings/scheduler/page.tsx", name: "Settings Scheduler" },
+  { path: "/dev/button-audit", file: "src/app/(app)/dev/button-audit/page.tsx", name: "Button Audit (temp)" },
 ];
 
 // API route manifest: ensures search API route files exist
@@ -28,6 +31,8 @@ const EXPECTED_API_ROUTES = [
   { path: "/api/search/local", file: "src/app/api/search/local/route.ts", name: "Local Search API" },
   { path: "/api/search/jira", file: "src/app/api/search/jira/route.ts", name: "Jira Search API" },
   { path: "/api/settings/quick-prompts", file: "src/app/api/settings/quick-prompts/route.ts", name: "Quick Prompts Settings API" },
+  { path: "/api/scheduler/tick", file: "src/app/api/scheduler/tick/route.ts", name: "Scheduler Tick API" },
+  { path: "/api/tickets/[key]/versions/import", file: "src/app/api/tickets/[key]/versions/import/route.ts", name: "Versions Import API" },
 ];
 
 const ROOT = join(__dirname, "../..");

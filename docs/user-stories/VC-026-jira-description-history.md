@@ -1,6 +1,6 @@
 # VC-026: Import Jira Description History
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -18,28 +18,28 @@ Only description field changes. Title/summary changes are out of scope.
 ## Acceptance Criteria
 
 ### 1. Jira client: fetch full description changelog
-- [ ] New method `getDescriptionChangelog(key)` on `JiraClient`
-- [ ] Fetches `/rest/api/3/issue/{key}/changelog` with pagination (handles `startAt`/`maxResults`)
-- [ ] Filters changelog entries to only those containing a `description` field change
-- [ ] Returns array of `{ description: string, author: string, avatar: string | null, created: string }` for each description change
-- [ ] Unit test for filtering logic
+- [x] New method `getDescriptionChangelog(key)` on `JiraClient`
+- [x] Fetches `/rest/api/3/issue/{key}/changelog` with pagination (handles `startAt`/`maxResults`)
+- [x] Filters changelog entries to only those containing a `description` field change
+- [x] Returns array of `{ description: string, author: string, avatar: string | null, created: string }` for each description change
+- [x] Unit test for filtering logic
 
 ### 2. API endpoint: import description history
-- [ ] `POST /api/tickets/[key]/versions/import` endpoint
-- [ ] Calls `getDescriptionChangelog` to get all historical description changes
-- [ ] Converts Jira ADF description to markdown (or stores raw, consistent with existing version format)
-- [ ] Computes content hash for each version and skips duplicates already in `storyVersion` table
-- [ ] Inserts new StoryVersion records with correct `updatedBy`, `updatedByAvatar`, and `createdAt` from changelog
-- [ ] Returns `{ imported: number, skipped: number, total: number }`
-- [ ] Unit test for deduplication logic
+- [x] `POST /api/tickets/[key]/versions/import` endpoint
+- [x] Calls `getDescriptionChangelog` to get all historical description changes
+- [x] Converts Jira ADF description to markdown (or stores raw, consistent with existing version format)
+- [x] Computes content hash for each version and skips duplicates already in `storyVersion` table
+- [x] Inserts new StoryVersion records with correct `updatedBy`, `updatedByAvatar`, and `createdAt` from changelog
+- [x] Returns `{ imported: number, skipped: number, total: number }`
+- [x] Unit test for deduplication logic
 
 ### 3. UI: Import button in History tab
-- [ ] "Import Jira history" button in TicketHistory component, visible when the History tab is open
-- [ ] Button shows loading state during import
-- [ ] After import, version list refreshes automatically to include new versions
-- [ ] Success feedback showing how many versions were imported
-- [ ] If no new versions found, show "History is up to date" message
-- [ ] Button disabled/hidden if no Jira connection configured
+- [x] "Import Jira history" button in TicketHistory component, visible when the History tab is open
+- [x] Button shows loading state during import
+- [x] After import, version list refreshes automatically to include new versions
+- [x] Success feedback showing how many versions were imported
+- [x] If no new versions found, show "History is up to date" message
+- [x] Button disabled/hidden if no Jira connection configured
 
 ## Technical Notes
 
