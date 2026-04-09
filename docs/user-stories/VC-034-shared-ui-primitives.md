@@ -165,13 +165,13 @@ interface InlineAlertProps {
 
 ### Acceptance Criteria
 
-- [ ] Create `src/components/shared/InlineAlert.tsx`
-- [ ] Add tests in `src/components/shared/InlineAlert.test.tsx`
-- [ ] Migrate usages:
-  - [ ] `ConversationList.tsx` error display (line ~41)
-  - [ ] `MessageList.tsx` error display (line ~252)
-  - [ ] `JobsPanel.tsx` error display (line ~190)
-- [ ] Verify: `npm run test` and `npm run build` pass
+- [x] Create `src/components/shared/InlineAlert.tsx`
+- [x] Add tests in `src/components/shared/InlineAlert.test.tsx`
+- [x] Migrate usages:
+  - [x] `ConversationList.tsx` error display (line ~41)
+  - [x] `MessageList.tsx` error display (line ~252)
+  - [x] `JobsPanel.tsx` error display (line ~190)
+- [x] Verify: `npm run test` and `npm run build` pass
 
 ---
 

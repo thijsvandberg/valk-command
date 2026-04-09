@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Message } from "@/types/chat";
 import type { ReviewStoryData } from "@/lib/agent-client";
+import { InlineAlert } from "@/components/shared/InlineAlert";
 
 interface MessageListProps {
   messages: Message[];
@@ -252,9 +253,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
   if (error) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400" role="alert">
-          {error}
-        </div>
+        <InlineAlert variant="error">{error}</InlineAlert>
       </div>
     );
   }

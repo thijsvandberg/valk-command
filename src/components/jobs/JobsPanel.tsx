@@ -7,6 +7,7 @@ import { isValidCron } from "@/lib/cron";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { InlineAlert } from "@/components/shared/InlineAlert";
 
 interface CreateFormState {
   name: string;
@@ -190,9 +191,7 @@ export default function JobsPanel() {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
+        <InlineAlert variant="error">{error}</InlineAlert>
       )}
 
       <div className="flex items-center justify-between">

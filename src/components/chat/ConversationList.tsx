@@ -4,6 +4,7 @@ import type { Conversation } from "@/types/chat";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { InlineAlert } from "@/components/shared/InlineAlert";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -40,9 +41,9 @@ export default function ConversationList({
       </div>
 
       {error && (
-        <div className="mx-4 mb-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400" role="alert">
+        <InlineAlert variant="error" className="mx-4 mb-2 text-xs">
           {error}
-        </div>
+        </InlineAlert>
       )}
 
       {loading && conversations.length === 0 ? (
