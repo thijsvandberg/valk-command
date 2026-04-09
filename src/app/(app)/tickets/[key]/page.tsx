@@ -492,7 +492,7 @@ export default function TicketDetailPage({
           {/* Portal target: full-width editor toolbar mounts here when editing a description */}
           <div id="ticket-toolbar-portal" className="relative z-10 shrink-0" />
 
-          <div className="flex-1 overflow-y-auto" style={{ overflowX: "hidden" }}>
+          <div className="flex-1 overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
           <div className={`mx-auto max-w-4xl px-8 ${activeTab === "history" ? "pt-6" : "py-6"}`}>
 
           {/* Conflict warning: clickable, opens conflict diff */}

@@ -8,6 +8,8 @@
   font-size: 0.9375rem;
   line-height: 1.75;
   color: rgba(255, 255, 255, 0.85);
+  /* Match ProseMirror's liga:0 so line-breaking is identical in view and edit mode */
+  font-feature-settings: "liga" 0;
 }
 
 /* Editor-only: padding, outline, placeholder */
@@ -63,7 +65,7 @@
 .description-content h4,
 .rich-editor-wrapper .tiptap h4 {
   font-family: var(--font-display);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: rgba(255, 255, 255, 0.88);
@@ -73,7 +75,7 @@
 /* Paragraphs */
 .description-content p,
 .rich-editor-wrapper .tiptap p {
-  margin: 0 0 0.75rem;
+  margin: 0 0 1.1rem;
 }
 
 .description-content p:last-child,

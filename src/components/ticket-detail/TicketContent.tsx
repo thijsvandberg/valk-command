@@ -205,7 +205,12 @@ export function EditableDescription({
   const hasLocalEdit = localValue !== null;
   const value = localValue ?? initialDescription;
 
-  useEffect(() => { onEditingChange?.(editing); }, [editing, onEditingChange]);
+  // Call onEditingChange synchronously so the parent hides the title header
+  // in the same React render as the editor mounting — prevents a one-frame layout bounce.
+  const setEditingState = useCallback((next: boolean) => {
+    setEditing(next);
+    onEditingChange?.(next);
+  }, [onEditingChange]);
 
   // Notify parent once if we have a server-provided local edit
   useEffect(() => {
@@ -280,21 +285,21 @@ export function EditableDescription({
   }, [ticketKey, value, initialDescription, onLocalEdit]);
 
   const save = useCallback(async () => {
-    setEditing(false);
+    setEditingState(false);
     try {
       await saveLocal();
     } catch (err) {
       console.error("Operation failed:", err);
     }
-  }, [saveLocal]);
+  }, [saveLocal, setEditingState]);
 
   const handleDiscard = useCallback(() => {
-    setEditing(false);
+    setEditingState(false);
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     if (hasLocalEdit || value.trim() !== initialDescription.trim()) {
       onDiscard?.();
     }
-  }, [hasLocalEdit, value, initialDescription, onDiscard]);
+  }, [hasLocalEdit, value, initialDescription, onDiscard, setEditingState]);
 
   const handlePushToJira = useCallback(async () => {
     try {
@@ -311,7 +316,7 @@ export function EditableDescription({
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
-        setEditing(false);
+        setEditingState(false);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
@@ -405,7 +410,7 @@ export function EditableDescription({
           onClick={(e) => {
             if (window.getSelection()?.toString()) return;
             if ((e.target as HTMLElement).closest("summary, a, button")) return;
-            setEditing(true);
+            setEditingState(true);
           }}
           title="Click to edit"
         >
