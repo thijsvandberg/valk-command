@@ -154,7 +154,7 @@ const NAV_ITEMS = [
 function LogoMark() {
   return (
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_rgba(26,111,194,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]">
-      <BridgeMark size={18} />
+      <BridgeMark size={22} />
     </div>
   );
 }

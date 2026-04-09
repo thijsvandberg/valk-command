@@ -3,7 +3,7 @@ interface BridgeMarkProps {
   className?: string;
 }
 
-export function BridgeMark({ size = 18, className }: BridgeMarkProps) {
+export function BridgeMark({ size = 22, className }: BridgeMarkProps) {
   return (
     <svg
       width={size}
