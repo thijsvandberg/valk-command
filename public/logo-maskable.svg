@@ -1,10 +1,10 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Maskable: safe zone is inner 80%, so add extra padding -->
+  <!-- Maskable: no rounded corners, safe zone is inner 80% -->
   <rect width="512" height="512" fill="#155a9e"/>
-  <rect x="147" y="147" width="218" height="218" rx="54.5" stroke="white" stroke-width="28"/>
-  <circle cx="256" cy="147" r="23.4" fill="white"/>
-  <circle cx="256" cy="365" r="23.4" fill="white"/>
-  <circle cx="147" cy="256" r="23.4" fill="white"/>
-  <circle cx="365" cy="256" r="23.4" fill="white"/>
-  <circle cx="256" cy="256" r="31.2" fill="white" opacity="0.5"/>
+  <rect x="183" y="183" width="146" height="146" rx="36.5" stroke="white" stroke-width="19"/>
+  <circle cx="256" cy="183" r="15.5" fill="white"/>
+  <circle cx="256" cy="329" r="15.5" fill="white"/>
+  <circle cx="183" cy="256" r="15.5" fill="white"/>
+  <circle cx="329" cy="256" r="15.5" fill="white"/>
+  <circle cx="256" cy="256" r="21" fill="white" opacity="0.5"/>
 </svg>

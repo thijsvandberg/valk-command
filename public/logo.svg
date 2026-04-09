@@ -1,9 +1,10 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" rx="108" fill="#155a9e"/>
-  <rect x="106.7" y="106.7" width="298.7" height="298.7" rx="74.7" stroke="white" stroke-width="38.4"/>
-  <circle cx="256" cy="106.7" r="32" fill="white"/>
-  <circle cx="256" cy="405.3" r="32" fill="white"/>
-  <circle cx="106.7" cy="256" r="32" fill="white"/>
-  <circle cx="405.3" cy="256" r="32" fill="white"/>
-  <circle cx="256" cy="256" r="42.7" fill="white" opacity="0.5"/>
+  <!-- BridgeMark scaled to ~60% of icon, matching in-app brand proportions -->
+  <rect x="166" y="166" width="180" height="180" rx="45" stroke="white" stroke-width="23"/>
+  <circle cx="256" cy="166" r="19" fill="white"/>
+  <circle cx="256" cy="346" r="19" fill="white"/>
+  <circle cx="166" cy="256" r="19" fill="white"/>
+  <circle cx="346" cy="256" r="19" fill="white"/>
+  <circle cx="256" cy="256" r="26" fill="white" opacity="0.5"/>
 </svg>

@@ -9,7 +9,8 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("fetch", () => {
-  // Network-only: let the browser handle all requests normally.
-  // This handler exists solely to satisfy Chrome's PWA installability check.
+self.addEventListener("fetch", (event) => {
+  // Network-only: pass every request straight to the network.
+  // respondWith is required for Chrome to consider this a valid fetch handler.
+  event.respondWith(fetch(event.request));
 });
