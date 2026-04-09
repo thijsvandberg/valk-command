@@ -319,7 +319,7 @@ export function EditableDescription({
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [editing]);
+  }, [editing, setEditingState]);
 
   const isDirtyOrLocal = hasLocalEdit || value.trim() !== initialDescription.trim();
   const showPush = isDirtyOrLocal && !!onPushToJira;
@@ -643,8 +643,8 @@ export function LinkedIssuesSection({ issues }: { issues: TicketDetail["linkedIs
 // Epic children
 // ---------------------------------------------------------------------------
 
-export function EpicChildrenSection({ children }: { children: TicketDetail["epicChildren"] }) {
-  if (children.length === 0) {
+export function EpicChildrenSection({ items }: { items: TicketDetail["epicChildren"] }) {
+  if (items.length === 0) {
     return (
       <div className="mt-8">
         <SectionHeader title="Child Issues" />
@@ -655,15 +655,15 @@ export function EpicChildrenSection({ children }: { children: TicketDetail["epic
 
   return (
     <div className="mt-8">
-      <SectionHeader title="Child Issues" count={children.length} />
+      <SectionHeader title="Child Issues" count={items.length} />
       <div className="mt-3 overflow-hidden rounded-lg border border-white/[0.06]">
-        {children.map((child, idx) => {
+        {items.map((child, idx) => {
           const statusColor = JIRA_STATUS_COLORS[child.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
           return (
             <div
               key={child.key}
               className={`flex items-center gap-3 px-3 py-2.5 ${
-                idx < children.length - 1 ? "border-b border-white/[0.04]" : ""
+                idx < items.length - 1 ? "border-b border-white/[0.04]" : ""
               }`}
             >
               <IssueTypeIcon type={child.type} size={14} />

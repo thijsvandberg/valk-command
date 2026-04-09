@@ -1,8 +1,20 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { BridgeMark } from "@/components/shared/BridgeMark";
+
+function getPortalTarget() {
+  return document.getElementById("view-header-portal");
+}
+function getServerTarget() {
+  return null;
+}
+function subscribe(callback: () => void) {
+  const observer = new MutationObserver(callback);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
 
 interface ViewHeaderProps {
   icon?: ReactNode;
@@ -12,11 +24,7 @@ interface ViewHeaderProps {
 }
 
 export function ViewHeader({ icon, children, actions, className }: ViewHeaderProps) {
-  const [target, setTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setTarget(document.getElementById("view-header-portal"));
-  }, []);
+  const target = useSyncExternalStore(subscribe, getPortalTarget, getServerTarget);
 
   if (!target) return null;
 

@@ -146,9 +146,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => runLocalSearch(effectiveLocalQuery), 150);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  // effectiveLocalQuery is derived from query + detectedKey (which is derived from query),
-  // so listing it here is correct and avoids stale closures when a URL is pasted.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveLocalQuery, mode, open, runLocalSearch]);
 
   const runJiraSearch = useCallback(async () => {

@@ -33,9 +33,6 @@ Notes and ideas for future user stories. Items that are fleshed out get promoted
 
 ## Misc
 
-- Epic children: show child issues when viewing an epic
-- Log retention: clear logs after 7 days
-- Log badge: clear warning counter/badge when log viewer is opened
 
 ## Search
 - Tickets in actieve sprint moeten een hogere weging krijgen, en dus hoger staan.

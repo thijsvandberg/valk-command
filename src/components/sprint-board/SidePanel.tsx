@@ -222,8 +222,12 @@ export function SidePanel({
                 onClick={async () => {
                   const url = getJiraUrl(ticket.key);
                   const text = `${ticket.title} - ${url}`;
-                  await navigator.clipboard.writeText(text);
-                  onShowToast("Link copied");
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    onShowToast("Link copied");
+                  } catch {
+                    onShowToast("Failed to copy link");
+                  }
                 }}
                 className="text-white/0 group-hover/key:text-white/30 hover:!text-white/60"
                 title="Copy Jira link"

@@ -23,9 +23,9 @@ import { usePathname } from "next/navigation";
 const mockUsePathname = vi.mocked(usePathname);
 
 describe("Sidebar", () => {
-  it("renders the logo and app name", () => {
+  it("renders the sidebar element", () => {
     render(<Sidebar />);
-    expect(screen.getByText("Bridge")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar")).toBeInTheDocument();
   });
 
   it("renders all 7 navigation items", () => {

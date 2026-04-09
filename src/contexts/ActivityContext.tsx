@@ -92,7 +92,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           return next;
         });
         if (newToasts.length > 0) {
-          setToastEntries((prev) => [...prev, ...newToasts]);
+          setToastEntries((prev) => [...prev, ...newToasts].slice(-50));
         }
       },
     },

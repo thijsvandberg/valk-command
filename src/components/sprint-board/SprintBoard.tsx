@@ -198,6 +198,8 @@ export default function SprintBoard() {
     const text = selected.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n");
     navigator.clipboard.writeText(text).then(() => {
       showToast(`Copied ${selected.length} ticket${selected.length === 1 ? "" : "s"} to clipboard`);
+    }).catch(() => {
+      showToast("Failed to copy to clipboard");
     });
   }, [tickets, checkedTickets, showToast]);
 

@@ -98,8 +98,10 @@ export async function GET(
     createdAt: c.createdAt,
   }));
 
-  const labels: string[] = t.labels ? JSON.parse(t.labels) : [];
-  const components: string[] = t.components ? JSON.parse(t.components) : [];
+  let labels: string[] = [];
+  let components: string[] = [];
+  try { labels = t.labels ? JSON.parse(t.labels) : []; } catch { console.warn(`[ticket/${key}] malformed labels JSON: ${t.labels}`); }
+  try { components = t.components ? JSON.parse(t.components) : []; } catch { console.warn(`[ticket/${key}] malformed components JSON: ${t.components}`); }
 
   // Compute edit state from local edits vs latest Jira mirror
   const [localEdits, latestVersion] = await Promise.all([

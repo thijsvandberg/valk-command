@@ -181,7 +181,14 @@ export async function GET(request: Request) {
         }
 
         if (r.item.sprintName && activeSprintIds.has(r.item.sprintName)) {
-          score *= 0.88;
+          score *= 0.70;
+        }
+
+        const status = r.item.status?.toUpperCase();
+        if (status === "DEPRECATED") {
+          score *= 1.5;
+        } else if (status === "DONE") {
+          score *= 1.15;
         }
 
         return {

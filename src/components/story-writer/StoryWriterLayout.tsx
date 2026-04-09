@@ -10,7 +10,6 @@ import {
   Trash2,
   Loader2,
   Star,
-  ExternalLink,
   PanelLeftClose,
   PanelLeftOpen,
   Scissors,
@@ -24,7 +23,6 @@ import {
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { getJiraUrl } from "@/components/sprint-board/TicketTable";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { StoryWriterChat } from "./StoryWriterChat";
 import { StoryWriterEditor } from "./StoryWriterEditor";
@@ -450,17 +448,6 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 )}
 
                 <div className="mx-2 my-1 h-px bg-white/[0.06]" />
-
-                <a
-                  href={getJiraUrl(ticketKey)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowMoreMenu(false)}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
-                >
-                  <ExternalLink size={13} strokeWidth={1.5} className="shrink-0" />
-                  <span>Open in Jira</span>
-                </a>
 
                 <button
                   type="button"

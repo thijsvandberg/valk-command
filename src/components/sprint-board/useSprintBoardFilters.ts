@@ -109,7 +109,7 @@ export function useSprintBoardFilters(
       }
       if (poStatusFilter.size > 0) {
         const current = poStatuses[t.key] ?? null;
-        if (!current || !poStatusFilter.has(current)) return false;
+        if (current === null || !poStatusFilter.has(current)) return false;
       }
       if (editStateFilter.size > 0) {
         const effectiveState = isRemoved ? "removed" : t.editState;

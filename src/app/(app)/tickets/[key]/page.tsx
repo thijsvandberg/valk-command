@@ -8,7 +8,6 @@ import {
   type TicketDetail,
 } from "@/types/ticket";
 import {
-  ExternalLink,
   CloudDownload,
   CloudUpload,
   Flag,
@@ -28,7 +27,6 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
-import { getJiraUrl } from "@/components/sprint-board/TicketTable";
 import {
   EditableTitle,
   EditableDescription,
@@ -331,15 +329,6 @@ export default function TicketDetailPage({
               title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
               icon={<CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />}
             />
-            <a
-              href={getJiraUrl(key)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-secondary-300)] cursor-pointer bg-[var(--color-secondary-500)]/15 border border-[var(--color-secondary-500)]/25 hover:bg-[var(--color-secondary-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-secondary-400)] active:scale-[0.97] transition-colors duration-150"
-              title="Open in Jira"
-            >
-              <ExternalLink size={15} strokeWidth={1.5} />
-            </a>
             {hasActiveSession ? (
               <div
                 className="group/session flex h-7 items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
@@ -549,7 +538,7 @@ export default function TicketDetailPage({
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
-                ? detail && <EpicChildrenSection children={detail.epicChildren} />
+                ? detail && <EpicChildrenSection items={detail.epicChildren} />
                 : <>
                     {detail && <SubtasksSection subtasks={detail.subtasks} />}
                     {detail && <LinkedIssuesSection issues={detail.linkedIssues} />}
