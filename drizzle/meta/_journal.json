@@ -169,6 +169,13 @@
       "when": 1744300000000,
       "tag": "0023_activity_log_incremental_sync_type",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1775728872711,
+      "tag": "0024_ticket_removed_from_jira",
+      "breakpoints": true
     }
   ]
 }

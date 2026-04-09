@@ -21,6 +21,7 @@ vi.mock("@/lib/jira-client", () => ({
     getIssuesByKeys: (...args: unknown[]) => mockGetIssuesByKeys(...args),
     getLastChangeAuthor: vi.fn().mockResolvedValue(null),
   },
+  extractSprint: () => null,
   extractStoryPoints: () => null,
   extractEpicLink: () => null,
   extractAcceptanceCriteria: () => null,

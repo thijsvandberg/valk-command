@@ -48,6 +48,7 @@ export const ticket = sqliteTable("ticket", {
   jiraCreatedAt: text("jira_created_at"),
   jiraUpdatedAt: text("jira_updated_at"),
   lastSyncedAt: text("last_synced_at"),
+  removedFromJiraAt: text("removed_from_jira_at"),
 }, (table) => [
   index("ticket_sprint_name_idx").on(table.sprintName),
 ]);

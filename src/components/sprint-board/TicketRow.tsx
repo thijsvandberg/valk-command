@@ -83,6 +83,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   ref
 ) {
   const showCheckbox = isChecked || isHovered || someChecked;
+  const isRemoved = Boolean(ticket.removedFromJiraAt);
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
 
@@ -114,7 +115,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           : ticket.flagged
           ? "bg-[rgba(229,83,75,0.06)]"
           : ""
-      } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""}`}
+      } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : ""}`}
     >
       <DragHandle listeners={dragListeners} attributes={dragAttributes} />
 
@@ -177,12 +178,18 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
 
       {col("jiraStatus") && (
         <td className="py-2 pr-3">
-          <span
-            className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium"
-            style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
-          >
-            {ticket.jiraStatus}
-          </span>
+          {isRemoved ? (
+            <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-400/70">
+              REMOVED
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium"
+              style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
+            >
+              {ticket.jiraStatus}
+            </span>
+          )}
         </td>
       )}
 

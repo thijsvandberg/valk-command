@@ -11,7 +11,7 @@ import {
 } from "react";
 import useSWR from "swr";
 import { useJiraHealth } from "@/hooks/useSprintBoard";
-import { useIncrementalSync } from "@/hooks/useIncrementalSync";
+import { useSchedulerTick } from "@/hooks/useSchedulerTick";
 import type { ActivityLogEntry } from "@/types/ticket";
 
 export type ActivityState = "idle" | "syncing" | "error";
@@ -103,7 +103,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     remaining: incrementalSyncRemaining,
     lastSyncAt: incrementalSyncLastAt,
     lastSyncCount: incrementalSyncLastCount,
-  } = useIncrementalSync(mutateActivityLog);
+  } = useSchedulerTick(mutateActivityLog);
 
   const toasts = useMemo(
     () => toastEntries.filter((t) => !dismissedIds.has(t.id)),

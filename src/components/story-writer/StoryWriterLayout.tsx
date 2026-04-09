@@ -362,7 +362,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
         className="shrink-0"
         actions={<>
           {latestReview && (
-            <div className="flex items-center gap-1 rounded-md bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/40 border border-white/[0.04]">
+            <div className="flex h-7 items-center gap-1 rounded-md bg-white/[0.04] px-2 text-[11px] text-white/40 border border-white/[0.04]">
               <Star size={11} strokeWidth={1.5} />
               {Math.round(latestReview.overallScore)}
             </div>
@@ -372,7 +372,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             <button
               onClick={handleSaveDraft}
               disabled={saving || showSaved}
-              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
+              className={`flex h-7 items-center gap-1.5 rounded-md border px-3 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
                 showSaved
                   ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
                   : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
@@ -391,7 +391,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           <button
             onClick={handlePush}
             disabled={pushing || (!isDraftDirty && !hasLocalSave)}
-            className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex h-7 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
             Push to Jira

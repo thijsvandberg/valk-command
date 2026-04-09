@@ -86,7 +86,15 @@ export function useSprintBoardFilters(
   );
 
   const filteredTickets = useMemo(() => {
+    const showRemoved = editStateFilter.has("removed");
     return allTickets.filter((t) => {
+      const isRemoved = Boolean(t.removedFromJiraAt);
+
+      // Hide removed tickets unless explicitly filtered for
+      if (isRemoved && !showRemoved) return false;
+      // When filtering for removed, non-removed tickets only show if other filters also match
+      if (!isRemoved && editStateFilter.size === 1 && showRemoved) return false;
+
       if (statusFilter.size > 0 && !statusFilter.has(t.jiraStatus)) return false;
       if (epicFilter.size > 0 && (!t.epic || !epicFilter.has(t.epic))) return false;
       if (assigneeFilter.size > 0) {
@@ -97,7 +105,10 @@ export function useSprintBoardFilters(
         const current = poStatuses[t.key] ?? null;
         if (!current || !poStatusFilter.has(current)) return false;
       }
-      if (editStateFilter.size > 0 && !editStateFilter.has(t.editState)) return false;
+      if (editStateFilter.size > 0) {
+        const effectiveState = isRemoved ? "removed" : t.editState;
+        if (!editStateFilter.has(effectiveState)) return false;
+      }
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
       if (searchQuery.trim().length >= 2) {
         const q = searchQuery.toLowerCase();

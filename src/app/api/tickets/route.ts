@@ -109,6 +109,7 @@ export async function GET(request: Request) {
       notes: meta?.poNotes ?? "",
       sprintId: t.sprintName ?? undefined,
       jiraUpdatedAt: t.jiraUpdatedAt ?? null,
+      removedFromJiraAt: t.removedFromJiraAt ?? null,
     };
   });
 

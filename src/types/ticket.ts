@@ -117,6 +117,7 @@ export interface Ticket {
   notes: string;
   sprintId?: string;
   jiraUpdatedAt?: string | null;
+  removedFromJiraAt?: string | null;
 }
 
 export interface Sprint {

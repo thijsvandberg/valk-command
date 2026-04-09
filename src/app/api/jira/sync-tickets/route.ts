@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { jiraClient, extractSprint, type JiraIssue } from "@/lib/jira-client";
+import { jiraClient, extractSprint, JiraApiError, type JiraIssue } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
@@ -59,12 +59,33 @@ async function syncIndividualTickets(ticketKeys: string[]) {
   try {
     const results = [];
     for (const key of ticketKeys) {
-      const issue = await jiraClient.getIssue(key, controller.signal);
-      const existing = await db.query.ticket.findFirst({
-        where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
-      });
-      const info = await upsertIssue(issue, existing?.sprintName ?? "", controller.signal);
-      results.push(info);
+      try {
+        const issue = await jiraClient.getIssue(key, controller.signal);
+        const sprint = extractSprint(issue.fields);
+        const sprintName = sprint ? String(sprint.id) : "";
+        const info = await upsertIssue(issue, sprintName, controller.signal);
+
+        // Clear removedFromJiraAt if ticket was previously marked as removed
+        const existing = await db.query.ticket.findFirst({
+          where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+        });
+        if (existing?.removedFromJiraAt) {
+          await db.update(ticket)
+            .set({ removedFromJiraAt: null })
+            .where(eq(ticket.jiraKey, key));
+        }
+
+        results.push(info);
+      } catch (err) {
+        if (err instanceof JiraApiError && err.status === 404) {
+          await db.update(ticket)
+            .set({ removedFromJiraAt: new Date().toISOString() })
+            .where(eq(ticket.jiraKey, key));
+          results.push({ key, removed: true });
+        } else {
+          throw err;
+        }
+      }
     }
 
     const durationMs = Date.now() - new Date(startedAt).getTime();
@@ -143,15 +164,59 @@ async function syncSprint(sprintId: string | null, strategy: string) {
     }
 
     const results = [];
+    const jiraKeys = new Set<string>();
     for (const issue of issues) {
+      jiraKeys.add(issue.key);
       const info = await upsertIssue(issue, sprintId, controller.signal);
       results.push(info);
     }
 
+    // Clear sprint assignment for tickets no longer in this sprint
+    const localSprintTickets = await db
+      .select({ jiraKey: ticket.jiraKey })
+      .from(ticket)
+      .where(eq(ticket.sprintName, sprintId));
+
+    const removedFromSprint = localSprintTickets
+      .filter((t) => !jiraKeys.has(t.jiraKey));
+
+    let removedCount = 0;
+    if (removedFromSprint.length > 0) {
+      const removedKeys = removedFromSprint.map((t) => t.jiraKey);
+      await db.update(ticket)
+        .set({ sprintName: "" })
+        .where(inArray(ticket.jiraKey, removedKeys));
+
+      // Check if removed tickets still exist in Jira (detect deletion)
+      for (const key of removedKeys) {
+        try {
+          const issue = await jiraClient.getIssue(key, controller.signal);
+          // Still exists: update with current Jira sprint
+          const sprint = extractSprint(issue.fields);
+          const newSprintName = sprint ? String(sprint.id) : "";
+          await db.update(ticket)
+            .set({ sprintName: newSprintName })
+            .where(eq(ticket.jiraKey, key));
+        } catch (err) {
+          if (err instanceof JiraApiError && err.status === 404) {
+            await db.update(ticket)
+              .set({ removedFromJiraAt: new Date().toISOString() })
+              .where(eq(ticket.jiraKey, key));
+            removedCount++;
+          }
+        }
+      }
+    }
+
+    const removedSuffix = removedCount > 0 ? `, ${removedCount} removed from Jira` : "";
+    const clearedSuffix = removedFromSprint.length - removedCount > 0
+      ? `, ${removedFromSprint.length - removedCount} left sprint`
+      : "";
+
     const durationMs = Date.now() - new Date(startedAt).getTime();
     await db.update(activityLog).set({
       status: "success",
-      summary: `${results.length} tickets synced`,
+      summary: `${results.length} tickets synced${clearedSuffix}${removedSuffix}`,
       durationMs,
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));

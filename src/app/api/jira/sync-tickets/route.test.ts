@@ -53,10 +53,19 @@ vi.mock("@/lib/jira-client", () => ({
       },
     ]),
     getAttachments: vi.fn().mockResolvedValue([]),
+    getIssue: vi.fn().mockResolvedValue({}),
   },
+  extractSprint: () => null,
   extractStoryPoints: () => null,
   extractEpicLink: () => null,
   extractAcceptanceCriteria: () => null,
+  JiraApiError: class JiraApiError extends Error {
+    status: number;
+    constructor(status: number) {
+      super(`Jira API ${status}`);
+      this.status = status;
+    }
+  },
 }));
 
 vi.mock("@/lib/sync-abort", () => ({

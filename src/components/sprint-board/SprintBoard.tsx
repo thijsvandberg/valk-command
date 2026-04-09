@@ -283,11 +283,11 @@ export default function SprintBoard() {
               : f.activeView ? <Bookmark size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" fill="currentColor" />
               : <CalendarRange size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
             actions={<>
-              <button type="button" onClick={() => setSearchModalOpen(true)} className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="Search tickets (⌘K)">
-                <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
-              <button type="button" onClick={() => setShowStoryWriterLauncher(true)} className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/25 transition-colors duration-150 shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
+              <button type="button" onClick={() => setShowStoryWriterLauncher(true)} className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/25 transition-colors duration-150 shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
                 <NotebookPen className="h-3 w-3" strokeWidth={1.5} />Story writer
+              </button>
+              <button type="button" onClick={() => setSearchModalOpen(true)} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="Search tickets (⌘K)">
+                <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
               </button>
               <div ref={headerMenuRef} className="relative">
                 <button

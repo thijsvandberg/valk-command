@@ -1,0 +1,1 @@
+ALTER TABLE `ticket` ADD `removed_from_jira_at` text;

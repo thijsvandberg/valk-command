@@ -41,6 +41,7 @@ import { TicketReview } from "@/components/ticket-detail/TicketReview";
 import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
 import { TicketSidebar } from "@/components/ticket-detail/TicketSidebar";
 import { SearchModal } from "@/components/sprint-board/SearchModal";
+import { Tab } from "@/components/shared/TabBar";
 
 
 export default function TicketDetailPage({
@@ -307,7 +308,7 @@ export default function TicketDetailPage({
                 type="button"
                 onClick={handlePushToJira}
                 disabled={isPushing}
-                className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.25)]"
+                className="flex h-7 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.25)]"
                 style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 title="Push local edits to Jira"
               >
@@ -322,7 +323,7 @@ export default function TicketDetailPage({
               type="button"
               onClick={handleRefreshFromJira}
               disabled={isRefreshing}
-              className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
               title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
             >
               <CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
@@ -331,19 +332,19 @@ export default function TicketDetailPage({
               href={getJiraUrl(key)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
               title="Open in Jira"
             >
               <ExternalLink size={15} strokeWidth={1.5} />
             </a>
             {hasActiveSession ? (
               <div
-                className="group/session flex items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+                className="group/session flex h-7 items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
                 style={{ transition: "border-color 0.15s ease" }}
               >
                 <Link
                   href={`/tickets/${key}/write`}
-                  className="flex items-center gap-1.5 rounded-l-md px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  className="flex h-7 items-center gap-1.5 rounded-l-md px-2.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 >
                   <span className="relative flex h-2 w-2 shrink-0">
@@ -357,7 +358,7 @@ export default function TicketDetailPage({
                   type="button"
                   onClick={handleDeleteSession}
                   disabled={isDeletingSession}
-                  className="flex items-center justify-center rounded-r-md px-2 py-1 text-[var(--color-brand-400)]/35 cursor-pointer hover:text-red-400/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex h-7 items-center justify-center rounded-r-md px-2 text-[var(--color-brand-400)]/35 cursor-pointer hover:text-red-400/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
                   title="Delete session"
                 >
@@ -370,7 +371,7 @@ export default function TicketDetailPage({
             ) : (
               <Link
                 href={`/tickets/${key}/write`}
-                className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
               >
                 <NotebookPen size={13} strokeWidth={1.5} />
@@ -445,39 +446,24 @@ export default function TicketDetailPage({
           <div className="border-b border-white/[0.06]">
           <div className="mx-auto flex h-[50px] max-w-4xl items-stretch gap-1 px-8">
             {([
-              { id: "content" as const, label: "Content" },
-              { id: "history" as const, label: "History", badge: versionCount },
-              { id: "review" as const, label: "Review", badge: reviewCount || undefined },
-              { id: "refinement" as const, label: "Refinement" },
+              { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
+              { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
+              { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
+              { id: "refinement" as const, label: "Refinement", badge: undefined as number | undefined, badgeHighlight: false },
             ]).map((tab) => (
-              <button
+              <Tab
                 key={tab.id}
-                type="button"
+                active={activeTab === tab.id}
                 onClick={() => {
                   if (tab.id === "history" && activeTab === "history") {
                     setHistoryResetKey((k) => k + 1);
                   }
                   setActiveTab(tab.id);
                 }}
-                className={`relative flex items-center gap-1.5 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  activeTab === tab.id
-                    ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
-                    : "text-white/35 hover:text-white/60 active:text-white/50"
-                }`}
-              >
-                {tab.label}
-                {tab.badge !== undefined && (
-                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
-                    tab.id === "review" && tab.badge > 0
-                      ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
-                      : activeTab === tab.id
-                        ? "bg-white/[0.10] text-white/50"
-                        : "bg-white/[0.06] text-white/30"
-                  }`}>
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
+                label={tab.label}
+                badge={tab.badge}
+                badgeHighlight={tab.badgeHighlight}
+              />
             ))}
           </div>
           </div>

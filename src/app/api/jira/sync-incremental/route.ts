@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, appSetting, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { jiraClient } from "@/lib/jira-client";
+import { jiraClient, extractSprint } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
@@ -95,18 +95,13 @@ export async function POST() {
     const staleKeys = batch.map((item) => item.key);
     const issues = await jiraClient.getIssuesByKeys(staleKeys, controller.signal);
 
-    const existingTickets = await db
-      .select({ jiraKey: ticket.jiraKey, sprintName: ticket.sprintName })
-      .from(ticket)
-      .where(inArray(ticket.jiraKey, staleKeys));
-    const sprintMap = new Map(existingTickets.map((t) => [t.jiraKey, t.sprintName]));
-
     issues.sort((a, b) => (a.fields.updated ?? "").localeCompare(b.fields.updated ?? ""));
 
     const results = [];
     for (const issue of issues) {
-      const existingSprintName = sprintMap.get(issue.key) || "";
-      const info = await upsertIssue(issue, existingSprintName, controller.signal);
+      const sprint = extractSprint(issue.fields);
+      const sprintName = sprint ? String(sprint.id) : "";
+      const info = await upsertIssue(issue, sprintName, controller.signal);
       results.push(info);
 
       if (issue.fields.updated) {

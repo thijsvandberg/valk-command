@@ -20,6 +20,7 @@ export const EDIT_STATE_OPTIONS: { value: string; label: string; dotClass: strin
   { value: "draft", label: "Unsaved draft", dotClass: "bg-[#4a90d9]/40" },
   { value: "local_edits", label: "Local changes", dotClass: "bg-[#4a90d9]/70" },
   { value: "conflict", label: "Conflict", dotClass: "bg-[#ea8744]/70" },
+  { value: "removed", label: "Removed from Jira", dotClass: "bg-red-400/60" },
 ];
 
 // ---------------------------------------------------------------------------
