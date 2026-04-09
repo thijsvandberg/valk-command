@@ -5,6 +5,7 @@ import type { Ticket, Sprint, POStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
+import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { SidePanel } from "./SidePanel";
 import { CalendarRange, RefreshCw, X, Columns2, GripVertical, ChevronDown, Search } from "lucide-react";
 import { useTickets } from "@/hooks/useSprintBoard";
@@ -195,7 +196,7 @@ function DroppableSprintColumn({
       style={{ transition: "background-color 0.15s ease" }}
     >
       {/* Column header */}
-      <div className="relative flex items-center gap-3 overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/40 px-4 py-3">
+      <div className="relative flex items-center gap-3 border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/40 px-4 py-3">
         <div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_left,rgba(46,145,73,0.06)_0%,transparent_70%)]" />
 
         <div className="relative flex items-center gap-2 shrink-0">
@@ -511,39 +512,9 @@ export function MultiSprintView({
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="relative flex h-full flex-col">
-        {/* Header — matches SprintBoard unified context header */}
-        <div className="relative flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
-          <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
-
-          <div className="relative flex items-center gap-4 min-w-0">
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-                <Columns2 size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-              </div>
-              <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-                Compare Sprints
-              </span>
-            </div>
-
-            <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.12] to-transparent" />
-
-            <span className="text-sm text-white/35">{totalItems} items total</span>
-
-            {totalChecked > 0 && (
-              <>
-                <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
-                <span className="text-sm text-[var(--color-brand-400)]">
-                  {totalChecked} selected
-                  {totalSelectedPoints > 0 && (
-                    <span className="ml-1 text-white/35">· {totalSelectedPoints} pts</span>
-                  )}
-                </span>
-              </>
-            )}
-          </div>
-
-          <div className="relative flex items-center gap-2">
-            {/* Search */}
+        <ViewHeader
+          icon={<Columns2 size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+          actions={<>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/25" strokeWidth={1.5} />
               <input
@@ -572,8 +543,23 @@ export function MultiSprintView({
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
-          </div>
-        </div>
+          </>}
+        >
+          <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
+          <ViewHeaderDivider />
+          <span className="text-sm text-white/35">{totalItems} items total</span>
+          {totalChecked > 0 && (
+            <>
+              <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
+              <span className="text-sm text-[var(--color-brand-400)]">
+                {totalChecked} selected
+                {totalSelectedPoints > 0 && (
+                  <span className="ml-1 text-white/35">· {totalSelectedPoints} pts</span>
+                )}
+              </span>
+            </>
+          )}
+        </ViewHeader>
 
         {/* Content */}
         <div className="flex flex-1 overflow-hidden">

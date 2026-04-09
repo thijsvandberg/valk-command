@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import type { IssueType } from "@/types/ticket";
 import type { QuickPrompt, QuickPromptsConfig } from "@/app/api/settings/quick-prompts/route";
 
@@ -183,18 +184,9 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Unified context header */}
-      <div className="relative flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
-        <div className="relative flex items-center gap-3 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-            <Settings2 size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-          </div>
-          <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-            Settings
-          </span>
-        </div>
-        <div className="relative">
+      <ViewHeader
+        icon={<Settings2 size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+        actions={
           <button
             onClick={save}
             disabled={saving || saved}
@@ -203,8 +195,10 @@ export default function SettingsPage() {
             <Save size={13} strokeWidth={1.5} />
             {saving ? "Saving..." : saved ? "Saved" : "Save changes"}
           </button>
-        </div>
-      </div>
+        }
+      >
+        <ViewHeaderTitle>Settings</ViewHeaderTitle>
+      </ViewHeader>
 
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <div className="max-w-2xl">

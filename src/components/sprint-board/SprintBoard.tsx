@@ -19,6 +19,7 @@ import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories 
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { Columns2, Check, Loader2, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
+import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 
 export default function SprintBoard() {
   const { data: rawJiraSprints } = useJiraSprints();
@@ -277,64 +278,61 @@ export default function SprintBoard() {
       <div className="flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
         {(isAllView || activeSprint || f.activeView) && (
-          <div className="relative flex items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5 overflow-hidden">
-            <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
-            <div className="relative flex items-center gap-4 min-w-0">
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-                  {isAllView ? <LayoutGrid size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-                    : f.activeView ? <Bookmark size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" fill="currentColor" />
-                    : <CalendarRange size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
-                </div>
-                <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-                  {isAllView ? "All tickets" : f.activeView ? f.activeView.title : activeSprint!.name}
-                </span>
-              </div>
-              {!ticketsLoading && (
-                <>
-                  <div className="h-6 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent shrink-0" />
-                  {!isAllView && !f.activeView && activeSprint!.dateRange && (
-                    <span className="text-sm text-white/30 shrink-0">{activeSprint!.dateRange}</span>
-                  )}
-                  <span className="text-sm text-white/35">{f.hasActiveFilters ? `${tickets.length} / ${allTickets.length}` : allTickets.length} items</span>
-                  {!isAllView && !f.activeView && totalPoints > 0 && <span className="text-sm text-white/25">{totalPoints} pts</span>}
-                  {!isAllView && !f.activeView && (
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="status-count-badge status-count-todo">{todoCount}</span>
-                      <span className="status-count-badge status-count-progress">{inProgressCount}</span>
-                      {testCount > 0 && <span className="status-count-badge status-count-test">{testCount}</span>}
-                      <span className="status-count-badge status-count-done">{doneCount}</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="relative flex items-center gap-2">
+          <ViewHeader
+            icon={isAllView ? <LayoutGrid size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+              : f.activeView ? <Bookmark size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" fill="currentColor" />
+              : <CalendarRange size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+            actions={<>
               <button type="button" onClick={() => setSearchModalOpen(true)} className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="Search tickets (⌘K)">
                 <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
               </button>
+              <button type="button" onClick={() => setShowStoryWriterLauncher(true)} className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/25 transition-colors duration-150 shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
+                <NotebookPen className="h-3 w-3" strokeWidth={1.5} />Story writer
+              </button>
               <div ref={headerMenuRef} className="relative">
-                <button type="button" onClick={() => setHeaderMenuOpen((v) => !v)} className="flex items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.02] p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]" title="More options">
-                  <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <button
+                  type="button"
+                  onClick={() => setHeaderMenuOpen((v) => !v)}
+                  title="More options"
+                  className={`flex size-7 items-center justify-center rounded-md border cursor-pointer transition-colors duration-150 ${
+                    headerMenuOpen
+                      ? "border-white/[0.12] bg-white/[0.08] text-white/70"
+                      : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
+                  }`}
+                >
+                  <MoreHorizontal size={14} strokeWidth={1.5} />
                 </button>
                 {headerMenuOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-1.5 w-44 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
-                    <button type="button" onClick={() => { setAnalyticsVisible((v) => !v); setHeaderMenuOpen(false); }} className="flex w-full items-center justify-between px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
-                      <span className="flex items-center gap-2">
-                        <BarChart2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        Analytics
-                      </span>
-                      {analyticsVisible && <Check className="h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={2} />}
+                  <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                    <button
+                      type="button"
+                      onClick={() => { setAnalyticsVisible((v) => !v); setHeaderMenuOpen(false); }}
+                      className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
+                        analyticsVisible
+                          ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
+                          : "text-white/65 hover:bg-white/[0.06] hover:text-white/85"
+                      }`}
+                    >
+                      <BarChart2 size={13} strokeWidth={1.5} className="shrink-0" />
+                      <span>Analytics</span>
                     </button>
                     {!isAllView && !f.activeView && (
-                      <button type="button" onClick={() => { setCompareMode(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
-                        <Columns2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        Compare
+                      <button
+                        type="button"
+                        onClick={() => { setCompareMode(true); setHeaderMenuOpen(false); }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                      >
+                        <Columns2 size={13} strokeWidth={1.5} className="shrink-0" />
+                        <span>Compare</span>
                       </button>
                     )}
-                    <button type="button" onClick={() => { setSprintsModalOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
-                      <List className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      Sprints
+                    <button
+                      type="button"
+                      onClick={() => { setSprintsModalOpen(true); setHeaderMenuOpen(false); }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                    >
+                      <List size={13} strokeWidth={1.5} className="shrink-0" />
+                      <span>Sprints</span>
                     </button>
                   </div>
                 )}
@@ -347,11 +345,52 @@ export default function SprintBoard() {
                   />
                 )}
               </div>
-              <button type="button" onClick={() => setShowStoryWriterLauncher(true)} className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/25 transition-colors duration-150 shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
-                <NotebookPen className="h-3 w-3" strokeWidth={1.5} />Story writer
-              </button>
-            </div>
-          </div>
+            </>}
+          >
+            <ViewHeaderTitle>
+              {isAllView ? "All tickets" : f.activeView ? f.activeView.title : activeSprint!.name}
+            </ViewHeaderTitle>
+            {!ticketsLoading && (
+              <>
+                <ViewHeaderDivider />
+                {!isAllView && !f.activeView && activeSprint!.dateRange && (
+                  <span className="text-sm text-white/30 shrink-0">{activeSprint!.dateRange}</span>
+                )}
+                <span className="text-xs tabular-nums text-white/30 shrink-0"><span className="text-white/20">Items</span> {f.hasActiveFilters ? `${tickets.length}/${allTickets.length}` : allTickets.length}</span>
+                {!isAllView && !f.activeView && totalPoints > 0 && <span className="text-xs tabular-nums text-white/30 shrink-0"><span className="text-white/20">Pts</span> {totalPoints}</span>}
+                {!isAllView && !f.activeView && (
+                  <>
+                    <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                      {([
+                        { status: "TO DO", count: todoCount, bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8" },
+                        { status: "IN PROGRESS", count: inProgressCount, bg: "rgba(56, 152, 210, 0.15)", text: "#58b4e6" },
+                        ...(testCount > 0 ? [{ status: "TEST", count: testCount, bg: "rgba(120, 90, 220, 0.15)", text: "#9b7ee8" }] : []),
+                        { status: "DONE", count: doneCount, bg: "rgba(34, 197, 94, 0.15)", text: "#4ade80" },
+                      ] as const).map(({ status, count, bg, text }) => {
+                        const active = f.statusFilter.has(status);
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(f.statusFilter);
+                              if (active) next.delete(status); else next.add(status);
+                              f.setStatusFilter(next);
+                            }}
+                            className="inline-flex items-center rounded px-1.5 py-0.5 cursor-pointer transition-opacity duration-150 hover:opacity-80 active:opacity-60"
+                            style={{ backgroundColor: bg, color: text, opacity: f.statusFilter.size > 0 && !active ? 0.4 : 1 }}
+                          >
+                            {status}: {count}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </ViewHeader>
         )}
 
         <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} />

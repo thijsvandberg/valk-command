@@ -14,6 +14,7 @@ import TaskProgress from "./TaskProgress";
 import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { MessageCircle, X, PenLine } from "lucide-react";
+import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 
 interface ChatLayoutProps {
   conversationId?: string;
@@ -154,26 +155,20 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         <div className="absolute bottom-[-10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,var(--color-brand-950)_0%,transparent_70%)] opacity-50" />
       </div>
 
-      {/* Unified context header */}
-      <div className="relative z-10 flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
-        <div className="relative flex items-center gap-3 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-            <MessageCircle size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-          </div>
-          <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-            {activeConv ? activeConv.title : "Chat"}
-          </span>
-          {activeConv && (
-            <>
-              <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.12] to-transparent" />
-              <span className="text-sm text-white/35">
-                {messages.length} messages
-              </span>
-            </>
-          )}
-        </div>
-      </div>
+      <ViewHeader
+        icon={<MessageCircle size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+        className="z-10"
+      >
+        <ViewHeaderTitle>{activeConv ? activeConv.title : "Chat"}</ViewHeaderTitle>
+        {activeConv && (
+          <>
+            <ViewHeaderDivider />
+            <span className="text-sm text-white/35">
+              {messages.length} messages
+            </span>
+          </>
+        )}
+      </ViewHeader>
 
       {/* Mobile sidebar toggle */}
       <button

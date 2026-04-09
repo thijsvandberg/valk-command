@@ -26,6 +26,7 @@ import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { getJiraUrl } from "@/components/sprint-board/TicketTable";
 import {
   EditableTitle,
@@ -297,154 +298,146 @@ export default function TicketDetailPage({
       <ErrorBoundary>
     <div className="flex h-full flex-col">
 
-      {/* Unified context header — matches Sprint Board header style */}
-      <div className="relative flex items-center justify-between overflow-hidden border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.08)_0%,transparent_70%)]" />
-
-        <div className="relative flex min-w-0 flex-1 items-center gap-3">
-          {/* Issue type icon — anchored left */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-            <IssueTypeIcon type={ticket.type} size={16} />
-          </div>
-
-          <span className="shrink-0 font-mono text-sm font-medium text-white/40">{key}</span>
-          <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.12] to-transparent" />
-          <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-            {ticket.title}
-          </span>
-
-          {/* Sprint / epic — right of title, before status */}
-          {(ticketSprintId || ticket.epic) && (
-            <nav className="hidden lg:flex shrink-0 items-center gap-2 text-[11px]">
-              {ticketSprintId && (
-                <Tooltip content={ticketSprintLabel || "Sprint"}>
-                  <Link
-                    href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                    className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    style={{ color: "#d4904a", opacity: 0.55 }}
-                  >
-                    <IterationCw size={12} strokeWidth={1.5} />
-                    <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
-                  </Link>
-                </Tooltip>
-              )}
-              {ticketSprintId && ticket.epic && (
-                <span className="text-white/[0.10] select-none">/</span>
-              )}
-              {ticket.epic && (
-                <Tooltip content={ticket.epic}>
-                  {ticket.epicKey ? (
-                    <Link
-                      href={`/tickets/${ticket.epicKey}`}
-                      className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                      style={{ color: "#9b6cd4", opacity: 0.55 }}
-                    >
-                      <Zap size={12} strokeWidth={1.5} />
-                      <span className="max-w-[90px] truncate">{ticket.epicKey}</span>
-                    </Link>
-                  ) : (
-                    <span className="flex items-center gap-1" title={ticket.epic} style={{ color: "#9b6cd4", opacity: 0.55 }}>
-                      <Zap size={12} strokeWidth={1.5} />
-                    </span>
-                  )}
-                </Tooltip>
-              )}
-            </nav>
-          )}
-
-          <div className="flex shrink-0 items-center gap-2.5">
-            {(() => {
-              const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-              return (
-                <span
-                  className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-                  style={{ backgroundColor: sc.bg, color: sc.text }}
-                >
-                  {ticket.jiraStatus}
-                </span>
-              );
-            })()}
-          </div>
-        </div>
-
-        <div className="relative ml-4 flex shrink-0 items-center gap-1.5">
-          {showPushButton && (
-            <button
-              type="button"
-              onClick={handlePushToJira}
-              disabled={isPushing}
-              className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.25)]"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-              title="Push local edits to Jira"
-            >
-              {isPushing
-                ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-                : <CloudUpload size={13} strokeWidth={1.5} />
-              }
-              Push to Jira
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleRefreshFromJira}
-            disabled={isRefreshing}
-            className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
-            title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
-          >
-            <CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
-          </button>
-          <a
-            href={getJiraUrl(key)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
-            title="Open in Jira"
-          >
-            <ExternalLink size={15} strokeWidth={1.5} />
-          </a>
-          {hasActiveSession ? (
-            <div
-              className="group/session flex items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
-              style={{ transition: "border-color 0.15s ease" }}
-            >
-              <Link
-                href={`/tickets/${key}/write`}
-                className="flex items-center gap-1.5 rounded-l-md px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-              >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand-400)] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
-                </span>
-                Resume session
-              </Link>
-              <div className="h-4 w-px bg-[var(--color-brand-500)]/25" />
+      <ViewHeader
+        icon={<IssueTypeIcon type={ticket.type} size={16} />}
+        actions={
+          <div className="ml-4 flex shrink-0 items-center gap-1.5">
+            {showPushButton && (
               <button
                 type="button"
-                onClick={handleDeleteSession}
-                disabled={isDeletingSession}
-                className="flex items-center justify-center rounded-r-md px-2 py-1 text-[var(--color-brand-400)]/35 cursor-pointer hover:text-red-400/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
-                title="Delete session"
+                onClick={handlePushToJira}
+                disabled={isPushing}
+                className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-2.5 py-1 text-xs font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_8px_rgba(46,145,73,0.25)]"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                title="Push local edits to Jira"
               >
-                {isDeletingSession
-                  ? <Loader2 size={11} strokeWidth={1.5} className="animate-spin" />
-                  : <Trash2 size={11} strokeWidth={1.5} />
+                {isPushing
+                  ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+                  : <CloudUpload size={13} strokeWidth={1.5} />
                 }
+                Push to Jira
               </button>
-            </div>
-          ) : (
-            <Link
-              href={`/tickets/${key}/write`}
-              className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
-              style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
+            )}
+            <button
+              type="button"
+              onClick={handleRefreshFromJira}
+              disabled={isRefreshing}
+              className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
             >
-              <NotebookPen size={13} strokeWidth={1.5} />
-              Story writer
-            </Link>
-          )}
+              <CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />
+            </button>
+            <a
+              href={getJiraUrl(key)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95]"
+              title="Open in Jira"
+            >
+              <ExternalLink size={15} strokeWidth={1.5} />
+            </a>
+            {hasActiveSession ? (
+              <div
+                className="group/session flex items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+                style={{ transition: "border-color 0.15s ease" }}
+              >
+                <Link
+                  href={`/tickets/${key}/write`}
+                  className="flex items-center gap-1.5 rounded-l-md px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                >
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand-400)] opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
+                  </span>
+                  Resume session
+                </Link>
+                <div className="h-4 w-px bg-[var(--color-brand-500)]/25" />
+                <button
+                  type="button"
+                  onClick={handleDeleteSession}
+                  disabled={isDeletingSession}
+                  className="flex items-center justify-center rounded-r-md px-2 py-1 text-[var(--color-brand-400)]/35 cursor-pointer hover:text-red-400/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
+                  title="Delete session"
+                >
+                  {isDeletingSession
+                    ? <Loader2 size={11} strokeWidth={1.5} className="animate-spin" />
+                    : <Trash2 size={11} strokeWidth={1.5} />
+                  }
+                </button>
+              </div>
+            ) : (
+              <Link
+                href={`/tickets/${key}/write`}
+                className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+                style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
+              >
+                <NotebookPen size={13} strokeWidth={1.5} />
+                Story writer
+              </Link>
+            )}
+          </div>
+        }
+      >
+        <span className="shrink-0 font-mono text-sm font-medium text-white/40">{key}</span>
+        <ViewHeaderDivider />
+        <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+          {ticket.title}
+        </span>
+
+        {(ticketSprintId || ticket.epic) && (
+          <nav className="hidden lg:flex shrink-0 items-center gap-2 text-[11px]">
+            {ticketSprintId && (
+              <Tooltip content={ticketSprintLabel || "Sprint"}>
+                <Link
+                  href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
+                  className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  style={{ color: "#d4904a", opacity: 0.55 }}
+                >
+                  <IterationCw size={12} strokeWidth={1.5} />
+                  <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
+                </Link>
+              </Tooltip>
+            )}
+            {ticketSprintId && ticket.epic && (
+              <span className="text-white/[0.10] select-none">/</span>
+            )}
+            {ticket.epic && (
+              <Tooltip content={ticket.epic}>
+                {ticket.epicKey ? (
+                  <Link
+                    href={`/tickets/${ticket.epicKey}`}
+                    className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{ color: "#9b6cd4", opacity: 0.55 }}
+                  >
+                    <Zap size={12} strokeWidth={1.5} />
+                    <span className="max-w-[90px] truncate">{ticket.epicKey}</span>
+                  </Link>
+                ) : (
+                  <span className="flex items-center gap-1" title={ticket.epic} style={{ color: "#9b6cd4", opacity: 0.55 }}>
+                    <Zap size={12} strokeWidth={1.5} />
+                  </span>
+                )}
+              </Tooltip>
+            )}
+          </nav>
+        )}
+
+        <div className="flex shrink-0 items-center gap-2.5">
+          {(() => {
+            const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+            return (
+              <span
+                className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: sc.bg, color: sc.text }}
+              >
+                {ticket.jiraStatus}
+              </span>
+            );
+          })()}
         </div>
-      </div>
+      </ViewHeader>
 
       <div className="flex flex-1 overflow-hidden">
         <div className="min-w-0 flex-1 flex flex-col overflow-hidden">

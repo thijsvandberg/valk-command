@@ -31,6 +31,7 @@ import { StoryWriterEditor } from "./StoryWriterEditor";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { ExecutionLogViewer } from "./ExecutionLogViewer";
 import { RelatedStoriesPanel } from "./RelatedStoriesPanel";
+import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 
 const PANEL_STORAGE_KEY = "storyWriterChatWidth";
 const PANEL_COLLAPSED_KEY = "storyWriterChatCollapsed";
@@ -356,46 +357,45 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
-      {/* Header */}
-      <div className="relative flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5">
-        {/* Ambient glow from icon */}
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(46,145,73,0.10)_0%,transparent_70%)]" />
-
-        <div className="relative flex items-center gap-4 min-w-0">
-          {/* Brand mark */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(46,145,73,0.25),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-              <NotebookPen size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-            </div>
-            <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-              Story writer
-            </span>
-          </div>
-
-          <div className="h-6 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent shrink-0" />
-
-          {/* Ticket breadcrumb */}
-          {ticketData && (
-            <div className="flex items-center gap-2 min-w-0 leading-none" style={{ fontSize: "15px" }}>
-              <IssueTypeIcon type={ticketData.type} size={14} />
-              <span className="font-mono font-semibold text-white/90 shrink-0">
-                {ticketKey}
-              </span>
-              <span className="text-white/30 shrink-0">–</span>
-              <span className="min-w-0 truncate font-semibold text-white/90">
-                {writer.session?.localTitle ?? ticketData.title}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
+      <ViewHeader
+        icon={<NotebookPen size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+        className="shrink-0"
+        actions={<>
           {latestReview && (
             <div className="flex items-center gap-1 rounded-md bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/40 border border-white/[0.04]">
               <Star size={11} strokeWidth={1.5} />
               {Math.round(latestReview.overallScore)}
             </div>
           )}
+
+          {isDraftDirty && (
+            <button
+              onClick={handleSaveDraft}
+              disabled={saving || showSaved}
+              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
+                showSaved
+                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                  : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
+              }`}
+            >
+              {saving
+                ? <Loader2 size={13} className="animate-spin" />
+                : showSaved
+                ? <Check size={13} strokeWidth={2} />
+                : <Save size={13} strokeWidth={1.5} />
+              }
+              {showSaved ? "Saved" : "Save draft"}
+            </button>
+          )}
+
+          <button
+            onClick={handlePush}
+            disabled={pushing || (!isDraftDirty && !hasLocalSave)}
+            className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
+            Push to Jira
+          </button>
 
           {/* More actions menu */}
           <div ref={moreMenuRef} className="relative">
@@ -413,7 +413,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             </button>
 
             {showMoreMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-30">
+              <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
                 {writer.session && (
                   <button
                     type="button"
@@ -500,37 +500,23 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               </div>
             )}
           </div>
-
-          {isDraftDirty && (
-            <button
-              onClick={handleSaveDraft}
-              disabled={saving || showSaved}
-              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
-                showSaved
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                  : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
-              }`}
-            >
-              {saving
-                ? <Loader2 size={13} className="animate-spin" />
-                : showSaved
-                ? <Check size={13} strokeWidth={2} />
-                : <Save size={13} strokeWidth={1.5} />
-              }
-              {showSaved ? "Saved" : "Save draft"}
-            </button>
-          )}
-
-          <button
-            onClick={handlePush}
-            disabled={pushing || (!isDraftDirty && !hasLocalSave)}
-            className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_rgba(46,145,73,0.2)] cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
-            Push to Jira
-          </button>
-        </div>
-      </div>
+        </>}
+      >
+        <ViewHeaderTitle>Story writer</ViewHeaderTitle>
+        <ViewHeaderDivider />
+        {ticketData && (
+          <div className="flex items-center gap-2 min-w-0 leading-none" style={{ fontSize: "15px" }}>
+            <IssueTypeIcon type={ticketData.type} size={14} />
+            <span className="font-mono font-semibold text-white/90 shrink-0">
+              {ticketKey}
+            </span>
+            <span className="text-white/30 shrink-0">–</span>
+            <span className="min-w-0 truncate font-semibold text-white/90">
+              {writer.session?.localTitle ?? ticketData.title}
+            </span>
+          </div>
+        )}
+      </ViewHeader>
 
       {/* Push error */}
       {pushError && (
