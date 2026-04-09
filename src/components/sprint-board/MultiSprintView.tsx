@@ -3,8 +3,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import type { Ticket, Sprint, POStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
-import { IssueTypeIcon } from "../shared/IssueTypeIcon";
-import { Avatar } from "../shared/Avatar";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { Avatar } from "@/components/shared/Avatar";
 import { SidePanel } from "./SidePanel";
 import { CalendarRange, RefreshCw, X, Columns2, GripVertical, ChevronDown, Search } from "lucide-react";
 import { useTickets } from "@/hooks/useSprintBoard";

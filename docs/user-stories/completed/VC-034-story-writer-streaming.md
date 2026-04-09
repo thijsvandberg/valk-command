@@ -1,4 +1,7 @@
-# Fix: Story Writer streaming resilience, progress feedback, and usage display
+# VC-034: Story Writer Streaming Resilience
+
+**Status:** Completed
+**Priority:** High
 
 ## Context
 When a story writer message is sent, the workspace task completes but the result sometimes never reaches the UI. Both SSE and polling can fail silently, leaving the user stuck on "Starting..." with no feedback. The execution log stays empty because it's only populated after `apply-draft` runs. Usage/cost data is also lost when neither delivery path fires.
