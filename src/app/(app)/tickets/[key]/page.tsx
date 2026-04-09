@@ -16,7 +16,6 @@ import {
   NotebookPen,
   Zap,
   IterationCw,
-  Link2,
   Trash2,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
@@ -304,7 +303,43 @@ export default function TicketDetailPage({
       <ViewHeader
         icon={<IssueTypeIcon type={ticket.type} size={15} />}
         actions={
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-2">
+            {(ticketSprintId || ticket.epic) && (
+              <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
+                {ticketSprintId && (
+                  <Tooltip content={ticketSprintLabel || "Sprint"}>
+                    <Link
+                      href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
+                      className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    >
+                      <IterationCw size={12} strokeWidth={1.5} />
+                      <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
+                    </Link>
+                  </Tooltip>
+                )}
+                {ticket.epic && (
+                  <Tooltip content={ticket.epic}>
+                    {ticket.epicKey ? (
+                      <Link
+                        href={`/tickets/${ticket.epicKey}`}
+                        className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      >
+                        <Zap size={12} strokeWidth={1.5} />
+                        <span className="max-w-[120px] truncate">{ticket.epic}</span>
+                      </Link>
+                    ) : (
+                      <span className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35">
+                        <Zap size={12} strokeWidth={1.5} />
+                        <span className="max-w-[120px] truncate">{ticket.epic}</span>
+                      </span>
+                    )}
+                  </Tooltip>
+                )}
+              </nav>
+            )}
+            {(ticketSprintId || ticket.epic) && (
+              <div className="h-5 w-px shrink-0 bg-white/[0.06]" />
+            )}
             {showPushButton && (
               <Button
                 variant="primary"
@@ -373,63 +408,17 @@ export default function TicketDetailPage({
           </div>
         }
       >
-        <TicketKeyPill ticketKey={key} />
+        {/* Combined key + status pill */}
+        {(() => {
+          const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+          return (
+            <TicketKeyPill ticketKey={key} statusLabel={ticket.jiraStatus} statusBg={sc.bg} statusColor={sc.text} />
+          );
+        })()}
         <ViewHeaderDivider />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
           {ticket.title}
         </span>
-
-        {(ticketSprintId || ticket.epic) && (
-          <nav className="hidden lg:flex shrink-0 items-center gap-2 text-[11px]">
-            {ticketSprintId && (
-              <Tooltip content={ticketSprintLabel || "Sprint"}>
-                <Link
-                  href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                  className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                  style={{ color: "#d4904a", opacity: 0.55 }}
-                >
-                  <IterationCw size={12} strokeWidth={1.5} />
-                  <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
-                </Link>
-              </Tooltip>
-            )}
-            {ticketSprintId && ticket.epic && (
-              <span className="text-white/[0.10] select-none">/</span>
-            )}
-            {ticket.epic && (
-              <Tooltip content={ticket.epic}>
-                {ticket.epicKey ? (
-                  <Link
-                    href={`/tickets/${ticket.epicKey}`}
-                    className="flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    style={{ color: "#9b6cd4", opacity: 0.55 }}
-                  >
-                    <Zap size={12} strokeWidth={1.5} />
-                    <span className="max-w-[90px] truncate">{ticket.epicKey}</span>
-                  </Link>
-                ) : (
-                  <span className="flex items-center gap-1" title={ticket.epic} style={{ color: "#9b6cd4", opacity: 0.55 }}>
-                    <Zap size={12} strokeWidth={1.5} />
-                  </span>
-                )}
-              </Tooltip>
-            )}
-          </nav>
-        )}
-
-        <div className="flex shrink-0 items-center gap-2.5">
-          {(() => {
-            const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-            return (
-              <span
-                className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-                style={{ backgroundColor: sc.bg, color: sc.text }}
-              >
-                {ticket.jiraStatus}
-              </span>
-            );
-          })()}
-        </div>
       </ViewHeader>
 
       <div className="flex flex-1 overflow-hidden">
