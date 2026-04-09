@@ -32,6 +32,7 @@ import { SplitStoryPicker } from "./SplitStoryPicker";
 import { ExecutionLogViewer } from "./ExecutionLogViewer";
 import { RelatedStoriesPanel } from "./RelatedStoriesPanel";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { Button } from "@/components/ui/Button";
 
 const PANEL_STORAGE_KEY = "storyWriterChatWidth";
@@ -359,7 +360,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   return (
     <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
       <ViewHeader
-        icon={<NotebookPen size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+        icon={<NotebookPen size={15} strokeWidth={1.5} className="text-white/30" />}
         className="shrink-0"
         actions={<>
           {latestReview && (
@@ -501,19 +502,14 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           </div>
         </>}
       >
-        <ViewHeaderTitle>Story writer</ViewHeaderTitle>
-        <ViewHeaderDivider />
         {ticketData && (
-          <div className="flex items-center gap-2 min-w-0 leading-none" style={{ fontSize: "15px" }}>
-            <IssueTypeIcon type={ticketData.type} size={14} />
-            <span className="font-mono font-semibold text-white/90 shrink-0">
-              {ticketKey}
-            </span>
-            <span className="text-white/30 shrink-0">–</span>
-            <span className="min-w-0 truncate font-semibold text-white/90">
+          <>
+            <TicketKeyPill ticketKey={ticketKey} />
+            <ViewHeaderDivider />
+            <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white/90">
               {writer.session?.localTitle ?? ticketData.title}
             </span>
-          </div>
+          </>
         )}
       </ViewHeader>
 

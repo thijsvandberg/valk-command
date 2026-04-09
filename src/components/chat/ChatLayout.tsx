@@ -157,7 +157,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       </div>
 
       <ViewHeader
-        icon={<MessageCircle size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+        icon={<MessageCircle size={15} strokeWidth={1.5} className="text-white/30" />}
         className="z-10"
       >
         <ViewHeaderTitle>{activeConv ? activeConv.title : "Chat"}</ViewHeaderTitle>

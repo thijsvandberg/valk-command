@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
+import { ColumnToggle } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ArrowUp, ArrowDown, ArrowUpDown, Sheet } from "lucide-react";
@@ -92,6 +93,7 @@ export function TicketTable({
   sortField,
   sortDir,
   onSortChange,
+  onColumnToggle,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -116,6 +118,7 @@ export function TicketTable({
   sortField?: SortField;
   sortDir?: SortDir;
   onSortChange?: (field: SortField, dir: SortDir) => void;
+  onColumnToggle?: (id: ColumnId, show: boolean) => void;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -286,11 +289,18 @@ export function TicketTable({
         {col("quality") && (
           <th className="group/th w-16 py-2.5 pr-3">
             <button type="button" onClick={() => handleColumnSort("quality")} className="flex items-center cursor-pointer hover:text-white/60">
-              Quality<SortIndicator colId="quality" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+              QS<SortIndicator colId="quality" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
             </button>
           </th>
         )}
-        {col("notes") && <th className="w-8 py-2.5 pr-5" />}
+        {col("notes") && <th className="w-8 py-2.5 pr-2" />}
+        {onColumnToggle && (
+          <th className="w-8 py-2.5 pr-5">
+            <div className="flex justify-end">
+              <ColumnToggle visible={visibleColumns} onChange={onColumnToggle} />
+            </div>
+          </th>
+        )}
       </tr>
     </thead>
   );

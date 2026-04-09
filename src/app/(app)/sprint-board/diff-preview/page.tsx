@@ -50,7 +50,7 @@ function DiffPreviewContent() {
     <div className="flex h-full flex-col">
       {/* View toggle */}
       <div className="flex items-center gap-2 border-b border-white/[0.06] px-6 py-3">
-        <h1 className="font-[var(--font-display)] text-base font-semibold text-white mr-4">
+        <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] text-white mr-4">
           Diff Preview
         </h1>
         {ticketKey && (

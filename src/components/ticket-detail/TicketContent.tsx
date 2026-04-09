@@ -139,8 +139,7 @@ export function EditableTitle({
           if (e.key === "Enter") { e.preventDefault(); save(); }
           if (e.key === "Escape") { e.preventDefault(); discard(); }
         }}
-        className="w-full resize-none overflow-hidden border-b-2 border-[var(--color-brand-500)]/40 bg-transparent text-2xl font-bold leading-tight text-white outline-none"
-        style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.04em" }}
+        className="w-full resize-none overflow-hidden border-b-2 border-[var(--color-brand-500)]/40 bg-transparent font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] leading-tight text-white outline-none"
       />
     );
   }
@@ -149,8 +148,7 @@ export function EditableTitle({
     <div className="group flex items-start gap-2">
       <h1
         onClick={startEditing}
-        className="cursor-pointer text-2xl font-bold leading-tight text-white hover:text-white/90"
-        style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.04em" }}
+        className="font-[var(--font-display)] cursor-pointer text-3xl font-bold tracking-[-0.03em] leading-tight text-white hover:text-white/90"
         title="Click to edit"
       >
         {displayValue}
@@ -636,6 +634,57 @@ export function LinkedIssuesSection({ issues }: { issues: TicketDetail["linkedIs
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Epic children
+// ---------------------------------------------------------------------------
+
+export function EpicChildrenSection({ children }: { children: TicketDetail["epicChildren"] }) {
+  if (children.length === 0) {
+    return (
+      <div className="mt-8">
+        <SectionHeader title="Child Issues" />
+        <p className="mt-3 text-sm text-white/25">No child issues</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8">
+      <SectionHeader title="Child Issues" count={children.length} />
+      <div className="mt-3 overflow-hidden rounded-lg border border-white/[0.06]">
+        {children.map((child, idx) => {
+          const statusColor = JIRA_STATUS_COLORS[child.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+          return (
+            <div
+              key={child.key}
+              className={`flex items-center gap-3 px-3 py-2.5 ${
+                idx < children.length - 1 ? "border-b border-white/[0.04]" : ""
+              }`}
+            >
+              <IssueTypeIcon type={child.type} size={14} />
+              <Link
+                href={`/tickets/${child.key}`}
+                className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {child.key}
+              </Link>
+              <span className="min-w-0 flex-1 truncate text-sm text-white/60">{child.title}</span>
+              <span
+                className="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium"
+                style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
+              >
+                {child.jiraStatus}
+              </span>
+              <Avatar assignee={child.assignee} size={22} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

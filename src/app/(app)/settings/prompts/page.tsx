@@ -187,7 +187,7 @@ export default function PromptsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-sm font-medium text-white/50 uppercase tracking-[0.06em]">
+        <h2 className="text-xs font-medium text-white/50 uppercase tracking-[0.06em]">
           Story Writer Quick Prompts
         </h2>
         <Button

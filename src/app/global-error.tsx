@@ -18,7 +18,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="bg-[#0c0c0e] text-white">
         <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-          <h2 className="text-lg font-semibold">Something went wrong</h2>
+          <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-[-0.02em] text-white/90">Something went wrong</h2>
           <p className="max-w-md text-center text-sm text-white/60">
             A critical error occurred. Please try reloading the page.
           </p>

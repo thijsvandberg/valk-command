@@ -16,6 +16,7 @@ import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
+import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
@@ -192,6 +193,14 @@ export default function SprintBoard() {
     showToast(`Reviewed ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
   }, [checkedTickets, showToast, mutateTickets]);
 
+  const handleCopyToClipboard = useCallback(() => {
+    const selected = tickets.filter((t) => checkedTickets.has(t.key));
+    const text = selected.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`Copied ${selected.length} ticket${selected.length === 1 ? "" : "s"} to clipboard`);
+    });
+  }, [tickets, checkedTickets, showToast]);
+
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -281,9 +290,9 @@ export default function SprintBoard() {
       <div className="flex min-w-0 flex-1 flex-col">
         {(isAllView || activeSprint || f.activeView) && (
           <ViewHeader
-            icon={isAllView ? <LayoutGrid size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-              : f.activeView ? <Bookmark size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" fill="currentColor" />
-              : <CalendarRange size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+            icon={isAllView ? <LayoutGrid size={15} strokeWidth={1.5} className="text-white/30" />
+              : f.activeView ? <Bookmark size={15} strokeWidth={1.5} className="text-white/30" fill="currentColor" />
+              : <CalendarRange size={15} strokeWidth={1.5} className="text-white/30" />}
             actions={<>
               <Button variant="soft" size="md" icon={<NotebookPen className="h-3 w-3" strokeWidth={1.5} />} onClick={() => setShowStoryWriterLauncher(true)} className="shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
                 Story writer
@@ -350,14 +359,11 @@ export default function SprintBoard() {
             {!ticketsLoading && (
               <>
                 <ViewHeaderDivider />
-                {!isAllView && !f.activeView && activeSprint!.dateRange && (
-                  <span className="text-sm text-white/30 shrink-0">{activeSprint!.dateRange}</span>
-                )}
                 <span className="text-xs tabular-nums text-white/30 shrink-0"><span className="text-white/20">Items</span> {f.hasActiveFilters ? `${tickets.length}/${allTickets.length}` : allTickets.length}</span>
                 {!isAllView && !f.activeView && totalPoints > 0 && <span className="text-xs tabular-nums text-white/30 shrink-0"><span className="text-white/20">Pts</span> {totalPoints}</span>}
                 {!isAllView && !f.activeView && (
                   <>
-                    <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
+                    <ViewHeaderDivider />
                     <div className="flex items-center gap-1.5 text-[11px] font-medium">
                       {([
                         { status: "TO DO", count: todoCount, bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8" },
@@ -395,7 +401,7 @@ export default function SprintBoard() {
         {!barsCollapsed && (
           <>
             <div className="border-b border-white/[0.06]">
-              <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} visibleColumns={f.visibleColumns} onColumnToggle={f.handleColumnToggle} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+              <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
             </div>
             {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
           </>
@@ -405,9 +411,9 @@ export default function SprintBoard() {
           <LoadingState variant="spinner" label="Loading tickets..." />
         )}
 
-        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} />}
+        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} onColumnToggle={f.handleColumnToggle} />}
 
-        {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} isRefreshing={bulkRefreshing} />}
+        {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
       </div>
 
       {selected && <SidePanel ticket={selected} poStatus={poStatuses[selected.key] ?? null} onPoStatusChange={(v) => handlePoStatusChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} />}

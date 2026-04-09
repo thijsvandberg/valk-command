@@ -14,10 +14,11 @@ import {
   Settings,
   Menu,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { Button } from "@/components/ui/Button";
-import { BridgeMark } from "@/components/shared/BridgeMark";
 
 const navItems = [
   {
@@ -133,39 +134,21 @@ export default function Sidebar() {
           collapsed ? "w-[52px]" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        {/* Header - no bottom border so it flows into ViewHeader */}
-        <div className={`flex items-center py-3.5 ${collapsed ? "justify-center px-2" : "gap-2.5 px-4"}`}>
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(26,111,194,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-all duration-150 text-white"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <BridgeMark size={18} />
-          </button>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] shadow-[0_2px_10px_rgba(26,111,194,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] text-white lg:hidden">
-            <BridgeMark size={18} />
-          </div>
-          {!collapsed && (
-            <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
-              Bridge
-            </span>
-          )}
-
-          {/* Mobile close button */}
+        {/* Mobile header */}
+        <div className="flex items-center justify-end py-2.5 px-3 lg:hidden">
           <Button
             variant="ghost"
             iconOnly
             icon={<X className="h-4 w-4 text-white/50" strokeWidth={1.5} />}
             onClick={() => setMobileOpen(false)}
-            className="ml-auto h-8 w-8 rounded-lg lg:hidden border-transparent hover:bg-white/[0.06]"
+            className="h-8 w-8 rounded-lg border-transparent hover:bg-white/[0.06]"
             aria-label="Close sidebar"
           />
         </div>
 
         {/* Navigation */}
         <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-1.5" : "px-3"}`} aria-label="Main navigation">
-          <ul className="flex flex-col gap-1 pt-2">
+          <ul className="flex flex-col gap-1 pt-3">
             {navItems.map((item) => {
               const active = isActive(item.href);
               return (
@@ -194,9 +177,20 @@ export default function Sidebar() {
           </ul>
         </nav>
 
-        {/* Sync status */}
-        <div className={`${collapsed ? "px-1.5 flex justify-center" : "px-3"} pb-2`}>
+        {/* Bottom: sync + collapse toggle */}
+        <div className={`flex items-center border-t border-white/[0.04] pt-2 pb-3 ${collapsed ? "flex-col gap-2 px-1.5" : "justify-between px-3"}`}>
           <SyncIndicator collapsed={collapsed} />
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed
+              ? <ChevronRight size={14} strokeWidth={1.5} />
+              : <ChevronLeft size={14} strokeWidth={1.5} />
+            }
+          </button>
         </div>
 
         {/* Sidebar right edge accent */}

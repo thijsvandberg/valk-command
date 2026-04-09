@@ -1,28 +1,57 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { BridgeMark } from "@/components/shared/BridgeMark";
 
 interface ViewHeaderProps {
-  icon: ReactNode;
+  icon?: ReactNode;
   children?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }
 
 export function ViewHeader({ icon, children, actions, className }: ViewHeaderProps) {
-  return (
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setTarget(document.getElementById("view-header-portal"));
+  }, []);
+
+  if (!target) return null;
+
+  return createPortal(
     <div className={`relative flex items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5${className ? ` ${className}` : ""}`}>
-      <div className="pointer-events-none absolute left-0 top-0 h-full w-64 bg-[radial-gradient(ellipse_at_left_center,rgba(26,111,194,0.06)_0%,transparent_70%)]" />
-      <div className="relative flex min-w-0 flex-1 items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/20 shadow-[0_2px_12px_rgba(26,111,194,0.20),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[var(--color-brand-500)]/25">
-          {icon}
+      <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,rgba(26,111,194,0.06)_0%,transparent_70%)]" />
+
+      {/* Brand: mark + wordmark */}
+      <div className="relative flex shrink-0 items-center gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_rgba(26,111,194,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]">
+          <BridgeMark size={18} />
         </div>
+        <span className="font-[var(--font-display)] text-[16px] font-extrabold tracking-[-0.04em] text-white/90">
+          Bridge
+        </span>
+      </div>
+
+      {/* Divider between brand and view context */}
+      <div className="relative mx-4 h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.10] to-transparent" />
+
+      {/* View context: plain icon + title + meta */}
+      <div className="relative flex min-w-0 flex-1 items-center gap-3">
+        {icon && (
+          <span className="shrink-0 flex items-center text-white/30">{icon}</span>
+        )}
         {children}
       </div>
+
       {actions && (
         <div className="relative flex items-center gap-2">
           {actions}
         </div>
       )}
-    </div>
+    </div>,
+    target,
   );
 }
 

@@ -36,6 +36,7 @@ interface ActivityContextValue {
   cancelEntry: (id: string) => Promise<void>;
   cancelAllEntries: () => Promise<void>;
   acknowledgeError: (id: string) => Promise<void>;
+  acknowledgeAllErrors: () => Promise<void>;
   dismissToast: (id: string) => void;
   retryHealth: () => void;
   mutateActivityLog: () => void;
@@ -184,6 +185,14 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     [mutateActivityLog],
   );
 
+  const acknowledgeAllErrors = useCallback(
+    async () => {
+      await fetch("/api/activity-log/acknowledge-all", { method: "POST" });
+      mutateActivityLog();
+    },
+    [mutateActivityLog],
+  );
+
   const dismissToast = useCallback((id: string) => {
     setDismissedIds((prev) => new Set([...prev, id]));
   }, []);
@@ -209,6 +218,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         cancelEntry,
         cancelAllEntries,
         acknowledgeError,
+        acknowledgeAllErrors,
         dismissToast,
         retryHealth,
         mutateActivityLog,

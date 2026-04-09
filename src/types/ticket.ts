@@ -1,7 +1,7 @@
 // Shared ticket and sprint types used across UI components and API responses.
 // All mock-data and story-diff types are now sourced from here.
 
-export type IssueType = "task" | "bug" | "story" | "subtask" | "spike";
+export type IssueType = "task" | "bug" | "story" | "subtask" | "spike" | "epic";
 export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED";
 export type POStatus =
   | null
@@ -97,6 +97,7 @@ export interface TicketDetail {
   subtasks: Subtask[];
   linkedIssues: LinkedIssue[];
   jiraComments: JiraComment[];
+  epicChildren: Subtask[];
 }
 
 export type TicketEditState = "clean" | "draft" | "local_edits" | "conflict";

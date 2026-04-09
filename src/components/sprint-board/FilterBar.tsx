@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
+import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { Button } from "@/components/ui/Button";
@@ -46,6 +47,7 @@ export interface SavedView {
     assignee: string[];
     poStatus: string[];
     editState: string[];
+    issueType?: string[];
   };
   sort: { field: SortField; direction: SortDir };
 }
@@ -66,22 +68,20 @@ export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[]
   { id: "assignee", label: "Assignee" },
   { id: "flagged", label: "Flagged" },
   { id: "poStatus", label: "PO Status" },
-  { id: "quality", label: "Quality" },
+  { id: "quality", label: "QS" },
   { id: "notes", label: "Notes" },
 ];
 
 export const DEFAULT_VISIBLE: ColumnId[] = ["type", "key", "title", "epic", "jiraStatus", "points", "assignee", "flagged", "poStatus", "quality", "notes"];
 
-// FilterDropdown is imported from @/components/shared/FilterDropdown
-
 // ---------------------------------------------------------------------------
-// Sort dropdown
+// Sort dropdown (icon-only)
 // ---------------------------------------------------------------------------
 
 const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDir }[] = [
   { field: "rank", label: "Jira rank (default)", defaultDir: "asc" },
   { field: "lastChanged", label: "Last changed", defaultDir: "desc" },
-  { field: "quality", label: "Quality score", defaultDir: "desc" },
+  { field: "quality", label: "Quality Score", defaultDir: "desc" },
   { field: "points", label: "Story points", defaultDir: "desc" },
   { field: "key", label: "Ticket key", defaultDir: "asc" },
   { field: "title", label: "Title", defaultDir: "asc" },
@@ -120,17 +120,19 @@ function SortDropdown({
       <Button
         variant={isActive ? "soft" : "ghost"}
         size="md"
+        iconOnly
         onClick={() => setOpen(!open)}
-        icon={<ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        icon={
+          <span className="relative flex items-center justify-center">
+            <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            {isActive && (
+              <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
+            )}
+          </span>
+        }
+        title={isActive ? `Sorted: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
         className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"}
-      >
-        {isActive ? activeLabel : "Sort"}
-        {isActive && (
-          direction === "asc"
-            ? <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
-            : <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
-        )}
-      </Button>
+      />
 
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
@@ -185,10 +187,10 @@ function SortDropdown({
 }
 
 // ---------------------------------------------------------------------------
-// Column toggle dropdown
+// Column toggle dropdown (exported for use in header)
 // ---------------------------------------------------------------------------
 
-function ColumnToggle({
+export function ColumnToggle({
   visible,
   onChange,
 }: {
@@ -213,13 +215,12 @@ function ColumnToggle({
       <Button
         variant="ghost"
         size="md"
+        iconOnly
         onClick={() => setOpen(!open)}
         icon={<Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
         title="Toggle columns"
         className="border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"
-      >
-        Columns
-      </Button>
+      />
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
           {COLUMNS.map((col) => {
@@ -263,8 +264,6 @@ function ColumnToggle({
     </div>
   );
 }
-
-// SprintFilterBar replaced by shared FilterDropdown with searchable + labelMap
 
 // ---------------------------------------------------------------------------
 // Save view popover
@@ -352,6 +351,83 @@ function SaveViewPopover({
 }
 
 // ---------------------------------------------------------------------------
+// Expandable search
+// ---------------------------------------------------------------------------
+
+function ExpandableSearch({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (q: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isOpen = expanded || value.length > 0;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node) && !value) {
+        setExpanded(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, value]);
+
+  if (!isOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setExpanded(true);
+          requestAnimationFrame(() => inputRef.current?.focus());
+        }}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 hover:text-white/50 hover:bg-white/[0.04] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        style={{ transition: "color 120ms, background-color 120ms" }}
+        title="Search tickets"
+      >
+        <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
+      </button>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative flex items-center shrink-0">
+      <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-white/25" strokeWidth={1.5} />
+      <input
+        ref={inputRef}
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => {
+          if (!value) setExpanded(false);
+        }}
+        placeholder="Search tickets..."
+        className="h-8 w-52 rounded-lg border border-white/[0.08] bg-white/[0.03] pl-8 pr-8 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/50 focus:bg-white/[0.05]"
+        style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" }}
+      />
+      {value.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            onChange("");
+            inputRef.current?.focus();
+          }}
+          className="absolute right-2.5 flex h-4 w-4 items-center justify-center rounded-full text-white/30 hover:text-white/60 cursor-pointer"
+          style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+        >
+          <X className="h-2.5 w-2.5" strokeWidth={2} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // FilterBar component
 // ---------------------------------------------------------------------------
 
@@ -361,14 +437,17 @@ export function FilterBar({
   assigneeFilter,
   poStatusFilter,
   editStateFilter,
+  issueTypeFilter,
   onStatusFilterChange,
   onEpicFilterChange,
   onAssigneeFilterChange,
   onPoStatusFilterChange,
   onEditStateFilterChange,
+  onIssueTypeFilterChange,
   statusOptions,
   epicOptions,
   assigneeOptions,
+  issueTypeOptions,
   sprintFilter,
   onSprintFilterChange,
   sprintOptions,
@@ -376,8 +455,6 @@ export function FilterBar({
   sortField,
   sortDir,
   onSortChange,
-  visibleColumns,
-  onColumnToggle,
   noBorder = false,
   searchQuery,
   onSearchChange,
@@ -390,14 +467,17 @@ export function FilterBar({
   assigneeFilter: Set<string>;
   poStatusFilter: Set<string>;
   editStateFilter: Set<string>;
+  issueTypeFilter: Set<string>;
   onStatusFilterChange: (next: Set<string>) => void;
   onEpicFilterChange: (next: Set<string>) => void;
   onAssigneeFilterChange: (next: Set<string>) => void;
   onPoStatusFilterChange: (next: Set<string>) => void;
   onEditStateFilterChange: (next: Set<string>) => void;
+  onIssueTypeFilterChange: (next: Set<string>) => void;
   statusOptions: string[];
   epicOptions: string[];
   assigneeOptions: string[];
+  issueTypeOptions: string[];
   sprintFilter?: Set<string>;
   onSprintFilterChange?: (next: Set<string>) => void;
   sprintOptions?: string[];
@@ -405,8 +485,6 @@ export function FilterBar({
   sortField: SortField;
   sortDir: SortDir;
   onSortChange: (field: SortField, dir: SortDir) => void;
-  visibleColumns: Set<ColumnId>;
-  onColumnToggle: (id: ColumnId, show: boolean) => void;
   noBorder?: boolean;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
@@ -426,6 +504,7 @@ export function FilterBar({
     assigneeFilter.size > 0 ||
     poStatusFilter.size > 0 ||
     editStateFilter.size > 0 ||
+    issueTypeFilter.size > 0 ||
     (sprintFilter?.size ?? 0) > 0;
 
   function handleClearAll() {
@@ -434,35 +513,19 @@ export function FilterBar({
     onAssigneeFilterChange(new Set());
     onPoStatusFilterChange(new Set());
     onEditStateFilterChange(new Set());
+    onIssueTypeFilterChange(new Set());
     if (onSprintFilterChange) onSprintFilterChange(new Set());
   }
 
   return (
     <div className={`flex h-[50px] items-center gap-2 px-5${noBorder ? "" : " border-b border-white/[0.06]"}`}>
+      {/* Expandable search */}
       {onSearchChange && (
-        <div className="relative flex items-center shrink-0">
-          <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-white/25" strokeWidth={1.5} />
-          <input
-            type="text"
-            value={searchQuery ?? ""}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search tickets..."
-            className="h-8 w-52 rounded-lg border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/50 focus:bg-white/[0.05]"
-            style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" }}
-          />
-          {(searchQuery?.length ?? 0) > 0 && (
-            <button
-              type="button"
-              onClick={() => onSearchChange("")}
-              className="absolute right-2.5 flex h-4 w-4 items-center justify-center rounded-full text-white/30 hover:text-white/60 cursor-pointer"
-              style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
-            >
-              <X className="h-2.5 w-2.5" strokeWidth={2} />
-            </button>
-          )}
-        </div>
+        <ExpandableSearch value={searchQuery ?? ""} onChange={onSearchChange} />
       )}
       {onSearchChange && <div className="h-5 w-px bg-white/[0.08] shrink-0" />}
+
+      {/* Filter dropdowns */}
       <FilterDropdown
         label="Status"
         options={statusOptions}
@@ -541,6 +604,21 @@ export function FilterBar({
           );
         }}
       />
+      <FilterDropdown
+        label="Type"
+        options={issueTypeOptions}
+        selected={issueTypeFilter}
+        onChange={onIssueTypeFilterChange}
+        renderOption={(v) => {
+          const color = ISSUE_TYPE_COLORS[v as keyof typeof ISSUE_TYPE_COLORS];
+          return (
+            <span className="flex items-center gap-2">
+              <IssueTypeIcon type={v} size={13} />
+              <span style={color ? { color } : undefined} className="capitalize">{v}</span>
+            </span>
+          );
+        }}
+      />
       {sprintFilter && onSprintFilterChange && sprintOptions && sprintNameMap && (
         <FilterDropdown
           label="Sprint"
@@ -566,12 +644,13 @@ export function FilterBar({
           className="border-0 bg-transparent"
           title="Clear all filters"
         >
-          Clear all
+          Clear
         </Button>
       )}
 
       <div className="flex-1" />
 
+      {/* Sort (icon-only) */}
       <SortDropdown
         field={sortField}
         direction={sortDir}
@@ -601,8 +680,6 @@ export function FilterBar({
           )}
         </div>
       )}
-
-      <ColumnToggle visible={visibleColumns} onChange={onColumnToggle} />
     </div>
   );
 }

@@ -79,7 +79,7 @@ export function FilterDropdown({
       <button
         type="button"
         onClick={toggleOpen}
-        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
+        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
           isActive
             ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
             : "border-white/[0.07] bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/75 hover:border-white/[0.12]"
@@ -89,14 +89,14 @@ export function FilterDropdown({
         {label}
         {isActive && (
           <span
-            className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold"
+            className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-0.5 text-[10px] font-semibold"
             style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
           >
             {selected.size}
           </span>
         )}
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 opacity-40 ${open ? "rotate-180" : ""}`}
+          className={`h-3 w-3 shrink-0 opacity-40 ${open ? "rotate-180" : ""}`}
           strokeWidth={1.5}
           style={{ transition: "transform 150ms" }}
         />

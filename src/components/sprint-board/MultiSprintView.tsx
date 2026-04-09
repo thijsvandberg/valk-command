@@ -514,7 +514,7 @@ export function MultiSprintView({
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="relative flex h-full flex-col">
         <ViewHeader
-          icon={<Columns2 size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+          icon={<Columns2 size={15} strokeWidth={1.5} className="text-white/30" />}
           actions={<>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/25" strokeWidth={1.5} />

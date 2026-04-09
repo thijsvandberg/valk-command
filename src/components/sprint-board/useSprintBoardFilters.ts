@@ -13,6 +13,7 @@ export interface StoredFilters {
   assignee: string[];
   poStatus: string[];
   editState: string[];
+  issueType: string[];
 }
 
 export interface StoredSort {
@@ -20,7 +21,7 @@ export interface StoredSort {
   direction: SortDir;
 }
 
-const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [], editState: [] };
+const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [], editState: [], issueType: [] };
 
 export function useSprintBoardFilters(
   allTickets: Ticket[],
@@ -43,6 +44,7 @@ export function useSprintBoardFilters(
   const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
   const poStatusFilter = useMemo(() => new Set(storedFilters.poStatus), [storedFilters.poStatus]);
   const editStateFilter = useMemo(() => new Set(storedFilters.editState ?? []), [storedFilters.editState]);
+  const issueTypeFilter = useMemo(() => new Set(storedFilters.issueType ?? []), [storedFilters.issueType]);
 
   const setStatusFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, status: [...v] }));
@@ -58,6 +60,9 @@ export function useSprintBoardFilters(
   }, [setStoredFilters]);
   const setEditStateFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, editState: [...v] }));
+  }, [setStoredFilters]);
+  const setIssueTypeFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, issueType: [...v] }));
   }, [setStoredFilters]);
 
   const activeViewId = searchParams.get("view");
@@ -84,6 +89,7 @@ export function useSprintBoardFilters(
     () => [...new Set(allTickets.map((t) => t.sprintId).filter(Boolean) as string[])],
     [allTickets],
   );
+  const issueTypeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.type))], [allTickets]);
 
   const filteredTickets = useMemo(() => {
     const showRemoved = editStateFilter.has("removed");
@@ -109,6 +115,7 @@ export function useSprintBoardFilters(
         const effectiveState = isRemoved ? "removed" : t.editState;
         if (!editStateFilter.has(effectiveState)) return false;
       }
+      if (issueTypeFilter.size > 0 && !issueTypeFilter.has(t.type)) return false;
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
       if (searchQuery.trim().length >= 2) {
         const q = searchQuery.toLowerCase();
@@ -119,7 +126,7 @@ export function useSprintBoardFilters(
       }
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, poStatuses, isAllView, sprintFilter, searchQuery]);
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, issueTypeFilter, poStatuses, isAllView, sprintFilter, searchQuery]);
 
   const sortedTickets = useMemo(() => {
     if (sortField === "rank") {
@@ -177,7 +184,7 @@ export function useSprintBoardFilters(
     return sorted;
   }, [filteredTickets, sortField, sortDir, poPriorityOrder, poStatuses]);
 
-  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || editStateFilter.size > 0 || sprintFilter.size > 0;
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0;
 
   const handleColumnToggle = useCallback((id: ColumnId, show: boolean) => {
     setVisibleColumns((prev) => {
@@ -194,10 +201,11 @@ export function useSprintBoardFilters(
     assignee: [...assigneeFilter],
     poStatus: [...poStatusFilter],
     editState: [...editStateFilter],
-  }), [statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter]);
+    issueType: [...issueTypeFilter],
+  }), [statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, issueTypeFilter]);
 
   const resetFilters = useCallback(() => {
-    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [] });
+    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [], issueType: [] });
   }, [setStoredFilters]);
 
   const handleSaveView = useCallback((title: string) => {
@@ -223,6 +231,7 @@ export function useSprintBoardFilters(
       assignee: view.filters.assignee,
       poStatus: view.filters.poStatus,
       editState: view.filters.editState ?? [],
+      issueType: view.filters.issueType ?? [],
     });
     setStoredSort({ field: view.sort.field, direction: view.sort.direction });
     const params = new URLSearchParams(searchParams.toString());
@@ -250,11 +259,13 @@ export function useSprintBoardFilters(
     assigneeFilter,
     poStatusFilter,
     editStateFilter,
+    issueTypeFilter,
     setStatusFilter,
     setEpicFilter,
     setAssigneeFilter,
     setPoStatusFilter,
     setEditStateFilter,
+    setIssueTypeFilter,
     sprintFilter,
     setSprintFilter,
     searchQuery,
@@ -274,6 +285,7 @@ export function useSprintBoardFilters(
     epicOptions,
     assigneeOptions,
     sprintOptions,
+    issueTypeOptions,
     filteredTickets,
     sortedTickets,
     hasActiveFilters,

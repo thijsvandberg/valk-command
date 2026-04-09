@@ -57,7 +57,7 @@ function TicketDescription({ ticketKey }: { ticketKey: string }) {
   if (!description) {
     return (
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">Description</h3>
+        <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-white/50">Description</h3>
         <p className="mt-2 text-xs text-white/25">No description</p>
       </div>
     );
@@ -65,7 +65,7 @@ function TicketDescription({ ticketKey }: { ticketKey: string }) {
 
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">Description</h3>
+      <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-white/50">Description</h3>
       <div className="mt-2 max-h-64 overflow-y-auto">
         {renderSimpleMarkdown(description)}
       </div>
@@ -351,7 +351,7 @@ export function SidePanel({
             <div className="my-6 h-px bg-white/[0.06]" />
 
             {/* PO Metadata section */}
-            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/30">
+            <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.06em] text-white/50">
               PO Metadata
               {ticket.notes.trim() && (
                 <span
@@ -406,7 +406,7 @@ export function SidePanel({
 
             {/* Actions */}
             <div className="my-6 h-px bg-white/[0.06]" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-white/30">
+            <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-white/50">
               Actions
             </h3>
             <div className="mt-3 flex flex-col gap-2">

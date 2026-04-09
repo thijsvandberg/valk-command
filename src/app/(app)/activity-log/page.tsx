@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useActivityContext } from "@/contexts/ActivityContext";
 import Link from "next/link";
 import useSWR from "swr";
 import {
@@ -101,6 +102,12 @@ function statusLabel(status: ActivityLogEntry["status"]): string {
 
 export default function ActivityLogPage() {
   const pageTitle = usePageTitle("Activity Log");
+  const { acknowledgeAllErrors } = useActivityContext();
+
+  useEffect(() => {
+    acknowledgeAllErrors();
+  }, [acknowledgeAllErrors]);
+
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
@@ -168,7 +175,7 @@ export default function ActivityLogPage() {
       <div className="mx-auto max-w-5xl px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-[var(--font-display)] text-2xl font-semibold tracking-[-0.03em] text-white">
+        <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] text-white">
           Activity Log
         </h1>
         <p className="mt-1.5 text-sm text-white/35 font-[var(--font-body)] leading-relaxed">

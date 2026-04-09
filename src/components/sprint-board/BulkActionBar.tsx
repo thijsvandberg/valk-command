@@ -7,6 +7,7 @@ import { PO_STATUS_COLORS } from "./FilterBar";
 import { POStatusIcon } from "./TicketTable";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
+import { Copy, Check } from "lucide-react";
 
 export function BulkActionBar({
   count,
@@ -14,6 +15,7 @@ export function BulkActionBar({
   onSetPoStatus,
   onRefreshFromJira,
   onReviewStory,
+  onCopyToClipboard,
   isRefreshing,
 }: {
   count: number;
@@ -21,6 +23,7 @@ export function BulkActionBar({
   onSetPoStatus: (status: POStatus) => void;
   onRefreshFromJira: () => void;
   onReviewStory: () => void;
+  onCopyToClipboard: () => void;
   isRefreshing: boolean;
 }) {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -91,6 +94,15 @@ export function BulkActionBar({
         className="border-0 text-white/60 hover:text-white"
       >
         Review Story
+      </Button>
+      <Button
+        variant="ghost"
+        size="md"
+        onClick={onCopyToClipboard}
+        className="border-0 text-white/60 hover:text-white"
+      >
+        <Copy className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
+        Copy
       </Button>
       <div className="flex-1" />
       <Button

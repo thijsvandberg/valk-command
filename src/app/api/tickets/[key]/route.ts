@@ -70,6 +70,13 @@ export async function GET(
     where: (l, { eq: eqFn }) => eqFn(l.ticketKey, key),
   });
 
+  // When this ticket is an epic, fetch all child issues that reference it
+  const epicChildRows = t.type === "epic"
+    ? await db.query.ticket.findMany({
+        where: (row, { eq: eqFn }) => eqFn(row.epicKey, key),
+      })
+    : [];
+
   const attachments: Attachment[] = attachmentRows.map((a) => ({
     id: a.id,
     filename: a.filename,
@@ -139,6 +146,14 @@ export async function GET(
     assignee: buildAssignee(l.assignee),
   }));
 
+  const epicChildren: Subtask[] = epicChildRows.map((c) => ({
+    key: c.jiraKey,
+    title: c.title,
+    type: (c.type ?? "task") as IssueType,
+    jiraStatus: (c.status ?? "TO DO") as JiraStatus,
+    assignee: buildAssignee(c.assignee),
+  }));
+
   // Resolve inline attachment references: ![filename](attachment) → ![filename](/api/attachments/ID)
   const filenameToId = new Map(attachmentRows.map((a) => [a.filename, a.id]));
   const rawDescription = t.description ?? "";
@@ -162,6 +177,7 @@ export async function GET(
     subtasks,
     linkedIssues,
     jiraComments,
+    epicChildren,
   };
 
   // Include local edits so the client can render the correct version immediately

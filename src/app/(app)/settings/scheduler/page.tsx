@@ -99,7 +99,7 @@ export default function SchedulerPage() {
 
   return (
     <>
-      <h2 className="text-sm font-medium text-white/50 uppercase tracking-[0.06em] mb-2">
+      <h2 className="text-xs font-medium text-white/50 uppercase tracking-[0.06em] mb-2">
         Scheduled Tasks
       </h2>
       <p className="text-xs text-white/30 mb-6 leading-[1.6]">

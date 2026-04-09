@@ -88,7 +88,7 @@ export async function GET(request: Request) {
     latestHashByKey.set(key, versions[0].contentHash);
   }
 
-  const result: Ticket[] = rows.map(({ t, meta }) => {
+  const result: Ticket[] = rows.filter(({ t }) => t.type !== "subtask").map(({ t, meta }) => {
     const edits = editsByKey.get(t.jiraKey) ?? [];
     const latestHash = latestHashByKey.get(t.jiraKey) ?? null;
     const editState: TicketEditState = computeTicketEditState(edits, latestHash);

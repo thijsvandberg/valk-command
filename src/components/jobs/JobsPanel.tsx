@@ -113,7 +113,7 @@ function CreateForm({ onSubmit, onCancel }: CreateFormProps) {
   return (
     <Card className="p-5">
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="font-[var(--font-display)] text-sm font-semibold text-white">New scheduled job</h3>
+      <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">New scheduled job</h3>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass}>Name</label>

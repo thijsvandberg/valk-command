@@ -246,7 +246,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       )}
 
       {col("notes") && (
-        <td className="py-2 pr-5">
+        <td className="py-2 pr-2">
           {ticket.notes && (
             <span title={ticket.notes}>
               <MessageSquare className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
@@ -254,6 +254,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           )}
         </td>
       )}
+      {/* Spacer cell to match ColumnToggle header column */}
+      <td className="w-8" />
     </tr>
   );
 });

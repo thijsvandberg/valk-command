@@ -27,6 +27,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { getJiraUrl } from "@/components/sprint-board/TicketTable";
 import {
   EditableTitle,
@@ -34,6 +35,7 @@ import {
   AttachmentsSection,
   SubtasksSection,
   LinkedIssuesSection,
+  EpicChildrenSection,
   CommentsSection,
 } from "@/components/ticket-detail/TicketContent";
 import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
@@ -84,6 +86,7 @@ export default function TicketDetailPage({
     subtasks: apiData.subtasks ?? [],
     linkedIssues: apiData.linkedIssues ?? [],
     jiraComments: apiData.jiraComments ?? [],
+    epicChildren: apiData.epicChildren ?? [],
   } : undefined;
 
   // Local edits are now included in the API response to avoid flicker
@@ -301,9 +304,9 @@ export default function TicketDetailPage({
     <div className="flex h-full flex-col">
 
       <ViewHeader
-        icon={<IssueTypeIcon type={ticket.type} size={16} />}
+        icon={<IssueTypeIcon type={ticket.type} size={15} />}
         actions={
-          <div className="ml-4 flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             {showPushButton && (
               <Button
                 variant="primary"
@@ -381,7 +384,7 @@ export default function TicketDetailPage({
           </div>
         }
       >
-        <span className="shrink-0 font-mono text-sm font-medium text-white/40">{key}</span>
+        <TicketKeyPill ticketKey={key} />
         <ViewHeaderDivider />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
           {ticket.title}
@@ -545,8 +548,13 @@ export default function TicketDetailPage({
                 onOverrideChange={setOverrideConfirmed}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
-              {detail && <SubtasksSection subtasks={detail.subtasks} />}
-              {detail && <LinkedIssuesSection issues={detail.linkedIssues} />}
+              {ticket?.type === "epic"
+                ? detail && <EpicChildrenSection children={detail.epicChildren} />
+                : <>
+                    {detail && <SubtasksSection subtasks={detail.subtasks} />}
+                    {detail && <LinkedIssuesSection issues={detail.linkedIssues} />}
+                  </>
+              }
               <CommentsSection
                 ticketKey={key}
                 jiraComments={detail?.jiraComments ?? []}
