@@ -1,6 +1,6 @@
 # BRDG-030: Bitbucket Development Panel in Ticket Detail
 
-**Status:** Open
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -19,14 +19,14 @@ API (readonly) key in .env.local `BITBUCKET_API_TOKEN`
 
 ### Phase 1: API proxy route
 
-- [ ] New API route `src/app/api/tickets/[key]/dev-info/route.ts` that calls Jira's dev-status endpoint for the given ticket
-- [ ] Route fetches `applicationType=stash` (Bitbucket Server) or `applicationType=bitbucket` (Bitbucket Cloud) depending on config
-- [ ] Returns a normalised JSON shape: `{ branches, pullRequests, commits, builds }`
-- [ ] Each branch: `{ name, url, lastCommit: { id, message, date, author } }`
-- [ ] Each pullRequest: `{ id, title, url, status: 'OPEN' | 'MERGED' | 'DECLINED', author, reviewers }`
-- [ ] Each commit: `{ id, message, date, author, url }`
-- [ ] Each build: `{ name, url, state: 'SUCCESSFUL' | 'FAILED' | 'IN_PROGRESS', completedAt }`
-- [ ] On Jira API error or empty response, return empty arrays (not a 500)
+- [x] New API route `src/app/api/tickets/[key]/dev-info/route.ts` that calls Jira's dev-status endpoint for the given ticket
+- [x] Route fetches `applicationType=stash` (Bitbucket Server) or `applicationType=bitbucket` (Bitbucket Cloud) depending on config
+- [x] Returns a normalised JSON shape: `{ branches, pullRequests, commits, builds }`
+- [x] Each branch: `{ name, url, lastCommit: { id, message, date, author } }`
+- [x] Each pullRequest: `{ id, title, url, status: 'OPEN' | 'MERGED' | 'DECLINED', author, reviewers }`
+- [x] Each commit: `{ id, message, date, author, url }`
+- [x] Each build: `{ name, url, state: 'SUCCESSFUL' | 'FAILED' | 'IN_PROGRESS', completedAt }`
+- [x] On Jira API error or empty response, return empty arrays (not a 500)
 
 ### Phase 2: Development panel component
 
