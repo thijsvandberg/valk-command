@@ -7,13 +7,27 @@ export interface DevBranch {
   lastCommit: { id: string; message: string; date: string; author: string } | null;
 }
 
+export interface PrApproval {
+  name: string;
+  approved: boolean;
+}
+
 export interface DevPullRequest {
   id: string;
   title: string;
   url: string;
   status: "OPEN" | "MERGED" | "DECLINED";
   author: string;
-  reviewers: string[];
+  reviewers: PrApproval[];
+  sourceBranch: string;
+  destBranch: string;
+  commentCount: number;
+  taskCount: number;
+  createdAt: string;
+  updatedAt: string;
+  diffStats: { filesChanged: number; linesAdded: number; linesRemoved: number } | null;
+  buildStatuses: DevBuild[];
+  repo: string;
 }
 
 export interface DevCommit {
@@ -27,7 +41,7 @@ export interface DevCommit {
 export interface DevBuild {
   name: string;
   url: string;
-  state: "SUCCESSFUL" | "FAILED" | "IN_PROGRESS";
+  state: "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED";
   completedAt: string | null;
 }
 
@@ -71,6 +85,13 @@ interface BbBranch {
   };
 }
 
+interface BbParticipant {
+  user?: { display_name: string };
+  role: string;
+  approved: boolean;
+  state?: string;
+}
+
 interface BbPullRequest {
   id: number;
   title: string;
@@ -78,6 +99,26 @@ interface BbPullRequest {
   links?: { html?: { href: string } };
   author?: { display_name: string };
   reviewers?: Array<{ display_name: string }>;
+  participants?: BbParticipant[];
+  source?: { branch?: { name: string }; commit?: { hash: string } };
+  destination?: { branch?: { name: string } };
+  comment_count?: number;
+  task_count?: number;
+  created_on?: string;
+  updated_on?: string;
+}
+
+interface BbDiffstatEntry {
+  lines_added: number;
+  lines_removed: number;
+  status: string;
+}
+
+interface BbCommitStatus {
+  name: string;
+  state: string;
+  url: string;
+  updated_on?: string;
 }
 
 interface BbPipeline {
@@ -100,6 +141,7 @@ async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
   const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
 
   const res = await fetch(url, {
+    redirect: "follow",
     headers: {
       Authorization: `Basic ${auth}`,
       Accept: "application/json",
@@ -113,7 +155,6 @@ async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
 function extractAuthor(raw?: string, user?: { display_name: string }): string {
   if (user?.display_name) return user.display_name;
   if (raw) {
-    // "Name <email>" -> "Name"
     const match = raw.match(/^([^<]+)/);
     return match?.[1]?.trim() ?? raw;
   }
@@ -127,14 +168,27 @@ function normalisePrStatus(raw: string): DevPullRequest["status"] {
   return "OPEN";
 }
 
+function normaliseBuildState(raw: string): DevBuild["state"] {
+  const upper = raw.toUpperCase();
+  if (upper === "SUCCESSFUL") return "SUCCESSFUL";
+  if (upper === "FAILED") return "FAILED";
+  if (upper === "STOPPED") return "STOPPED";
+  return "IN_PROGRESS";
+}
+
 function normalisePipelineState(pipeline: BbPipeline): DevBuild["state"] {
   const stateName = pipeline.state?.name?.toUpperCase() ?? "";
   const resultName = pipeline.state?.result?.name?.toUpperCase() ?? "";
   if (stateName === "COMPLETED") {
     if (resultName === "SUCCESSFUL") return "SUCCESSFUL";
     if (resultName === "FAILED" || resultName === "ERROR") return "FAILED";
+    if (resultName === "STOPPED") return "STOPPED";
   }
   return "IN_PROGRESS";
+}
+
+function shortRepoName(slug: string): string {
+  return slug.replace(/^valk-/, "");
 }
 
 export async function GET(
@@ -152,7 +206,7 @@ export async function GET(
     const branchQuery = encodeURIComponent(`name ~ "${key}"`);
     const prQuery = encodeURIComponent(`title ~ "${key}"`);
 
-    // Query all configured repos in parallel
+    // Phase 1: Query all repos for branches and PRs in parallel
     const repoResults = await Promise.all(
       cfg.repoSlugs.map(async (repo) => {
         const [branchRes, prRes] = await Promise.all([
@@ -164,9 +218,9 @@ export async function GET(
     );
 
     const branches: DevBranch[] = [];
-    const pullRequests: DevPullRequest[] = [];
     const commits: DevCommit[] = [];
     const allBranchEntries: Array<{ repo: string; name: string }> = [];
+    const prEnrichmentTasks: Array<{ repo: string; pr: BbPullRequest }> = [];
 
     for (const { repo, branchRes, prRes } of repoResults) {
       for (const b of branchRes?.values ?? []) {
@@ -195,18 +249,69 @@ export async function GET(
       }
 
       for (const pr of prRes?.values ?? []) {
-        pullRequests.push({
+        prEnrichmentTasks.push({ repo, pr });
+      }
+    }
+
+    // Phase 2: Enrich PRs with diffstats + build statuses in parallel
+    const pullRequests: DevPullRequest[] = await Promise.all(
+      prEnrichmentTasks.map(async ({ repo, pr }) => {
+        const sourceHash = pr.source?.commit?.hash ?? "";
+
+        // Fetch diffstat and build statuses in parallel per PR
+        const [diffstatRes, statusRes] = await Promise.all([
+          bbFetch<BbPaginatedResponse<BbDiffstatEntry>>(repo, `/pullrequests/${pr.id}/diffstat`),
+          sourceHash
+            ? bbFetch<BbPaginatedResponse<BbCommitStatus>>(repo, `/commit/${sourceHash}/statuses`)
+            : Promise.resolve(null),
+        ]);
+
+        let diffStats: DevPullRequest["diffStats"] = null;
+        if (diffstatRes?.values) {
+          let filesChanged = 0, linesAdded = 0, linesRemoved = 0;
+          for (const entry of diffstatRes.values) {
+            filesChanged++;
+            linesAdded += entry.lines_added ?? 0;
+            linesRemoved += entry.lines_removed ?? 0;
+          }
+          diffStats = { filesChanged, linesAdded, linesRemoved };
+        }
+
+        const buildStatuses: DevBuild[] = (statusRes?.values ?? []).map((s) => ({
+          name: s.name,
+          url: s.url,
+          state: normaliseBuildState(s.state),
+          completedAt: s.updated_on ?? null,
+        }));
+
+        const reviewers: PrApproval[] = (pr.participants ?? [])
+          .filter((p) => p.role === "REVIEWER")
+          .map((p) => ({
+            name: p.user?.display_name ?? "Unknown",
+            approved: p.approved,
+          }));
+
+        return {
           id: String(pr.id),
           title: pr.title,
           url: pr.links?.html?.href ?? "",
           status: normalisePrStatus(pr.state),
           author: pr.author?.display_name ?? "Unknown",
-          reviewers: (pr.reviewers ?? []).map((r) => r.display_name),
-        });
-      }
-    }
+          reviewers,
+          sourceBranch: pr.source?.branch?.name ?? "",
+          destBranch: pr.destination?.branch?.name ?? "",
+          commentCount: pr.comment_count ?? 0,
+          taskCount: pr.task_count ?? 0,
+          createdAt: pr.created_on ?? "",
+          updatedAt: pr.updated_on ?? "",
+          diffStats,
+          buildStatuses,
+          repo: shortRepoName(repo),
+        };
+      }),
+    );
 
-    // Fetch pipelines for matched branches (first branch per repo)
+    // Phase 3: Fetch pipelines for matched branches
     const builds: DevBuild[] = [];
     const seenRepos = new Set<string>();
     for (const entry of allBranchEntries) {

@@ -59,7 +59,30 @@ describe("GET /api/tickets/[key]/dev-info", () => {
         links: { html: { href: "https://bitbucket.org/ws/repo/pull-requests/77" } },
         author: { display_name: "Thijs" },
         reviewers: [{ display_name: "Alice" }],
+        participants: [
+          { user: { display_name: "Alice" }, role: "REVIEWER", approved: true, state: "approved" },
+        ],
+        source: { branch: { name: "feature/VPL-42" }, commit: { hash: "abc123" } },
+        destination: { branch: { name: "master" } },
+        comment_count: 3,
+        task_count: 1,
+        created_on: "2026-04-01T10:00:00+00:00",
+        updated_on: "2026-04-09T10:00:00+00:00",
       }],
+    };
+
+    const diffstatResponse = {
+      values: [
+        { lines_added: 50, lines_removed: 10, status: "modified" },
+        { lines_added: 20, lines_removed: 5, status: "added" },
+      ],
+    };
+
+    const statusResponse = {
+      values: [
+        { name: "Pipeline", state: "SUCCESSFUL", url: "https://bitbucket.org/pipeline/1", updated_on: "2026-04-09T11:00:00+00:00" },
+        { name: "SonarQube", state: "SUCCESSFUL", url: "https://sonar.example.com", updated_on: "2026-04-09T11:05:00+00:00" },
+      ],
     };
 
     const pipelineResponse = {
@@ -76,6 +99,8 @@ describe("GET /api/tickets/[key]/dev-info", () => {
       const url = typeof input === "string" ? input : input.toString();
       let body: unknown;
       if (url.includes("/refs/branches")) body = branchResponse;
+      else if (url.includes("/diffstat")) body = diffstatResponse;
+      else if (url.includes("/statuses")) body = statusResponse;
       else if (url.includes("/pullrequests")) body = prResponse;
       else if (url.includes("/pipelines")) body = pipelineResponse;
       else body = { values: [] };
@@ -103,14 +128,21 @@ describe("GET /api/tickets/[key]/dev-info", () => {
     });
 
     expect(data.pullRequests).toHaveLength(1);
-    expect(data.pullRequests[0]).toEqual({
-      id: "77",
-      title: "VPL-42: Dev panel",
-      url: "https://bitbucket.org/ws/repo/pull-requests/77",
-      status: "OPEN",
-      author: "Thijs",
-      reviewers: ["Alice"],
-    });
+    const pr = data.pullRequests[0];
+    expect(pr.id).toBe("77");
+    expect(pr.title).toBe("VPL-42: Dev panel");
+    expect(pr.status).toBe("OPEN");
+    expect(pr.author).toBe("Thijs");
+    expect(pr.reviewers).toEqual([{ name: "Alice", approved: true }]);
+    expect(pr.sourceBranch).toBe("feature/VPL-42");
+    expect(pr.destBranch).toBe("master");
+    expect(pr.commentCount).toBe(3);
+    expect(pr.taskCount).toBe(1);
+    expect(pr.diffStats).toEqual({ filesChanged: 2, linesAdded: 70, linesRemoved: 15 });
+    expect(pr.buildStatuses).toHaveLength(2);
+    expect(pr.buildStatuses[0].name).toBe("Pipeline");
+    expect(pr.buildStatuses[0].state).toBe("SUCCESSFUL");
+    expect(pr.repo).toBe("my-repo");
 
     expect(data.commits).toHaveLength(1);
     expect(data.commits[0].id).toBe("abc123def456");
@@ -182,9 +214,9 @@ describe("GET /api/tickets/[key]/dev-info", () => {
   it("normalises MERGED and DECLINED PR states", async () => {
     const prResponse = {
       values: [
-        { id: 1, title: "VPL-42: merged", state: "MERGED", links: {}, author: { display_name: "A" }, reviewers: [] },
-        { id: 2, title: "VPL-42: declined", state: "DECLINED", links: {}, author: { display_name: "B" }, reviewers: [] },
-        { id: 3, title: "VPL-42: superseded", state: "SUPERSEDED", links: {}, author: { display_name: "C" }, reviewers: [] },
+        { id: 1, title: "VPL-42: merged", state: "MERGED", links: {}, author: { display_name: "A" }, participants: [] },
+        { id: 2, title: "VPL-42: declined", state: "DECLINED", links: {}, author: { display_name: "B" }, participants: [] },
+        { id: 3, title: "VPL-42: superseded", state: "SUPERSEDED", links: {}, author: { display_name: "C" }, participants: [] },
       ],
     };
 

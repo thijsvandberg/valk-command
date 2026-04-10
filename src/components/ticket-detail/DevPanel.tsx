@@ -6,11 +6,14 @@ import {
   GitBranch,
   GitPullRequest,
   GitCommit,
-  Hammer,
   ExternalLink,
   CheckCircle2,
   XCircle,
+  Circle,
   Loader2,
+  MessageSquare,
+  FileCode2,
+  OctagonX,
 } from "lucide-react";
 import type {
   DevInfoPayload,
@@ -23,6 +26,7 @@ import type {
 function relativeDate(iso: string): string {
   const now = Date.now();
   const then = new Date(iso).getTime();
+  if (isNaN(then)) return "";
   const diff = now - then;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
@@ -44,6 +48,13 @@ const PR_STATUS_STYLES: Record<DevPullRequest["status"], { bg: string; text: str
   MERGED: { bg: "rgba(74,170,96,0.15)", text: "#4aaa60" },
   DECLINED: { bg: "rgba(229,83,75,0.10)", text: "#e5534b80" },
 };
+
+function BuildStateIcon({ state }: { state: DevBuild["state"] }) {
+  if (state === "SUCCESSFUL") return <CheckCircle2 size={11} strokeWidth={1.5} className="text-[#4aaa60]" />;
+  if (state === "FAILED") return <XCircle size={11} strokeWidth={1.5} className="text-[#e5534b]" />;
+  if (state === "STOPPED") return <OctagonX size={11} strokeWidth={1.5} className="text-white/25" />;
+  return <Loader2 size={11} strokeWidth={1.5} className="animate-spin text-[#ea8744]" />;
+}
 
 function BranchItem({ branch }: { branch: DevBranch }) {
   return (
@@ -78,38 +89,117 @@ function BranchItem({ branch }: { branch: DevBranch }) {
   );
 }
 
-function PullRequestItem({ pr }: { pr: DevPullRequest }) {
+function PullRequestCard({ pr }: { pr: DevPullRequest }) {
   const style = PR_STATUS_STYLES[pr.status];
+  const approvedCount = pr.reviewers.filter((r) => r.approved).length;
+  const totalReviewers = pr.reviewers.length;
+
   return (
-    <div className="group/item flex items-start gap-2 py-1.5">
-      <GitPullRequest size={13} strokeWidth={1.5} className="mt-0.5 shrink-0 text-white/20" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <a
-            href={pr.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="min-w-0 truncate text-xs font-medium text-white/55 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            style={{ transition: "color 0.15s ease" }}
-          >
-            {pr.title}
-          </a>
-          <span
-            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-            style={{ backgroundColor: style.bg, color: style.text }}
-          >
-            {pr.status}
-          </span>
-        </div>
-        <p className="mt-0.5 truncate text-[11px] text-white/25">
-          {pr.author}
-          {pr.reviewers.length > 0 && (
-            <span className="text-white/15">
-              {" "}· {pr.reviewers.length} reviewer{pr.reviewers.length > 1 ? "s" : ""}
+    <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] p-3">
+      {/* Header: title + status */}
+      <div className="flex items-start gap-2">
+        <GitPullRequest size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-white/20" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <a
+              href={pr.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-w-0 truncate text-xs font-medium text-white/60 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "color 0.15s ease" }}
+            >
+              {pr.title}
+            </a>
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              style={{ backgroundColor: style.bg, color: style.text }}
+            >
+              {pr.status}
             </span>
-          )}
-        </p>
+          </div>
+          {/* Meta line: author, repo, age */}
+          <p className="mt-1 text-[11px] text-white/25">
+            {pr.author}
+            <span className="text-white/12"> in </span>
+            <span className="text-white/20">{pr.repo}</span>
+            {pr.createdAt && (
+              <>
+                <span className="text-white/12"> · </span>
+                <span className="text-white/15">{relativeDate(pr.createdAt)}</span>
+              </>
+            )}
+          </p>
+        </div>
       </div>
+
+      {/* Stats row */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/25">
+        {/* Reviewers / approvals */}
+        {totalReviewers > 0 && (
+          <span className="flex items-center gap-1" title={pr.reviewers.map((r) => `${r.name}${r.approved ? " (approved)" : ""}`).join(", ")}>
+            {approvedCount === totalReviewers ? (
+              <CheckCircle2 size={11} strokeWidth={1.5} className="text-[#4aaa60]" />
+            ) : approvedCount > 0 ? (
+              <Circle size={11} strokeWidth={1.5} className="text-[#ea8744]" />
+            ) : (
+              <Circle size={11} strokeWidth={1.5} className="text-white/15" />
+            )}
+            <span>{approvedCount}/{totalReviewers}</span>
+          </span>
+        )}
+
+        {/* Diff stats */}
+        {pr.diffStats && (
+          <span className="flex items-center gap-1" title={`${pr.diffStats.filesChanged} files changed`}>
+            <FileCode2 size={11} strokeWidth={1.5} className="text-white/15" />
+            <span className="text-[#4aaa60]/70">+{pr.diffStats.linesAdded}</span>
+            <span className="text-[#e5534b]/60">-{pr.diffStats.linesRemoved}</span>
+            <span className="text-white/15">{pr.diffStats.filesChanged}f</span>
+          </span>
+        )}
+
+        {/* Comments */}
+        {pr.commentCount > 0 && (
+          <span className="flex items-center gap-1">
+            <MessageSquare size={11} strokeWidth={1.5} className="text-white/15" />
+            {pr.commentCount}
+          </span>
+        )}
+
+        {/* Tasks */}
+        {pr.taskCount > 0 && (
+          <span className="text-[#ea8744]/60">
+            {pr.taskCount} task{pr.taskCount > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {/* Build statuses */}
+      {pr.buildStatuses.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+          {pr.buildStatuses.map((b, i) => (
+            <a
+              key={`${b.name}-${i}`}
+              href={b.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[11px] text-white/25 cursor-pointer hover:text-white/40"
+              style={{ transition: "color 0.15s ease" }}
+              title={`${b.name}: ${b.state}`}
+            >
+              <BuildStateIcon state={b.state} />
+              <span className="max-w-[120px] truncate">{b.name}</span>
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* Branch flow */}
+      {pr.sourceBranch && pr.destBranch && (
+        <p className="mt-2 truncate text-[10px] font-mono text-white/12">
+          {pr.sourceBranch} <span className="text-white/08">-&gt;</span> {pr.destBranch}
+        </p>
+      )}
     </div>
   );
 }
@@ -151,15 +241,9 @@ function CommitSummary({ commits }: { commits: DevCommit[] }) {
 }
 
 function BuildItem({ build }: { build: DevBuild }) {
-  const stateIcon = build.state === "SUCCESSFUL"
-    ? <CheckCircle2 size={12} strokeWidth={1.5} className="text-[#4aaa60]" />
-    : build.state === "FAILED"
-    ? <XCircle size={12} strokeWidth={1.5} className="text-[#e5534b]" />
-    : <Loader2 size={12} strokeWidth={1.5} className="animate-spin text-[#ea8744]" />;
-
   return (
     <div className="group/item flex items-center gap-2 py-1.5">
-      {stateIcon}
+      <BuildStateIcon state={build.state} />
       <a
         href={build.url}
         target="_blank"
@@ -210,7 +294,6 @@ export function DevPanel({
   );
   const [expanded, setExpanded] = useState<boolean | null>(null);
 
-  // Auto-expand when data arrives, auto-collapse when empty
   const isExpanded = expanded ?? Boolean(hasData);
 
   const counts: string[] = [];
@@ -255,28 +338,35 @@ export function DevPanel({
           )}
 
           {hasData && (
-            <div className="divide-y divide-white/[0.04]">
+            <div className="space-y-2">
+              {/* Branches */}
               {data.branches.length > 0 && (
-                <div className="py-1">
+                <div className="divide-y divide-white/[0.04]">
                   {data.branches.map((b) => (
                     <BranchItem key={b.name} branch={b} />
                   ))}
                 </div>
               )}
+
+              {/* Pull Requests as cards */}
               {data.pullRequests.length > 0 && (
-                <div className="py-1">
+                <div className="space-y-2">
                   {data.pullRequests.map((pr) => (
-                    <PullRequestItem key={pr.id} pr={pr} />
+                    <PullRequestCard key={`${pr.repo}-${pr.id}`} pr={pr} />
                   ))}
                 </div>
               )}
+
+              {/* Commits */}
               {data.commits.length > 0 && (
-                <div className="py-1">
+                <div className="divide-y divide-white/[0.04]">
                   <CommitSummary commits={data.commits} />
                 </div>
               )}
+
+              {/* Standalone builds (from pipelines) */}
               {data.builds.length > 0 && (
-                <div className="py-1">
+                <div className="divide-y divide-white/[0.04]">
                   {data.builds.map((b, i) => (
                     <BuildItem key={`${b.name}-${i}`} build={b} />
                   ))}
