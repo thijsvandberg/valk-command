@@ -2,10 +2,20 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { registerIndependentTask } from "@/lib/task-registry";
 
 const LAST_RUN_KEY = "pipeline_sync:last_run";
 const LAST_RESULT_KEY = "pipeline_sync:last_result";
 const INTERVAL_MS = 5 * 60 * 1000;
+
+// Auto-register so System Tasks admin discovers this task
+registerIndependentTask({
+  name: "pipeline-sync",
+  label: "Bitbucket Pipeline Sync",
+  intervalMs: INTERVAL_MS,
+  lastRunKey: LAST_RUN_KEY,
+  lastResultKey: LAST_RESULT_KEY,
+});
 
 // Prevent concurrent execution
 let running = false;
@@ -75,20 +85,3 @@ export async function POST() {
   }
 }
 
-/**
- * GET /api/pipelines/tick
- *
- * Returns status of the pipeline sync task.
- */
-export async function GET() {
-  const lastRunRow = db.select().from(appSetting).where(eq(appSetting.key, LAST_RUN_KEY)).get();
-  const lastResultRow = db.select().from(appSetting).where(eq(appSetting.key, LAST_RESULT_KEY)).get();
-
-  return NextResponse.json({
-    name: "pipeline-sync",
-    label: "Bitbucket Pipeline Sync",
-    intervalMs: INTERVAL_MS,
-    lastRunAt: lastRunRow?.value ?? null,
-    lastResult: lastResultRow ? JSON.parse(lastResultRow.value) : null,
-  });
-}

@@ -93,25 +93,13 @@ export default function SchedulerPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = useCallback(() => {
-    Promise.all([
-      fetch("/api/scheduler/tick").then((r) => r.json()).catch(() => ({ tasks: [] })),
-      fetch("/api/pipelines/tick").then((r) => r.json()).catch(() => null),
-    ]).then(([schedulerData, pipelineData]) => {
-      const allTasks: TaskStatus[] = schedulerData.tasks ?? [];
-      // Merge pipeline tick status (independent lazy-cron)
-      if (pipelineData && pipelineData.name) {
-        allTasks.push({
-          name: pipelineData.name,
-          label: pipelineData.label,
-          intervalMs: pipelineData.intervalMs,
-          enabled: true,
-          lastRunAt: pipelineData.lastRunAt,
-          lastResult: pipelineData.lastResult,
-        });
-      }
-      setTasks(allTasks);
-      setLoading(false);
-    });
+    fetch("/api/scheduler/tick")
+      .then((r) => r.json())
+      .then((data: { tasks: TaskStatus[] }) => {
+        setTasks(data.tasks ?? []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   useEffect(() => {
