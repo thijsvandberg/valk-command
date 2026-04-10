@@ -775,11 +775,11 @@ function DeploySettingsPanel() {
                   <span className="ml-1.5 text-[10px] text-white/20">{enabledEnvCount}/{totalEnvCount}</span>
                 )}
               </span>
-              <span className={`relative h-[18px] w-[30px] rounded-full transition-colors duration-150 ${
+              <span className={`relative inline-flex items-center h-5 w-8 rounded-full transition-colors duration-150 ${
                 settings.enabled ? "bg-[var(--color-brand-500)]" : "bg-white/10"
               }`}>
-                <span className={`absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-150 ${
-                  settings.enabled ? "translate-x-[13px]" : "translate-x-[2px]"
+                <span className={`absolute h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-150 ${
+                  settings.enabled ? "translate-x-[14px]" : "translate-x-[3px]"
                 }`} />
               </span>
             </button>
