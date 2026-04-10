@@ -67,13 +67,14 @@ export async function POST() {
     let result = await syncPipelines();
     let rounds = 1;
 
-    while (result.remaining > 0 && rounds < 5) {
+    while ((result.remaining > 0 || result.backfilled > 0) && rounds < 5) {
       const more = await syncPipelines();
       result = {
         newRuns: result.newRuns + more.newRuns,
         updatedRuns: result.updatedRuns + more.updatedRuns,
         stateChanges: result.stateChanges + more.stateChanges,
         remaining: more.remaining,
+        backfilled: result.backfilled + more.backfilled,
       };
       rounds++;
     }

@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { pipelineRun, alert, followedTicket, ticketMetadata, appSetting } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 // -- Environment detection --
@@ -134,6 +134,96 @@ function setWatermark(value: string) {
   }
 }
 
+// -- Enrichment backfill for existing rows missing commit data --
+
+const BACKFILL_BATCH = 20;
+
+function fullRepoSlug(shortName: string): string {
+  return `valk-${shortName}`;
+}
+
+/**
+ * Picks up existing pipeline_run rows without a commit_message,
+ * fetches their commit from Bitbucket, and re-extracts ticket keys.
+ * Runs a small batch per sync call until all rows are enriched.
+ */
+export async function backfillEnrichment(): Promise<number> {
+  if (!isPipelineConfigured()) return 0;
+
+  const rows = db
+    .select()
+    .from(pipelineRun)
+    .where(isNull(pipelineRun.commitMessage))
+    .limit(BACKFILL_BATCH)
+    .all();
+
+  if (rows.length === 0) return 0;
+
+  // Fetch commits in parallel
+  const commitResults = await Promise.all(
+    rows.map((r) => {
+      // The pipeline URL contains the commit hash indirectly, but we need to
+      // fetch the pipeline to get the commit hash. Use the pipeline API instead.
+      const repoSlug = fullRepoSlug(r.repo);
+      return bbFetch<BbPipeline>(repoSlug, `/pipelines/${r.buildNumber}`);
+    }),
+  );
+
+  let enriched = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const pipeline = commitResults[i];
+    if (!pipeline) continue;
+
+    const commitHash = pipeline.target?.commit?.hash;
+    let commitMsg = pipeline.target?.commit?.message ?? null;
+
+    // If no inline message, fetch commit directly
+    if (!commitMsg && commitHash) {
+      const commitRes = await bbFetch<{ message?: string }>(fullRepoSlug(row.repo), `/commit/${commitHash}`);
+      commitMsg = commitRes?.message ?? null;
+    }
+
+    if (!commitMsg) {
+      // Mark as checked so we don't re-fetch (store empty string)
+      db.update(pipelineRun)
+        .set({ commitMessage: "" })
+        .where(eq(pipelineRun.id, row.id))
+        .run();
+      continue;
+    }
+
+    const firstLine = commitMsg.split("\n")[0].substring(0, 200);
+
+    // Re-extract ticket keys
+    const branchName = row.branchName ?? "";
+    let primaryKey = extractTicketKey(branchName);
+    const allKeys: string[] = [];
+    if (primaryKey) allKeys.push(primaryKey);
+    for (const k of extractAllTicketKeys(commitMsg)) {
+      if (!allKeys.includes(k)) allKeys.push(k);
+    }
+    if (!primaryKey && allKeys.length > 0) primaryKey = allKeys[0];
+
+    const mergeInfo = extractMergeInfo(commitMsg);
+
+    db.update(pipelineRun)
+      .set({
+        commitMessage: firstLine,
+        ...(primaryKey && !row.ticketKey ? { ticketKey: primaryKey } : {}),
+        ...(allKeys.length > 1 ? { ticketKeys: JSON.stringify(allKeys) } : {}),
+        ...(mergeInfo.sourceBranch ? { sourceBranch: mergeInfo.sourceBranch } : {}),
+      })
+      .where(eq(pipelineRun.id, row.id))
+      .run();
+    enriched++;
+  }
+
+  console.log(`[pipeline-sync] backfill: enriched ${enriched}/${rows.length} rows`);
+  return rows.length; // Return batch size so caller knows there might be more
+}
+
 // -- Main sync --
 
 export interface SyncResult {
@@ -141,6 +231,7 @@ export interface SyncResult {
   updatedRuns: number;
   stateChanges: number;
   remaining: number;
+  backfilled: number;
 }
 
 /**
@@ -152,7 +243,7 @@ export interface SyncResult {
  */
 export async function syncPipelines(): Promise<SyncResult> {
   if (!isPipelineConfigured()) {
-    return { newRuns: 0, updatedRuns: 0, stateChanges: 0, remaining: 0 };
+    return { newRuns: 0, updatedRuns: 0, stateChanges: 0, remaining: 0, backfilled: 0 };
   }
 
   const cfg = getBitbucketConfig();
@@ -224,7 +315,8 @@ export async function syncPipelines(): Promise<SyncResult> {
 
   if (allNew.length === 0) {
     processStateChanges(stateChanges);
-    return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: 0 };
+    const backfilled = await backfillEnrichment();
+    return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: 0, backfilled };
   }
 
   // Batch commit lookups for new pipelines
@@ -359,7 +451,10 @@ export async function syncPipelines(): Promise<SyncResult> {
 
   processStateChanges(stateChanges);
 
-  return { newRuns, updatedRuns, stateChanges: stateChanges.length, remaining: totalRemaining };
+  // Run enrichment backfill for existing rows missing commit data
+  const backfilled = await backfillEnrichment();
+
+  return { newRuns, updatedRuns, stateChanges: stateChanges.length, remaining: totalRemaining, backfilled };
 }
 
 // -- State change processing --
