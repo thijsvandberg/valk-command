@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import {
   GitBranch,
@@ -17,10 +17,13 @@ import {
   TrendingUp,
   Activity,
   ChevronDown,
+  ChevronUp,
   Bell,
   Settings,
   Pause,
   User,
+  Calendar,
+  Search,
 } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Card } from "@/components/shared/Card";
@@ -432,9 +435,209 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
   );
 }
 
+// -- Status Filter --
+
+type StatusFilterValue = "all" | "failed" | "successful" | "running" | "deployments";
+
+function StatusFilter({
+  selected,
+  onSelect,
+}: {
+  selected: StatusFilterValue;
+  onSelect: (v: StatusFilterValue) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const options: { value: StatusFilterValue; label: string }[] = [
+    { value: "all", label: "All statuses" },
+    { value: "failed", label: "Failed only" },
+    { value: "successful", label: "Passed only" },
+    { value: "running", label: "Running only" },
+    { value: "deployments", label: "Deployments only" },
+  ];
+
+  const current = options.find((o) => o.value === selected) ?? options[0];
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<Filter size={12} strokeWidth={1.5} />}
+        onClick={() => setOpen(!open)}
+        className={selected !== "all" ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
+      >
+        {current.label}
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+      </Button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onSelect(opt.value); setOpen(false); }}
+                className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// -- Date Range Filter --
+
+type DateRangeValue = "all" | "today" | "week" | "month";
+
+function DateRangeFilter({
+  selected,
+  onSelect,
+}: {
+  selected: DateRangeValue;
+  onSelect: (v: DateRangeValue) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const options: { value: DateRangeValue; label: string }[] = [
+    { value: "all", label: "All time" },
+    { value: "today", label: "Today" },
+    { value: "week", label: "This week" },
+    { value: "month", label: "This month" },
+  ];
+
+  const current = options.find((o) => o.value === selected) ?? options[0];
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<Calendar size={12} strokeWidth={1.5} />}
+        onClick={() => setOpen(!open)}
+        className={selected !== "all" ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
+      >
+        {current.label}
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+      </Button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onSelect(opt.value); setOpen(false); }}
+                className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// -- Creator Filter --
+
+function CreatorFilter({
+  creators,
+  selected,
+  onSelect,
+}: {
+  creators: string[];
+  selected: string | null;
+  onSelect: (name: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  if (creators.length === 0) return null;
+
+  const filtered = search
+    ? creators.filter((c) => c.toLowerCase().includes(search.toLowerCase()))
+    : creators;
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<User size={12} strokeWidth={1.5} />}
+        onClick={() => setOpen(!open)}
+        className={selected ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
+      >
+        {selected ?? "Creator"}
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+      </Button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] max-h-[280px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+            {creators.length > 5 && (
+              <div className="px-2 py-2 border-b border-white/[0.06]">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
+                  <Search size={11} strokeWidth={1.5} className="text-white/20" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search..."
+                    autoFocus
+                    className="flex-1 bg-transparent text-[12px] text-white/60 placeholder:text-white/20 outline-none"
+                  />
+                </div>
+              </div>
+            )}
+            <div className="overflow-y-auto max-h-[220px] py-1">
+              <button
+                type="button"
+                onClick={() => { onSelect(null); setOpen(false); setSearch(""); }}
+                className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                  !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                }`}
+              >
+                All creators
+              </button>
+              {filtered.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => { onSelect(name); setOpen(false); setSearch(""); }}
+                  className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                    selected === name ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // -- Deployment Timeline --
 
 function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
+  const [collapsed, setCollapsed] = useState(false);
   const deployments = runs.filter((r) => r.isDeployment && r.state !== "IN_PROGRESS");
   if (deployments.length === 0) return null;
 
@@ -452,45 +655,59 @@ function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
+      <button
+        type="button"
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex items-center gap-2 mb-3 cursor-pointer group"
+      >
         <Rocket size={14} strokeWidth={1.5} className="text-violet-400/60" />
-        <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+        <span className="text-xs font-medium text-white/50 uppercase tracking-wider group-hover:text-white/70 transition-colors duration-150">
           Deployment Timeline
         </span>
-      </div>
-      <div className="space-y-4">
-        {Array.from(byDate.entries()).map(([date, deploys]) => (
-          <div key={date}>
-            <span className="text-[11px] font-medium text-white/25 uppercase tracking-wider">{date}</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {deploys.map((d) => (
-                <div
-                  key={d.id}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${
-                    d.state === "SUCCESSFUL"
-                      ? "border-emerald-500/15 bg-emerald-500/[0.04]"
-                      : d.state === "FAILED"
-                      ? "border-red-500/15 bg-red-500/[0.04]"
-                      : "border-white/[0.06] bg-white/[0.02]"
-                  }`}
-                >
-                  {stateIcon(d.state, 12)}
-                  <span className="font-medium text-white/60">{d.environment}</span>
-                  {d.ticketKey && (
-                    <Link
-                      href={`/tickets/${d.ticketKey}`}
-                      className="font-mono text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
-                    >
-                      {d.ticketKey}
-                    </Link>
-                  )}
-                  <span className="text-[10px] text-white/20">{d.repo}</span>
-                </div>
-              ))}
+        <span className="rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/60 tabular-nums">
+          {deployments.length}
+        </span>
+        {collapsed ? (
+          <ChevronDown size={12} strokeWidth={1.5} className="text-white/20" />
+        ) : (
+          <ChevronUp size={12} strokeWidth={1.5} className="text-white/20" />
+        )}
+      </button>
+      {!collapsed && (
+        <div className="space-y-4">
+          {Array.from(byDate.entries()).map(([date, deploys]) => (
+            <div key={date}>
+              <span className="text-[11px] font-medium text-white/25 uppercase tracking-wider">{date}</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {deploys.map((d) => (
+                  <div
+                    key={d.id}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${
+                      d.state === "SUCCESSFUL"
+                        ? "border-emerald-500/15 bg-emerald-500/[0.04]"
+                        : d.state === "FAILED"
+                        ? "border-red-500/15 bg-red-500/[0.04]"
+                        : "border-white/[0.06] bg-white/[0.02]"
+                    }`}
+                  >
+                    {stateIcon(d.state, 12)}
+                    <span className="font-medium text-white/60">{d.environment}</span>
+                    {d.ticketKey && (
+                      <Link
+                        href={`/tickets/${d.ticketKey}`}
+                        className="font-mono text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                      >
+                        {d.ticketKey}
+                      </Link>
+                    )}
+                    <span className="text-[10px] text-white/20">{d.repo}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -916,10 +1133,38 @@ function GroupedByTicketView({
 
 // -- Main Page --
 
+const PAGE_SIZE = 50;
+
+function getDateCutoff(range: DateRangeValue): Date | null {
+  if (range === "all") return null;
+  const now = new Date();
+  if (range === "today") {
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }
+  if (range === "week") {
+    const day = now.getDay();
+    const diff = day === 0 ? 6 : day - 1; // Monday-based week
+    now.setDate(now.getDate() - diff);
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }
+  if (range === "month") {
+    now.setDate(1);
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }
+  return null;
+}
+
 export default function PipelinesPage() {
   const [repoFilter, setRepoFilter] = useState<string | null>(null);
   const [sprintFilter, setSprintFilter] = useState<string | null>(null);
   const [sprintAutoSelected, setSprintAutoSelected] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
+  const [dateRange, setDateRange] = useState<DateRangeValue>("all");
+  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: sprints } = useJiraSprints();
@@ -946,7 +1191,7 @@ export default function PipelinesPage() {
   }, [sprintTickets]);
 
   const { runs, hasRunning, syncing, isLoading, refresh } = usePipelines({
-    limit: 100,
+    limit: 200,
     sprintTickets: sprintTicketKeys,
   });
 
@@ -955,10 +1200,38 @@ export default function PipelinesPage() {
     return Array.from(set).sort();
   }, [runs]);
 
-  // All components use the filtered set so metrics reflect active filters
+  const creators = useMemo(() => {
+    const set = new Set(runs.map((r) => r.creator).filter(Boolean) as string[]);
+    return Array.from(set).sort();
+  }, [runs]);
+
+  // Apply all filters: repo, status, date range, creator
   const filteredRuns = useMemo(() => {
-    return repoFilter ? runs.filter((r) => r.repo === repoFilter) : runs;
-  }, [runs, repoFilter]);
+    let result = runs;
+
+    if (repoFilter) result = result.filter((r) => r.repo === repoFilter);
+
+    if (statusFilter !== "all") {
+      if (statusFilter === "failed") result = result.filter((r) => r.state === "FAILED");
+      else if (statusFilter === "successful") result = result.filter((r) => r.state === "SUCCESSFUL");
+      else if (statusFilter === "running") result = result.filter((r) => r.state === "IN_PROGRESS" || r.state === "PAUSED");
+      else if (statusFilter === "deployments") result = result.filter((r) => r.isDeployment);
+    }
+
+    const cutoff = getDateCutoff(dateRange);
+    if (cutoff) result = result.filter((r) => new Date(r.createdAt) >= cutoff);
+
+    if (creatorFilter) result = result.filter((r) => r.creator === creatorFilter);
+
+    return result;
+  }, [runs, repoFilter, statusFilter, dateRange, creatorFilter]);
+
+  // Pagination: slice for display
+  const paginatedRuns = useMemo(() => filteredRuns.slice(0, visibleCount), [filteredRuns, visibleCount]);
+  const hasMore = filteredRuns.length > visibleCount;
+
+  // Reset pagination when filters change
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [repoFilter, statusFilter, dateRange, creatorFilter, sprintFilter]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -968,6 +1241,50 @@ export default function PipelinesPage() {
       setRefreshing(false);
     }
   }
+
+  // Keyboard shortcuts
+  const handleKeyboard = useCallback((e: KeyboardEvent) => {
+    // Don't trigger when typing in inputs
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+    if (e.key === "r" && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      handleRefresh();
+    }
+    if (e.key === "f" && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      setStatusFilter((prev) => {
+        const order: StatusFilterValue[] = ["all", "failed", "successful", "running", "deployments"];
+        const idx = order.indexOf(prev);
+        return order[(idx + 1) % order.length];
+      });
+    }
+    if (e.key === "s" && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      if (sprints) {
+        const activeSprints = sprints.filter((s) => s.state === "active" || s.state === "future").slice(0, 5);
+        if (sprintFilter) {
+          setSprintFilter(null);
+        } else if (activeSprints.length > 0) {
+          const active = activeSprints.find((s) => s.state === "active");
+          setSprintFilter(String((active ?? activeSprints[0]).id));
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprints, sprintFilter]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, [handleKeyboard]);
+
+  const activeFilterCount = [
+    statusFilter !== "all",
+    dateRange !== "all",
+    creatorFilter !== null,
+    repoFilter !== null,
+  ].filter(Boolean).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -983,6 +1300,9 @@ export default function PipelinesPage() {
             )}
             {sprints && <SprintFilter sprints={sprints} selected={sprintFilter} onSelect={setSprintFilter} />}
             <RepoFilter repos={repos} selected={repoFilter} onSelect={setRepoFilter} />
+            <StatusFilter selected={statusFilter} onSelect={setStatusFilter} />
+            <DateRangeFilter selected={dateRange} onSelect={setDateRange} />
+            <CreatorFilter creators={creators} selected={creatorFilter} onSelect={setCreatorFilter} />
             <DeploySettingsPanel />
             <Button
               variant="ghost"
@@ -991,7 +1311,7 @@ export default function PipelinesPage() {
               icon={<RefreshCw size={13} strokeWidth={1.5} className={refreshing ? "animate-spin" : ""} />}
               onClick={handleRefresh}
               disabled={refreshing}
-              title="Refresh pipelines"
+              title="Refresh pipelines (R)"
             />
           </div>
         }
@@ -1000,6 +1320,11 @@ export default function PipelinesPage() {
         {hasRunning && (
           <span className="ml-2 rounded-md bg-[var(--color-brand-500)]/15 px-2 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
             Polling every 30s
+          </span>
+        )}
+        {activeFilterCount > 0 && (
+          <span className="ml-2 rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/35">
+            {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active
           </span>
         )}
       </ViewHeader>
@@ -1014,18 +1339,38 @@ export default function PipelinesPage() {
               {sprintFilter ? (
                 <>
                   <SprintPipelineSummary runs={filteredRuns} />
-                  <RunningSection runs={filteredRuns} />
-                  <DeploymentTimeline runs={filteredRuns} />
-                  <GroupedByTicketView runs={filteredRuns} ticketTitleMap={ticketTitleMap} />
+                  <RunningSection runs={paginatedRuns} />
+                  <DeploymentTimeline runs={paginatedRuns} />
+                  <GroupedByTicketView runs={paginatedRuns} ticketTitleMap={ticketTitleMap} />
                 </>
               ) : (
                 <>
                   <PipelineMetrics runs={filteredRuns} />
-                  <RunningSection runs={filteredRuns} />
-                  <DeploymentTimeline runs={filteredRuns} />
-                  <PipelineTable runs={filteredRuns} repoFilter={null} ticketTitleMap={ticketTitleMap} />
+                  <RunningSection runs={paginatedRuns} />
+                  <DeploymentTimeline runs={paginatedRuns} />
+                  <PipelineTable runs={paginatedRuns} repoFilter={null} ticketTitleMap={ticketTitleMap} />
                 </>
               )}
+
+              {/* Pagination: show more */}
+              {hasMore && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                  >
+                    Show more ({filteredRuns.length - visibleCount} remaining)
+                  </Button>
+                </div>
+              )}
+
+              {/* Keyboard shortcuts hint */}
+              <div className="mt-6 flex items-center justify-center gap-4 text-[10px] text-white/15">
+                <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">R</kbd> Refresh</span>
+                <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">F</kbd> Cycle status filter</span>
+                <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">S</kbd> Toggle sprint</span>
+              </div>
             </>
           )}
         </div>

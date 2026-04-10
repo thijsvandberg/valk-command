@@ -36,12 +36,12 @@ As the PO, I want the pipeline feed to be more deeply integrated with ticket dev
 - [x] Show ticket title alongside ticket key in pipeline rows
 
 ### Phase 4: Pipeline feed UX improvements
-- [ ] Pagination or virtual scrolling for large pipeline lists (currently limited to 100)
-- [ ] Date range filter (today, this week, this sprint, custom)
-- [ ] Status filter (show only failed, only deployments, etc.)
-- [ ] Search/filter by creator name
-- [ ] Collapsible deployment timeline section
-- [ ] Keyboard shortcuts for navigation and filtering
+- [x] Pagination or virtual scrolling for large pipeline lists (currently limited to 100)
+- [x] Date range filter (today, this week, this sprint, custom)
+- [x] Status filter (show only failed, only deployments, etc.)
+- [x] Search/filter by creator name
+- [x] Collapsible deployment timeline section
+- [x] Keyboard shortcuts for navigation and filtering
 
 ### Phase 5: Pipeline-to-ticket sync
 - [ ] When a pipeline completes for a followed ticket, update the ticket's test status in PO metadata
