@@ -62,12 +62,12 @@ export async function POST() {
     }
 
     // Import and run sync directly (no HTTP self-call)
+    // Same pattern as Jira: sync one batch, if remaining > 0, repeat (max 5 rounds)
     const { syncPipelines } = await import("@/lib/pipeline-sync");
     let result = await syncPipelines();
+    let rounds = 1;
 
-    // If there's remaining data (backfill in progress), keep syncing up to 3 extra rounds
-    let extraRounds = 0;
-    while (result.remaining && extraRounds < 3) {
+    while (result.remaining > 0 && rounds < 5) {
       const more = await syncPipelines();
       result = {
         newRuns: result.newRuns + more.newRuns,
@@ -75,7 +75,7 @@ export async function POST() {
         stateChanges: result.stateChanges + more.stateChanges,
         remaining: more.remaining,
       };
-      extraRounds++;
+      rounds++;
     }
 
     // Store result
