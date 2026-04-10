@@ -48,14 +48,25 @@ export interface DevBuild {
   completedAt: string | null;
 }
 
+export interface DevDeployment {
+  environment: string;
+  environmentType: "Production" | "Staging" | "Test";
+  pipelineName: string;
+  pipelineUrl: string;
+  state: DevBuild["state"];
+  completedAt: string | null;
+  repo: string;
+}
+
 export interface DevInfoPayload {
   branches: DevBranch[];
   pullRequests: DevPullRequest[];
   commits: DevCommit[];
   builds: DevBuild[];
+  deployments: DevDeployment[];
 }
 
-const EMPTY: DevInfoPayload = { branches: [], pullRequests: [], commits: [], builds: [] };
+const EMPTY: DevInfoPayload = { branches: [], pullRequests: [], commits: [], builds: [], deployments: [] };
 
 function getBitbucketConfig() {
   const repoSlugs = env.BITBUCKET_REPO_SLUG
@@ -105,10 +116,18 @@ interface BbPullRequest {
   participants?: BbParticipant[];
   source?: { branch?: { name: string }; commit?: { hash: string } };
   destination?: { branch?: { name: string } };
+  merge_commit?: { hash: string };
   comment_count?: number;
   task_count?: number;
   created_on?: string;
   updated_on?: string;
+}
+
+interface BbPipelineStep {
+  uuid: string;
+  name: string;
+  state?: { name: string; result?: { name: string } };
+  completed_on?: string;
 }
 
 interface BbDiffstatEntry {
@@ -193,6 +212,33 @@ function normalisePipelineState(pipeline: BbPipeline): DevBuild["state"] {
 
 function shortRepoName(slug: string): string {
   return slug.replace(/^valk-/, "");
+}
+
+const ENV_PATTERNS: Array<{ pattern: RegExp; environment: string; type: DevDeployment["environmentType"] }> = [
+  { pattern: /prod(uction)?/i, environment: "Production", type: "Production" },
+  { pattern: /uat\s*3/i, environment: "UAT3", type: "Staging" },
+  { pattern: /uat\s*2/i, environment: "UAT2", type: "Staging" },
+  { pattern: /uat\s*1/i, environment: "UAT1", type: "Staging" },
+  { pattern: /staging/i, environment: "Staging", type: "Staging" },
+  { pattern: /test/i, environment: "Test", type: "Test" },
+];
+
+function detectEnvironment(stepName: string): { environment: string; type: DevDeployment["environmentType"] } | null {
+  for (const ep of ENV_PATTERNS) {
+    if (ep.pattern.test(stepName)) return { environment: ep.environment, type: ep.type };
+  }
+  return null;
+}
+
+function normalisePipelineStepState(step: BbPipelineStep): DevBuild["state"] {
+  const stateName = step.state?.name?.toUpperCase() ?? "";
+  const resultName = step.state?.result?.name?.toUpperCase() ?? "";
+  if (stateName === "COMPLETED") {
+    if (resultName === "SUCCESSFUL") return "SUCCESSFUL";
+    if (resultName === "FAILED" || resultName === "ERROR") return "FAILED";
+    if (resultName === "STOPPED") return "STOPPED";
+  }
+  return "IN_PROGRESS";
 }
 
 export async function GET(
@@ -323,7 +369,60 @@ export async function GET(
       }),
     );
 
-    // Phase 3: Fetch pipelines for matched branches
+    // Phase 3: Fetch deployments for merged PRs via merge commit pipeline steps
+    const deployments: DevDeployment[] = [];
+    const mergedPrs = prEnrichmentTasks.filter(({ pr }) => pr.state?.toUpperCase() === "MERGED" && pr.merge_commit?.hash);
+
+    if (mergedPrs.length > 0) {
+      const deployResults = await Promise.all(
+        mergedPrs.map(async ({ repo, pr }) => {
+          const mergeHash = pr.merge_commit!.hash;
+
+          // Get build statuses for the merge commit to find the pipeline URL/number
+          const statusRes = await bbFetch<BbPaginatedResponse<BbCommitStatus>>(repo, `/commit/${mergeHash}/statuses`);
+          const pipelineStatus = (statusRes?.values ?? []).find((s) => s.name.toLowerCase().includes("pipeline"));
+          if (!pipelineStatus?.url) return [];
+
+          // Extract pipeline number from URL (e.g. .../pipelines/results/24407)
+          const pipelineMatch = pipelineStatus.url.match(/results\/(\d+)/);
+          if (!pipelineMatch) return [];
+          const pipelineNumber = pipelineMatch[1];
+
+          // Fetch pipeline steps
+          const stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repo, `/pipelines/${pipelineNumber}/steps?pagelen=25`);
+
+          const result: DevDeployment[] = [];
+          let detectedEnv: { environment: string; type: DevDeployment["environmentType"] } | null = null;
+
+          for (const step of stepsRes?.values ?? []) {
+            // Step names like "Set build vars to UAT 1" indicate the target environment
+            const envFromStep = detectEnvironment(step.name);
+            if (envFromStep) detectedEnv = envFromStep;
+
+            // "AWS Deployment" or similar is the actual deployment step
+            if (step.name.toLowerCase().includes("deploy") && !step.name.toLowerCase().includes("set build") && detectedEnv) {
+              result.push({
+                environment: detectedEnv.environment,
+                environmentType: detectedEnv.type,
+                pipelineName: `${shortRepoName(repo)}: #${pipelineNumber}`,
+                pipelineUrl: pipelineStatus.url,
+                state: normalisePipelineStepState(step),
+                completedAt: step.completed_on ?? null,
+                repo: shortRepoName(repo),
+              });
+            }
+          }
+
+          return result;
+        }),
+      );
+
+      for (const result of deployResults) {
+        deployments.push(...result);
+      }
+    }
+
+    // Phase 4: Fetch pipelines for matched branches
     const builds: DevBuild[] = [];
     const seenRepos = new Set<string>();
     for (const entry of allBranchEntries) {
@@ -344,7 +443,7 @@ export async function GET(
       }
     }
 
-    const payload: DevInfoPayload = { branches, pullRequests, commits, builds };
+    const payload: DevInfoPayload = { branches, pullRequests, commits, builds, deployments };
     cache.set(cacheKey, payload, 120_000);
     return NextResponse.json(payload, {
       headers: { "X-Cache": "MISS", "Cache-Control": "private, max-age=10, stale-while-revalidate=20" },
