@@ -66,6 +66,7 @@ interface BbPipeline {
     ref_name?: string;
     ref_type?: string;
     selector?: { type: string };
+    commit?: { hash?: string; message?: string };
   };
   links?: { html?: { href: string } };
 }
@@ -148,7 +149,9 @@ export async function syncPipelines(): Promise<SyncResult> {
       const id = `${repoSlug}:${p.build_number}`;
       const state = normalisePipelineState(p);
       const branchName = p.target?.ref_name ?? "";
-      const ticketKey = extractTicketKey(branchName);
+      const commitMessage = p.target?.commit?.message ?? "";
+      // Try branch name first, then fall back to commit message (catches merge commits)
+      const ticketKey = extractTicketKey(branchName) ?? extractTicketKey(commitMessage);
       const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
       const pipelineUrl = p.links?.html?.href
         || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
