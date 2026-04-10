@@ -74,6 +74,17 @@ function formatResult(task: TaskStatus): { text: string; isError: boolean } | nu
     return { text: `${r.deleted} ticket${r.deleted === 1 ? "" : "s"} removed`, isError: false };
   }
 
+  // Pipeline sync result
+  if ("newRuns" in r && typeof r.newRuns === "number") {
+    if (r.newRuns === 0 && r.updatedRuns === 0) {
+      return { text: "All pipelines up to date", isError: false };
+    }
+    const parts: string[] = [];
+    if (typeof r.newRuns === "number" && r.newRuns > 0) parts.push(`${r.newRuns} new`);
+    if (typeof r.updatedRuns === "number" && (r.updatedRuns as number) > 0) parts.push(`${r.updatedRuns} updated`);
+    return { text: parts.join(", "), isError: false };
+  }
+
   return null;
 }
 
@@ -82,13 +93,25 @@ export default function SchedulerPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = useCallback(() => {
-    fetch("/api/scheduler/tick")
-      .then((r) => r.json())
-      .then((data: { tasks: TaskStatus[] }) => {
-        setTasks(data.tasks ?? []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("/api/scheduler/tick").then((r) => r.json()).catch(() => ({ tasks: [] })),
+      fetch("/api/pipelines/tick").then((r) => r.json()).catch(() => null),
+    ]).then(([schedulerData, pipelineData]) => {
+      const allTasks: TaskStatus[] = schedulerData.tasks ?? [];
+      // Merge pipeline tick status (independent lazy-cron)
+      if (pipelineData && pipelineData.name) {
+        allTasks.push({
+          name: pipelineData.name,
+          label: pipelineData.label,
+          intervalMs: pipelineData.intervalMs,
+          enabled: true,
+          lastRunAt: pipelineData.lastRunAt,
+          lastResult: pipelineData.lastResult,
+        });
+      }
+      setTasks(allTasks);
+      setLoading(false);
+    });
   }, []);
 
   useEffect(() => {
