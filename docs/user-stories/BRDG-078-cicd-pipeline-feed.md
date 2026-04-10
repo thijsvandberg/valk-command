@@ -1,6 +1,6 @@
 # BRDG-078: CI/CD Pipeline Feed
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description

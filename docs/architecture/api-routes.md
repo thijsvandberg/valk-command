@@ -131,6 +131,23 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/sprint-slots` | GET | Get sprint slot assignments |
 | `/api/sprint-slots` | POST | Save sprint slot assignments |
 
+## Pipelines (BRDG-078)
+
+CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracking.
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/pipelines` | GET | List pipeline runs. `?repo=X&ticketKey=X&sprintTickets=X,Y&limit=N` |
+| `/api/pipelines` | POST | Force refresh from Bitbucket |
+| `/api/pipelines/last-deployed` | GET | Last deployment per ticket key |
+| `/api/pipelines/deploy-settings` | GET | Get deploy notification settings |
+| `/api/pipelines/deploy-settings` | PUT | Update deploy notification settings |
+| `/api/followed-tickets` | GET | List followed ticket keys |
+| `/api/followed-tickets` | POST | Follow a ticket. Body: `{ ticketKey }` |
+| `/api/followed-tickets` | DELETE | Unfollow. `?ticketKey=X` |
+| `/api/notifications` | GET | List notifications. `?unread=true&limit=N` |
+| `/api/notifications` | PATCH | Mark read. Body: `{ id }` or `{ markAll: true }` |
+
 ## Attachments
 
 | Route | Method | Purpose |

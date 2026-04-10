@@ -51,6 +51,7 @@ describe("Sidebar", () => {
       "/chat",
       "/sprint-board",
       "/story-writer",
+      "/pipelines",
       "/test-center",
       "/refinement",
       "/stakeholder",
