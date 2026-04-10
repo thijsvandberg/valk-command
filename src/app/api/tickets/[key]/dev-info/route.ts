@@ -41,9 +41,13 @@ export interface DevInfoPayload {
 const EMPTY: DevInfoPayload = { branches: [], pullRequests: [], commits: [], builds: [] };
 
 function getBitbucketConfig() {
+  const repoSlugs = (process.env.BITBUCKET_REPO_SLUG ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   return {
     workspace: process.env.BITBUCKET_WORKSPACE ?? "",
-    repoSlug: process.env.BITBUCKET_REPO_SLUG ?? "",
+    repoSlugs,
     email: process.env.BITBUCKET_EMAIL ?? process.env.JIRA_EMAIL ?? "",
     token: process.env.BITBUCKET_APP_PASSWORD ?? process.env.BITBUCKET_API_TOKEN ?? "",
   };
@@ -51,7 +55,7 @@ function getBitbucketConfig() {
 
 function isConfigured() {
   const cfg = getBitbucketConfig();
-  return Boolean(cfg.workspace && cfg.repoSlug && cfg.email && cfg.token);
+  return Boolean(cfg.workspace && cfg.repoSlugs.length > 0 && cfg.email && cfg.token);
 }
 
 // Bitbucket Cloud API v2 types (subset)
@@ -90,10 +94,10 @@ interface BbPaginatedResponse<T> {
   next?: string;
 }
 
-async function bbFetch<T>(path: string): Promise<T | null> {
+async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
   const cfg = getBitbucketConfig();
   const auth = Buffer.from(`${cfg.email}:${cfg.token}`).toString("base64");
-  const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${cfg.repoSlug}${path}`;
+  const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
 
   const res = await fetch(url, {
     headers: {
@@ -144,69 +148,83 @@ export async function GET(
   }
 
   try {
-    // Search Bitbucket for branches and PRs containing the ticket key
-    const encodedKey = encodeURIComponent(key);
+    const cfg = getBitbucketConfig();
     const branchQuery = encodeURIComponent(`name ~ "${key}"`);
     const prQuery = encodeURIComponent(`title ~ "${key}"`);
 
-    const [branchRes, prRes] = await Promise.all([
-      bbFetch<BbPaginatedResponse<BbBranch>>(
-        `/refs/branches?q=${branchQuery}&pagelen=10`,
-      ),
-      bbFetch<BbPaginatedResponse<BbPullRequest>>(
-        `/pullrequests?q=${prQuery}&state=OPEN&state=MERGED&state=DECLINED&pagelen=10`,
-      ),
-    ]);
+    // Query all configured repos in parallel
+    const repoResults = await Promise.all(
+      cfg.repoSlugs.map(async (repo) => {
+        const [branchRes, prRes] = await Promise.all([
+          bbFetch<BbPaginatedResponse<BbBranch>>(repo, `/refs/branches?q=${branchQuery}&pagelen=10`),
+          bbFetch<BbPaginatedResponse<BbPullRequest>>(repo, `/pullrequests?q=${prQuery}&state=OPEN&state=MERGED&state=DECLINED&pagelen=10`),
+        ]);
+        return { repo, branchRes, prRes };
+      }),
+    );
 
-    const branches: DevBranch[] = (branchRes?.values ?? []).map((b) => ({
-      name: b.name,
-      url: b.links?.html?.href ?? "",
-      lastCommit: b.target
-        ? {
+    const branches: DevBranch[] = [];
+    const pullRequests: DevPullRequest[] = [];
+    const commits: DevCommit[] = [];
+    const allBranchEntries: Array<{ repo: string; name: string }> = [];
+
+    for (const { repo, branchRes, prRes } of repoResults) {
+      for (const b of branchRes?.values ?? []) {
+        branches.push({
+          name: b.name,
+          url: b.links?.html?.href ?? "",
+          lastCommit: b.target
+            ? {
+                id: b.target.hash.slice(0, 12),
+                message: b.target.message?.split("\n")[0] ?? "",
+                date: b.target.date,
+                author: extractAuthor(b.target.author?.raw, b.target.author?.user),
+              }
+            : null,
+        });
+        if (b.target) {
+          commits.push({
             id: b.target.hash.slice(0, 12),
             message: b.target.message?.split("\n")[0] ?? "",
             date: b.target.date,
             author: extractAuthor(b.target.author?.raw, b.target.author?.user),
-          }
-        : null,
-    }));
+            url: b.target.links?.html?.href ?? "",
+          });
+        }
+        allBranchEntries.push({ repo, name: b.name });
+      }
 
-    const pullRequests: DevPullRequest[] = (prRes?.values ?? []).map((pr) => ({
-      id: String(pr.id),
-      title: pr.title,
-      url: pr.links?.html?.href ?? "",
-      status: normalisePrStatus(pr.state),
-      author: pr.author?.display_name ?? "Unknown",
-      reviewers: (pr.reviewers ?? []).map((r) => r.display_name),
-    }));
+      for (const pr of prRes?.values ?? []) {
+        pullRequests.push({
+          id: String(pr.id),
+          title: pr.title,
+          url: pr.links?.html?.href ?? "",
+          status: normalisePrStatus(pr.state),
+          author: pr.author?.display_name ?? "Unknown",
+          reviewers: (pr.reviewers ?? []).map((r) => r.display_name),
+        });
+      }
+    }
 
-    // Collect commits from branches (latest commit per branch, already in branch data)
-    const commits: DevCommit[] = (branchRes?.values ?? [])
-      .filter((b) => b.target)
-      .map((b) => ({
-        id: b.target!.hash.slice(0, 12),
-        message: b.target!.message?.split("\n")[0] ?? "",
-        date: b.target!.date,
-        author: extractAuthor(b.target!.author?.raw, b.target!.author?.user),
-        url: b.target!.links?.html?.href ?? "",
-      }));
-
-    // Fetch pipelines for matched branches
-    let builds: DevBuild[] = [];
-    const branchNames = branches.map((b) => b.name);
-    if (branchNames.length > 0) {
-      const pipelineQuery = encodeURIComponent(
-        `target.ref_name="${branchNames[0]}"`,
-      );
+    // Fetch pipelines for matched branches (first branch per repo)
+    const builds: DevBuild[] = [];
+    const seenRepos = new Set<string>();
+    for (const entry of allBranchEntries) {
+      if (seenRepos.has(entry.repo)) continue;
+      seenRepos.add(entry.repo);
+      const pipelineQuery = encodeURIComponent(`target.ref_name="${entry.name}"`);
       const pipelineRes = await bbFetch<BbPaginatedResponse<BbPipeline>>(
+        entry.repo,
         `/pipelines?q=${pipelineQuery}&sort=-created_on&pagelen=5`,
       );
-      builds = (pipelineRes?.values ?? []).map((p) => ({
-        name: `Pipeline #${p.build_number}`,
-        url: p.links?.html?.href ?? "",
-        state: normalisePipelineState(p),
-        completedAt: p.completed_on ?? null,
-      }));
+      for (const p of pipelineRes?.values ?? []) {
+        builds.push({
+          name: `Pipeline #${p.build_number}`,
+          url: p.links?.html?.href ?? "",
+          state: normalisePipelineState(p),
+          completedAt: p.completed_on ?? null,
+        });
+      }
     }
 
     const payload: DevInfoPayload = { branches, pullRequests, commits, builds };
