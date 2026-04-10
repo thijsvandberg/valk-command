@@ -42,6 +42,7 @@ interface ActionResult {
   category: "action";
   id: string;
   label: string;
+  aliases: string[];
   execute: () => void | Promise<void>;
 }
 
@@ -152,6 +153,7 @@ export function CommandPalette() {
       category: "action",
       id: "action-search-tickets",
       label: "Search Tickets",
+      aliases: ["s", "find", "lookup"],
       execute: () => {
         window.dispatchEvent(new Event("valk:openGlobalSearch"));
       },
@@ -160,6 +162,7 @@ export function CommandPalette() {
       category: "action",
       id: "action-sync-jira",
       label: "Sync Jira",
+      aliases: ["refresh", "pull", "update"],
       execute: async () => {
         await fetch("/api/jira/sync-tickets", { method: "POST" });
       },
@@ -168,6 +171,7 @@ export function CommandPalette() {
       category: "action",
       id: "action-new-conversation",
       label: "New Conversation",
+      aliases: ["chat", "message"],
       execute: async () => {
         const res = await fetch("/api/conversations", {
           method: "POST",
@@ -184,12 +188,20 @@ export function CommandPalette() {
       category: "action",
       id: "action-toggle-sidebar",
       label: "Toggle Sidebar",
+      aliases: ["collapse", "expand", "menu"],
       execute: toggleSidebar,
     },
   ], [router, toggleSidebar]);
 
   const actionFuse = useMemo(
-    () => new Fuse(actions, { keys: ["label"], threshold: 0.4, includeScore: true }),
+    () => new Fuse(actions, {
+      keys: [
+        { name: "label", weight: 1.0 },
+        { name: "aliases", weight: 0.9 },
+      ],
+      threshold: 0.4,
+      includeScore: true,
+    }),
     [actions],
   );
 
@@ -338,11 +350,19 @@ export function CommandPalette() {
       return combined.slice(0, MAX_TOTAL);
     }
 
-    // With a query: rank all instant results by fuse score, best match first
+    // With a query: rank all instant results by fuse score, best match first.
+    // Exact alias match gets the strongest boost, then prefix match on label.
+    const ql = q.toLowerCase();
+    function boost(label: string, aliases: string[], score: number): number {
+      if (aliases.some((a) => a.toLowerCase() === ql)) return score * 0.01;
+      if (label.toLowerCase().startsWith(ql)) return score * 0.1;
+      return score;
+    }
+
     const scoredPages = pageFuse.search(q, { limit: MAX_PER_CATEGORY })
-      .map((r) => ({ result: r.item as PaletteResult, score: r.score ?? 1 }));
+      .map((r) => ({ result: r.item as PaletteResult, score: boost(r.item.label, r.item.aliases, r.score ?? 1) }));
     const scoredActions = actionFuse.search(q, { limit: MAX_PER_CATEGORY })
-      .map((r) => ({ result: r.item as PaletteResult, score: r.score ?? 1 }));
+      .map((r) => ({ result: r.item as PaletteResult, score: boost(r.item.label, r.item.aliases, r.score ?? 1) }));
 
     const scored = [...scoredPages, ...scoredActions]
       .sort((a, b) => a.score - b.score);
