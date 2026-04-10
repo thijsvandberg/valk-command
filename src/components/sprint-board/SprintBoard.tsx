@@ -123,11 +123,9 @@ export default function SprintBoard() {
   }, []);
 
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) { if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchModalOpen(true); } }
     function onOpenSearch() { setSearchModalOpen(true); }
-    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("valk:openSearch", onOpenSearch);
-    return () => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("valk:openSearch", onOpenSearch); };
+    return () => { window.removeEventListener("valk:openSearch", onOpenSearch); };
   }, []);
 
   useEffect(() => {

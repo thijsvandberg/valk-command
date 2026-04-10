@@ -1,6 +1,6 @@
 # BRDG-067: Command Palette
 
-**Status:** Open
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -10,34 +10,34 @@ As the PO, I want a Cmd+K command palette that lets me search and jump to any pa
 ## Acceptance Criteria
 
 ### Phase 1: Palette UI
-- [ ] Modal overlay triggered by Cmd+K (Mac) / Ctrl+K (Windows)
-- [ ] Search input with auto-focus
-- [ ] Results list with keyboard navigation (arrow keys + Enter)
-- [ ] Dismiss with Escape or clicking backdrop
-- [ ] Smooth open/close animation (opacity + scale transform)
+- [x] Modal overlay triggered by Cmd+K (Mac) / Ctrl+K (Windows)
+- [x] Search input with auto-focus
+- [x] Results list with keyboard navigation (arrow keys + Enter)
+- [x] Dismiss with Escape or clicking backdrop
+- [x] Smooth open/close animation (opacity + scale transform)
 
 ### Phase 2: Page navigation results
-- [ ] All main pages searchable: Dashboard, Sprint Board, Chat, Refinement, Test Center, Activity Log, Settings
-- [ ] Match by page name or alias (e.g., "board" matches Sprint Board)
-- [ ] Results show page icon + name + keyboard shortcut hint
+- [x] All main pages searchable: Dashboard, Sprint Board, Chat, Refinement, Test Center, Activity Log, Settings
+- [x] Match by page name or alias (e.g., "board" matches Sprint Board)
+- [x] Results show page icon + name + keyboard shortcut hint
 
 ### Phase 3: Ticket search results
-- [ ] Search tickets by key or title (uses existing search API)
-- [ ] Results show: ticket key, title, status badge
-- [ ] Select to navigate to ticket detail page
-- [ ] Debounced search (300ms delay)
+- [x] Search tickets by key or title (uses existing search API)
+- [x] Results show: ticket key, title, status badge
+- [x] Select to navigate to ticket detail page
+- [x] Debounced search (300ms delay)
 
 ### Phase 4: Action results
-- [ ] "Sync Jira" - trigger a manual sync
-- [ ] "New Conversation" - create and navigate to new chat
-- [ ] "Toggle Sidebar" - collapse/expand sidebar
-- [ ] Actions show a lightning bolt icon to differentiate from navigation results
-- [ ] Actions execute immediately on selection
+- [x] "Sync Jira" - trigger a manual sync
+- [x] "New Conversation" - create and navigate to new chat
+- [x] "Toggle Sidebar" - collapse/expand sidebar
+- [x] Actions show a lightning bolt icon to differentiate from navigation results
+- [x] Actions execute immediately on selection
 
 ### Phase 5: Conversation search
-- [ ] Search conversations by title
-- [ ] Results show conversation name + last message preview
-- [ ] Select to navigate to conversation
+- [x] Search conversations by title
+- [x] Results show conversation name + last message preview
+- [x] Select to navigate to conversation
 
 ## Technical Notes
 

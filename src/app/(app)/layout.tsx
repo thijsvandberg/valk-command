@@ -2,6 +2,7 @@ import Sidebar from "@/components/Sidebar";
 import { ActivityProvider } from "@/contexts/ActivityContext";
 import { ActivityToast } from "@/components/sync/SyncToast";
 import { SWRProvider } from "@/components/SWRProvider";
+import { CommandPalette } from "@/components/CommandPalette";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,6 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <ActivityToast />
+      <CommandPalette />
     </ActivityProvider>
     </SWRProvider>
   );

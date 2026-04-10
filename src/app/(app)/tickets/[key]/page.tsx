@@ -168,17 +168,6 @@ export default function TicketDetailPage({
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [draftDiscardKey, setDraftDiscardKey] = useState(0);
 
-  // Cmd+K opens search modal
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   const handleTitleLocalEdit = useCallback((has: boolean) => setHasLocalTitleEdit(has), []);
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
