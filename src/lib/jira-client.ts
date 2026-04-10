@@ -8,6 +8,7 @@
  * of the app can run without a Jira connection.
  */
 import { env } from "@/lib/env";
+import { trackOutboundCall, isOutboundLimitApproaching } from "@/lib/rate-limiter";
 
 // ---------------------------------------------------------------------------
 // Custom field IDs for new-story.atlassian.net (must match jira-mcp config)
@@ -208,6 +209,11 @@ async function throttle(): Promise<void> {
   }
 
   requestTimestamps.push(Date.now());
+  trackOutboundCall("jira");
+
+  if (isOutboundLimitApproaching("jira")) {
+    console.warn("[jira-client] Approaching Jira API rate limit (80%+)");
+  }
 }
 
 // Exported for testing

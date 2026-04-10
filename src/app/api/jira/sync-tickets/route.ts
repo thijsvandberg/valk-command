@@ -7,6 +7,7 @@ import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 
@@ -18,6 +19,9 @@ const WATERMARK_KEY = "jira_sync_watermark";
  *   2. Query ?sprintId=xxx&strategy=bulk|timestamp-first - syncs all sprint tickets
  */
 export async function POST(request: Request) {
+  const limited = applyRateLimit("sync");
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const sprintId = searchParams.get("sprintId");
 

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 /**
  * POST /api/jira/sync-comments?key=VPL-12345
@@ -13,6 +14,9 @@ import { registerSync, unregisterSync } from "@/lib/sync-abort";
  * and upserts them into the jira_comment table.
  */
 export async function POST(request: Request) {
+  const limited = applyRateLimit("sync");
+  if (limited) return limited;
+
   const logId = `sync-comments-${Date.now()}`;
   const startedAt = new Date().toISOString();
 

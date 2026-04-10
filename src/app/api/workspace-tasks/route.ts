@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
+  const limited = applyRateLimit("workspace");
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();

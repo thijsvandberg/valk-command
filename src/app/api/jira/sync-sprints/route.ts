@@ -4,6 +4,7 @@ import { appSetting, activityLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 interface StoredSprint {
   id: number;
@@ -31,6 +32,9 @@ function sprintToStored(s: { id: number; name: string; state: string; startDate?
  * Merges with existing cached data so syncing one scope does not wipe the other.
  */
 export async function POST(request: NextRequest) {
+  const limited = applyRateLimit("sync");
+  if (limited) return limited;
+
   const scope = request.nextUrl.searchParams.get("scope") || "sprints";
   const states = scope === "history" ? ["closed"] : ["active", "future"];
 

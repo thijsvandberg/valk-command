@@ -3,12 +3,16 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 /**
  * Creates a brand-new Jira story and a minimal local ticket record.
  * Returns the new ticket key so the caller can navigate to /tickets/[key]/write.
  */
 export async function POST(request: Request) {
+  const limited = applyRateLimit("story-writer");
+  if (limited) return limited;
+
   let body: { title?: string; sprintId?: string; issueType?: string } = {};
   try {
     body = await request.json();

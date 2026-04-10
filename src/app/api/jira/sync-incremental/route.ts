@@ -7,6 +7,7 @@ import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 const COOLDOWN_KEY = "jira_sync_last_run";
@@ -22,6 +23,9 @@ const COOLDOWN_MS = 120_000;
  * regardless of client behavior.
  */
 export async function POST() {
+  const limited = applyRateLimit("sync");
+  if (limited) return limited;
+
   if (!jiraClient.isLive) {
     return NextResponse.json({ ok: false, error: "Jira not configured" }, { status: 503 });
   }

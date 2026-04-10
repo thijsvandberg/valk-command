@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { trackOutboundCall } from "@/lib/rate-limiter";
 
 // Normalised shapes returned to the client
 export interface DevBranch {
@@ -141,6 +142,7 @@ async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
   const auth = Buffer.from(`${cfg.email}:${cfg.token}`).toString("base64");
   const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
 
+  trackOutboundCall("bitbucket");
   const res = await fetch(url, {
     redirect: "follow",
     headers: {

@@ -4,6 +4,7 @@ import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -14,6 +15,9 @@ type RouteContext = { params: Promise<{ key: string }> };
  * On 410 (session lost): recovers by re-sending with current context as a new first message.
  */
 export async function POST(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("story-writer");
+  if (limited) return limited;
+
   const { key } = await params;
 
   let body: Record<string, unknown>;
