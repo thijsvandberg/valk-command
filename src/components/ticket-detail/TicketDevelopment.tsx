@@ -51,10 +51,11 @@ const PR_STATUS_STYLES: Record<DevPullRequest["status"], { bg: string; text: str
   DECLINED: { bg: "rgba(229,83,75,0.10)", text: "#e5534b80" },
 };
 
-function BuildStateIcon({ state, size = 13 }: { state: DevBuild["state"]; size?: number }) {
+function BuildStateIcon({ state, size = 13 }: { state: string; size?: number }) {
   if (state === "SUCCESSFUL") return <CheckCircle2 size={size} strokeWidth={1.5} className="text-[#4aaa60]" />;
   if (state === "FAILED") return <XCircle size={size} strokeWidth={1.5} className="text-[#e5534b]" />;
   if (state === "STOPPED") return <OctagonX size={size} strokeWidth={1.5} className="text-white/25" />;
+  if (state === "PAUSED") return <Circle size={size} strokeWidth={1.5} className="text-amber-400" />;
   return <Loader2 size={size} strokeWidth={1.5} className="animate-spin text-[#ea8744]" />;
 }
 

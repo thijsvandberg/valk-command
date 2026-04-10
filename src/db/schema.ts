@@ -307,8 +307,9 @@ export const pipelineRun = sqliteTable("pipeline_run", {
   branchName: text("branch_name").notNull(),
   ticketKey: text("ticket_key"),
   state: text("state", {
-    enum: ["SUCCESSFUL", "FAILED", "IN_PROGRESS", "STOPPED"],
+    enum: ["SUCCESSFUL", "FAILED", "IN_PROGRESS", "STOPPED", "PAUSED"],
   }).notNull(),
+  creator: text("creator"),
   durationSeconds: integer("duration_seconds"),
   pipelineUrl: text("pipeline_url").notNull(),
   // Deployment-specific fields

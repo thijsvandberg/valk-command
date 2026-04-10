@@ -11,7 +11,8 @@ export interface PipelineRunPayload {
   buildNumber: number;
   branchName: string;
   ticketKey: string | null;
-  state: "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED";
+  state: "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED" | "PAUSED";
+  creator: string | null;
   durationSeconds: number | null;
   pipelineUrl: string;
   isDeployment: boolean;
@@ -70,6 +71,7 @@ export async function GET(request: Request) {
     branchName: r.branchName,
     ticketKey: r.ticketKey,
     state: r.state as PipelineRunPayload["state"],
+    creator: r.creator,
     durationSeconds: r.durationSeconds,
     pipelineUrl: r.pipelineUrl,
     isDeployment: r.isDeployment,

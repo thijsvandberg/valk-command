@@ -57,10 +57,11 @@ interface BbPipelineStep {
 interface BbPipeline {
   uuid: string;
   build_number: number;
-  state?: { name: string; result?: { name: string } };
+  state?: { name: string; result?: { name: string }; stage?: { name: string } };
   created_on?: string;
   completed_on?: string;
   duration_in_seconds?: number;
+  creator?: { display_name?: string; nickname?: string };
   target?: {
     ref_name?: string;
     ref_type?: string;
@@ -95,7 +96,7 @@ async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
   return res.json() as Promise<T>;
 }
 
-function normalisePipelineState(pipeline: BbPipeline): "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED" {
+function normalisePipelineState(pipeline: BbPipeline): "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED" | "PAUSED" {
   const stateName = pipeline.state?.name?.toUpperCase() ?? "";
   const resultName = pipeline.state?.result?.name?.toUpperCase() ?? "";
   if (stateName === "COMPLETED") {
@@ -103,6 +104,7 @@ function normalisePipelineState(pipeline: BbPipeline): "SUCCESSFUL" | "FAILED" |
     if (resultName === "FAILED" || resultName === "ERROR") return "FAILED";
     if (resultName === "STOPPED") return "STOPPED";
   }
+  if (stateName === "PAUSED" || stateName === "HALTED") return "PAUSED";
   return "IN_PROGRESS";
 }
 
@@ -147,6 +149,7 @@ export async function syncPipelines(): Promise<SyncResult> {
       const state = normalisePipelineState(p);
       const branchName = p.target?.ref_name ?? "";
       const ticketKey = extractTicketKey(branchName);
+      const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
       const pipelineUrl = p.links?.html?.href
         || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
 
@@ -157,14 +160,19 @@ export async function syncPipelines(): Promise<SyncResult> {
         .get();
 
       if (existing) {
-        if (existing.state !== state) {
-          stateChanges.push({ run: existing, oldState: existing.state });
+        // Update creator if missing (backfill from API)
+        const needsCreatorUpdate = !existing.creator && creator;
+        if (existing.state !== state || needsCreatorUpdate) {
+          if (existing.state !== state) {
+            stateChanges.push({ run: existing, oldState: existing.state });
+          }
           db.update(pipelineRun)
             .set({
               state,
-              previousState: existing.state,
+              previousState: existing.state !== state ? existing.state : existing.previousState,
               completedAt: p.completed_on ?? null,
               durationSeconds: p.duration_in_seconds ?? null,
+              ...(creator ? { creator } : {}),
             })
             .where(eq(pipelineRun.id, id))
             .run();
@@ -179,6 +187,7 @@ export async function syncPipelines(): Promise<SyncResult> {
             branchName,
             ticketKey,
             state,
+            creator,
             durationSeconds: p.duration_in_seconds ?? null,
             pipelineUrl,
             isDeployment: false,

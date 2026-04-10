@@ -18,6 +18,8 @@ import {
   ChevronDown,
   Bell,
   Settings,
+  Pause,
+  User,
 } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Card } from "@/components/shared/Card";
@@ -56,6 +58,8 @@ function stateIcon(state: PipelineRunPayload["state"], size = 13) {
       return <XCircle size={size} strokeWidth={2} className="text-red-400" />;
     case "IN_PROGRESS":
       return <Loader2 size={size} strokeWidth={2} className="text-[var(--color-brand-400)] animate-spin" />;
+    case "PAUSED":
+      return <Pause size={size} strokeWidth={2} className="text-amber-400" />;
     case "STOPPED":
       return <OctagonX size={size} strokeWidth={2} className="text-amber-400/70" />;
   }
@@ -65,6 +69,7 @@ function stateLabel(state: PipelineRunPayload["state"]): string {
   switch (state) {
     case "SUCCESSFUL": return "Passed";
     case "FAILED": return "Failed";
+    case "PAUSED": return "Paused";
     case "IN_PROGRESS": return "Running";
     case "STOPPED": return "Stopped";
   }
@@ -152,19 +157,26 @@ function MetricCard({
 // -- Running Section --
 
 function RunningSection({ runs }: { runs: PipelineRunPayload[] }) {
-  const running = runs.filter((r) => r.state === "IN_PROGRESS");
-  if (running.length === 0) return null;
+  const active = runs.filter((r) => r.state === "IN_PROGRESS" || r.state === "PAUSED");
+  if (active.length === 0) return null;
+
+  const runningCount = active.filter((r) => r.state === "IN_PROGRESS").length;
+  const pausedCount = active.filter((r) => r.state === "PAUSED").length;
+  const label = [
+    runningCount > 0 ? `${runningCount} running` : null,
+    pausedCount > 0 ? `${pausedCount} paused` : null,
+  ].filter(Boolean).join(", ");
 
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <div className="h-2 w-2 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
+        <div className={`h-2 w-2 rounded-full ${runningCount > 0 ? "bg-[var(--color-brand-400)] animate-pulse" : "bg-amber-400"}`} />
         <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
-          Currently running ({running.length})
+          Active ({label})
         </span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-        {running.map((run) => (
+        {active.map((run) => (
           <RunningCard key={run.id} run={run} />
         ))}
       </div>
@@ -173,12 +185,17 @@ function RunningSection({ runs }: { runs: PipelineRunPayload[] }) {
 }
 
 function RunningCard({ run }: { run: PipelineRunPayload }) {
+  const isPaused = run.state === "PAUSED";
   return (
-    <Card className="relative overflow-hidden px-4 py-3 border-[var(--color-brand-500)]/20">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(26,111,194,0.08),transparent_70%)]" />
+    <Card className={`relative overflow-hidden px-4 py-3 ${isPaused ? "border-amber-500/20" : "border-[var(--color-brand-500)]/20"}`}>
+      <div className={`pointer-events-none absolute inset-0 ${isPaused ? "bg-[radial-gradient(ellipse_at_top_left,rgba(251,191,36,0.06),transparent_70%)]" : "bg-[radial-gradient(ellipse_at_top_left,rgba(26,111,194,0.08),transparent_70%)]"}`} />
       <div className="relative flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Loader2 size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)] animate-spin" />
+          {isPaused ? (
+            <Pause size={14} strokeWidth={2} className="shrink-0 text-amber-400" />
+          ) : (
+            <Loader2 size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)] animate-spin" />
+          )}
           {run.pipelineUrl ? (
             <a
               href={run.pipelineUrl}
@@ -238,10 +255,11 @@ function PipelineTable({
   return (
     <div className="rounded-xl border border-white/[0.08] overflow-hidden">
       {/* Table header */}
-      <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-x-3 px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06] text-[10px] font-medium text-white/30 uppercase tracking-wider">
+      <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto_auto] gap-x-3 px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06] text-[10px] font-medium text-white/30 uppercase tracking-wider">
         <span>Pipeline</span>
         <span>Branch</span>
         <span className="text-center">Ticket</span>
+        <span>Triggered by</span>
         <span className="text-center">Status</span>
         <span className="text-right">Duration</span>
         <span className="text-right">When</span>
@@ -261,7 +279,7 @@ function PipelineRow({ run }: { run: PipelineRunPayload }) {
 
   return (
     <div
-      className={`group grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-x-3 items-center px-4 py-2.5 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
+      className={`group grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto_auto] gap-x-3 items-center px-4 py-2.5 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
         isFailed ? "bg-red-500/[0.03]" : ""
       }`}
     >
@@ -307,6 +325,18 @@ function PipelineRow({ run }: { run: PipelineRunPayload }) {
           >
             {run.ticketKey}
           </Link>
+        ) : (
+          <span className="text-[11px] text-white/15">-</span>
+        )}
+      </div>
+
+      {/* Creator */}
+      <div className="flex items-center gap-1.5 min-w-[90px]">
+        {run.creator ? (
+          <>
+            <User size={10} strokeWidth={1.5} className="shrink-0 text-white/20" />
+            <span className="text-[11px] text-white/35 truncate">{run.creator}</span>
+          </>
         ) : (
           <span className="text-[11px] text-white/15">-</span>
         )}
@@ -667,6 +697,11 @@ export default function PipelinesPage() {
     return Array.from(set).sort();
   }, [runs]);
 
+  // All components use the filtered set so metrics reflect active filters
+  const filteredRuns = useMemo(() => {
+    return repoFilter ? runs.filter((r) => r.repo === repoFilter) : runs;
+  }, [runs, repoFilter]);
+
   async function handleRefresh() {
     setRefreshing(true);
     try {
@@ -720,10 +755,10 @@ export default function PipelinesPage() {
             </div>
           ) : (
             <>
-              <PipelineMetrics runs={runs} />
-              <RunningSection runs={runs} />
-              <DeploymentTimeline runs={runs} />
-              <PipelineTable runs={runs} repoFilter={repoFilter} />
+              <PipelineMetrics runs={filteredRuns} />
+              <RunningSection runs={filteredRuns} />
+              <DeploymentTimeline runs={filteredRuns} />
+              <PipelineTable runs={filteredRuns} repoFilter={null} />
             </>
           )}
         </div>
