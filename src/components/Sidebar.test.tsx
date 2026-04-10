@@ -28,15 +28,16 @@ describe("Sidebar", () => {
     expect(screen.getByTestId("sidebar")).toBeInTheDocument();
   });
 
-  it("renders all 7 navigation items", () => {
+  it("renders all 8 navigation items", () => {
     render(<Sidebar />);
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Chat")).toBeInTheDocument();
     expect(screen.getByText("Sprint Board")).toBeInTheDocument();
     expect(screen.getByText("Test Center")).toBeInTheDocument();
     expect(screen.getByText("Refinement")).toBeInTheDocument();
-    expect(screen.getByText("Jobs")).toBeInTheDocument();
     expect(screen.getByText("Stakeholder")).toBeInTheDocument();
+    expect(screen.getByText("Story Writer")).toBeInTheDocument();
+    expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 
   it("all navigation links point to correct routes", () => {
@@ -50,8 +51,8 @@ describe("Sidebar", () => {
       "/sprint-board",
       "/test-center",
       "/refinement",
-      "/jobs",
       "/stakeholder",
+      "/settings/story-writer",
       "/settings",
     ]);
   });

@@ -9,7 +9,7 @@ import {
   KanbanSquare,
   FlaskConical,
   SlidersHorizontal,
-  Clock,
+  PenTool,
   Users,
   Settings,
   Menu,
@@ -47,14 +47,14 @@ const navItems = [
     icon: <SlidersHorizontal className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
-    label: "Jobs",
-    href: "/jobs",
-    icon: <Clock className="h-5 w-5" strokeWidth={1.5} />,
-  },
-  {
     label: "Stakeholder",
     href: "/stakeholder",
     icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
+  },
+  {
+    label: "Story Writer",
+    href: "/settings/story-writer",
+    icon: <PenTool className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Settings",
@@ -103,6 +103,8 @@ export default function Sidebar() {
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     if (href === "/sprint-board") return pathname.startsWith("/sprint-board") || pathname.startsWith("/tickets/");
+    if (href === "/settings/story-writer") return pathname === "/settings/story-writer";
+    if (href === "/settings") return pathname.startsWith("/settings") && !pathname.startsWith("/settings/story-writer");
     return pathname.startsWith(href);
   }
 

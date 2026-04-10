@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "../components/rich-editor/editor-styles.css";
 
+:root {
+  color-scheme: dark;
+}
+
 @theme {
   --font-display: "Bricolage Grotesque", "Georgia", sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;

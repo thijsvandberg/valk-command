@@ -1,5 +1,7 @@
 # Backlog
 
+See [Improvement Roadmap](plans/2026-04-10-improvement-roadmap.md) for the full categorized overview and recommended implementation order.
+
 ## Up Next
 
 - [ ] BRDG-008: Sprint Board Next Steps (drag-and-drop reorder, context menu, sprint grouping)
@@ -8,6 +10,21 @@
 - [ ] BRDG-035: Code Quality - Hook and component decomposition (large hooks/components need splitting)
 - [ ] BRDG-036: Missing Hook Test Coverage (7 of 11 hooks lack tests)
 
+## Critical (Security)
+
+- [ ] BRDG-060: Authentication Middleware
+- [ ] BRDG-062: Input Sanitization
+- [ ] BRDG-065: Content Security Policy and Security Headers
+
+## High Priority
+
+- [ ] BRDG-037: Dashboard Widgets
+- [ ] BRDG-038: Refinement Agenda
+- [ ] BRDG-039: Test Center
+- [ ] BRDG-041: Proactive Alerts System
+- [ ] BRDG-061: API Rate Limiting
+- [ ] BRDG-063: Environment Variable Validation
+
 ## Open
 
 - [ ] BRDG-027: Browser Notifications
@@ -15,7 +32,65 @@
 - [ ] BRDG-029: Bookmarks
 - [ ] BRDG-030: Bitbucket Development Panel in Ticket Detail
 
-## Nice to Have
+## Medium Priority - New Features
+
+- [ ] BRDG-040: Stakeholder View
+- [ ] BRDG-042: Bulk Story Writer
+
+## Medium Priority - New Data Views
+
+- [ ] BRDG-044: Epic Progress View
+- [ ] BRDG-045: Quality Heatmap
+- [ ] BRDG-046: Team Workload View
+
+## Medium Priority - Improve Existing
+
+- [ ] BRDG-049: Sprint Board Drag-and-Drop
+- [ ] BRDG-050: Story Writer Pane System
+- [ ] BRDG-051: Inline Ticket Editing on Sprint Board
+- [ ] BRDG-053: Advanced Search with Filters
+
+## Medium Priority - Performance
+
+- [ ] BRDG-055: API Response Caching Layer
+- [ ] BRDG-056: Optimistic UI Updates
+- [ ] BRDG-059: Database Query Optimization
+
+## Medium Priority - UX
+
+- [ ] BRDG-066: Keyboard Shortcuts System
+- [ ] BRDG-067: Command Palette
+- [ ] BRDG-069: Notification Center
+- [ ] BRDG-071: Customizable Sprint Board Columns
+
+## Medium Priority - Security
+
+- [ ] BRDG-064: API Token Rotation and Secret Management
+
+## Medium Priority - Integrations
+
+- [ ] BRDG-073: Confluence Integration
+- [ ] BRDG-074: Slack Integration
+- [ ] BRDG-078: CI/CD Pipeline Feed
+
+## Low Priority
+
+- [ ] BRDG-043: Sprint Retrospective Report
+- [ ] BRDG-047: Changelog / Release Notes View
+- [ ] BRDG-048: Story Writer Analytics
+- [ ] BRDG-052: Rich Editor Slash Commands
+- [ ] BRDG-054: Activity Log Insights
+- [ ] BRDG-057: Virtual Scrolling for Sprint Board
+- [ ] BRDG-058: Prefetch Adjacent Views
+- [ ] BRDG-068: Onboarding and Empty States
+- [ ] BRDG-070: Contextual Help and Tooltips
+- [ ] BRDG-072: Undo/Redo for Destructive Actions
+- [ ] BRDG-075: GitHub Integration
+- [ ] BRDG-076: Figma Integration
+- [ ] BRDG-077: Google Calendar Integration
+- [ ] BRDG-079: Time Tracking Integration (Tempo/Clockify)
+
+## Nice to Have (existing)
 
 - [ ] BRDG-009: Nice-to-have improvements collection
 - [ ] BRDG-012: Jira Write (bidirectional sync)

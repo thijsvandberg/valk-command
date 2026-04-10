@@ -1,13 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Settings2, MessageSquare, Clock, Bell } from "lucide-react";
+import { Settings2, PenTool, Clock, Cpu, MessageSquare, Bell } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { TabBar, TabLink } from "@/components/shared/TabBar";
 
 const TABS = [
+  { href: "/settings/story-writer", label: "Story Writer", icon: PenTool },
+  { href: "/settings/jobs", label: "Workspace Jobs", icon: Clock },
+  { href: "/settings/scheduler", label: "System Tasks", icon: Cpu },
   { href: "/settings/prompts", label: "Quick Prompts", icon: MessageSquare },
-  { href: "/settings/scheduler", label: "Scheduled Tasks", icon: Clock },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
 ];
 
