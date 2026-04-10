@@ -4,6 +4,7 @@ import { ticketLocalEdit, storyVersion } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
+import { sanitizeHtml, sanitizeText } from "@/lib/sanitize";
 
 export async function GET(
   _request: Request,
@@ -53,6 +54,16 @@ export async function PUT(
     );
   }
 
+  const maxLen = field === "title" ? 500 : 50000;
+  if (localValue.length > maxLen) {
+    return NextResponse.json(
+      { error: `localValue must not exceed ${maxLen} characters` },
+      { status: 400 },
+    );
+  }
+
+  const sanitizedValue = field === "title" ? sanitizeText(localValue) : sanitizeHtml(localValue);
+
   const now = new Date().toISOString();
   const draftFlag = isDraft === true;
 
@@ -78,14 +89,14 @@ export async function PUT(
     const newDraftFlag = draftFlag && existing.isDraft;
     await db
       .update(ticketLocalEdit)
-      .set({ localValue, modifiedAt: now, baseJiraVersion: resolvedBase, isDraft: newDraftFlag })
+      .set({ localValue: sanitizedValue, modifiedAt: now, baseJiraVersion: resolvedBase, isDraft: newDraftFlag })
       .where(eq(ticketLocalEdit.id, existing.id));
   } else {
     await db.insert(ticketLocalEdit).values({
       id: randomUUID(),
       ticketKey: key,
       field: field as "title" | "description",
-      localValue,
+      localValue: sanitizedValue,
       baseJiraVersion: resolvedBase,
       isDraft: draftFlag,
       modifiedAt: now,

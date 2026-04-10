@@ -37,6 +37,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (body.title.length > 500) {
+    return NextResponse.json(
+      { error: "title must not exceed 500 characters" },
+      { status: 400 },
+    );
+  }
+
   const id = randomUUID();
   const conv = {
     id,

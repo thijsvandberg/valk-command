@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { logActivity } from "@/lib/activity-logger";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export async function PUT(
   request: Request,
@@ -75,7 +76,7 @@ export async function PUT(
         { status: 400 },
       );
     }
-    updates.poNotes = body.poNotes;
+    updates.poNotes = typeof body.poNotes === "string" ? sanitizeHtml(body.poNotes) : body.poNotes;
   }
 
   if (existing) {

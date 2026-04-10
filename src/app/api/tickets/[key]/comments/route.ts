@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { poComment, jiraComment } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export async function GET(
   _request: Request,
@@ -43,7 +44,7 @@ export async function POST(
       { status: 400 },
     );
   }
-  const content = (body.content as string).trim();
+  const content = sanitizeHtml((body.content as string).trim());
   if (content.length > 10000) {
     return NextResponse.json(
       { error: "content must not exceed 10000 characters" },

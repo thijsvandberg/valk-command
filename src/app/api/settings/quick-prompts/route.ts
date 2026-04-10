@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 
 export type QuickPrompt = {
   id: string;
@@ -111,10 +112,25 @@ export async function GET() {
   }
 }
 
+const quickPromptSchema = z.object({
+  id: z.string().max(100),
+  label: z.string().max(200),
+  text: z.string().max(5000),
+  enableCodebase: z.boolean().optional(),
+});
+
+const quickPromptsBodySchema = z.object({
+  prompts: z.record(z.string(), z.array(quickPromptSchema).max(20)),
+});
+
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const prompts = body.prompts as QuickPromptsConfig;
+    const parsed = quickPromptsBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid prompts format" }, { status: 400 });
+    }
+    const prompts = parsed.data.prompts;
     const payload = JSON.stringify(prompts);
 
     const existing = await db.query.appSetting.findFirst({

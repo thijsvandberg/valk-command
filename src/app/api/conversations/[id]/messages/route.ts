@@ -36,6 +36,13 @@ export async function POST(
     );
   }
 
+  if (body.content.length > 50000) {
+    return NextResponse.json(
+      { error: "content must not exceed 50000 characters" },
+      { status: 400 },
+    );
+  }
+
   if (!body.role || !VALID_ROLES.includes(body.role as typeof VALID_ROLES[number])) {
     return NextResponse.json(
       { error: "role is required and must be 'user' or 'assistant'" },
