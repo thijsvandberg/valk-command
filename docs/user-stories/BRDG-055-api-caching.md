@@ -22,6 +22,11 @@ As the PO, I want server-side caching for frequently accessed endpoints (ticket 
 - [ ] Cache `GET /api/tickets/[key]/dev-info` (TTL: 2 minutes)
 - [ ] Cache headers: set `Cache-Control` and `ETag` for client-side caching
 
+### Cache safety rules
+- [ ] Cache only applies to `GET` requests; all mutating operations (`POST`/`PUT`/`PATCH`/`DELETE`) bypass the cache entirely
+- [ ] Write operations that push to Jira must always fetch the latest version from Jira API before mutating (never use cached data)
+- [ ] Cache hit serves the original response including original timestamps; `lastUpdated` is never altered by a cache hit
+
 ### Phase 3: Smart invalidation
 - [ ] Invalidate ticket cache entries on Jira sync completion
 - [ ] Invalidate specific ticket cache on metadata update

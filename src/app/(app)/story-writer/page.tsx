@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { PenTool, Plus, FileText, ArrowRight } from "lucide-react";
+import { NotebookPen, Plus, FileText, ArrowRight } from "lucide-react";
+import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -87,7 +88,7 @@ function CreateForm({
   );
 }
 
-export default function StoryWriterPage() {
+export default function StoryWriterLandingPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,111 +140,114 @@ export default function StoryWriterPage() {
   }
 
   return (
-    <>
-      <h2 className="text-xs font-medium text-white/50 uppercase tracking-[0.06em] mb-2">
-        Story Writer
-      </h2>
-      <p className="text-xs text-white/30 mb-6 leading-[1.6]">
-        Create new stories or resume active writing sessions.
-      </p>
+    <div className="flex flex-col h-full">
+      <ViewHeader
+        icon={<NotebookPen size={15} strokeWidth={1.5} className="text-white/30" />}
+      >
+        <ViewHeaderTitle>Story Writer</ViewHeaderTitle>
+      </ViewHeader>
 
-      {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="max-w-2xl">
+          {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-white/40">
-            {loading
-              ? "Loading..."
-              : `${sessions.length} active session${sessions.length === 1 ? "" : "s"}`}
-          </span>
-          {!showForm && (
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<Plus size={14} strokeWidth={2} />}
-              onClick={() => setShowForm(true)}
-            >
-              New story
-            </Button>
-          )}
-        </div>
-
-        {showForm && (
-          <CreateForm
-            onSubmit={handleCreate}
-            onCancel={() => setShowForm(false)}
-          />
-        )}
-
-        {!loading && sessions.length === 0 && !showForm && (
-          <Card variant="dashed" className="px-6 py-12">
-            <EmptyState
-              icon={
-                <PenTool
-                  size={20}
-                  strokeWidth={1.5}
-                  className="text-white/30"
-                />
-              }
-              title="No active sessions"
-              description="Start a new story to begin writing."
-            />
-          </Card>
-        )}
-
-        <div className="space-y-2">
-          {sessions.map((session) => (
-            <Card
-              key={session.sessionId}
-              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.05]"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
-                <FileText
-                  size={14}
-                  strokeWidth={1.5}
-                  className="text-white/30"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <code className="text-xs text-[var(--color-brand-400)]">
-                    {session.ticketKey}
-                  </code>
-                  <span className="font-[var(--font-display)] text-sm font-semibold text-white truncate">
-                    {session.title}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center gap-3 text-xs text-white/35">
-                  {session.epic && <span>{session.epic}</span>}
-                  {session.sprintName && <span>{session.sprintName}</span>}
-                  {session.updatedAt && (
-                    <span>{formatTimeAgo(session.updatedAt)}</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/40">
+                {loading
+                  ? "Loading..."
+                  : `${sessions.length} active session${sessions.length === 1 ? "" : "s"}`}
+              </span>
+              {!showForm && (
                 <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDiscard(session.sessionId)}
+                  variant="primary"
+                  size="lg"
+                  icon={<Plus size={14} strokeWidth={2} />}
+                  onClick={() => setShowForm(true)}
                 >
-                  Discard
+                  New story
                 </Button>
-                <Button
-                  variant="soft"
-                  size="sm"
-                  icon={<ArrowRight size={12} strokeWidth={2} />}
-                  onClick={() =>
-                    router.push(`/tickets/${session.ticketKey}/write`)
+              )}
+            </div>
+
+            {showForm && (
+              <CreateForm
+                onSubmit={handleCreate}
+                onCancel={() => setShowForm(false)}
+              />
+            )}
+
+            {!loading && sessions.length === 0 && !showForm && (
+              <Card variant="dashed" className="px-6 py-12">
+                <EmptyState
+                  icon={
+                    <NotebookPen
+                      size={20}
+                      strokeWidth={1.5}
+                      className="text-white/30"
+                    />
                   }
+                  title="No active sessions"
+                  description="Start a new story to begin writing."
+                />
+              </Card>
+            )}
+
+            <div className="space-y-2">
+              {sessions.map((session) => (
+                <Card
+                  key={session.sessionId}
+                  className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.05]"
                 >
-                  Resume
-                </Button>
-              </div>
-            </Card>
-          ))}
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
+                    <FileText
+                      size={14}
+                      strokeWidth={1.5}
+                      className="text-white/30"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs text-[var(--color-brand-400)]">
+                        {session.ticketKey}
+                      </code>
+                      <span className="font-[var(--font-display)] text-sm font-semibold text-white truncate">
+                        {session.title}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-white/35">
+                      {session.epic && <span>{session.epic}</span>}
+                      {session.sprintName && <span>{session.sprintName}</span>}
+                      {session.updatedAt && (
+                        <span>{formatTimeAgo(session.updatedAt)}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDiscard(session.sessionId)}
+                    >
+                      Discard
+                    </Button>
+                    <Button
+                      variant="soft"
+                      size="sm"
+                      icon={<ArrowRight size={12} strokeWidth={2} />}
+                      onClick={() =>
+                        router.push(`/tickets/${session.ticketKey}/write`)
+                      }
+                    >
+                      Resume
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
