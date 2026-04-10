@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   MessageCircle,
   KanbanSquare,
+  GitBranch,
   FlaskConical,
   SlidersHorizontal,
   NotebookPen,
@@ -41,6 +42,11 @@ const navItems = [
     label: "Story Writer",
     href: "/story-writer",
     icon: <NotebookPen className="h-5 w-5" strokeWidth={1.5} />,
+  },
+  {
+    label: "Pipelines",
+    href: "/pipelines",
+    icon: <GitBranch className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Test Center",

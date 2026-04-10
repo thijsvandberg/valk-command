@@ -1,6 +1,6 @@
 # BRDG-078: CI/CD Pipeline Feed
 
-**Status:** Open
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -10,12 +10,12 @@ As the PO, I want a feed of pipeline runs linked to tickets, showing build statu
 ## Acceptance Criteria
 
 ### Phase 1: Pipeline feed page
-- [ ] New page at `/pipelines` with its own sidebar entry
-- [ ] List of recent pipeline runs across all configured repos
-- [ ] Each run shows: repo name, branch name, linked ticket (if detected), status, duration, timestamp
-- [ ] Repo filter/column to distinguish runs from different repositories
-- [ ] Adaptive polling: 5 min default, speeds up to 30s when pipelines are actively running
-- [ ] Polling slows back to 5 min when no running pipelines are detected
+- [x] New page at `/pipelines` with its own sidebar entry
+- [x] List of recent pipeline runs across all configured repos
+- [x] Each run shows: repo name, branch name, linked ticket (if detected), status, duration, timestamp
+- [x] Repo filter/column to distinguish runs from different repositories
+- [x] Adaptive polling: 5 min default, speeds up to 30s when pipelines are actively running
+- [x] Polling slows back to 5 min when no running pipelines are detected
 
 ### Phase 2: Ticket linkage
 - [ ] Parse branch names for ticket keys (e.g., "feature/VALK-42-description" links to VALK-42)
