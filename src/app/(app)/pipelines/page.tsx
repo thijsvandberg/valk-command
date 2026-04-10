@@ -712,27 +712,6 @@ function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
 
 // -- Deploy Notification Settings --
 
-function Toggle({ on, size = "sm", onToggle }: { on: boolean; size?: "sm" | "md"; onToggle: () => void }) {
-  const isMd = size === "md";
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={`relative shrink-0 rounded-full transition-colors duration-150 cursor-pointer ${
-        on ? "bg-[var(--color-brand-500)]" : "bg-white/10"
-      } ${isMd ? "h-5 w-9" : "h-[18px] w-[32px]"}`}
-    >
-      <span
-        className={`absolute rounded-full bg-white shadow-sm transition-transform duration-150 ${
-          isMd
-            ? `top-0.5 h-4 w-4 ${on ? "translate-x-4" : "translate-x-0.5"}`
-            : `top-[3px] h-3 w-3 ${on ? "translate-x-[14px]" : "translate-x-[3px]"}`
-        }`}
-      />
-    </button>
-  );
-}
-
 function DeploySettingsPanel() {
   const { settings, update } = useDeploySettings();
   const { permission, requestPermission } = useNotification();
@@ -753,6 +732,7 @@ function DeploySettingsPanel() {
   }
 
   const enabledEnvCount = Object.values(settings.environments).filter(Boolean).length;
+  const totalEnvCount = Object.keys(settings.environments).length;
 
   return (
     <div className="relative">
@@ -768,43 +748,59 @@ function DeploySettingsPanel() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 w-[280px] rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Header */}
-            <div className="px-4 pt-4 pb-3">
-              <h3 className="text-[13px] font-semibold text-white/70">Notifications</h3>
-              <p className="text-[11px] text-white/30 mt-0.5">
-                Get notified when deployments complete for followed tickets.
+            <div className="px-4 pt-3.5 pb-2.5">
+              <h3 className="text-[12px] font-semibold text-white/60">Deploy notifications</h3>
+              <p className="text-[11px] text-white/25 mt-0.5">
+                Browser alerts when deployments complete for followed tickets.
               </p>
             </div>
 
             {permission === "denied" && (
-              <div className="mx-4 mb-3 rounded-lg bg-red-500/[0.06] border border-red-500/10 px-3 py-2">
-                <p className="text-[11px] text-red-400/80">
-                  Browser notifications are blocked. Enable them in your browser settings.
-                </p>
+              <div className="mx-3 mb-2 rounded-md bg-red-500/[0.06] border border-red-500/10 px-3 py-1.5">
+                <p className="text-[11px] text-red-400/70">Notifications blocked by browser settings.</p>
               </div>
             )}
 
             {/* Master toggle */}
-            <div className="px-4 pb-3 flex items-center justify-between">
-              <div>
-                <span className="text-[12px] text-white/50">Enable notifications</span>
+            <button
+              type="button"
+              onClick={toggleEnabled}
+              className="w-full flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
+            >
+              <span className="text-[12px] text-white/50">
+                {settings.enabled ? "Enabled" : "Disabled"}
                 {settings.enabled && (
-                  <span className="ml-2 text-[10px] text-white/20">{enabledEnvCount} env</span>
+                  <span className="ml-1.5 text-[10px] text-white/20">{enabledEnvCount}/{totalEnvCount}</span>
                 )}
-              </div>
-              <Toggle on={settings.enabled} size="md" onToggle={toggleEnabled} />
-            </div>
+              </span>
+              <span className={`relative h-[18px] w-[30px] rounded-full transition-colors duration-150 ${
+                settings.enabled ? "bg-[var(--color-brand-500)]" : "bg-white/10"
+              }`}>
+                <span className={`absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-150 ${
+                  settings.enabled ? "translate-x-[13px]" : "translate-x-[2px]"
+                }`} />
+              </span>
+            </button>
 
-            {/* Per-environment toggles */}
+            {/* Environment checkboxes */}
             {settings.enabled && (
-              <div className="border-t border-white/[0.06] px-4 py-3 space-y-2">
-                <span className="text-[10px] font-medium text-white/20 uppercase tracking-wider">Environments</span>
+              <div className="border-t border-white/[0.06] py-1">
                 {Object.entries(settings.environments).map(([env, on]) => (
-                  <div key={env} className="flex items-center justify-between py-0.5">
+                  <button
+                    key={env}
+                    type="button"
+                    onClick={() => toggleEnvironment(env)}
+                    className="w-full flex items-center gap-2.5 px-4 py-1.5 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
+                  >
+                    <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-[9px] shrink-0 ${
+                      on ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
+                    }`}>
+                      {on && "\u2713"}
+                    </span>
                     <span className={`text-[12px] ${on ? "text-white/50" : "text-white/25"}`}>{env}</span>
-                    <Toggle on={on as boolean} onToggle={() => toggleEnvironment(env)} />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
