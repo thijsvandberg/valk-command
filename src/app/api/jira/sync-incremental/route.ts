@@ -8,6 +8,7 @@ import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { cache } from "@/lib/cache";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 const COOLDOWN_KEY = "jira_sync_last_run";
@@ -114,6 +115,7 @@ export async function POST() {
     }
 
     invalidateSearchCache();
+    cache.invalidate("/api/tickets");
 
     await upsertSetting(LAST_RESULT_KEY, JSON.stringify({ count: results.length, remaining }));
 

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
+import { cache } from "@/lib/cache";
 
 async function getHiddenIds(): Promise<Set<string>> {
   const row = await db.query.appSetting.findFirst({
@@ -24,6 +25,14 @@ async function getHiddenIds(): Promise<Set<string>> {
  * Falls back to fetching from Jira if no cache exists.
  */
 export async function GET() {
+  const CACHE_KEY = "/api/jira/sprints";
+  const cached = cache.get(CACHE_KEY);
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: { "X-Cache": "HIT", "Cache-Control": "private, max-age=10, stale-while-revalidate=20" },
+    });
+  }
+
   try {
     const [sprintRow, hiddenIds] = await Promise.all([
       db.query.appSetting.findFirst({
@@ -47,12 +56,16 @@ export async function GET() {
       }));
     }
 
-    return NextResponse.json(
-      sprints.map((s) => ({
-        ...s,
-        hidden: hiddenIds.has(String(s.id)),
-      })),
-    );
+    const result = sprints.map((s) => ({
+      ...s,
+      hidden: hiddenIds.has(String(s.id)),
+    }));
+
+    cache.set(CACHE_KEY, result, 300_000);
+
+    return NextResponse.json(result, {
+      headers: { "X-Cache": "MISS", "Cache-Control": "private, max-age=10, stale-while-revalidate=20" },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

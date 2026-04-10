@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
+import { cache } from "@/lib/cache";
 
 // Normalised shapes returned to the client
 export interface DevBranch {
@@ -200,6 +201,14 @@ export async function GET(
 ) {
   const { key } = await params;
 
+  const cacheKey = `/api/tickets/${key}/dev-info`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: { "X-Cache": "HIT", "Cache-Control": "private, max-age=10, stale-while-revalidate=20" },
+    });
+  }
+
   if (!isConfigured()) {
     return NextResponse.json(EMPTY);
   }
@@ -336,7 +345,10 @@ export async function GET(
     }
 
     const payload: DevInfoPayload = { branches, pullRequests, commits, builds };
-    return NextResponse.json(payload);
+    cache.set(cacheKey, payload, 120_000);
+    return NextResponse.json(payload, {
+      headers: { "X-Cache": "MISS", "Cache-Control": "private, max-age=10, stale-while-revalidate=20" },
+    });
   } catch (err) {
     console.error("Dev-info fetch failed:", err);
     return NextResponse.json(EMPTY);

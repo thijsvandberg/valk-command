@@ -4,6 +4,7 @@ import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { logActivity } from "@/lib/activity-logger";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { cache } from "@/lib/cache";
 
 export async function PUT(
   request: Request,
@@ -94,6 +95,10 @@ export async function PUT(
   const result = await db.query.ticketMetadata.findFirst({
     where: (m, { eq }) => eq(m.jiraKey, key),
   });
+
+  // Invalidate caches for this specific ticket and ticket lists
+  cache.invalidate(`/api/tickets/${key}`);
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
 
   const changedFields = Object.keys(updates).join(", ");
   await logActivity({

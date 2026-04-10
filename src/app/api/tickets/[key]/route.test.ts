@@ -3,6 +3,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket } from "@/db/schema";
+import { cache } from "@/lib/cache";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -31,6 +32,7 @@ function makeParams(key: string): { params: Promise<{ key: string }> } {
 describe("GET /api/tickets/[key]", () => {
   beforeEach(() => {
     testDb = createTestDb();
+    cache.flush();
   });
 
   it("returns ticket when found", async () => {

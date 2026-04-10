@@ -5,6 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import type { Ticket, IssueType, JiraStatus, POStatus, Assignee, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
+import { cache } from "@/lib/cache";
 
 function userInitials(name: string): string {
   return name
@@ -32,6 +33,17 @@ function buildAssignee(name: string | null): Assignee | null {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sprintId = searchParams.get("sprintId");
+
+  const cacheKey = `/api/tickets${sprintId ? `?sprintId=${sprintId}` : ""}`;
+  const cached = cache.get<Ticket[]>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: {
+        "X-Cache": "HIT",
+        "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+      },
+    });
+  }
 
   const { result: { rows, allLocalEdits, allVersions }, durationMs } = await timedQuery(
     `GET /api/tickets${sprintId ? `?sprintId=${sprintId}` : ""}`,
@@ -119,7 +131,13 @@ export async function GET(request: Request) {
     };
   });
 
+  cache.set(cacheKey, result, 30_000);
+
   return NextResponse.json(result, {
-    headers: { "X-Query-Time-Ms": String(durationMs) },
+    headers: {
+      "X-Query-Time-Ms": String(durationMs),
+      "X-Cache": "MISS",
+      "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+    },
   });
 }

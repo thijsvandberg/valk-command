@@ -8,6 +8,7 @@ import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { cache } from "@/lib/cache";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 
@@ -104,6 +105,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
     }).where(eq(activityLog.id, logId));
 
     invalidateSearchCache();
+    cache.invalidate("/api/tickets");
     return NextResponse.json({
       ok: true,
       count: results.length,
@@ -229,6 +231,7 @@ async function syncSprint(sprintId: string | null, strategy: string) {
     }).where(eq(activityLog.id, logId));
 
     invalidateSearchCache();
+    cache.invalidate("/api/tickets");
 
     // Advance the incremental sync watermark to the latest updated timestamp
     const latestUpdated = issues

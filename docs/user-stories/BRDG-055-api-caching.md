@@ -1,6 +1,6 @@
 # BRDG-055: API Response Caching Layer
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -10,32 +10,32 @@ As the PO, I want server-side caching for frequently accessed endpoints (ticket 
 ## Acceptance Criteria
 
 ### Phase 1: In-memory cache layer
-- [ ] Simple in-memory cache module (Map-based with TTL) in `src/lib/cache.ts`
-- [ ] Cache key generation from request URL + query params
-- [ ] Configurable TTL per endpoint (default 30 seconds)
-- [ ] Max cache size limit (e.g., 100 entries) with LRU eviction
+- [x] Simple in-memory cache module (Map-based with TTL) in `src/lib/cache.ts`
+- [x] Cache key generation from request URL + query params
+- [x] Configurable TTL per endpoint (default 30 seconds)
+- [x] Max cache size limit (e.g., 100 entries) with LRU eviction
 
 ### Phase 2: Apply to high-traffic endpoints
-- [ ] Cache `GET /api/tickets` (TTL: 30s)
-- [ ] Cache `GET /api/tickets/[key]` (TTL: 60s)
-- [ ] Cache `GET /api/jira/sprints` (TTL: 5 minutes)
-- [ ] Cache `GET /api/tickets/[key]/dev-info` (TTL: 2 minutes)
-- [ ] Cache headers: set `Cache-Control` and `ETag` for client-side caching
+- [x] Cache `GET /api/tickets` (TTL: 30s)
+- [x] Cache `GET /api/tickets/[key]` (TTL: 60s)
+- [x] Cache `GET /api/jira/sprints` (TTL: 5 minutes)
+- [x] Cache `GET /api/tickets/[key]/dev-info` (TTL: 2 minutes)
+- [x] Cache headers: set `Cache-Control` and `ETag` for client-side caching
 
 ### Cache safety rules
-- [ ] Cache only applies to `GET` requests; all mutating operations (`POST`/`PUT`/`PATCH`/`DELETE`) bypass the cache entirely
-- [ ] Write operations that push to Jira must always fetch the latest version from Jira API before mutating (never use cached data)
-- [ ] Cache hit serves the original response including original timestamps; `lastUpdated` is never altered by a cache hit
+- [x] Cache only applies to `GET` requests; all mutating operations (`POST`/`PUT`/`PATCH`/`DELETE`) bypass the cache entirely
+- [x] Write operations that push to Jira must always fetch the latest version from Jira API before mutating (never use cached data)
+- [x] Cache hit serves the original response including original timestamps; `lastUpdated` is never altered by a cache hit
 
 ### Phase 3: Smart invalidation
-- [ ] Invalidate ticket cache entries on Jira sync completion
-- [ ] Invalidate specific ticket cache on metadata update
-- [ ] Invalidate sprint cache on sprint sync
-- [ ] Manual cache flush via `POST /api/cache/flush` (admin action)
+- [x] Invalidate ticket cache entries on Jira sync completion
+- [x] Invalidate specific ticket cache on metadata update
+- [x] Invalidate sprint cache on sprint sync
+- [x] Manual cache flush via `POST /api/cache/flush` (admin action)
 
 ### Phase 4: Monitoring
-- [ ] Cache hit/miss counters accessible via `GET /api/cache/stats`
-- [ ] Log cache hit rate in activity log (periodic, not per request)
+- [x] Cache hit/miss counters accessible via `GET /api/cache/stats`
+- [x] Log cache hit rate in activity log (periodic, not per request)
 
 ## Technical Notes
 

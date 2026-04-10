@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { cache } from "@/lib/cache";
 
 const mockEnv = vi.hoisted(() => ({
   JIRA_CLOUD_ID: "",
@@ -31,6 +32,7 @@ function makeParams(key: string): { params: Promise<{ key: string }> } {
 
 describe("GET /api/tickets/[key]/dev-info", () => {
   beforeEach(() => {
+    cache.flush();
     mockEnv.BITBUCKET_WORKSPACE = "my-workspace";
     mockEnv.BITBUCKET_REPO_SLUG = "my-repo";
     mockEnv.BITBUCKET_EMAIL = "test@example.com";

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { cache } from "@/lib/cache";
 
 interface StoredSprint {
   id: number;
@@ -86,6 +87,8 @@ export async function POST(request: NextRequest) {
       durationMs,
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
+
+    cache.invalidate("/api/jira/sprints");
 
     return NextResponse.json({
       ok: true,

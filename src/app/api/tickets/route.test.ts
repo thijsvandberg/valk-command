@@ -3,6 +3,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket } from "@/db/schema";
+import { cache } from "@/lib/cache";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -32,6 +33,7 @@ function seedTicket(
 describe("GET /api/tickets", () => {
   beforeEach(() => {
     testDb = createTestDb();
+    cache.flush();
   });
 
   it("returns empty array when no tickets exist", async () => {

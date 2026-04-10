@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
+import { cache } from "@/lib/cache";
 
 function userInitials(name: string): string {
   return name
@@ -41,6 +42,17 @@ export async function GET(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+
+  const cacheKey = `/api/tickets/${key}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: {
+        "X-Cache": "HIT",
+        "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+      },
+    });
+  }
 
   const { result: queryData, durationMs } = await timedQuery(`GET /api/tickets/${key}`, async () => {
     const t = await db.query.ticket.findFirst({
@@ -194,12 +206,20 @@ export async function GET(
     localEditMap[edit.field] = { value: edit.localValue, isDraft: edit.isDraft };
   }
 
-  return NextResponse.json({
+  const responseBody = {
     ...ticketBase,
     ...detail,
     metadata: meta ?? null,
     localEdits: localEditMap,
-  }, {
-    headers: { "X-Query-Time-Ms": String(durationMs) },
+  };
+
+  cache.set(cacheKey, responseBody, 60_000);
+
+  return NextResponse.json(responseBody, {
+    headers: {
+      "X-Query-Time-Ms": String(durationMs),
+      "X-Cache": "MISS",
+      "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+    },
   });
 }
