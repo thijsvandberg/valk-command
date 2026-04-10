@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   GitBranch,
@@ -33,6 +33,29 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { usePipelines, useDeploySettings } from "@/hooks/usePipelines";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import type { PipelineRunPayload } from "@/app/api/pipelines/route";
+
+// -- Filter Persistence --
+
+const STORAGE_KEY = "bridge:pipeline-filters";
+
+interface PersistedFilters {
+  sprints?: string[];
+  creators?: string[];
+  status?: StatusFilterValue;
+  dateRange?: DateRangeValue;
+  repo?: string | null;
+}
+
+function loadFilters(): PersistedFilters {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveFilters(filters: PersistedFilters) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filters)); } catch { /* noop */ }
+}
 
 // -- Helpers --
 
@@ -552,16 +575,18 @@ function DateRangeFilter({
   );
 }
 
-// -- Creator Filter --
+// -- Creator Filter (multi-select with search) --
 
 function CreatorFilter({
   creators,
   selected,
-  onSelect,
+  onToggle,
+  onClear,
 }: {
   creators: string[];
-  selected: string | null;
-  onSelect: (name: string | null) => void;
+  selected: string[];
+  onToggle: (name: string) => void;
+  onClear: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -572,6 +597,12 @@ function CreatorFilter({
     ? creators.filter((c) => c.toLowerCase().includes(search.toLowerCase()))
     : creators;
 
+  const label = selected.length === 0
+    ? "Creator"
+    : selected.length === 1
+    ? selected[0]
+    : `${selected.length} creators`;
+
   return (
     <div className="relative">
       <Button
@@ -579,53 +610,61 @@ function CreatorFilter({
         size="md"
         icon={<User size={12} strokeWidth={1.5} />}
         onClick={() => setOpen(!open)}
-        className={selected ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
+        className={selected.length > 0 ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
-        {selected ?? "Creator"}
+        {label}
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
       </Button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] max-h-[280px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
-            {creators.length > 5 && (
-              <div className="px-2 py-2 border-b border-white/[0.06]">
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
-                  <Search size={11} strokeWidth={1.5} className="text-white/20" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search..."
-                    autoFocus
-                    className="flex-1 bg-transparent text-[12px] text-white/60 placeholder:text-white/20 outline-none"
-                  />
-                </div>
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+            {/* Search */}
+            <div className="px-2 py-2 border-b border-white/[0.06]">
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
+                <Search size={11} strokeWidth={1.5} className="text-white/20 shrink-0" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search creators..."
+                  autoFocus
+                  className="flex-1 bg-transparent text-[12px] text-white/60 placeholder:text-white/20 outline-none"
+                />
               </div>
-            )}
-            <div className="overflow-y-auto max-h-[220px] py-1">
-              <button
-                type="button"
-                onClick={() => { onSelect(null); setOpen(false); setSearch(""); }}
-                className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
-                  !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
-                }`}
-              >
-                All creators
-              </button>
-              {filtered.map((name) => (
+            </div>
+
+            <div className="overflow-y-auto max-h-[260px] py-1">
+              {selected.length > 0 && (
                 <button
-                  key={name}
                   type="button"
-                  onClick={() => { onSelect(name); setOpen(false); setSearch(""); }}
-                  className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
-                    selected === name ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
-                  }`}
+                  onClick={() => { onClear(); }}
+                  className="w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 text-white/40 hover:bg-white/[0.04]"
                 >
-                  {name}
+                  Clear selection
                 </button>
-              ))}
+              )}
+              {filtered.map((name) => {
+                const isChecked = selected.includes(name);
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => onToggle(name)}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                      isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-[9px] shrink-0 ${
+                      isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
+                    }`}>
+                      {isChecked && "\u2713"}
+                    </span>
+                    {name}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </>
@@ -919,26 +958,61 @@ function SyncingBanner() {
   );
 }
 
-// -- Sprint Filter --
+// -- Sprint Filter (multi-select with search) --
 
 function SprintFilter({
   sprints,
   selected,
-  onSelect,
+  onToggle,
+  onClear,
 }: {
   sprints: { id: number; name: string; state: string; hidden?: boolean }[];
-  selected: string | null;
-  onSelect: (id: string | null) => void;
+  selected: string[];
+  onToggle: (id: string) => void;
+  onClear: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  // Show active + future sprints, plus recent closed sprints (for historical pipeline data)
+  const [search, setSearch] = useState("");
+
   const visibleSprints = sprints
     .filter((s) => !("hidden" in s && s.hidden))
     .filter((s) => s.state === "active" || s.state === "future" || s.state === "closed")
-    .slice(0, 15);
+    .slice(0, 20);
   if (visibleSprints.length === 0) return null;
 
-  const label = selected ? visibleSprints.find((s) => String(s.id) === selected)?.name ?? "Sprint" : "Sprint";
+  const current = visibleSprints.filter((s) => s.state === "active" || s.state === "future");
+  const closed = visibleSprints.filter((s) => s.state === "closed");
+
+  const filtered = (list: typeof visibleSprints) =>
+    search ? list.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())) : list;
+
+  const label = selected.length === 0
+    ? "Sprint"
+    : selected.length === 1
+    ? visibleSprints.find((s) => String(s.id) === selected[0])?.name ?? "1 sprint"
+    : `${selected.length} sprints`;
+
+  function renderItem(s: { id: number; name: string; state: string }, dimmed?: boolean) {
+    const id = String(s.id);
+    const isChecked = selected.includes(id);
+    return (
+      <button
+        key={s.id}
+        type="button"
+        onClick={() => onToggle(id)}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+          isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : dimmed ? "text-white/35 hover:bg-white/[0.04]" : "text-white/50 hover:bg-white/[0.04]"
+        }`}
+      >
+        <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-[9px] shrink-0 ${
+          isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
+        }`}>
+          {isChecked && "\u2713"}
+        </span>
+        {s.name}
+      </button>
+    );
+  }
 
   return (
     <div className="relative">
@@ -947,63 +1021,55 @@ function SprintFilter({
         size="md"
         icon={<Filter size={12} strokeWidth={1.5} />}
         onClick={() => setOpen(!open)}
-        className={selected ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
+        className={selected.length > 0 ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
-        {selected ? label : "Sprint"}
+        {label}
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
       </Button>
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] max-h-[320px] overflow-y-auto rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
-            <button
-              type="button"
-              onClick={() => { onSelect(null); setOpen(false); }}
-              className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
-                !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
-              }`}
-            >
-              All runs
-            </button>
-            {(() => {
-              const current = visibleSprints.filter((s) => s.state === "active" || s.state === "future");
-              const closed = visibleSprints.filter((s) => s.state === "closed");
-              return (
+          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+            {/* Search */}
+            <div className="px-2 py-2 border-b border-white/[0.06]">
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
+                <Search size={11} strokeWidth={1.5} className="text-white/20 shrink-0" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search sprints..."
+                  autoFocus
+                  className="flex-1 bg-transparent text-[12px] text-white/60 placeholder:text-white/20 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-y-auto max-h-[300px] py-1">
+              {/* Clear button */}
+              {selected.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { onClear(); }}
+                  className="w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 text-white/40 hover:bg-white/[0.04]"
+                >
+                  Clear selection
+                </button>
+              )}
+
+              {/* Active / future */}
+              {filtered(current).map((s) => renderItem(s))}
+
+              {/* Closed */}
+              {filtered(closed).length > 0 && (
                 <>
-                  {current.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => { onSelect(String(s.id)); setOpen(false); }}
-                      className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
-                        selected === String(s.id) ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                  {closed.length > 0 && (
-                    <>
-                      <div className="mx-3 my-1 border-t border-white/[0.06]" />
-                      <span className="block px-3 py-1 text-[10px] font-medium text-white/20 uppercase tracking-wider">Recent</span>
-                      {closed.map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => { onSelect(String(s.id)); setOpen(false); }}
-                          className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
-                            selected === String(s.id) ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/40 hover:bg-white/[0.04]"
-                          }`}
-                        >
-                          {s.name}
-                        </button>
-                      ))}
-                    </>
-                  )}
+                  <div className="mx-3 my-1 border-t border-white/[0.06]" />
+                  <span className="block px-3 py-1 text-[10px] font-medium text-white/20 uppercase tracking-wider">Recent</span>
+                  {filtered(closed).map((s) => renderItem(s, true))}
                 </>
-              );
-            })()}
+              )}
+            </div>
           </div>
         </>
       )}
@@ -1188,37 +1254,81 @@ function getDateCutoff(range: DateRangeValue): Date | null {
 }
 
 export default function PipelinesPage() {
-  const [repoFilter, setRepoFilter] = useState<string | null>(null);
-  const [sprintFilter, setSprintFilter] = useState<string | null>(null);
+  // Load persisted filters from localStorage
+  const initialFilters = useRef(loadFilters());
+
+  const [repoFilter, setRepoFilter] = useState<string | null>(initialFilters.current.repo ?? null);
+  const [sprintFilters, setSprintFilters] = useState<string[]>(initialFilters.current.sprints ?? []);
   const [sprintAutoSelected, setSprintAutoSelected] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
-  const [dateRange, setDateRange] = useState<DateRangeValue>("all");
-  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(initialFilters.current.status ?? "all");
+  const [dateRange, setDateRange] = useState<DateRangeValue>(initialFilters.current.dateRange ?? "all");
+  const [creatorFilters, setCreatorFilters] = useState<string[]>(initialFilters.current.creators ?? []);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Persist filters to localStorage
+  useEffect(() => {
+    saveFilters({
+      sprints: sprintFilters,
+      creators: creatorFilters,
+      status: statusFilter,
+      dateRange,
+      repo: repoFilter,
+    });
+  }, [sprintFilters, creatorFilters, statusFilter, dateRange, repoFilter]);
+
   const { data: sprints } = useJiraSprints();
 
-  // Default to active sprint on first load
-  if (sprints && !sprintFilter && !sprintAutoSelected) {
+  // Default to active sprint on first load (only if no persisted filters)
+  if (sprints && sprintFilters.length === 0 && !sprintAutoSelected && !initialFilters.current.sprints?.length) {
     const active = sprints.find((s) => s.state === "active");
     if (active) {
-      setSprintFilter(String(active.id));
+      setSprintFilters([String(active.id)]);
       setSprintAutoSelected(true);
     }
   }
 
-  const { data: sprintTickets } = useTickets(sprintFilter);
-  const sprintTicketKeys = sprintFilter && sprintTickets ? sprintTickets.map((t) => t.key) : undefined;
+  // Toggle helpers
+  const toggleSprint = useCallback((id: string) => {
+    setSprintFilters((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  }, []);
+
+  const toggleCreator = useCallback((name: string) => {
+    setCreatorFilters((prev) => prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]);
+  }, []);
+
+  // For ticket fetching: use first selected sprint (useTickets takes single ID)
+  // When multiple sprints: fetch __all__ and filter client-side
+  const sprintTicketFetchKey = sprintFilters.length === 1 ? sprintFilters[0] : sprintFilters.length > 1 ? "__all__" : null;
+  const { data: sprintTickets } = useTickets(sprintTicketFetchKey);
+
+  // Filter tickets to selected sprints when multi-select
+  const filteredSprintTickets = useMemo(() => {
+    if (!sprintTickets || sprintFilters.length === 0) return sprintTickets ?? null;
+    if (sprintFilters.length === 1) return sprintTickets;
+    // Multi-sprint: need to match by sprint name
+    const sprintNames = new Set<string>();
+    if (sprints) {
+      for (const sf of sprintFilters) {
+        const s = sprints.find((sp) => String(sp.id) === sf);
+        if (s) sprintNames.add(s.name);
+      }
+    }
+    return sprintTickets.filter((t) => t.sprintId && sprintNames.has(t.sprintId));
+  }, [sprintTickets, sprintFilters, sprints]);
+
+  const sprintTicketKeys = sprintFilters.length > 0 && filteredSprintTickets
+    ? filteredSprintTickets.map((t) => t.key)
+    : undefined;
 
   // Build ticket key -> title map for sprint view
   const ticketTitleMap = useMemo(() => {
     const map = new Map<string, string>();
-    if (sprintTickets) {
-      for (const t of sprintTickets) map.set(t.key, t.title);
+    if (filteredSprintTickets) {
+      for (const t of filteredSprintTickets) map.set(t.key, t.title);
     }
     return map;
-  }, [sprintTickets]);
+  }, [filteredSprintTickets]);
 
   const { runs, hasRunning, syncing, isLoading, refresh } = usePipelines({
     limit: 200,
@@ -1251,17 +1361,20 @@ export default function PipelinesPage() {
     const cutoff = getDateCutoff(dateRange);
     if (cutoff) result = result.filter((r) => new Date(r.createdAt) >= cutoff);
 
-    if (creatorFilter) result = result.filter((r) => r.creator === creatorFilter);
+    if (creatorFilters.length > 0) {
+      const creatorSet = new Set(creatorFilters);
+      result = result.filter((r) => r.creator !== null && creatorSet.has(r.creator));
+    }
 
     return result;
-  }, [runs, repoFilter, statusFilter, dateRange, creatorFilter]);
+  }, [runs, repoFilter, statusFilter, dateRange, creatorFilters]);
 
   // Pagination: slice for display
   const paginatedRuns = useMemo(() => filteredRuns.slice(0, visibleCount), [filteredRuns, visibleCount]);
   const hasMore = filteredRuns.length > visibleCount;
 
   // Reset pagination when filters change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [repoFilter, statusFilter, dateRange, creatorFilter, sprintFilter]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [repoFilter, statusFilter, dateRange, creatorFilters, sprintFilters]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -1274,7 +1387,6 @@ export default function PipelinesPage() {
 
   // Keyboard shortcuts
   const handleKeyboard = useCallback((e: KeyboardEvent) => {
-    // Don't trigger when typing in inputs
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
     if (e.key === "r" && !e.metaKey && !e.ctrlKey) {
@@ -1292,17 +1404,16 @@ export default function PipelinesPage() {
     if (e.key === "s" && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       if (sprints) {
-        const activeSprints = sprints.filter((s) => s.state === "active" || s.state === "future").slice(0, 5);
-        if (sprintFilter) {
-          setSprintFilter(null);
-        } else if (activeSprints.length > 0) {
-          const active = activeSprints.find((s) => s.state === "active");
-          setSprintFilter(String((active ?? activeSprints[0]).id));
+        if (sprintFilters.length > 0) {
+          setSprintFilters([]);
+        } else {
+          const active = sprints.find((s) => s.state === "active");
+          if (active) setSprintFilters([String(active.id)]);
         }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sprints, sprintFilter]);
+  }, [sprints, sprintFilters]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyboard);
@@ -1312,7 +1423,7 @@ export default function PipelinesPage() {
   const activeFilterCount = [
     statusFilter !== "all",
     dateRange !== "all",
-    creatorFilter !== null,
+    creatorFilters.length > 0,
     repoFilter !== null,
   ].filter(Boolean).length;
 
@@ -1328,11 +1439,11 @@ export default function PipelinesPage() {
                 Live
               </span>
             )}
-            {sprints && <SprintFilter sprints={sprints} selected={sprintFilter} onSelect={setSprintFilter} />}
+            {sprints && <SprintFilter sprints={sprints} selected={sprintFilters} onToggle={toggleSprint} onClear={() => setSprintFilters([])} />}
             <RepoFilter repos={repos} selected={repoFilter} onSelect={setRepoFilter} />
             <StatusFilter selected={statusFilter} onSelect={setStatusFilter} />
             <DateRangeFilter selected={dateRange} onSelect={setDateRange} />
-            <CreatorFilter creators={creators} selected={creatorFilter} onSelect={setCreatorFilter} />
+            <CreatorFilter creators={creators} selected={creatorFilters} onToggle={toggleCreator} onClear={() => setCreatorFilters([])} />
             <DeploySettingsPanel />
             <Button
               variant="ghost"
@@ -1366,7 +1477,7 @@ export default function PipelinesPage() {
           ) : (
             <>
               {syncing && runs.length === 0 && <SyncingBanner />}
-              {sprintFilter ? (
+              {sprintFilters.length > 0 ? (
                 <>
                   <SprintPipelineSummary runs={filteredRuns} />
                   <RunningSection runs={paginatedRuns} />
