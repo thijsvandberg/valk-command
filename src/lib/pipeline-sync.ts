@@ -84,12 +84,17 @@ function bbAuthHeaders() {
   return { Authorization: `Basic ${auth}`, Accept: "application/json" };
 }
 
-async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
+async function bbFetch<T>(repoSlug: string, path: string, silent404 = false): Promise<T | null> {
   const cfg = getBitbucketConfig();
   const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
   trackOutboundCall("bitbucket");
   const res = await fetch(url, { redirect: "follow", headers: bbAuthHeaders() });
-  if (!res.ok) { console.log(`[pipeline-sync] bbFetch ${res.status} for ${path} on ${repoSlug}`); return null; }
+  if (!res.ok) {
+    if (!(silent404 && res.status === 404)) {
+      console.log(`[pipeline-sync] bbFetch ${res.status} for ${path} on ${repoSlug}`);
+    }
+    return null;
+  }
   return res.json() as Promise<T>;
 }
 
@@ -165,7 +170,7 @@ export async function backfillEnrichment(): Promise<number> {
       // The pipeline URL contains the commit hash indirectly, but we need to
       // fetch the pipeline to get the commit hash. Use the pipeline API instead.
       const repoSlug = fullRepoSlug(r.repo);
-      return bbFetch<BbPipeline>(repoSlug, `/pipelines/${r.buildNumber}`);
+      return bbFetch<BbPipeline>(repoSlug, `/pipelines/${r.buildNumber}`, true);
     }),
   );
 
@@ -179,9 +184,9 @@ export async function backfillEnrichment(): Promise<number> {
     const commitHash = pipeline.target?.commit?.hash;
     let commitMsg = pipeline.target?.commit?.message ?? null;
 
-    // If no inline message, fetch commit directly
+    // If no inline message, fetch commit directly (silent 404 for deleted commits)
     if (!commitMsg && commitHash) {
-      const commitRes = await bbFetch<{ message?: string }>(fullRepoSlug(row.repo), `/commit/${commitHash}`);
+      const commitRes = await bbFetch<{ message?: string }>(fullRepoSlug(row.repo), `/commit/${commitHash}`, true);
       commitMsg = commitRes?.message ?? null;
     }
 
