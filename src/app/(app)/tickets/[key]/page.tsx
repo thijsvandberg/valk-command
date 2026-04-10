@@ -39,6 +39,7 @@ import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
 import { TicketReview } from "@/components/ticket-detail/TicketReview";
 import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
 import { TicketSidebar } from "@/components/ticket-detail/TicketSidebar";
+import { TicketDevelopment } from "@/components/ticket-detail/TicketDevelopment";
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
@@ -123,7 +124,7 @@ export default function TicketDetailPage({
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [isDescEditing, setIsDescEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"content" | "history" | "review" | "refinement">("content");
+  const [activeTab, setActiveTab] = useState<"content" | "history" | "review" | "refinement" | "development">("content");
   const [showConflictDiff, setShowConflictDiff] = useState(false);
   const [metadataOnlyConflict, setMetadataOnlyConflict] = useState(false);
   const [historyResetKey, setHistoryResetKey] = useState(0);
@@ -420,6 +421,7 @@ export default function TicketDetailPage({
               { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
               { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
               { id: "refinement" as const, label: "Refinement", badge: undefined as number | undefined, badgeHighlight: false },
+              { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
             ]).map((tab) => (
               <Tab
                 key={tab.id}
@@ -545,6 +547,7 @@ export default function TicketDetailPage({
           )}
           {activeTab === "review" && <TicketReview ticketKey={key} />}
           {activeTab === "refinement" && <TicketRefinement ticketKey={key} />}
+          {activeTab === "development" && <TicketDevelopment ticketKey={key} />}
 
           {activeTab !== "history" && <div className="h-12" />}
         </div>
@@ -552,7 +555,7 @@ export default function TicketDetailPage({
         </div>
 
       <div className="sticky top-0 min-h-full self-stretch overflow-visible">
-        <TicketSidebar ticket={ticket} detail={detail} onNavigateToReview={() => setActiveTab("review")} />
+        <TicketSidebar ticket={ticket} detail={detail} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} />
       </div>
       </div>
     </div>

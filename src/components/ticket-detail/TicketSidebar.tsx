@@ -29,10 +29,12 @@ export function TicketSidebar({
   ticket,
   detail,
   onNavigateToReview,
+  onNavigateToDev,
 }: {
   ticket: Ticket;
   detail: TicketDetail | undefined;
   onNavigateToReview?: () => void;
+  onNavigateToDev?: () => void;
 }) {
   const [poStatus, setPoStatus] = useState<POStatus>(ticket.poStatus);
   const [poNotes, setPoNotes] = useState(ticket.notes);
@@ -353,7 +355,7 @@ export function TicketSidebar({
           </div>
 
           {/* Development panel */}
-          <DevPanel data={devInfo} isLoading={devInfoLoading} />
+          <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={onNavigateToDev} />
         </div>
       )}
     </div>

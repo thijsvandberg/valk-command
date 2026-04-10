@@ -55,7 +55,7 @@ describe("GET /api/tickets/[key]/dev-info", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data).toEqual({ branches: [], pullRequests: [], commits: [], builds: [] });
+    expect(data).toEqual({ branches: [], pullRequests: [], commits: [], builds: [], deployments: [] });
   });
 
   it("normalises Bitbucket branch + PR response into expected shape", async () => {
@@ -190,7 +190,7 @@ describe("GET /api/tickets/[key]/dev-info", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data).toEqual({ branches: [], pullRequests: [], commits: [], builds: [] });
+    expect(data).toEqual({ branches: [], pullRequests: [], commits: [], builds: [], deployments: [] });
   });
 
   it("handles non-OK Bitbucket responses gracefully", async () => {
@@ -205,7 +205,7 @@ describe("GET /api/tickets/[key]/dev-info", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data).toEqual({ branches: [], pullRequests: [], commits: [], builds: [] });
+    expect(data).toEqual({ branches: [], pullRequests: [], commits: [], builds: [], deployments: [] });
   });
 
   it("falls back to JIRA_EMAIL when BITBUCKET_EMAIL is not set", async () => {

@@ -14,6 +14,7 @@ import {
   MessageSquare,
   FileCode2,
   OctagonX,
+  Maximize2,
 } from "lucide-react";
 import type {
   DevInfoPayload,
@@ -282,15 +283,18 @@ function LoadingSkeleton() {
 export function DevPanel({
   data,
   isLoading,
+  onExpand,
 }: {
   data: DevInfoPayload | null | undefined;
   isLoading: boolean;
+  onExpand?: () => void;
 }) {
   const hasData = data && (
     data.branches.length > 0 ||
     data.pullRequests.length > 0 ||
     data.commits.length > 0 ||
-    data.builds.length > 0
+    data.builds.length > 0 ||
+    (data.deployments?.length ?? 0) > 0
   );
   const [expanded, setExpanded] = useState<boolean | null>(null);
 
@@ -319,12 +323,25 @@ export function DevPanel({
             </span>
           )}
         </div>
-        <ChevronDown
-          size={12}
-          strokeWidth={1.5}
-          className={`shrink-0 text-white/20 ${isExpanded ? "" : "-rotate-90"}`}
-          style={{ transition: "transform 0.2s ease" }}
-        />
+        <div className="flex items-center gap-1">
+          {hasData && onExpand && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onExpand(); }}
+              className="rounded p-0.5 text-white/15 cursor-pointer hover:text-white/40 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
+              title="Open in full view"
+            >
+              <Maximize2 size={11} strokeWidth={1.5} />
+            </button>
+          )}
+          <ChevronDown
+            size={12}
+            strokeWidth={1.5}
+            className={`shrink-0 text-white/20 ${isExpanded ? "" : "-rotate-90"}`}
+            style={{ transition: "transform 0.2s ease" }}
+          />
+        </div>
       </button>
 
       {isExpanded && (
