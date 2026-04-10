@@ -1,6 +1,6 @@
 # BRDG-059: Database Query Optimization
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -10,28 +10,28 @@ As a developer, I want optimized SQLite queries with proper indexes, prepared st
 ## Acceptance Criteria
 
 ### Phase 1: Index audit
-- [ ] Audit all database queries across API routes
-- [ ] Identify missing indexes on frequently filtered/sorted columns
-- [ ] Add indexes: `ticket.sprint`, `ticket.status`, `ticket.assignee`, `ticket.epic`
-- [ ] Add indexes: `activityLog.createdAt`, `activityLog.type`
-- [ ] Add composite index: `ticket(sprint, status)` for sprint board queries
-- [ ] Drizzle migration for new indexes
+- [x] Audit all database queries across API routes
+- [x] Identify missing indexes on frequently filtered/sorted columns
+- [x] Add indexes: `ticket.sprint`, `ticket.status`, `ticket.assignee`, `ticket.epic`
+- [x] Add indexes: `activityLog.createdAt`, `activityLog.type`
+- [x] Add composite index: `ticket(sprint, status)` for sprint board queries
+- [x] Drizzle migration for new indexes
 
 ### Phase 2: Query optimization
-- [ ] Replace N+1 query patterns with JOINs or batch queries
+- [x] Replace N+1 query patterns with JOINs or batch queries
 - [ ] Use `.prepare()` for frequently executed queries (Drizzle prepared statements)
-- [ ] Audit `SELECT *` usage; select only needed columns where possible
+- [x] Audit `SELECT *` usage; select only needed columns where possible
 - [ ] Add LIMIT clauses to unbounded queries
 
 ### Phase 3: Query timing
-- [ ] Middleware or utility that logs query execution time
-- [ ] Warn in console for queries exceeding 100ms
-- [ ] Expose timing data in API response headers (`X-Query-Time-Ms`)
+- [x] Middleware or utility that logs query execution time
+- [x] Warn in console for queries exceeding 100ms
+- [x] Expose timing data in API response headers (`X-Query-Time-Ms`)
 - [ ] Aggregate query stats accessible via `GET /api/debug/query-stats` (dev only)
 
 ### Phase 4: Database maintenance
-- [ ] Add `PRAGMA optimize` call on app startup
-- [ ] Configure WAL mode for better concurrent read performance
+- [x] Add `PRAGMA optimize` call on app startup
+- [x] Configure WAL mode for better concurrent read performance
 - [ ] Add periodic VACUUM suggestion in activity log when DB exceeds size threshold
 
 ## Technical Notes

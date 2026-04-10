@@ -4,6 +4,7 @@ import { ticket, ticketMetadata, ticketLocalEdit, storyVersion } from "@/db/sche
 import { eq, inArray } from "drizzle-orm";
 import type { Ticket, IssueType, JiraStatus, POStatus, Assignee, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
+import { timedQuery } from "@/lib/query-timer";
 
 function userInitials(name: string): string {
   return name
@@ -32,41 +33,46 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sprintId = searchParams.get("sprintId");
 
-  const query = db
-    .select({
-      t: ticket,
-      meta: ticketMetadata,
-    })
-    .from(ticket)
-    .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey));
+  const { result: { rows, allLocalEdits, allVersions }, durationMs } = await timedQuery(
+    `GET /api/tickets${sprintId ? `?sprintId=${sprintId}` : ""}`,
+    async () => {
+      const query = db
+        .select({
+          t: ticket,
+          meta: ticketMetadata,
+        })
+        .from(ticket)
+        .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey));
 
-  const rows = sprintId
-    ? await query.where(eq(ticket.sprintName, sprintId))
-    : await query;
+      const rows = sprintId
+        ? await query.where(eq(ticket.sprintName, sprintId))
+        : await query;
 
-  // Batch-fetch local edits and latest versions for edit state computation.
-  // Only fetch for the tickets in this sprint to avoid full table scans.
-  const allKeys = rows.map(({ t }) => t.jiraKey);
-  const [allLocalEdits, allVersions] = await Promise.all([
-    allKeys.length > 0
-      ? db.select({
-          id: ticketLocalEdit.id,
-          ticketKey: ticketLocalEdit.ticketKey,
-          field: ticketLocalEdit.field,
-          localValue: ticketLocalEdit.localValue,
-          baseJiraVersion: ticketLocalEdit.baseJiraVersion,
-          isDraft: ticketLocalEdit.isDraft,
-          modifiedAt: ticketLocalEdit.modifiedAt,
-        }).from(ticketLocalEdit).where(inArray(ticketLocalEdit.ticketKey, allKeys))
-      : Promise.resolve([]),
-    allKeys.length > 0
-      ? db.select({
-          jiraKey: storyVersion.jiraKey,
-          contentHash: storyVersion.contentHash,
-          createdAt: storyVersion.createdAt,
-        }).from(storyVersion).where(inArray(storyVersion.jiraKey, allKeys))
-      : Promise.resolve([]),
-  ]);
+      const allKeys = rows.map(({ t }) => t.jiraKey);
+      const [allLocalEdits, allVersions] = await Promise.all([
+        allKeys.length > 0
+          ? db.select({
+              id: ticketLocalEdit.id,
+              ticketKey: ticketLocalEdit.ticketKey,
+              field: ticketLocalEdit.field,
+              localValue: ticketLocalEdit.localValue,
+              baseJiraVersion: ticketLocalEdit.baseJiraVersion,
+              isDraft: ticketLocalEdit.isDraft,
+              modifiedAt: ticketLocalEdit.modifiedAt,
+            }).from(ticketLocalEdit).where(inArray(ticketLocalEdit.ticketKey, allKeys))
+          : Promise.resolve([]),
+        allKeys.length > 0
+          ? db.select({
+              jiraKey: storyVersion.jiraKey,
+              contentHash: storyVersion.contentHash,
+              createdAt: storyVersion.createdAt,
+            }).from(storyVersion).where(inArray(storyVersion.jiraKey, allKeys))
+          : Promise.resolve([]),
+      ]);
+
+      return { rows, allLocalEdits, allVersions };
+    },
+  );
 
   const editsByKey = new Map<string, typeof allLocalEdits>();
   for (const edit of allLocalEdits) {
@@ -113,5 +119,7 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: { "X-Query-Time-Ms": String(durationMs) },
+  });
 }

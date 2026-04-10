@@ -61,6 +61,13 @@ async function syncIndividualTickets(ticketKeys: string[]) {
   const controller = registerSync(logId);
 
   try {
+    // Batch-fetch existing tickets to avoid N+1 queries for removedFromJiraAt check
+    const existingTickets = ticketKeys.length > 0
+      ? await db.select({ jiraKey: ticket.jiraKey, removedFromJiraAt: ticket.removedFromJiraAt })
+          .from(ticket).where(inArray(ticket.jiraKey, ticketKeys))
+      : [];
+    const removedMap = new Map(existingTickets.map((t) => [t.jiraKey, t.removedFromJiraAt]));
+
     const results = [];
     for (const key of ticketKeys) {
       try {
@@ -69,11 +76,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
         const sprintName = sprint ? String(sprint.id) : "";
         const info = await upsertIssue(issue, sprintName, controller.signal);
 
-        // Clear removedFromJiraAt if ticket was previously marked as removed
-        const existing = await db.query.ticket.findFirst({
-          where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
-        });
-        if (existing?.removedFromJiraAt) {
+        if (removedMap.get(key)) {
           await db.update(ticket)
             .set({ removedFromJiraAt: null })
             .where(eq(ticket.jiraKey, key));

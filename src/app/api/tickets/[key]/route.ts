@@ -4,6 +4,7 @@ import { ticket, ticketLocalEdit, storyVersion } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
+import { timedQuery } from "@/lib/query-timer";
 
 function userInitials(name: string): string {
   return name
@@ -41,41 +42,46 @@ export async function GET(
 ) {
   const { key } = await params;
 
-  const t = await db.query.ticket.findFirst({
-    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+  const { result: queryData, durationMs } = await timedQuery(`GET /api/tickets/${key}`, async () => {
+    const t = await db.query.ticket.findFirst({
+      where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+    });
+
+    if (!t) return null;
+
+    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows] = await Promise.all([
+      db.query.ticketMetadata.findFirst({
+        where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
+      }),
+      db.query.ticketAttachment.findMany({
+        where: (a, { eq: eqFn }) => eqFn(a.ticketKey, key),
+      }),
+      db.query.jiraComment.findMany({
+        where: (c, { eq: eqFn }) => eqFn(c.ticketKey, key),
+        orderBy: (c, { asc }) => [asc(c.createdAt)],
+      }),
+      db.query.ticketSubtask.findMany({
+        where: (s, { eq: eqFn }) => eqFn(s.ticketKey, key),
+      }),
+      db.query.ticketLink.findMany({
+        where: (l, { eq: eqFn }) => eqFn(l.ticketKey, key),
+      }),
+    ]);
+
+    const epicChildRows = t.type === "epic"
+      ? await db.query.ticket.findMany({
+          where: (row, { eq: eqFn }) => eqFn(row.epicKey, key),
+        })
+      : [];
+
+    return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows };
   });
 
-  if (!t) {
+  if (!queryData) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  const meta = await db.query.ticketMetadata.findFirst({
-    where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
-  });
-
-  const attachmentRows = await db.query.ticketAttachment.findMany({
-    where: (a, { eq: eqFn }) => eqFn(a.ticketKey, key),
-  });
-
-  const jiraCommentRows = await db.query.jiraComment.findMany({
-    where: (c, { eq: eqFn }) => eqFn(c.ticketKey, key),
-    orderBy: (c, { asc }) => [asc(c.createdAt)],
-  });
-
-  const subtaskRows = await db.query.ticketSubtask.findMany({
-    where: (s, { eq: eqFn }) => eqFn(s.ticketKey, key),
-  });
-
-  const linkRows = await db.query.ticketLink.findMany({
-    where: (l, { eq: eqFn }) => eqFn(l.ticketKey, key),
-  });
-
-  // When this ticket is an epic, fetch all child issues that reference it
-  const epicChildRows = t.type === "epic"
-    ? await db.query.ticket.findMany({
-        where: (row, { eq: eqFn }) => eqFn(row.epicKey, key),
-      })
-    : [];
+  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows } = queryData;
 
   const attachments: Attachment[] = attachmentRows.map((a) => ({
     id: a.id,
@@ -193,5 +199,7 @@ export async function GET(
     ...detail,
     metadata: meta ?? null,
     localEdits: localEditMap,
+  }, {
+    headers: { "X-Query-Time-Ms": String(durationMs) },
   });
 }

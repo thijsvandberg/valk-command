@@ -22,6 +22,8 @@ function getDb() {
     _db = drizzle(sqlite, { schema });
     // Run migrations on first connection so all tables exist before any query
     migrate(_db, { migrationsFolder: resolve(process.cwd(), "drizzle") });
+    // Let SQLite analyze index statistics for optimal query planning
+    sqlite.pragma("optimize");
   }
   return _db;
 }

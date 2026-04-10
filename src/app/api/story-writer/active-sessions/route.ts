@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { storyWriterSession, ticket, message } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 
 export interface ActiveSession {
   sessionId: string;
@@ -16,51 +16,41 @@ export interface ActiveSession {
 }
 
 export async function GET() {
-  const sessions = await db
+  // JOIN with ticket table directly instead of loading all tickets into memory
+  const rows = await db
     .select({
       sessionId: storyWriterSession.id,
       ticketKey: storyWriterSession.ticketKey,
       updatedAt: storyWriterSession.updatedAt,
+      title: ticket.title,
+      sprintName: ticket.sprintName,
+      epic: ticket.epic,
+      epicKey: ticket.epicKey,
+      issueType: ticket.type,
+      ticketStatus: ticket.status,
     })
     .from(storyWriterSession)
+    .leftJoin(ticket, eq(storyWriterSession.ticketKey, ticket.jiraKey))
     .where(
       and(
         eq(storyWriterSession.status, "active"),
-        // Only sessions where the user has actually sent at least one message
         sql`EXISTS (SELECT 1 FROM ${message} WHERE ${message.conversationId} = ${storyWriterSession.conversationId})`,
       ),
     )
+    .orderBy(desc(storyWriterSession.updatedAt))
     .all();
 
-  if (sessions.length === 0) {
-    return NextResponse.json([]);
-  }
-
-  // Enrich with ticket title + sprint name from local DB
-  const tickets = await db.select().from(ticket).all();
-  const ticketMap = new Map(tickets.map((t) => [t.jiraKey, t]));
-
-  const result: ActiveSession[] = sessions.map((s) => {
-    const t = ticketMap.get(s.ticketKey);
-    return {
-      sessionId: s.sessionId,
-      ticketKey: s.ticketKey,
-      title: t?.title ?? s.ticketKey,
-      sprintName: t?.sprintName ?? null,
-      epic: t?.epic ?? null,
-      epicKey: t?.epicKey ?? null,
-      issueType: t?.type ?? null,
-      status: t?.status ?? "unknown",
-      updatedAt: s.updatedAt,
-    };
-  });
-
-  // Most recently updated first
-  result.sort((a, b) => {
-    if (!a.updatedAt) return 1;
-    if (!b.updatedAt) return -1;
-    return b.updatedAt.localeCompare(a.updatedAt);
-  });
+  const result: ActiveSession[] = rows.map((r) => ({
+    sessionId: r.sessionId,
+    ticketKey: r.ticketKey,
+    title: r.title ?? r.ticketKey,
+    sprintName: r.sprintName ?? null,
+    epic: r.epic ?? null,
+    epicKey: r.epicKey ?? null,
+    issueType: r.issueType ?? null,
+    status: r.ticketStatus ?? "unknown",
+    updatedAt: r.updatedAt,
+  }));
 
   return NextResponse.json(result);
 }

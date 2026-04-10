@@ -52,6 +52,11 @@ export const ticket = sqliteTable("ticket", {
   removedFromJiraAt: text("removed_from_jira_at"),
 }, (table) => [
   index("ticket_sprint_name_idx").on(table.sprintName),
+  index("ticket_status_idx").on(table.status),
+  index("ticket_assignee_idx").on(table.assignee),
+  index("ticket_type_idx").on(table.type),
+  index("ticket_epic_key_idx").on(table.epicKey),
+  index("ticket_sprint_status_idx").on(table.sprintName, table.status),
 ]);
 
 export const ticketMetadata = sqliteTable("ticket_metadata", {
@@ -84,7 +89,10 @@ export const workspaceTask = sqliteTable("workspace_task", {
   completedAt: text("completed_at"),
   relatedTicket: text("related_ticket"),
   conversationId: text("conversation_id"),
-});
+}, (table) => [
+  index("workspace_task_status_idx").on(table.status),
+  index("workspace_task_conversation_id_idx").on(table.conversationId),
+]);
 
 export const scheduledJob = sqliteTable("scheduled_job", {
   id: text("id").primaryKey(),
@@ -257,6 +265,7 @@ export const activityLog = sqliteTable("activity_log", {
   acknowledged: integer("acknowledged", { mode: "boolean" }).notNull().default(false),
 }, (table) => [
   index("activity_log_started_at_idx").on(table.startedAt),
+  index("activity_log_type_idx").on(table.type),
 ]);
 
 // Review persistence: stores full review results linked to story versions
