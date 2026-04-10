@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { env } from "@/lib/env";
 
 /**
  * GET /api/attachments/[id]
@@ -22,9 +23,9 @@ export async function GET(
     return new NextResponse(null, { status: 404 });
   }
 
-  const email = process.env.JIRA_EMAIL;
-  const token = process.env.JIRA_API_TOKEN;
-  const jiraBaseUrl = process.env.NEXT_PUBLIC_JIRA_BASE_URL ?? "";
+  const email = env.JIRA_EMAIL;
+  const token = env.JIRA_API_TOKEN;
+  const jiraBaseUrl = env.NEXT_PUBLIC_JIRA_BASE_URL;
 
   if (!email || !token) {
     return new NextResponse(null, { status: 503 });

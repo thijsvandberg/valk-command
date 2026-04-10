@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { jiraClient, extractSprint } from "@/lib/jira-client";
+import { env } from "@/lib/env";
 
 export interface JiraSearchResult {
   key: string;
@@ -35,14 +36,14 @@ export async function GET(request: Request) {
   const { signal } = inFlightController;
 
   try {
-    const cfg = { projectKey: process.env.JIRA_PROJECT_KEY ?? "VPL" };
+    const cfg = { projectKey: env.JIRA_PROJECT_KEY };
     const jql = jqlOverride.trim()
       ? jqlOverride.trim()
       : `project = ${cfg.projectKey} AND text ~ "${q.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
 
     const jiraIssues = await jiraClient.searchIssues(jql, undefined, 25, signal);
 
-    const baseUrl = (process.env.NEXT_PUBLIC_JIRA_BASE_URL ?? "https://new-story.atlassian.net").replace(/\/$/, "");
+    const baseUrl = env.NEXT_PUBLIC_JIRA_BASE_URL.replace(/\/$/, "");
 
     const issues: JiraSearchResult[] = jiraIssues.map((issue) => {
       const sprint = extractSprint(issue.fields);

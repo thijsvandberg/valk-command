@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { env } from "@/lib/env";
 
 /**
  * Exposes safe, non-secret configuration values to the client.
@@ -6,6 +7,6 @@ import { NextResponse } from "next/server";
  */
 export async function GET() {
   return NextResponse.json({
-    nextSprintId: process.env.BT_NEXT_SPRINT_ID ?? "",
+    nextSprintId: env.BT_NEXT_SPRINT_ID,
   });
 }

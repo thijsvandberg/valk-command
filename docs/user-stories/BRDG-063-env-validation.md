@@ -1,6 +1,6 @@
 # BRDG-063: Environment Variable Validation
 
-**Status:** Open
+**Status:** Done
 **Priority:** High
 
 ## Description
@@ -10,23 +10,23 @@ As a developer, I want a `.env.example` file documenting all required variables 
 ## Acceptance Criteria
 
 ### Phase 1: .env.example
-- [ ] Create `.env.example` in project root with all required and optional env vars
-- [ ] Each variable with a comment explaining its purpose and format
-- [ ] Group by integration: Jira, Bitbucket, App settings
-- [ ] Include example values (not real credentials)
+- [x] Create `.env.example` in project root with all required and optional env vars
+- [x] Each variable with a comment explaining its purpose and format
+- [x] Group by integration: Jira, Bitbucket, App settings
+- [x] Include example values (not real credentials)
 
 ### Phase 2: Startup validation
-- [ ] Zod schema for environment variables in `src/lib/env.ts`
-- [ ] Validate on app startup (imported early in the app lifecycle)
-- [ ] Required vars: Jira credentials, Bitbucket credentials, app-specific settings
-- [ ] Optional vars with defaults: port, log level, cache TTL
-- [ ] Clear error messages: "Missing JIRA_BASE_URL. See .env.example for setup."
+- [x] Zod schema for environment variables in `src/lib/env.ts`
+- [x] Validate on app startup (imported early in the app lifecycle)
+- [x] Required vars: Jira credentials, Bitbucket credentials, app-specific settings
+- [x] Optional vars with defaults: port, log level, cache TTL
+- [x] Clear error messages: "Missing JIRA_BASE_URL. See .env.example for setup."
 
 ### Phase 3: Type-safe access
-- [ ] Export typed `env` object from `src/lib/env.ts`
-- [ ] Replace all `process.env.XXX` usages with `env.XXX`
-- [ ] TypeScript types derived from Zod schema (no string | undefined)
-- [ ] Runtime validation ensures values match expected format (URL, email, token pattern)
+- [x] Export typed `env` object from `src/lib/env.ts`
+- [x] Replace all `process.env.XXX` usages with `env.XXX`
+- [x] TypeScript types derived from Zod schema (no string | undefined)
+- [x] Runtime validation ensures values match expected format (URL, email, token pattern)
 
 ## Technical Notes
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { env } from "@/lib/env";
 
 // Normalised shapes returned to the client
 export interface DevBranch {
@@ -55,15 +56,15 @@ export interface DevInfoPayload {
 const EMPTY: DevInfoPayload = { branches: [], pullRequests: [], commits: [], builds: [] };
 
 function getBitbucketConfig() {
-  const repoSlugs = (process.env.BITBUCKET_REPO_SLUG ?? "")
+  const repoSlugs = env.BITBUCKET_REPO_SLUG
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
   return {
-    workspace: process.env.BITBUCKET_WORKSPACE ?? "",
+    workspace: env.BITBUCKET_WORKSPACE,
     repoSlugs,
-    email: process.env.BITBUCKET_EMAIL ?? process.env.JIRA_EMAIL ?? "",
-    token: process.env.BITBUCKET_APP_PASSWORD ?? process.env.BITBUCKET_API_TOKEN ?? "",
+    email: env.BITBUCKET_EMAIL || env.JIRA_EMAIL,
+    token: env.BITBUCKET_APP_PASSWORD || env.BITBUCKET_API_TOKEN,
   };
 }
 

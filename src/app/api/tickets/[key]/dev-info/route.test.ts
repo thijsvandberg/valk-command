@@ -1,6 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// DB mock not needed - route no longer queries DB
+const mockEnv = vi.hoisted(() => ({
+  JIRA_CLOUD_ID: "",
+  JIRA_BASE_URL: "",
+  JIRA_EMAIL: "",
+  JIRA_API_TOKEN: "",
+  JIRA_PROJECT_KEY: "VPL",
+  JIRA_BOARD_ID: "",
+  NEXT_PUBLIC_JIRA_BASE_URL: "https://new-story.atlassian.net",
+  VALK_AGENT_URL: "http://localhost:3001",
+  VALK_AGENT_KEY: "",
+  BITBUCKET_WORKSPACE: "my-workspace",
+  BITBUCKET_REPO_SLUG: "my-repo",
+  BITBUCKET_EMAIL: "test@example.com",
+  BITBUCKET_APP_PASSWORD: "test-password",
+  BITBUCKET_API_TOKEN: "",
+  NEXT_PUBLIC_APP_URL: "http://localhost:3100",
+  BT_NEXT_SPRINT_ID: "",
+  DB_PATH: "sqlite.db",
+  JWT_SECRET: "",
+}));
+
+vi.mock("@/lib/env", () => ({ env: mockEnv }));
+
 import { GET } from "./route";
 
 function makeParams(key: string): { params: Promise<{ key: string }> } {
@@ -8,23 +30,21 @@ function makeParams(key: string): { params: Promise<{ key: string }> } {
 }
 
 describe("GET /api/tickets/[key]/dev-info", () => {
-  const originalEnv = { ...process.env };
-
   beforeEach(() => {
-    process.env.BITBUCKET_WORKSPACE = "my-workspace";
-    process.env.BITBUCKET_REPO_SLUG = "my-repo";
-    process.env.BITBUCKET_EMAIL = "test@example.com";
-    process.env.BITBUCKET_APP_PASSWORD = "test-password";
+    mockEnv.BITBUCKET_WORKSPACE = "my-workspace";
+    mockEnv.BITBUCKET_REPO_SLUG = "my-repo";
+    mockEnv.BITBUCKET_EMAIL = "test@example.com";
+    mockEnv.BITBUCKET_APP_PASSWORD = "test-password";
+    mockEnv.JIRA_EMAIL = "";
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
     vi.restoreAllMocks();
   });
 
   it("returns empty arrays when Bitbucket is not configured", async () => {
-    delete process.env.BITBUCKET_WORKSPACE;
-    delete process.env.BITBUCKET_REPO_SLUG;
+    mockEnv.BITBUCKET_WORKSPACE = "";
+    mockEnv.BITBUCKET_REPO_SLUG = "";
 
     const res = await GET(
       new Request("http://localhost:3100/api/tickets/VPL-1/dev-info"),
@@ -187,13 +207,11 @@ describe("GET /api/tickets/[key]/dev-info", () => {
   });
 
   it("falls back to JIRA_EMAIL when BITBUCKET_EMAIL is not set", async () => {
-    delete process.env.BITBUCKET_EMAIL;
-    process.env.JIRA_EMAIL = "jira@example.com";
+    mockEnv.BITBUCKET_EMAIL = "";
+    mockEnv.JIRA_EMAIL = "jira@example.com";
 
-    const fetchUrls: string[] = [];
     const fetchHeaders: Record<string, string>[] = [];
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      fetchUrls.push(typeof input === "string" ? input : input.toString());
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
       const h = init?.headers as Record<string, string> | undefined;
       if (h) fetchHeaders.push(h);
       return new Response(JSON.stringify({ values: [] }), { status: 200 });
@@ -205,7 +223,6 @@ describe("GET /api/tickets/[key]/dev-info", () => {
     );
 
     expect(fetchHeaders.length).toBeGreaterThan(0);
-    // Auth header should use jira email as fallback
     const authHeader = fetchHeaders[0].Authorization;
     const decoded = Buffer.from(authHeader.replace("Basic ", ""), "base64").toString();
     expect(decoded.startsWith("jira@example.com:")).toBe(true);

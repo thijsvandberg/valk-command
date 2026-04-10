@@ -7,6 +7,7 @@
  * When credentials are absent the client returns empty arrays so the rest
  * of the app can run without a Jira connection.
  */
+import { env } from "@/lib/env";
 
 // ---------------------------------------------------------------------------
 // Custom field IDs for new-story.atlassian.net (must match jira-mcp config)
@@ -150,8 +151,8 @@ export interface JiraIssueLink {
 // ---------------------------------------------------------------------------
 
 function getConfig() {
-  const cloudId = process.env.JIRA_CLOUD_ID ?? "";
-  const directUrl = process.env.JIRA_BASE_URL ?? "";
+  const cloudId = env.JIRA_CLOUD_ID;
+  const directUrl = env.JIRA_BASE_URL;
   // Prefer API gateway (matches jira-mcp auth pattern), fall back to direct URL
   const baseUrl = cloudId
     ? `https://api.atlassian.com/ex/jira/${cloudId}`
@@ -159,10 +160,10 @@ function getConfig() {
 
   return {
     baseUrl,
-    email: process.env.JIRA_EMAIL ?? "",
-    apiToken: process.env.JIRA_API_TOKEN ?? "",
-    projectKey: process.env.JIRA_PROJECT_KEY ?? "VPL",
-    boardId: process.env.JIRA_BOARD_ID ?? "",
+    email: env.JIRA_EMAIL,
+    apiToken: env.JIRA_API_TOKEN,
+    projectKey: env.JIRA_PROJECT_KEY,
+    boardId: env.JIRA_BOARD_ID,
   };
 }
 

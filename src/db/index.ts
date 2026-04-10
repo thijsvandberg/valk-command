@@ -3,6 +3,7 @@ import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { resolve } from "path";
 import * as schema from "./schema";
+import { env } from "@/lib/env";
 
 let _db: BetterSQLite3Database<typeof schema> | null = null;
 
@@ -15,7 +16,7 @@ function getDb() {
     throw new Error("Database must not be initialized during build");
   }
   if (!_db) {
-    const sqlite = new Database(process.env.DB_PATH ?? "sqlite.db");
+    const sqlite = new Database(env.DB_PATH);
     sqlite.pragma("journal_mode = WAL");
     sqlite.pragma("foreign_keys = ON");
     _db = drizzle(sqlite, { schema });

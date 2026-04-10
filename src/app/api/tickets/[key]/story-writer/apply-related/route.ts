@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { storyWriterSession, relatedStoryCandidate, ticketLink } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { env } from "@/lib/env";
 import { jiraClient } from "@/lib/jira-client";
 
 type RouteContext = { params: Promise<{ key: string }> };
@@ -115,7 +116,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Fire-and-forget; do not await so the response returns immediately.
   const keysToSync = items.map((i) => i.key);
   if (keysToSync.length > 0) {
-    const syncUrl = new URL("/api/jira/sync-tickets", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3100");
+    const syncUrl = new URL("/api/jira/sync-tickets", env.NEXT_PUBLIC_APP_URL);
     fetch(syncUrl.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },

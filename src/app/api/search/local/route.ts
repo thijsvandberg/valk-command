@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata, jiraComment, poComment, ticketLocalEdit, appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
+import { env } from "@/lib/env";
 import { getSearchCache, setSearchCache, type SearchDoc, type TicketDetail, type FuseResultMatchType } from "@/lib/search-index-cache";
 
 export interface LocalSearchResult {
@@ -122,7 +123,7 @@ async function buildIndex() {
     ])
   );
 
-  const jiraBaseUrl = process.env.JIRA_BASE_URL ?? "";
+  const jiraBaseUrl = env.JIRA_BASE_URL;
   return setSearchCache(docs, ticketDetails, sprintIdToName, jiraBaseUrl);
 }
 

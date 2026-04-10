@@ -6,6 +6,7 @@ import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { createHash } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
+import { env } from "@/lib/env";
 
 function contentHash(description: unknown, ac: string | null | undefined): string {
   const text = `${JSON.stringify(description ?? "")}|${ac ?? ""}`;
@@ -81,7 +82,7 @@ export async function POST(
 
     if (localTicket.jiraUpdatedAt !== remoteUpdated) {
       // Remote changed since our mirror. Update mirror first, then check for conflict.
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3100";
+      const appUrl = env.NEXT_PUBLIC_APP_URL;
       await fetch(new URL("/api/jira/sync-tickets", appUrl), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,7 +129,7 @@ export async function POST(
     await jiraClient.updateIssue(key, fields);
 
     // Refresh mirror from Jira after push
-    const refreshUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3100";
+    const refreshUrl = env.NEXT_PUBLIC_APP_URL;
     await fetch(new URL("/api/jira/sync-tickets", refreshUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
