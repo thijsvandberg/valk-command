@@ -6,7 +6,8 @@ import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { GripVertical, Flag, MessageSquare } from "lucide-react";
+import { GripVertical, Flag, MessageSquare, Star } from "lucide-react";
+import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
@@ -85,6 +86,10 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   },
   ref
 ) {
+  const { data: followedKeys } = useFollowedTickets();
+  const { follow, unfollow } = useFollowTicket();
+  const isFollowed = followedKeys?.includes(ticket.key) ?? false;
+
   const showCheckbox = isChecked || isHovered || someChecked;
   const isRemoved = Boolean(ticket.removedFromJiraAt);
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
@@ -173,6 +178,23 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             {ticket.editState === "draft" && <EditStateDot state="draft" />}
             {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
             {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                isFollowed ? unfollow(ticket.key) : follow(ticket.key);
+              }}
+              className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
+                isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"
+              }`}
+              title={isFollowed ? "Unfollow" : "Follow for notifications"}
+            >
+              <Star
+                size={11}
+                strokeWidth={1.5}
+                className={isFollowed ? "text-amber-400 fill-amber-400" : "text-white/40"}
+              />
+            </button>
           </span>
         </td>
       )}

@@ -17,8 +17,10 @@ import {
   Zap,
   IterationCw,
   Trash2,
+  Star,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
+import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
@@ -119,6 +121,10 @@ export default function TicketDetailPage({
     tryFetchFromJira();
     return () => { cancelled = true; };
   }, [ticketLoading, apiData, key, mutateTicket]);
+
+  const { data: followedTickets } = useFollowedTickets();
+  const { follow, unfollow } = useFollowTicket();
+  const isFollowed = followedTickets?.includes(key) ?? false;
 
   const [hasLocalTitleEdit, setHasLocalTitleEdit] = useState(false);
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
@@ -345,6 +351,20 @@ export default function TicketDetailPage({
                 Push to Jira
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              onClick={() => isFollowed ? unfollow(key) : follow(key)}
+              title={isFollowed ? "Unfollow ticket" : "Follow ticket for notifications"}
+              icon={
+                <Star
+                  size={14}
+                  strokeWidth={1.5}
+                  className={isFollowed ? "text-amber-400 fill-amber-400" : ""}
+                />
+              }
+            />
             <Button
               variant="secondary"
               size="md"

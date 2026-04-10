@@ -3,6 +3,7 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { BridgeMark } from "@/components/shared/BridgeMark";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function getPortalTarget() {
   return document.getElementById("view-header-portal");
@@ -53,11 +54,10 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
         {children}
       </div>
 
-      {actions && (
-        <div className="relative flex items-center gap-2">
-          {actions}
-        </div>
-      )}
+      <div className="relative flex items-center gap-2">
+        {actions}
+        <NotificationBell />
+      </div>
     </div>,
     target,
   );

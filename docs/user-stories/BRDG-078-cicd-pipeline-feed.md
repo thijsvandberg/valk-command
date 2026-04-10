@@ -24,13 +24,13 @@ As the PO, I want a feed of pipeline runs linked to tickets, showing build statu
 - [x] Sprint feed is passive only: visible in the feed, no automatic notifications
 
 ### Phase 3: Follow tickets
-- [ ] Follow/unfollow toggle (star/watch icon) on ticket rows and ticket detail page
-- [ ] Followed tickets stored in local DB (per-user preference)
-- [ ] Notification feed (bell icon in top bar) showing updates for followed tickets
-- [ ] Notification types: pipeline completed, pipeline failed, PR merged, deployment done
-- [ ] Unread count badge on bell icon
-- [ ] Mark as read (individual and mark-all)
-- [ ] Extend existing `alert` table with additional fields for notification metadata (source ticket, notification category, link URL)
+- [x] Follow/unfollow toggle (star/watch icon) on ticket rows and ticket detail page
+- [x] Followed tickets stored in local DB (per-user preference)
+- [x] Notification feed (bell icon in top bar) showing updates for followed tickets
+- [x] Notification types: pipeline completed, pipeline failed, PR merged, deployment done
+- [x] Unread count badge on bell icon
+- [x] Mark as read (individual and mark-all)
+- [x] Extend existing `alert` table with additional fields for notification metadata (source ticket, notification category, link URL)
 
 ### Phase 4: Status aggregation
 - [ ] Pipeline health metrics: runs today, pass rate, average duration
