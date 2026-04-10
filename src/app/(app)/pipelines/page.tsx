@@ -235,9 +235,11 @@ function RunningCard({ run }: { run: PipelineRunPayload }) {
 function PipelineTable({
   runs,
   repoFilter,
+  ticketTitleMap,
 }: {
   runs: PipelineRunPayload[];
   repoFilter: string | null;
+  ticketTitleMap?: Map<string, string>;
 }) {
   const filtered = repoFilter ? runs.filter((r) => r.repo === repoFilter) : runs;
 
@@ -269,13 +271,13 @@ function PipelineTable({
 
       {/* Rows */}
       {filtered.map((run) => (
-        <PipelineRow key={run.id} run={run} />
+        <PipelineRow key={run.id} run={run} ticketTitleMap={ticketTitleMap} />
       ))}
     </div>
   );
 }
 
-function PipelineRow({ run }: { run: PipelineRunPayload }) {
+function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketTitleMap?: Map<string, string> }) {
   const isFailed = run.state === "FAILED";
   const allKeys = run.ticketKeys ?? (run.ticketKey ? [run.ticketKey] : []);
 
@@ -356,15 +358,22 @@ function PipelineRow({ run }: { run: PipelineRunPayload }) {
       {/* Ticket(s) */}
       <div className="flex flex-col items-center gap-0.5 min-w-[72px]">
         {allKeys.length > 0 ? (
-          allKeys.map((k) => (
-            <Link
-              key={k}
-              href={`/tickets/${k}`}
-              className="text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
-            >
-              {k}
-            </Link>
-          ))
+          allKeys.map((k) => {
+            const title = ticketTitleMap?.get(k);
+            return (
+              <div key={k} className="flex items-center gap-1.5">
+                <Link
+                  href={`/tickets/${k}`}
+                  className="text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                >
+                  {k}
+                </Link>
+                {title && (
+                  <span className="hidden xl:block text-[10px] text-white/20 truncate max-w-[120px]">{title}</span>
+                )}
+              </div>
+            );
+          })
         ) : (
           <span className="text-[11px] text-white/15">-</span>
         )}
@@ -755,16 +764,186 @@ function SprintFilter({
   );
 }
 
+// -- Sprint Summary --
+
+function SprintPipelineSummary({ runs }: { runs: PipelineRunPayload[] }) {
+  const stats = useMemo(() => {
+    const completed = runs.filter((r) => r.state !== "IN_PROGRESS" && r.state !== "PAUSED");
+    const passed = completed.filter((r) => r.state === "SUCCESSFUL");
+    const passRate = completed.length > 0 ? Math.round((passed.length / completed.length) * 100) : 0;
+    const deployments = runs.filter((r) => r.isDeployment);
+    const ticketKeys = new Set(runs.map((r) => r.ticketKey).filter(Boolean));
+    return { total: runs.length, passRate, deployments: deployments.length, tickets: ticketKeys.size };
+  }, [runs]);
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <MetricCard
+        label="Sprint runs"
+        value={String(stats.total)}
+        icon={<Activity size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+      />
+      <MetricCard
+        label="Pass rate"
+        value={`${stats.passRate}%`}
+        icon={<TrendingUp size={14} strokeWidth={1.5} className="text-emerald-400" />}
+        accent={stats.passRate >= 80 ? "emerald" : stats.passRate >= 50 ? "amber" : "red"}
+      />
+      <MetricCard
+        label="Deployments"
+        value={String(stats.deployments)}
+        icon={<Rocket size={14} strokeWidth={1.5} className="text-violet-400" />}
+      />
+      <MetricCard
+        label="Tickets"
+        value={String(stats.tickets)}
+        icon={<Filter size={14} strokeWidth={1.5} className="text-amber-400/80" />}
+      />
+    </div>
+  );
+}
+
+// -- Grouped by Ticket View --
+
+function GroupedByTicketView({
+  runs,
+  ticketTitleMap,
+}: {
+  runs: PipelineRunPayload[];
+  ticketTitleMap: Map<string, string>;
+}) {
+  const groups = useMemo(() => {
+    const map = new Map<string, PipelineRunPayload[]>();
+    const noTicket: PipelineRunPayload[] = [];
+    for (const run of runs) {
+      const key = run.ticketKey;
+      if (!key) {
+        noTicket.push(run);
+        continue;
+      }
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(run);
+    }
+    // Sort groups by most recent pipeline first
+    const sorted = [...map.entries()].sort((a, b) => {
+      const aDate = a[1][0]?.createdAt ?? "";
+      const bDate = b[1][0]?.createdAt ?? "";
+      return bDate.localeCompare(aDate);
+    });
+    if (noTicket.length > 0) sorted.push(["_unlinked", noTicket]);
+    return sorted;
+  }, [runs]);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      {groups.map(([ticketKey, ticketRuns]) => {
+        const title = ticketKey === "_unlinked" ? null : ticketTitleMap.get(ticketKey);
+        const passCount = ticketRuns.filter((r) => r.state === "SUCCESSFUL").length;
+        const failCount = ticketRuns.filter((r) => r.state === "FAILED").length;
+
+        return (
+          <div key={ticketKey} className="rounded-xl border border-white/[0.08] overflow-hidden">
+            {/* Group header */}
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+              {ticketKey !== "_unlinked" ? (
+                <Link
+                  href={`/tickets/${ticketKey}`}
+                  className="text-[12px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                >
+                  {ticketKey}
+                </Link>
+              ) : (
+                <span className="text-[12px] font-medium text-white/30">Unlinked pipelines</span>
+              )}
+              {title && (
+                <span className="text-[12px] text-white/40 truncate">{title}</span>
+              )}
+              <div className="ml-auto flex items-center gap-3 text-[11px]">
+                {passCount > 0 && (
+                  <span className="flex items-center gap-1 text-emerald-400/70">
+                    <CheckCircle2 size={11} strokeWidth={2} /> {passCount}
+                  </span>
+                )}
+                {failCount > 0 && (
+                  <span className="flex items-center gap-1 text-red-400/70">
+                    <XCircle size={11} strokeWidth={2} /> {failCount}
+                  </span>
+                )}
+                <span className="text-white/25">{ticketRuns.length} run{ticketRuns.length !== 1 ? "s" : ""}</span>
+              </div>
+            </div>
+
+            {/* Compact pipeline rows */}
+            {ticketRuns.map((run) => (
+              <div
+                key={run.id}
+                className={`flex items-center gap-3 px-4 py-2 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
+                  run.state === "FAILED" ? "bg-red-500/[0.03]" : ""
+                }`}
+              >
+                {stateIcon(run.state)}
+                <a
+                  href={run.pipelineUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer"
+                >
+                  #{run.buildNumber}
+                </a>
+                <span className="text-[11px] text-white/25 truncate">{run.repo}</span>
+                {run.environment && (
+                  <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+                    {run.environment}
+                  </span>
+                )}
+                <span className="text-[12px] text-white/30 truncate flex-1">{run.branchName}</span>
+                {run.commitMessage && (
+                  <span className="hidden lg:block text-[11px] text-white/20 truncate max-w-[200px]">{run.commitMessage}</span>
+                )}
+                <span className="text-[11px] text-white/25 tabular-nums shrink-0">
+                  {formatTimeAgo(run.createdAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // -- Main Page --
 
 export default function PipelinesPage() {
   const [repoFilter, setRepoFilter] = useState<string | null>(null);
   const [sprintFilter, setSprintFilter] = useState<string | null>(null);
+  const [sprintAutoSelected, setSprintAutoSelected] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: sprints } = useJiraSprints();
+
+  // Default to active sprint on first load
+  if (sprints && !sprintFilter && !sprintAutoSelected) {
+    const active = sprints.find((s) => s.state === "active");
+    if (active) {
+      setSprintFilter(String(active.id));
+      setSprintAutoSelected(true);
+    }
+  }
+
   const { data: sprintTickets } = useTickets(sprintFilter);
   const sprintTicketKeys = sprintFilter && sprintTickets ? sprintTickets.map((t) => t.key) : undefined;
+
+  // Build ticket key -> title map for sprint view
+  const ticketTitleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (sprintTickets) {
+      for (const t of sprintTickets) map.set(t.key, t.title);
+    }
+    return map;
+  }, [sprintTickets]);
 
   const { runs, hasRunning, syncing, isLoading, refresh } = usePipelines({
     limit: 100,
@@ -832,10 +1011,21 @@ export default function PipelinesPage() {
           ) : (
             <>
               {syncing && runs.length === 0 && <SyncingBanner />}
-              <PipelineMetrics runs={filteredRuns} />
-              <RunningSection runs={filteredRuns} />
-              <DeploymentTimeline runs={filteredRuns} />
-              <PipelineTable runs={filteredRuns} repoFilter={null} />
+              {sprintFilter ? (
+                <>
+                  <SprintPipelineSummary runs={filteredRuns} />
+                  <RunningSection runs={filteredRuns} />
+                  <DeploymentTimeline runs={filteredRuns} />
+                  <GroupedByTicketView runs={filteredRuns} ticketTitleMap={ticketTitleMap} />
+                </>
+              ) : (
+                <>
+                  <PipelineMetrics runs={filteredRuns} />
+                  <RunningSection runs={filteredRuns} />
+                  <DeploymentTimeline runs={filteredRuns} />
+                  <PipelineTable runs={filteredRuns} repoFilter={null} ticketTitleMap={ticketTitleMap} />
+                </>
+              )}
             </>
           )}
         </div>

@@ -30,10 +30,10 @@ As the PO, I want the pipeline feed to be more deeply integrated with ticket dev
 - [x] Link to the PR that triggered the pipeline (when available via Bitbucket API)
 
 ### Phase 3: Sprint-aware pipeline view
-- [ ] Default sprint filter to the active sprint
-- [ ] Sprint pipeline summary: how many runs, pass rate, deployments per sprint
-- [ ] Group pipeline runs by ticket within a sprint view
-- [ ] Show ticket title alongside ticket key in pipeline rows
+- [x] Default sprint filter to the active sprint
+- [x] Sprint pipeline summary: how many runs, pass rate, deployments per sprint
+- [x] Group pipeline runs by ticket within a sprint view
+- [x] Show ticket title alongside ticket key in pipeline rows
 
 ### Phase 4: Pipeline feed UX improvements
 - [ ] Pagination or virtual scrolling for large pipeline lists (currently limited to 100)
