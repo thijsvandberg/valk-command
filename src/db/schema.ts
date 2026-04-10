@@ -324,6 +324,13 @@ export const pipelineRun = sqliteTable("pipeline_run", {
   completedAt: text("completed_at"),
   // Used for state change detection (notification triggers)
   previousState: text("previous_state"),
+  // Enrichment: commit & PR context (Phase 1+2, BRDG-080)
+  commitMessage: text("commit_message"),
+  ticketKeys: text("ticket_keys"), // JSON array when multiple tickets
+  sourceBranch: text("source_branch"), // original branch for merge-triggered pipelines
+  prUrl: text("pr_url"),
+  prTitle: text("pr_title"),
+  prAuthor: text("pr_author"),
 }, (table) => [
   index("pipeline_run_repo_idx").on(table.repo),
   index("pipeline_run_ticket_key_idx").on(table.ticketKey),

@@ -17,17 +17,17 @@ As the PO, I want the pipeline feed to be more deeply integrated with ticket dev
 - [x] Target: page renders in under 500ms from persisted data, sync updates trickle in afterward
 
 ### Phase 1: Unify pipeline data with dev-info
-- [ ] Pipeline feed page shows the same PR/branch/deployment data that the ticket Development tab shows
-- [ ] Pipeline runs link to their associated PR (when a pipeline is triggered by a PR merge)
-- [ ] Show PR title and author alongside the pipeline run (not just the commit message ticket key)
-- [ ] Pipeline History section on ticket Development tab shows deployment environment badges (like the existing Deployments table)
-- [ ] Deduplicate between dev-info Deployments table and Pipeline History section on ticket detail
+- [x] Pipeline feed page shows the same PR/branch/deployment data that the ticket Development tab shows
+- [x] Pipeline runs link to their associated PR (when a pipeline is triggered by a PR merge)
+- [x] Show PR title and author alongside the pipeline run (not just the commit message ticket key)
+- [x] Pipeline History section on ticket Development tab shows deployment environment badges (like the existing Deployments table)
+- [x] Deduplicate between dev-info Deployments table and Pipeline History section on ticket detail
 
 ### Phase 2: Enriched pipeline rows
-- [ ] Show commit message summary (first line) on pipeline rows for context
-- [ ] Multiple ticket keys per pipeline (some merge commits reference multiple tickets)
-- [ ] Pipeline run shows source branch name for merge-triggered pipelines (e.g., "feature/VPL-43447-..." merged into master)
-- [ ] Link to the PR that triggered the pipeline (when available via Bitbucket API)
+- [x] Show commit message summary (first line) on pipeline rows for context
+- [x] Multiple ticket keys per pipeline (some merge commits reference multiple tickets)
+- [x] Pipeline run shows source branch name for merge-triggered pipelines (e.g., "feature/VPL-43447-..." merged into master)
+- [x] Link to the PR that triggered the pipeline (when available via Bitbucket API)
 
 ### Phase 3: Sprint-aware pipeline view
 - [ ] Default sprint filter to the active sprint

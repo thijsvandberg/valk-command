@@ -286,19 +286,22 @@ function LoadingSkeleton() {
   );
 }
 
-function PipelineRunsSection({ ticketKey }: { ticketKey: string }) {
+function PipelineRunsSection({ ticketKey, deploymentUrls }: { ticketKey: string; deploymentUrls: Set<string> }) {
   const { runs } = usePipelines({ ticketKey, limit: 10 });
-  if (runs.length === 0) return null;
+
+  // Deduplicate: filter out runs that already appear in the Deployments table
+  const filteredRuns = runs.filter((run) => !run.isDeployment || !deploymentUrls.has(run.pipelineUrl));
+  if (filteredRuns.length === 0) return null;
 
   return (
     <section>
       <SectionHeader
         icon={<Activity size={16} strokeWidth={1.5} />}
         title="Pipeline History"
-        count={runs.length}
+        count={filteredRuns.length}
       />
       <div className="divide-y divide-white/[0.04] rounded-lg border border-white/[0.06] bg-white/[0.02]">
-        {runs.map((run) => (
+        {filteredRuns.map((run) => (
           <div key={run.id} className="flex items-center gap-3 px-3 py-2.5">
             <BuildStateIcon state={run.state} size={13} />
             <span className="text-[12px] font-mono text-white/60">#{run.buildNumber}</span>
@@ -370,8 +373,11 @@ export function TicketDevelopment({ ticketKey }: { ticketKey: string }) {
         </section>
       )}
 
-      {/* Pipeline History (from persistent store) */}
-      <PipelineRunsSection ticketKey={ticketKey} />
+      {/* Pipeline History (from persistent store, deduplicated against deployments) */}
+      <PipelineRunsSection
+        ticketKey={ticketKey}
+        deploymentUrls={new Set(data.deployments.map((d) => d.pipelineUrl))}
+      />
 
       {/* Branches */}
       {data.branches.length > 0 && (

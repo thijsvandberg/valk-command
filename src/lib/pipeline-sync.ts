@@ -23,10 +23,30 @@ function detectEnvironment(stepName: string): { environment: string; type: "Prod
 }
 
 const TICKET_KEY_REGEX = /([A-Z][A-Z0-9]+-\d+)/;
+const TICKET_KEY_REGEX_G = /([A-Z][A-Z0-9]+-\d+)/g;
 
-function extractTicketKey(branchName: string): string | null {
-  const match = branchName.match(TICKET_KEY_REGEX);
+function extractTicketKey(text: string): string | null {
+  const match = text.match(TICKET_KEY_REGEX);
   return match ? match[1] : null;
+}
+
+function extractAllTicketKeys(text: string): string[] {
+  const matches = text.match(TICKET_KEY_REGEX_G);
+  if (!matches) return [];
+  return [...new Set(matches)];
+}
+
+// Extract source branch from merge commit messages like "Merged in feature/VPL-123-foo (pull request #42)"
+const MERGE_BRANCH_REGEX = /Merged in ([^\s(]+)/i;
+const MERGE_PR_REGEX = /\(pull request #(\d+)\)/i;
+
+function extractMergeInfo(commitMessage: string): { sourceBranch: string | null; prNumber: number | null } {
+  const branchMatch = commitMessage.match(MERGE_BRANCH_REGEX);
+  const prMatch = commitMessage.match(MERGE_PR_REGEX);
+  return {
+    sourceBranch: branchMatch ? branchMatch[1] : null,
+    prNumber: prMatch ? parseInt(prMatch[1], 10) : null,
+  };
 }
 
 function getBitbucketConfig() {
@@ -152,18 +172,21 @@ export async function syncPipelines(): Promise<SyncResult> {
     pipelines.map((p) => ({ repoSlug, pipeline: p })),
   );
 
-  // Phase 1: Identify pipelines needing commit message lookups and batch them
+  // Batch commit lookups: identify which pipelines need commit messages
   const needsCommitLookup: Array<{ idx: number; repoSlug: string; hash: string }> = [];
-  const ticketKeys: (string | null)[] = allPipelines.map(({ pipeline }, idx) => {
+  const commitMessages: (string | null)[] = allPipelines.map(({ pipeline }, idx) => {
     const branchName = pipeline.target?.ref_name ?? "";
     const key = extractTicketKey(branchName);
+    // Inline commit message from Bitbucket API response
+    const inlineMsg = pipeline.target?.commit?.message ?? null;
+    if (inlineMsg) return inlineMsg;
     if (!key && pipeline.target?.commit?.hash) {
       needsCommitLookup.push({ idx, repoSlug: allPipelines[idx].repoSlug, hash: pipeline.target.commit.hash });
     }
-    return key;
+    return null;
   });
 
-  // Parallel batch: fetch all commit messages at once
+  // Parallel batch: fetch commit messages for pipelines that need them
   if (needsCommitLookup.length > 0) {
     const commitResults = await Promise.all(
       needsCommitLookup.map(({ repoSlug, hash }) =>
@@ -171,20 +194,83 @@ export async function syncPipelines(): Promise<SyncResult> {
       ),
     );
     for (let i = 0; i < needsCommitLookup.length; i++) {
-      const msg = commitResults[i]?.message;
-      if (msg) {
-        ticketKeys[needsCommitLookup[i].idx] = extractTicketKey(msg);
+      const msg = commitResults[i]?.message ?? null;
+      commitMessages[needsCommitLookup[i].idx] = msg;
+    }
+  }
+
+  // Resolve ticket keys and enrichment from commit messages
+  const resolvedData = allPipelines.map(({ repoSlug, pipeline: p }, idx) => {
+    const branchName = p.target?.ref_name ?? "";
+    const msg = commitMessages[idx];
+    const firstLine = msg ? msg.split("\n")[0].substring(0, 200) : null;
+
+    // Ticket keys: from branch name, then from commit message
+    let primaryKey = extractTicketKey(branchName);
+    let allKeys: string[] = [];
+    if (primaryKey) allKeys.push(primaryKey);
+    if (msg) {
+      const fromMsg = extractAllTicketKeys(msg);
+      for (const k of fromMsg) {
+        if (!allKeys.includes(k)) allKeys.push(k);
+      }
+    }
+    if (!primaryKey && allKeys.length > 0) primaryKey = allKeys[0];
+
+    // For merge-triggered pipelines: extract source branch and PR number
+    const mergeInfo = msg ? extractMergeInfo(msg) : { sourceBranch: null, prNumber: null };
+
+    return {
+      ticketKey: primaryKey,
+      ticketKeys: allKeys.length > 1 ? allKeys : null,
+      commitMessage: firstLine,
+      sourceBranch: mergeInfo.sourceBranch,
+      prNumber: mergeInfo.prNumber,
+      repoSlug,
+    };
+  });
+
+  // Batch PR lookups for merge-triggered pipelines with PR numbers
+  const prLookups: Array<{ idx: number; repoSlug: string; prNumber: number }> = [];
+  for (let i = 0; i < resolvedData.length; i++) {
+    const d = resolvedData[i];
+    if (d.prNumber) {
+      prLookups.push({ idx: i, repoSlug: d.repoSlug, prNumber: d.prNumber });
+    }
+  }
+
+  interface BbPrBasic { title?: string; author?: { display_name?: string }; links?: { html?: { href: string } } }
+  const prData: Array<{ title: string | null; author: string | null; url: string | null }> = resolvedData.map(() => ({
+    title: null, author: null, url: null,
+  }));
+
+  if (prLookups.length > 0) {
+    const prResults = await Promise.all(
+      prLookups.map(({ repoSlug, prNumber }) =>
+        bbFetch<BbPrBasic>(repoSlug, `/pullrequests/${prNumber}`),
+      ),
+    );
+    for (let i = 0; i < prLookups.length; i++) {
+      const pr = prResults[i];
+      if (pr) {
+        const idx = prLookups[i].idx;
+        prData[idx] = {
+          title: pr.title ?? null,
+          author: pr.author?.display_name ?? null,
+          url: pr.links?.html?.href ?? null,
+        };
       }
     }
   }
 
-  // Phase 2: Persist pipeline data using resolved ticket keys
+  // Persist pipeline data with enrichment
   for (let i = 0; i < allPipelines.length; i++) {
     const { repoSlug, pipeline: p } = allPipelines[i];
     const id = `${repoSlug}:${p.build_number}`;
     const state = normalisePipelineState(p);
     const branchName = p.target?.ref_name ?? "";
-    const ticketKey = ticketKeys[i];
+    const rd = resolvedData[i];
+    const pr = prData[i];
     const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
     const pipelineUrl = p.links?.html?.href
       || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
@@ -197,7 +283,8 @@ export async function syncPipelines(): Promise<SyncResult> {
 
     if (existing) {
       const needsCreatorUpdate = !existing.creator && creator;
-      if (existing.state !== state || needsCreatorUpdate) {
+      const needsEnrichment = !existing.commitMessage && rd.commitMessage;
+      if (existing.state !== state || needsCreatorUpdate || needsEnrichment) {
         if (existing.state !== state) {
           stateChanges.push({ run: existing, oldState: existing.state });
         }
@@ -208,6 +295,14 @@ export async function syncPipelines(): Promise<SyncResult> {
             completedAt: p.completed_on ?? null,
             durationSeconds: p.duration_in_seconds ?? null,
             ...(creator ? { creator } : {}),
+            ...(needsEnrichment ? {
+              commitMessage: rd.commitMessage,
+              ticketKeys: rd.ticketKeys ? JSON.stringify(rd.ticketKeys) : null,
+              sourceBranch: rd.sourceBranch,
+              prUrl: pr.url,
+              prTitle: pr.title,
+              prAuthor: pr.author,
+            } : {}),
           })
           .where(eq(pipelineRun.id, id))
           .run();
@@ -220,7 +315,8 @@ export async function syncPipelines(): Promise<SyncResult> {
           repo: shortRepoName(repoSlug),
           buildNumber: p.build_number,
           branchName,
-          ticketKey,
+          ticketKey: rd.ticketKey,
+          ticketKeys: rd.ticketKeys ? JSON.stringify(rd.ticketKeys) : null,
           state,
           creator,
           durationSeconds: p.duration_in_seconds ?? null,
@@ -230,6 +326,11 @@ export async function syncPipelines(): Promise<SyncResult> {
           environmentType: null,
           createdAt: p.created_on ?? new Date().toISOString(),
           completedAt: p.completed_on ?? null,
+          commitMessage: rd.commitMessage,
+          sourceBranch: rd.sourceBranch,
+          prUrl: pr.url,
+          prTitle: pr.title,
+          prAuthor: pr.author,
         })
         .run();
       newRuns++;

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   GitBranch,
+  GitPullRequest,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -276,6 +277,7 @@ function PipelineTable({
 
 function PipelineRow({ run }: { run: PipelineRunPayload }) {
   const isFailed = run.state === "FAILED";
+  const allKeys = run.ticketKeys ?? (run.ticketKey ? [run.ticketKey] : []);
 
   return (
     <div
@@ -284,47 +286,85 @@ function PipelineRow({ run }: { run: PipelineRunPayload }) {
       }`}
     >
       {/* Pipeline info */}
-      <div className="flex items-center gap-2 min-w-0">
-        {run.isDeployment ? (
-          <Rocket size={12} strokeWidth={1.5} className="shrink-0 text-violet-400/70" />
-        ) : (
-          <GitBranch size={12} strokeWidth={1.5} className="shrink-0 text-white/20" />
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {run.isDeployment ? (
+            <Rocket size={12} strokeWidth={1.5} className="shrink-0 text-violet-400/70" />
+          ) : (
+            <GitBranch size={12} strokeWidth={1.5} className="shrink-0 text-white/20" />
+          )}
+          {run.pipelineUrl ? (
+            <a
+              href={run.pipelineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
+            >
+              #{run.buildNumber}
+            </a>
+          ) : (
+            <span className="text-[12px] font-mono font-medium text-white/70 truncate">
+              #{run.buildNumber}
+            </span>
+          )}
+          <span className="text-[11px] text-white/25 truncate">{run.repo}</span>
+          {run.environment && (
+            <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+              {run.environment}
+            </span>
+          )}
+        </div>
+        {/* Commit message summary */}
+        {run.commitMessage && (
+          <span className="text-[11px] text-white/25 truncate pl-5">{run.commitMessage}</span>
         )}
-        {run.pipelineUrl ? (
-          <a
-            href={run.pipelineUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
-          >
-            #{run.buildNumber}
-          </a>
-        ) : (
-          <span className="text-[12px] font-mono font-medium text-white/70 truncate">
-            #{run.buildNumber}
-          </span>
-        )}
-        <span className="text-[11px] text-white/25 truncate">{run.repo}</span>
-        {run.environment && (
-          <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
-            {run.environment}
-          </span>
+        {/* PR link */}
+        {run.prTitle && (
+          <div className="flex items-center gap-1.5 pl-5">
+            <GitPullRequest size={10} strokeWidth={1.5} className="shrink-0 text-white/15" />
+            {run.prUrl ? (
+              <a
+                href={run.prUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[11px] text-white/35 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
+              >
+                {run.prTitle}
+              </a>
+            ) : (
+              <span className="text-[11px] text-white/35 truncate">{run.prTitle}</span>
+            )}
+            {run.prAuthor && (
+              <span className="text-[10px] text-white/20 shrink-0">by {run.prAuthor}</span>
+            )}
+          </div>
         )}
       </div>
 
       {/* Branch */}
-      <span className="text-[12px] text-white/40 truncate">{run.branchName}</span>
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-[12px] text-white/40 truncate">{run.branchName}</span>
+        {run.sourceBranch && run.sourceBranch !== run.branchName && (
+          <span className="text-[11px] text-white/20 truncate">
+            from {run.sourceBranch}
+          </span>
+        )}
+      </div>
 
-      {/* Ticket */}
-      <div className="flex justify-center min-w-[72px]">
-        {run.ticketKey ? (
-          <Link
-            href={`/tickets/${run.ticketKey}`}
-            className="text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
-          >
-            {run.ticketKey}
-          </Link>
+      {/* Ticket(s) */}
+      <div className="flex flex-col items-center gap-0.5 min-w-[72px]">
+        {allKeys.length > 0 ? (
+          allKeys.map((k) => (
+            <Link
+              key={k}
+              href={`/tickets/${k}`}
+              className="text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+            >
+              {k}
+            </Link>
+          ))
         ) : (
           <span className="text-[11px] text-white/15">-</span>
         )}

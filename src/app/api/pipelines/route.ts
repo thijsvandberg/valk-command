@@ -11,6 +11,7 @@ export interface PipelineRunPayload {
   buildNumber: number;
   branchName: string;
   ticketKey: string | null;
+  ticketKeys: string[] | null;
   state: "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED" | "PAUSED";
   creator: string | null;
   durationSeconds: number | null;
@@ -20,6 +21,11 @@ export interface PipelineRunPayload {
   environmentType: "Production" | "Staging" | "Test" | null;
   createdAt: string;
   completedAt: string | null;
+  commitMessage: string | null;
+  sourceBranch: string | null;
+  prUrl: string | null;
+  prTitle: string | null;
+  prAuthor: string | null;
 }
 
 // GET /api/pipelines - query persisted pipeline runs (non-blocking, serves DB data immediately)
@@ -81,6 +87,12 @@ export async function GET(request: Request) {
     environmentType: r.environmentType as PipelineRunPayload["environmentType"],
     createdAt: r.createdAt,
     completedAt: r.completedAt,
+    commitMessage: r.commitMessage ?? null,
+    sourceBranch: r.sourceBranch ?? null,
+    prUrl: r.prUrl ?? null,
+    prTitle: r.prTitle ?? null,
+    prAuthor: r.prAuthor ?? null,
+    ticketKeys: r.ticketKeys ? JSON.parse(r.ticketKeys) : null,
   }));
 
   return NextResponse.json({ runs, hasRunning, syncing });
