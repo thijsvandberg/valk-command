@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { pipelineRun } from "@/db/schema";
+import { pipelineRun, appSetting } from "@/db/schema";
 import { cache } from "@/lib/cache";
 import { desc, eq, inArray, and } from "drizzle-orm";
 import { syncPipelines, isPipelineConfigured } from "@/lib/pipeline-sync";
@@ -95,7 +95,18 @@ export async function GET(request: Request) {
     ticketKeys: r.ticketKeys ? JSON.parse(r.ticketKeys) : null,
   }));
 
-  return NextResponse.json({ runs, hasRunning, syncing });
+  // Include sync status: watermark + last tick result
+  const watermarkRow = db.select().from(appSetting).where(eq(appSetting.key, "pipeline_sync:watermark")).get();
+  const lastResultRow = db.select().from(appSetting).where(eq(appSetting.key, "pipeline_sync:last_result")).get();
+  const lastResult = lastResultRow ? JSON.parse(lastResultRow.value) : null;
+
+  const syncStatus = {
+    watermark: watermarkRow?.value ?? null,
+    remaining: lastResult?.remaining ?? 0,
+    lastNewRuns: lastResult?.newRuns ?? 0,
+  };
+
+  return NextResponse.json({ runs, hasRunning, syncing, syncStatus });
 }
 
 // POST /api/pipelines - force refresh from Bitbucket

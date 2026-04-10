@@ -4,10 +4,17 @@ import type { PipelineRunPayload } from "@/app/api/pipelines/route";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
+interface SyncStatus {
+  watermark: string | null;
+  remaining: number;
+  lastNewRuns: number;
+}
+
 interface PipelineResponse {
   runs: PipelineRunPayload[];
   hasRunning: boolean;
   syncing?: boolean;
+  syncStatus?: SyncStatus;
 }
 
 const IDLE_INTERVAL = 5 * 60 * 1000;
@@ -60,6 +67,7 @@ export function usePipelines(filters?: {
     runs: swr.data?.runs ?? [],
     hasRunning: swr.data?.hasRunning ?? false,
     syncing: swr.data?.syncing ?? false,
+    syncStatus: swr.data?.syncStatus ?? null,
     refresh,
   };
 }
