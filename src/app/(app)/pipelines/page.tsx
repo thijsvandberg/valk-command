@@ -753,6 +753,27 @@ function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
 
 // -- Deploy Notification Settings --
 
+function Toggle({ on, size = "sm", onToggle }: { on: boolean; size?: "sm" | "md"; onToggle: () => void }) {
+  const isMd = size === "md";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`relative shrink-0 rounded-full transition-colors duration-150 cursor-pointer ${
+        on ? "bg-[var(--color-brand-500)]" : "bg-white/10"
+      } ${isMd ? "h-5 w-9" : "h-[18px] w-[32px]"}`}
+    >
+      <span
+        className={`absolute rounded-full bg-white shadow-sm transition-transform duration-150 ${
+          isMd
+            ? `top-0.5 h-4 w-4 ${on ? "translate-x-4" : "translate-x-0.5"}`
+            : `top-[3px] h-3 w-3 ${on ? "translate-x-[14px]" : "translate-x-[3px]"}`
+        }`}
+      />
+    </button>
+  );
+}
+
 function DeploySettingsPanel() {
   const { settings, update } = useDeploySettings();
   const { permission, requestPermission } = useNotification();
@@ -763,24 +784,16 @@ function DeploySettingsPanel() {
   function toggleEnabled() {
     if (!settings) return;
     const next = { ...settings, enabled: !settings.enabled };
-    // Request permission when enabling for the first time
-    if (next.enabled && permission === "default") {
-      requestPermission();
-    }
+    if (next.enabled && permission === "default") requestPermission();
     update(next);
   }
 
   function toggleEnvironment(env: string) {
     if (!settings) return;
-    const next = {
-      ...settings,
-      environments: {
-        ...settings.environments,
-        [env]: !settings.environments[env],
-      },
-    };
-    update(next);
+    update({ ...settings, environments: { ...settings.environments, [env]: !settings.environments[env] } });
   }
+
+  const enabledEnvCount = Object.values(settings.environments).filter(Boolean).length;
 
   return (
     <div className="relative">
@@ -788,65 +801,51 @@ function DeploySettingsPanel() {
         variant="ghost"
         size="md"
         iconOnly
-        icon={<Settings size={13} strokeWidth={1.5} />}
+        icon={<Bell size={13} strokeWidth={1.5} className={settings.enabled ? "text-[var(--color-brand-400)]" : ""} />}
         onClick={() => setOpen(!open)}
-        title="Deploy notification settings"
+        title="Notification settings"
       />
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Bell size={13} strokeWidth={1.5} className="text-white/30" />
-              <span className="text-[12px] font-semibold text-white/60">Deploy Notifications</span>
+          <div className="absolute right-0 top-full mt-1 z-50 w-[280px] rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            {/* Header */}
+            <div className="px-4 pt-4 pb-3">
+              <h3 className="text-[13px] font-semibold text-white/70">Notifications</h3>
+              <p className="text-[11px] text-white/30 mt-0.5">
+                Get notified when deployments complete for followed tickets.
+              </p>
             </div>
 
             {permission === "denied" && (
-              <p className="text-[11px] text-red-400/70 mb-3">
-                Browser notifications are blocked. Enable them in your browser settings.
-              </p>
+              <div className="mx-4 mb-3 rounded-lg bg-red-500/[0.06] border border-red-500/10 px-3 py-2">
+                <p className="text-[11px] text-red-400/80">
+                  Browser notifications are blocked. Enable them in your browser settings.
+                </p>
+              </div>
             )}
 
             {/* Master toggle */}
-            <label className="flex items-center justify-between py-1.5 cursor-pointer">
-              <span className="text-[12px] text-white/50">Enabled</span>
-              <button
-                type="button"
-                onClick={toggleEnabled}
-                className={`relative h-5 w-9 rounded-full transition-colors duration-150 cursor-pointer ${
-                  settings.enabled ? "bg-[var(--color-brand-500)]" : "bg-white/10"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-150 ${
-                    settings.enabled ? "translate-x-4" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
-            </label>
+            <div className="px-4 pb-3 flex items-center justify-between">
+              <div>
+                <span className="text-[12px] text-white/50">Enable notifications</span>
+                {settings.enabled && (
+                  <span className="ml-2 text-[10px] text-white/20">{enabledEnvCount} env</span>
+                )}
+              </div>
+              <Toggle on={settings.enabled} size="md" onToggle={toggleEnabled} />
+            </div>
 
             {/* Per-environment toggles */}
             {settings.enabled && (
-              <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1">
-                <span className="text-[10px] font-medium text-white/25 uppercase tracking-wider">Environments</span>
+              <div className="border-t border-white/[0.06] px-4 py-3 space-y-2">
+                <span className="text-[10px] font-medium text-white/20 uppercase tracking-wider">Environments</span>
                 {Object.entries(settings.environments).map(([env, on]) => (
-                  <label key={env} className="flex items-center justify-between py-1 cursor-pointer">
-                    <span className="text-[12px] text-white/40">{env}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleEnvironment(env)}
-                      className={`relative h-4 w-7 rounded-full transition-colors duration-150 cursor-pointer ${
-                        on ? "bg-[var(--color-brand-500)]/70" : "bg-white/10"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-150 ${
-                          on ? "translate-x-3" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                  </label>
+                  <div key={env} className="flex items-center justify-between py-0.5">
+                    <span className={`text-[12px] ${on ? "text-white/50" : "text-white/25"}`}>{env}</span>
+                    <Toggle on={on as boolean} onToggle={() => toggleEnvironment(env)} />
+                  </div>
                 ))}
               </div>
             )}
