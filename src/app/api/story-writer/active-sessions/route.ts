@@ -13,6 +13,7 @@ export interface ActiveSession {
   issueType: string | null;
   status: string;
   updatedAt: string | null;
+  jiraUpdatedAt: string | null;
 }
 
 export async function GET() {
@@ -28,6 +29,7 @@ export async function GET() {
       epicKey: ticket.epicKey,
       issueType: ticket.type,
       ticketStatus: ticket.status,
+      jiraUpdatedAt: ticket.jiraUpdatedAt,
     })
     .from(storyWriterSession)
     .leftJoin(ticket, eq(storyWriterSession.ticketKey, ticket.jiraKey))
@@ -50,6 +52,7 @@ export async function GET() {
     issueType: r.issueType ?? null,
     status: r.ticketStatus ?? "unknown",
     updatedAt: r.updatedAt,
+    jiraUpdatedAt: r.jiraUpdatedAt ?? null,
   }));
 
   return NextResponse.json(result);

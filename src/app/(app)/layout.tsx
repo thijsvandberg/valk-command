@@ -3,6 +3,7 @@ import { ActivityProvider } from "@/contexts/ActivityContext";
 import { ActivityToast } from "@/components/sync/SyncToast";
 import { SWRProvider } from "@/components/SWRProvider";
 import { CommandPalette } from "@/components/CommandPalette";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,6 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <ActivityToast />
       <CommandPalette />
+      <GlobalSearch />
     </ActivityProvider>
     </SWRProvider>
   );
