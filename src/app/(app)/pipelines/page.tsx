@@ -22,6 +22,7 @@ import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { usePipelines } from "@/hooks/usePipelines";
+import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import type { PipelineRunPayload } from "@/app/api/pipelines/route";
 
 // -- Helpers --
@@ -388,10 +389,83 @@ function RepoFilter({
 
 // -- Main Page --
 
+// -- Sprint Filter --
+
+function SprintFilter({
+  sprints,
+  selected,
+  onSelect,
+}: {
+  sprints: { id: number; name: string; state: string }[];
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const activeSprints = sprints.filter((s) => s.state === "active" || s.state === "future").slice(0, 5);
+  if (activeSprints.length === 0) return null;
+
+  const label = selected ? activeSprints.find((s) => String(s.id) === selected)?.name ?? "Sprint" : "Sprint";
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<Filter size={12} strokeWidth={1.5} />}
+        onClick={() => setOpen(!open)}
+        className={selected ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
+      >
+        {selected ? label : "Sprint"}
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+      </Button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+            <button
+              type="button"
+              onClick={() => { onSelect(null); setOpen(false); }}
+              className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+              }`}
+            >
+              All runs
+            </button>
+            {activeSprints.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => { onSelect(String(s.id)); setOpen(false); }}
+                className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                  selected === String(s.id) ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                }`}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// -- Main Page --
+
 export default function PipelinesPage() {
-  const { runs, hasRunning, isLoading, refresh } = usePipelines({ limit: 100 });
   const [repoFilter, setRepoFilter] = useState<string | null>(null);
+  const [sprintFilter, setSprintFilter] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  const { data: sprints } = useJiraSprints();
+  const { data: sprintTickets } = useTickets(sprintFilter);
+  const sprintTicketKeys = sprintFilter && sprintTickets ? sprintTickets.map((t) => t.key) : undefined;
+
+  const { runs, hasRunning, isLoading, refresh } = usePipelines({
+    limit: 100,
+    sprintTickets: sprintTicketKeys,
+  });
 
   const repos = useMemo(() => {
     const set = new Set(runs.map((r) => r.repo));
@@ -419,6 +493,7 @@ export default function PipelinesPage() {
                 Live
               </span>
             )}
+            {sprints && <SprintFilter sprints={sprints} selected={sprintFilter} onSelect={setSprintFilter} />}
             <RepoFilter repos={repos} selected={repoFilter} onSelect={setRepoFilter} />
             <Button
               variant="ghost"

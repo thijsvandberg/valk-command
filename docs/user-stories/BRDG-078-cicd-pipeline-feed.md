@@ -18,10 +18,10 @@ As the PO, I want a feed of pipeline runs linked to tickets, showing build statu
 - [x] Polling slows back to 5 min when no running pipelines are detected
 
 ### Phase 2: Ticket linkage
-- [ ] Parse branch names for ticket keys (e.g., "feature/VALK-42-description" links to VALK-42)
-- [ ] Show pipeline status on ticket detail page (reuse dev panel)
-- [ ] Filter pipeline feed by sprint (show only runs for sprint tickets)
-- [ ] Sprint feed is passive only: visible in the feed, no automatic notifications
+- [x] Parse branch names for ticket keys (e.g., "feature/VALK-42-description" links to VALK-42)
+- [x] Show pipeline status on ticket detail page (reuse dev panel)
+- [x] Filter pipeline feed by sprint (show only runs for sprint tickets)
+- [x] Sprint feed is passive only: visible in the feed, no automatic notifications
 
 ### Phase 3: Follow tickets
 - [ ] Follow/unfollow toggle (star/watch icon) on ticket rows and ticket detail page

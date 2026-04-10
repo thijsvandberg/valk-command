@@ -15,6 +15,8 @@ import {
   Rocket,
 } from "lucide-react";
 import { useDevInfo } from "@/hooks/useSprintBoard";
+import { usePipelines } from "@/hooks/usePipelines";
+import { Activity } from "lucide-react";
 import type {
   DevInfoPayload,
   DevPullRequest,
@@ -283,6 +285,46 @@ function LoadingSkeleton() {
   );
 }
 
+function PipelineRunsSection({ ticketKey }: { ticketKey: string }) {
+  const { runs } = usePipelines({ ticketKey, limit: 10 });
+  if (runs.length === 0) return null;
+
+  return (
+    <section>
+      <SectionHeader
+        icon={<Activity size={16} strokeWidth={1.5} />}
+        title="Pipeline History"
+        count={runs.length}
+      />
+      <div className="divide-y divide-white/[0.04] rounded-lg border border-white/[0.06] bg-white/[0.02]">
+        {runs.map((run) => (
+          <div key={run.id} className="flex items-center gap-3 px-3 py-2.5">
+            <BuildStateIcon state={run.state} size={13} />
+            <span className="text-[12px] font-mono text-white/60">#{run.buildNumber}</span>
+            <span className="text-[11px] text-white/30 truncate flex-1">{run.branchName}</span>
+            {run.environment && (
+              <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+                {run.environment}
+              </span>
+            )}
+            <span className="text-[11px] text-white/25 tabular-nums">{run.completedAt ? relativeDate(run.completedAt) : "running"}</span>
+            {run.pipelineUrl && (
+              <a
+                href={run.pipelineUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/15 hover:text-white/40 transition-colors duration-150 cursor-pointer"
+              >
+                <ExternalLink size={11} strokeWidth={1.5} />
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function TicketDevelopment({ ticketKey }: { ticketKey: string }) {
   const { data, isLoading } = useDevInfo(ticketKey);
 
@@ -326,6 +368,9 @@ export function TicketDevelopment({ ticketKey }: { ticketKey: string }) {
           <DeploymentsTable deployments={data.deployments} />
         </section>
       )}
+
+      {/* Pipeline History (from persistent store) */}
+      <PipelineRunsSection ticketKey={ticketKey} />
 
       {/* Branches */}
       {data.branches.length > 0 && (
