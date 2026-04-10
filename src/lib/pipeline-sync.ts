@@ -147,79 +147,95 @@ export async function syncPipelines(): Promise<SyncResult> {
     }),
   );
 
-  for (const { repoSlug, pipelines } of allRepoResults) {
-    for (const p of pipelines) {
-      const id = `${repoSlug}:${p.build_number}`;
-      const state = normalisePipelineState(p);
-      const branchName = p.target?.ref_name ?? "";
-      // Try branch name first for ticket key
-      let ticketKey = extractTicketKey(branchName);
+  // Flatten all pipelines and batch commit lookups for non-feature branches
+  const allPipelines = allRepoResults.flatMap(({ repoSlug, pipelines }) =>
+    pipelines.map((p) => ({ repoSlug, pipeline: p })),
+  );
 
-      // For non-feature branches (master, staging, release), fetch the commit message
-      // to extract ticket keys from merge commits like "Merged in feature/VPL-43447-..."
-      if (!ticketKey && p.target?.commit?.hash) {
-        const commitHash = p.target.commit.hash;
-        const commitRes = await bbFetch<{ message?: string }>(
-          repoSlug,
-          `/commit/${commitHash}`,
-        );
-        if (commitRes?.message) {
-          ticketKey = extractTicketKey(commitRes.message);
-        }
+  // Phase 1: Identify pipelines needing commit message lookups and batch them
+  const needsCommitLookup: Array<{ idx: number; repoSlug: string; hash: string }> = [];
+  const ticketKeys: (string | null)[] = allPipelines.map(({ pipeline }, idx) => {
+    const branchName = pipeline.target?.ref_name ?? "";
+    const key = extractTicketKey(branchName);
+    if (!key && pipeline.target?.commit?.hash) {
+      needsCommitLookup.push({ idx, repoSlug: allPipelines[idx].repoSlug, hash: pipeline.target.commit.hash });
+    }
+    return key;
+  });
+
+  // Parallel batch: fetch all commit messages at once
+  if (needsCommitLookup.length > 0) {
+    const commitResults = await Promise.all(
+      needsCommitLookup.map(({ repoSlug, hash }) =>
+        bbFetch<{ message?: string }>(repoSlug, `/commit/${hash}`),
+      ),
+    );
+    for (let i = 0; i < needsCommitLookup.length; i++) {
+      const msg = commitResults[i]?.message;
+      if (msg) {
+        ticketKeys[needsCommitLookup[i].idx] = extractTicketKey(msg);
       }
-      const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
-      const pipelineUrl = p.links?.html?.href
-        || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
+    }
+  }
 
-      const existing = db
-        .select()
-        .from(pipelineRun)
-        .where(eq(pipelineRun.id, id))
-        .get();
+  // Phase 2: Persist pipeline data using resolved ticket keys
+  for (let i = 0; i < allPipelines.length; i++) {
+    const { repoSlug, pipeline: p } = allPipelines[i];
+    const id = `${repoSlug}:${p.build_number}`;
+    const state = normalisePipelineState(p);
+    const branchName = p.target?.ref_name ?? "";
+    const ticketKey = ticketKeys[i];
+    const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
+    const pipelineUrl = p.links?.html?.href
+      || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
 
-      if (existing) {
-        // Update creator if missing (backfill from API)
-        const needsCreatorUpdate = !existing.creator && creator;
-        if (existing.state !== state || needsCreatorUpdate) {
-          if (existing.state !== state) {
-            stateChanges.push({ run: existing, oldState: existing.state });
-          }
-          db.update(pipelineRun)
-            .set({
-              state,
-              previousState: existing.state !== state ? existing.state : existing.previousState,
-              completedAt: p.completed_on ?? null,
-              durationSeconds: p.duration_in_seconds ?? null,
-              ...(creator ? { creator } : {}),
-            })
-            .where(eq(pipelineRun.id, id))
-            .run();
-          updatedRuns++;
+    const existing = db
+      .select()
+      .from(pipelineRun)
+      .where(eq(pipelineRun.id, id))
+      .get();
+
+    if (existing) {
+      const needsCreatorUpdate = !existing.creator && creator;
+      if (existing.state !== state || needsCreatorUpdate) {
+        if (existing.state !== state) {
+          stateChanges.push({ run: existing, oldState: existing.state });
         }
-      } else {
-        db.insert(pipelineRun)
-          .values({
-            id,
-            repo: shortRepoName(repoSlug),
-            buildNumber: p.build_number,
-            branchName,
-            ticketKey,
+        db.update(pipelineRun)
+          .set({
             state,
-            creator,
-            durationSeconds: p.duration_in_seconds ?? null,
-            pipelineUrl,
-            isDeployment: false,
-            environment: null,
-            environmentType: null,
-            createdAt: p.created_on ?? new Date().toISOString(),
+            previousState: existing.state !== state ? existing.state : existing.previousState,
             completedAt: p.completed_on ?? null,
+            durationSeconds: p.duration_in_seconds ?? null,
+            ...(creator ? { creator } : {}),
           })
+          .where(eq(pipelineRun.id, id))
           .run();
-        newRuns++;
+        updatedRuns++;
+      }
+    } else {
+      db.insert(pipelineRun)
+        .values({
+          id,
+          repo: shortRepoName(repoSlug),
+          buildNumber: p.build_number,
+          branchName,
+          ticketKey,
+          state,
+          creator,
+          durationSeconds: p.duration_in_seconds ?? null,
+          pipelineUrl,
+          isDeployment: false,
+          environment: null,
+          environmentType: null,
+          createdAt: p.created_on ?? new Date().toISOString(),
+          completedAt: p.completed_on ?? null,
+        })
+        .run();
+      newRuns++;
 
-        if (state !== "IN_PROGRESS") {
-          pendingDeployDetection.push({ repoSlug, buildNumber: p.build_number, id });
-        }
+      if (state !== "IN_PROGRESS") {
+        pendingDeployDetection.push({ repoSlug, buildNumber: p.build_number, id });
       }
     }
   }

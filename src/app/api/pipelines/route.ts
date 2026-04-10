@@ -22,7 +22,7 @@ export interface PipelineRunPayload {
   completedAt: string | null;
 }
 
-// GET /api/pipelines - query persisted pipeline runs (triggers sync if stale)
+// GET /api/pipelines - query persisted pipeline runs (non-blocking, serves DB data immediately)
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const repo = url.searchParams.get("repo");
@@ -30,17 +30,18 @@ export async function GET(request: Request) {
   const sprintTickets = url.searchParams.get("sprintTickets");
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50", 10), 200);
 
-  // Inline sync if no recent data (for first load before tick runs)
+  // Fire-and-forget background sync if no recent data (non-blocking)
   const cacheKey = "/api/pipelines:synced";
   const lastSync = cache.get<number>(cacheKey);
   if (!lastSync && isPipelineConfigured()) {
-    try {
-      const result = await syncPipelines();
-      cache.set(cacheKey, Date.now(), 60_000);
-      console.log("[pipelines] inline sync:", result);
-    } catch (err) {
-      console.error("[pipelines] inline sync failed:", err);
-    }
+    syncPipelines()
+      .then((result) => {
+        cache.set(cacheKey, Date.now(), 60_000);
+        console.log("[pipelines] background sync:", result);
+      })
+      .catch((err) => {
+        console.error("[pipelines] background sync failed:", err);
+      });
   }
 
   // Query persisted data from DB with filters
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
     .all();
 
   const hasRunning = rows.some((r) => r.state === "IN_PROGRESS");
+  const syncing = !lastSync && isPipelineConfigured();
 
   const runs: PipelineRunPayload[] = rows.map((r) => ({
     id: r.id,
@@ -81,7 +83,7 @@ export async function GET(request: Request) {
     completedAt: r.completedAt,
   }));
 
-  return NextResponse.json({ runs, hasRunning });
+  return NextResponse.json({ runs, hasRunning, syncing });
 }
 
 // POST /api/pipelines - force refresh from Bitbucket

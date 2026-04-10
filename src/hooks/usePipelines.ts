@@ -7,6 +7,7 @@ const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null)
 interface PipelineResponse {
   runs: PipelineRunPayload[];
   hasRunning: boolean;
+  syncing?: boolean;
 }
 
 const IDLE_INTERVAL = 5 * 60 * 1000;
@@ -58,6 +59,7 @@ export function usePipelines(filters?: {
     ...swr,
     runs: swr.data?.runs ?? [],
     hasRunning: swr.data?.hasRunning ?? false,
+    syncing: swr.data?.syncing ?? false,
     refresh,
   };
 }

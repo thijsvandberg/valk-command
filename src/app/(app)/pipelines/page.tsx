@@ -612,7 +612,46 @@ function RepoFilter({
   );
 }
 
-// -- Main Page --
+// -- Loading Skeleton --
+
+function PipelineSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Metric cards skeleton */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="px-4 py-3">
+            <div className="h-3 w-16 rounded bg-white/[0.04] mb-3" style={{ animation: "pulse 1.8s ease-in-out infinite", animationDelay: `${i * 100}ms` }} />
+            <div className="h-6 w-12 rounded bg-white/[0.06]" style={{ animation: "pulse 1.8s ease-in-out infinite", animationDelay: `${i * 100 + 50}ms` }} />
+          </Card>
+        ))}
+      </div>
+
+      {/* Table skeleton */}
+      <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+        <div className="px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+          <div className="h-3 w-64 rounded bg-white/[0.04]" />
+        </div>
+        {[0.9, 0.7, 0.85, 0.6, 0.75, 0.8, 0.65].map((w, i) => (
+          <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.04] last:border-b-0">
+            <div className="h-3 rounded bg-white/[0.04]" style={{ width: `${w * 100}%`, animation: "pulse 1.8s ease-in-out infinite", animationDelay: `${i * 80}ms` }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SyncingBanner() {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04] px-4 py-2.5 mb-6">
+      <Loader2 size={13} strokeWidth={2} className="text-[var(--color-brand-400)] animate-spin" />
+      <span className="text-[12px] text-[var(--color-brand-400)]/80">
+        Syncing latest pipeline data from Bitbucket...
+      </span>
+    </div>
+  );
+}
 
 // -- Sprint Filter --
 
@@ -687,7 +726,7 @@ export default function PipelinesPage() {
   const { data: sprintTickets } = useTickets(sprintFilter);
   const sprintTicketKeys = sprintFilter && sprintTickets ? sprintTickets.map((t) => t.key) : undefined;
 
-  const { runs, hasRunning, isLoading, refresh } = usePipelines({
+  const { runs, hasRunning, syncing, isLoading, refresh } = usePipelines({
     limit: 100,
     sprintTickets: sprintTicketKeys,
   });
@@ -749,12 +788,10 @@ export default function PipelinesPage() {
       <div className="flex-1 overflow-y-auto px-6 lg:px-8 py-6">
         <div className="max-w-6xl">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-24 text-white/20">
-              <Loader2 size={24} strokeWidth={1.5} className="animate-spin mb-3" />
-              <span className="text-[13px]">Loading pipelines...</span>
-            </div>
+            <PipelineSkeleton />
           ) : (
             <>
+              {syncing && runs.length === 0 && <SyncingBanner />}
               <PipelineMetrics runs={filteredRuns} />
               <RunningSection runs={filteredRuns} />
               <DeploymentTimeline runs={filteredRuns} />
