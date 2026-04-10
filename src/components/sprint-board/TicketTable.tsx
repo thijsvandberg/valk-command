@@ -81,7 +81,7 @@ function ResizeHandle({
   );
 }
 
-const VIRTUALIZE_THRESHOLD = 200;
+const VIRTUALIZE_THRESHOLD = 80;
 const ROW_HEIGHT_ESTIMATE = 40;
 const VIRTUALIZER_OVERSCAN = 20;
 
@@ -246,7 +246,18 @@ export function TicketTable({
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => ROW_HEIGHT_ESTIMATE,
     overscan: VIRTUALIZER_OVERSCAN,
+    measureElement: (el) => el.getBoundingClientRect().height,
   });
+
+  // Reset scroll position when sort or filter changes
+  const prevSortRef = useRef({ sortField, sortDir, ticketCount: tickets.length });
+  if (enableVirtualization &&
+    (prevSortRef.current.sortField !== sortField ||
+     prevSortRef.current.sortDir !== sortDir ||
+     prevSortRef.current.ticketCount !== tickets.length)) {
+    prevSortRef.current = { sortField, sortDir, ticketCount: tickets.length };
+    rowVirtualizer.scrollToIndex(0);
+  }
 
   const virtualRows = enableVirtualization ? rowVirtualizer.getVirtualItems() : [];
   const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
