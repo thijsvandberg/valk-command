@@ -149,9 +149,21 @@ export async function syncPipelines(): Promise<SyncResult> {
       const id = `${repoSlug}:${p.build_number}`;
       const state = normalisePipelineState(p);
       const branchName = p.target?.ref_name ?? "";
-      const commitMessage = p.target?.commit?.message ?? "";
-      // Try branch name first, then fall back to commit message (catches merge commits)
-      const ticketKey = extractTicketKey(branchName) ?? extractTicketKey(commitMessage);
+      // Try branch name first for ticket key
+      let ticketKey = extractTicketKey(branchName);
+
+      // For non-feature branches (master, staging, release), fetch the commit message
+      // to extract ticket keys from merge commits like "Merged in feature/VPL-43447-..."
+      if (!ticketKey && p.target?.commit?.hash) {
+        const commitHash = p.target.commit.hash;
+        const commitRes = await bbFetch<{ message?: string }>(
+          repoSlug,
+          `/commit/${commitHash}`,
+        );
+        if (commitRes?.message) {
+          ticketKey = extractTicketKey(commitRes.message);
+        }
+      }
       const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
       const pipelineUrl = p.links?.html?.href
         || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
