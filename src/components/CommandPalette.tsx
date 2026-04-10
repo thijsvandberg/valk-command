@@ -150,6 +150,14 @@ export function CommandPalette() {
   const actions: ActionResult[] = useMemo(() => [
     {
       category: "action",
+      id: "action-search-tickets",
+      label: "Search Tickets",
+      execute: () => {
+        window.dispatchEvent(new Event("valk:openGlobalSearch"));
+      },
+    },
+    {
+      category: "action",
       id: "action-sync-jira",
       label: "Sync Jira",
       execute: async () => {
@@ -187,6 +195,7 @@ export function CommandPalette() {
 
   /* ---- Open / close ---- */
   const handleOpen = useCallback(() => {
+    window.dispatchEvent(new Event("valk:closeGlobalSearch"));
     setQuery("");
     setActiveIdx(0);
     setTicketResults([]);
@@ -207,7 +216,7 @@ export function CommandPalette() {
   /* ---- Global Cmd+K listener ---- */
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "k") {
         e.preventDefault();
         e.stopPropagation();
         if (open) handleClose();
@@ -217,6 +226,16 @@ export function CommandPalette() {
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [open, handleOpen, handleClose]);
+
+  /* ---- Listen for close requests from GlobalSearch ---- */
+  useEffect(() => {
+    function onClosePalette() {
+      setOpen(false);
+      setClosing(false);
+    }
+    window.addEventListener("valk:closePalette", onClosePalette);
+    return () => window.removeEventListener("valk:closePalette", onClosePalette);
+  }, []);
 
   /* ---- Ticket search (debounced) ---- */
   useEffect(() => {
@@ -310,25 +329,37 @@ export function CommandPalette() {
   const allResults: PaletteResult[] = useMemo(() => {
     const q = query.trim();
 
-    // Pages: always show when empty, fuzzy match when query
-    let pages: PageResult[];
     if (!q) {
-      pages = PAGES.slice(0, MAX_PER_CATEGORY);
-    } else {
-      pages = pageFuse.search(q, { limit: MAX_PER_CATEGORY }).map((r) => r.item);
+      // No query: show pages first, then actions
+      const combined: PaletteResult[] = [
+        ...PAGES.slice(0, MAX_PER_CATEGORY),
+        ...actions.slice(0, MAX_PER_CATEGORY),
+      ];
+      return combined.slice(0, MAX_TOTAL);
     }
 
-    // Actions: always show when empty, fuzzy match when query
-    let filteredActions: ActionResult[];
-    if (!q) {
-      filteredActions = actions.slice(0, MAX_PER_CATEGORY);
-    } else {
-      filteredActions = actionFuse.search(q, { limit: MAX_PER_CATEGORY }).map((r) => r.item);
+    // With a query: rank all instant results by fuse score, best match first
+    const scoredPages = pageFuse.search(q, { limit: MAX_PER_CATEGORY })
+      .map((r) => ({ result: r.item as PaletteResult, score: r.score ?? 1 }));
+    const scoredActions = actionFuse.search(q, { limit: MAX_PER_CATEGORY })
+      .map((r) => ({ result: r.item as PaletteResult, score: r.score ?? 1 }));
+
+    const scored = [...scoredPages, ...scoredActions]
+      .sort((a, b) => a.score - b.score);
+
+    // Group by category for section headers while preserving rank order
+    const seen = new Set<string>();
+    const ranked: PaletteResult[] = [];
+    for (const { result } of scored) {
+      if (!seen.has(result.id)) {
+        seen.add(result.id);
+        ranked.push(result);
+      }
     }
 
+    // Append async results (tickets, conversations) after instant results
     const combined: PaletteResult[] = [
-      ...pages,
-      ...filteredActions,
+      ...ranked,
       ...ticketResults,
       ...conversationResults,
     ];
