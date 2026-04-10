@@ -140,7 +140,15 @@ export const alert = sqliteTable("alert", {
   message: text("message").notNull(),
   createdAt: text("created_at").notNull(),
   read: integer("read", { mode: "boolean" }).notNull().default(false),
-});
+  category: text("category", {
+    enum: ["general", "pipeline", "deployment", "pr"],
+  }),
+  linkUrl: text("link_url"),
+}, (table) => [
+  index("alert_read_idx").on(table.read),
+  index("alert_created_at_idx").on(table.createdAt),
+  index("alert_jira_key_idx").on(table.jiraKey),
+]);
 
 // Phase 3: Comments
 export const poComment = sqliteTable("po_comment", {
@@ -290,6 +298,54 @@ export const storedReview = sqliteTable("stored_review", {
   index("stored_review_ticket_key_idx").on(table.ticketKey),
   index("stored_review_created_at_idx").on(table.createdAt),
 ]);
+
+// Pipeline runs: persisted Bitbucket pipeline data for historical tracking and notifications
+export const pipelineRun = sqliteTable("pipeline_run", {
+  id: text("id").primaryKey(),
+  repo: text("repo").notNull(),
+  buildNumber: integer("build_number").notNull(),
+  branchName: text("branch_name").notNull(),
+  ticketKey: text("ticket_key"),
+  state: text("state", {
+    enum: ["SUCCESSFUL", "FAILED", "IN_PROGRESS", "STOPPED"],
+  }).notNull(),
+  durationSeconds: integer("duration_seconds"),
+  pipelineUrl: text("pipeline_url").notNull(),
+  // Deployment-specific fields
+  isDeployment: integer("is_deployment", { mode: "boolean" }).notNull().default(false),
+  environment: text("environment"),
+  environmentType: text("environment_type", {
+    enum: ["Production", "Staging", "Test"],
+  }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  completedAt: text("completed_at"),
+  // Used for state change detection (notification triggers)
+  previousState: text("previous_state"),
+}, (table) => [
+  index("pipeline_run_repo_idx").on(table.repo),
+  index("pipeline_run_ticket_key_idx").on(table.ticketKey),
+  index("pipeline_run_state_idx").on(table.state),
+  index("pipeline_run_created_at_idx").on(table.createdAt),
+  index("pipeline_run_deployment_idx").on(table.isDeployment, table.environment),
+]);
+
+// Followed tickets: user preference for which tickets to receive notifications about
+export const followedTicket = sqliteTable("followed_ticket", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("followed_ticket_key_idx").on(table.ticketKey),
+]);
+
+export type PipelineRunRow = typeof pipelineRun.$inferSelect;
+export type NewPipelineRunRow = typeof pipelineRun.$inferInsert;
+export type FollowedTicketRow = typeof followedTicket.$inferSelect;
+export type Alert = typeof alert.$inferSelect;
 
 export type Conversation = typeof conversation.$inferSelect;
 export type NewConversation = typeof conversation.$inferInsert;
