@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { alert } from "@/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, lt, sql } from "drizzle-orm";
 
 // GET /api/notifications - list notifications (alerts) with optional unread filter
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const unreadOnly = url.searchParams.get("unread") === "true";
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50", 10), 200);
+
+  // Auto-cleanup: delete notifications older than 30 days
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  db.delete(alert).where(lt(alert.createdAt, cutoff)).run();
 
   const conditions = unreadOnly ? eq(alert.read, false) : undefined;
 
@@ -53,4 +57,10 @@ export async function PATCH(request: Request) {
   }
 
   return NextResponse.json({ error: "id or markAll required" }, { status: 400 });
+}
+
+// DELETE /api/notifications - clear all notifications
+export async function DELETE() {
+  db.delete(alert).run();
+  return NextResponse.json({ status: "cleared" });
 }

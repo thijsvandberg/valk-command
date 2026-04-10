@@ -9,6 +9,7 @@ import { upsertIssue } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { createNotification } from "@/lib/notifications";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 
@@ -106,6 +107,13 @@ async function syncIndividualTickets(ticketKeys: string[]) {
 
     invalidateSearchCache();
     cache.invalidate("/api/tickets");
+
+    createNotification(
+      "sync",
+      `Ticket sync completed. ${results.length} ticket${results.length === 1 ? "" : "s"} updated.`,
+      { category: "sync" },
+    );
+
     return NextResponse.json({
       ok: true,
       count: results.length,
@@ -125,6 +133,8 @@ async function syncIndividualTickets(ticketKeys: string[]) {
       durationMs,
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
+
+    createNotification("sync", `Jira sync failed: ${message}`, { category: "sync" });
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   } finally {
@@ -174,9 +184,10 @@ async function syncSprint(sprintId: string | null, strategy: string) {
 
     const results = [];
     const jiraKeys = new Set<string>();
-    for (const issue of issues) {
+    for (let i = 0; i < issues.length; i++) {
+      const issue = issues[i];
       jiraKeys.add(issue.key);
-      const info = await upsertIssue(issue, sprintId, controller.signal);
+      const info = await upsertIssue(issue, sprintId, controller.signal, i);
       results.push(info);
     }
 
@@ -233,6 +244,12 @@ async function syncSprint(sprintId: string | null, strategy: string) {
     invalidateSearchCache();
     cache.invalidate("/api/tickets");
 
+    createNotification(
+      "sync",
+      `Sprint sync completed. ${results.length} ticket${results.length === 1 ? "" : "s"} updated.`,
+      { category: "sync" },
+    );
+
     // Advance the incremental sync watermark to the latest updated timestamp
     const latestUpdated = issues
       .map((i) => i.fields.updated)
@@ -262,6 +279,8 @@ async function syncSprint(sprintId: string | null, strategy: string) {
       durationMs,
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
+
+    createNotification("sync", `Jira sync failed: ${message}`, { category: "sync" });
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   } finally {

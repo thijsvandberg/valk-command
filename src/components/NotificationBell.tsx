@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -9,6 +9,10 @@ import {
   Rocket,
   GitPullRequest,
   ExternalLink,
+  RefreshCw,
+  NotebookPen,
+  Info,
+  Trash2,
 } from "lucide-react";
 import { useNotifications } from "@/hooks/usePipelines";
 import { Button } from "@/components/ui/Button";
@@ -29,15 +33,25 @@ function notificationIcon(type: string) {
       return <GitBranch size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />;
     case "pr":
       return <GitPullRequest size={13} strokeWidth={1.5} className="text-amber-400" />;
+    case "sync":
+      return <RefreshCw size={13} strokeWidth={1.5} className="text-emerald-400" />;
+    case "story-writer":
+      return <NotebookPen size={13} strokeWidth={1.5} className="text-sky-400" />;
+    case "system":
+      return <Info size={13} strokeWidth={1.5} className="text-white/40" />;
     default:
       return <Bell size={13} strokeWidth={1.5} className="text-white/30" />;
   }
 }
 
+// 5 seconds after the panel opens, mark all currently-visible unread notifications as read
+const AUTO_MARK_READ_DELAY = 5000;
+
 export function NotificationBell() {
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications(20);
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const autoMarkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -48,6 +62,26 @@ export function NotificationBell() {
     if (open) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
+  // Auto-mark unread notifications as read after 5 seconds of panel being open
+  const scheduleAutoMarkRead = useCallback(() => {
+    if (autoMarkTimerRef.current) clearTimeout(autoMarkTimerRef.current);
+    autoMarkTimerRef.current = setTimeout(() => {
+      const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+      if (unreadIds.length === 0) return;
+      // Mark each visible unread notification as read
+      Promise.all(unreadIds.map((id) => markRead(id))).catch(() => {});
+    }, AUTO_MARK_READ_DELAY);
+  }, [notifications, markRead]);
+
+  useEffect(() => {
+    if (open && unreadCount > 0) {
+      scheduleAutoMarkRead();
+    }
+    return () => {
+      if (autoMarkTimerRef.current) clearTimeout(autoMarkTimerRef.current);
+    };
+  }, [open, unreadCount, scheduleAutoMarkRead]);
 
   return (
     <div ref={panelRef} className="relative">
@@ -61,7 +95,7 @@ export function NotificationBell() {
         <Bell size={16} strokeWidth={1.5} />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white tabular-nums shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
-            {unreadCount > 99 ? "99+" : unreadCount}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
@@ -74,16 +108,28 @@ export function NotificationBell() {
             <span className="font-[var(--font-display)] text-[13px] font-semibold text-white/70">
               Notifications
             </span>
-            {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<CheckCheck size={12} strokeWidth={1.5} />}
-                onClick={() => markAllRead()}
-              >
-                Mark all read
-              </Button>
-            )}
+            <div className="flex items-center gap-1">
+              {unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<CheckCheck size={12} strokeWidth={1.5} />}
+                  onClick={() => markAllRead()}
+                >
+                  Mark all read
+                </Button>
+              )}
+              {notifications.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Trash2 size={12} strokeWidth={1.5} />}
+                  onClick={() => clearAll()}
+                >
+                  Clear all
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Notification list */}

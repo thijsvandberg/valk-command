@@ -5,6 +5,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extractStoryDrafts } from "@/lib/story-draft-parser";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { createNotification } from "@/lib/notifications";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -106,6 +107,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (taskId) {
     fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key).catch(() => {});
   }
+
+  createNotification(
+    "story-writer",
+    `Draft ready for ${key}`,
+    { category: "story-writer", jiraKey: key },
+  );
 
   return NextResponse.json({
     originalDraftId,

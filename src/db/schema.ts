@@ -47,6 +47,7 @@ export const ticket = sqliteTable("ticket", {
   priority: text("priority"),
   components: text("components"),
   jiraCreatedAt: text("jira_created_at"),
+  jiraRank: integer("jira_rank"),
   jiraUpdatedAt: text("jira_updated_at"),
   lastSyncedAt: text("last_synced_at"),
   removedFromJiraAt: text("removed_from_jira_at"),
@@ -141,7 +142,7 @@ export const alert = sqliteTable("alert", {
   createdAt: text("created_at").notNull(),
   read: integer("read", { mode: "boolean" }).notNull().default(false),
   category: text("category", {
-    enum: ["general", "pipeline", "deployment", "pr"],
+    enum: ["general", "pipeline", "deployment", "pr", "sync", "story-writer", "system"],
   }),
   linkUrl: text("link_url"),
 }, (table) => [

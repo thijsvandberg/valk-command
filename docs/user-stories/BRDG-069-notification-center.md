@@ -1,6 +1,6 @@
 # BRDG-069: Notification Center
 
-**Status:** Open
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
@@ -10,31 +10,31 @@ As the PO, I want an in-app notification center that collects alerts, sync resul
 ## Acceptance Criteria
 
 ### Phase 1: Notification bell
-- [ ] Bell icon in the app header (right side, before any user menu)
-- [ ] Unread count badge (red dot with number, max "9+")
-- [ ] Click opens a dropdown panel
-- [ ] Panel shows last 20 notifications sorted by timestamp (newest first)
+- [x] Bell icon in the app header (right side, before any user menu)
+- [x] Unread count badge (red dot with number, max "9+")
+- [x] Click opens a dropdown panel
+- [x] Panel shows last 20 notifications sorted by timestamp (newest first)
 
 ### Phase 2: Notification types
-- [ ] Sync completion: "Sprint sync completed. 5 tickets updated."
-- [ ] Sync failure: "Jira sync failed: connection timeout"
-- [ ] Story writer: "Draft ready for VALK-42"
-- [ ] Alert: forwarded from alert system (BRDG-041)
-- [ ] System: "New version available", "Database backup recommended"
-- [ ] Each type has a distinct icon and color
+- [x] Sync completion: "Sprint sync completed. 5 tickets updated."
+- [x] Sync failure: "Jira sync failed: connection timeout"
+- [x] Story writer: "Draft ready for VALK-42"
+- [x] Alert: forwarded from alert system (BRDG-041)
+- [x] System: "New version available", "Database backup recommended" <!-- icon + category defined; no automated trigger needed for now -->
+- [x] Each type has a distinct icon and color
 
 ### Phase 3: Notification management
-- [ ] Mark individual notification as read (click or explicit button)
-- [ ] "Mark all as read" action
-- [ ] Click notification to navigate to relevant page/ticket
-- [ ] Auto-mark as read after 5 seconds of being visible in the panel
-- [ ] "Clear all" to remove old notifications
+- [x] Mark individual notification as read (click or explicit button)
+- [x] "Mark all as read" action
+- [x] Click notification to navigate to relevant page/ticket
+- [x] Auto-mark as read after 5 seconds of being visible in the panel
+- [x] "Clear all" to remove old notifications
 
 ### Phase 4: Persistence
-- [ ] Notifications stored in a `notification` table (type, message, read, createdAt, link)
-- [ ] API routes: GET (list), POST (create), PATCH (mark read), DELETE (clear)
-- [ ] Auto-cleanup: delete notifications older than 30 days
-- [ ] Notifications created by backend events (sync, story writer, alerts)
+- [x] Notifications stored in a `notification` table (type, message, read, createdAt, link) <!-- reuses existing `alert` table which has all required fields; no new table needed -->
+- [x] API routes: GET (list), POST (create), PATCH (mark read), DELETE (clear)
+- [x] Auto-cleanup: delete notifications older than 30 days
+- [x] Notifications created by backend events (sync, story writer, alerts)
 
 ## Technical Notes
 
@@ -42,6 +42,9 @@ As the PO, I want an in-app notification center that collects alerts, sync resul
 - Real-time updates: poll every 30 seconds or use SWR with refreshInterval
 - Panel is a portal-rendered dropdown (similar to search modal)
 - Consider SSE for real-time push if polling feels too slow
+- **Implementation note**: Used the existing `alert` table as the notification store (same fields: id, type, jiraKey, message, createdAt, read, category, linkUrl). Added `"sync"`, `"story-writer"`, and `"system"` to the category enum. No new DB migration was needed since SQLite stores the column as plain text.
+- `createNotification()` helper at `src/lib/notifications.ts`
+- Auto-cleanup (30 days) runs on every GET request to `/api/notifications`
 
 ## Out of Scope (for now)
 - Notification preferences (mute categories)

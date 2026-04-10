@@ -196,11 +196,17 @@ export function useNotifications(limit = 50) {
     swr.mutate();
   }, [swr]);
 
+  const clearAll = useCallback(async () => {
+    await fetch("/api/notifications", { method: "DELETE" });
+    swr.mutate();
+  }, [swr]);
+
   return {
     ...swr,
     notifications: swr.data?.notifications ?? [],
     unreadCount: swr.data?.unreadCount ?? 0,
     markRead,
     markAllRead,
+    clearAll,
   };
 }
