@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useRef, useCallback } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
@@ -10,6 +10,7 @@ import { GripVertical, Flag, MessageSquare } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
+import { prefetchTicketDetail } from "@/lib/prefetch";
 
 function DragHandle({ listeners, attributes }: { listeners?: ReturnType<typeof useSortable>["listeners"]; attributes?: ReturnType<typeof useSortable>["attributes"] }) {
   if (!listeners) {
@@ -89,6 +90,23 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
 
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    onHoverRow(ticket.key);
+    prefetchTimerRef.current = setTimeout(() => {
+      prefetchTicketDetail(ticket.key);
+    }, 200);
+  }, [ticket.key, onHoverRow]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
+    }
+    onLeaveRow();
+  }, [onLeaveRow]);
+
   const style: React.CSSProperties = {
     ...(ticket.flagged ? { boxShadow: "inset 4px 0 0 #e5534b" } : {}),
     ...rowStyle,
@@ -99,8 +117,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       ref={ref}
       data-index={dataIndex}
       style={style}
-      onMouseEnter={() => onHoverRow(ticket.key)}
-      onMouseLeave={onLeaveRow}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onClick={(e) => {
         if (isDragActive) return;
         if (e.metaKey || e.ctrlKey) {

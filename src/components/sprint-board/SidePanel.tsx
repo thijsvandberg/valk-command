@@ -9,6 +9,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTableCells";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
+import { prefetchTicketDetail } from "@/lib/prefetch";
 import { CloudSync, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -86,6 +87,7 @@ export function SidePanel({
   onNotesChange,
   onClose,
   onShowToast,
+  adjacentKeys,
 }: {
   ticket: Ticket;
   poStatus: POStatus;
@@ -93,10 +95,17 @@ export function SidePanel({
   onNotesChange: (notes: string) => void;
   onClose: () => void;
   onShowToast: (message: string) => void;
+  adjacentKeys?: { prev: string | null; next: string | null };
 }) {
   const jiraStatusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] || JIRA_STATUS_COLORS["TO DO"];
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const [syncingTicket, setSyncingTicket] = useState(false);
+
+  // Prefetch adjacent ticket details when this panel opens
+  useEffect(() => {
+    if (adjacentKeys?.prev) prefetchTicketDetail(adjacentKeys.prev);
+    if (adjacentKeys?.next) prefetchTicketDetail(adjacentKeys.next);
+  }, [adjacentKeys]);
 
   const handleSyncTicket = useCallback(async () => {
     setSyncingTicket(true);

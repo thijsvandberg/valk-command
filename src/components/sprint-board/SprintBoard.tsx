@@ -16,6 +16,7 @@ import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
+import { prefetchTicketList } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
@@ -103,6 +104,15 @@ export default function SprintBoard() {
       });
     }
   }, [apiTickets]);
+
+  // Prefetch adjacent sprint slots when board loads
+  useEffect(() => {
+    if (isAllView || slotSprints.length === 0) return;
+    const prevSlot = slotSprints[activeSlot - 1];
+    const nextSlot = slotSprints[activeSlot + 1];
+    if (prevSlot) prefetchTicketList(prevSlot);
+    if (nextSlot) prefetchTicketList(nextSlot);
+  }, [activeSlot, slotSprints, isAllView]);
 
   useEffect(() => { return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }; }, []);
 
@@ -441,7 +451,11 @@ export default function SprintBoard() {
         {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
       </div>
 
-      {selected && <SidePanel ticket={selected} poStatus={poStatuses[selected.key] ?? null} onPoStatusChange={(v) => handlePoStatusChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} />}
+      {selected && (() => {
+        const idx = tickets.findIndex((t) => t.key === selected.key);
+        const adjacentKeys = { prev: idx > 0 ? tickets[idx - 1].key : null, next: idx < tickets.length - 1 ? tickets[idx + 1].key : null };
+        return <SidePanel ticket={selected} poStatus={poStatuses[selected.key] ?? null} onPoStatusChange={(v) => handlePoStatusChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} adjacentKeys={adjacentKeys} />;
+      })()}
 
       {toast && (
         <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
