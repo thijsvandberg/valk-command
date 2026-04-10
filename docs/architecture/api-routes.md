@@ -139,6 +139,7 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 |-------|--------|---------|
 | `/api/pipelines` | GET | List pipeline runs. `?repo=X&ticketKey=X&sprintTickets=X,Y&limit=N` |
 | `/api/pipelines` | POST | Force refresh from Bitbucket |
+| `/api/pipelines/tick` | POST | Independent lazy-cron tick (5 min interval) |
 | `/api/pipelines/last-deployed` | GET | Last deployment per ticket key |
 | `/api/pipelines/deploy-settings` | GET | Get deploy notification settings |
 | `/api/pipelines/deploy-settings` | PUT | Update deploy notification settings |
