@@ -147,7 +147,8 @@ export async function syncPipelines(): Promise<SyncResult> {
       const state = normalisePipelineState(p);
       const branchName = p.target?.ref_name ?? "";
       const ticketKey = extractTicketKey(branchName);
-      const pipelineUrl = p.links?.html?.href ?? "";
+      const pipelineUrl = p.links?.html?.href
+        || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
 
       const existing = db
         .select()
