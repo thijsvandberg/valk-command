@@ -9,6 +9,13 @@ As the PO, I want the pipeline feed to be more deeply integrated with ticket dev
 
 ## Acceptance Criteria
 
+### Phase 0: Performance - page load is too slow
+- [ ] Pipeline page blocks on inline Bitbucket sync on first load (fetches 75+ pipelines + commit lookups sequentially)
+- [ ] Serve persisted data immediately from DB, run sync in background (non-blocking)
+- [ ] Commit message lookups for ticket keys should be batched/parallelized, not sequential per pipeline
+- [ ] Add loading skeleton while background sync runs so page is instantly interactive
+- [ ] Target: page renders in under 500ms from persisted data, sync updates trickle in afterward
+
 ### Phase 1: Unify pipeline data with dev-info
 - [ ] Pipeline feed page shows the same PR/branch/deployment data that the ticket Development tab shows
 - [ ] Pipeline runs link to their associated PR (when a pipeline is triggered by a PR merge)
