@@ -6,8 +6,8 @@ import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { GripVertical, Flag, MessageSquare, Star, Rocket } from "lucide-react";
-import { useFollowedTickets, useFollowTicket, useLastDeployed } from "@/hooks/usePipelines";
+import { GripVertical, Flag, MessageSquare, Star, Rocket, GitBranch } from "lucide-react";
+import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
@@ -91,6 +91,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const isFollowed = followedKeys?.includes(ticket.key) ?? false;
   const { data: lastDeployedMap } = useLastDeployed();
   const lastDeploy = lastDeployedMap?.[ticket.key];
+  const { data: healthMap } = usePipelineHealth();
+  const health = healthMap?.[ticket.key];
 
   const showCheckbox = isChecked || isHovered || someChecked;
   const isRemoved = Boolean(ticket.removedFromJiraAt);
@@ -298,23 +300,40 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           )}
         </td>
       )}
-      {/* Last deployed indicator */}
+      {/* Pipeline health + last deployed */}
       <td className="py-2 pr-2">
-        {lastDeploy && (
-          <span
-            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-              lastDeploy.state === "SUCCESSFUL"
-                ? "bg-emerald-500/10 text-emerald-400/70"
-                : lastDeploy.state === "FAILED"
-                ? "bg-red-500/10 text-red-400/70"
-                : "bg-white/[0.04] text-white/30"
-            }`}
-            title={`Last deployed: ${lastDeploy.environment ?? "unknown"} (${lastDeploy.completedAt ? new Date(lastDeploy.completedAt).toLocaleString("en-GB") : ""})`}
-          >
-            <Rocket size={9} strokeWidth={1.5} />
-            {lastDeploy.environment?.slice(0, 4)}
-          </span>
-        )}
+        <div className="flex items-center gap-1">
+          {health && health.status !== "gray" && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                health.status === "green"
+                  ? "bg-emerald-500/10 text-emerald-400/70"
+                  : health.status === "red"
+                  ? "bg-red-500/10 text-red-400/70"
+                  : "bg-amber-500/10 text-amber-400/70"
+              }`}
+              title={`Pipeline health: ${health.recentFails} failures in last ${health.recentTotal} runs`}
+            >
+              <GitBranch size={9} strokeWidth={1.5} />
+              {health.recentFails > 0 && health.recentFails}
+            </span>
+          )}
+          {lastDeploy && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                lastDeploy.state === "SUCCESSFUL"
+                  ? "bg-emerald-500/10 text-emerald-400/70"
+                  : lastDeploy.state === "FAILED"
+                  ? "bg-red-500/10 text-red-400/70"
+                  : "bg-white/[0.04] text-white/30"
+              }`}
+              title={`Last deployed: ${lastDeploy.environment ?? "unknown"} (${lastDeploy.completedAt ? new Date(lastDeploy.completedAt).toLocaleString("en-GB") : ""})`}
+            >
+              <Rocket size={9} strokeWidth={1.5} />
+              {lastDeploy.environment?.slice(0, 4)}
+            </span>
+          )}
+        </div>
       </td>
       {/* Spacer cell to match ColumnToggle header column */}
       <td className="w-8" />

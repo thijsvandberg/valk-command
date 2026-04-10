@@ -115,6 +115,22 @@ export function useDeploySettings() {
   return { ...swr, settings: swr.data, update };
 }
 
+export interface PipelineHealthEntry {
+  status: "green" | "yellow" | "red" | "gray";
+  recentFails: number;
+  recentTotal: number;
+  lastState: string | null;
+  lastCompletedAt: string | null;
+}
+
+export function usePipelineHealth() {
+  return useSWR<Record<string, PipelineHealthEntry>>(
+    "/api/pipelines/health",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
+  );
+}
+
 export interface LastDeployedInfo {
   environment: string | null;
   completedAt: string | null;

@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/db";
-import { pipelineRun, alert, followedTicket } from "@/db/schema";
+import { pipelineRun, alert, followedTicket, ticketMetadata } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { eq } from "drizzle-orm";
@@ -374,16 +374,30 @@ export async function syncPipelines(): Promise<SyncResult> {
     );
   }
 
-  // Generate notifications for state changes on followed tickets
+  // Generate notifications and update ticket test status for state changes
   if (stateChanges.length > 0) {
     const followed = db.select().from(followedTicket).all();
     const followedKeys = new Set(followed.map((f) => f.ticketKey));
 
     for (const { run, oldState } of stateChanges) {
-      if (!run.ticketKey || !followedKeys.has(run.ticketKey)) continue;
+      if (!run.ticketKey) continue;
 
       const finalState = run.state;
       if (oldState === "IN_PROGRESS" && (finalState === "SUCCESSFUL" || finalState === "FAILED" || finalState === "STOPPED")) {
+        // Update ticket_metadata test status
+        const testStatus = finalState === "SUCCESSFUL" ? "pass" : "fail";
+        db.update(ticketMetadata)
+          .set({
+            testStatus,
+            lastTestRunAt: new Date().toISOString(),
+            lastTestReportUrl: run.pipelineUrl,
+          })
+          .where(eq(ticketMetadata.jiraKey, run.ticketKey))
+          .run();
+
+        // Notifications only for followed tickets
+        if (!followedKeys.has(run.ticketKey)) continue;
+
         const stateLabel = finalState === "SUCCESSFUL" ? "completed" : finalState.toLowerCase();
         const message = run.isDeployment
           ? `Deployment to ${run.environment} ${stateLabel} for ${run.ticketKey}`

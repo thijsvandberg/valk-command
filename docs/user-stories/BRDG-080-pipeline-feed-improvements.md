@@ -1,6 +1,6 @@
 # BRDG-080: Pipeline Feed Improvements
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -44,9 +44,9 @@ As the PO, I want the pipeline feed to be more deeply integrated with ticket dev
 - [x] Keyboard shortcuts for navigation and filtering
 
 ### Phase 5: Pipeline-to-ticket sync
-- [ ] When a pipeline completes for a followed ticket, update the ticket's test status in PO metadata
-- [ ] Show aggregate pipeline health per ticket on Sprint Board (green/red/yellow indicator)
-- [ ] Pipeline failure count badge on ticket rows
+- [x] When a pipeline completes for a followed ticket, update the ticket's test status in PO metadata
+- [x] Show aggregate pipeline health per ticket on Sprint Board (green/red/yellow indicator)
+- [x] Pipeline failure count badge on ticket rows
 
 ## Technical Notes
 
