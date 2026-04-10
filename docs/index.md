@@ -14,4 +14,12 @@ PO Command Center for Valk Platform.
 
 - [PRD](plans/2026-03-27-valk-command-prd.md) - Product requirements
 - [valk-agent spec](plans/2026-03-27-valk-agent-spec.md) - Backend agent API specification (aspirational, agent not yet built)
-- [Jira sync architecture](architecture/jira-sync.md) - Sync strategies and data flow
+
+## Architecture
+
+- [Jira Sync](architecture/jira-sync.md) - Sync strategies, watermark system, data flow
+- [Database Schema](architecture/database-schema.md) - All tables, relationships, conventions
+- [API Routes](architecture/api-routes.md) - Complete API endpoint reference (60+ routes)
+- [Workspace Integration](architecture/workspace-integration.md) - Agent proxy, SSE streaming, skill invocation, Bitbucket integration
+- [Story Writer](architecture/story-writer.md) - AI-assisted story editing, split mode, related stories
+- [Scheduler](architecture/scheduler.md) - Lazy-cron pattern, task registry, background sync

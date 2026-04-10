@@ -30,19 +30,37 @@ Single-user web app for the Product Owner of Valk Platform. Chat-driven interfac
 
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
 - Dev server: `npm run dev` (port 3100). This script auto-kills any existing process on port 3100 before starting. When restarting the dev server manually, always kill port 3100 first: `lsof -ti:3100 | xargs kill -9 2>/dev/null`
-- Database: SQLite + Drizzle ORM (planned)
+- Database: SQLite + Drizzle ORM. Schema in `src/db/schema.ts`, migrations in `drizzle/`
+- Environment: copy `.env.example` to `.env.local`
+
+## Architecture Docs
+
+Detailed technical documentation lives in `docs/architecture/`:
+
+- [Database Schema](docs/architecture/database-schema.md) - All tables, relationships, conventions
+- [API Routes](docs/architecture/api-routes.md) - Complete endpoint reference (60+ routes)
+- [Jira Sync](docs/architecture/jira-sync.md) - Sync strategies, watermark system, data flow
+- [Workspace Integration](docs/architecture/workspace-integration.md) - Agent proxy, SSE, skills, Bitbucket
+- [Story Writer](docs/architecture/story-writer.md) - AI-assisted editing, split mode, related stories
+- [Scheduler](docs/architecture/scheduler.md) - Lazy-cron pattern, background tasks
 
 ## Project Structure
 
 ```
-src/app/          Next.js App Router pages and layouts
-src/components/   Reusable components
+src/app/          Next.js App Router pages and API routes
+src/components/   Reusable React components
+src/hooks/        Custom React hooks
+src/lib/          Utility functions and API clients
+src/db/           Database schema and client
+src/types/        TypeScript type definitions
+src/contexts/     React context providers
 docs/             Project documentation
   plans/          PRDs and specs
-  user-stories/   Feature specs (BRDG-XXX-name.md)
   architecture/   Technical architecture docs
+  user-stories/   Feature specs (BRDG-XXX-name.md)
   investigations/ Ad-hoc research
   todo.md         Backlog
+drizzle/          Database migrations
 ```
 
 ## Code Standards
