@@ -12,6 +12,7 @@ import {
 import useSWR from "swr";
 import { useJiraHealth } from "@/hooks/useSprintBoard";
 import { useSchedulerTick } from "@/hooks/useSchedulerTick";
+import { usePipelineTick } from "@/hooks/usePipelineTick";
 import type { ActivityLogEntry } from "@/types/ticket";
 
 export type ActivityState = "idle" | "syncing" | "error";
@@ -105,6 +106,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     lastSyncAt: incrementalSyncLastAt,
     lastSyncCount: incrementalSyncLastCount,
   } = useSchedulerTick(mutateActivityLog);
+
+  // Independent pipeline sync (separate from Jira scheduler)
+  usePipelineTick();
 
   const toasts = useMemo(
     () => toastEntries.filter((t) => !dismissedIds.has(t.id)),
