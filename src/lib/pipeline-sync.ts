@@ -100,12 +100,15 @@ async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
 function normalisePipelineState(pipeline: BbPipeline): "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED" | "PAUSED" {
   const stateName = pipeline.state?.name?.toUpperCase() ?? "";
   const resultName = pipeline.state?.result?.name?.toUpperCase() ?? "";
+  const stageName = pipeline.state?.stage?.name?.toUpperCase() ?? "";
   if (stateName === "COMPLETED") {
     if (resultName === "SUCCESSFUL") return "SUCCESSFUL";
     if (resultName === "FAILED" || resultName === "ERROR") return "FAILED";
     if (resultName === "STOPPED") return "STOPPED";
   }
   if (stateName === "PAUSED" || stateName === "HALTED") return "PAUSED";
+  // Bitbucket nests PAUSED inside IN_PROGRESS as stage.name
+  if (stateName === "IN_PROGRESS" && stageName === "PAUSED") return "PAUSED";
   return "IN_PROGRESS";
 }
 
