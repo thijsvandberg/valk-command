@@ -926,15 +926,19 @@ function SprintFilter({
   selected,
   onSelect,
 }: {
-  sprints: { id: number; name: string; state: string }[];
+  sprints: { id: number; name: string; state: string; hidden?: boolean }[];
   selected: string | null;
   onSelect: (id: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const activeSprints = sprints.filter((s) => s.state === "active" || s.state === "future").slice(0, 5);
-  if (activeSprints.length === 0) return null;
+  // Show active + future sprints, plus recent closed sprints (for historical pipeline data)
+  const visibleSprints = sprints
+    .filter((s) => !("hidden" in s && s.hidden))
+    .filter((s) => s.state === "active" || s.state === "future" || s.state === "closed")
+    .slice(0, 15);
+  if (visibleSprints.length === 0) return null;
 
-  const label = selected ? activeSprints.find((s) => String(s.id) === selected)?.name ?? "Sprint" : "Sprint";
+  const label = selected ? visibleSprints.find((s) => String(s.id) === selected)?.name ?? "Sprint" : "Sprint";
 
   return (
     <div className="relative">
@@ -952,7 +956,7 @@ function SprintFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] max-h-[320px] overflow-y-auto rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
             <button
               type="button"
               onClick={() => { onSelect(null); setOpen(false); }}
@@ -962,18 +966,44 @@ function SprintFilter({
             >
               All runs
             </button>
-            {activeSprints.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => { onSelect(String(s.id)); setOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
-                  selected === String(s.id) ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
-                }`}
-              >
-                {s.name}
-              </button>
-            ))}
+            {(() => {
+              const current = visibleSprints.filter((s) => s.state === "active" || s.state === "future");
+              const closed = visibleSprints.filter((s) => s.state === "closed");
+              return (
+                <>
+                  {current.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => { onSelect(String(s.id)); setOpen(false); }}
+                      className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                        selected === String(s.id) ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                  {closed.length > 0 && (
+                    <>
+                      <div className="mx-3 my-1 border-t border-white/[0.06]" />
+                      <span className="block px-3 py-1 text-[10px] font-medium text-white/20 uppercase tracking-wider">Recent</span>
+                      {closed.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => { onSelect(String(s.id)); setOpen(false); }}
+                          className={`w-full px-3 py-1.5 text-left text-[12px] cursor-pointer transition-colors duration-150 ${
+                            selected === String(s.id) ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/40 hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </>
       )}
