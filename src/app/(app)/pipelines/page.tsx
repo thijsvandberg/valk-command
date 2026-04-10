@@ -949,11 +949,17 @@ function SprintFilter({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const selectedSet = new Set(selected);
+
   const visibleSprints = sprints
     .filter((s) => !("hidden" in s && s.hidden))
     .filter((s) => s.state === "active" || s.state === "future" || s.state === "closed")
     .slice(0, 20);
-  if (visibleSprints.length === 0) return null;
+
+  // Always include selected sprints even if not in the visible list
+  const selectedNotVisible = sprints.filter((s) => selectedSet.has(String(s.id)) && !visibleSprints.some((v) => v.id === s.id));
+
+  if (visibleSprints.length === 0 && selectedNotVisible.length === 0) return null;
 
   const current = visibleSprints.filter((s) => s.state === "active" || s.state === "future");
   const closed = visibleSprints.filter((s) => s.state === "closed");
@@ -961,10 +967,11 @@ function SprintFilter({
   const filtered = (list: typeof visibleSprints) =>
     search ? list.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())) : list;
 
+  // Resolve label from all sprints (not just visible)
   const label = selected.length === 0
     ? "Sprint"
     : selected.length === 1
-    ? visibleSprints.find((s) => String(s.id) === selected[0])?.name ?? "1 sprint"
+    ? sprints.find((s) => String(s.id) === selected[0])?.name ?? "1 sprint"
     : `${selected.length} sprints`;
 
   function renderItem(s: { id: number; name: string; state: string }, dimmed?: boolean) {
@@ -1031,6 +1038,12 @@ function SprintFilter({
                 >
                   Clear selection
                 </button>
+              )}
+
+              {/* Selected sprints not in the standard list */}
+              {filtered(selectedNotVisible).map((s) => renderItem(s))}
+              {filtered(selectedNotVisible).length > 0 && (filtered(current).length > 0 || filtered(closed).length > 0) && (
+                <div className="mx-3 my-1 border-t border-white/[0.06]" />
               )}
 
               {/* Active / future */}
