@@ -1,4 +1,4 @@
-import type { POStatus, Sprint } from "@/types/ticket";
+import type { POStatus, Sprint, Ticket } from "@/types/ticket";
 import { mutate as globalMutate } from "swr";
 
 export function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
@@ -41,16 +41,43 @@ export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) 
 
 export async function saveTicketMetadata(
   jiraKey: string,
-  updates: { poStatus?: POStatus | undefined; poNotes?: string | undefined },
-) {
+  updates: { poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null },
+): Promise<boolean> {
+  // Optimistically update SWR cache for ticket lists and detail
+  const updateTicket = (ticket: Ticket): Ticket => {
+    const patched = { ...ticket };
+    if (updates.poStatus !== undefined) patched.poStatus = updates.poStatus;
+    if (updates.poNotes !== undefined) patched.notes = updates.poNotes;
+    if (updates.qualityScore !== undefined) patched.qualityScore = updates.qualityScore;
+    return patched;
+  };
+
+  // Optimistically update ticket list caches
+  globalMutate(
+    (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
+    (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? updateTicket(t) : t),
+    { revalidate: false },
+  );
+  // Optimistically update ticket detail cache
+  globalMutate(
+    `/api/tickets/${encodeURIComponent(jiraKey)}`,
+    (current: Record<string, unknown> | undefined) => current ? { ...current, ...updates.poStatus !== undefined ? { poStatus: updates.poStatus } : {}, ...updates.poNotes !== undefined ? { notes: updates.poNotes } : {}, ...updates.qualityScore !== undefined ? { qualityScore: updates.qualityScore } : {} } : current,
+    { revalidate: false },
+  );
+
   try {
-    await fetch(`/api/tickets/${encodeURIComponent(jiraKey)}/metadata`, {
+    const res = await fetch(`/api/tickets/${encodeURIComponent(jiraKey)}/metadata`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return true;
   } catch (err) {
     console.error("Failed to save ticket metadata:", err);
+    // Revalidate to roll back optimistic updates
+    globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets"), undefined, { revalidate: true });
+    return false;
   }
 }
 

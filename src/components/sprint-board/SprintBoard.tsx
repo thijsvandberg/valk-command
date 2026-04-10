@@ -174,10 +174,19 @@ export default function SprintBoard() {
 
   const handleBulkSetPoStatus = useCallback(async (status: POStatus) => {
     const keys = [...checkedTickets];
+    const prevStatuses = Object.fromEntries(keys.map((k) => [k, poStatuses[k]]));
     setPoStatuses((prev) => { const next = { ...prev }; keys.forEach((k) => { next[k] = status; }); return next; });
-    await Promise.all(keys.map((k) => saveTicketMetadata(k, { poStatus: status })));
-    showToast(`PO Status set to "${status || "None"}" for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
-  }, [checkedTickets, showToast]);
+    setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.add(k)); return next; });
+    const results = await Promise.all(keys.map((k) => saveTicketMetadata(k, { poStatus: status })));
+    setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.delete(k)); return next; });
+    const failedCount = results.filter((ok) => !ok).length;
+    if (failedCount > 0) {
+      setPoStatuses((prev) => ({ ...prev, ...prevStatuses }));
+      showToast(`Failed to update ${failedCount} ticket${failedCount === 1 ? "" : "s"}. Changes reverted.`);
+    } else {
+      showToast(`PO Status set to "${status || "None"}" for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
+    }
+  }, [checkedTickets, poStatuses, showToast]);
 
   const handleBulkRefresh = useCallback(async () => {
     setBulkRefreshing(true);
@@ -237,10 +246,22 @@ export default function SprintBoard() {
     });
   }, [sprints]);
 
+  const [inflightKeys, setInflightKeys] = useState<Set<string>>(new Set());
+
   const handlePoStatusChange = useCallback((key: string, status: POStatus) => {
+    const prevStatus = poStatuses[key];
     setPoStatuses((prev) => ({ ...prev, [key]: status }));
-    saveTicketMetadata(key, { poStatus: status });
-  }, []);
+    setInflightKeys((prev) => new Set(prev).add(key));
+    saveTicketMetadata(key, { poStatus: status }).then((ok) => {
+      setInflightKeys((prev) => { const next = new Set(prev); next.delete(key); return next; });
+      if (!ok) {
+        setPoStatuses((prev) => ({ ...prev, [key]: prevStatus }));
+        setToast(`Failed to update ${key}. Change reverted.`);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = setTimeout(() => setToast(null), 5000);
+      }
+    });
+  }, [poStatuses]);
 
   const handleRefresh = useCallback(async () => {
     setSyncing(true);
@@ -415,7 +436,7 @@ export default function SprintBoard() {
           <LoadingState variant="spinner" label="Loading tickets..." />
         )}
 
-        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} onColumnToggle={f.handleColumnToggle} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} />}
+        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} onColumnToggle={f.handleColumnToggle} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} />}
 
         {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
       </div>

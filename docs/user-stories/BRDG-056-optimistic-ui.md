@@ -1,6 +1,6 @@
 # BRDG-056: Optimistic UI Updates
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -10,21 +10,21 @@ As the PO, I want optimistic updates on Sprint Board actions (status change, met
 ## Acceptance Criteria
 
 ### Phase 1: SWR optimistic mutations
-- [ ] Implement optimistic update pattern in SWR mutations for ticket metadata changes
-- [ ] On metadata edit: immediately update the local SWR cache, then send API request
-- [ ] On success: keep the optimistic value (already showing correct data)
-- [ ] On error: revert to previous value and show error toast
+- [x] Implement optimistic update pattern in SWR mutations for ticket metadata changes
+- [x] On metadata edit: immediately update the local SWR cache, then send API request
+- [x] On success: keep the optimistic value (already showing correct data)
+- [x] On error: revert to previous value and show error toast
 
 ### Phase 2: Sprint Board optimistic updates
-- [ ] PO status change: instant visual update
-- [ ] Quality score override: instant update
-- [ ] Notes edit: instant update
-- [ ] Bulk PO status change: all selected tickets update instantly
+- [x] PO status change: instant visual update
+- [x] Quality score override: instant update
+- [x] Notes edit: instant update
+- [x] Bulk PO status change: all selected tickets update instantly
 
 ### Phase 3: Error handling
-- [ ] Toast notification on revert: "Failed to update VALK-42. Change reverted."
+- [x] Toast notification on revert: "Failed to update VALK-42. Change reverted."
 - [ ] Retry button in the toast
-- [ ] Track pending mutations visually (subtle loading indicator on cells with in-flight changes)
+- [x] Track pending mutations visually (subtle loading indicator on cells with in-flight changes)
 
 ### Phase 4: Conversation actions
 - [ ] Optimistic message sending in Chat (show message immediately, confirm after API response)

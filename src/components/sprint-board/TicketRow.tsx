@@ -33,6 +33,7 @@ export interface TicketRowBaseProps {
   isHovered: boolean;
   isSelected: boolean;
   isFocused: boolean;
+  isInflight: boolean;
   someChecked: boolean;
   isDragActive: boolean;
   col: (id: ColumnId) => boolean;
@@ -61,6 +62,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     isHovered,
     isSelected,
     isFocused,
+    isInflight,
     someChecked,
     isDragActive,
     col,
@@ -115,7 +117,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           : ticket.flagged
           ? "bg-[rgba(229,83,75,0.06)]"
           : ""
-      } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : ""}`}
+      } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
     >
       <DragHandle listeners={dragListeners} attributes={dragAttributes} />
 

@@ -134,6 +134,7 @@ export function TicketTable({
   showSprintColumn,
   sprintNameMap,
   poStatuses,
+  inflightKeys,
   onToggleCheck,
   onRangeCheck,
   onToggleAll,
@@ -162,6 +163,7 @@ export function TicketTable({
   showSprintColumn?: boolean;
   sprintNameMap?: Record<string, string>;
   poStatuses: Record<string, POStatus>;
+  inflightKeys?: Set<string>;
   onToggleCheck: (key: string) => void;
   onRangeCheck: (keys: string[], checked: boolean) => void;
   onToggleAll: () => void;
@@ -259,6 +261,7 @@ export function TicketTable({
     isHovered: hoveredRow === ticket.key,
     isSelected: selectedTicket === ticket.key,
     isFocused: focusedTicketIdx === ticketIdx,
+    isInflight: inflightKeys?.has(ticket.key) ?? false,
     someChecked,
     isDragActive: activeDragId !== null,
     col,
@@ -273,7 +276,7 @@ export function TicketTable({
     onPoStatusChange,
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, showSprintColumn, sprintNameMap, poStatuses, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, showSprintColumn, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover]);
 
   const rh = onColumnResize && onColumnResetWidth
     ? (id: string) => <ResizeHandle colId={id} onResize={onColumnResize} onReset={onColumnResetWidth} />
