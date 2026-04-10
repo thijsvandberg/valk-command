@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, useCallback } from "react";
 import {
   LayoutGrid,
@@ -9,13 +9,14 @@ import {
   KanbanSquare,
   FlaskConical,
   SlidersHorizontal,
-  PenTool,
+  NotebookPen,
   Users,
   Settings,
   Menu,
   X,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { Button } from "@/components/ui/Button";
@@ -37,6 +38,11 @@ const navItems = [
     icon: <KanbanSquare className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
+    label: "Story Writer",
+    href: "/story-writer",
+    icon: <NotebookPen className="h-5 w-5" strokeWidth={1.5} />,
+  },
+  {
     label: "Test Center",
     href: "/test-center",
     icon: <FlaskConical className="h-5 w-5" strokeWidth={1.5} />,
@@ -50,11 +56,6 @@ const navItems = [
     label: "Stakeholder",
     href: "/stakeholder",
     icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
-  },
-  {
-    label: "Story Writer",
-    href: "/settings/story-writer",
-    icon: <PenTool className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Settings",
@@ -84,6 +85,7 @@ function getCollapsedServerSnapshot(): boolean {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const collapsed = useSyncExternalStore(
@@ -102,9 +104,8 @@ export default function Sidebar() {
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
-    if (href === "/sprint-board") return pathname.startsWith("/sprint-board") || pathname.startsWith("/tickets/");
-    if (href === "/settings/story-writer") return pathname === "/settings/story-writer";
-    if (href === "/settings") return pathname.startsWith("/settings") && !pathname.startsWith("/settings/story-writer");
+    if (href === "/sprint-board") return pathname.startsWith("/sprint-board");
+    if (href === "/story-writer") return pathname.startsWith("/story-writer") || pathname.endsWith("/write");
     return pathname.startsWith(href);
   }
 
@@ -179,19 +180,34 @@ export default function Sidebar() {
           </ul>
         </nav>
 
-        {/* Bottom: sync + collapse toggle */}
-        <div className={`flex items-center border-t border-white/[0.04] pt-2 pb-3 ${collapsed ? "flex-col gap-2 px-1.5" : "justify-between px-3"}`}>
-          <SyncIndicator collapsed={collapsed} />
+        {/* Bottom: sync + logout + collapse toggle */}
+        <div className={`flex flex-col border-t border-white/[0.04] pt-2 pb-3 gap-2 ${collapsed ? "px-1.5" : "px-3"}`}>
+          <div className={`flex items-center ${collapsed ? "flex-col gap-2" : "justify-between"}`}>
+            <SyncIndicator collapsed={collapsed} />
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed
+                ? <ChevronRight size={14} strokeWidth={1.5} />
+                : <ChevronLeft size={14} strokeWidth={1.5} />
+              }
+            </button>
+          </div>
           <button
             type="button"
-            onClick={toggleCollapsed}
-            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              router.push("/login");
+              router.refresh();
+            }}
+            className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+            title={collapsed ? "Sign out" : undefined}
           >
-            {collapsed
-              ? <ChevronRight size={14} strokeWidth={1.5} />
-              : <ChevronLeft size={14} strokeWidth={1.5} />
-            }
+            <LogOut size={14} strokeWidth={1.5} />
+            {!collapsed && <span>Sign out</span>}
           </button>
         </div>
 

@@ -14,8 +14,8 @@ const EXPECTED_ROUTES = [
   { path: "/sprint-board", file: "src/app/(app)/sprint-board/page.tsx", name: "Sprint Board" },
   { path: "/test-center", file: "src/app/(app)/test-center/page.tsx", name: "Test Center" },
   { path: "/refinement", file: "src/app/(app)/refinement/page.tsx", name: "Refinement" },
+  { path: "/story-writer", file: "src/app/(app)/story-writer/page.tsx", name: "Story Writer" },
   { path: "/settings/jobs", file: "src/app/(app)/settings/jobs/page.tsx", name: "Settings Workspace Jobs" },
-  { path: "/settings/story-writer", file: "src/app/(app)/settings/story-writer/page.tsx", name: "Settings Story Writer" },
   { path: "/stakeholder", file: "src/app/(app)/stakeholder/page.tsx", name: "Stakeholder" },
   { path: "/sprint-board/diff-preview", file: "src/app/(app)/sprint-board/diff-preview/page.tsx", name: "Diff Preview" },
   { path: "/tickets/[key]", file: "src/app/(app)/tickets/[key]/page.tsx", name: "Ticket Detail" },
@@ -25,7 +25,7 @@ const EXPECTED_ROUTES = [
   { path: "/settings/prompts", file: "src/app/(app)/settings/prompts/page.tsx", name: "Settings Prompts" },
   { path: "/settings/scheduler", file: "src/app/(app)/settings/scheduler/page.tsx", name: "Settings Scheduler" },
   { path: "/settings/notifications", file: "src/app/(app)/settings/notifications/page.tsx", name: "Settings Notifications" },
-  { path: "/dev/header-variants", file: "src/app/(app)/dev/header-variants/page.tsx", name: "Dev Header Variants" },
+  { path: "/login", file: "src/app/login/page.tsx", name: "Login" },
 ];
 
 // API route manifest: ensures search API route files exist
@@ -35,6 +35,9 @@ const EXPECTED_API_ROUTES = [
   { path: "/api/settings/quick-prompts", file: "src/app/api/settings/quick-prompts/route.ts", name: "Quick Prompts Settings API" },
   { path: "/api/scheduler/tick", file: "src/app/api/scheduler/tick/route.ts", name: "Scheduler Tick API" },
   { path: "/api/tickets/[key]/versions/import", file: "src/app/api/tickets/[key]/versions/import/route.ts", name: "Versions Import API" },
+  { path: "/api/auth/login", file: "src/app/api/auth/login/route.ts", name: "Auth Login API" },
+  { path: "/api/auth/logout", file: "src/app/api/auth/logout/route.ts", name: "Auth Logout API" },
+  { path: "/api/auth/setup", file: "src/app/api/auth/setup/route.ts", name: "Auth Setup API" },
 ];
 
 const ROOT = join(__dirname, "../..");

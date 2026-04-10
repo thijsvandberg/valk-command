@@ -5,6 +5,7 @@ import Sidebar from "./Sidebar";
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/"),
+  useRouter: vi.fn(() => ({ push: vi.fn(), refresh: vi.fn() })),
 }));
 
 // Mock next/link to render a plain anchor
@@ -49,10 +50,10 @@ describe("Sidebar", () => {
       "/",
       "/chat",
       "/sprint-board",
+      "/story-writer",
       "/test-center",
       "/refinement",
       "/stakeholder",
-      "/settings/story-writer",
       "/settings",
     ]);
   });
