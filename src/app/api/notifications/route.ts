@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { alert } from "@/db/schema";
 import { desc, eq, lt, sql } from "drizzle-orm";
+import { createNotification } from "@/lib/notifications";
 
 // GET /api/notifications - list notifications (alerts) with optional unread filter
 export async function GET(request: Request) {
@@ -33,6 +34,29 @@ export async function GET(request: Request) {
     notifications: rows,
     unreadCount: unreadCount?.count ?? 0,
   });
+}
+
+// POST /api/notifications - create a notification
+export async function POST(request: Request) {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const type = typeof body.type === "string" ? body.type : "";
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  if (!type || !message) {
+    return NextResponse.json({ error: "type and message are required" }, { status: 400 });
+  }
+
+  const category = typeof body.category === "string" ? body.category : undefined;
+  const jiraKey = typeof body.jiraKey === "string" ? body.jiraKey : undefined;
+  const linkUrl = typeof body.linkUrl === "string" ? body.linkUrl : undefined;
+
+  createNotification(type, message, { category: category as never, jiraKey, linkUrl });
+  return NextResponse.json({ status: "created" }, { status: 201 });
 }
 
 // PATCH /api/notifications - mark notification(s) as read
