@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/db";
-import { pipelineRun, alert, followedTicket, ticketMetadata } from "@/db/schema";
+import { pipelineRun, alert, followedTicket, ticketMetadata, appSetting } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { eq } from "drizzle-orm";
@@ -36,7 +36,6 @@ function extractAllTicketKeys(text: string): string[] {
   return [...new Set(matches)];
 }
 
-// Extract source branch from merge commit messages like "Merged in feature/VPL-123-foo (pull request #42)"
 const MERGE_BRANCH_REGEX = /Merged in ([^\s(]+)/i;
 const MERGE_PR_REGEX = /\(pull request #(\d+)\)/i;
 
@@ -96,24 +95,37 @@ interface BbPaginatedResponse<T> {
   next?: string;
 }
 
-async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
+function bbAuthHeaders() {
   const cfg = getBitbucketConfig();
   const auth = Buffer.from(`${cfg.email}:${cfg.token}`).toString("base64");
+  return { Authorization: `Basic ${auth}`, Accept: "application/json" };
+}
+
+async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
+  const cfg = getBitbucketConfig();
   const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
 
   trackOutboundCall("bitbucket");
   const res = await fetch(url, {
     redirect: "follow",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      Accept: "application/json",
-    },
+    headers: bbAuthHeaders(),
   });
 
   if (!res.ok) {
     console.log(`[pipeline-sync] bbFetch ${res.status} for ${path} on ${repoSlug}`);
     return null;
   }
+  return res.json() as Promise<T>;
+}
+
+// Fetch a full URL (for Bitbucket pagination `next` links)
+async function bbFetchUrl<T>(url: string): Promise<T | null> {
+  trackOutboundCall("bitbucket");
+  const res = await fetch(url, {
+    redirect: "follow",
+    headers: bbAuthHeaders(),
+  });
+  if (!res.ok) return null;
   return res.json() as Promise<T>;
 }
 
@@ -127,7 +139,6 @@ function normalisePipelineState(pipeline: BbPipeline): "SUCCESSFUL" | "FAILED" |
     if (resultName === "STOPPED") return "STOPPED";
   }
   if (stateName === "PAUSED" || stateName === "HALTED") return "PAUSED";
-  // Bitbucket nests PAUSED inside IN_PROGRESS as stage.name
   if (stateName === "IN_PROGRESS" && stageName === "PAUSED") return "PAUSED";
   return "IN_PROGRESS";
 }
@@ -136,19 +147,119 @@ function shortRepoName(slug: string): string {
   return slug.replace(/^valk-/, "");
 }
 
+// -- Watermark helpers --
+
+const WATERMARK_PREFIX = "pipeline_sync:watermark:";
+// Max pages per repo per sync call to avoid long-running requests
+const MAX_PAGES_PER_SYNC = 4;
+const PAGE_SIZE = 50;
+
+function getWatermark(repoSlug: string): string | null {
+  const row = db
+    .select()
+    .from(appSetting)
+    .where(eq(appSetting.key, `${WATERMARK_PREFIX}${repoSlug}`))
+    .get();
+  return row?.value ?? null;
+}
+
+function setWatermark(repoSlug: string, createdAt: string) {
+  const key = `${WATERMARK_PREFIX}${repoSlug}`;
+  const existing = db.select().from(appSetting).where(eq(appSetting.key, key)).get();
+  if (existing) {
+    db.update(appSetting).set({ value: createdAt }).where(eq(appSetting.key, key)).run();
+  } else {
+    db.insert(appSetting).values({ key, value: createdAt }).run();
+  }
+}
+
+/**
+ * Fetches pipelines from a single repo using watermark-based pagination.
+ * Returns pipelines sorted oldest-first, and whether there are more pages.
+ */
+async function fetchPipelinesForRepo(
+  repoSlug: string,
+): Promise<{ pipelines: BbPipeline[]; hasMore: boolean }> {
+  const cfg = getBitbucketConfig();
+  const watermark = getWatermark(repoSlug);
+
+  // Bitbucket sort=created_on gives oldest first; we filter with created_on > watermark
+  // However Bitbucket pipelines API doesn't support date filtering directly,
+  // so we sort newest-first and paginate backward, stopping when we hit already-seen data.
+  // For initial backfill (no watermark), we paginate further.
+
+  const allPipelines: BbPipeline[] = [];
+  let nextUrl: string | null = null;
+  let pages = 0;
+  const maxPages = watermark ? MAX_PAGES_PER_SYNC : MAX_PAGES_PER_SYNC * 2; // More pages for initial backfill
+
+  // First page
+  const firstRes = await bbFetch<BbPaginatedResponse<BbPipeline>>(
+    repoSlug,
+    `/pipelines?sort=-created_on&pagelen=${PAGE_SIZE}`,
+  );
+  if (!firstRes) return { pipelines: [], hasMore: false };
+
+  allPipelines.push(...firstRes.values);
+  nextUrl = firstRes.next ?? null;
+  pages++;
+
+  // If we have a watermark, check if we've reached already-synced data
+  let reachedWatermark = false;
+  if (watermark) {
+    const oldest = firstRes.values[firstRes.values.length - 1];
+    if (oldest?.created_on && oldest.created_on <= watermark) {
+      reachedWatermark = true;
+    }
+  }
+
+  // Continue paginating if we haven't reached watermark and there are more pages
+  while (nextUrl && !reachedWatermark && pages < maxPages) {
+    const nextRes = await bbFetchUrl<BbPaginatedResponse<BbPipeline>>(nextUrl);
+    if (!nextRes || nextRes.values.length === 0) break;
+
+    allPipelines.push(...nextRes.values);
+    nextUrl = nextRes.next ?? null;
+    pages++;
+
+    if (watermark) {
+      const oldest = nextRes.values[nextRes.values.length - 1];
+      if (oldest?.created_on && oldest.created_on <= watermark) {
+        reachedWatermark = true;
+      }
+    }
+  }
+
+  // Filter out pipelines older than watermark (we may have fetched some)
+  const filtered = watermark
+    ? allPipelines.filter((p) => !p.created_on || p.created_on > watermark)
+    : allPipelines;
+
+  // There might be more to fetch if we hit the page limit without reaching watermark
+  const hasMore = !reachedWatermark && !!nextUrl && pages >= maxPages;
+
+  console.log(
+    `[pipeline-sync] ${repoSlug}: fetched ${allPipelines.length} (${filtered.length} new) in ${pages} pages, watermark=${watermark ?? "none"}, hasMore=${hasMore}`,
+  );
+
+  return { pipelines: filtered, hasMore };
+}
+
 export interface SyncResult {
   newRuns: number;
   updatedRuns: number;
   stateChanges: number;
+  remaining: boolean;
 }
 
 /**
- * Fetches recent pipelines from all Bitbucket repos and persists them.
- * Detects deployments and generates notifications for followed tickets.
+ * Incremental pipeline sync with watermark-based pagination.
+ * Each call fetches up to MAX_PAGES_PER_SYNC pages per repo.
+ * If there's more data, returns remaining=true so the caller can invoke again.
  */
 export async function syncPipelines(): Promise<SyncResult> {
   if (!isPipelineConfigured()) {
-    return { newRuns: 0, updatedRuns: 0, stateChanges: 0 };
+    return { newRuns: 0, updatedRuns: 0, stateChanges: 0, remaining: false };
   }
 
   const cfg = getBitbucketConfig();
@@ -156,28 +267,68 @@ export async function syncPipelines(): Promise<SyncResult> {
   let updatedRuns = 0;
   const stateChanges: Array<{ run: typeof pipelineRun.$inferSelect; oldState: string }> = [];
   const pendingDeployDetection: Array<{ repoSlug: string; buildNumber: number; id: string }> = [];
+  let anyHasMore = false;
 
+  // Fetch pipelines from all repos in parallel (watermark-aware)
   const allRepoResults = await Promise.all(
     cfg.repoSlugs.map(async (repoSlug) => {
-      const res = await bbFetch<BbPaginatedResponse<BbPipeline>>(
-        repoSlug,
-        `/pipelines?sort=-created_on&pagelen=25`,
-      );
-      return { repoSlug, pipelines: res?.values ?? [] };
+      const result = await fetchPipelinesForRepo(repoSlug);
+      if (result.hasMore) anyHasMore = true;
+      return { repoSlug, pipelines: result.pipelines };
     }),
   );
 
-  // Flatten all pipelines and batch commit lookups for non-feature branches
   const allPipelines = allRepoResults.flatMap(({ repoSlug, pipelines }) =>
     pipelines.map((p) => ({ repoSlug, pipeline: p })),
   );
 
-  // Batch commit lookups: identify which pipelines need commit messages
+  if (allPipelines.length === 0) {
+    // Even with no new pipelines, we still need to check for state changes on IN_PROGRESS runs
+    // Fetch the latest page to update running pipelines
+    const latestResults = await Promise.all(
+      cfg.repoSlugs.map(async (repoSlug) => {
+        const res = await bbFetch<BbPaginatedResponse<BbPipeline>>(
+          repoSlug,
+          `/pipelines?sort=-created_on&pagelen=10`,
+        );
+        return { repoSlug, pipelines: res?.values ?? [] };
+      }),
+    );
+    const latestPipelines = latestResults.flatMap(({ repoSlug, pipelines }) =>
+      pipelines.map((p) => ({ repoSlug, pipeline: p })),
+    );
+
+    // Only process state updates for existing runs
+    for (const { repoSlug, pipeline: p } of latestPipelines) {
+      const id = `${repoSlug}:${p.build_number}`;
+      const state = normalisePipelineState(p);
+      const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
+      const existing = db.select().from(pipelineRun).where(eq(pipelineRun.id, id)).get();
+      if (existing && existing.state !== state) {
+        stateChanges.push({ run: existing, oldState: existing.state });
+        db.update(pipelineRun)
+          .set({
+            state,
+            previousState: existing.state,
+            completedAt: p.completed_on ?? null,
+            durationSeconds: p.duration_in_seconds ?? null,
+            ...(creator && !existing.creator ? { creator } : {}),
+          })
+          .where(eq(pipelineRun.id, id))
+          .run();
+        updatedRuns++;
+      }
+    }
+
+    processStateChanges(stateChanges);
+    return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: false };
+  }
+
+  // Batch commit lookups for pipelines that need them
   const needsCommitLookup: Array<{ idx: number; repoSlug: string; hash: string }> = [];
   const commitMessages: (string | null)[] = allPipelines.map(({ pipeline }, idx) => {
     const branchName = pipeline.target?.ref_name ?? "";
     const key = extractTicketKey(branchName);
-    // Inline commit message from Bitbucket API response
     const inlineMsg = pipeline.target?.commit?.message ?? null;
     if (inlineMsg) return inlineMsg;
     if (!key && pipeline.target?.commit?.hash) {
@@ -186,7 +337,6 @@ export async function syncPipelines(): Promise<SyncResult> {
     return null;
   });
 
-  // Parallel batch: fetch commit messages for pipelines that need them
   if (needsCommitLookup.length > 0) {
     const commitResults = await Promise.all(
       needsCommitLookup.map(({ repoSlug, hash }) =>
@@ -199,15 +349,14 @@ export async function syncPipelines(): Promise<SyncResult> {
     }
   }
 
-  // Resolve ticket keys and enrichment from commit messages
-  const resolvedData = allPipelines.map(({ repoSlug, pipeline: p }, idx) => {
+  // Resolve ticket keys and enrichment
+  const resolvedData = allPipelines.map(({ pipeline: p }, idx) => {
     const branchName = p.target?.ref_name ?? "";
     const msg = commitMessages[idx];
     const firstLine = msg ? msg.split("\n")[0].substring(0, 200) : null;
 
-    // Ticket keys: from branch name, then from commit message
     let primaryKey = extractTicketKey(branchName);
-    let allKeys: string[] = [];
+    const allKeys: string[] = [];
     if (primaryKey) allKeys.push(primaryKey);
     if (msg) {
       const fromMsg = extractAllTicketKeys(msg);
@@ -217,7 +366,6 @@ export async function syncPipelines(): Promise<SyncResult> {
     }
     if (!primaryKey && allKeys.length > 0) primaryKey = allKeys[0];
 
-    // For merge-triggered pipelines: extract source branch and PR number
     const mergeInfo = msg ? extractMergeInfo(msg) : { sourceBranch: null, prNumber: null };
 
     return {
@@ -226,16 +374,15 @@ export async function syncPipelines(): Promise<SyncResult> {
       commitMessage: firstLine,
       sourceBranch: mergeInfo.sourceBranch,
       prNumber: mergeInfo.prNumber,
-      repoSlug,
     };
   });
 
-  // Batch PR lookups for merge-triggered pipelines with PR numbers
+  // Batch PR lookups
   const prLookups: Array<{ idx: number; repoSlug: string; prNumber: number }> = [];
   for (let i = 0; i < resolvedData.length; i++) {
     const d = resolvedData[i];
     if (d.prNumber) {
-      prLookups.push({ idx: i, repoSlug: d.repoSlug, prNumber: d.prNumber });
+      prLookups.push({ idx: i, repoSlug: allPipelines[i].repoSlug, prNumber: d.prNumber });
     }
   }
 
@@ -263,7 +410,9 @@ export async function syncPipelines(): Promise<SyncResult> {
     }
   }
 
-  // Persist pipeline data with enrichment
+  // Persist pipeline data and advance watermarks per repo
+  const latestCreatedPerRepo = new Map<string, string>();
+
   for (let i = 0; i < allPipelines.length; i++) {
     const { repoSlug, pipeline: p } = allPipelines[i];
     const id = `${repoSlug}:${p.build_number}`;
@@ -274,6 +423,14 @@ export async function syncPipelines(): Promise<SyncResult> {
     const creator = p.creator?.display_name ?? p.creator?.nickname ?? null;
     const pipelineUrl = p.links?.html?.href
       || `https://bitbucket.org/${cfg.workspace}/${repoSlug}/pipelines/results/${p.build_number}`;
+
+    // Track latest created_at per repo for watermark advancement
+    if (p.created_on) {
+      const current = latestCreatedPerRepo.get(repoSlug);
+      if (!current || p.created_on > current) {
+        latestCreatedPerRepo.set(repoSlug, p.created_on);
+      }
+    }
 
     const existing = db
       .select()
@@ -341,6 +498,11 @@ export async function syncPipelines(): Promise<SyncResult> {
     }
   }
 
+  // Advance watermarks per repo
+  for (const [repoSlug, latestCreated] of latestCreatedPerRepo) {
+    setWatermark(repoSlug, latestCreated);
+  }
+
   // Deployment detection for new completed pipelines (limit to 5 per sync)
   const detectBatch = pendingDeployDetection.slice(0, 5);
   if (detectBatch.length > 0) {
@@ -374,49 +536,53 @@ export async function syncPipelines(): Promise<SyncResult> {
     );
   }
 
-  // Generate notifications and update ticket test status for state changes
-  if (stateChanges.length > 0) {
-    const followed = db.select().from(followedTicket).all();
-    const followedKeys = new Set(followed.map((f) => f.ticketKey));
+  processStateChanges(stateChanges);
 
-    for (const { run, oldState } of stateChanges) {
-      if (!run.ticketKey) continue;
+  return { newRuns, updatedRuns, stateChanges: stateChanges.length, remaining: anyHasMore };
+}
 
-      const finalState = run.state;
-      if (oldState === "IN_PROGRESS" && (finalState === "SUCCESSFUL" || finalState === "FAILED" || finalState === "STOPPED")) {
-        // Update ticket_metadata test status
-        const testStatus = finalState === "SUCCESSFUL" ? "pass" : "fail";
-        db.update(ticketMetadata)
-          .set({
-            testStatus,
-            lastTestRunAt: new Date().toISOString(),
-            lastTestReportUrl: run.pipelineUrl,
-          })
-          .where(eq(ticketMetadata.jiraKey, run.ticketKey))
-          .run();
+// -- State change processing (notifications + ticket test status) --
 
-        // Notifications only for followed tickets
-        if (!followedKeys.has(run.ticketKey)) continue;
+function processStateChanges(stateChanges: Array<{ run: typeof pipelineRun.$inferSelect; oldState: string }>) {
+  if (stateChanges.length === 0) return;
 
-        const stateLabel = finalState === "SUCCESSFUL" ? "completed" : finalState.toLowerCase();
-        const message = run.isDeployment
-          ? `Deployment to ${run.environment} ${stateLabel} for ${run.ticketKey}`
-          : `Pipeline #${run.buildNumber} ${stateLabel} for ${run.ticketKey}`;
+  const followed = db.select().from(followedTicket).all();
+  const followedKeys = new Set(followed.map((f) => f.ticketKey));
 
-        db.insert(alert)
-          .values({
-            id: randomUUID(),
-            type: run.isDeployment ? "deployment" : "pipeline",
-            jiraKey: run.ticketKey,
-            message,
-            createdAt: new Date().toISOString(),
-            category: run.isDeployment ? "deployment" : "pipeline",
-            linkUrl: run.pipelineUrl,
-          })
-          .run();
-      }
+  for (const { run, oldState } of stateChanges) {
+    if (!run.ticketKey) continue;
+
+    const finalState = run.state;
+    if (oldState === "IN_PROGRESS" && (finalState === "SUCCESSFUL" || finalState === "FAILED" || finalState === "STOPPED")) {
+      // Update ticket_metadata test status
+      const testStatus = finalState === "SUCCESSFUL" ? "pass" : "fail";
+      db.update(ticketMetadata)
+        .set({
+          testStatus,
+          lastTestRunAt: new Date().toISOString(),
+          lastTestReportUrl: run.pipelineUrl,
+        })
+        .where(eq(ticketMetadata.jiraKey, run.ticketKey))
+        .run();
+
+      if (!followedKeys.has(run.ticketKey)) continue;
+
+      const stateLabel = finalState === "SUCCESSFUL" ? "completed" : finalState.toLowerCase();
+      const message = run.isDeployment
+        ? `Deployment to ${run.environment} ${stateLabel} for ${run.ticketKey}`
+        : `Pipeline #${run.buildNumber} ${stateLabel} for ${run.ticketKey}`;
+
+      db.insert(alert)
+        .values({
+          id: randomUUID(),
+          type: run.isDeployment ? "deployment" : "pipeline",
+          jiraKey: run.ticketKey,
+          message,
+          createdAt: new Date().toISOString(),
+          category: run.isDeployment ? "deployment" : "pipeline",
+          linkUrl: run.pipelineUrl,
+        })
+        .run();
     }
   }
-
-  return { newRuns, updatedRuns, stateChanges: stateChanges.length };
 }
