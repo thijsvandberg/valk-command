@@ -24,6 +24,7 @@ Single-user web app for the Product Owner of Valk Platform. Chat-driven interfac
 |--------|--------|
 | valk-agent (remote workspace) | REST API + SSE streaming |
 | Jira | Inbound webhooks + on-demand REST reads |
+| Bitbucket Cloud | REST API v2 (branches, PRs, pipelines) |
 
 ## Stack
 

@@ -48,14 +48,11 @@ API (readonly) key in .env.local `BITBUCKET_API_TOKEN`
 
 ## Technical Notes
 
-- Jira dev-status API: `GET /rest/dev-status/latest/issue/detail?issueId=<numericId>&applicationType=stash&dataType=branch` (and similar for `pullrequest`, `build`)
-  - `issueId` is the **numeric** Jira internal ID (e.g. `"10042"`), not the string key (`VALK-42`)
-  - Jira returns this as the top-level `id` field on every issue in the REST API response
-  - The current `ticket` DB table only stores `jiraKey` — `jiraId` is not yet persisted
-- **Schema change required**: add a `jiraId text("jira_id")` column to the `ticket` table and populate it during sync in `sync-tickets/route.ts` (the value is available in the Jira API response as `issue.id`)
-- The dev-info proxy route resolves `jiraId` from the DB by `jiraKey` before calling the dev-status endpoint
-- If the Jira instance uses Bitbucket Cloud the `applicationType` will differ; make the value configurable via env var `JIRA_DEV_APPLICATION_TYPE` defaulting to `stash`
-- Keep the proxy route thin: fetch, normalise, return — no caching needed initially
+- **Data source**: Bitbucket Cloud REST API v2 (not Jira dev-status, which requires OAuth scopes unavailable with API tokens)
+- Searches branches by `name ~ "VPL-XXX"` and PRs by `title ~ "VPL-XXX"` across all configured repos
+- Pipelines fetched per branch when branches exist
+- **Schema change**: added `jiraId text("jira_id")` column to `ticket` table (populated during sync, used for future integrations)
+- **Env vars**: `BITBUCKET_WORKSPACE`, `BITBUCKET_REPO_SLUG` (comma-separated), `BITBUCKET_EMAIL`, `BITBUCKET_API_TOKEN` (Atlassian API token with Bitbucket read scopes)
 
 ## Out of Scope (for now)
 
