@@ -1,6 +1,6 @@
 # BRDG-067: Command Palette
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
