@@ -1439,9 +1439,19 @@ export default function PipelinesPage() {
           </span>
         )}
         {activeFilterCount > 0 && (
-          <span className="ml-2 rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/35">
-            {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active
-          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("all");
+              setDateRange("all");
+              setCreatorFilters([]);
+              setRepoFilter(null);
+            }}
+            className="ml-2 rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.1] hover:text-white/50 transition-colors duration-150"
+            title="Clear all filters"
+          >
+            {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active &times;
+          </button>
         )}
       </ViewHeader>
 
