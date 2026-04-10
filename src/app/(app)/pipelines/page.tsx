@@ -179,9 +179,20 @@ function RunningCard({ run }: { run: PipelineRunPayload }) {
       <div className="relative flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Loader2 size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)] animate-spin" />
-          <span className="text-[12px] font-mono font-medium text-white/70 truncate">
-            #{run.buildNumber}
-          </span>
+          {run.pipelineUrl ? (
+            <a
+              href={run.pipelineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
+            >
+              #{run.buildNumber}
+            </a>
+          ) : (
+            <span className="text-[12px] font-mono font-medium text-white/70 truncate">
+              #{run.buildNumber}
+            </span>
+          )}
           <span className="text-[11px] text-white/30 truncate">{run.repo}</span>
         </div>
         {run.ticketKey && (
@@ -261,9 +272,21 @@ function PipelineRow({ run }: { run: PipelineRunPayload }) {
         ) : (
           <GitBranch size={12} strokeWidth={1.5} className="shrink-0 text-white/20" />
         )}
-        <span className="text-[12px] font-mono font-medium text-white/70 truncate">
-          #{run.buildNumber}
-        </span>
+        {run.pipelineUrl ? (
+          <a
+            href={run.pipelineUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
+          >
+            #{run.buildNumber}
+          </a>
+        ) : (
+          <span className="text-[12px] font-mono font-medium text-white/70 truncate">
+            #{run.buildNumber}
+          </span>
+        )}
         <span className="text-[11px] text-white/25 truncate">{run.repo}</span>
         {run.environment && (
           <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
