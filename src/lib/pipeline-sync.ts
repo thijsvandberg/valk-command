@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { pipelineRun, alert, followedTicket, ticketMetadata, appSetting } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
-import { eq, isNull } from "drizzle-orm";
+import { eq, and, isNull, isNotNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 // -- Environment detection --
@@ -226,7 +226,48 @@ export async function backfillEnrichment(): Promise<number> {
   }
 
   console.log(`[pipeline-sync] backfill: enriched ${enriched}/${rows.length} rows`);
-  return rows.length; // Return batch size so caller knows there might be more
+
+  // Second pass: re-extract ticket keys from rows that have commit_message but no ticket_key
+  const needsReExtraction = db
+    .select()
+    .from(pipelineRun)
+    .where(and(
+      isNull(pipelineRun.ticketKey),
+      isNotNull(pipelineRun.commitMessage),
+    ))
+    .limit(BACKFILL_BATCH)
+    .all()
+    .filter((r) => r.commitMessage && r.commitMessage !== "");
+
+  for (const row of needsReExtraction) {
+    const branchName = row.branchName ?? "";
+    const msg = row.commitMessage ?? "";
+    let primaryKey = extractTicketKey(branchName);
+    const allKeys: string[] = [];
+    if (primaryKey) allKeys.push(primaryKey);
+    for (const k of extractAllTicketKeys(msg)) {
+      if (!allKeys.includes(k)) allKeys.push(k);
+    }
+    if (!primaryKey && allKeys.length > 0) primaryKey = allKeys[0];
+
+    if (primaryKey) {
+      const mergeInfo = extractMergeInfo(msg);
+      db.update(pipelineRun)
+        .set({
+          ticketKey: primaryKey,
+          ...(allKeys.length > 1 ? { ticketKeys: JSON.stringify(allKeys) } : {}),
+          ...(mergeInfo.sourceBranch && !row.sourceBranch ? { sourceBranch: mergeInfo.sourceBranch } : {}),
+        })
+        .where(eq(pipelineRun.id, row.id))
+        .run();
+    }
+  }
+
+  if (needsReExtraction.length > 0) {
+    console.log(`[pipeline-sync] re-extraction: checked ${needsReExtraction.length} rows`);
+  }
+
+  return rows.length + needsReExtraction.length;
 }
 
 // -- Main sync --
