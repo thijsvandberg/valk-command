@@ -89,6 +89,44 @@ export function useFollowTicket() {
   return { follow, unfollow };
 }
 
+export interface DeployNotificationSettings {
+  enabled: boolean;
+  environments: Record<string, boolean>;
+}
+
+export function useDeploySettings() {
+  const swr = useSWR<DeployNotificationSettings>(
+    "/api/pipelines/deploy-settings",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
+  );
+
+  const update = useCallback(async (settings: DeployNotificationSettings) => {
+    await fetch("/api/pipelines/deploy-settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+    swr.mutate();
+  }, [swr]);
+
+  return { ...swr, settings: swr.data, update };
+}
+
+export interface LastDeployedInfo {
+  environment: string | null;
+  completedAt: string | null;
+  state: string;
+}
+
+export function useLastDeployed() {
+  return useSWR<Record<string, LastDeployedInfo>>(
+    "/api/pipelines/last-deployed",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
+  );
+}
+
 interface NotificationResponse {
   notifications: Array<{
     id: string;

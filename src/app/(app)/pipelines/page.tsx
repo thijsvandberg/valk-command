@@ -16,12 +16,15 @@ import {
   TrendingUp,
   Activity,
   ChevronDown,
+  Bell,
+  Settings,
 } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/ui/Button";
+import { useNotification } from "@/hooks/useNotification";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { usePipelines } from "@/hooks/usePipelines";
+import { usePipelines, useDeploySettings } from "@/hooks/usePipelines";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import type { PipelineRunPayload } from "@/app/api/pipelines/route";
 
@@ -327,6 +330,175 @@ function PipelineRow({ run }: { run: PipelineRunPayload }) {
   );
 }
 
+// -- Deployment Timeline --
+
+function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
+  const deployments = runs.filter((r) => r.isDeployment && r.state !== "IN_PROGRESS");
+  if (deployments.length === 0) return null;
+
+  // Group by date
+  const byDate = new Map<string, PipelineRunPayload[]>();
+  for (const d of deployments) {
+    const date = new Date(d.completedAt ?? d.createdAt).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date)!.push(d);
+  }
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Rocket size={14} strokeWidth={1.5} className="text-violet-400/60" />
+        <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+          Deployment Timeline
+        </span>
+      </div>
+      <div className="space-y-4">
+        {Array.from(byDate.entries()).map(([date, deploys]) => (
+          <div key={date}>
+            <span className="text-[11px] font-medium text-white/25 uppercase tracking-wider">{date}</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {deploys.map((d) => (
+                <div
+                  key={d.id}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${
+                    d.state === "SUCCESSFUL"
+                      ? "border-emerald-500/15 bg-emerald-500/[0.04]"
+                      : d.state === "FAILED"
+                      ? "border-red-500/15 bg-red-500/[0.04]"
+                      : "border-white/[0.06] bg-white/[0.02]"
+                  }`}
+                >
+                  {stateIcon(d.state, 12)}
+                  <span className="font-medium text-white/60">{d.environment}</span>
+                  {d.ticketKey && (
+                    <Link
+                      href={`/tickets/${d.ticketKey}`}
+                      className="font-mono text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                    >
+                      {d.ticketKey}
+                    </Link>
+                  )}
+                  <span className="text-[10px] text-white/20">{d.repo}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// -- Deploy Notification Settings --
+
+function DeploySettingsPanel() {
+  const { settings, update } = useDeploySettings();
+  const { permission, requestPermission } = useNotification();
+  const [open, setOpen] = useState(false);
+
+  if (!settings) return null;
+
+  function toggleEnabled() {
+    if (!settings) return;
+    const next = { ...settings, enabled: !settings.enabled };
+    // Request permission when enabling for the first time
+    if (next.enabled && permission === "default") {
+      requestPermission();
+    }
+    update(next);
+  }
+
+  function toggleEnvironment(env: string) {
+    if (!settings) return;
+    const next = {
+      ...settings,
+      environments: {
+        ...settings.environments,
+        [env]: !settings.environments[env],
+      },
+    };
+    update(next);
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly
+        icon={<Settings size={13} strokeWidth={1.5} />}
+        onClick={() => setOpen(!open)}
+        title="Deploy notification settings"
+      />
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Bell size={13} strokeWidth={1.5} className="text-white/30" />
+              <span className="text-[12px] font-semibold text-white/60">Deploy Notifications</span>
+            </div>
+
+            {permission === "denied" && (
+              <p className="text-[11px] text-red-400/70 mb-3">
+                Browser notifications are blocked. Enable them in your browser settings.
+              </p>
+            )}
+
+            {/* Master toggle */}
+            <label className="flex items-center justify-between py-1.5 cursor-pointer">
+              <span className="text-[12px] text-white/50">Enabled</span>
+              <button
+                type="button"
+                onClick={toggleEnabled}
+                className={`relative h-5 w-9 rounded-full transition-colors duration-150 cursor-pointer ${
+                  settings.enabled ? "bg-[var(--color-brand-500)]" : "bg-white/10"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-150 ${
+                    settings.enabled ? "translate-x-4" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </label>
+
+            {/* Per-environment toggles */}
+            {settings.enabled && (
+              <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-medium text-white/25 uppercase tracking-wider">Environments</span>
+                {Object.entries(settings.environments).map(([env, on]) => (
+                  <label key={env} className="flex items-center justify-between py-1 cursor-pointer">
+                    <span className="text-[12px] text-white/40">{env}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleEnvironment(env)}
+                      className={`relative h-4 w-7 rounded-full transition-colors duration-150 cursor-pointer ${
+                        on ? "bg-[var(--color-brand-500)]/70" : "bg-white/10"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-150 ${
+                          on ? "translate-x-3" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // -- Repo Filter --
 
 function RepoFilter({
@@ -495,6 +667,7 @@ export default function PipelinesPage() {
             )}
             {sprints && <SprintFilter sprints={sprints} selected={sprintFilter} onSelect={setSprintFilter} />}
             <RepoFilter repos={repos} selected={repoFilter} onSelect={setRepoFilter} />
+            <DeploySettingsPanel />
             <Button
               variant="ghost"
               size="md"
@@ -526,6 +699,7 @@ export default function PipelinesPage() {
             <>
               <PipelineMetrics runs={runs} />
               <RunningSection runs={runs} />
+              <DeploymentTimeline runs={runs} />
               <PipelineTable runs={runs} repoFilter={repoFilter} />
             </>
           )}

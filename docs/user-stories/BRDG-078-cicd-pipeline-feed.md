@@ -33,19 +33,19 @@ As the PO, I want a feed of pipeline runs linked to tickets, showing build statu
 - [x] Extend existing `alert` table with additional fields for notification metadata (source ticket, notification category, link URL)
 
 ### Phase 4: Status aggregation
-- [ ] Pipeline health metrics: runs today, pass rate, average duration
-- [ ] "Currently running" section at the top
-- [ ] Failed runs highlighted with error summary (if available from API)
-- [ ] Link to pipeline run in Bitbucket for full details
+- [x] Pipeline health metrics: runs today, pass rate, average duration
+- [x] "Currently running" section at the top
+- [x] Failed runs highlighted with error summary (if available from API)
+- [x] Link to pipeline run in Bitbucket for full details
 
 ### Phase 5: Deploy tracking with browser notifications
-- [ ] Track deployment pipelines using existing environment detection (regex on pipeline step names: Production, Staging, UAT, Test)
-- [ ] Show deployment timeline: which tickets were deployed when
-- [ ] "Last deployed" indicator on Sprint Board tickets (requires persistent pipeline data)
-- [ ] Browser push notifications (Web Notifications API) when a deployment completes
-- [ ] One-time permission prompt for browser notifications
-- [ ] Notification shows: environment (staging/production), ticket keys included, success/failure
-- [ ] Setting to enable/disable deploy notifications per environment
+- [x] Track deployment pipelines using existing environment detection (regex on pipeline step names: Production, Staging, UAT, Test)
+- [x] Show deployment timeline: which tickets were deployed when
+- [x] "Last deployed" indicator on Sprint Board tickets (requires persistent pipeline data)
+- [x] Browser push notifications (Web Notifications API) when a deployment completes
+- [x] One-time permission prompt for browser notifications
+- [x] Notification shows: environment (staging/production), ticket keys included, success/failure
+- [x] Setting to enable/disable deploy notifications per environment
 
 ## Technical Notes
 

@@ -6,8 +6,8 @@ import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { GripVertical, Flag, MessageSquare, Star } from "lucide-react";
-import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
+import { GripVertical, Flag, MessageSquare, Star, Rocket } from "lucide-react";
+import { useFollowedTickets, useFollowTicket, useLastDeployed } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
@@ -89,6 +89,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const { data: followedKeys } = useFollowedTickets();
   const { follow, unfollow } = useFollowTicket();
   const isFollowed = followedKeys?.includes(ticket.key) ?? false;
+  const { data: lastDeployedMap } = useLastDeployed();
+  const lastDeploy = lastDeployedMap?.[ticket.key];
 
   const showCheckbox = isChecked || isHovered || someChecked;
   const isRemoved = Boolean(ticket.removedFromJiraAt);
@@ -296,6 +298,24 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           )}
         </td>
       )}
+      {/* Last deployed indicator */}
+      <td className="py-2 pr-2">
+        {lastDeploy && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+              lastDeploy.state === "SUCCESSFUL"
+                ? "bg-emerald-500/10 text-emerald-400/70"
+                : lastDeploy.state === "FAILED"
+                ? "bg-red-500/10 text-red-400/70"
+                : "bg-white/[0.04] text-white/30"
+            }`}
+            title={`Last deployed: ${lastDeploy.environment ?? "unknown"} (${lastDeploy.completedAt ? new Date(lastDeploy.completedAt).toLocaleString("en-GB") : ""})`}
+          >
+            <Rocket size={9} strokeWidth={1.5} />
+            {lastDeploy.environment?.slice(0, 4)}
+          </span>
+        )}
+      </td>
       {/* Spacer cell to match ColumnToggle header column */}
       <td className="w-8" />
     </tr>
