@@ -29,6 +29,14 @@ As the PO, I want a Refinement view that auto-sorts backlog stories by readiness
 - [ ] Mark as "Refined" / "Needs Work" / "Skip" action buttons
 - [ ] Progress bar showing position in the queue (e.g. "3 of 12")
 
+### Phase 5: In-refinement editing (also applies to ticket single view)
+- [ ] Quick subtask creation: input that only requires a title, creates the subtask on submit (available in refinement mode and ticket single view)
+- [ ] PO notes panel: view existing PO notes and add new ones inline
+- [ ] Quick content edits: inline editing of description/AC fields without leaving the view
+- [ ] Comments panel: read all Jira comments on the ticket
+- [ ] Story points input: set or update the estimate directly from refinement mode / single view
+- [ ] Issue type selector: change the issue type (Story, Task, Bug, Sub-task, etc.) without opening Jira
+
 ### Phase 4: Refinement summary
 - [ ] After completing refinement mode, show a summary: refined count, needs-work count, skipped count
 - [ ] List of tickets marked "Needs Work" with links

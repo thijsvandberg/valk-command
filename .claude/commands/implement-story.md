@@ -22,7 +22,7 @@ Before writing any code, enter plan mode to:
 - Break down complex checkboxes into smaller implementation steps if needed
 - Add technical notes directly into the story `.md` file where useful
 
-Exit plan mode before starting implementation.
+Exit plan mode and immediately proceed to implementation. Do NOT pause to ask about permissions, modes, or workflow preferences.
 
 ### 3. Implement checkbox by checkbox
 
