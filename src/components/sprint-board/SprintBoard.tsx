@@ -114,8 +114,9 @@ const snapToPointer: Modifier = ({ activatorEvent, draggingNodeRect, transform }
   return transform;
 };
 
-// Prioritise sprint-slot droppables when the pointer is inside them;
-// fall back to closestCenter for ticket row reordering.
+// Sprint-slot droppables only activate when the pointer is physically inside them
+// (pointerWithin). They are explicitly excluded from the closestCenter fallback so
+// they don't light up just because they happen to be geometrically close to the cursor.
 const boardCollisionDetection: CollisionDetection = (args) => {
   const sprintSlotContainers = args.droppableContainers.filter((c) =>
     String(c.id).startsWith("sprint-slot:")
@@ -127,7 +128,10 @@ const boardCollisionDetection: CollisionDetection = (args) => {
     });
     if (pointerHits.length > 0) return pointerHits;
   }
-  return closestCenter(args);
+  const ticketContainers = args.droppableContainers.filter(
+    (c) => !String(c.id).startsWith("sprint-slot:")
+  );
+  return closestCenter({ ...args, droppableContainers: ticketContainers });
 };
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
