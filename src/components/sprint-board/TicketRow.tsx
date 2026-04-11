@@ -372,7 +372,12 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
   const rowStyle: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: transition ?? undefined,
-    ...(isDragging ? { opacity: 0.4, zIndex: 10 } : {}),
+    ...(isDragging ? {
+      opacity: 0.12,
+      outline: "1px dashed rgba(255,255,255,0.12)",
+      outlineOffset: "-1px",
+      zIndex: 10,
+    } : {}),
   };
 
   return (
