@@ -150,6 +150,8 @@ export function TicketTable({
   columnWidths,
   onColumnResize,
   onColumnResetWidth,
+  externalDnd,
+  externalActiveDragId,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -178,6 +180,10 @@ export function TicketTable({
   columnWidths?: Record<string, number>;
   onColumnResize?: (colId: string, width: number) => void;
   onColumnResetWidth?: (colId: string) => void;
+  // When true, DndContext is owned by a parent component (SprintBoard).
+  // The table only renders SortableContext; no internal DndContext or DragOverlay.
+  externalDnd?: boolean;
+  externalActiveDragId?: string | null;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const colW = useCallback((id: string): number | undefined => {
@@ -188,7 +194,8 @@ export function TicketTable({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
+  const activeDragId = externalDnd ? externalActiveDragId ?? null : internalActiveDragId;
   const [reviewPopoverKey, setReviewPopoverKey] = useState<string | null>(null);
 
   const handleColumnSort = useCallback((colId: ColumnId) => {
@@ -225,11 +232,11 @@ export function TicketTable({
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveDragId(event.active.id as string);
+    setInternalActiveDragId(event.active.id as string);
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveDragId(null);
+    setInternalActiveDragId(null);
     const { active, over } = event;
     if (over && active.id !== over.id && onReorder) {
       onReorder(active.id as string, over.id as string);
@@ -379,7 +386,27 @@ export function TicketTable({
     </table>
   );
 
-  const dndTable = (
+  const sortableTableBody = (
+    <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
+      <tbody>
+        {tickets.map((ticket, ticketIdx) => (
+          <SortableTicketRow
+            key={ticket.key}
+            {...makeRowProps(ticket, ticketIdx)}
+          />
+        ))}
+      </tbody>
+    </SortableContext>
+  );
+
+  // When externalDnd is true, DndContext + DragOverlay are owned by SprintBoard.
+  // We only render SortableContext here so ticket rows register with the parent context.
+  const dndTable = externalDnd ? (
+    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
+      {theadContent}
+      {sortableTableBody}
+    </table>
+  ) : (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -388,16 +415,7 @@ export function TicketTable({
     >
       <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
         {theadContent}
-        <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
-          <tbody>
-            {tickets.map((ticket, ticketIdx) => (
-              <SortableTicketRow
-                key={ticket.key}
-                {...makeRowProps(ticket, ticketIdx)}
-              />
-            ))}
-          </tbody>
-        </SortableContext>
+        {sortableTableBody}
       </table>
       <DragOverlay>
         {activeTicket && (

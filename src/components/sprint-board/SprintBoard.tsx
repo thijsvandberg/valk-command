@@ -20,6 +20,19 @@ import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
@@ -265,6 +278,23 @@ export default function SprintBoard() {
   }, [sprints]);
 
   const [inflightKeys, setInflightKeys] = useState<Set<string>>(new Set());
+  const [boardActiveDragId, setBoardActiveDragId] = useState<string | null>(null);
+
+  // Jira-rank DnD is only available when sorted by rank, no custom PO order overriding,
+  // not in All/view mode, and within the virtualization threshold (80 tickets).
+  const VIRTUALIZE_THRESHOLD = 80;
+  const jiraRankDndEnabled = (
+    f.sortField === "rank" &&
+    !poPriorityOrder &&
+    !isAllView &&
+    !f.activeViewId &&
+    tickets.length <= VIRTUALIZE_THRESHOLD
+  );
+
+  const boardSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
 
   const handlePoStatusChange = useCallback((key: string, status: POStatus) => {
     const prevStatus = poStatuses[key];
@@ -280,6 +310,112 @@ export default function SprintBoard() {
       }
     });
   }, [poStatuses]);
+
+  const handleBoardDragStart = useCallback((event: DragStartEvent) => {
+    setBoardActiveDragId(event.active.id as string);
+  }, []);
+
+  const handleBoardDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setBoardActiveDragId(null);
+    if (!over) return;
+
+    const overId = String(over.id);
+    const activeKey = String(active.id);
+
+    if (overId.startsWith("sprint-slot:")) {
+      const targetSprintId = overId.replace("sprint-slot:", "");
+      if (targetSprintId === activeSprintId) return;
+
+      // Determine which tickets to move
+      const keysToMove = checkedTickets.has(activeKey)
+        ? [...checkedTickets].filter((k) => tickets.some((t) => t.key === k))
+        : [activeKey];
+
+      const targetName = sprintNameMap[targetSprintId] ?? targetSprintId;
+
+      // Optimistic: remove from current view
+      const prevData = apiTickets;
+      mutateTickets(
+        (current) => current?.filter((t) => !keysToMove.includes(t.key)) ?? [],
+        { revalidate: false },
+      );
+      setCheckedTickets((prev) => {
+        const next = new Set(prev);
+        keysToMove.forEach((k) => next.delete(k));
+        return next;
+      });
+
+      try {
+        const res = await fetch("/api/jira/move-sprint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ issueKeys: keysToMove, targetSprintId }),
+        });
+        if (!res.ok) throw new Error("Move failed");
+        const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
+        showToast(`Moved ${label} to ${targetName}`);
+        mutateTickets();
+      } catch {
+        mutateTickets(prevData, { revalidate: true });
+        showToast("Failed to move to sprint. Changes reverted.");
+      }
+    } else {
+      // Row reorder within sprint -- sync rank to Jira
+      if (activeKey === overId) return;
+
+      const currentTickets = tickets;
+      const oldIndex = currentTickets.findIndex((t) => t.key === activeKey);
+      const overIndex = currentTickets.findIndex((t) => t.key === overId);
+      if (oldIndex === -1 || overIndex === -1) return;
+
+      // Determine which keys to move (multi-select support)
+      const keysToMove = checkedTickets.has(activeKey)
+        ? [...checkedTickets].filter((k) => currentTickets.some((t) => t.key === k))
+        : [activeKey];
+
+      // Build new order: remove moved keys, insert as contiguous block at target position
+      const movedSet = new Set(keysToMove);
+      const without = currentTickets.filter((t) => !movedSet.has(t.key));
+      const anchorWithout = without.findIndex((t) => t.key === overId);
+      const insertAt = oldIndex > overIndex ? anchorWithout : anchorWithout + 1;
+      const movedTickets = keysToMove.map((k) => currentTickets.find((t) => t.key === k)!).filter(Boolean);
+      const reordered = [...without.slice(0, insertAt), ...movedTickets, ...without.slice(insertAt)];
+
+      // Optimistic update
+      mutateTickets(
+        (current) => {
+          if (!current) return current;
+          const map = new Map(current.map((t) => [t.key, t]));
+          return reordered.map((t, i) => ({ ...map.get(t.key)!, jiraRank: i }));
+        },
+        { revalidate: false },
+      );
+
+      // Determine rank anchor for Jira API
+      const rankBeforeKey = oldIndex > overIndex ? overId : undefined;
+      const rankAfterKey = oldIndex <= overIndex ? overId : undefined;
+
+      try {
+        const res = await fetch("/api/jira/rank", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issueKeys: keysToMove,
+            rankBeforeKey,
+            rankAfterKey,
+            sprintId: activeSprintId,
+          }),
+        });
+        if (!res.ok) throw new Error("Rank update failed");
+        const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
+        showToast(`Rank updated for ${label}`);
+      } catch {
+        mutateTickets();
+        showToast("Failed to update rank in Jira. Reverted.");
+      }
+    }
+  }, [activeSprintId, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets]);
 
   const handleRefresh = useCallback(async () => {
     setSyncing(true);
@@ -337,6 +473,13 @@ export default function SprintBoard() {
   }
 
   const sortChange = (fld: typeof f.sortField, d: typeof f.sortDir) => { f.setSortField(fld); f.setSortDir(d); };
+
+  // Compute active drag ticket for the DragOverlay
+  const boardActiveDragTicket = boardActiveDragId ? tickets.find((t) => t.key === boardActiveDragId) : null;
+  const boardDraggedKeys = boardActiveDragId && checkedTickets.has(boardActiveDragId)
+    ? [...checkedTickets].filter((k) => tickets.some((t) => t.key === k))
+    : boardActiveDragId ? [boardActiveDragId] : [];
+  const ticketIds = tickets.map((t) => t.key);
 
   return (
     <>
@@ -451,24 +594,73 @@ export default function SprintBoard() {
           </ViewHeader>
         )}
 
-        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} />
+        {/* Sprint board body -- optionally wrapped in a parent DndContext for Jira rank DnD */}
+        {jiraRankDndEnabled ? (
+          <DndContext
+            sensors={boardSensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleBoardDragStart}
+            onDragEnd={handleBoardDragEnd}
+          >
+            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} ticketDragActive={!!boardActiveDragId} activeSprintId={activeSprintId} />
 
-        {!barsCollapsed && (
+            {!barsCollapsed && (
+              <>
+                <div className="border-b border-white/[0.06]">
+                  <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+                </div>
+                {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
+              </>
+            )}
+
+            {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
+
+            {!ticketsLoading && (
+              <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
+                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} />
+              </SortableContext>
+            )}
+
+            {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
+
+            <DragOverlay dropAnimation={null}>
+              {boardActiveDragTicket && (
+                <div
+                  className="flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+                  style={{ opacity: 0.92 }}
+                >
+                  <IssueTypeIcon type={boardActiveDragTicket.type} />
+                  <span className="font-mono text-xs text-white/40">{boardActiveDragTicket.key}</span>
+                  <span className="max-w-48 truncate text-white/75">{boardActiveDragTicket.title}</span>
+                  {boardDraggedKeys.length > 1 && (
+                    <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-[10px] text-[var(--color-brand-300)]">
+                      +{boardDraggedKeys.length - 1}
+                    </span>
+                  )}
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+        ) : (
           <>
-            <div className="border-b border-white/[0.06]">
-              <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
-            </div>
-            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
+            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} />
+
+            {!barsCollapsed && (
+              <>
+                <div className="border-b border-white/[0.06]">
+                  <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+                </div>
+                {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
+              </>
+            )}
+
+            {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
+
+            {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} />}
+
+            {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
           </>
         )}
-
-        {ticketsLoading && (
-          <LoadingState variant="spinner" label="Loading tickets..." />
-        )}
-
-        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} />}
-
-        {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
       </div>
 
       {selected && (() => {

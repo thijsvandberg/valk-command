@@ -626,15 +626,51 @@ export class JiraClient {
   }
 
   /**
-   * Update an issue's fields in Jira (summary, description).
+   * Update an issue's fields in Jira.
    * Uses REST API v3 PUT /rest/api/3/issue/{key}.
    */
-  async updateIssue(key: string, fields: { summary?: string; description?: unknown }, signal?: AbortSignal): Promise<void> {
+  async updateIssue(key: string, fields: Record<string, unknown>, signal?: AbortSignal): Promise<void> {
     if (!isConfigured()) {
       throw new Error("Jira is not configured");
     }
 
     await jiraPut(`/rest/api/3/issue/${key}`, { fields }, signal);
+  }
+
+  /**
+   * Re-rank one or more issues relative to another issue.
+   * Uses the Agile REST API v1: PUT /rest/agile/1.0/issue/rank.
+   * Provide either rankBeforeIssue (move above) or rankAfterIssue (move below).
+   */
+  async rankIssues(
+    issueKeys: string[],
+    rankBeforeIssue?: string,
+    rankAfterIssue?: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    const body: Record<string, unknown> = { issues: issueKeys };
+    if (rankBeforeIssue) body.rankBeforeIssue = rankBeforeIssue;
+    else if (rankAfterIssue) body.rankAfterIssue = rankAfterIssue;
+
+    await jiraPut("/rest/agile/1.0/issue/rank", body, signal);
+  }
+
+  /**
+   * Move one or more issues to a different sprint.
+   * Updates the sprint custom field on each issue via REST API v3.
+   */
+  async moveToSprint(issueKeys: string[], sprintId: number, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    for (const key of issueKeys) {
+      await this.updateIssue(key, { [SPRINT_FIELD]: sprintId }, signal);
+    }
   }
 
   /**
