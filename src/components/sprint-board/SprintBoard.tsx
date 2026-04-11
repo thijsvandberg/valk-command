@@ -280,12 +280,12 @@ export default function SprintBoard() {
   const [inflightKeys, setInflightKeys] = useState<Set<string>>(new Set());
   const [boardActiveDragId, setBoardActiveDragId] = useState<string | null>(null);
 
-  // Jira-rank DnD is only available when sorted by rank, no custom PO order overriding,
-  // not in All/view mode, and within the virtualization threshold (80 tickets).
+  // Jira-rank DnD is only available when sorted by rank, not in All/view mode,
+  // and within the virtualization threshold (80 tickets).
+  // poPriorityOrder is cleared automatically on a successful Jira rank sync.
   const VIRTUALIZE_THRESHOLD = 80;
   const jiraRankDndEnabled = (
     f.sortField === "rank" &&
-    !poPriorityOrder &&
     !isAllView &&
     !f.activeViewId &&
     tickets.length <= VIRTUALIZE_THRESHOLD
@@ -408,6 +408,8 @@ export default function SprintBoard() {
           }),
         });
         if (!res.ok) throw new Error("Rank update failed");
+        // Clear any local PO priority override so rank order is now authoritative
+        setPoPriorityOrder(null);
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Rank updated for ${label}`);
       } catch {
@@ -415,7 +417,7 @@ export default function SprintBoard() {
         showToast("Failed to update rank in Jira. Reverted.");
       }
     }
-  }, [activeSprintId, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets]);
+  }, [activeSprintId, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder]);
 
   const handleRefresh = useCallback(async () => {
     setSyncing(true);
@@ -602,7 +604,7 @@ export default function SprintBoard() {
             onDragStart={handleBoardDragStart}
             onDragEnd={handleBoardDragEnd}
           >
-            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} ticketDragActive={!!boardActiveDragId} activeSprintId={activeSprintId} />
+            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} ticketDragActive={true} activeSprintId={activeSprintId} />
 
             {!barsCollapsed && (
               <>
