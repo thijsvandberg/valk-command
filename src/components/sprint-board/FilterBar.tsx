@@ -1,12 +1,27 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
-import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check, GripVertical } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // -- PO Status colors (needed for filter rendering) --
 
@@ -56,23 +71,25 @@ export interface SavedView {
 // Column types (exported for reuse)
 // ---------------------------------------------------------------------------
 
-export type ColumnId = "type" | "key" | "title" | "epic" | "jiraStatus" | "points" | "assignee" | "flagged" | "poStatus" | "quality" | "notes";
+export type ColumnId = "type" | "key" | "title" | "epic" | "jiraStatus" | "sprint" | "points" | "assignee" | "flagged" | "poStatus" | "quality" | "notes" | "pipeline";
 
 export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[] = [
   { id: "type", label: "Type" },
-  { id: "key", label: "Key", alwaysVisible: true },
-  { id: "title", label: "Title", alwaysVisible: true },
+  { id: "key", label: "Key" },
+  { id: "title", label: "Title" },
   { id: "epic", label: "Epic" },
   { id: "jiraStatus", label: "Jira Status" },
+  { id: "sprint", label: "Sprint" },
   { id: "points", label: "Points" },
   { id: "assignee", label: "Assignee" },
   { id: "flagged", label: "Flagged" },
   { id: "poStatus", label: "PO Status" },
-  { id: "quality", label: "QS" },
+  { id: "quality", label: "Quality Score (QS)" },
   { id: "notes", label: "Notes" },
+  { id: "pipeline", label: "Pipeline" },
 ];
 
-export const DEFAULT_VISIBLE: ColumnId[] = ["type", "key", "title", "epic", "jiraStatus", "points", "assignee", "flagged", "poStatus", "quality", "notes"];
+export const DEFAULT_VISIBLE: ColumnId[] = ["type", "key", "title", "epic", "jiraStatus", "points", "assignee", "flagged", "poStatus", "quality", "notes", "pipeline"];
 
 // ---------------------------------------------------------------------------
 // Sort dropdown (icon-only)
@@ -90,7 +107,7 @@ const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDir }[] =
   { field: "poStatus", label: "PO status", defaultDir: "asc" },
 ];
 
-function SortDropdown({
+export function SortDropdown({
   field,
   direction,
   onChange,
@@ -190,12 +207,87 @@ function SortDropdown({
 // Column toggle dropdown (exported for use in header)
 // ---------------------------------------------------------------------------
 
+function SortableColumnItem({
+  colDef,
+  checked,
+  onToggle,
+}: {
+  colDef: { id: ColumnId; label: string };
+  checked: boolean;
+  onToggle: (id: ColumnId, show: boolean) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: colDef.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition ?? undefined,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-[13px] text-white/65 hover:bg-white/[0.04] hover:text-white/85"
+    >
+      <div
+        className="flex shrink-0 items-center justify-center w-7 h-7 cursor-grab active:cursor-grabbing text-white/20 hover:text-white/40"
+        {...listeners}
+        {...attributes}
+      >
+        <GripVertical size={12} strokeWidth={1.5} />
+      </div>
+      <label
+        className="flex flex-1 items-center gap-3 cursor-pointer select-none"
+      >
+        <span
+          className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
+          style={{
+            backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
+            borderColor: checked ? "var(--color-brand-500)" : "rgba(255,255,255,0.18)",
+            transition: "background-color 100ms, border-color 100ms",
+          }}
+        >
+          {checked && (
+            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+              <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onToggle(colDef.id, e.target.checked)}
+          className="sr-only"
+        />
+        {colDef.label}
+      </label>
+    </div>
+  );
+}
+
+const COLUMN_LABEL_MAP: Record<ColumnId, string> = Object.fromEntries(
+  COLUMNS.map((c) => [c.id, c.label]),
+) as Record<ColumnId, string>;
+
 export function ColumnToggle({
   visible,
+  order,
   onChange,
+  onReorder,
 }: {
   visible: Set<ColumnId>;
+  order: ColumnId[];
   onChange: (id: ColumnId, show: boolean) => void;
+  onReorder: (activeId: ColumnId, overId: ColumnId) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -210,6 +302,21 @@ export function ColumnToggle({
     }
   }, [open]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
+    useSensor(KeyboardSensor),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        onReorder(active.id as ColumnId, over.id as ColumnId);
+      }
+    },
+    [onReorder],
+  );
+
   return (
     <div ref={ref} className="relative">
       <Button
@@ -222,43 +329,23 @@ export function ColumnToggle({
         className="border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
-          {COLUMNS.map((col) => {
-            const checked = visible.has(col.id);
-            return (
-              <label
-                key={col.id}
-                className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-[13px] cursor-pointer hover:bg-white/[0.04] ${
-                  col.alwaysVisible ? "text-white/25 pointer-events-none" : "text-white/65 hover:text-white/85"
-                }`}
-                style={{ transition: "background-color 80ms, color 80ms" }}
-              >
-                <span
-                  className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
-                  style={{
-                    backgroundColor: checked ? (col.alwaysVisible ? "rgba(255,255,255,0.12)" : "var(--color-brand-500)") : "transparent",
-                    borderColor: checked ? (col.alwaysVisible ? "rgba(255,255,255,0.2)" : "var(--color-brand-500)") : "rgba(255,255,255,0.18)",
-                    transition: "background-color 100ms, border-color 100ms",
-                    opacity: col.alwaysVisible ? 0.4 : 1,
-                  }}
-                >
-                  {checked && (
-                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={col.alwaysVisible}
-                  onChange={(e) => onChange(col.id, e.target.checked)}
-                  className="sr-only"
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={order} strategy={verticalListSortingStrategy}>
+              {order.map((id) => (
+                <SortableColumnItem
+                  key={id}
+                  colDef={{ id, label: COLUMN_LABEL_MAP[id] }}
+                  checked={visible.has(id)}
+                  onToggle={onChange}
                 />
-                {col.label}
-              </label>
-            );
-          })}
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       )}
     </div>
@@ -452,9 +539,6 @@ export function FilterBar({
   onSprintFilterChange,
   sprintOptions,
   sprintNameMap,
-  sortField,
-  sortDir,
-  onSortChange,
   noBorder = false,
   searchQuery,
   onSearchChange,
@@ -482,9 +566,6 @@ export function FilterBar({
   onSprintFilterChange?: (next: Set<string>) => void;
   sprintOptions?: string[];
   sprintNameMap?: Record<string, string>;
-  sortField: SortField;
-  sortDir: SortDir;
-  onSortChange: (field: SortField, dir: SortDir) => void;
   noBorder?: boolean;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
@@ -649,13 +730,6 @@ export function FilterBar({
       )}
 
       <div className="flex-1" />
-
-      {/* Sort (icon-only) */}
-      <SortDropdown
-        field={sortField}
-        direction={sortDir}
-        onChange={onSortChange}
-      />
 
       {/* Save view */}
       {onSaveView && (

@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { sprintSlot } from "@/db/schema";
 
 export async function GET() {
-  const slots = await db.select().from(sprintSlot).orderBy(sprintSlot.slotIndex);
+  const slots = await db.select().from(sprintSlot).orderBy(sprintSlot.slotIndex).limit(50);
   return NextResponse.json(slots);
 }
 

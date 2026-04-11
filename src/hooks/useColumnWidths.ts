@@ -19,6 +19,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   poStatus: 40,
   quality: 64,
   notes: 32,
+  pipeline: 72,
 };
 
 export function useColumnWidths() {

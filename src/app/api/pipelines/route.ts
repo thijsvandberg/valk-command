@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { pipelineRun, appSetting } from "@/db/schema";
 import { cache } from "@/lib/cache";
-import { desc, eq, inArray, and } from "drizzle-orm";
+import { desc, eq, inArray, and, or, like, isNull } from "drizzle-orm";
 import { syncPipelines, isPipelineConfigured } from "@/lib/pipeline-sync";
 
 export interface PipelineRunPayload {
@@ -54,9 +54,17 @@ export async function GET(request: Request) {
   const conditions = [];
   if (repo) conditions.push(eq(pipelineRun.repo, repo));
   if (ticketKey) conditions.push(eq(pipelineRun.ticketKey, ticketKey));
-  if (sprintTickets) {
+  const unlinked = url.searchParams.get("unlinked") === "true";
+
+  if (unlinked) {
+    conditions.push(isNull(pipelineRun.ticketKey));
+  } else if (sprintTickets) {
     const keys = sprintTickets.split(",").map((k) => k.trim()).filter(Boolean);
-    if (keys.length > 0) conditions.push(inArray(pipelineRun.ticketKey, keys));
+    if (keys.length > 0) {
+      // Match on primary ticketKey OR any key inside the ticketKeys JSON array
+      const ticketKeysConds = keys.map((k) => like(pipelineRun.ticketKeys, `%"${k}"%`));
+      conditions.push(or(inArray(pipelineRun.ticketKey, keys), ...ticketKeysConds)!);
+    }
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;

@@ -308,9 +308,11 @@ export function DevPanel({
 
   return (
     <div>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded(!isExpanded)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(!isExpanded); } }}
         className="flex w-full items-center justify-between cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <div className="flex items-center gap-1.5">
@@ -342,7 +344,7 @@ export function DevPanel({
             style={{ transition: "transform 0.2s ease" }}
           />
         </div>
-      </button>
+      </div>
 
       {isExpanded && (
         <div className="mt-2">

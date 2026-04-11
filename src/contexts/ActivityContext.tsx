@@ -38,6 +38,7 @@ interface ActivityContextValue {
   cancelAllEntries: () => Promise<void>;
   acknowledgeError: (id: string) => Promise<void>;
   acknowledgeAllErrors: () => Promise<void>;
+  retryEntry: (id: string) => Promise<void>;
   dismissToast: (id: string) => void;
   retryHealth: () => void;
   mutateActivityLog: () => void;
@@ -197,6 +198,26 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     [mutateActivityLog],
   );
 
+  const RETRY_SYNC_MAP: Record<string, string> = {
+    "sprint-sync": "sprint",
+    "ticket-sync": "tickets",
+    "comment-sync": "comments",
+    "incremental-sync": "tickets",
+  };
+
+  const retryEntry = useCallback(
+    async (id: string) => {
+      const entry = entries.find((e) => e.id === id);
+      if (!entry) return;
+      const syncType = RETRY_SYNC_MAP[entry.type];
+      if (syncType) {
+        setDismissedIds((prev) => new Set([...prev, id]));
+        await triggerSync(syncType as "sprint" | "tickets" | "comments", entry.scope ?? undefined);
+      }
+    },
+    [entries, triggerSync],
+  );
+
   const dismissToast = useCallback((id: string) => {
     setDismissedIds((prev) => new Set([...prev, id]));
   }, []);
@@ -223,6 +244,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         cancelAllEntries,
         acknowledgeError,
         acknowledgeAllErrors,
+        retryEntry,
         dismissToast,
         retryHealth,
         mutateActivityLog,

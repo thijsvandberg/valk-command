@@ -14,6 +14,7 @@ import MessageInput from "./MessageInput";
 import TaskProgress from "./TaskProgress";
 import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
+import { prefetchConversation, cancelAllPrefetches } from "@/lib/prefetch";
 import { MessageCircle, X, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -46,6 +47,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const { notify } = useNotification();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
   const pageTitle = usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
+
+  // Prefetch most recent conversation when chat list loads
+  useEffect(() => {
+    if (conversations.length > 0 && !activeId) {
+      prefetchConversation(conversations[0].id);
+    }
+    return () => cancelAllPrefetches();
+  }, [conversations, activeId]);
 
   const handleCreate = useCallback(async () => {
     const conversation = await createConversation();

@@ -116,6 +116,7 @@ export interface Ticket {
   qualityScore: number | null;
   editState: TicketEditState;
   notes: string;
+  jiraRank?: number | null;
   sprintId?: string;
   jiraUpdatedAt?: string | null;
   removedFromJiraAt?: string | null;

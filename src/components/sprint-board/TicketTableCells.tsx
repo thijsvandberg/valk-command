@@ -96,10 +96,10 @@ export function QualityBadge({
   }
 
   const content = score === null ? (
-    <span className="text-white/15">--</span>
+    <span className="text-white/15 leading-none">--</span>
   ) : (
     <span
-      className="inline-flex items-center gap-1.5 tabular-nums"
+      className="inline-flex items-center gap-1.5 tabular-nums leading-none"
       style={{ color }}
     >
       <span
@@ -125,7 +125,7 @@ export function QualityBadge({
           e.stopPropagation();
           onTogglePopover();
         }}
-        className="cursor-pointer rounded px-1 py-0.5 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
+        className="cursor-pointer rounded px-1 py-0.5 leading-none hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
         title={score !== null ? `Quality: ${score}/100` : "No review"}
       >
         {content}
@@ -185,7 +185,7 @@ export function POStatusCell({
         type="button"
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 rounded cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08] ${
-          showLabel ? "h-8 px-2.5 py-1" : "h-7 w-7 justify-center"
+          showLabel ? "h-7 px-2.5 py-0.5" : "h-6 w-6 justify-center"
         }`}
         style={{ color: colors?.text || "rgba(255,255,255,0.2)" }}
         title={value || "No status"}

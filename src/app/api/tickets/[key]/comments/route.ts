@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { poComment, jiraComment } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { poComment } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { preparedPoComments, preparedJiraComments } from "@/db/prepared";
 
 export async function GET(
   _request: Request,
@@ -11,17 +11,8 @@ export async function GET(
 ) {
   const { key } = await params;
 
-  const poComments = await db
-    .select()
-    .from(poComment)
-    .where(eq(poComment.ticketKey, key))
-    .all();
-
-  const jiraComments = await db
-    .select()
-    .from(jiraComment)
-    .where(eq(jiraComment.ticketKey, key))
-    .all();
+  const poComments = preparedPoComments({ key });
+  const jiraComments = preparedJiraComments({ key });
 
   return NextResponse.json({ poComments, jiraComments });
 }

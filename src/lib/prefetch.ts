@@ -3,6 +3,7 @@ import { fetcher } from "@/components/SWRProvider";
 
 const MAX_CONCURRENT = 3;
 let activePrefetches = 0;
+const activeControllers = new Map<string, AbortController>();
 
 function isSlowConnection(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -17,10 +18,21 @@ export function prefetchUrl(url: string): void {
   if (isSlowConnection()) return;
   if (activePrefetches >= MAX_CONCURRENT) return;
 
+  const controller = new AbortController();
+  activeControllers.set(url, controller);
+
   activePrefetches++;
   preload(url, fetcher);
-  // Decrement after a brief delay to allow the fetch to register
-  setTimeout(() => { activePrefetches = Math.max(0, activePrefetches - 1); }, 500);
+  setTimeout(() => {
+    activePrefetches = Math.max(0, activePrefetches - 1);
+    activeControllers.delete(url);
+  }, 500);
+}
+
+export function cancelAllPrefetches(): void {
+  activeControllers.forEach((c) => c.abort());
+  activeControllers.clear();
+  activePrefetches = 0;
 }
 
 export function prefetchTicketDetail(key: string): void {
@@ -29,4 +41,8 @@ export function prefetchTicketDetail(key: string): void {
 
 export function prefetchTicketList(sprintId: string): void {
   prefetchUrl(`/api/tickets?sprintId=${encodeURIComponent(sprintId)}`);
+}
+
+export function prefetchConversation(id: string): void {
+  prefetchUrl(`/api/conversations/${encodeURIComponent(id)}`);
 }

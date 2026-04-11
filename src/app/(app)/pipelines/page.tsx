@@ -24,6 +24,7 @@ import {
   User,
   Calendar,
   Search,
+  Unlink,
 } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Card } from "@/components/shared/Card";
@@ -44,6 +45,7 @@ interface PersistedFilters {
   status?: StatusFilterValue;
   dateRange?: DateRangeValue;
   repo?: string | null;
+  unlinked?: boolean;
 }
 
 function loadFilters(): PersistedFilters {
@@ -1247,6 +1249,7 @@ export default function PipelinesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(initialFilters.current.status ?? "all");
   const [dateRange, setDateRange] = useState<DateRangeValue>(initialFilters.current.dateRange ?? "all");
   const [creatorFilters, setCreatorFilters] = useState<string[]>(initialFilters.current.creators ?? []);
+  const [showUnlinked, setShowUnlinked] = useState(initialFilters.current.unlinked ?? false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -1258,8 +1261,9 @@ export default function PipelinesPage() {
       status: statusFilter,
       dateRange,
       repo: repoFilter,
+      unlinked: showUnlinked,
     });
-  }, [sprintFilters, creatorFilters, statusFilter, dateRange, repoFilter]);
+  }, [sprintFilters, creatorFilters, statusFilter, dateRange, repoFilter, showUnlinked]);
 
   const { data: sprints } = useJiraSprints();
 
@@ -1316,7 +1320,8 @@ export default function PipelinesPage() {
 
   const { runs, hasRunning, syncing, syncStatus, isLoading, refresh } = usePipelines({
     limit: 200,
-    sprintTickets: sprintTicketKeys,
+    sprintTickets: showUnlinked ? undefined : sprintTicketKeys,
+    unlinked: showUnlinked,
   });
 
   const repos = useMemo(() => {
@@ -1358,7 +1363,7 @@ export default function PipelinesPage() {
   const hasMore = filteredRuns.length > visibleCount;
 
   // Reset pagination when filters change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [repoFilter, statusFilter, dateRange, creatorFilters, sprintFilters]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [repoFilter, statusFilter, dateRange, creatorFilters, sprintFilters, showUnlinked]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -1409,6 +1414,7 @@ export default function PipelinesPage() {
     dateRange !== "all",
     creatorFilters.length > 0,
     repoFilter !== null,
+    showUnlinked,
   ].filter(Boolean).length;
 
   return (
@@ -1424,6 +1430,16 @@ export default function PipelinesPage() {
               </span>
             )}
             {sprints && <SprintFilter sprints={sprints} selected={sprintFilters} onToggle={toggleSprint} onClear={() => setSprintFilters([])} />}
+            <Button
+              variant="ghost"
+              size="md"
+              icon={<Unlink size={12} strokeWidth={1.5} />}
+              onClick={() => setShowUnlinked((prev) => !prev)}
+              className={showUnlinked ? "border-amber-500/30 text-amber-400" : ""}
+              title="Show unlinked runs only"
+            >
+              Unlinked
+            </Button>
             <RepoFilter repos={repos} selected={repoFilter} onSelect={setRepoFilter} />
             <StatusFilter selected={statusFilter} onSelect={setStatusFilter} />
             <DateRangeFilter selected={dateRange} onSelect={setDateRange} />
@@ -1455,6 +1471,7 @@ export default function PipelinesPage() {
               setDateRange("all");
               setCreatorFilters([]);
               setRepoFilter(null);
+              setShowUnlinked(false);
             }}
             className="ml-2 rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.1] hover:text-white/50 transition-colors duration-150"
             title="Clear all filters"
@@ -1471,7 +1488,23 @@ export default function PipelinesPage() {
           ) : (
             <>
               <SyncStatusBanner syncStatus={syncStatus} syncing={syncing && runs.length === 0} />
-              {sprintFilters.length > 0 ? (
+              {showUnlinked ? (
+                <>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Unlink size={14} strokeWidth={1.5} className="text-amber-400/60" />
+                    <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                      Unlinked runs
+                    </span>
+                    <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400/60 tabular-nums">
+                      {filteredRuns.length}
+                    </span>
+                    <span className="text-[11px] text-white/25">
+                      Runs without a ticket key
+                    </span>
+                  </div>
+                  <PipelineTable runs={paginatedRuns} repoFilter={null} ticketTitleMap={ticketTitleMap} />
+                </>
+              ) : sprintFilters.length > 0 ? (
                 <>
                   <SprintPipelineSummary runs={filteredRuns} />
                   <RunningSection runs={paginatedRuns} />

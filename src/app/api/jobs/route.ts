@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 import { isValidCron } from "@/lib/cron";
 
 export async function GET() {
-  const result = await db.select().from(scheduledJob);
+  const result = await db.select().from(scheduledJob).limit(100);
   return NextResponse.json(result);
 }
 

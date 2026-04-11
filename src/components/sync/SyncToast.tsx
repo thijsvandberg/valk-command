@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CheckCircle2, AlertTriangle, X } from "lucide-react";
+import { CheckCircle2, AlertTriangle, X, RotateCw } from "lucide-react";
 import { useActivityContext } from "@/contexts/ActivityContext";
 import { Button } from "@/components/ui/Button";
 
 export function ActivityToast() {
-  const { toasts, dismissToast, acknowledgeError } = useActivityContext();
+  const { toasts, dismissToast, acknowledgeError, retryEntry } = useActivityContext();
 
   const visibleToasts = toasts.slice(-5);
 
@@ -21,6 +21,8 @@ export function ActivityToast() {
           status={toast.entry.status}
           summary={toast.entry.summary}
           error={toast.entry.errorDetail}
+          retryable={toast.entry.status === "failed" && ["sprint-sync", "ticket-sync", "comment-sync", "incremental-sync"].includes(toast.entry.type)}
+          onRetry={() => retryEntry(toast.id)}
           onDismiss={() => {
             if (toast.entry.status === "failed") {
               acknowledgeError(toast.id);
@@ -39,12 +41,16 @@ function ToastItem({
   status,
   summary,
   error,
+  retryable,
+  onRetry,
   onDismiss,
 }: {
   id: string;
   status: "success" | "failed" | "running" | "cancelled";
   summary: string | null;
   error: string | null;
+  retryable?: boolean;
+  onRetry?: () => void;
   onDismiss: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -87,15 +93,28 @@ function ToastItem({
           {isError ? (error ?? "Unknown error") : isCancelled ? "Cancelled by user" : (summary ?? "Done")}
         </p>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        icon={<X className="h-3.5 w-3.5" strokeWidth={2} />}
-        onClick={onDismiss}
-        className="shrink-0 mt-0.5 text-white/20 hover:text-white/50 border-0"
-        aria-label="Dismiss"
-      />
+      <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
+        {retryable && onRetry && (
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={<RotateCw className="h-3 w-3" strokeWidth={2} />}
+            onClick={onRetry}
+            className="text-amber-400/60 hover:text-amber-400 border-0"
+            aria-label="Retry"
+          />
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={<X className="h-3.5 w-3.5" strokeWidth={2} />}
+          onClick={onDismiss}
+          className="text-white/20 hover:text-white/50 border-0"
+          aria-label="Dismiss"
+        />
+      </div>
     </div>
   );
 }

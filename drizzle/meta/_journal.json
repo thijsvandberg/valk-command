@@ -211,6 +211,13 @@
       "when": 1775847433795,
       "tag": "0029_numerous_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1775856927292,
+      "tag": "0030_peaceful_deadpool",
+      "breakpoints": true
     }
   ]
 }

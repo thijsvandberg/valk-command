@@ -125,6 +125,7 @@ export async function GET(request: Request) {
       qualityScore: meta?.qualityScore ?? null,
       editState,
       notes: meta?.poNotes ?? "",
+      jiraRank: t.jiraRank ?? null,
       sprintId: t.sprintName ?? undefined,
       jiraUpdatedAt: t.jiraUpdatedAt ?? null,
       removedFromJiraAt: t.removedFromJiraAt ?? null,

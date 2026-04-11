@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
 import { ChevronRight, ChevronDown, ChevronUp, RefreshCw, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import type { SavedView } from "./FilterBar";
+import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
+import { ColumnToggle, SortDropdown } from "./FilterBar";
 import {
   DndContext,
   closestCenter,
@@ -200,6 +201,13 @@ export function SprintSlots({
   savedViews = [],
   activeViewId = null,
   onViewClick,
+  sortField,
+  sortDir,
+  onSortChange,
+  columnVisible,
+  columnOrder,
+  onColumnToggle,
+  onColumnReorder,
 }: {
   slotSprints: string[];
   activeSlot: number;
@@ -222,6 +230,13 @@ export function SprintSlots({
   savedViews?: SavedView[];
   activeViewId?: string | null;
   onViewClick?: (view: SavedView) => void;
+  sortField?: SortField;
+  sortDir?: SortDir;
+  onSortChange?: (field: SortField, dir: SortDir) => void;
+  columnVisible?: Set<ColumnId>;
+  columnOrder?: ColumnId[];
+  onColumnToggle?: (id: ColumnId, show: boolean) => void;
+  onColumnReorder?: (activeId: ColumnId, overId: ColumnId) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -338,8 +353,27 @@ export function SprintSlots({
       })()}
       </div>
 
-      {/* Right side: refresh + toggle filters */}
-      <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
+      {/* Right side: column toggle, sort, refresh + toggle filters */}
+      <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
+        {/* Column toggle */}
+        {columnVisible && columnOrder && onColumnToggle && onColumnReorder && (
+          <ColumnToggle
+            visible={columnVisible}
+            order={columnOrder}
+            onChange={onColumnToggle}
+            onReorder={onColumnReorder}
+          />
+        )}
+
+        {/* Sort */}
+        {sortField && sortDir && onSortChange && (
+          <SortDropdown
+            field={sortField}
+            direction={sortDir}
+            onChange={onSortChange}
+          />
+        )}
+
         {/* Refresh board - hidden in All view since syncing all sprints at once is not practical */}
         {!allActive && (
           <Button

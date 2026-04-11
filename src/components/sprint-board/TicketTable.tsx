@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useRef, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
-import { ColumnToggle } from "@/components/sprint-board/FilterBar";
+import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ArrowUp, ArrowDown, ArrowUpDown, Sheet } from "lucide-react";
@@ -82,7 +82,7 @@ function ResizeHandle({
 }
 
 const VIRTUALIZE_THRESHOLD = 80;
-const ROW_HEIGHT_ESTIMATE = 40;
+const ROW_HEIGHT_ESTIMATE = 32;
 const VIRTUALIZER_OVERSCAN = 20;
 
 function SortIndicator({
@@ -131,7 +131,6 @@ export function TicketTable({
   someChecked,
   allChecked,
   visibleColumns,
-  showSprintColumn,
   sprintNameMap,
   poStatuses,
   inflightKeys,
@@ -147,7 +146,7 @@ export function TicketTable({
   sortField,
   sortDir,
   onSortChange,
-  onColumnToggle,
+  columnOrder,
   columnWidths,
   onColumnResize,
   onColumnResetWidth,
@@ -160,7 +159,6 @@ export function TicketTable({
   someChecked: boolean;
   allChecked: boolean;
   visibleColumns: Set<ColumnId>;
-  showSprintColumn?: boolean;
   sprintNameMap?: Record<string, string>;
   poStatuses: Record<string, POStatus>;
   inflightKeys?: Set<string>;
@@ -176,7 +174,7 @@ export function TicketTable({
   sortField?: SortField;
   sortDir?: SortDir;
   onSortChange?: (field: SortField, dir: SortDir) => void;
-  onColumnToggle?: (id: ColumnId, show: boolean) => void;
+  columnOrder?: ColumnId[];
   columnWidths?: Record<string, number>;
   onColumnResize?: (colId: string, width: number) => void;
   onColumnResetWidth?: (colId: string) => void;
@@ -185,6 +183,8 @@ export function TicketTable({
   const colW = useCallback((id: string): number | undefined => {
     return columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
   }, [columnWidths]);
+  const DEFAULT_ORDER: ColumnId[] = useMemo(() => COLUMNS.map((c) => c.id), []);
+  const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
@@ -276,7 +276,6 @@ export function TicketTable({
     someChecked,
     isDragActive: activeDragId !== null,
     col,
-    showSprintColumn: showSprintColumn ?? false,
     sprintNameMap: sprintNameMap ?? {},
     poStatuses,
     selectedTicket,
@@ -287,17 +286,53 @@ export function TicketTable({
     onPoStatusChange,
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, showSprintColumn, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover]);
+    columnOrder: effectiveOrder,
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
 
   const rh = onColumnResize && onColumnResetWidth
     ? (id: string) => <ResizeHandle colId={id} onResize={onColumnResize} onReset={onColumnResetWidth} />
     : () => null;
 
+  const HEADER_LABELS: Record<ColumnId, string> = {
+    type: "", key: "Key", title: "Title", epic: "Epic",
+    jiraStatus: "Status", sprint: "Sprint", points: "Pts", assignee: "",
+    flagged: "", poStatus: "PO", quality: "QS", notes: "", pipeline: "",
+  };
+
+  const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality"]);
+  const CENTER_COLUMNS: Set<ColumnId> = new Set(["points", "poStatus"]);
+
+  const renderHeaderCell = useCallback((id: ColumnId) => {
+    if (!col(id)) return null;
+
+    const label = HEADER_LABELS[id];
+    const isSortable = SORTABLE_COLUMNS.has(id);
+    const isCenter = CENTER_COLUMNS.has(id);
+    const widthStyle = id === "title"
+      ? (colW("title") ? { width: colW("title") } : undefined)
+      : { width: colW(id) };
+
+    if (!label) {
+      return <th key={id} className="py-2 pr-2" style={widthStyle} />;
+    }
+
+    return (
+      <th key={id} className={`group/th relative py-2 pr-3${isCenter ? " text-center" : ""}`} style={widthStyle}>
+        {isSortable ? (
+          <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-white/60${isCenter ? " justify-center w-full" : ""}`}>
+            {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+          </button>
+        ) : label}
+        {rh(id)}
+      </th>
+    );
+  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
+
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
       <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
-        <th className="w-5 py-2.5 pl-1" />
-        <th className="w-10 py-2.5 pl-1 pr-1">
+        <th className="w-5 py-2 pl-1" />
+        <th className="w-10 py-2 pl-1 pr-1">
           <div
             className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
               someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
@@ -314,86 +349,7 @@ export function TicketTable({
             />
           </div>
         </th>
-        {col("type") && <th className="py-2.5 pr-2" style={{ width: colW("type") }} />}
-        {col("key") && (
-          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("key") }}>
-            <button type="button" onClick={() => handleColumnSort("key")} className="flex items-center cursor-pointer hover:text-white/60">
-              Key<SortIndicator colId="key" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("key")}
-          </th>
-        )}
-        {col("title") && (
-          <th className="group/th relative py-2.5 pr-3" style={colW("title") ? { width: colW("title") } : undefined}>
-            <button type="button" onClick={() => handleColumnSort("title")} className="flex items-center cursor-pointer hover:text-white/60">
-              Title<SortIndicator colId="title" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("title")}
-          </th>
-        )}
-        {col("epic") && (
-          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("epic") }}>
-            <button type="button" onClick={() => handleColumnSort("epic")} className="flex items-center cursor-pointer hover:text-white/60">
-              Epic<SortIndicator colId="epic" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("epic")}
-          </th>
-        )}
-        {col("jiraStatus") && (
-          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("jiraStatus") }}>
-            <button type="button" onClick={() => handleColumnSort("jiraStatus")} className="flex items-center cursor-pointer hover:text-white/60">
-              Status<SortIndicator colId="jiraStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("jiraStatus")}
-          </th>
-        )}
-        {showSprintColumn && (
-          <th className="relative py-2.5 pr-3" style={{ width: colW("sprint") }}>
-            Sprint
-            {rh("sprint")}
-          </th>
-        )}
-        {col("points") && (
-          <th className="group/th relative py-2.5 pr-3 text-center" style={{ width: colW("points") }}>
-            <button type="button" onClick={() => handleColumnSort("points")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
-              Pts<SortIndicator colId="points" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("points")}
-          </th>
-        )}
-        {col("assignee") && (
-          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("assignee") }}>
-            <button type="button" onClick={() => handleColumnSort("assignee")} className="flex items-center cursor-pointer hover:text-white/60">
-              <SortIndicator colId="assignee" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("assignee")}
-          </th>
-        )}
-        {col("flagged") && <th className="py-2.5 pr-2" style={{ width: colW("flagged") }} />}
-        {col("poStatus") && (
-          <th className="group/th relative py-2.5 pr-2 text-center" style={{ width: colW("poStatus") }}>
-            <button type="button" onClick={() => handleColumnSort("poStatus")} className="flex items-center justify-center w-full cursor-pointer hover:text-white/60">
-              PO<SortIndicator colId="poStatus" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("poStatus")}
-          </th>
-        )}
-        {col("quality") && (
-          <th className="group/th relative py-2.5 pr-3" style={{ width: colW("quality") }}>
-            <button type="button" onClick={() => handleColumnSort("quality")} className="flex items-center cursor-pointer hover:text-white/60">
-              QS<SortIndicator colId="quality" sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-            </button>
-            {rh("quality")}
-          </th>
-        )}
-        {col("notes") && <th className="py-2.5 pr-2" style={{ width: colW("notes") }} />}
-        {onColumnToggle && (
-          <th className="w-8 py-2.5 pr-5">
-            <div className="flex justify-end">
-              <ColumnToggle visible={visibleColumns} onChange={onColumnToggle} />
-            </div>
-          </th>
-        )}
+        {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>
     </thead>
   );

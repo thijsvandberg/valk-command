@@ -1,24 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversation, message } from "@/db/schema";
-import { desc, isNull, or, sql } from "drizzle-orm";
+import { conversation } from "@/db/schema";
 import { randomUUID } from "crypto";
+import { preparedConversationList } from "@/db/prepared";
 
 export async function GET() {
   // Story writer conversations (relatedTicket is set) are only shown once the user
   // has actually sent a message. Conversations without relatedTicket (regular chat)
   // are always shown.
-  const result = await db
-    .select()
-    .from(conversation)
-    .where(
-      or(
-        isNull(conversation.relatedTicket),
-        sql`EXISTS (SELECT 1 FROM ${message} WHERE ${message.conversationId} = ${conversation.id})`,
-      ),
-    )
-    .orderBy(desc(conversation.createdAt));
-
+  const result = preparedConversationList();
   return NextResponse.json(result);
 }
 

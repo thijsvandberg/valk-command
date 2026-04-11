@@ -30,6 +30,11 @@ vi.mock("@/hooks/useWorkspaceHealth", () => ({
   }),
 }));
 
+vi.mock("@/lib/prefetch", () => ({
+  prefetchConversation: vi.fn(),
+  cancelAllPrefetches: vi.fn(),
+}));
+
 const mockConversation = {
   id: "conv-1",
   title: "Test conversation",

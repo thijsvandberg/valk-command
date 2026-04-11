@@ -16,7 +16,7 @@ import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
-import { prefetchTicketList } from "@/lib/prefetch";
+import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
@@ -25,6 +25,8 @@ import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/sha
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useColumnWidths } from "@/hooks/useColumnWidths";
+import { useColumnConfig } from "@/hooks/useColumnConfig";
+import type { ColumnId } from "@/components/sprint-board/FilterBar";
 
 export default function SprintBoard() {
   const { data: rawJiraSprints } = useJiraSprints();
@@ -80,7 +82,8 @@ export default function SprintBoard() {
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
 
   const { widths: columnWidths, setColumnWidth, resetColumnWidth } = useColumnWidths();
-  const f = useSprintBoardFilters(allTickets, poStatuses, isAllView, poPriorityOrder);
+  const { order: columnOrder, visible: columnVisible, setColumnOrder, toggleColumn } = useColumnConfig();
+  const f = useSprintBoardFilters(allTickets, poStatuses, isAllView, poPriorityOrder, columnVisible);
   const tickets = f.sortedTickets;
 
   const activeSprint = isAllView ? null : sprints.find((s) => s.id === activeSprintId);
@@ -113,6 +116,13 @@ export default function SprintBoard() {
     if (prevSlot) prefetchTicketList(prevSlot);
     if (nextSlot) prefetchTicketList(nextSlot);
   }, [activeSlot, slotSprints, isAllView]);
+
+  // Prefetch first 5 ticket details for instant side panel opens
+  useEffect(() => {
+    if (!allTickets || allTickets.length === 0) return;
+    allTickets.slice(0, 5).forEach((t) => prefetchTicketDetail(t.key));
+    return () => cancelAllPrefetches();
+  }, [allTickets]);
 
   useEffect(() => { return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }; }, []);
 
@@ -283,6 +293,18 @@ export default function SprintBoard() {
     } finally { setSyncing(false); }
   }, [slotSprints, activeSlot, showToast, mutateTickets]);
 
+  const handleColumnReorder = useCallback((activeId: ColumnId, overId: ColumnId) => {
+    setColumnOrder((prev) => {
+      const oldIndex = prev.indexOf(activeId);
+      const newIndex = prev.indexOf(overId);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = [...prev];
+      next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, activeId);
+      return next;
+    });
+  }, [setColumnOrder]);
+
   const handleReorderSlots = useCallback((activeId: string, overId: string) => {
     setSlotSprints((prev) => {
       const oldIndex = prev.indexOf(activeId); const newIndex = prev.indexOf(overId);
@@ -429,12 +451,12 @@ export default function SprintBoard() {
           </ViewHeader>
         )}
 
-        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} />
+        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} />
 
         {!barsCollapsed && (
           <>
             <div className="border-b border-white/[0.06]">
-              <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+              <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
             </div>
             {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
           </>
@@ -444,7 +466,7 @@ export default function SprintBoard() {
           <LoadingState variant="spinner" label="Loading tickets..." />
         )}
 
-        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} showSprintColumn={isAllView || !!f.activeViewId} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} onColumnToggle={f.handleColumnToggle} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} />}
+        {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} />}
 
         {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
       </div>

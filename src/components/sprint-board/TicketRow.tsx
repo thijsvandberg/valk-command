@@ -4,6 +4,7 @@ import { forwardRef, useRef, useCallback } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
+import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { GripVertical, Flag, MessageSquare, Star, Rocket, GitBranch } from "lucide-react";
@@ -13,13 +14,15 @@ import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
 import { prefetchTicketDetail } from "@/lib/prefetch";
 
+const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
+
 function DragHandle({ listeners, attributes }: { listeners?: ReturnType<typeof useSortable>["listeners"]; attributes?: ReturnType<typeof useSortable>["attributes"] }) {
   if (!listeners) {
-    return <td className="w-5 py-2 pl-1 pr-0" />;
+    return <td className="w-5 py-1.5 pl-1 pr-0" />;
   }
   return (
     <td
-      className="w-5 py-2 pl-1 pr-0 opacity-0 transition-opacity duration-100 group-hover/row:opacity-100 cursor-grab active:cursor-grabbing"
+      className="w-5 py-1.5 pl-1 pr-0 opacity-0 transition-opacity duration-100 group-hover/row:opacity-100 cursor-grab active:cursor-grabbing"
       {...listeners}
       {...attributes}
     >
@@ -39,7 +42,6 @@ export interface TicketRowBaseProps {
   someChecked: boolean;
   isDragActive: boolean;
   col: (id: ColumnId) => boolean;
-  showSprintColumn: boolean;
   sprintNameMap: Record<string, string>;
   poStatuses: Record<string, POStatus>;
   selectedTicket: string | null;
@@ -50,6 +52,7 @@ export interface TicketRowBaseProps {
   onPoStatusChange: (key: string, status: POStatus) => void;
   reviewPopoverKey: string | null;
   onToggleReviewPopover: (key: string) => void;
+  columnOrder?: ColumnId[];
   rowStyle?: React.CSSProperties;
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
@@ -68,7 +71,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     someChecked,
     isDragActive,
     col,
-    showSprintColumn,
     sprintNameMap,
     poStatuses,
     selectedTicket,
@@ -79,6 +81,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     onPoStatusChange,
     reviewPopoverKey,
     onToggleReviewPopover,
+    columnOrder,
     rowStyle,
     dragListeners,
     dragAttributes,
@@ -121,6 +124,187 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     ...rowStyle,
   };
 
+  const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
+
+  const renderCell = (id: ColumnId) => {
+    if (!col(id)) return null;
+    switch (id) {
+      case "type":
+        return (
+          <td key={id} className="py-1.5 pr-2">
+            <IssueTypeIcon type={ticket.type} />
+          </td>
+        );
+      case "key":
+        return (
+          <td key={id} className="py-1.5 pr-3 font-mono text-xs text-white/50 leading-none">
+            <span className="flex items-center gap-1.5">
+              {ticket.key}
+              {ticket.editState === "draft" && <EditStateDot state="draft" />}
+              {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
+              {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isFollowed ? unfollow(ticket.key) : follow(ticket.key);
+                }}
+                className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
+                  isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"
+                }`}
+                title={isFollowed ? "Unfollow" : "Follow for notifications"}
+              >
+                <Star
+                  size={11}
+                  strokeWidth={1.5}
+                  className={isFollowed ? "text-amber-400 fill-amber-400" : "text-white/40"}
+                />
+              </button>
+            </span>
+          </td>
+        );
+      case "title":
+        return (
+          <td key={id} className="max-w-0 truncate py-1.5 pr-3 text-white/80">
+            {ticket.title}
+          </td>
+        );
+      case "epic":
+        return (
+          <td key={id} className="py-1.5 pr-3 overflow-hidden">
+            {epicColor && (
+              <span
+                className="inline-block max-w-full truncate whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
+              >
+                {ticket.epic}
+              </span>
+            )}
+          </td>
+        );
+      case "jiraStatus":
+        return (
+          <td key={id} className="py-1.5 pr-3 overflow-hidden">
+            {isRemoved ? (
+              <span className="inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-400/70">
+                REMOVED
+              </span>
+            ) : (
+              <span
+                className="inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
+              >
+                {ticket.jiraStatus}
+              </span>
+            )}
+          </td>
+        );
+      case "sprint":
+        return (
+          <td key={id} className="py-1.5 pr-3 text-xs text-white/35 truncate">
+            {ticket.sprintId
+              ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId)
+              : <span className="text-white/15">&#8212;</span>}
+          </td>
+        );
+      case "points":
+        return (
+          <td key={id} className="py-1.5 pr-3 text-center tabular-nums text-white/30">
+            {ticket.storyPoints ?? "-"}
+          </td>
+        );
+      case "assignee":
+        return (
+          <td key={id} className="py-1.5 pr-3">
+            <Avatar assignee={ticket.assignee} />
+          </td>
+        );
+      case "flagged":
+        return (
+          <td key={id} className="py-1.5 pr-2">
+            {ticket.flagged && <Flag className="h-3.5 w-3.5 text-[#e5534b]" fill="currentColor" strokeWidth={0} />}
+          </td>
+        );
+      case "poStatus":
+        return (
+          <td
+            key={id}
+            className="py-1.5 pr-2 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <POStatusCell
+              value={poStatuses[ticket.key] ?? null}
+              onChange={(v) => onPoStatusChange(ticket.key, v)}
+            />
+          </td>
+        );
+      case "quality":
+        return (
+          <td
+            key={id}
+            className="py-1.5 pr-3 text-xs tabular-nums leading-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QualityBadge
+              score={ticket.qualityScore}
+              ticketKey={ticket.key}
+              isPopoverOpen={reviewPopoverKey === ticket.key}
+              onTogglePopover={() => onToggleReviewPopover(ticket.key)}
+            />
+          </td>
+        );
+      case "notes":
+        return (
+          <td key={id} className="py-1.5 pr-2">
+            {ticket.notes && (
+              <span title={ticket.notes}>
+                <MessageSquare className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
+              </span>
+            )}
+          </td>
+        );
+      case "pipeline":
+        return (
+          <td key={id} className="py-1.5 px-2">
+            <div className="flex items-center gap-1.5">
+              {health && health.status !== "gray" && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                    health.status === "green"
+                      ? "bg-emerald-500/10 text-emerald-400/70"
+                      : health.status === "red"
+                      ? "bg-red-500/10 text-red-400/70"
+                      : "bg-amber-500/10 text-amber-400/70"
+                  }`}
+                  title={`Pipeline health: ${health.recentFails} failures in last ${health.recentTotal} runs`}
+                >
+                  <GitBranch size={9} strokeWidth={1.5} />
+                  {health.recentFails > 0 && health.recentFails}
+                </span>
+              )}
+              {lastDeploy && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                    lastDeploy.state === "SUCCESSFUL"
+                      ? "bg-emerald-500/10 text-emerald-400/70"
+                      : lastDeploy.state === "FAILED"
+                      ? "bg-red-500/10 text-red-400/70"
+                      : "bg-white/[0.04] text-white/30"
+                  }`}
+                  title={`Last deployed: ${lastDeploy.environment ?? "unknown"} (${lastDeploy.completedAt ? new Date(lastDeploy.completedAt).toLocaleString("en-GB") : ""})`}
+                >
+                  <Rocket size={9} strokeWidth={1.5} />
+                  {lastDeploy.environment?.slice(0, 4)}
+                </span>
+              )}
+            </div>
+          </td>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <tr
       ref={ref}
@@ -150,193 +334,27 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
 
       {/* Checkbox */}
       <td
-        className="cursor-pointer select-none py-2 pl-1 pr-1"
+        className="cursor-pointer select-none py-1.5 pl-1 pr-1"
         onClick={(e) => {
           e.stopPropagation();
           onCheckboxClick(ticket.key, ticketIdx, e.shiftKey);
         }}
       >
         <div
-          className="flex h-6 w-6 items-center justify-center transition-opacity duration-100"
+          className="flex items-center justify-center transition-opacity duration-100"
           style={{ opacity: showCheckbox ? 1 : 0 }}
         >
           <input
             type="checkbox"
             checked={isChecked}
             readOnly
-            className="pointer-events-none h-3.5 w-3.5 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)]"
+            className="pointer-events-none h-3 w-3 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)]"
           />
         </div>
       </td>
 
-      {col("type") && (
-        <td className="py-2 pr-2">
-          <IssueTypeIcon type={ticket.type} />
-        </td>
-      )}
+      {effectiveOrder.map(renderCell)}
 
-      {col("key") && (
-        <td className="py-2 pr-3 font-mono text-xs text-white/50">
-          <span className="flex items-center gap-1.5">
-            {ticket.key}
-            {ticket.editState === "draft" && <EditStateDot state="draft" />}
-            {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
-            {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                isFollowed ? unfollow(ticket.key) : follow(ticket.key);
-              }}
-              className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
-                isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"
-              }`}
-              title={isFollowed ? "Unfollow" : "Follow for notifications"}
-            >
-              <Star
-                size={11}
-                strokeWidth={1.5}
-                className={isFollowed ? "text-amber-400 fill-amber-400" : "text-white/40"}
-              />
-            </button>
-          </span>
-        </td>
-      )}
-
-      {col("title") && (
-        <td className="max-w-0 truncate py-2 pr-3 text-white/80">
-          {ticket.title}
-        </td>
-      )}
-
-      {col("epic") && (
-        <td className="py-2 pr-3">
-          {epicColor && (
-            <span
-              className="inline-block max-w-full truncate rounded px-1.5 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
-            >
-              {ticket.epic}
-            </span>
-          )}
-        </td>
-      )}
-
-      {col("jiraStatus") && (
-        <td className="py-2 pr-3">
-          {isRemoved ? (
-            <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-400/70">
-              REMOVED
-            </span>
-          ) : (
-            <span
-              className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
-            >
-              {ticket.jiraStatus}
-            </span>
-          )}
-        </td>
-      )}
-
-      {showSprintColumn && (
-        <td className="py-2 pr-3 text-xs text-white/35 truncate max-w-[140px]">
-          {ticket.sprintId
-            ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId)
-            : <span className="text-white/15">—</span>}
-        </td>
-      )}
-
-      {col("points") && (
-        <td className="py-2 pr-3 text-center tabular-nums text-white/30">
-          {ticket.storyPoints ?? "-"}
-        </td>
-      )}
-
-      {col("assignee") && (
-        <td className="py-2 pr-3">
-          <Avatar assignee={ticket.assignee} />
-        </td>
-      )}
-
-      {col("flagged") && (
-        <td className="py-2 pr-2">
-          {ticket.flagged && <Flag className="h-3.5 w-3.5 text-[#e5534b]" fill="currentColor" strokeWidth={0} />}
-        </td>
-      )}
-
-      {col("poStatus") && (
-        <td
-          className="py-2 pr-2 text-center"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <POStatusCell
-            value={poStatuses[ticket.key] ?? null}
-            onChange={(v) => onPoStatusChange(ticket.key, v)}
-          />
-        </td>
-      )}
-
-      {col("quality") && (
-        <td
-          className="py-2 pr-3 text-xs tabular-nums"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <QualityBadge
-            score={ticket.qualityScore}
-            ticketKey={ticket.key}
-            isPopoverOpen={reviewPopoverKey === ticket.key}
-            onTogglePopover={() => onToggleReviewPopover(ticket.key)}
-          />
-        </td>
-      )}
-
-      {col("notes") && (
-        <td className="py-2 pr-2">
-          {ticket.notes && (
-            <span title={ticket.notes}>
-              <MessageSquare className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
-            </span>
-          )}
-        </td>
-      )}
-      {/* Pipeline health + last deployed */}
-      <td className="py-2 pr-2">
-        <div className="flex items-center gap-1">
-          {health && health.status !== "gray" && (
-            <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-                health.status === "green"
-                  ? "bg-emerald-500/10 text-emerald-400/70"
-                  : health.status === "red"
-                  ? "bg-red-500/10 text-red-400/70"
-                  : "bg-amber-500/10 text-amber-400/70"
-              }`}
-              title={`Pipeline health: ${health.recentFails} failures in last ${health.recentTotal} runs`}
-            >
-              <GitBranch size={9} strokeWidth={1.5} />
-              {health.recentFails > 0 && health.recentFails}
-            </span>
-          )}
-          {lastDeploy && (
-            <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-                lastDeploy.state === "SUCCESSFUL"
-                  ? "bg-emerald-500/10 text-emerald-400/70"
-                  : lastDeploy.state === "FAILED"
-                  ? "bg-red-500/10 text-red-400/70"
-                  : "bg-white/[0.04] text-white/30"
-              }`}
-              title={`Last deployed: ${lastDeploy.environment ?? "unknown"} (${lastDeploy.completedAt ? new Date(lastDeploy.completedAt).toLocaleString("en-GB") : ""})`}
-            >
-              <Rocket size={9} strokeWidth={1.5} />
-              {lastDeploy.environment?.slice(0, 4)}
-            </span>
-          )}
-        </div>
-      </td>
-      {/* Spacer cell to match ColumnToggle header column */}
-      <td className="w-8" />
     </tr>
   );
 });

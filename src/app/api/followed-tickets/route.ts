@@ -6,7 +6,7 @@ import { randomUUID } from "crypto";
 
 // GET /api/followed-tickets - list all followed ticket keys
 export async function GET() {
-  const rows = db.select().from(followedTicket).all();
+  const rows = db.select().from(followedTicket).limit(500).all();
   return NextResponse.json(rows.map((r) => r.ticketKey));
 }
 

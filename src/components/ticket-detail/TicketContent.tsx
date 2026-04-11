@@ -724,19 +724,30 @@ export function CommentsSection({
 
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim()) return;
+    const content = newComment.trim();
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimistic = {
+      id: optimisticId,
+      author: "Product Owner",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    setPoComments((prev) => [...prev, optimistic]);
+    setNewComment("");
+
     try {
       const res = await fetch(`/api/tickets/${ticketKey}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newComment.trim() }),
+        body: JSON.stringify({ content }),
       });
-      if (res.ok) {
-        const created = await res.json();
-        setPoComments((prev) => [...prev, created]);
-        setNewComment("");
-      }
-    } catch (err) {
-      console.error("Operation failed:", err);
+      if (!res.ok) throw new Error("Failed to post comment");
+      const created = await res.json();
+      setPoComments((prev) =>
+        prev.map((c) => (c.id === optimisticId ? created : c))
+      );
+    } catch {
+      setPoComments((prev) => prev.filter((c) => c.id !== optimisticId));
     }
   }, [ticketKey, newComment]);
 
@@ -790,15 +801,17 @@ export function CommentsSection({
           </div>
 
           {/* Existing PO comments */}
-          {poComments.map((comment) => (
-            <div key={comment.id} className="group flex gap-3">
+          {poComments.map((comment) => {
+            const isSending = comment.id.startsWith("optimistic-");
+            return (
+            <div key={comment.id} className={`group flex gap-3 ${isSending ? "opacity-50" : ""}`}>
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-[10px] font-semibold text-white">
                 PO
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-white/60">{comment.author || "Product Owner"}</span>
-                  <span className="text-[10px] text-white/25">{new Date(comment.createdAt).toLocaleString()}</span>
+                  <span className="text-[10px] text-white/25">{isSending ? "Posting..." : new Date(comment.createdAt).toLocaleString()}</span>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -812,7 +825,8 @@ export function CommentsSection({
                 <div className="description-content mt-1 text-sm leading-[1.7] text-white/50">{renderMarkdown(comment.content)}</div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {!loading && poComments.length === 0 && !newComment.trim() && (
             <p className="pl-10 text-xs text-white/20">No comments yet</p>

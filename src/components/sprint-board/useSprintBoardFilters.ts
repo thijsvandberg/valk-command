@@ -28,6 +28,7 @@ export function useSprintBoardFilters(
   poStatuses: Record<string, POStatus>,
   isAllView: boolean,
   poPriorityOrder: string[] | null,
+  externalVisible?: Set<ColumnId>,
 ) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -77,7 +78,7 @@ export function useSprintBoardFilters(
     setStoredSort((prev) => ({ ...prev, direction: d }));
   }, [setStoredSort]);
 
-  const visibleColumns = useMemo(() => new Set(storedColumns), [storedColumns]);
+  const visibleColumns = useMemo(() => externalVisible ?? new Set(storedColumns), [externalVisible, storedColumns]);
   const setVisibleColumns = useCallback((updater: (prev: Set<ColumnId>) => Set<ColumnId>) => {
     setStoredColumns((prev) => [...updater(new Set(prev))]);
   }, [setStoredColumns]);
@@ -140,7 +141,9 @@ export function useSprintBoardFilters(
         });
         return sorted;
       }
-      return filteredTickets;
+      const sorted = [...filteredTickets];
+      sorted.sort((a, b) => (a.jiraRank ?? Infinity) - (b.jiraRank ?? Infinity));
+      return sorted;
     }
     const sorted = [...filteredTickets];
     const dir = sortDir === "asc" ? 1 : -1;

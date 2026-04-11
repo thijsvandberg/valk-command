@@ -164,6 +164,7 @@ export default function Sidebar() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    prefetch={true}
                     onClick={() => setMobileOpen(false)}
                     className={`group flex items-center ${collapsed ? "justify-center" : "gap-3"} rounded-lg ${collapsed ? "px-0 py-2.5" : "px-3 py-2.5"} text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       active

@@ -24,11 +24,13 @@ export function usePipelines(filters?: {
   repo?: string;
   ticketKey?: string;
   sprintTickets?: string[];
+  unlinked?: boolean;
   limit?: number;
 }) {
   const params = new URLSearchParams();
   if (filters?.repo) params.set("repo", filters.repo);
   if (filters?.ticketKey) params.set("ticketKey", filters.ticketKey);
+  if (filters?.unlinked) params.set("unlinked", "true");
   if (filters?.sprintTickets?.length) params.set("sprintTickets", filters.sprintTickets.join(","));
   if (filters?.limit) params.set("limit", String(filters.limit));
 

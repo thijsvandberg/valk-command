@@ -37,7 +37,7 @@ export function userColor(name: string): string {
   return `hsl(${hue}, 55%, 50%)`;
 }
 
-export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: AbortSignal) {
+export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: AbortSignal, jiraRank?: number) {
   const fields = issue.fields;
   const storyPoints = extractStoryPoints(fields);
   const epicData = extractEpicLink(fields);
@@ -127,6 +127,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     labels: fields.labels.length > 0 ? JSON.stringify(fields.labels) : null,
     priority,
     components: componentsJson,
+    jiraRank: jiraRank ?? null,
     jiraCreatedAt: fields.created ?? null,
     jiraUpdatedAt: fields.updated ?? null,
     lastSyncedAt: now,

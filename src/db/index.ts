@@ -2,8 +2,11 @@ import Database from "better-sqlite3";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { resolve } from "path";
+import { statSync } from "fs";
 import * as schema from "./schema";
 import { env } from "@/lib/env";
+
+const VACUUM_THRESHOLD_MB = 100;
 
 let _db: BetterSQLite3Database<typeof schema> | null = null;
 
@@ -24,6 +27,19 @@ function getDb() {
     migrate(_db, { migrationsFolder: resolve(process.cwd(), "drizzle") });
     // Let SQLite analyze index statistics for optimal query planning
     sqlite.pragma("optimize");
+
+    // Suggest VACUUM when DB file exceeds threshold
+    try {
+      const sizeMb = statSync(env.DB_PATH).size / (1024 * 1024);
+      if (sizeMb > VACUUM_THRESHOLD_MB) {
+        console.warn(
+          `[db-maintenance] Database is ${Math.round(sizeMb)}MB (threshold: ${VACUUM_THRESHOLD_MB}MB). ` +
+          `Consider running VACUUM to reclaim space.`,
+        );
+      }
+    } catch {
+      // File stat failed, skip check
+    }
   }
   return _db;
 }

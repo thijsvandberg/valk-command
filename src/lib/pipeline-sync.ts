@@ -203,15 +203,18 @@ export async function backfillEnrichment(): Promise<number> {
 
     // Re-extract ticket keys
     const branchName = row.branchName ?? "";
+    const mergeInfo = extractMergeInfo(commitMsg);
     let primaryKey = extractTicketKey(branchName);
     const allKeys: string[] = [];
     if (primaryKey) allKeys.push(primaryKey);
     for (const k of extractAllTicketKeys(commitMsg)) {
       if (!allKeys.includes(k)) allKeys.push(k);
     }
+    if (mergeInfo.sourceBranch) {
+      const sbKey = extractTicketKey(mergeInfo.sourceBranch);
+      if (sbKey && !allKeys.includes(sbKey)) allKeys.push(sbKey);
+    }
     if (!primaryKey && allKeys.length > 0) primaryKey = allKeys[0];
-
-    const mergeInfo = extractMergeInfo(commitMsg);
 
     db.update(pipelineRun)
       .set({
@@ -242,16 +245,20 @@ export async function backfillEnrichment(): Promise<number> {
   for (const row of needsReExtraction) {
     const branchName = row.branchName ?? "";
     const msg = row.commitMessage ?? "";
+    const mergeInfo = extractMergeInfo(msg);
     let primaryKey = extractTicketKey(branchName);
     const allKeys: string[] = [];
     if (primaryKey) allKeys.push(primaryKey);
     for (const k of extractAllTicketKeys(msg)) {
       if (!allKeys.includes(k)) allKeys.push(k);
     }
+    if (mergeInfo.sourceBranch) {
+      const sbKey = extractTicketKey(mergeInfo.sourceBranch);
+      if (sbKey && !allKeys.includes(sbKey)) allKeys.push(sbKey);
+    }
     if (!primaryKey && allKeys.length > 0) primaryKey = allKeys[0];
 
     if (primaryKey) {
-      const mergeInfo = extractMergeInfo(msg);
       db.update(pipelineRun)
         .set({
           ticketKey: primaryKey,
@@ -392,12 +399,17 @@ export async function syncPipelines(): Promise<SyncResult> {
     const branchName = p.target?.ref_name ?? "";
     const msg = commitMessages[idx];
     const firstLine = msg ? msg.split("\n")[0].substring(0, 200) : null;
+    const mergeInfo = msg ? extractMergeInfo(msg) : { sourceBranch: null, prNumber: null };
     let primaryKey = extractTicketKey(branchName);
     const allKeys: string[] = [];
     if (primaryKey) allKeys.push(primaryKey);
     if (msg) for (const k of extractAllTicketKeys(msg)) if (!allKeys.includes(k)) allKeys.push(k);
+    // Fallback: extract from sourceBranch when direct branch/message extraction missed it
+    if (mergeInfo.sourceBranch) {
+      const sbKey = extractTicketKey(mergeInfo.sourceBranch);
+      if (sbKey && !allKeys.includes(sbKey)) allKeys.push(sbKey);
+    }
     if (!primaryKey && allKeys.length > 0) primaryKey = allKeys[0];
-    const mergeInfo = msg ? extractMergeInfo(msg) : { sourceBranch: null, prNumber: null };
     return { ticketKey: primaryKey, ticketKeys: allKeys.length > 1 ? allKeys : null, commitMessage: firstLine, ...mergeInfo };
   });
 

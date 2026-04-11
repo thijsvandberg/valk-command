@@ -39,6 +39,15 @@ export function useConversations(): UseConversationsReturn {
   const createConversation = useCallback(
     async (title?: string): Promise<Conversation | null> => {
       setError(null);
+      const optimisticId = `optimistic-${Date.now()}`;
+      const optimistic: Conversation = {
+        id: optimisticId,
+        title: title || "New conversation",
+        createdAt: new Date().toISOString(),
+        relatedTicket: null,
+      };
+      setConversations((prev) => [optimistic, ...prev]);
+
       try {
         const res = await fetch("/api/conversations", {
           method: "POST",
@@ -47,9 +56,12 @@ export function useConversations(): UseConversationsReturn {
         });
         if (!res.ok) throw new Error("Failed to create conversation");
         const conversation: Conversation = await res.json();
-        setConversations((prev) => [conversation, ...prev]);
+        setConversations((prev) =>
+          prev.map((c) => (c.id === optimisticId ? conversation : c))
+        );
         return conversation;
       } catch (err) {
+        setConversations((prev) => prev.filter((c) => c.id !== optimisticId));
         setError(err instanceof Error ? err.message : "Unknown error");
         return null;
       }
