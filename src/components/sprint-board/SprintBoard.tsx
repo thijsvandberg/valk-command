@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { POStatus } from "@/types/ticket";
+import type { POStatus, Sprint } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import { FilterBar } from "@/components/sprint-board/FilterBar";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
@@ -19,7 +19,7 @@ import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories 
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -29,10 +29,78 @@ import {
   useSensors,
   closestCenter,
   pointerWithin,
+  useDroppable,
   type DragStartEvent,
   type DragEndEvent,
   type CollisionDetection,
 } from "@dnd-kit/core";
+
+// Sprint drop zone shown when a ticket is being dragged -- appears below the sprint tab bar
+// so the ghost card never covers it.
+
+function SprintDropTile({
+  sprintId,
+  sprint,
+  isCurrentSprint,
+}: {
+  sprintId: string;
+  sprint: Sprint;
+  isCurrentSprint: boolean;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `sprint-slot:${sprintId}`,
+    data: { type: "sprint-slot", sprintId },
+    disabled: isCurrentSprint,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex min-w-[80px] flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-xs font-medium transition-colors duration-100 ${
+        isCurrentSprint
+          ? "border-white/[0.03] text-white/15"
+          : isOver
+          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/12 text-[var(--color-brand-300)]"
+          : "border-white/[0.06] bg-white/[0.025] text-white/35"
+      }`}
+    >
+      {!isCurrentSprint && (
+        <ArrowRight size={10} strokeWidth={1.5} className="shrink-0 opacity-50" />
+      )}
+      <span className="truncate">{sprint.name}</span>
+    </div>
+  );
+}
+
+function SprintDropZoneBar({
+  sprints,
+  slotSprints,
+  activeSprintId,
+}: {
+  sprints: Sprint[];
+  slotSprints: string[];
+  activeSprintId: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-5 py-2">
+      <span className="mr-1 shrink-0 text-[10px] font-medium uppercase tracking-widest text-white/20">
+        Move to:
+      </span>
+      {slotSprints.map((sprintId) => {
+        const sprint = sprints.find((s) => s.id === sprintId);
+        if (!sprint) return null;
+        return (
+          <SprintDropTile
+            key={sprintId}
+            sprintId={sprintId}
+            sprint={sprint}
+            isCurrentSprint={sprintId === activeSprintId}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 // Prioritise sprint-slot droppables when the pointer is inside them;
 // fall back to closestCenter for ticket row reordering.
@@ -626,7 +694,16 @@ export default function SprintBoard() {
             onDragStart={handleBoardDragStart}
             onDragEnd={handleBoardDragEnd}
           >
-            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} ticketDragActive={true} activeSprintId={activeSprintId} />
+            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} />
+
+            {/* Sprint drop zone bar -- slides in when dragging a ticket, gives clear targets */}
+            {boardActiveDragId && (
+              <SprintDropZoneBar
+                sprints={sprints}
+                slotSprints={slotSprints}
+                activeSprintId={activeSprintId}
+              />
+            )}
 
             {!barsCollapsed && (
               <>

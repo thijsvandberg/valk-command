@@ -13,7 +13,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -180,64 +179,6 @@ function SortableTab({
   );
 }
 
-// -- Droppable tab for ticket-to-sprint drag (no own DndContext, registers with parent) --
-
-function DroppableSprintTab({
-  sprintId,
-  sprint,
-  isActive,
-  isCurrentSprint,
-  onClick,
-}: {
-  sprintId: string;
-  sprint: Sprint;
-  isActive: boolean;
-  isCurrentSprint: boolean;
-  onClick: () => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `sprint-slot:${sprintId}`,
-    data: { type: "sprint-slot", sprintId },
-    disabled: isCurrentSprint,
-  });
-
-  return (
-    <div ref={setNodeRef} className="relative shrink-0">
-      <button
-        type="button"
-        onClick={onClick}
-        style={{
-          transform: isOver ? "scale(1.04)" : undefined,
-          opacity: isCurrentSprint ? 0.35 : 1,
-          transition: "transform 150ms ease, opacity 150ms ease",
-        }}
-        className={`relative flex items-center gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-          isActive
-            ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
-            : "text-white/35"
-        } ${isOver && !isCurrentSprint ? "text-[var(--color-brand-300)]" : ""}`}
-      >
-        {sprint.state === "active" && (
-          <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-white/20"}`} />
-        )}
-        {isOver && !isCurrentSprint ? (
-          <span className="text-[var(--color-brand-300)]">Move to {sprint.name}</span>
-        ) : (
-          sprint.name
-        )}
-      </button>
-      {isOver && !isCurrentSprint && (
-        <span
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 rounded-full"
-          style={{
-            background: "var(--color-brand-400)",
-            boxShadow: "0 0 8px 2px color-mix(in srgb, var(--color-brand-400) 40%, transparent)",
-          }}
-        />
-      )}
-    </div>
-  );
-}
 
 export function SprintSlots({
   slotSprints,
@@ -268,8 +209,6 @@ export function SprintSlots({
   columnOrder,
   onColumnToggle,
   onColumnReorder,
-  ticketDragActive = false,
-  activeSprintId,
 }: {
   slotSprints: string[];
   activeSlot: number;
@@ -299,10 +238,6 @@ export function SprintSlots({
   columnOrder?: ColumnId[];
   onColumnToggle?: (id: ColumnId, show: boolean) => void;
   onColumnReorder?: (activeId: ColumnId, overId: ColumnId) => void;
-  // When true, sprint slot tabs render as droppable targets (no own DndContext).
-  // The caller (SprintBoard) owns the DndContext in this mode.
-  ticketDragActive?: boolean;
-  activeSprintId?: string;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -357,63 +292,43 @@ export function SprintSlots({
       {/* Divider between All/saved views and sprint tabs */}
       <span className="mx-1 h-4 w-px bg-white/[0.07] self-center shrink-0" />
 
-      {ticketDragActive ? (
-        // Droppable mode: register with the parent DndContext for ticket-to-sprint drops
-        slotSprints.map((sprintId, idx) => {
-          const sprint = sprints.find((s) => s.id === sprintId);
-          if (!sprint) return null;
-          const isActive = !activeViewId && idx === activeSlot;
-          return (
-            <DroppableSprintTab
-              key={sprintId}
-              sprintId={sprintId}
-              sprint={sprint}
-              isActive={isActive}
-              isCurrentSprint={sprintId === activeSprintId}
-              onClick={() => onSlotClick(idx)}
-            />
-          );
-        })
-      ) : (
-        // Sortable mode: own DndContext for tab reorder
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={slotSprints}
+          strategy={horizontalListSortingStrategy}
         >
-          <SortableContext
-            items={slotSprints}
-            strategy={horizontalListSortingStrategy}
-          >
-            {slotSprints.map((sprintId, idx) => {
-              const sprint = sprints.find((s) => s.id === sprintId);
-              if (!sprint) return null;
-              const isActive = !activeViewId && idx === activeSlot;
-              return (
-                <div key={sprintId} className="relative shrink-0">
-                  <SortableTab
-                    sprintId={sprintId}
-                    sprint={sprint}
-                    isActive={isActive}
-                    onClick={() => onSlotClick(idx)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      onSlotEdit(idx);
-                    }}
+          {slotSprints.map((sprintId, idx) => {
+            const sprint = sprints.find((s) => s.id === sprintId);
+            if (!sprint) return null;
+            const isActive = !activeViewId && idx === activeSlot;
+            return (
+              <div key={sprintId} className="relative shrink-0">
+                <SortableTab
+                  sprintId={sprintId}
+                  sprint={sprint}
+                  isActive={isActive}
+                  onClick={() => onSlotClick(idx)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    onSlotEdit(idx);
+                  }}
+                />
+                {editingSlot === idx && (
+                  <SprintSelector
+                    sprints={sprints}
+                    onSelect={onSprintSelect}
+                    onClose={onEditClose}
                   />
-                  {editingSlot === idx && (
-                    <SprintSelector
-                      sprints={sprints}
-                      onSelect={onSprintSelect}
-                      onClose={onEditClose}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </SortableContext>
-        </DndContext>
-      )}
+                )}
+              </div>
+            );
+          })}
+        </SortableContext>
+      </DndContext>
 
       {/* Ephemeral (unpinned) sprint tab */}
       {ephemeralSprintId && (() => {
