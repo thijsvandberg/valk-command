@@ -16,13 +16,13 @@ import { prefetchTicketDetail } from "@/lib/prefetch";
 
 const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
 
-function DragHandle({ listeners, attributes }: { listeners?: ReturnType<typeof useSortable>["listeners"]; attributes?: ReturnType<typeof useSortable>["attributes"] }) {
+function DragHandle({ listeners, attributes, isDragActive }: { listeners?: ReturnType<typeof useSortable>["listeners"]; attributes?: ReturnType<typeof useSortable>["attributes"]; isDragActive?: boolean }) {
   if (!listeners) {
     return <td className="w-5 py-1.5 pl-1 pr-0" />;
   }
   return (
     <td
-      className="w-5 py-1.5 pl-1 pr-0 opacity-0 transition-opacity duration-100 group-hover/row:opacity-100 cursor-grab active:cursor-grabbing"
+      className={`w-5 py-1.5 pl-1 pr-0 opacity-0 transition-opacity duration-100 cursor-grab active:cursor-grabbing ${isDragActive ? "" : "group-hover/row:opacity-100"}`}
       {...listeners}
       {...attributes}
     >
@@ -99,7 +99,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const { data: healthMap } = usePipelineHealth();
   const health = healthMap?.[ticket.key];
 
-  const showCheckbox = isChecked || isHovered || someChecked;
+  // Suppress hover-based UI (checkbox, drag handle) on non-active rows during any drag
+  const showCheckbox = isChecked || (isHovered && !isDragActive) || someChecked;
   const isRemoved = Boolean(ticket.removedFromJiraAt);
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
@@ -337,7 +338,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           : ""
       } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
     >
-      <DragHandle listeners={dragListeners} attributes={dragAttributes} />
+      <DragHandle listeners={dragListeners} attributes={dragAttributes} isDragActive={isDragActive} />
 
       {/* Checkbox */}
       <td
@@ -379,11 +380,11 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
   const rowStyle: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: transition ?? undefined,
+    // Keep placeholder visible so the row occupies its space and other rows don't shift
     ...(isDragging ? {
-      opacity: 0.12,
-      outline: "1px dashed rgba(255,255,255,0.12)",
+      opacity: 0.3,
+      outline: "1px dashed rgba(255,255,255,0.08)",
       outlineOffset: "-1px",
-      zIndex: 10,
     } : {}),
   };
 

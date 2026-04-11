@@ -395,8 +395,10 @@ export function TicketTable({
   const activeInsertIdx = externalActiveDragId ? tickets.findIndex((t) => t.key === externalActiveDragId) : -1;
   const overInsertIdx = dragOverKey ? tickets.findIndex((t) => t.key === dragOverKey) : -1;
 
+  // When externalDnd, disable the sorting strategy so rows don't shuffle during drag.
+  // Position is indicated by the insertion line instead of animated reordering.
   const sortableTableBody = (
-    <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
+    <SortableContext items={ticketIds} strategy={externalDnd ? undefined : verticalListSortingStrategy}>
       <tbody>
         {tickets.map((ticket, ticketIdx) => {
           let insertLine: "above" | "below" | undefined;
