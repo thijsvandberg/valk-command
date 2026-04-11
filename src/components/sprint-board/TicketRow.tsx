@@ -378,9 +378,10 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
   } = useSortable({ id: props.ticket.key });
 
   const rowStyle: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition ?? undefined,
-    // Keep placeholder visible so the row occupies its space and other rows don't shift
+    // When dragging, freeze the placeholder at its original position.
+    // The DragOverlay handles pointer tracking; the placeholder must not jump.
+    transform: isDragging ? undefined : CSS.Transform.toString(transform) || undefined,
+    transition: isDragging ? undefined : transition ?? undefined,
     ...(isDragging ? {
       opacity: 0.3,
       outline: "1px dashed rgba(255,255,255,0.08)",

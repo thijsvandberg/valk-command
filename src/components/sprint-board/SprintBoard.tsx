@@ -744,7 +744,7 @@ export default function SprintBoard() {
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {boardActiveDragTicket && (
                 <div
-                  className="flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
                   style={{ opacity: 0.92 }}
                 >
                   <IssueTypeIcon type={boardActiveDragTicket.type} />
