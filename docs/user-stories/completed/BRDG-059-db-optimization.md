@@ -19,20 +19,20 @@ As a developer, I want optimized SQLite queries with proper indexes, prepared st
 
 ### Phase 2: Query optimization
 - [x] Replace N+1 query patterns with JOINs or batch queries
-- [ ] Use `.prepare()` for frequently executed queries (Drizzle prepared statements)
+- [x] Use `.prepare()` for frequently executed queries (Drizzle prepared statements)
 - [x] Audit `SELECT *` usage; select only needed columns where possible
-- [ ] Add LIMIT clauses to unbounded queries
+- [x] Add LIMIT clauses to unbounded queries
 
 ### Phase 3: Query timing
 - [x] Middleware or utility that logs query execution time
 - [x] Warn in console for queries exceeding 100ms
 - [x] Expose timing data in API response headers (`X-Query-Time-Ms`)
-- [ ] Aggregate query stats accessible via `GET /api/debug/query-stats` (dev only)
+- [x] Aggregate query stats accessible via `GET /api/debug/query-stats` (dev only)
 
 ### Phase 4: Database maintenance
 - [x] Add `PRAGMA optimize` call on app startup
 - [x] Configure WAL mode for better concurrent read performance
-- [ ] Add periodic VACUUM suggestion in activity log when DB exceeds size threshold
+- [x] Add periodic VACUUM suggestion in activity log when DB exceeds size threshold
 
 ## Technical Notes
 

@@ -21,10 +21,10 @@ As the PO, I want the Sprint Board to use virtual scrolling for sprints with 50+
 - [x] Smooth scrolling without layout jumps when row heights vary
 
 ### Phase 3: Performance verification
-- [ ] Test with 100+ tickets: scrolling should maintain 60fps
+- [x] Test with 100+ tickets: scrolling should maintain 60fps
 - [x] Test with filter changes: virtual list should reset scroll position
-- [ ] Test with side panel open: virtual list should work in narrower viewport
-- [ ] Memory usage should not grow with ticket count
+- [x] Test with side panel open: virtual list should work in narrower viewport
+- [x] Memory usage should not grow with ticket count
 
 ## Technical Notes
 

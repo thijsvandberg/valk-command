@@ -10,21 +10,21 @@ As the PO, I want the app to prefetch data for likely next navigations so transi
 ## Acceptance Criteria
 
 ### Phase 1: Link prefetching
-- [ ] Use Next.js `<Link prefetch>` on sidebar navigation links (prefetch on viewport entry)
+- [x] Use Next.js `<Link prefetch>` on sidebar navigation links (prefetch on viewport entry)
 - [x] Prefetch ticket detail data when hovering a ticket row on Sprint Board (after 200ms delay)
 - [x] Prefetch adjacent sprint data when on Sprint Board (next/previous sprint slot)
 
 ### Phase 2: SWR prefetching
 - [x] Use SWR `preload` to warm the cache for predicted navigations
-- [ ] On Sprint Board load: prefetch first 5 ticket details
+- [x] On Sprint Board load: prefetch first 5 ticket details
 - [x] On ticket detail load: prefetch adjacent ticket in the list
-- [ ] On chat list load: prefetch most recent conversation
+- [x] On chat list load: prefetch most recent conversation
 
 ### Phase 3: Intelligent prefetching
 - [x] Only prefetch on fast connections (check `navigator.connection.effectiveType`)
 - [x] Respect data-saver mode
 - [x] Limit concurrent prefetch requests (max 3)
-- [ ] Cancel prefetch on navigation away
+- [x] Cancel prefetch on navigation away
 
 ## Technical Notes
 

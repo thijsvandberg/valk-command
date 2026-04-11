@@ -23,13 +23,13 @@ As the PO, I want optimistic updates on Sprint Board actions (status change, met
 
 ### Phase 3: Error handling
 - [x] Toast notification on revert: "Failed to update VALK-42. Change reverted."
-- [ ] Retry button in the toast
+- [x] Retry button in the toast
 - [x] Track pending mutations visually (subtle loading indicator on cells with in-flight changes)
 
 ### Phase 4: Conversation actions
-- [ ] Optimistic message sending in Chat (show message immediately, confirm after API response)
-- [ ] Optimistic conversation creation
-- [ ] Optimistic comment posting on ticket detail
+- [x] Optimistic message sending in Chat (show message immediately, confirm after API response)
+- [x] Optimistic conversation creation
+- [x] Optimistic comment posting on ticket detail
 
 ## Technical Notes
 
