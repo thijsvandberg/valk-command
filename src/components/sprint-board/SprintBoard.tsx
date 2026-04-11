@@ -133,7 +133,6 @@ const boardCollisionDetection: CollisionDetection = (args) => {
   );
   return closestCenter({ ...args, droppableContainers: ticketContainers });
 };
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -738,9 +737,7 @@ export default function SprintBoard() {
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
             {!ticketsLoading && (
-              <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
-                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} />
-              </SortableContext>
+              <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} />
             )}
 
             {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}

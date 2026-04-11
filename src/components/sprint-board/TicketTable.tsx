@@ -392,10 +392,11 @@ export function TicketTable({
   const activeInsertIdx = externalActiveDragId ? tickets.findIndex((t) => t.key === externalActiveDragId) : -1;
   const overInsertIdx = dragOverKey ? tickets.findIndex((t) => t.key === dragOverKey) : -1;
 
-  // When externalDnd, disable the sorting strategy so rows don't shuffle during drag.
-  // Position is indicated by the insertion line instead of animated reordering.
+  // When externalDnd, rows must not shift during drag. undefined falls back to
+  // dnd-kit's default rectSortingStrategy, which still moves items. A null-returning
+  // function is the correct way to opt out of all position transforms.
   const sortableTableBody = (
-    <SortableContext items={ticketIds} strategy={externalDnd ? undefined : verticalListSortingStrategy}>
+    <SortableContext items={ticketIds} strategy={externalDnd ? () => null : verticalListSortingStrategy}>
       <tbody>
         {tickets.map((ticket, ticketIdx) => {
           let insertLine: "above" | "below" | undefined;
