@@ -43,37 +43,31 @@ import {
 function SprintDropTile({
   sprintId,
   sprint,
-  isCurrentSprint,
 }: {
   sprintId: string;
   sprint: Sprint;
-  isCurrentSprint: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `sprint-slot:${sprintId}`,
     data: { type: "sprint-slot", sprintId },
-    disabled: isCurrentSprint,
   });
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-w-[80px] flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-xs font-medium transition-colors duration-100 ${
-        isCurrentSprint
-          ? "border-white/[0.03] text-white/15"
-          : isOver
+      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-100 ${
+        isOver
           ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/12 text-[var(--color-brand-300)]"
-          : "border-white/[0.06] bg-white/[0.025] text-white/35"
+          : "border-white/[0.06] bg-white/[0.025] text-white/35 hover:border-white/10 hover:text-white/55"
       }`}
     >
-      {!isCurrentSprint && (
-        <ArrowRight size={10} strokeWidth={1.5} className="shrink-0 opacity-50" />
-      )}
+      <ArrowRight size={10} strokeWidth={1.5} className="shrink-0 opacity-50" />
       <span className="truncate">{sprint.name}</span>
     </div>
   );
 }
 
+// Overlay that covers the sprint tab bar during a drag -- no layout shift.
 function SprintDropZoneBar({
   sprints,
   slotSprints,
@@ -83,12 +77,14 @@ function SprintDropZoneBar({
   slotSprints: string[];
   activeSprintId: string;
 }) {
+  const targets = slotSprints.filter((id) => id !== activeSprintId);
   return (
-    <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-5 py-2">
-      <span className="mr-1 shrink-0 text-[10px] font-medium uppercase tracking-widest text-white/20">
-        Move to:
+    <div className="absolute inset-0 z-10 flex items-center gap-2 bg-[var(--color-surface-elevated)] px-5">
+      <span className="shrink-0 text-[10px] font-medium uppercase tracking-widest text-white/20">
+        Move to
       </span>
-      {slotSprints.map((sprintId) => {
+      <span className="h-3 w-px shrink-0 bg-white/[0.07]" />
+      {targets.map((sprintId) => {
         const sprint = sprints.find((s) => s.id === sprintId);
         if (!sprint) return null;
         return (
@@ -96,7 +92,6 @@ function SprintDropZoneBar({
             key={sprintId}
             sprintId={sprintId}
             sprint={sprint}
-            isCurrentSprint={sprintId === activeSprintId}
           />
         );
       })}
@@ -722,7 +717,10 @@ export default function SprintBoard() {
             onDragOver={handleBoardDragOver}
             onDragEnd={handleBoardDragEnd}
           >
-            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} />
+            <div className="relative">
+              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} />
+              {boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
+            </div>
 
             {!barsCollapsed && (
               <>
@@ -737,9 +735,7 @@ export default function SprintBoard() {
 
             {!ticketsLoading && (
               <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
-                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId}
-                  sprintDropZone={boardActiveDragId ? <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} /> : undefined}
-                />
+                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} />
               </SortableContext>
             )}
 

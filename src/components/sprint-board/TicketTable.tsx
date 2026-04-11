@@ -153,7 +153,6 @@ export function TicketTable({
   externalDnd,
   externalActiveDragId,
   dragOverKey,
-  sprintDropZone,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -188,8 +187,6 @@ export function TicketTable({
   externalActiveDragId?: string | null;
   // Key of the ticket currently being hovered over during external drag (for insertion line).
   dragOverKey?: string | null;
-  // Rendered as the first tbody row when externalDnd is true (e.g. sprint drop zone bar).
-  sprintDropZone?: React.ReactNode;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const colW = useCallback((id: string): number | undefined => {
@@ -422,15 +419,6 @@ export function TicketTable({
   const dndTable = externalDnd ? (
     <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
       {theadContent}
-      {sprintDropZone && (
-        <tbody>
-          <tr>
-            <td colSpan={100} className="p-0">
-              {sprintDropZone}
-            </td>
-          </tr>
-        </tbody>
-      )}
       {sortableTableBody}
     </table>
   ) : (
