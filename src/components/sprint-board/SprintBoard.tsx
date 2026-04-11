@@ -28,9 +28,27 @@ import {
   useSensor,
   useSensors,
   closestCenter,
+  pointerWithin,
   type DragStartEvent,
   type DragEndEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
+
+// Prioritise sprint-slot droppables when the pointer is inside them;
+// fall back to closestCenter for ticket row reordering.
+const boardCollisionDetection: CollisionDetection = (args) => {
+  const sprintSlotContainers = args.droppableContainers.filter((c) =>
+    String(c.id).startsWith("sprint-slot:")
+  );
+  if (sprintSlotContainers.length > 0) {
+    const pointerHits = pointerWithin({
+      ...args,
+      droppableContainers: sprintSlotContainers,
+    });
+    if (pointerHits.length > 0) return pointerHits;
+  }
+  return closestCenter(args);
+};
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
@@ -407,14 +425,18 @@ export default function SprintBoard() {
             sprintId: activeSprintId,
           }),
         });
-        if (!res.ok) throw new Error("Rank update failed");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error ?? "Rank update failed");
+        }
         // Clear any local PO priority override so rank order is now authoritative
         setPoPriorityOrder(null);
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Rank updated for ${label}`);
-      } catch {
+      } catch (err) {
         mutateTickets();
-        showToast("Failed to update rank in Jira. Reverted.");
+        const msg = err instanceof Error ? err.message : "Failed to update rank in Jira";
+        showToast(`${msg}. Reverted.`);
       }
     }
   }, [activeSprintId, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder]);
@@ -600,7 +622,7 @@ export default function SprintBoard() {
         {jiraRankDndEnabled ? (
           <DndContext
             sensors={boardSensors}
-            collisionDetection={closestCenter}
+            collisionDetection={boardCollisionDetection}
             onDragStart={handleBoardDragStart}
             onDragEnd={handleBoardDragEnd}
           >
