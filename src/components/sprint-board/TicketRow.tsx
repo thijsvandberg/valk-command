@@ -53,6 +53,7 @@ export interface TicketRowBaseProps {
   reviewPopoverKey: string | null;
   onToggleReviewPopover: (key: string) => void;
   columnOrder?: ColumnId[];
+  insertLine?: "above" | "below";
   rowStyle?: React.CSSProperties;
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
@@ -82,6 +83,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     reviewPopoverKey,
     onToggleReviewPopover,
     columnOrder,
+    insertLine,
     rowStyle,
     dragListeners,
     dragAttributes,
@@ -119,8 +121,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     onLeaveRow();
   }, [onLeaveRow]);
 
+  const insertLineShadow = insertLine === "above"
+    ? "inset 0 2px 0 var(--color-brand-500)"
+    : insertLine === "below"
+    ? "inset 0 -2px 0 var(--color-brand-500)"
+    : undefined;
   const style: React.CSSProperties = {
-    ...(ticket.flagged ? { boxShadow: "inset 4px 0 0 #e5534b" } : {}),
+    ...(ticket.flagged ? { boxShadow: insertLineShadow ? `inset 4px 0 0 #e5534b, ${insertLineShadow}` : "inset 4px 0 0 #e5534b" } : insertLineShadow ? { boxShadow: insertLineShadow } : {}),
     ...rowStyle,
   };
 

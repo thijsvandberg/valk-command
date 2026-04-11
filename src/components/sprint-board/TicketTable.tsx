@@ -152,6 +152,7 @@ export function TicketTable({
   onColumnResetWidth,
   externalDnd,
   externalActiveDragId,
+  dragOverKey,
   sprintDropZone,
 }: {
   tickets: Ticket[];
@@ -185,6 +186,8 @@ export function TicketTable({
   // The table only renders SortableContext; no internal DndContext or DragOverlay.
   externalDnd?: boolean;
   externalActiveDragId?: string | null;
+  // Key of the ticket currently being hovered over during external drag (for insertion line).
+  dragOverKey?: string | null;
   // Rendered as the first tbody row when externalDnd is true (e.g. sprint drop zone bar).
   sprintDropZone?: React.ReactNode;
 }) {
@@ -389,15 +392,25 @@ export function TicketTable({
     </table>
   );
 
+  const activeInsertIdx = externalActiveDragId ? tickets.findIndex((t) => t.key === externalActiveDragId) : -1;
+  const overInsertIdx = dragOverKey ? tickets.findIndex((t) => t.key === dragOverKey) : -1;
+
   const sortableTableBody = (
     <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
       <tbody>
-        {tickets.map((ticket, ticketIdx) => (
-          <SortableTicketRow
-            key={ticket.key}
-            {...makeRowProps(ticket, ticketIdx)}
-          />
-        ))}
+        {tickets.map((ticket, ticketIdx) => {
+          let insertLine: "above" | "below" | undefined;
+          if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
+            insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
+          }
+          return (
+            <SortableTicketRow
+              key={ticket.key}
+              {...makeRowProps(ticket, ticketIdx)}
+              insertLine={insertLine}
+            />
+          );
+        })}
       </tbody>
     </SortableContext>
   );

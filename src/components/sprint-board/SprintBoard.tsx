@@ -382,16 +382,7 @@ export default function SprintBoard() {
 
   const [inflightKeys, setInflightKeys] = useState<Set<string>>(new Set());
   const [boardActiveDragId, setBoardActiveDragId] = useState<string | null>(null);
-  const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragOverSprintRef = useRef<string | null>(null);
-
-  // Switch sprint during drag without resetting filters (unlike navigateToSprint)
-  const switchSprintForDrag = useCallback((sprintId: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sprint", sprintId);
-    params.delete("view");
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [searchParams, router]);
+  const [boardOverId, setBoardOverId] = useState<string | null>(null);
 
   // Jira-rank DnD is only available when sorted by rank, not in All/view mode,
   // and within the virtualization threshold (80 tickets).
@@ -426,31 +417,19 @@ export default function SprintBoard() {
 
   const handleBoardDragStart = useCallback((event: DragStartEvent) => {
     setBoardActiveDragId(event.active.id as string);
-    dragOverSprintRef.current = null;
-    if (switchTimerRef.current) { clearTimeout(switchTimerRef.current); switchTimerRef.current = null; }
   }, []);
 
-  const SPRINT_SWITCH_DELAY = 1200;
   const handleBoardDragOver = useCallback((event: DragOverEvent) => {
     const { over } = event;
     const overId = over ? String(over.id) : null;
-    const sprintId = overId?.startsWith("sprint-slot:") ? overId.replace("sprint-slot:", "") : null;
-    if (sprintId === dragOverSprintRef.current) return;
-    dragOverSprintRef.current = sprintId;
-    if (switchTimerRef.current) { clearTimeout(switchTimerRef.current); switchTimerRef.current = null; }
-    if (sprintId && sprintId !== activeSprintId) {
-      switchTimerRef.current = setTimeout(() => {
-        switchSprintForDrag(sprintId);
-        dragOverSprintRef.current = null;
-      }, SPRINT_SWITCH_DELAY);
-    }
-  }, [activeSprintId, switchSprintForDrag]);
+    // Only track ticket-key overs for insertion line indicator (not sprint-slot droppables)
+    setBoardOverId(overId && !overId.startsWith("sprint-slot:") ? overId : null);
+  }, []);
 
   const handleBoardDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setBoardActiveDragId(null);
-    if (switchTimerRef.current) { clearTimeout(switchTimerRef.current); switchTimerRef.current = null; }
-    dragOverSprintRef.current = null;
+    setBoardOverId(null);
     if (!over) return;
 
     const overId = String(over.id);
@@ -500,36 +479,6 @@ export default function SprintBoard() {
       const currentTickets = tickets;
       const oldIndex = currentTickets.findIndex((t) => t.key === activeKey);
       const overIndex = currentTickets.findIndex((t) => t.key === overId);
-
-      // Cross-sprint positional drop: sprint was switched mid-drag via hover-to-open.
-      // The active ticket is from a different sprint; drop on a specific row in current sprint.
-      if (oldIndex === -1 && overIndex !== -1) {
-        const keysToMove = checkedTickets.has(activeKey) ? [...checkedTickets] : [activeKey];
-        try {
-          const moveRes = await fetch("/api/jira/move-sprint", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ issueKeys: keysToMove, targetSprintId: activeSprintId }),
-          });
-          if (!moveRes.ok) {
-            const body = await moveRes.json().catch(() => ({}));
-            throw new Error(body?.error ?? "Move failed");
-          }
-          // Best-effort rank before the target ticket
-          await fetch("/api/jira/rank", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ issueKeys: keysToMove, rankBeforeKey: overId, sprintId: activeSprintId }),
-          });
-          const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
-          showToast(`Moved ${label} to ${sprintNameMap[activeSprintId] ?? activeSprintId}`);
-          mutateTickets();
-        } catch (err) {
-          showToast((err instanceof Error ? err.message : "Move failed") + ". Please try again.");
-          mutateTickets();
-        }
-        return;
-      }
 
       if (oldIndex === -1 || overIndex === -1) return;
 
@@ -788,7 +737,7 @@ export default function SprintBoard() {
 
             {!ticketsLoading && (
               <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
-                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId}
+                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId}
                   sprintDropZone={boardActiveDragId ? <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} /> : undefined}
                 />
               </SortableContext>
