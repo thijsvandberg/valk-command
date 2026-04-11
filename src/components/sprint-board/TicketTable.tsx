@@ -152,6 +152,7 @@ export function TicketTable({
   onColumnResetWidth,
   externalDnd,
   externalActiveDragId,
+  sprintDropZone,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -184,6 +185,8 @@ export function TicketTable({
   // The table only renders SortableContext; no internal DndContext or DragOverlay.
   externalDnd?: boolean;
   externalActiveDragId?: string | null;
+  // Rendered as the first tbody row when externalDnd is true (e.g. sprint drop zone bar).
+  sprintDropZone?: React.ReactNode;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const colW = useCallback((id: string): number | undefined => {
@@ -404,6 +407,15 @@ export function TicketTable({
   const dndTable = externalDnd ? (
     <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
       {theadContent}
+      {sprintDropZone && (
+        <tbody>
+          <tr>
+            <td colSpan={100} className="p-0">
+              {sprintDropZone}
+            </td>
+          </tr>
+        </tbody>
+      )}
       {sortableTableBody}
     </table>
   ) : (
