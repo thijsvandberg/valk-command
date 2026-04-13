@@ -168,6 +168,16 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
       if (prev[0] > 0 && prev[1] > 0 && prev[2] > 0) return prev;
       return buildEqualWidths(3);
     });
+    // Clear apps from panes that are no longer visible so the app bar reflects reality
+    setPaneApps((prev) => {
+      let changed = false;
+      const next: PaneApps = [...prev] as PaneApps;
+      for (let i = n; i < 3; i++) {
+        const idx = i as 0 | 1 | 2;
+        if (next[idx] !== null) { next[idx] = null; changed = true; }
+      }
+      return changed ? next : prev;
+    });
   }
 
   function setPaneWidths(w: PaneWidths) {
@@ -190,19 +200,41 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   }
 
   function closeApp(appId: PaneAppId) {
-    // Compute new state from current paneApps (functions redefine on each render, so closure is fresh)
-    const newApps: PaneApps = [...paneApps] as PaneApps;
+    // Remove the app from its pane slot
+    const withRemoved: PaneApps = [...paneApps] as PaneApps;
     for (let i = 0; i < 3; i++) {
-      if (newApps[i] === appId) newApps[i] = null;
+      if (withRemoved[i] === appId) withRemoved[i] = null;
     }
-    setPaneApps(newApps);
-    // Auto-collapse paneCount to remove trailing empty panes
-    const highestOccupied = newApps.reduce((max, app, i) => (app !== null ? i : max), -1);
-    const newCount = Math.max(1, highestOccupied + 1) as 1 | 2 | 3;
-    if (newCount < paneCount) {
-      setPaneCount(newCount);
+
+    // Compact: shift remaining apps forward to fill any leading/middle gaps
+    const remaining: Array<{ app: PaneAppId; oldIdx: number }> = [];
+    for (let i = 0; i < 3; i++) {
+      if (withRemoved[i] !== null) remaining.push({ app: withRemoved[i]!, oldIdx: i });
     }
-    // State is preserved — component stays mounted (mountedApps not changed)
+    const compacted: PaneApps = [
+      remaining[0]?.app ?? null,
+      remaining[1]?.app ?? null,
+      remaining[2]?.app ?? null,
+    ];
+    setPaneApps(compacted);
+
+    // Auto-collapse paneCount and remap widths proportionally from original positions
+    const newCount = Math.max(1, remaining.length) as 1 | 2 | 3;
+    if (newCount !== paneCount) {
+      setPaneCountState(newCount);
+      if (remaining.length <= 1) {
+        setPaneWidthsState([100, 0, 0]);
+      } else {
+        const rawWidths = remaining.map((r) => paneWidths[r.oldIdx]);
+        const total = rawWidths.reduce((s, w) => s + w, 0) || 100;
+        const newWidths: PaneWidths = [0, 0, 0];
+        for (let i = 0; i < remaining.length && i < 3; i++) {
+          newWidths[i] = (rawWidths[i] / total) * 100;
+        }
+        setPaneWidthsState(newWidths);
+      }
+    }
+    // Component stays mounted (mountedApps not changed — state is preserved)
   }
 
   function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {

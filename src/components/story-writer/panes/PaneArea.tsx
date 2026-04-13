@@ -170,8 +170,8 @@ export function PaneArea() {
                 onDragOver={handleDragOver}
               >
                 {showDropOverlay && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-brand-500)]/[0.12]">
-                    <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-base)] px-3 py-1.5 text-[11px] text-[var(--color-brand-400)] shadow-lg">
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-surface-base)]/75 backdrop-blur-sm">
+                    <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 px-4 py-2 text-[11px] font-medium text-[var(--color-brand-400)] shadow-lg shadow-black/20">
                       Drop here
                     </span>
                   </div>
@@ -188,17 +188,20 @@ export function PaneArea() {
           );
         })}
 
-        {/* Inactive pane drop slots: thin strips that expand on hover to reveal the drop target */}
+        {/* Inactive pane drop slots: strips with a divider matching PaneDivider width */}
         {expandSlots.map((slotIdx) => {
           const isHovered = hoveredSlot === slotIdx;
           return (
-            <div key={`expand-${slotIdx}`} className="flex shrink-0 transition-all duration-150" style={{ width: EXPAND_SLOT_W }}>
-              <div className="w-px shrink-0 bg-[var(--color-brand-500)]/25" />
+            <div key={`expand-${slotIdx}`} className="flex shrink-0" style={{ width: EXPAND_SLOT_W }}>
+              {/* w-1 matches PaneDivider width for visual continuity */}
+              <div className="w-1 shrink-0 flex items-center justify-center">
+                <div className="h-8 w-0.5 rounded-full bg-white/[0.08]" />
+              </div>
               <div
                 className={`flex flex-1 flex-col items-center justify-center transition-colors duration-150 ${
                   isHovered
-                    ? "bg-[var(--color-brand-500)]/[0.12]"
-                    : "bg-[var(--color-brand-500)]/[0.04]"
+                    ? "bg-[var(--color-brand-500)]/[0.15]"
+                    : "bg-[var(--color-brand-500)]/[0.05]"
                 }`}
                 onDrop={(e) => handleDrop(e, slotIdx)}
                 onDragOver={handleDragOver}
@@ -207,8 +210,8 @@ export function PaneArea() {
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) setHoveredSlot(null);
                 }}
               >
-                <span className={`text-[10px] whitespace-nowrap transition-colors duration-150 ${
-                  isHovered ? "text-[var(--color-brand-400)]" : "text-[var(--color-brand-400)]/50"
+                <span className={`text-[10px] font-medium whitespace-nowrap transition-colors duration-150 ${
+                  isHovered ? "text-[var(--color-brand-400)]" : "text-[var(--color-brand-400)]/60"
                 }`}>
                   {isHovered ? "Drop here" : `+ Pane ${slotIdx + 1}`}
                 </span>
