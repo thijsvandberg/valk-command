@@ -17,6 +17,7 @@ export function AppToolbar() {
 
   const handleDragStart = (e: React.DragEvent, appId: PaneAppId) => {
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", appId);
     pane.setDraggedApp(appId);
   };
 
@@ -41,7 +42,7 @@ export function AppToolbar() {
   const totalExtraW = expandSlots.length * EXPAND_SLOT_W;
 
   return (
-    <div className="flex h-[42px] shrink-0 border-b border-white/[0.06] bg-[var(--color-surface-base)]">
+    <div className="relative z-10 flex h-[42px] shrink-0 border-b border-white/[0.06] bg-[var(--color-surface-base)]">
       {visiblePaneIndices.map((paneIdx, visPos) => {
         const activeApp = pane.paneApps[paneIdx] ?? null;
         const toolbar = activeApp ? pane.toolbars[activeApp] : null;
@@ -77,7 +78,7 @@ export function AppToolbar() {
                     draggable
                     onDragStart={(e) => handleDragStart(e, activeApp)}
                     onDragEnd={handleDragEnd}
-                    className="flex shrink-0 cursor-grab items-center gap-1.5 active:cursor-grabbing"
+                    className="flex shrink-0 select-none cursor-grab items-center gap-1.5 active:cursor-grabbing"
                     title="Drag to move to another pane"
                   >
                     <span className="text-[11px] font-semibold text-white/70">

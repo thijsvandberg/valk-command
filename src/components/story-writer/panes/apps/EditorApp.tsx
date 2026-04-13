@@ -13,6 +13,7 @@ import { usePaneContext } from "../PaneContext";
 export function EditorApp() {
   const writer = useWriterContext();
   const pane = usePaneContext();
+  const { registerToolbar, unregisterToolbar } = pane;
 
   const [viewMode, setViewMode] = useState<"editor" | "diff">("editor");
   const [diffViewMode, setDiffViewMode] = useState<DiffViewMode>("plain");
@@ -96,7 +97,7 @@ export function EditorApp() {
   const activeViewMode = inSplitMode ? viewMode : "editor";
 
   useEffect(() => {
-    pane.registerToolbar("editor", {
+    registerToolbar("editor", {
       label: "Editor",
       actions: inSplitMode ? (
         <div className="flex items-center gap-2">
@@ -126,7 +127,8 @@ export function EditorApp() {
         </div>
       ) : undefined,
     });
-  }, [pane, activeViewMode, inSplitMode]);
+    return () => unregisterToolbar("editor");
+  }, [registerToolbar, unregisterToolbar, activeViewMode, inSplitMode]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

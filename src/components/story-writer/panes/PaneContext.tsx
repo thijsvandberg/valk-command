@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useRef, useEffect } from "react";
+import { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 
 export type PaneAppId =
@@ -54,6 +54,7 @@ interface PaneContextValue {
   setPaneWidths: (w: PaneWidths) => void;
 
   registerToolbar: (appId: PaneAppId, slot: ToolbarSlot) => void;
+  unregisterToolbar: (appId: PaneAppId) => void;
   toolbars: Partial<Record<PaneAppId, ToolbarSlot>>;
 
   draftPreviewContent: DraftPreviewContent | null;
@@ -300,7 +301,9 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
     });
   }
 
-  function registerToolbar(appId: PaneAppId, slot: ToolbarSlot) {
+  // Stable references so app components can list these as effect deps without
+  // triggering a re-registration on every PaneProvider render.
+  const registerToolbar = useCallback((appId: PaneAppId, slot: ToolbarSlot) => {
     setToolbars((prev) => {
       const existing = prev[appId];
       if (
@@ -313,7 +316,16 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
       }
       return { ...prev, [appId]: slot };
     });
-  }
+  }, []);
+
+  const unregisterToolbar = useCallback((appId: PaneAppId) => {
+    setToolbars((prev) => {
+      if (!(appId in prev)) return prev;
+      const next = { ...prev };
+      delete next[appId];
+      return next;
+    });
+  }, []);
 
   function openDraftPreview(content: string, label: string, draftId?: string) {
     setDraftPreviewContent({ content, label, draftId });
@@ -364,6 +376,7 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
         hidePane,
         setPaneWidths,
         registerToolbar,
+        unregisterToolbar,
         toolbars,
         draftPreviewContent,
         openDraftPreview,

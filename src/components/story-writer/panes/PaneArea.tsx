@@ -153,7 +153,6 @@ export function PaneArea() {
         {visiblePaneIndices.map((paneIdx, visPos) => {
           const activeApp = pane.paneApps[paneIdx] ?? null;
           const isDragging = pane.draggedApp !== null;
-          const showDropOverlay = isDragging && activeApp !== pane.draggedApp;
 
           // Shrink existing panes proportionally to make room for expand slots
           const widthStyle = totalExtraW > 0
@@ -177,13 +176,6 @@ export function PaneArea() {
                 onDrop={(e) => handleDrop(e, paneIdx)}
                 onDragOver={handleDragOver}
               >
-                {showDropOverlay && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-surface-base)]/75 backdrop-blur-sm">
-                    <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 px-4 py-2 text-[11px] font-medium text-[var(--color-brand-400)] shadow-lg shadow-black/20">
-                      Drop here
-                    </span>
-                  </div>
-                )}
                 {!activeApp && (
                   <div className="flex h-full items-center justify-center text-xs text-white/15">
                     Drop an app here
@@ -231,6 +223,7 @@ export function PaneArea() {
          freeing memory. Content state is persisted to the DB so nothing is lost on remount. */}
       {visibleApps.map((appId) => {
         const paneIdx = pane.paneApps.indexOf(appId);
+        const showDropOverlay = pane.draggedApp !== null && appId !== pane.draggedApp;
 
         return (
           <div
@@ -245,6 +238,14 @@ export function PaneArea() {
               pointerEvents: pane.draggedApp ? "none" : "auto",
             }}
           >
+            {/* Drop overlay rendered above app content so it's visible during drag */}
+            {showDropOverlay && (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-surface-base)]/75 backdrop-blur-sm">
+                <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 px-4 py-2 text-[11px] font-medium text-[var(--color-brand-400)] shadow-lg shadow-black/20">
+                  Drop here
+                </span>
+              </div>
+            )}
             <AppComponent appId={appId} />
           </div>
         );

@@ -10,6 +10,7 @@ import { usePaneContext } from "../PaneContext";
 export function ChatApp() {
   const writer = useWriterContext();
   const pane = usePaneContext();
+  const { registerToolbar, unregisterToolbar } = pane;
   const [showLogs, setShowLogs] = useState(false);
 
   // Auto-open related panel when candidates first arrive
@@ -57,7 +58,7 @@ export function ChatApp() {
 
   // Register toolbar slot — re-register when showLogs or counts change
   useEffect(() => {
-    pane.registerToolbar("chat", {
+    registerToolbar("chat", {
       label: "Chat",
       actions: (
         <div className="flex items-center gap-1">
@@ -98,7 +99,8 @@ export function ChatApp() {
         </div>
       ),
     });
-  }, [pane, showLogs, writer.aiDrafts.length, writer.messages.length]);
+    return () => unregisterToolbar("chat");
+  }, [registerToolbar, unregisterToolbar, showLogs, writer.aiDrafts.length, writer.messages.length]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
