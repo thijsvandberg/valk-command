@@ -8,11 +8,11 @@ const EXPAND_SLOT_W = 72;
 export function AppToolbar() {
   const pane = usePaneContext();
 
-  const visiblePanes = Array.from({ length: pane.paneCount }, (_, i) => i);
+  const visiblePaneIndices = ([0, 1, 2] as const).filter((i) => pane.paneVisible[i]);
 
-  // All inactive pane positions (beyond current paneCount)
+  // All inactive pane positions (beyond current visibility)
   const expandSlots: (0 | 1 | 2)[] = pane.draggedApp !== null
-    ? Array.from({ length: 3 - pane.paneCount }, (_, i) => (pane.paneCount + i) as 0 | 1 | 2)
+    ? ([0, 1, 2] as const).filter((i) => !pane.paneVisible[i])
     : [];
 
   const handleDragStart = (e: React.DragEvent, appId: PaneAppId) => {
@@ -42,7 +42,7 @@ export function AppToolbar() {
 
   return (
     <div className="flex h-[42px] shrink-0 border-b border-white/[0.06] bg-[var(--color-surface-base)]">
-      {visiblePanes.map((paneIdx, i) => {
+      {visiblePaneIndices.map((paneIdx, visPos) => {
         const activeApp = pane.paneApps[paneIdx] ?? null;
         const toolbar = activeApp ? pane.toolbars[activeApp] : null;
         const isDragTarget = pane.draggedApp !== null;
@@ -59,7 +59,7 @@ export function AppToolbar() {
             style={{ width: widthStyle }}
           >
             {/* Divider between panes */}
-            {i > 0 && (
+            {visPos > 0 && (
               <div className="w-px shrink-0 bg-white/[0.06]" />
             )}
 
@@ -67,7 +67,7 @@ export function AppToolbar() {
               className={`flex min-w-0 flex-1 items-center gap-2 px-3 transition-colors duration-100 ${
                 isDragTarget ? "bg-[var(--color-brand-500)]/[0.06]" : ""
               }`}
-              onDrop={(e) => handleDrop(e, paneIdx as 0 | 1 | 2)}
+              onDrop={(e) => handleDrop(e, paneIdx)}
               onDragOver={handleDragOver}
             >
               {activeApp && toolbar ? (

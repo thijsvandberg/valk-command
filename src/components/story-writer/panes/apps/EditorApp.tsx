@@ -92,17 +92,15 @@ export function EditorApp() {
 
   const inSplitMode = writer.splitModeVisible && !!writer.targetTicketKey;
 
-  // Reset to editor when split mode is turned off
-  useEffect(() => {
-    if (!inSplitMode) setViewMode("editor");
-  }, [inSplitMode]);
+  // viewMode is only meaningful in split mode; outside of it we always show the editor
+  const activeViewMode = inSplitMode ? viewMode : "editor";
 
   useEffect(() => {
     pane.registerToolbar("editor", {
       label: "Editor",
       actions: inSplitMode ? (
         <div className="flex items-center gap-2">
-          {viewMode === "editor" ? (
+          {activeViewMode === "editor" ? (
             <Button
               variant="ghost"
               size="sm"
@@ -128,11 +126,11 @@ export function EditorApp() {
         </div>
       ) : undefined,
     });
-  }, [pane, viewMode, inSplitMode]);
+  }, [pane, activeViewMode, inSplitMode]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {viewMode === "editor" ? (
+      {activeViewMode === "editor" ? (
         <RichEditor
           value={writer.session?.localDraft ?? ""}
           onChange={writer.onDraftChange}

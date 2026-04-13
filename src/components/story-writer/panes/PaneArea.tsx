@@ -25,11 +25,12 @@ function AppComponent({ appId }: { appId: PaneAppId }) {
 }
 
 interface PaneDividerProps {
-  paneIndex: number;
-  onResize: (paneIndex: number, deltaX: number) => void;
+  leftIdx: number;
+  rightIdx: number;
+  onResize: (leftIdx: number, rightIdx: number, deltaX: number) => void;
 }
 
-function PaneDivider({ paneIndex, onResize }: PaneDividerProps) {
+function PaneDivider({ leftIdx, rightIdx, onResize }: PaneDividerProps) {
   const dragging = useRef(false);
   const lastX = useRef(0);
 
@@ -46,7 +47,7 @@ function PaneDivider({ paneIndex, onResize }: PaneDividerProps) {
       if (!dragging.current) return;
       const delta = e.clientX - lastX.current;
       lastX.current = e.clientX;
-      onResize(paneIndex, delta);
+      onResize(leftIdx, rightIdx, delta);
     };
 
     const handleUp = () => {
@@ -62,7 +63,7 @@ function PaneDivider({ paneIndex, onResize }: PaneDividerProps) {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
-  }, [paneIndex, onResize]);
+  }, [leftIdx, rightIdx, onResize]);
 
   return (
     <div
@@ -83,33 +84,30 @@ export function PaneArea() {
   const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
 
   const paneWidthsRef = useRef(pane.paneWidths);
-  const paneCountRef = useRef(pane.paneCount);
   useEffect(() => { paneWidthsRef.current = pane.paneWidths; }, [pane.paneWidths]);
-  useEffect(() => { paneCountRef.current = pane.paneCount; }, [pane.paneCount]);
 
   const handleResize = useCallback(
-    (leftPaneIndex: number, deltaX: number) => {
+    (leftIdx: number, rightIdx: number, deltaX: number) => {
       if (!containerRef.current) return;
       const totalWidth = containerRef.current.getBoundingClientRect().width;
       if (totalWidth === 0) return;
 
       const deltaPct = (deltaX / totalWidth) * 100;
-      const rightPaneIndex = leftPaneIndex + 1;
-      if (rightPaneIndex >= paneCountRef.current) return;
-
       const prev = paneWidthsRef.current;
       const next: [number, number, number] = [...prev] as [number, number, number];
-      next[leftPaneIndex] = next[leftPaneIndex] + deltaPct;
-      next[rightPaneIndex] = next[rightPaneIndex] - deltaPct;
+      next[leftIdx] += deltaPct;
+      next[rightIdx] -= deltaPct;
       pane.setPaneWidths(next);
     },
     [pane],
   );
 
-  // Reset hovered expand slot when drag ends
+  // Reset hovered expand slot when any drag ends
   useEffect(() => {
-    if (!pane.draggedApp) setHoveredSlot(null);
-  }, [pane.draggedApp]);
+    const handler = () => setHoveredSlot(null);
+    document.addEventListener("dragend", handler);
+    return () => document.removeEventListener("dragend", handler);
+  }, []);
 
   const handleDrop = (e: React.DragEvent, paneIdx: 0 | 1 | 2) => {
     e.preventDefault();
@@ -126,14 +124,16 @@ export function PaneArea() {
   };
 
   const allMountedApps = Array.from(pane.mountedApps);
+  const visiblePaneIndices = ([0, 1, 2] as const).filter((i) => pane.paneVisible[i]);
 
-  // Inactive pane slots to show as drop zones during drag
+  // Inactive pane slots shown as drop zones during drag
   const expandSlots: (0 | 1 | 2)[] = pane.draggedApp !== null
-    ? Array.from({ length: 3 - pane.paneCount }, (_, i) => (pane.paneCount + i) as 0 | 1 | 2)
+    ? ([0, 1, 2] as const).filter((i) => !pane.paneVisible[i])
     : [];
   const totalExtraW = expandSlots.length * EXPAND_SLOT_W;
 
-  // Cumulative left offsets (as % of container) for each pane slot
+  // Cumulative left offsets for each pane slot. Non-visible panes have paneWidths = 0,
+  // so this formula works correctly for non-consecutive visibility layouts.
   const paneLefts: [number, number, number] = [
     0,
     pane.paneWidths[0],
@@ -145,9 +145,8 @@ export function PaneArea() {
     <div ref={containerRef} className="relative flex-1 overflow-hidden">
       {/* Pane column layer: provides dividers, drop zones, and empty-state placeholders */}
       <div className="absolute inset-0 flex">
-        {Array.from({ length: pane.paneCount }, (_, paneIdx) => {
+        {visiblePaneIndices.map((paneIdx, visPos) => {
           const activeApp = pane.paneApps[paneIdx] ?? null;
-          // Ring highlight on every pane during drag; overlay only where the source app isn't
           const isDragging = pane.draggedApp !== null;
           const showDropOverlay = isDragging && activeApp !== pane.draggedApp;
 
@@ -158,15 +157,19 @@ export function PaneArea() {
 
           return (
             <Fragment key={paneIdx}>
-              {paneIdx > 0 && (
-                <PaneDivider paneIndex={paneIdx - 1} onResize={handleResize} />
+              {visPos > 0 && (
+                <PaneDivider
+                  leftIdx={visiblePaneIndices[visPos - 1]}
+                  rightIdx={paneIdx}
+                  onResize={handleResize}
+                />
               )}
               <div
                 className={`relative flex flex-none flex-col overflow-hidden transition-colors duration-100 ${
                   isDragging ? "ring-1 ring-inset ring-[var(--color-brand-500)]/25" : ""
                 }`}
                 style={{ width: widthStyle }}
-                onDrop={(e) => handleDrop(e, paneIdx as 0 | 1 | 2)}
+                onDrop={(e) => handleDrop(e, paneIdx)}
                 onDragOver={handleDragOver}
               >
                 {showDropOverlay && (
@@ -226,12 +229,11 @@ export function PaneArea() {
         Apps never unmount — they are hidden (visibility: hidden, width: 0) when not in a
         visible pane, which preserves all component state including RichEditor content.
         Use top+bottom=0 instead of h-full so height is correctly resolved against the
-        flex-determined container height (h-full = height:100% requires an explicit height
-        on the containing block, which flex-1 does not provide).
+        flex-determined container height.
       */}
       {allMountedApps.map((appId) => {
         const paneIdx = pane.paneApps.findIndex((a) => a === appId);
-        const isVisible = paneIdx !== -1 && paneIdx < pane.paneCount;
+        const isVisible = paneIdx !== -1 && pane.paneVisible[paneIdx as 0 | 1 | 2];
 
         return (
           <div

@@ -27,6 +27,7 @@ export interface DraftPreviewContent {
 
 type PaneApps = [PaneAppId | null, PaneAppId | null, PaneAppId | null];
 type PaneWidths = [number, number, number];
+type PaneVisible = [boolean, boolean, boolean];
 
 const DEFAULT_PANE: Record<PaneAppId, 0 | 1 | 2> = {
   chat: 0,
@@ -41,6 +42,7 @@ const DEFAULT_PANE: Record<PaneAppId, 0 | 1 | 2> = {
 
 interface PaneContextValue {
   paneCount: 1 | 2 | 3;
+  paneVisible: PaneVisible;
   paneApps: PaneApps;
   paneWidths: PaneWidths;
   mountedApps: Set<PaneAppId>;
@@ -49,6 +51,8 @@ interface PaneContextValue {
   closeApp: (appId: PaneAppId) => void;
   moveApp: (appId: PaneAppId, paneIndex: 0 | 1 | 2) => void;
   setPaneCount: (n: 1 | 2 | 3) => void;
+  showPane: (idx: 0 | 1 | 2) => void;
+  hidePane: (idx: 0 | 1 | 2) => void;
   setPaneWidths: (w: PaneWidths) => void;
 
   registerToolbar: (appId: PaneAppId, slot: ToolbarSlot) => void;
@@ -73,14 +77,68 @@ export function usePaneContext(): PaneContextValue {
   return ctx;
 }
 
-function buildEqualWidths(count: 1 | 2 | 3): PaneWidths {
-  if (count === 1) return [100, 0, 0];
-  if (count === 2) return [50, 50, 0];
-  return [33.33, 33.33, 33.34];
+function buildEqualWidths(visible: PaneVisible): PaneWidths {
+  const count = visible.filter(Boolean).length;
+  if (count === 0) return [100, 0, 0];
+  const share = 100 / count;
+  return [visible[0] ? share : 0, visible[1] ? share : 0, visible[2] ? share : 0];
+}
+
+// Pure helpers — compute new visibility/width state without side effects so callers
+// can chain multiple transitions in a single event handler.
+function computeShowPane(
+  prevVisible: PaneVisible,
+  prevWidths: PaneWidths,
+  idx: 0 | 1 | 2,
+): { visible: PaneVisible; widths: PaneWidths } {
+  if (prevVisible[idx]) return { visible: prevVisible, widths: prevWidths };
+  const nextVisible: PaneVisible = [...prevVisible] as PaneVisible;
+  nextVisible[idx] = true;
+  const existingCount = prevVisible.filter(Boolean).length;
+  const newCount = existingCount + 1;
+  const newShare = 100 / newCount;
+  const nextWidths: PaneWidths = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    if (i === idx) {
+      nextWidths[i] = newShare;
+    } else if (nextVisible[i]) {
+      nextWidths[i] = (prevWidths[i] * existingCount) / newCount;
+    }
+  }
+  return { visible: nextVisible, widths: nextWidths };
+}
+
+function computeHidePane(
+  prevVisible: PaneVisible,
+  prevWidths: PaneWidths,
+  idx: 0 | 1 | 2,
+): { visible: PaneVisible; widths: PaneWidths } {
+  if (!prevVisible[idx]) return { visible: prevVisible, widths: prevWidths };
+  const visibleCount = prevVisible.filter(Boolean).length;
+  // Never hide the last visible pane
+  if (visibleCount <= 1) return { visible: prevVisible, widths: prevWidths };
+
+  const nextVisible: PaneVisible = [...prevVisible] as PaneVisible;
+  nextVisible[idx] = false;
+
+  const removedWidth = prevWidths[idx];
+  const remainingTotal = 100 - removedWidth;
+  const nextWidths: PaneWidths = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    if (i === idx) {
+      nextWidths[i] = 0;
+    } else if (nextVisible[i]) {
+      nextWidths[i] =
+        remainingTotal > 0
+          ? (prevWidths[i] / remainingTotal) * 100
+          : 100 / (visibleCount - 1);
+    }
+  }
+  return { visible: nextVisible, widths: nextWidths };
 }
 
 function readStorage(ticketKey: string): {
-  paneCount: 1 | 2 | 3;
+  paneVisible: PaneVisible;
   paneApps: PaneApps;
   paneWidths: PaneWidths;
 } | null {
@@ -88,7 +146,14 @@ function readStorage(ticketKey: string): {
   try {
     const raw = localStorage.getItem(`sw:${ticketKey}:panes`);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // Migrate from old paneCount format
+    if (typeof parsed.paneCount === "number" && !parsed.paneVisible) {
+      const n = parsed.paneCount as number;
+      parsed.paneVisible = [true, n >= 2, n >= 3];
+    }
+    if (!Array.isArray(parsed.paneVisible)) return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -96,7 +161,7 @@ function readStorage(ticketKey: string): {
 
 function writeStorage(
   ticketKey: string,
-  state: { paneCount: 1 | 2 | 3; paneApps: PaneApps; paneWidths: PaneWidths },
+  state: { paneVisible: PaneVisible; paneApps: PaneApps; paneWidths: PaneWidths },
 ) {
   if (typeof window === "undefined") return;
   try {
@@ -114,20 +179,22 @@ interface PaneProviderProps {
 export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   const stored = readStorage(ticketKey);
 
-  const [paneCount, setPaneCountState] = useState<1 | 2 | 3>(stored?.paneCount ?? 2);
+  const defaultVisible: PaneVisible = [true, true, false];
+
+  const [paneVisible, setPaneVisibleState] = useState<PaneVisible>(
+    stored?.paneVisible ?? defaultVisible,
+  );
   const [paneApps, setPaneApps] = useState<PaneApps>(
     stored?.paneApps ?? ["chat", "editor", null],
   );
   const [paneWidths, setPaneWidthsState] = useState<PaneWidths>(() => {
-    if (!stored) return buildEqualWidths(2);
-    // Validate stored widths: if any visible pane has 0 or missing width, reset to equal
-    const { paneCount: sc, paneWidths: sw } = stored;
-    for (let i = 0; i < sc; i++) {
-      if ((sw[i] ?? 0) <= 0) return buildEqualWidths(sc);
+    if (!stored) return [50, 50, 0];
+    const { paneVisible: sv, paneWidths: sw } = stored;
+    for (let i = 0; i < 3; i++) {
+      if (sv[i] && (sw[i] ?? 0) <= 0) return buildEqualWidths(sv);
     }
     return sw;
   });
-  // Restore mounted apps from storage, or default to chat+editor
   const [mountedApps, setMountedApps] = useState<Set<PaneAppId>>(() => {
     if (stored) {
       return new Set(stored.paneApps.filter(Boolean) as PaneAppId[]);
@@ -139,45 +206,51 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   const [relatedSelectedKey, setRelatedSelectedKey] = useState<string | null>(null);
   const [draggedApp, setDraggedApp] = useState<PaneAppId | null>(null);
 
-  // Persist state to localStorage when it changes
-  useEffect(() => {
-    writeStorage(ticketKey, { paneCount, paneApps, paneWidths });
-  }, [ticketKey, paneCount, paneApps, paneWidths]);
+  // Refs so event handlers always see the latest values without stale closure issues
+  const paneVisibleRef = useRef(paneVisible);
+  const paneWidthsRef = useRef(paneWidths);
+  useEffect(() => { paneVisibleRef.current = paneVisible; }, [paneVisible]);
+  useEffect(() => { paneWidthsRef.current = paneWidths; }, [paneWidths]);
 
-  // Global safety net: clear draggedApp whenever any drag operation ends
+  // paneCount is derived — callers that need a number use this
+  const paneCount = paneVisible.filter(Boolean).length as 1 | 2 | 3;
+
+  useEffect(() => {
+    writeStorage(ticketKey, { paneVisible, paneApps, paneWidths });
+  }, [ticketKey, paneVisible, paneApps, paneWidths]);
+
   useEffect(() => {
     const handler = () => setDraggedApp(null);
     document.addEventListener("dragend", handler);
     return () => document.removeEventListener("dragend", handler);
   }, []);
 
+  function showPane(idx: 0 | 1 | 2) {
+    const { visible, widths } = computeShowPane(paneVisibleRef.current, paneWidthsRef.current, idx);
+    setPaneVisibleState(visible);
+    setPaneWidthsState(widths);
+  }
+
+  function hidePane(idx: 0 | 1 | 2) {
+    const { visible, widths } = computeHidePane(paneVisibleRef.current, paneWidthsRef.current, idx);
+    setPaneVisibleState(visible);
+    setPaneWidthsState(widths);
+  }
+
+  // Preset toggle (1/2/3 pane buttons): always sets the first N panes visible with equal widths
   function setPaneCount(n: 1 | 2 | 3) {
-    setPaneCountState(n);
-    setPaneWidthsState((prev) => {
-      if (n === 1) return [100, 0, 0];
-      if (n === 2) {
-        // Preserve ratio only when both panes already had width
-        if (prev[0] > 0 && prev[1] > 0) {
-          const total = prev[0] + prev[1];
-          const ratio = prev[0] / total;
-          return [ratio * 100, (1 - ratio) * 100, 0];
-        }
-        return [50, 50, 0];
-      }
-      // 3 panes: preserve only when all three panes already had width
-      if (prev[0] > 0 && prev[1] > 0 && prev[2] > 0) return prev;
-      return buildEqualWidths(3);
-    });
-    // Clear apps from panes that are no longer visible so the app bar reflects reality
+    const nextVisible: PaneVisible = [true, n >= 2, n >= 3];
+    const nextWidths = buildEqualWidths(nextVisible);
     setPaneApps((prev) => {
-      let changed = false;
       const next: PaneApps = [...prev] as PaneApps;
-      for (let i = n; i < 3; i++) {
+      for (let i = 0; i < 3; i++) {
         const idx = i as 0 | 1 | 2;
-        if (next[idx] !== null) { next[idx] = null; changed = true; }
+        if (!nextVisible[idx] && next[idx] !== null) next[idx] = null;
       }
-      return changed ? next : prev;
+      return next;
     });
+    setPaneVisibleState(nextVisible);
+    setPaneWidthsState(nextWidths);
   }
 
   function setPaneWidths(w: PaneWidths) {
@@ -185,13 +258,15 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   }
 
   function openApp(appId: PaneAppId) {
+    const targetPane = DEFAULT_PANE[appId];
     setMountedApps((prev) => new Set([...prev, appId]));
-    // Clamp to the next available slot to avoid creating gaps (e.g. pane 1→3)
-    const preferred = DEFAULT_PANE[appId];
-    const targetPane = Math.min(preferred, paneCount) as 0 | 1 | 2;
-    if (targetPane + 1 > paneCount) {
-      setPaneCount((targetPane + 1) as 1 | 2 | 3);
-    }
+    const { visible, widths } = computeShowPane(
+      paneVisibleRef.current,
+      paneWidthsRef.current,
+      targetPane,
+    );
+    setPaneVisibleState(visible);
+    setPaneWidthsState(widths);
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = appId;
@@ -200,56 +275,35 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   }
 
   function closeApp(appId: PaneAppId) {
-    // Remove the app from its pane slot
-    const withRemoved: PaneApps = [...paneApps] as PaneApps;
-    for (let i = 0; i < 3; i++) {
-      if (withRemoved[i] === appId) withRemoved[i] = null;
-    }
-
-    // Compact: shift remaining apps forward to fill any leading/middle gaps
-    const remaining: Array<{ app: PaneAppId; oldIdx: number }> = [];
-    for (let i = 0; i < 3; i++) {
-      if (withRemoved[i] !== null) remaining.push({ app: withRemoved[i]!, oldIdx: i });
-    }
-    const compacted: PaneApps = [
-      remaining[0]?.app ?? null,
-      remaining[1]?.app ?? null,
-      remaining[2]?.app ?? null,
-    ];
-    setPaneApps(compacted);
-
-    // Auto-collapse paneCount and remap widths proportionally from original positions
-    const newCount = Math.max(1, remaining.length) as 1 | 2 | 3;
-    if (newCount !== paneCount) {
-      setPaneCountState(newCount);
-      if (remaining.length <= 1) {
-        setPaneWidthsState([100, 0, 0]);
-      } else {
-        const rawWidths = remaining.map((r) => paneWidths[r.oldIdx]);
-        const total = rawWidths.reduce((s, w) => s + w, 0) || 100;
-        const newWidths: PaneWidths = [0, 0, 0];
-        for (let i = 0; i < remaining.length && i < 3; i++) {
-          newWidths[i] = (rawWidths[i] / total) * 100;
-        }
-        setPaneWidthsState(newWidths);
-      }
-    }
-    // Component stays mounted (mountedApps not changed — state is preserved)
+    const slotIdx = paneApps.findIndex((a) => a === appId);
+    if (slotIdx === -1) return;
+    const idx = slotIdx as 0 | 1 | 2;
+    setPaneApps((prev) => {
+      const next: PaneApps = [...prev] as PaneApps;
+      next[idx] = null;
+      return next;
+    });
+    const { visible, widths } = computeHidePane(paneVisibleRef.current, paneWidthsRef.current, idx);
+    setPaneVisibleState(visible);
+    setPaneWidthsState(widths);
+    // Component stays mounted — state is preserved for when the app reopens
   }
 
   function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {
     setMountedApps((prev) => new Set([...prev, appId]));
-    // Auto-expand pane count when dropping into a slot that isn't visible yet
-    if (paneIndex + 1 > paneCount) {
-      setPaneCount((paneIndex + 1) as 1 | 2 | 3);
-    }
+    // Show the target pane if it isn't visible yet; source pane stays open (empty = drop zone)
+    const { visible, widths } = computeShowPane(
+      paneVisibleRef.current,
+      paneWidthsRef.current,
+      paneIndex,
+    );
+    setPaneVisibleState(visible);
+    setPaneWidthsState(widths);
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
-      // Remove from current location
       for (let i = 0; i < 3; i++) {
-        if (next[i] === appId) next[i] = null;
+        if (next[i as 0 | 1 | 2] === appId) next[i as 0 | 1 | 2] = null;
       }
-      // Displace current occupant (it becomes inactive, not destroyed)
       next[paneIndex] = appId;
       return next;
     });
@@ -257,7 +311,6 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function registerToolbar(appId: PaneAppId, slot: ToolbarSlot) {
     setToolbars((prev) => {
-      // Shallow-compare to avoid unnecessary re-renders
       const existing = prev[appId];
       if (
         existing &&
@@ -274,10 +327,14 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   function openDraftPreview(content: string, label: string, draftId?: string) {
     setDraftPreviewContent({ content, label, draftId });
     setMountedApps((prev) => new Set([...prev, "draft-preview" as PaneAppId]));
-    const targetPane = Math.min(DEFAULT_PANE["draft-preview"], paneCount) as 0 | 1 | 2;
-    if (targetPane + 1 > paneCount) {
-      setPaneCount((targetPane + 1) as 1 | 2 | 3);
-    }
+    const targetPane = DEFAULT_PANE["draft-preview"];
+    const { visible, widths } = computeShowPane(
+      paneVisibleRef.current,
+      paneWidthsRef.current,
+      targetPane,
+    );
+    setPaneVisibleState(visible);
+    setPaneWidthsState(widths);
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = "draft-preview";
@@ -288,10 +345,14 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   function openRelated(selectedKey?: string) {
     if (selectedKey !== undefined) setRelatedSelectedKey(selectedKey);
     setMountedApps((prev) => new Set([...prev, "related" as PaneAppId]));
-    const targetPane = Math.min(DEFAULT_PANE["related"], paneCount) as 0 | 1 | 2;
-    if (targetPane + 1 > paneCount) {
-      setPaneCount((targetPane + 1) as 1 | 2 | 3);
-    }
+    const targetPane = DEFAULT_PANE["related"];
+    const { visible, widths } = computeShowPane(
+      paneVisibleRef.current,
+      paneWidthsRef.current,
+      targetPane,
+    );
+    setPaneVisibleState(visible);
+    setPaneWidthsState(widths);
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = "related";
@@ -303,6 +364,7 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
     <PaneContext.Provider
       value={{
         paneCount,
+        paneVisible,
         paneApps,
         paneWidths,
         mountedApps,
@@ -310,6 +372,8 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
         closeApp,
         moveApp,
         setPaneCount,
+        showPane,
+        hidePane,
         setPaneWidths,
         registerToolbar,
         toolbars,

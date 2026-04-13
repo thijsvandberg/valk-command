@@ -42,7 +42,8 @@ export function ApplicationListBar() {
 
   const getAppState = (appId: PaneAppId): { paneIndex: number | null } => {
     const idx = pane.paneApps.indexOf(appId);
-    return { paneIndex: idx >= 0 ? idx : null };
+    if (idx < 0 || !pane.paneVisible[idx as 0 | 1 | 2]) return { paneIndex: null };
+    return { paneIndex: idx };
   };
 
   const handleAppClick = (appId: PaneAppId) => {
