@@ -116,9 +116,15 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   const [paneApps, setPaneApps] = useState<PaneApps>(
     stored?.paneApps ?? ["chat", "editor", null],
   );
-  const [paneWidths, setPaneWidthsState] = useState<PaneWidths>(
-    stored?.paneWidths ?? buildEqualWidths(stored?.paneCount ?? 2),
-  );
+  const [paneWidths, setPaneWidthsState] = useState<PaneWidths>(() => {
+    if (!stored) return buildEqualWidths(2);
+    // Validate stored widths: if any visible pane has 0 or missing width, reset to equal
+    const { paneCount: sc, paneWidths: sw } = stored;
+    for (let i = 0; i < sc; i++) {
+      if ((sw[i] ?? 0) <= 0) return buildEqualWidths(sc);
+    }
+    return sw;
+  });
   // Restore mounted apps from storage, or default to chat+editor
   const [mountedApps, setMountedApps] = useState<Set<PaneAppId>>(() => {
     if (stored) {
@@ -186,6 +192,10 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {
     setMountedApps((prev) => new Set([...prev, appId]));
+    // Auto-expand pane count when dropping into a slot that isn't visible yet
+    if (paneIndex + 1 > paneCount) {
+      setPaneCount((paneIndex + 1) as 1 | 2 | 3);
+    }
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       // Remove from current location

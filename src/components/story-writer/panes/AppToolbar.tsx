@@ -29,6 +29,10 @@ export function AppToolbar() {
     e.dataTransfer.dropEffect = "move";
   };
 
+  // When dragging, show a drop zone for the next unopened pane slot (paneCount 1→2 or 2→3)
+  const showExpandSlot = pane.draggedApp !== null && pane.paneCount < 3;
+  const expandSlotIndex = pane.paneCount as 0 | 1 | 2;
+
   return (
     <div className="flex h-[42px] shrink-0 border-b border-white/[0.06] bg-[var(--color-surface-base)]">
       {visiblePanes.map((paneIdx, i) => {
@@ -89,6 +93,22 @@ export function AppToolbar() {
           </div>
         );
       })}
+
+      {/* Extra drop zone: drop here to open a new pane */}
+      {showExpandSlot && (
+        <div className="flex w-36 shrink-0">
+          <div className="w-px shrink-0 bg-white/[0.06]" />
+          <div
+            className="flex flex-1 items-center justify-center px-3 bg-[var(--color-brand-500)]/[0.06] transition-colors duration-100"
+            onDrop={(e) => handleDrop(e, expandSlotIndex)}
+            onDragOver={handleDragOver}
+          >
+            <span className="text-[10px] text-[var(--color-brand-400)]/70">
+              + Open in new pane
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
