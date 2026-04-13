@@ -38,7 +38,7 @@ export function AppToolbar() {
       {visiblePanes.map((paneIdx, i) => {
         const activeApp = pane.paneApps[paneIdx] ?? null;
         const toolbar = activeApp ? pane.toolbars[activeApp] : null;
-        const isDragTarget = pane.draggedApp !== null && pane.draggedApp !== activeApp;
+        const isDragTarget = pane.draggedApp !== null;
 
         return (
           <div

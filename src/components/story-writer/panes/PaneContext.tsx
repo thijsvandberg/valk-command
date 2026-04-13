@@ -144,6 +144,13 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
     writeStorage(ticketKey, { paneCount, paneApps, paneWidths });
   }, [ticketKey, paneCount, paneApps, paneWidths]);
 
+  // Global safety net: clear draggedApp whenever any drag operation ends
+  useEffect(() => {
+    const handler = () => setDraggedApp(null);
+    document.addEventListener("dragend", handler);
+    return () => document.removeEventListener("dragend", handler);
+  }, []);
+
   function setPaneCount(n: 1 | 2 | 3) {
     setPaneCountState(n);
     setPaneWidthsState((prev) => {

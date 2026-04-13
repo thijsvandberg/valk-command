@@ -131,7 +131,9 @@ export function PaneArea() {
       <div className="absolute inset-0 flex">
         {Array.from({ length: pane.paneCount }, (_, paneIdx) => {
           const activeApp = pane.paneApps[paneIdx] ?? null;
-          const isDragTarget = pane.draggedApp !== null && pane.draggedApp !== activeApp;
+          // Ring highlight on every pane during drag; overlay only where the source app isn't
+          const isDragging = pane.draggedApp !== null;
+          const showDropOverlay = isDragging && activeApp !== pane.draggedApp;
 
           return (
             <Fragment key={paneIdx}>
@@ -140,13 +142,13 @@ export function PaneArea() {
               )}
               <div
                 className={`relative flex flex-none flex-col overflow-hidden transition-colors duration-100 ${
-                  isDragTarget ? "ring-1 ring-inset ring-[var(--color-brand-500)]/20" : ""
+                  isDragging ? "ring-1 ring-inset ring-[var(--color-brand-500)]/20" : ""
                 }`}
                 style={{ width: `${pane.paneWidths[paneIdx]}%` }}
                 onDrop={(e) => handleDrop(e, paneIdx as 0 | 1 | 2)}
                 onDragOver={handleDragOver}
               >
-                {isDragTarget && (
+                {showDropOverlay && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-brand-500)]/[0.04]">
                     <span className="rounded-lg border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-3 py-1.5 text-[11px] text-[var(--color-brand-400)]">
                       Drop here
