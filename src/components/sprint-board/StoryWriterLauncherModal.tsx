@@ -338,6 +338,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
   const [sessions, setSessions]                 = useState<ActiveSession[]>([]);
   const [selectedSessionKey, setSelectedSessionKey] = useState("");
   const [sessionsLoading, setSessionsLoading]   = useState(false);
+  const [confirmDeleteSessionId, setConfirmDeleteSessionId] = useState<string | null>(null);
 
   // Existing story search
   const [searchQuery, setSearchQuery]       = useState("");
@@ -357,7 +358,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     if (!open) return;
     setMode("new"); setNewTitle(""); setIssueType("story"); setCreateError(null);
     setSearchQuery(""); setSearchResults([]); setSelectedTicket(null);
-    setShowDropdown(false); setSelectedSessionKey(""); setFocusedSearch(-1);
+    setShowDropdown(false); setSelectedSessionKey(""); setFocusedSearch(-1); setConfirmDeleteSessionId(null);
 
     Promise.all([
       fetch("/api/jira/sprints").then((r) => r.json() as Promise<JiraSprint[]>),
@@ -674,7 +675,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             size="sm"
                             iconOnly
                             icon={<Trash2 size={12} strokeWidth={1.5} />}
-                            onClick={(e) => { e.stopPropagation(); deleteSession(s.sessionId); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteSessionId(s.sessionId); }}
                             title="Dismiss session"
                           />
                         </div>
@@ -729,7 +730,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             size="sm"
                             iconOnly
                             icon={<Trash2 size={12} strokeWidth={1.5} />}
-                            onClick={() => deleteSession(selectedSession.sessionId)}
+                            onClick={() => setConfirmDeleteSessionId(selectedSession.sessionId)}
                             title="Dismiss session"
                           />
                         </div>
@@ -831,6 +832,36 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
         </div>
       </div>
+
+      {/* ── Discard confirmation ── */}
+      {confirmDeleteSessionId && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmDeleteSessionId(null); }}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl border border-white/[0.08]">
+            <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/90">
+              Discard session?
+            </h3>
+            <p className="mt-2 text-xs leading-[1.7] text-white/50">
+              This will permanently discard the session. You will not be able to resume it later.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <Button variant="ghost" size="md" onClick={() => setConfirmDeleteSessionId(null)} className="border-0">
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="md"
+                onClick={() => { deleteSession(confirmDeleteSessionId); setConfirmDeleteSessionId(null); }}
+                className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
+              >
+                Discard
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
