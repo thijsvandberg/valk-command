@@ -18,15 +18,33 @@ import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { SplitStoryPicker } from "./SplitStoryPicker";
-import { SplitModeLayout } from "./SplitModeLayout";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { Button } from "@/components/ui/Button";
-import { PaneProvider } from "./panes/PaneContext";
-import { WriterProvider, type WriterContextValue } from "./panes/WriterContext";
+import { PaneProvider, usePaneContext } from "./panes/PaneContext";
+import { WriterProvider, useWriterContext, type WriterContextValue } from "./panes/WriterContext";
 import { ApplicationListBar } from "./panes/ApplicationListBar";
 import { AppToolbar } from "./panes/AppToolbar";
 import { PaneArea } from "./panes/PaneArea";
+
+// Syncs splitModeVisible + targetTicketKey → opens/closes the split-target pane app
+function SplitModeSync() {
+  const writer = useWriterContext();
+  const pane = usePaneContext();
+  const shouldOpen = writer.splitModeVisible && !!writer.targetTicketKey;
+
+  useEffect(() => {
+    if (shouldOpen) {
+      pane.openApp("split-target");
+    } else {
+      pane.closeApp("split-target");
+    }
+    // pane functions are stable between renders that don't change pane state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldOpen]);
+
+  return null;
+}
 
 interface StoryWriterLayoutProps {
   ticketKey: string;
@@ -295,6 +313,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   return (
     <PaneProvider ticketKey={ticketKey}>
       <WriterProvider value={writerContextValue}>
+        <SplitModeSync />
         <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
           {/* Action bar — unchanged */}
           <ViewHeader
@@ -432,30 +451,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           {/* App toolbar */}
           <AppToolbar />
 
-          {/* Pane area or split mode */}
-          {splitModeVisible && targetTicketKey ? (
-            <div className="flex flex-1 overflow-hidden">
-              <SplitModeLayout
-                originalKey={ticketKey}
-                originalTitle={writer.session?.localTitle ?? ticketData?.title ?? ""}
-                originalDraft={writer.session?.localDraft ?? ""}
-                originalAiDrafts={writer.aiDrafts}
-                originalBaseDescription={baseDescription}
-                targetKey={targetTicketKey}
-                targetTitle={writer.session?.targetLocalTitle ?? targetTicketTitle ?? targetTicketKey}
-                targetDraft={writer.session?.targetLocalDraft ?? ""}
-                targetAiDrafts={writer.targetAiDrafts}
-                onOriginalDraftChange={handleDraftChange}
-                onOriginalTitleChange={handleTitleChange}
-                onTargetDraftChange={handleTargetDraftChange}
-                onTargetTitleChange={handleTargetTitleChange}
-                onDismissOriginalDraft={writer.dismissDraft}
-                onDismissTargetDraft={writer.dismissDraft}
-              />
-            </div>
-          ) : (
-            <PaneArea />
-          )}
+          {/* Pane area */}
+          <PaneArea />
 
           {/* Delete confirmation */}
           {showDeleteConfirm && (

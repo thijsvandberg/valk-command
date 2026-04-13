@@ -8,8 +8,10 @@ import {
   Eye,
   Network,
   BookOpen,
+  Scissors,
 } from "lucide-react";
 import { usePaneContext, type PaneAppId } from "./PaneContext";
+import { useWriterContext } from "./WriterContext";
 
 const APP_DEFS: Array<{
   id: PaneAppId;
@@ -29,6 +31,14 @@ const PANE_COUNTS: (1 | 2 | 3)[] = [1, 2, 3];
 
 export function ApplicationListBar() {
   const pane = usePaneContext();
+  const writer = useWriterContext();
+
+  const visibleApps: Array<{ id: PaneAppId; label: string; icon: React.ReactNode }> = [
+    ...APP_DEFS,
+    ...(writer.targetTicketKey
+      ? [{ id: "split-target" as PaneAppId, label: writer.targetTicketKey, icon: <Scissors size={11} strokeWidth={1.5} /> }]
+      : []),
+  ];
 
   const getAppState = (appId: PaneAppId): { paneIndex: number | null } => {
     const idx = pane.paneApps.indexOf(appId);
@@ -57,7 +67,7 @@ export function ApplicationListBar() {
     <div className="flex h-9 shrink-0 items-center gap-1 border-b border-white/[0.06] bg-[var(--color-surface-base)] px-3">
       {/* App list */}
       <div className="flex min-w-0 flex-1 items-center gap-0.5">
-        {APP_DEFS.map((app) => {
+        {visibleApps.map((app) => {
           const { paneIndex } = getAppState(app.id);
           const isActive = paneIndex !== null;
 
