@@ -60,13 +60,11 @@ De verschillende 'apps' openen standaard in dezelfde pane:
 
 Het moet ook mogelijk zijn om doormiddel van drag & drop een 'app' te verplaatsen naar een andere pane. Er is altijd maar 1 app actief in een pane. Als je een app sluit in de pane, dan moet alle info bewaard blijven.
 
-Zo zie ik het voor me; 3 horizontale bars met app info en actions.
+Zo zie ik het voor me; 3 horizontale bars met app info en actions:
 
-Header: Story writer action bar met oa split / save / push / discard (hier veranderen we nu niets aan)
---
-Application list: (hiermee zet kun je de verschillende applicaties inklappen uitklapen) + pane toggle
---
-App toolbar met verschllende pane voorbeelden: CHAT    <chat actions: logs> | Editor: VPL-123 Title of the story <editor actions> | Diff: Name/number draft <diff actions: dropdown / preview button>
+- Header: Story writer action bar met oa split / save / push / discard (hier veranderen we nu niets aan)
+- Application list: (hiermee zet kun je de verschillende applicaties inklappen uitklapen) + pane toggle
+- App toolbar met verschllende pane voorbeelden: CHAT    <chat actions: logs> | Editor: VPL-123 Title of the story <editor actions> | Diff: Name/number draft <diff actions: dropdown / preview button>
 
 ---------------------------------------
 

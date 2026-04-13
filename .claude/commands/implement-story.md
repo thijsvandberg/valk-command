@@ -13,16 +13,18 @@ $ARGUMENTS should be a story ID like `BRDG-XXX`. Find the matching file in `docs
 - If the story references other files (PRD, architecture docs), read those too
 - **If all checkboxes are already `[x]`**: report that the story is already complete and stop.
 
-### 2. Enrich with plan mode
+### 2. Plan with Opus (no mode switch)
 
-Before writing any code, enter plan mode to:
+Before writing any code, launch an **Agent** subagent with `model: "opus"` and `subagent_type: "Plan"` to create the implementation plan. The agent's prompt must include:
 
-- Identify gaps, ambiguities, or missing acceptance criteria
-- Map out which files, components, and APIs will be touched
-- Break down complex checkboxes into smaller implementation steps if needed
-- Add technical notes directly into the story `.md` file where useful
+- The full content of the story file
+- The content of any referenced architecture/PRD docs
+- Instruction to return a concise, numbered implementation plan covering:
+  - Which files, components, and APIs will be touched per checkbox
+  - Implementation order and dependencies between checkboxes
+  - Any gaps, ambiguities, or missing acceptance criteria
 
-Exit plan mode and immediately proceed to implementation. Do NOT pause to ask about permissions, modes, or workflow preferences.
+The Plan subagent cannot write files. After it returns the plan, **you** (the main agent) must write it into the story `.md` file under a new `## Implementation Plan` heading (inserted before the first checklist/acceptance criteria section). Then immediately proceed to implementation. Do NOT enter plan mode. Do NOT pause, ask for confirmation, or offer choices.
 
 ### 3. Implement checkbox by checkbox
 
