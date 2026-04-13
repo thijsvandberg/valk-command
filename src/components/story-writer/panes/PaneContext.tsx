@@ -114,12 +114,18 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   const [paneCount, setPaneCountState] = useState<1 | 2 | 3>(stored?.paneCount ?? 2);
   const [paneApps, setPaneApps] = useState<PaneApps>(
-    stored?.paneApps ?? [null, null, null],
+    stored?.paneApps ?? ["chat", "editor", null],
   );
   const [paneWidths, setPaneWidthsState] = useState<PaneWidths>(
     stored?.paneWidths ?? buildEqualWidths(stored?.paneCount ?? 2),
   );
-  const [mountedApps, setMountedApps] = useState<Set<PaneAppId>>(new Set());
+  // Restore mounted apps from storage, or default to chat+editor
+  const [mountedApps, setMountedApps] = useState<Set<PaneAppId>>(() => {
+    if (stored) {
+      return new Set(stored.paneApps.filter(Boolean) as PaneAppId[]);
+    }
+    return new Set(["chat", "editor"] as PaneAppId[]);
+  });
   const [toolbars, setToolbars] = useState<Partial<Record<PaneAppId, ToolbarSlot>>>({});
   const [draftPreviewContent, setDraftPreviewContent] = useState<DraftPreviewContent | null>(null);
   const [relatedSelectedKey, setRelatedSelectedKey] = useState<string | null>(null);
@@ -132,21 +138,20 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function setPaneCount(n: 1 | 2 | 3) {
     setPaneCountState(n);
-    // Rebalance widths when count changes, maintaining existing proportions for visible panes
     setPaneWidthsState((prev) => {
       if (n === 1) return [100, 0, 0];
       if (n === 2) {
-        const total = prev[0] + prev[1];
-        if (total > 0) {
+        // Preserve ratio only when both panes already had width
+        if (prev[0] > 0 && prev[1] > 0) {
+          const total = prev[0] + prev[1];
           const ratio = prev[0] / total;
           return [ratio * 100, (1 - ratio) * 100, 0];
         }
         return [50, 50, 0];
       }
-      // 3 panes: distribute evenly if coming from fewer
-      const total = prev[0] + prev[1] + prev[2];
-      if (total < 99) return buildEqualWidths(3);
-      return prev;
+      // 3 panes: preserve only when all three panes already had width
+      if (prev[0] > 0 && prev[1] > 0 && prev[2] > 0) return prev;
+      return buildEqualWidths(3);
     });
   }
 
@@ -157,6 +162,10 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   function openApp(appId: PaneAppId) {
     setMountedApps((prev) => new Set([...prev, appId]));
     const targetPane = DEFAULT_PANE[appId];
+    // Auto-expand pane count if the target pane is not visible yet
+    if (targetPane + 1 > paneCount) {
+      setPaneCount((targetPane + 1) as 1 | 2 | 3);
+    }
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = appId;
@@ -208,9 +217,13 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   function openDraftPreview(content: string, label: string, draftId?: string) {
     setDraftPreviewContent({ content, label, draftId });
     setMountedApps((prev) => new Set([...prev, "draft-preview" as PaneAppId]));
+    const targetPane = DEFAULT_PANE["draft-preview"];
+    if (targetPane + 1 > paneCount) {
+      setPaneCount((targetPane + 1) as 1 | 2 | 3);
+    }
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
-      next[DEFAULT_PANE["draft-preview"]] = "draft-preview";
+      next[targetPane] = "draft-preview";
       return next;
     });
   }
@@ -218,9 +231,13 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   function openRelated(selectedKey?: string) {
     if (selectedKey !== undefined) setRelatedSelectedKey(selectedKey);
     setMountedApps((prev) => new Set([...prev, "related" as PaneAppId]));
+    const targetPane = DEFAULT_PANE["related"];
+    if (targetPane + 1 > paneCount) {
+      setPaneCount((targetPane + 1) as 1 | 2 | 3);
+    }
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
-      next[DEFAULT_PANE["related"]] = "related";
+      next[targetPane] = "related";
       return next;
     });
   }

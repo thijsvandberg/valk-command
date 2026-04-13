@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { Fragment, useRef, useCallback, useEffect } from "react";
 import { usePaneContext, type PaneAppId } from "./PaneContext";
 import { ChatApp } from "./apps/ChatApp";
 import { EditorApp } from "./apps/EditorApp";
@@ -23,7 +23,7 @@ function AppComponent({ appId }: { appId: PaneAppId }) {
 }
 
 interface PaneDividerProps {
-  paneIndex: number; // index of the pane to the LEFT of this divider
+  paneIndex: number;
   onResize: (paneIndex: number, deltaX: number) => void;
 }
 
@@ -65,9 +65,9 @@ function PaneDivider({ paneIndex, onResize }: PaneDividerProps) {
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="group relative flex w-1 shrink-0 cursor-col-resize items-center justify-center hover:bg-[var(--color-brand-500)]/20 transition-colors duration-150 z-10"
+      className="group relative z-10 flex w-1 shrink-0 cursor-col-resize items-center justify-center transition-colors duration-150 hover:bg-[var(--color-brand-500)]/20"
     >
-      <div className="h-8 w-0.5 rounded-full bg-white/[0.08] group-hover:bg-[var(--color-brand-500)]/40 transition-colors duration-150" />
+      <div className="h-8 w-0.5 rounded-full bg-white/[0.08] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/40" />
     </div>
   );
 }
@@ -89,14 +89,12 @@ export function PaneArea() {
 
       const deltaPct = (deltaX / totalWidth) * 100;
       const rightPaneIndex = leftPaneIndex + 1;
-
       if (rightPaneIndex >= paneCountRef.current) return;
 
       const prev = paneWidthsRef.current;
       const next: [number, number, number] = [...prev] as [number, number, number];
       next[leftPaneIndex] = next[leftPaneIndex] + deltaPct;
       next[rightPaneIndex] = next[rightPaneIndex] - deltaPct;
-
       pane.setPaneWidths(next);
     },
     [pane],
@@ -115,71 +113,84 @@ export function PaneArea() {
     e.dataTransfer.dropEffect = "move";
   };
 
-  // All mounted apps are rendered; hidden via CSS when not active in any visible pane
   const allMountedApps = Array.from(pane.mountedApps);
 
+  // Cumulative left offsets (as % of container) for each pane slot
+  const paneLefts: [number, number, number] = [
+    0,
+    pane.paneWidths[0],
+    pane.paneWidths[0] + pane.paneWidths[1],
+  ];
+
   return (
-    <div ref={containerRef} className="flex flex-1 overflow-hidden">
-      {Array.from({ length: pane.paneCount }, (_, paneIdx) => {
-        const activeApp = pane.paneApps[paneIdx] ?? null;
-        const isDragTarget = pane.draggedApp !== null && pane.draggedApp !== activeApp;
+    // relative + overflow-hidden establishes the positioning context for the app layer
+    <div ref={containerRef} className="relative flex-1 overflow-hidden">
+      {/* Pane column layer: provides dividers, drop zones, and empty-state placeholders */}
+      <div className="absolute inset-0 flex">
+        {Array.from({ length: pane.paneCount }, (_, paneIdx) => {
+          const activeApp = pane.paneApps[paneIdx] ?? null;
+          const isDragTarget = pane.draggedApp !== null && pane.draggedApp !== activeApp;
+
+          return (
+            <Fragment key={paneIdx}>
+              {paneIdx > 0 && (
+                <PaneDivider paneIndex={paneIdx - 1} onResize={handleResize} />
+              )}
+              <div
+                className={`relative flex flex-none flex-col overflow-hidden transition-colors duration-100 ${
+                  isDragTarget ? "ring-1 ring-inset ring-[var(--color-brand-500)]/20" : ""
+                }`}
+                style={{ width: `${pane.paneWidths[paneIdx]}%` }}
+                onDrop={(e) => handleDrop(e, paneIdx as 0 | 1 | 2)}
+                onDragOver={handleDragOver}
+              >
+                {isDragTarget && (
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-brand-500)]/[0.04]">
+                    <span className="rounded-lg border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-3 py-1.5 text-[11px] text-[var(--color-brand-400)]">
+                      Drop here
+                    </span>
+                  </div>
+                )}
+                {!activeApp && (
+                  <div className="flex h-full items-center justify-center text-xs text-white/15">
+                    {allMountedApps.length === 0
+                      ? "Open an app from the bar above"
+                      : "Drop an app here"}
+                  </div>
+                )}
+              </div>
+            </Fragment>
+          );
+        })}
+      </div>
+
+      {/*
+        App layer: each mounted app rendered ONCE and absolutely positioned over its pane.
+        Apps never unmount — they are hidden (visibility: hidden, width: 0) when not in a
+        visible pane, which preserves all component state including RichEditor content.
+        Use top+bottom=0 instead of h-full so height is correctly resolved against the
+        flex-determined container height (h-full = height:100% requires an explicit height
+        on the containing block, which flex-1 does not provide).
+      */}
+      {allMountedApps.map((appId) => {
+        const paneIdx = pane.paneApps.findIndex((a) => a === appId);
+        const isVisible = paneIdx !== -1 && paneIdx < pane.paneCount;
 
         return (
-          <div key={paneIdx} className="flex flex-1 min-w-0 overflow-hidden">
-            {/* Divider before each pane except the first */}
-            {paneIdx > 0 && (
-              <PaneDivider paneIndex={paneIdx - 1} onResize={handleResize} />
-            )}
-
-            {/* Pane container */}
-            <div
-              className={`relative flex flex-col overflow-hidden transition-colors duration-100 ${
-                isDragTarget ? "ring-1 ring-inset ring-[var(--color-brand-500)]/20" : ""
-              }`}
-              style={{
-                width: `${pane.paneWidths[paneIdx]}%`,
-                flex: "none",
-              }}
-              onDrop={(e) => handleDrop(e, paneIdx as 0 | 1 | 2)}
-              onDragOver={handleDragOver}
-            >
-              {/* Drop overlay when dragging */}
-              {isDragTarget && (
-                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-brand-500)]/[0.04]">
-                  <span className="rounded-lg border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-3 py-1.5 text-[11px] text-[var(--color-brand-400)]">
-                    Drop here
-                  </span>
-                </div>
-              )}
-
-              {/* App content — each active app rendered, others CSS-hidden */}
-              {allMountedApps.map((appId) => (
-                <div
-                  key={appId}
-                  className="flex h-full flex-col overflow-hidden"
-                  style={{
-                    visibility: activeApp === appId ? "visible" : "hidden",
-                    pointerEvents: activeApp === appId ? "auto" : "none",
-                    position: activeApp === appId ? "relative" : "absolute",
-                    inset: activeApp === appId ? undefined : 0,
-                  }}
-                >
-                  <AppComponent appId={appId} />
-                </div>
-              ))}
-
-              {/* Empty pane placeholder */}
-              {!activeApp && allMountedApps.length === 0 && (
-                <div className="flex h-full items-center justify-center text-xs text-white/15">
-                  Open an app from the bar above
-                </div>
-              )}
-              {!activeApp && allMountedApps.length > 0 && (
-                <div className="flex h-full items-center justify-center text-xs text-white/15">
-                  Drop an app here
-                </div>
-              )}
-            </div>
+          <div
+            key={appId}
+            className="absolute flex flex-col overflow-hidden"
+            style={{
+              top: 0,
+              bottom: 0,
+              left: isVisible ? `${paneLefts[paneIdx]}%` : 0,
+              width: isVisible ? `${pane.paneWidths[paneIdx]}%` : 0,
+              visibility: isVisible ? "visible" : "hidden",
+              // During drag, pass pointer events through to the pane column drop zones below
+              pointerEvents: isVisible && !pane.draggedApp ? "auto" : "none",
+            }}
+          >
+            <AppComponent appId={appId} />
           </div>
         );
       })}
