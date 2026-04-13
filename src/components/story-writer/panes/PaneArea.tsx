@@ -123,7 +123,12 @@ export function PaneArea() {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const allMountedApps = Array.from(pane.mountedApps);
+  // Only apps in a visible pane slot are rendered (and thus mounted).
+  // Hidden apps unmount, freeing their DOM tree, event listeners, and component state.
+  // Content-bearing state (editor drafts, titles) is auto-saved to the DB so nothing is lost.
+  const visibleApps: PaneAppId[] = ([0, 1, 2] as const)
+    .filter((i) => pane.paneVisible[i] && pane.paneApps[i] !== null)
+    .map((i) => pane.paneApps[i]!);
   const visiblePaneIndices = ([0, 1, 2] as const).filter((i) => pane.paneVisible[i]);
 
   // Inactive pane slots shown as drop zones during drag
@@ -181,9 +186,7 @@ export function PaneArea() {
                 )}
                 {!activeApp && (
                   <div className="flex h-full items-center justify-center text-xs text-white/15">
-                    {allMountedApps.length === 0
-                      ? "Open an app from the bar above"
-                      : "Drop an app here"}
+                    Drop an app here
                   </div>
                 )}
               </div>
@@ -224,16 +227,10 @@ export function PaneArea() {
         })}
       </div>
 
-      {/*
-        App layer: each mounted app rendered ONCE and absolutely positioned over its pane.
-        Apps never unmount — they are hidden (visibility: hidden, width: 0) when not in a
-        visible pane, which preserves all component state including RichEditor content.
-        Use top+bottom=0 instead of h-full so height is correctly resolved against the
-        flex-determined container height.
-      */}
-      {allMountedApps.map((appId) => {
-        const paneIdx = pane.paneApps.findIndex((a) => a === appId);
-        const isVisible = paneIdx !== -1 && pane.paneVisible[paneIdx as 0 | 1 | 2];
+      {/* App layer: only visible apps are mounted. Closing/hiding unmounts the component,
+         freeing memory. Content state is persisted to the DB so nothing is lost on remount. */}
+      {visibleApps.map((appId) => {
+        const paneIdx = pane.paneApps.indexOf(appId);
 
         return (
           <div
@@ -242,11 +239,10 @@ export function PaneArea() {
             style={{
               top: 0,
               bottom: 0,
-              left: isVisible ? `${paneLefts[paneIdx]}%` : 0,
-              width: isVisible ? `${pane.paneWidths[paneIdx]}%` : 0,
-              visibility: isVisible ? "visible" : "hidden",
+              left: `${paneLefts[paneIdx]}%`,
+              width: `${pane.paneWidths[paneIdx]}%`,
               // During drag, pass pointer events through to the pane column drop zones below
-              pointerEvents: isVisible && !pane.draggedApp ? "auto" : "none",
+              pointerEvents: pane.draggedApp ? "none" : "auto",
             }}
           >
             <AppComponent appId={appId} />

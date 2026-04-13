@@ -45,8 +45,6 @@ interface PaneContextValue {
   paneVisible: PaneVisible;
   paneApps: PaneApps;
   paneWidths: PaneWidths;
-  mountedApps: Set<PaneAppId>;
-
   openApp: (appId: PaneAppId) => void;
   closeApp: (appId: PaneAppId) => void;
   moveApp: (appId: PaneAppId, paneIndex: 0 | 1 | 2) => void;
@@ -195,12 +193,6 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
     }
     return sw;
   });
-  const [mountedApps, setMountedApps] = useState<Set<PaneAppId>>(() => {
-    if (stored) {
-      return new Set(stored.paneApps.filter(Boolean) as PaneAppId[]);
-    }
-    return new Set(["chat", "editor"] as PaneAppId[]);
-  });
   const [toolbars, setToolbars] = useState<Partial<Record<PaneAppId, ToolbarSlot>>>({});
   const [draftPreviewContent, setDraftPreviewContent] = useState<DraftPreviewContent | null>(null);
   const [relatedSelectedKey, setRelatedSelectedKey] = useState<string | null>(null);
@@ -259,7 +251,6 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function openApp(appId: PaneAppId) {
     const targetPane = DEFAULT_PANE[appId];
-    setMountedApps((prev) => new Set([...prev, appId]));
     const { visible, widths } = computeShowPane(
       paneVisibleRef.current,
       paneWidthsRef.current,
@@ -286,19 +277,19 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
     const { visible, widths } = computeHidePane(paneVisibleRef.current, paneWidthsRef.current, idx);
     setPaneVisibleState(visible);
     setPaneWidthsState(widths);
-    // Component stays mounted — state is preserved for when the app reopens
   }
 
   function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {
-    setMountedApps((prev) => new Set([...prev, appId]));
-    // Show the target pane if it isn't visible yet; source pane stays open (empty = drop zone)
-    const { visible, widths } = computeShowPane(
-      paneVisibleRef.current,
-      paneWidthsRef.current,
-      paneIndex,
-    );
+    const sourceIdx = paneApps.findIndex((a) => a === appId);
+
+    // Show target pane, then hide source (it will be empty after the move)
+    let { visible, widths } = computeShowPane(paneVisibleRef.current, paneWidthsRef.current, paneIndex);
+    if (sourceIdx !== -1 && sourceIdx !== paneIndex) {
+      ({ visible, widths } = computeHidePane(visible, widths, sourceIdx as 0 | 1 | 2));
+    }
     setPaneVisibleState(visible);
     setPaneWidthsState(widths);
+
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       for (let i = 0; i < 3; i++) {
@@ -326,7 +317,6 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function openDraftPreview(content: string, label: string, draftId?: string) {
     setDraftPreviewContent({ content, label, draftId });
-    setMountedApps((prev) => new Set([...prev, "draft-preview" as PaneAppId]));
     const targetPane = DEFAULT_PANE["draft-preview"];
     const { visible, widths } = computeShowPane(
       paneVisibleRef.current,
@@ -344,7 +334,6 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function openRelated(selectedKey?: string) {
     if (selectedKey !== undefined) setRelatedSelectedKey(selectedKey);
-    setMountedApps((prev) => new Set([...prev, "related" as PaneAppId]));
     const targetPane = DEFAULT_PANE["related"];
     const { visible, widths } = computeShowPane(
       paneVisibleRef.current,
@@ -367,7 +356,6 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
         paneVisible,
         paneApps,
         paneWidths,
-        mountedApps,
         openApp,
         closeApp,
         moveApp,
