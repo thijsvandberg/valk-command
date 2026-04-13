@@ -90,10 +90,17 @@ export function EditorApp() {
     [selectedDraftIdx, writer.aiDrafts],
   );
 
+  const inSplitMode = writer.splitModeVisible && !!writer.targetTicketKey;
+
+  // Reset to editor when split mode is turned off
+  useEffect(() => {
+    if (!inSplitMode) setViewMode("editor");
+  }, [inSplitMode]);
+
   useEffect(() => {
     pane.registerToolbar("editor", {
       label: "Editor",
-      actions: (
+      actions: inSplitMode ? (
         <div className="flex items-center gap-2">
           {viewMode === "editor" ? (
             <Button
@@ -119,9 +126,9 @@ export function EditorApp() {
             </Button>
           )}
         </div>
-      ),
+      ) : undefined,
     });
-  }, [pane, viewMode]);
+  }, [pane, viewMode, inSplitMode]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

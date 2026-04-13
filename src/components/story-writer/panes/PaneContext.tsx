@@ -176,8 +176,9 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function openApp(appId: PaneAppId) {
     setMountedApps((prev) => new Set([...prev, appId]));
-    const targetPane = DEFAULT_PANE[appId];
-    // Auto-expand pane count if the target pane is not visible yet
+    // Clamp to the next available slot to avoid creating gaps (e.g. pane 1→3)
+    const preferred = DEFAULT_PANE[appId];
+    const targetPane = Math.min(preferred, paneCount) as 0 | 1 | 2;
     if (targetPane + 1 > paneCount) {
       setPaneCount((targetPane + 1) as 1 | 2 | 3);
     }
@@ -189,14 +190,19 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   }
 
   function closeApp(appId: PaneAppId) {
-    setPaneApps((prev) => {
-      const next: PaneApps = [...prev] as PaneApps;
-      for (let i = 0; i < 3; i++) {
-        if (next[i] === appId) next[i] = null;
-      }
-      return next;
-    });
-    // State is preserved - component stays mounted (mountedApps not changed)
+    // Compute new state from current paneApps (functions redefine on each render, so closure is fresh)
+    const newApps: PaneApps = [...paneApps] as PaneApps;
+    for (let i = 0; i < 3; i++) {
+      if (newApps[i] === appId) newApps[i] = null;
+    }
+    setPaneApps(newApps);
+    // Auto-collapse paneCount to remove trailing empty panes
+    const highestOccupied = newApps.reduce((max, app, i) => (app !== null ? i : max), -1);
+    const newCount = Math.max(1, highestOccupied + 1) as 1 | 2 | 3;
+    if (newCount < paneCount) {
+      setPaneCount(newCount);
+    }
+    // State is preserved — component stays mounted (mountedApps not changed)
   }
 
   function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {
@@ -236,7 +242,7 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   function openDraftPreview(content: string, label: string, draftId?: string) {
     setDraftPreviewContent({ content, label, draftId });
     setMountedApps((prev) => new Set([...prev, "draft-preview" as PaneAppId]));
-    const targetPane = DEFAULT_PANE["draft-preview"];
+    const targetPane = Math.min(DEFAULT_PANE["draft-preview"], paneCount) as 0 | 1 | 2;
     if (targetPane + 1 > paneCount) {
       setPaneCount((targetPane + 1) as 1 | 2 | 3);
     }
@@ -250,7 +256,7 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   function openRelated(selectedKey?: string) {
     if (selectedKey !== undefined) setRelatedSelectedKey(selectedKey);
     setMountedApps((prev) => new Set([...prev, "related" as PaneAppId]));
-    const targetPane = DEFAULT_PANE["related"];
+    const targetPane = Math.min(DEFAULT_PANE["related"], paneCount) as 0 | 1 | 2;
     if (targetPane + 1 > paneCount) {
       setPaneCount((targetPane + 1) as 1 | 2 | 3);
     }

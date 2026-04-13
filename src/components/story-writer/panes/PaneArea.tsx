@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useCallback, useEffect } from "react";
+import { Fragment, useState, useRef, useCallback, useEffect } from "react";
 import { usePaneContext, type PaneAppId } from "./PaneContext";
 import { ChatApp } from "./apps/ChatApp";
 import { EditorApp } from "./apps/EditorApp";
@@ -74,9 +74,13 @@ function PaneDivider({ paneIndex, onResize }: PaneDividerProps) {
   );
 }
 
+// Must match EXPAND_SLOT_W in AppToolbar so columns align
+const EXPAND_SLOT_W = 72;
+
 export function PaneArea() {
   const pane = usePaneContext();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
 
   const paneWidthsRef = useRef(pane.paneWidths);
   const paneCountRef = useRef(pane.paneCount);
@@ -102,8 +106,14 @@ export function PaneArea() {
     [pane],
   );
 
+  // Reset hovered expand slot when drag ends
+  useEffect(() => {
+    if (!pane.draggedApp) setHoveredSlot(null);
+  }, [pane.draggedApp]);
+
   const handleDrop = (e: React.DragEvent, paneIdx: 0 | 1 | 2) => {
     e.preventDefault();
+    setHoveredSlot(null);
     if (pane.draggedApp) {
       pane.moveApp(pane.draggedApp, paneIdx);
       pane.setDraggedApp(null);
@@ -116,6 +126,12 @@ export function PaneArea() {
   };
 
   const allMountedApps = Array.from(pane.mountedApps);
+
+  // Inactive pane slots to show as drop zones during drag
+  const expandSlots: (0 | 1 | 2)[] = pane.draggedApp !== null
+    ? Array.from({ length: 3 - pane.paneCount }, (_, i) => (pane.paneCount + i) as 0 | 1 | 2)
+    : [];
+  const totalExtraW = expandSlots.length * EXPAND_SLOT_W;
 
   // Cumulative left offsets (as % of container) for each pane slot
   const paneLefts: [number, number, number] = [
@@ -135,6 +151,11 @@ export function PaneArea() {
           const isDragging = pane.draggedApp !== null;
           const showDropOverlay = isDragging && activeApp !== pane.draggedApp;
 
+          // Shrink existing panes proportionally to make room for expand slots
+          const widthStyle = totalExtraW > 0
+            ? `calc(${pane.paneWidths[paneIdx]}% - ${(pane.paneWidths[paneIdx] / 100) * totalExtraW}px)`
+            : `${pane.paneWidths[paneIdx]}%`;
+
           return (
             <Fragment key={paneIdx}>
               {paneIdx > 0 && (
@@ -142,15 +163,15 @@ export function PaneArea() {
               )}
               <div
                 className={`relative flex flex-none flex-col overflow-hidden transition-colors duration-100 ${
-                  isDragging ? "ring-1 ring-inset ring-[var(--color-brand-500)]/20" : ""
+                  isDragging ? "ring-1 ring-inset ring-[var(--color-brand-500)]/25" : ""
                 }`}
-                style={{ width: `${pane.paneWidths[paneIdx]}%` }}
+                style={{ width: widthStyle }}
                 onDrop={(e) => handleDrop(e, paneIdx as 0 | 1 | 2)}
                 onDragOver={handleDragOver}
               >
                 {showDropOverlay && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-brand-500)]/[0.04]">
-                    <span className="rounded-lg border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 px-3 py-1.5 text-[11px] text-[var(--color-brand-400)]">
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-brand-500)]/[0.12]">
+                    <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-base)] px-3 py-1.5 text-[11px] text-[var(--color-brand-400)] shadow-lg">
                       Drop here
                     </span>
                   </div>
@@ -164,6 +185,35 @@ export function PaneArea() {
                 )}
               </div>
             </Fragment>
+          );
+        })}
+
+        {/* Inactive pane drop slots: thin strips that expand on hover to reveal the drop target */}
+        {expandSlots.map((slotIdx) => {
+          const isHovered = hoveredSlot === slotIdx;
+          return (
+            <div key={`expand-${slotIdx}`} className="flex shrink-0 transition-all duration-150" style={{ width: EXPAND_SLOT_W }}>
+              <div className="w-px shrink-0 bg-[var(--color-brand-500)]/25" />
+              <div
+                className={`flex flex-1 flex-col items-center justify-center transition-colors duration-150 ${
+                  isHovered
+                    ? "bg-[var(--color-brand-500)]/[0.12]"
+                    : "bg-[var(--color-brand-500)]/[0.04]"
+                }`}
+                onDrop={(e) => handleDrop(e, slotIdx)}
+                onDragOver={handleDragOver}
+                onDragEnter={() => setHoveredSlot(slotIdx)}
+                onDragLeave={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setHoveredSlot(null);
+                }}
+              >
+                <span className={`text-[10px] whitespace-nowrap transition-colors duration-150 ${
+                  isHovered ? "text-[var(--color-brand-400)]" : "text-[var(--color-brand-400)]/50"
+                }`}>
+                  {isHovered ? "Drop here" : `+ Pane ${slotIdx + 1}`}
+                </span>
+              </div>
+            </div>
           );
         })}
       </div>

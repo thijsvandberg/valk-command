@@ -2,10 +2,18 @@
 
 import { usePaneContext, type PaneAppId } from "./PaneContext";
 
+// Width (px) of each inactive-pane drop slot shown during drag
+const EXPAND_SLOT_W = 72;
+
 export function AppToolbar() {
   const pane = usePaneContext();
 
   const visiblePanes = Array.from({ length: pane.paneCount }, (_, i) => i);
+
+  // All inactive pane positions (beyond current paneCount)
+  const expandSlots: (0 | 1 | 2)[] = pane.draggedApp !== null
+    ? Array.from({ length: 3 - pane.paneCount }, (_, i) => (pane.paneCount + i) as 0 | 1 | 2)
+    : [];
 
   const handleDragStart = (e: React.DragEvent, appId: PaneAppId) => {
     e.dataTransfer.effectAllowed = "move";
@@ -29,9 +37,8 @@ export function AppToolbar() {
     e.dataTransfer.dropEffect = "move";
   };
 
-  // When dragging, show a drop zone for the next unopened pane slot (paneCount 1→2 or 2→3)
-  const showExpandSlot = pane.draggedApp !== null && pane.paneCount < 3;
-  const expandSlotIndex = pane.paneCount as 0 | 1 | 2;
+  // Shrink existing pane sections to make room for expand slots
+  const totalExtraW = expandSlots.length * EXPAND_SLOT_W;
 
   return (
     <div className="flex h-[42px] shrink-0 border-b border-white/[0.06] bg-[var(--color-surface-base)]">
@@ -40,11 +47,16 @@ export function AppToolbar() {
         const toolbar = activeApp ? pane.toolbars[activeApp] : null;
         const isDragTarget = pane.draggedApp !== null;
 
+        // Shrink proportionally to accommodate expand slots
+        const widthStyle = totalExtraW > 0
+          ? `calc(${pane.paneWidths[paneIdx]}% - ${(pane.paneWidths[paneIdx] / 100) * totalExtraW}px)`
+          : `${pane.paneWidths[paneIdx]}%`;
+
         return (
           <div
             key={paneIdx}
             className="flex min-w-0 shrink-0 overflow-hidden"
-            style={{ width: `${pane.paneWidths[paneIdx]}%` }}
+            style={{ width: widthStyle }}
           >
             {/* Divider between panes */}
             {i > 0 && (
@@ -98,21 +110,21 @@ export function AppToolbar() {
         );
       })}
 
-      {/* Extra drop zone: drop here to open a new pane */}
-      {showExpandSlot && (
-        <div className="flex w-36 shrink-0">
-          <div className="w-px shrink-0 bg-white/[0.06]" />
+      {/* Inactive pane drop slots — one per inactive position */}
+      {expandSlots.map((slotIdx) => (
+        <div key={slotIdx} className="flex shrink-0" style={{ width: EXPAND_SLOT_W }}>
+          <div className="w-px shrink-0 bg-[var(--color-brand-500)]/25" />
           <div
-            className="flex flex-1 items-center justify-center px-3 bg-[var(--color-brand-500)]/[0.06] transition-colors duration-100"
-            onDrop={(e) => handleDrop(e, expandSlotIndex)}
+            className="flex flex-1 items-center justify-center bg-[var(--color-brand-500)]/[0.06]"
+            onDrop={(e) => handleDrop(e, slotIdx)}
             onDragOver={handleDragOver}
           >
-            <span className="text-[10px] text-[var(--color-brand-400)]/70">
-              + Open in new pane
+            <span className="text-[10px] text-[var(--color-brand-400)]/70 whitespace-nowrap">
+              + Pane {slotIdx + 1}
             </span>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
