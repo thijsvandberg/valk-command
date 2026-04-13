@@ -214,6 +214,12 @@ function shortRepoName(slug: string): string {
   return slug.replace(/^valk-/, "");
 }
 
+// Ensures a ticket key like VPL-1337 does not match VPL-13371 (substring false positive)
+function containsExactKey(text: string, key: string): boolean {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`${escaped}(?!\\d)`).test(text);
+}
+
 const ENV_PATTERNS: Array<{ pattern: RegExp; environment: string; type: DevDeployment["environmentType"] }> = [
   { pattern: /prod(uction)?/i, environment: "Production", type: "Production" },
   { pattern: /uat\s*3/i, environment: "UAT3", type: "Staging" },
@@ -282,6 +288,7 @@ export async function GET(
 
     for (const { repo, branchRes, prRes } of repoResults) {
       for (const b of branchRes?.values ?? []) {
+        if (!containsExactKey(b.name, key)) continue;
         branches.push({
           name: b.name,
           url: b.links?.html?.href ?? "",
@@ -307,6 +314,7 @@ export async function GET(
       }
 
       for (const pr of prRes?.values ?? []) {
+        if (!containsExactKey(pr.title, key)) continue;
         prEnrichmentTasks.push({ repo, pr });
       }
     }
