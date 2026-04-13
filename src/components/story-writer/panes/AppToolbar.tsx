@@ -41,7 +41,11 @@ export function AppToolbar() {
         const isDragTarget = pane.draggedApp !== null && pane.draggedApp !== activeApp;
 
         return (
-          <div key={paneIdx} className="flex min-w-0 flex-1">
+          <div
+            key={paneIdx}
+            className="flex min-w-0 shrink-0 overflow-hidden"
+            style={{ width: `${pane.paneWidths[paneIdx]}%` }}
+          >
             {/* Divider between panes */}
             {i > 0 && (
               <div className="w-px shrink-0 bg-white/[0.06]" />
