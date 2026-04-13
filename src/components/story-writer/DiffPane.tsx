@@ -42,6 +42,8 @@ export interface DiffPaneProps {
   onResultChange: (text: string) => void;
   onNavigateDraft: (dir: -1 | 1) => void;
   onDismissDraft: (draftDbId: string) => void;
+  /** When false, skip the internal version picker + diff/preview toggle row. Default: true */
+  showHeader?: boolean;
 }
 
 export function DiffPane({
@@ -59,6 +61,7 @@ export function DiffPane({
   onResultChange,
   onNavigateDraft,
   onDismissDraft,
+  showHeader = true,
 }: DiffPaneProps) {
   const selected = rightVersions.find((v) => v.id === diffNewId);
   const isAiDraft = selected?.isDraft ?? false;
@@ -69,39 +72,41 @@ export function DiffPane({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-10 items-center gap-2 border-b border-white/[0.06] px-3">
-        <VersionPicker
-          options={rightVersions}
-          selectedId={diffNewId}
-          onSelect={onDiffNewIdChange}
-        />
+      {showHeader && (
+        <div className="flex h-10 items-center gap-2 border-b border-white/[0.06] px-3">
+          <VersionPicker
+            options={rightVersions}
+            selectedId={diffNewId}
+            onSelect={onDiffNewIdChange}
+          />
 
-        <div className="ml-auto flex items-center gap-2">
-          {diffViewMode === "plain" ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<GitCompare size={11} strokeWidth={1.5} />}
-              onClick={() => onDiffViewModeChange("diff")}
-              title="Show diff"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-            >
-              Diff
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Eye size={11} strokeWidth={1.5} />}
-              onClick={() => onDiffViewModeChange("plain")}
-              title="Preview the selected version"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-            >
-              Preview
-            </Button>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {diffViewMode === "plain" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<GitCompare size={11} strokeWidth={1.5} />}
+                onClick={() => onDiffViewModeChange("diff")}
+                title="Show diff"
+                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+              >
+                Diff
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Eye size={11} strokeWidth={1.5} />}
+                onClick={() => onDiffViewModeChange("plain")}
+                title="Preview the selected version"
+                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+              >
+                Preview
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {isAiDraft && totalDrafts > 0 && (
         <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.015] px-3 py-1.5">

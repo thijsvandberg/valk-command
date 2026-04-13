@@ -1,0 +1,254 @@
+"use client";
+
+import { createContext, useContext, useState, useRef, useEffect } from "react";
+import type { ReactNode } from "react";
+
+export type PaneAppId =
+  | "chat"
+  | "editor"
+  | "diff"
+  | "history"
+  | "draft-preview"
+  | "related"
+  | "story-preview";
+
+export interface ToolbarSlot {
+  label: string;
+  contextLabel?: string;
+  actions?: ReactNode;
+}
+
+export interface DraftPreviewContent {
+  content: string;
+  label: string;
+  draftId?: string;
+}
+
+type PaneApps = [PaneAppId | null, PaneAppId | null, PaneAppId | null];
+type PaneWidths = [number, number, number];
+
+const DEFAULT_PANE: Record<PaneAppId, 0 | 1 | 2> = {
+  chat: 0,
+  editor: 1,
+  diff: 2,
+  history: 2,
+  "draft-preview": 2,
+  related: 2,
+  "story-preview": 2,
+};
+
+interface PaneContextValue {
+  paneCount: 1 | 2 | 3;
+  paneApps: PaneApps;
+  paneWidths: PaneWidths;
+  mountedApps: Set<PaneAppId>;
+
+  openApp: (appId: PaneAppId) => void;
+  closeApp: (appId: PaneAppId) => void;
+  moveApp: (appId: PaneAppId, paneIndex: 0 | 1 | 2) => void;
+  setPaneCount: (n: 1 | 2 | 3) => void;
+  setPaneWidths: (w: PaneWidths) => void;
+
+  registerToolbar: (appId: PaneAppId, slot: ToolbarSlot) => void;
+  toolbars: Partial<Record<PaneAppId, ToolbarSlot>>;
+
+  draftPreviewContent: DraftPreviewContent | null;
+  openDraftPreview: (content: string, label: string, draftId?: string) => void;
+
+  relatedSelectedKey: string | null;
+  openRelated: (selectedKey?: string) => void;
+  setRelatedSelectedKey: (key: string | null) => void;
+
+  draggedApp: PaneAppId | null;
+  setDraggedApp: (app: PaneAppId | null) => void;
+}
+
+const PaneContext = createContext<PaneContextValue | null>(null);
+
+export function usePaneContext(): PaneContextValue {
+  const ctx = useContext(PaneContext);
+  if (!ctx) throw new Error("usePaneContext must be used inside PaneProvider");
+  return ctx;
+}
+
+function buildEqualWidths(count: 1 | 2 | 3): PaneWidths {
+  if (count === 1) return [100, 0, 0];
+  if (count === 2) return [50, 50, 0];
+  return [33.33, 33.33, 33.34];
+}
+
+function readStorage(ticketKey: string): {
+  paneCount: 1 | 2 | 3;
+  paneApps: PaneApps;
+  paneWidths: PaneWidths;
+} | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(`sw:${ticketKey}:panes`);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(
+  ticketKey: string,
+  state: { paneCount: 1 | 2 | 3; paneApps: PaneApps; paneWidths: PaneWidths },
+) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`sw:${ticketKey}:panes`, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
+}
+
+interface PaneProviderProps {
+  ticketKey: string;
+  children: ReactNode;
+}
+
+export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
+  const stored = readStorage(ticketKey);
+
+  const [paneCount, setPaneCountState] = useState<1 | 2 | 3>(stored?.paneCount ?? 2);
+  const [paneApps, setPaneApps] = useState<PaneApps>(
+    stored?.paneApps ?? [null, null, null],
+  );
+  const [paneWidths, setPaneWidthsState] = useState<PaneWidths>(
+    stored?.paneWidths ?? buildEqualWidths(stored?.paneCount ?? 2),
+  );
+  const [mountedApps, setMountedApps] = useState<Set<PaneAppId>>(new Set());
+  const [toolbars, setToolbars] = useState<Partial<Record<PaneAppId, ToolbarSlot>>>({});
+  const [draftPreviewContent, setDraftPreviewContent] = useState<DraftPreviewContent | null>(null);
+  const [relatedSelectedKey, setRelatedSelectedKey] = useState<string | null>(null);
+  const [draggedApp, setDraggedApp] = useState<PaneAppId | null>(null);
+
+  // Persist state to localStorage when it changes
+  useEffect(() => {
+    writeStorage(ticketKey, { paneCount, paneApps, paneWidths });
+  }, [ticketKey, paneCount, paneApps, paneWidths]);
+
+  function setPaneCount(n: 1 | 2 | 3) {
+    setPaneCountState(n);
+    // Rebalance widths when count changes, maintaining existing proportions for visible panes
+    setPaneWidthsState((prev) => {
+      if (n === 1) return [100, 0, 0];
+      if (n === 2) {
+        const total = prev[0] + prev[1];
+        if (total > 0) {
+          const ratio = prev[0] / total;
+          return [ratio * 100, (1 - ratio) * 100, 0];
+        }
+        return [50, 50, 0];
+      }
+      // 3 panes: distribute evenly if coming from fewer
+      const total = prev[0] + prev[1] + prev[2];
+      if (total < 99) return buildEqualWidths(3);
+      return prev;
+    });
+  }
+
+  function setPaneWidths(w: PaneWidths) {
+    setPaneWidthsState(w);
+  }
+
+  function openApp(appId: PaneAppId) {
+    setMountedApps((prev) => new Set([...prev, appId]));
+    const targetPane = DEFAULT_PANE[appId];
+    setPaneApps((prev) => {
+      const next: PaneApps = [...prev] as PaneApps;
+      next[targetPane] = appId;
+      return next;
+    });
+  }
+
+  function closeApp(appId: PaneAppId) {
+    setPaneApps((prev) => {
+      const next: PaneApps = [...prev] as PaneApps;
+      for (let i = 0; i < 3; i++) {
+        if (next[i] === appId) next[i] = null;
+      }
+      return next;
+    });
+    // State is preserved - component stays mounted (mountedApps not changed)
+  }
+
+  function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {
+    setMountedApps((prev) => new Set([...prev, appId]));
+    setPaneApps((prev) => {
+      const next: PaneApps = [...prev] as PaneApps;
+      // Remove from current location
+      for (let i = 0; i < 3; i++) {
+        if (next[i] === appId) next[i] = null;
+      }
+      // Displace current occupant (it becomes inactive, not destroyed)
+      next[paneIndex] = appId;
+      return next;
+    });
+  }
+
+  function registerToolbar(appId: PaneAppId, slot: ToolbarSlot) {
+    setToolbars((prev) => {
+      // Shallow-compare to avoid unnecessary re-renders
+      const existing = prev[appId];
+      if (
+        existing &&
+        existing.label === slot.label &&
+        existing.contextLabel === slot.contextLabel &&
+        existing.actions === slot.actions
+      ) {
+        return prev;
+      }
+      return { ...prev, [appId]: slot };
+    });
+  }
+
+  function openDraftPreview(content: string, label: string, draftId?: string) {
+    setDraftPreviewContent({ content, label, draftId });
+    setMountedApps((prev) => new Set([...prev, "draft-preview" as PaneAppId]));
+    setPaneApps((prev) => {
+      const next: PaneApps = [...prev] as PaneApps;
+      next[DEFAULT_PANE["draft-preview"]] = "draft-preview";
+      return next;
+    });
+  }
+
+  function openRelated(selectedKey?: string) {
+    if (selectedKey !== undefined) setRelatedSelectedKey(selectedKey);
+    setMountedApps((prev) => new Set([...prev, "related" as PaneAppId]));
+    setPaneApps((prev) => {
+      const next: PaneApps = [...prev] as PaneApps;
+      next[DEFAULT_PANE["related"]] = "related";
+      return next;
+    });
+  }
+
+  return (
+    <PaneContext.Provider
+      value={{
+        paneCount,
+        paneApps,
+        paneWidths,
+        mountedApps,
+        openApp,
+        closeApp,
+        moveApp,
+        setPaneCount,
+        setPaneWidths,
+        registerToolbar,
+        toolbars,
+        draftPreviewContent,
+        openDraftPreview,
+        relatedSelectedKey,
+        openRelated,
+        setRelatedSelectedKey,
+        draggedApp,
+        setDraggedApp,
+      }}
+    >
+      {children}
+    </PaneContext.Provider>
+  );
+}
