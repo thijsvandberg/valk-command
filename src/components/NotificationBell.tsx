@@ -78,15 +78,16 @@ function TimeAgo({ iso }: { iso: string }) {
 function renderMessage(
   message: string,
   jiraKey: string | null,
+  href: string | null,
   onLinkClick: () => void,
 ): React.ReactNode {
-  if (!jiraKey || !message.includes(jiraKey)) return message;
+  if (!jiraKey || !href || !message.includes(jiraKey)) return message;
   const idx = message.indexOf(jiraKey);
   return (
     <>
       {message.slice(0, idx)}
       <Link
-        href={`/tickets/${jiraKey}`}
+        href={href}
         onClick={onLinkClick}
         className="font-mono text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
       >
@@ -224,7 +225,16 @@ export function NotificationBell() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] text-white/65 leading-relaxed">
-                      {renderMessage(n.message, n.jiraKey, () => setOpen(false))}
+                      {renderMessage(
+                        n.message,
+                        n.jiraKey,
+                        n.jiraKey
+                          ? n.type === "story-writer"
+                            ? `/tickets/${n.jiraKey}/write`
+                            : `/tickets/${n.jiraKey}`
+                          : null,
+                        () => setOpen(false),
+                      )}
                     </p>
                     {n.jiraTitle && (
                       <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/35">
@@ -233,15 +243,6 @@ export function NotificationBell() {
                     )}
                     <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
                       <TimeAgo iso={n.createdAt} />
-                      {n.type === "story-writer" && n.jiraKey && (
-                        <Link
-                          href={`/tickets/${n.jiraKey}/write`}
-                          onClick={() => setOpen(false)}
-                          className="text-[10px] text-white/30 hover:text-[var(--color-brand-400)] transition-colors duration-150"
-                        >
-                          Open story writer
-                        </Link>
-                      )}
                       {n.linkUrl && (
                         <a
                           href={n.linkUrl}
