@@ -10,13 +10,18 @@ export function RelatedApp() {
   const pane = usePaneContext();
 
   const count = writer.relatedCandidates.length;
+  const linkedCount = writer.relatedCandidates.filter((c) => c.isLinked).length;
 
   useEffect(() => {
+    const parts: string[] = [];
+    if (count > 0) parts.push(`${count}`);
+    if (linkedCount > 0) parts.push(`${linkedCount} linked`);
     pane.registerToolbar("related", {
       label: "Related stories",
-      contextLabel: count > 0 ? `${count}` : undefined,
+      contextLabel: parts.length > 0 ? parts.join(" · ") : undefined,
     });
-  }, [pane, count]);
+    return () => pane.unregisterToolbar("related");
+  }, [pane, count, linkedCount]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
