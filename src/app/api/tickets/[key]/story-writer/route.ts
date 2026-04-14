@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit, relatedStoryCandidate } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -258,6 +258,15 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   } else {
     // Discard session; drafts cascade-delete, conversation kept
     await db.delete(storyWriterDraft).where(eq(storyWriterDraft.sessionId, session.id));
+    // Clean up orphaned (pending/failed) messages
+    await db
+      .delete(message)
+      .where(
+        and(
+          eq(message.conversationId, session.conversationId),
+          sql`${message.status} IN ('pending', 'failed')`,
+        ),
+      );
     await db
       .update(storyWriterSession)
       .set({ status: "discarded", updatedAt: new Date().toISOString() })

@@ -62,8 +62,8 @@ These fixes resolve the immediate hang, but the underlying issues (orphaned mess
 
 ### Phase 4: Conversation cleanup
 
-- [ ] Add a "Clear failed messages" action in the chat overflow menu that removes orphaned messages (messages with no `workspaceTaskId` and no following assistant response)
-- [ ] On session discard/reset, orphaned messages are cleaned up automatically
+- [x] Add a "Clear failed messages" action in the chat overflow menu that removes orphaned messages (messages with no `workspaceTaskId` and no following assistant response)
+- [x] On session discard/reset, orphaned messages are cleaned up automatically
 
 ## Technical Notes
 
