@@ -1,20 +1,27 @@
 # BRDG-093: Stakeholder View - Carry-over Detection
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
 
 As the PO, I want tickets that were carried over from the previous sprint to be visually marked in the stakeholder view so stakeholders can understand how much work spilled over without me having to explain it manually.
 
+## Implementation Plan
+
+1. Add `carriedKeys?: Set<string>` prop to `SprintOverviewCard` and pass it to `TicketGroup`
+2. Update `TicketGroup` to render a "carried" badge when ticket's jiraKey is in `carriedKeys`
+3. Add carry-over state/logic to the stakeholder page: fetch previous sprint tickets on demand, compute intersection of jiraKeys, render summary count above SprintOverviewCard
+4. Previous sprint = `teamSprints[selectedIndex - 1]`; matching is by jiraKey
+
 ## Acceptance Criteria
 
-- [ ] Tickets present in both the current sprint and the previous sprint (matched by Jira key) are marked with a small "carried" indicator
-- [ ] The indicator is subtle (e.g. a small badge or icon) and does not disrupt the ticket card layout
-- [ ] A summary count is shown above the ticket columns (e.g. "3 tickets carried from Sprint BM: 134")
-- [ ] The summary and indicators are only shown when previous sprint data is available
-- [ ] If previous sprint data is not yet loaded, it is fetched on demand; a loading state is shown while fetching
-- [ ] If no tickets were carried over, no summary or indicator is shown
+- [x] Tickets present in both the current sprint and the previous sprint (matched by Jira key) are marked with a small "carried" indicator
+- [x] The indicator is subtle (e.g. a small badge or icon) and does not disrupt the ticket card layout
+- [x] A summary count is shown above the ticket columns (e.g. "3 tickets carried from Sprint BM: 134")
+- [x] The summary and indicators are only shown when previous sprint data is available
+- [x] If previous sprint data is not yet loaded, it is fetched on demand; a loading state is shown while fetching
+- [x] If no tickets were carried over, no summary or indicator is shown
 
 ## Technical Notes
 

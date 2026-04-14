@@ -13,6 +13,7 @@ interface SprintOverviewCardProps {
   inProgressTickets: StakeholderTicket[];
   todoTickets: StakeholderTicket[];
   deprecatedTickets: StakeholderTicket[];
+  carriedKeys?: Set<string>;
 }
 
 function formatDate(iso: string | null): string {
@@ -95,6 +96,7 @@ export function SprintOverviewCard({
   inProgressTickets,
   todoTickets,
   deprecatedTickets,
+  carriedKeys,
 }: SprintOverviewCardProps) {
   const isClosed = sprint.state === "closed";
   const isActive = sprint.state === "active";
@@ -221,19 +223,19 @@ export function SprintOverviewCard({
         {showCompleted && (
           <section>
             <SectionHeader label="Completed" count={filteredDone.length} pts={pts(filteredDone)} color="green" />
-            <TicketGroup tickets={filteredDone} />
+            <TicketGroup tickets={filteredDone} carriedKeys={carriedKeys} />
           </section>
         )}
         {showInProgress && (
           <section>
             <SectionHeader label="In Progress" count={filteredInProgress.length} pts={pts(filteredInProgress)} color="brand" />
-            <TicketGroup tickets={filteredInProgress} showAssignee />
+            <TicketGroup tickets={filteredInProgress} showAssignee carriedKeys={carriedKeys} />
           </section>
         )}
         {showTodo && (
           <section>
             <SectionHeader label="To Do" count={filteredTodo.length} pts={pts(filteredTodo)} color="muted" />
-            <TicketGroup tickets={filteredTodo} />
+            <TicketGroup tickets={filteredTodo} carriedKeys={carriedKeys} />
           </section>
         )}
       </div>
@@ -242,7 +244,7 @@ export function SprintOverviewCard({
       {filteredDeprecated.length > 0 && (
         <div className="border-t border-white/[0.04] pt-6">
           <SectionHeader label="Deprecated" count={filteredDeprecated.length} pts={pts(filteredDeprecated)} color="muted" />
-          <TicketGroup tickets={filteredDeprecated} />
+          <TicketGroup tickets={filteredDeprecated} carriedKeys={carriedKeys} />
         </div>
       )}
     </div>

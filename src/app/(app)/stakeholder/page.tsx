@@ -16,6 +16,31 @@ import {
   ViewHeaderDivider,
 } from "@/components/shared/ViewHeader";
 
+function useCarryOver(
+  currentTickets: Ticket[] | undefined,
+  previousSprintId: number | null,
+): { carriedKeys: Set<string>; previousSprintName: string | null; isLoading: boolean } {
+  const key = previousSprintId !== null
+    ? `/api/tickets?sprintId=${encodeURIComponent(String(previousSprintId))}`
+    : null;
+  const { data: prevTickets, isLoading } = useSWR<Ticket[]>(key, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 30000,
+  });
+
+  const carriedKeys = useMemo(() => {
+    if (!currentTickets || !prevTickets) return new Set<string>();
+    const prevKeys = new Set(prevTickets.map((t) => t.key.toLowerCase()));
+    const carried = new Set<string>();
+    for (const t of currentTickets) {
+      if (prevKeys.has(t.key.toLowerCase())) carried.add(t.key);
+    }
+    return carried;
+  }, [currentTickets, prevTickets]);
+
+  return { carriedKeys, previousSprintName: null, isLoading };
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 const SESSION_KEY_TEAM = "stakeholder_team";
@@ -108,6 +133,7 @@ function StakeholderView() {
   }, [urlSprintId, teamSprints]);
 
   const currentSprint = teamSprints[selectedIndex] ?? null;
+  const previousSprint = selectedIndex > 0 ? teamSprints[selectedIndex - 1] ?? null : null;
 
   function updateUrl(team: string, sprintId: number) {
     sessionSet(SESSION_KEY_TEAM, team);
@@ -155,6 +181,11 @@ function StakeholderView() {
       setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
     },
   });
+
+  const { carriedKeys, isLoading: isCarryOverLoading } = useCarryOver(
+    rawTickets,
+    previousSprint?.id ?? null,
+  );
 
   const stakeholderSprint = useMemo(
     () => (currentSprint ? toStakeholderSprint(currentSprint) : null),
@@ -287,12 +318,26 @@ function StakeholderView() {
               </h1>
             </div>
 
+            {/* Carry-over summary */}
+            {isCarryOverLoading && previousSprint && (
+              <p className="flex items-center gap-1.5 text-xs text-white/20">
+                <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
+                Loading carry-over data...
+              </p>
+            )}
+            {!isCarryOverLoading && carriedKeys.size > 0 && previousSprint && (
+              <p className="text-xs text-amber-400/60">
+                {carriedKeys.size} ticket{carriedKeys.size === 1 ? "" : "s"} carried from {previousSprint.name}
+              </p>
+            )}
+
             <SprintOverviewCard
               sprint={stakeholderSprint}
               doneTickets={doneTickets}
               inProgressTickets={inProgressTickets}
               todoTickets={todoTickets}
               deprecatedTickets={deprecatedTickets}
+              carriedKeys={carriedKeys.size > 0 ? carriedKeys : undefined}
             />
 
             <p className="text-xs text-white/20">Last updated: {lastUpdatedDisplay}</p>

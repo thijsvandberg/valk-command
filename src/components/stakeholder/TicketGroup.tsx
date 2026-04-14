@@ -8,6 +8,7 @@ interface TicketGroupProps {
   tickets: StakeholderTicket[];
   showKeys?: boolean;
   showAssignee?: boolean;
+  carriedKeys?: Set<string>;
 }
 
 function StatusDot({ status }: { status: StakeholderTicket["status"] }) {
@@ -50,7 +51,7 @@ function groupByEpic(tickets: StakeholderTicket[]): [string, StakeholderTicket[]
   return Array.from(map.entries());
 }
 
-export function TicketGroup({ tickets, showKeys = false, showAssignee = false }: TicketGroupProps) {
+export function TicketGroup({ tickets, showKeys = false, showAssignee = false, carriedKeys }: TicketGroupProps) {
   if (tickets.length === 0) {
     return <p className="text-sm text-white/25 italic">None</p>;
   }
@@ -82,6 +83,11 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false }:
                   >
                     <ExternalLink size={11} strokeWidth={1.5} className="text-white/60" />
                   </a>
+                )}
+                {t.jiraKey && carriedKeys?.has(t.jiraKey) && (
+                  <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-400/70">
+                    carried
+                  </span>
                 )}
                 {showKeys && t.jiraKey && (
                   <span className="shrink-0 rounded bg-white/[0.06] px-1 py-0.5 text-[10px] font-mono text-white/30">
