@@ -23,6 +23,10 @@ export const message = sqliteTable("message", {
     .notNull()
     .default(sql`(datetime('now'))`),
   workspaceTaskId: text("workspace_task_id"),
+  status: text("status", { enum: ["pending", "sent", "failed"] })
+    .notNull()
+    .default("sent"),
+  contentHash: text("content_hash"),
 }, (table) => [
   index("message_conversation_id_idx").on(table.conversationId),
 ]);

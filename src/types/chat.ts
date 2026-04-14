@@ -5,6 +5,7 @@ export interface Message {
   content: string;
   timestamp: string;
   workspaceTaskId: string | null;
+  status?: "pending" | "sent" | "failed";
 }
 
 export interface Conversation {
