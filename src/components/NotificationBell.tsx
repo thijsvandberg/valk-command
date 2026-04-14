@@ -42,10 +42,20 @@ function formatExactTime(iso: string): string {
   });
 }
 
-function TimeAgo({ iso }: { iso: string }) {
+// Shows a late-sync indicator when eventAt is more than 30 minutes before createdAt.
+// The threshold avoids false positives from minor clock skew or short polling delays.
+const LATE_SYNC_THRESHOLD_MS = 30 * 60 * 1000;
+
+function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string | null }) {
   const [visible, setVisible] = useState(false);
+  const [syncVisible, setSyncVisible] = useState(false);
   const [pos, setPos] = useState<"above" | "below">("above");
   const ref = useRef<HTMLSpanElement>(null);
+  const syncRef = useRef<HTMLSpanElement>(null);
+
+  const displayIso = eventAt ?? createdAt;
+  const syncGapMs = eventAt ? new Date(createdAt).getTime() - new Date(eventAt).getTime() : 0;
+  const isLateSync = syncGapMs > LATE_SYNC_THRESHOLD_MS;
 
   const handleMouseEnter = () => {
     if (ref.current) {
@@ -56,22 +66,45 @@ function TimeAgo({ iso }: { iso: string }) {
   };
 
   return (
-    <span
-      ref={ref}
-      className="relative inline-block"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={() => setVisible(false)}
-    >
-      <span className="text-[10px] text-white/20 tabular-nums cursor-default select-none">
-        {formatTimeAgo(iso)}
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        ref={ref}
+        className="relative inline-block"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setVisible(false)}
+      >
+        <span className="text-[10px] text-white/20 tabular-nums cursor-default select-none">
+          {formatTimeAgo(displayIso)}
+        </span>
+        {visible && (
+          <span
+            className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-[11px] text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+              pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
+            }`}
+          >
+            {formatExactTime(displayIso)}
+          </span>
+        )}
       </span>
-      {visible && (
+      {isLateSync && (
         <span
-          className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-[11px] text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
-            pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
-          }`}
+          ref={syncRef}
+          className="relative inline-block"
+          onMouseEnter={() => setSyncVisible(true)}
+          onMouseLeave={() => setSyncVisible(false)}
         >
-          {formatExactTime(iso)}
+          <span className="text-[9px] text-white/15 tabular-nums cursor-default select-none">
+            (synced {formatTimeAgo(createdAt)})
+          </span>
+          {syncVisible && (
+            <span
+              className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-[11px] text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+                pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
+              }`}
+            >
+              Synced at {formatExactTime(createdAt)}
+            </span>
+          )}
         </span>
       )}
     </span>
@@ -229,7 +262,7 @@ export function NotificationBell() {
                         </p>
                       )}
                       <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
-                        <TimeAgo iso={n.createdAt} />
+                        <TimeAgo createdAt={n.createdAt} eventAt={n.eventAt} />
                         {n.linkUrl && (
                           <a
                             href={n.linkUrl}

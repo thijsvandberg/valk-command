@@ -1,0 +1,1 @@
+ALTER TABLE `alert` ADD `event_at` text;

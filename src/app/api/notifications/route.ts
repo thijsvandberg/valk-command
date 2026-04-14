@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       jiraKey: alert.jiraKey,
       message: alert.message,
       createdAt: alert.createdAt,
+      eventAt: alert.eventAt,
       read: alert.read,
       category: alert.category,
       linkUrl: alert.linkUrl,

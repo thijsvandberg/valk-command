@@ -163,6 +163,7 @@ interface NotificationResponse {
     jiraTitle: string | null;
     message: string;
     createdAt: string;
+    eventAt: string | null;
     read: boolean;
     category: string | null;
     linkUrl: string | null;

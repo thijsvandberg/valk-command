@@ -8,6 +8,9 @@ interface CreateNotificationOptions {
   category?: NotificationCategory;
   jiraKey?: string;
   linkUrl?: string;
+  // ISO timestamp of the actual event (e.g. when a PR was merged in Bitbucket).
+  // When provided and older than createdAt, the UI shows a late-sync indicator.
+  eventAt?: string;
 }
 
 function isCategoryEnabled(category: NotificationCategory): boolean {
@@ -27,6 +30,7 @@ export function createNotification(
     type,
     message,
     createdAt: new Date().toISOString(),
+    eventAt: options.eventAt ?? null,
     category: options.category,
     jiraKey: options.jiraKey,
     linkUrl: options.linkUrl,

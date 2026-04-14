@@ -483,7 +483,7 @@ export async function syncPipelines(): Promise<SyncResult> {
       newRuns++;
       if (state !== "IN_PROGRESS") pendingDeployDetection.push({ repoSlug, buildNumber: p.build_number, id });
       if (pr.url && pr.title) {
-        prCandidates.push({ prUrl: pr.url, prTitle: pr.title, ticketKey: rd.ticketKey, isMerge: !!rd.sourceBranch });
+        prCandidates.push({ prUrl: pr.url, prTitle: pr.title, ticketKey: rd.ticketKey, isMerge: !!rd.sourceBranch, eventAt: p.created_on ?? new Date().toISOString() });
       }
     }
 
@@ -527,6 +527,7 @@ interface PrCandidate {
   prTitle: string;
   ticketKey: string | null;
   isMerge: boolean;
+  eventAt: string;
 }
 
 export function processStateChanges(stateChanges: Array<{ run: typeof pipelineRun.$inferSelect; oldState: string }>) {
@@ -543,12 +544,13 @@ export function processStateChanges(stateChanges: Array<{ run: typeof pipelineRu
         .run();
     }
 
+    const eventAt = run.completedAt ?? run.createdAt;
     if (run.isDeployment) {
       if (!run.ticketKey || !run.environment) continue;
       const message = finalState === "SUCCESSFUL"
         ? `Deployed ${run.ticketKey} to ${run.environment}`
         : `Deployment to ${run.environment} failed for ${run.ticketKey}`;
-      createNotification("deployment", message, { category: "deployment", jiraKey: run.ticketKey, linkUrl: run.pipelineUrl ?? undefined });
+      createNotification("deployment", message, { category: "deployment", jiraKey: run.ticketKey, linkUrl: run.pipelineUrl ?? undefined, eventAt });
     } else {
       // Only notify on failures — successful pipeline completions are too noisy
       if (finalState === "SUCCESSFUL") continue;
@@ -557,6 +559,7 @@ export function processStateChanges(stateChanges: Array<{ run: typeof pipelineRu
         category: "pipeline",
         jiraKey: run.ticketKey ?? undefined,
         linkUrl: run.pipelineUrl ?? undefined,
+        eventAt,
       });
     }
   }
@@ -565,7 +568,7 @@ export function processStateChanges(stateChanges: Array<{ run: typeof pipelineRu
 export function processPRNotifications(candidates: PrCandidate[]) {
   if (candidates.length === 0) return;
 
-  for (const { prUrl, prTitle, ticketKey, isMerge } of candidates) {
+  for (const { prUrl, prTitle, ticketKey, isMerge, eventAt } of candidates) {
     // "PR opened": dedup by checking for any existing pr alert with this linkUrl
     const openedExists = db.select({ id: alert.id })
       .from(alert)
@@ -576,6 +579,7 @@ export function processPRNotifications(candidates: PrCandidate[]) {
         category: "pr",
         jiraKey: ticketKey ?? undefined,
         linkUrl: prUrl,
+        eventAt,
       });
     }
 
@@ -591,6 +595,7 @@ export function processPRNotifications(candidates: PrCandidate[]) {
           category: "pr",
           jiraKey: ticketKey ?? undefined,
           linkUrl: mergedLinkUrl,
+          eventAt,
         });
       }
     }

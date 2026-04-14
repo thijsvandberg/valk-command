@@ -163,7 +163,7 @@ describe("processPRNotifications", () => {
   const PR_URL = "https://bitbucket.org/ws/repo/pull-requests/42";
 
   it("creates PR opened notification for a new PR", () => {
-    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: false }]);
+    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: false, eventAt: new Date().toISOString() }]);
 
     const alerts = testDb.select().from(alert).all();
     expect(alerts).toHaveLength(1);
@@ -174,7 +174,7 @@ describe("processPRNotifications", () => {
   });
 
   it("creates both PR opened and PR merged for a merge commit pipeline", () => {
-    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: true }]);
+    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: true, eventAt: new Date().toISOString() }]);
 
     const alerts = testDb.select().from(alert).all();
     expect(alerts).toHaveLength(2);
@@ -186,16 +186,16 @@ describe("processPRNotifications", () => {
   });
 
   it("does not create duplicate PR opened on resync", () => {
-    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: false }]);
-    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: false }]);
+    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: false, eventAt: new Date().toISOString() }]);
+    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: false, eventAt: new Date().toISOString() }]);
 
     const alerts = testDb.select().from(alert).all();
     expect(alerts).toHaveLength(1);
   });
 
   it("does not create duplicate PR merged on resync", () => {
-    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: true }]);
-    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: true }]);
+    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: true, eventAt: new Date().toISOString() }]);
+    processPRNotifications([{ prUrl: PR_URL, prTitle: "Add auth middleware", ticketKey: "VPL-123", isMerge: true, eventAt: new Date().toISOString() }]);
 
     // Still only 2 (opened + merged), not 4
     const alerts = testDb.select().from(alert).all();
@@ -203,7 +203,7 @@ describe("processPRNotifications", () => {
   });
 
   it("handles null ticketKey", () => {
-    processPRNotifications([{ prUrl: PR_URL, prTitle: "Hotfix branch", ticketKey: null, isMerge: false }]);
+    processPRNotifications([{ prUrl: PR_URL, prTitle: "Hotfix branch", ticketKey: null, isMerge: false, eventAt: new Date().toISOString() }]);
 
     const alerts = testDb.select().from(alert).all();
     expect(alerts).toHaveLength(1);
@@ -217,8 +217,8 @@ describe("processPRNotifications", () => {
 
   it("handles multiple distinct PRs independently", () => {
     processPRNotifications([
-      { prUrl: `${PR_URL}/1`, prTitle: "PR One", ticketKey: "VPL-1", isMerge: false },
-      { prUrl: `${PR_URL}/2`, prTitle: "PR Two", ticketKey: "VPL-2", isMerge: false },
+      { prUrl: `${PR_URL}/1`, prTitle: "PR One", ticketKey: "VPL-1", isMerge: false, eventAt: new Date().toISOString() },
+      { prUrl: `${PR_URL}/2`, prTitle: "PR Two", ticketKey: "VPL-2", isMerge: false, eventAt: new Date().toISOString() },
     ]);
 
     const alerts = testDb.select().from(alert).all();

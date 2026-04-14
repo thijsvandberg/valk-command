@@ -144,6 +144,9 @@ export const alert = sqliteTable("alert", {
   jiraKey: text("jira_key"),
   message: text("message").notNull(),
   createdAt: text("created_at").notNull(),
+  // When the underlying event actually occurred (e.g. PR merge time from Bitbucket).
+  // May differ from createdAt when Bridge syncs an event that happened earlier.
+  eventAt: text("event_at"),
   read: integer("read", { mode: "boolean" }).notNull().default(false),
   category: text("category", {
     enum: ["general", "pipeline", "deployment", "pr", "sync", "story-writer", "system", "agent", "scheduler"],
