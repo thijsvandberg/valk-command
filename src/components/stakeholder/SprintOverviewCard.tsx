@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useCallback, useMemo } from "react";
 import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
 import { ProgressBar } from "./ProgressBar";
 import { TicketGroup } from "./TicketGroup";
 import { SprintHealthBanner } from "./SprintHealthBanner";
+import { EpicFilterChips } from "./EpicFilterChips";
 
 interface SprintOverviewCardProps {
   sprint: StakeholderSprint;
@@ -97,6 +99,38 @@ export function SprintOverviewCard({
   const isClosed = sprint.state === "closed";
   const isActive = sprint.state === "active";
 
+  // Epic filter state — local only, not persisted
+  const [selectedEpics, setSelectedEpics] = useState<Set<string>>(new Set());
+
+  const handleToggleEpic = useCallback((epic: string) => {
+    setSelectedEpics((prev) => {
+      const next = new Set(prev);
+      if (next.has(epic)) {
+        next.delete(epic);
+      } else {
+        next.add(epic);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearAll = useCallback(() => setSelectedEpics(new Set()), []);
+
+  function filterByEpic(tickets: StakeholderTicket[]): StakeholderTicket[] {
+    if (selectedEpics.size === 0) return tickets;
+    return tickets.filter((t) => selectedEpics.has(t.epic ?? "Other"));
+  }
+
+  const allTickets = useMemo(
+    () => [...doneTickets, ...inProgressTickets, ...todoTickets, ...deprecatedTickets],
+    [doneTickets, inProgressTickets, todoTickets, deprecatedTickets],
+  );
+
+  const filteredDone = filterByEpic(doneTickets);
+  const filteredInProgress = filterByEpic(inProgressTickets);
+  const filteredTodo = filterByEpic(todoTickets);
+  const filteredDeprecated = filterByEpic(deprecatedTickets);
+
   const donePoints = pts(doneTickets);
   const inProgressPoints = pts(inProgressTickets);
   const todoPoints = pts(todoTickets);
@@ -174,33 +208,41 @@ export function SprintOverviewCard({
         </div>
       )}
 
+      {/* Epic filter chips — only when 2+ distinct epics */}
+      <EpicFilterChips
+        tickets={allTickets}
+        selectedEpics={selectedEpics}
+        onToggle={handleToggleEpic}
+        onClearAll={handleClearAll}
+      />
+
       {/* Ticket columns */}
       <div className={gridClass}>
         {showCompleted && (
           <section>
-            <SectionHeader label="Completed" count={doneTickets.length} pts={donePoints} color="green" />
-            <TicketGroup tickets={doneTickets} />
+            <SectionHeader label="Completed" count={filteredDone.length} pts={pts(filteredDone)} color="green" />
+            <TicketGroup tickets={filteredDone} />
           </section>
         )}
         {showInProgress && (
           <section>
-            <SectionHeader label="In Progress" count={inProgressTickets.length} pts={inProgressPoints} color="brand" />
-            <TicketGroup tickets={inProgressTickets} showAssignee />
+            <SectionHeader label="In Progress" count={filteredInProgress.length} pts={pts(filteredInProgress)} color="brand" />
+            <TicketGroup tickets={filteredInProgress} showAssignee />
           </section>
         )}
         {showTodo && (
           <section>
-            <SectionHeader label="To Do" count={todoTickets.length} pts={todoPoints} color="muted" />
-            <TicketGroup tickets={todoTickets} />
+            <SectionHeader label="To Do" count={filteredTodo.length} pts={pts(filteredTodo)} color="muted" />
+            <TicketGroup tickets={filteredTodo} />
           </section>
         )}
       </div>
 
       {/* Deprecated tickets — always at the bottom, separate from main columns */}
-      {deprecatedTickets.length > 0 && (
+      {filteredDeprecated.length > 0 && (
         <div className="border-t border-white/[0.04] pt-6">
-          <SectionHeader label="Deprecated" count={deprecatedTickets.length} pts={pts(deprecatedTickets)} color="muted" />
-          <TicketGroup tickets={deprecatedTickets} />
+          <SectionHeader label="Deprecated" count={filteredDeprecated.length} pts={pts(filteredDeprecated)} color="muted" />
+          <TicketGroup tickets={filteredDeprecated} />
         </div>
       )}
     </div>

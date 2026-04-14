@@ -1,21 +1,28 @@
 # BRDG-094: Stakeholder View - Epic Filter Chips
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
 
 As the PO, I want stakeholders to be able to filter the sprint ticket columns by epic so they can focus on the work that is most relevant to them without being overwhelmed by unrelated tickets.
 
+## Implementation Plan
+
+1. Create `src/components/stakeholder/EpicFilterChips.tsx` — chip row component with "All" + per-epic chips
+2. Add `selectedEpics` state and filtering logic to `SprintOverviewCard`
+3. Filter all ticket arrays through epic filter before passing to `TicketGroup`
+4. Only render chips when sprint has tickets from ≥ 2 distinct epics
+
 ## Acceptance Criteria
 
-- [ ] A row of epic filter chips is shown above the ticket columns when the sprint contains tickets from 2 or more epics
-- [ ] Each chip displays the epic name and the count of tickets from that epic in the current sprint
-- [ ] An "All" chip is always present; clicking it deselects all active filters and shows all tickets
-- [ ] Clicking an epic chip toggles that epic's filter on or off; multiple epics can be active simultaneously (OR logic)
-- [ ] When one or more epic filters are active, only tickets belonging to a selected epic are shown in the columns
-- [ ] The chip row is not rendered when the sprint contains tickets from fewer than 2 epics
-- [ ] Filter state is local to the component and is not reflected in the URL or persisted
+- [x] A row of epic filter chips is shown above the ticket columns when the sprint contains tickets from 2 or more epics
+- [x] Each chip displays the epic name and the count of tickets from that epic in the current sprint
+- [x] An "All" chip is always present; clicking it deselects all active filters and shows all tickets
+- [x] Clicking an epic chip toggles that epic's filter on or off; multiple epics can be active simultaneously (OR logic)
+- [x] When one or more epic filters are active, only tickets belonging to a selected epic are shown in the columns
+- [x] The chip row is not rendered when the sprint contains tickets from fewer than 2 epics
+- [x] Filter state is local to the component and is not reflected in the URL or persisted
 
 ## Technical Notes
 
