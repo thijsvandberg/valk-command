@@ -19,49 +19,50 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
   };
 
   return (
-    <div className="mt-2.5 space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-white/25 select-none">
-        Title options
-      </p>
-      <div className="flex flex-col gap-0.5">
-        {titles.map((title) => {
-          const isSelected = selected === title;
-          return (
-            <div
-              key={title}
+    <div className="mt-2.5 overflow-hidden rounded-lg border border-white/[0.07]">
+      {titles.map((title, i) => {
+        const isSelected = selected === title;
+        return (
+          <div
+            key={title}
+            className={[
+              "flex items-center gap-3 px-3 py-2 transition-colors duration-150",
+              i > 0 ? "border-t border-white/[0.05]" : "",
+              isSelected ? "bg-[var(--color-brand-500)]/[0.07]" : "hover:bg-white/[0.025]",
+            ].join(" ")}
+          >
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+              {isSelected ? (
+                <Check size={10} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
+              ) : (
+                <span className="font-mono text-[10px] tabular-nums text-white/20 select-none">
+                  {i + 1}
+                </span>
+              )}
+            </span>
+            <span
               className={[
-                "flex items-start gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors duration-150",
-                isSelected
-                  ? "bg-[var(--color-brand-500)]/[0.07]"
-                  : "hover:bg-white/[0.03]",
+                "flex-1 text-[12px] leading-snug",
+                isSelected ? "text-white/80" : "text-white/60",
               ].join(" ")}
             >
-              <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                {isSelected ? (
-                  <Check size={11} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
-                ) : (
-                  <span className="block h-[4px] w-[4px] rounded-full bg-white/20" />
-                )}
-              </span>
-              <span className="flex-1 text-[13px] leading-snug text-white/75">
-                {title}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleApply(title)}
-                className={[
-                  "mt-px shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium cursor-pointer transition-colors duration-150",
-                  isSelected
-                    ? "border-[var(--color-brand-500)]/25 text-[var(--color-brand-400)]/70"
-                    : "border-white/[0.10] text-white/35 hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-400)]",
-                ].join(" ")}
-              >
-                {isSelected ? "Applied" : "Use"}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+              {title}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleApply(title)}
+              className={[
+                "shrink-0 text-[10px] font-medium cursor-pointer transition-colors duration-150",
+                isSelected
+                  ? "text-[var(--color-brand-400)]/60 pointer-events-none"
+                  : "text-white/25 hover:text-[var(--color-brand-400)]",
+              ].join(" ")}
+            >
+              {isSelected ? "Applied" : "Use"}
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }
