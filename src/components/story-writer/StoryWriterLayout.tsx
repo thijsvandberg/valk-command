@@ -21,6 +21,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -58,7 +59,7 @@ interface StoryWriterLayoutProps {
 export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const writer = useStoryWriter(ticketKey);
   const { notify } = useNotification();
-  const { data: ticketData } = useTicketDetail(ticketKey);
+  const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
   const { data: reviewData } = useTicketReviews(ticketKey);
   const { data: rawSprints } = useJiraSprints();
   const ticketSprintId = ticketData?.sprintId ?? null;
@@ -142,6 +143,15 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       setIsDraftDirty(descDirty || titleDirty);
     }
   }, [writer.session, ticketData]);
+
+  const handleTypeChange = useCallback(async (newType: import("@/types/ticket").IssueType) => {
+    await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: newType }),
+    });
+    mutateTicket();
+  }, [ticketKey, mutateTicket]);
 
   const handleSaveDraft = useCallback(async () => {
     setSaving(true);
@@ -335,7 +345,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
         <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
           {/* Action bar — unchanged */}
           <ViewHeader
-            icon={ticketAsTicket ? <IssueTypeIcon type={ticketAsTicket.type} size={15} /> : undefined}
+            icon={ticketAsTicket ? <IssueTypePicker type={ticketAsTicket.type} size={15} onTypeChange={handleTypeChange} /> : undefined}
             className="shrink-0"
             actions={<>
               {(ticketSprintId || ticketAsTicket?.epic) && (

@@ -122,6 +122,15 @@ function defaultSortDir(field: SortField): SortDir {
   return field === "quality" || field === "points" || field === "lastChanged" ? "desc" : "asc";
 }
 
+const HEADER_LABELS: Record<ColumnId, string> = {
+  type: "", key: "Key", title: "Title", epic: "Epic",
+  jiraStatus: "Status", sprint: "Sprint", points: "Pts", assignee: "",
+  flagged: "", poStatus: "PO", quality: "QS", notes: "", pipeline: "",
+};
+
+const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality"]);
+const CENTER_COLUMNS: Set<ColumnId> = new Set(["points", "poStatus"]);
+
 export function TicketTable({
   tickets,
   checkedTickets,
@@ -299,18 +308,11 @@ export function TicketTable({
     columnOrder: effectiveOrder,
   }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
 
-  const rh = onColumnResize && onColumnResetWidth
-    ? (id: string) => <ResizeHandle colId={id} onResize={onColumnResize} onReset={onColumnResetWidth} />
-    : () => null;
-
-  const HEADER_LABELS: Record<ColumnId, string> = {
-    type: "", key: "Key", title: "Title", epic: "Epic",
-    jiraStatus: "Status", sprint: "Sprint", points: "Pts", assignee: "",
-    flagged: "", poStatus: "PO", quality: "QS", notes: "", pipeline: "",
-  };
-
-  const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality"]);
-  const CENTER_COLUMNS: Set<ColumnId> = new Set(["points", "poStatus"]);
+  const rh = useMemo(() =>
+    onColumnResize && onColumnResetWidth
+      ? (id: string) => <ResizeHandle colId={id} onResize={onColumnResize} onReset={onColumnResetWidth} />
+      : () => null,
+  [onColumnResize, onColumnResetWidth]);
 
   const renderHeaderCell = useCallback((id: ColumnId) => {
     if (!col(id)) return null;

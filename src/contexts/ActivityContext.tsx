@@ -60,6 +60,13 @@ const SYNC_ENDPOINTS: Record<string, string> = {
   comments: "/api/jira/sync-comments",
 };
 
+const RETRY_SYNC_MAP: Record<string, string> = {
+  "sprint-sync": "sprint",
+  "ticket-sync": "tickets",
+  "comment-sync": "comments",
+  "incremental-sync": "tickets",
+};
+
 export function ActivityProvider({ children }: { children: ReactNode }) {
   const [toastEntries, setToastEntries] = useState<Toast[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -128,7 +135,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     return () => timers.forEach(clearTimeout);
   }, [toasts]);
 
-  const entries = logEntries ?? [];
+  const entries = useMemo(() => logEntries ?? [], [logEntries]);
 
   const activityState: ActivityState = (() => {
     if (entries.length === 0) return "idle";
@@ -197,13 +204,6 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     },
     [mutateActivityLog],
   );
-
-  const RETRY_SYNC_MAP: Record<string, string> = {
-    "sprint-sync": "sprint",
-    "ticket-sync": "tickets",
-    "comment-sync": "comments",
-    "incremental-sync": "tickets",
-  };
 
   const retryEntry = useCallback(
     async (id: string) => {

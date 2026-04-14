@@ -6,6 +6,8 @@ import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, A
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
+import { jiraClient } from "@/lib/jira-client";
+import { logActivity } from "@/lib/activity-logger";
 
 function userInitials(name: string): string {
   return name
@@ -222,4 +224,66 @@ export async function GET(
       "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
     },
   });
+}
+
+const VALID_ISSUE_TYPES: IssueType[] = ["story", "bug", "task", "spike"];
+
+// Jira uses title-case names for issue types
+const JIRA_TYPE_NAMES: Partial<Record<IssueType, string>> = {
+  story: "Story",
+  bug: "Bug",
+  task: "Task",
+  spike: "Spike",
+};
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ key: string }> },
+) {
+  const { key } = await params;
+
+  const t = await db.query.ticket.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+  });
+
+  if (!t) {
+    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!body.type || !VALID_ISSUE_TYPES.includes(body.type as IssueType)) {
+    return NextResponse.json(
+      { error: `type must be one of: ${VALID_ISSUE_TYPES.join(", ")}` },
+      { status: 400 },
+    );
+  }
+
+  const newType = body.type as IssueType;
+
+  await db.update(ticket).set({ type: newType }).where(eq(ticket.jiraKey, key));
+
+  // Sync to Jira in the background; failure does not block the response
+  const jiraName = JIRA_TYPE_NAMES[newType];
+  if (jiraName) {
+    jiraClient.updateIssue(key, { issuetype: { name: jiraName } }).catch((err: unknown) => {
+      console.error(`[PATCH /api/tickets/${key}] Jira type sync failed:`, err);
+    });
+  }
+
+  cache.invalidate(`/api/tickets/${key}`);
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
+
+  await logActivity({
+    type: "metadata-update",
+    scope: key,
+    summary: `Changed issue type to ${newType}`,
+  });
+
+  return NextResponse.json({ type: newType });
 }

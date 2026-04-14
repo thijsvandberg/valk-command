@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, use } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, use } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
@@ -24,6 +24,7 @@ import {
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
@@ -60,7 +61,7 @@ export default function TicketDetailPage({
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
   const pageTitle = usePageTitle(apiData ? `${key} - ${apiData.title}` : key);
 
-  const ticket: Ticket | undefined = apiData ? {
+  const ticket: Ticket | undefined = useMemo(() => apiData ? {
     key: apiData.key,
     title: apiData.title,
     type: apiData.type,
@@ -75,7 +76,7 @@ export default function TicketDetailPage({
     editState: apiData.editState ?? "clean",
     notes: apiData.notes ?? "",
     sprintId: apiData.sprintId,
-  } : undefined;
+  } : undefined, [apiData]);
 
   const detail: TicketDetail | undefined = apiData ? {
     description: apiData.description ?? "",
@@ -139,6 +140,15 @@ export default function TicketDetailPage({
   const [historyResetKey, setHistoryResetKey] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
   const linkCopyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTypeChange = useCallback(async (newType: import("@/types/ticket").IssueType) => {
+    await fetch(`/api/tickets/${encodeURIComponent(key)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: newType }),
+    });
+    mutateTicket();
+  }, [key, mutateTicket]);
 
   const handleCopyLink = useCallback(async () => {
     if (!ticket) return;
@@ -315,7 +325,7 @@ export default function TicketDetailPage({
     <div className="flex h-full flex-col">
 
       <ViewHeader
-        icon={<IssueTypeIcon type={ticket.type} size={15} />}
+        icon={<IssueTypePicker type={ticket.type} size={15} onTypeChange={handleTypeChange} />}
         actions={
           <div className="flex shrink-0 items-center gap-2">
             {(ticketSprintId || ticket.epic) && (
