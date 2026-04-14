@@ -118,6 +118,8 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       if (resultHandled.current || unmountedRef.current) return;
       if (Date.now() - pollStart > MAX_POLL_MS) {
         if (!resultHandled.current && !unmountedRef.current) {
+          eventSourceRef.current?.close();
+          eventSourceRef.current = null;
           onError("Request timed out");
           onStatus("ready");
           onProgress("");

@@ -3,10 +3,17 @@ import { db } from "@/db";
 import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { agentFetch, type AgentError } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteContext = { params: Promise<{ key: string }> };
+
+function agentErrorResponse(error: AgentError, status: number) {
+  return NextResponse.json(
+    { error: error.error, code: error.code },
+    { status: status || 502 },
+  );
+}
 
 /**
  * Sends a message in the story writer conversation.
@@ -78,153 +85,161 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const isFirstMessage = assistantMessages.length === 0;
 
-  try {
-    let taskData: { id?: string; error?: string };
-    let status: number;
+  interface TaskResponse { id?: string; error?: string }
 
-    if (skill === "find-related") {
-      // Invoke the find-related skill with the ticket key as the search source.
-      // Uses the existing conversationId regardless of whether this is the first message.
-      const res = await fetch(agentUrl("/api/tasks"), {
-        method: "POST",
-        headers: agentHeaders(),
-        body: JSON.stringify({
-          skill: "find-related",
-          args: { args: key },
-          conversationId: session.conversationId,
-          model,
-        }),
-      });
+  if (skill === "find-related") {
+    const result = await agentFetch<TaskResponse>("/api/tasks", {
+      method: "POST",
+      body: {
+        skill: "find-related",
+        args: { args: key },
+        conversationId: session.conversationId,
+        model,
+      },
+      retries: 2,
+    });
 
-      status = res.status;
-      taskData = await res.json();
-    } else if (isFirstMessage) {
-      // First message: invoke the write-story-draft skill with enriched context
-      const ticketRow = await db
-        .select()
-        .from(ticket)
-        .where(eq(ticket.jiraKey, key))
-        .get();
-
-      const comments = await db
-        .select()
-        .from(jiraComment)
-        .where(eq(jiraComment.ticketKey, key))
-        .all();
-
-      const contextParts = [];
-      if (ticketRow) {
-        contextParts.push(`Ticket: ${key} - ${ticketRow.title}`);
-        contextParts.push(`Current description:\n${ticketRow.description ?? "(empty)"}`);
-      }
-      if (comments.length > 0) {
-        const formatted = comments
-          .map((c) => `[${c.authorName}] ${c.content}`)
-          .join("\n---\n");
-        contextParts.push(`Jira comments (${comments.length}):\n${formatted}`);
-      }
-
-      // Inject target story context when in split mode
-      if (session.targetTicketKey) {
-        const targetTicketRow = await db
-          .select()
-          .from(ticket)
-          .where(eq(ticket.jiraKey, session.targetTicketKey))
-          .get();
-        contextParts.push(
-          `[Split mode] You are helping redistribute content between two stories.\n` +
-          `Original story: ${key}${ticketRow ? ` - ${ticketRow.title}` : ""}\n` +
-          `Target story: ${session.targetTicketKey}${targetTicketRow ? ` - ${targetTicketRow.title}` : ""}\n` +
-          `Target story current content:\n${session.targetLocalDraft || "(empty)"}\n\n` +
-          `Output a revised version of the original story using <story-draft> and a revised version of the target story using <story-draft slot="target">.`,
-        );
-      }
-
-      const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
-      contextParts.push(
-        `${researchFlag}\n\nUser request: ${content}\n\n` +
-        `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.`
-      );
-
-      const res = await fetch(agentUrl("/api/tasks"), {
-        method: "POST",
-        headers: agentHeaders(),
-        body: JSON.stringify({
-          skill: "write-story-draft",
-          args: { args: contextParts.join("\n\n") },
-          conversationId: session.conversationId,
-          model,
-        }),
-      });
-
-      status = res.status;
-      taskData = await res.json();
-    } else {
-      // Follow-up message: resume the existing workspace conversation
-      const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
-
-      // Always inject the current draft so the workspace AI has context even if it lost
-      // its conversation history (happens when the remote session is evicted).
-      const draftContext = session.localDraft
-        ? `\n\n[Current story draft]\n${session.localDraft}\n[End of draft]`
-        : "";
-
-      // In split mode, remind the AI of the split context and expected output format
-      let splitReminder = "";
-      if (session.targetTicketKey) {
-        splitReminder =
-          `\n\n[Split mode: original=${key}, target=${session.targetTicketKey}. ` +
-          `Output <story-draft> for original and <story-draft slot="target"> for target story.]`;
-      }
-
-      const res = await fetch(
-        agentUrl(`/api/conversations/${session.conversationId}/messages`),
-        {
-          method: "POST",
-          headers: agentHeaders(),
-          body: JSON.stringify({
-            content: `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question.]`,
-            model,
-          }),
-        },
-      );
-
-      // Session lost on workspace side: recover
-      if (res.status === 410) {
-        const recovered = await recoverSession(session, key, content);
-        return NextResponse.json(recovered.body, { status: recovered.status });
-      }
-
-      status = res.status;
-      taskData = await res.json();
-    }
-
-    if (status >= 400) {
-      return NextResponse.json(
-        { error: taskData.error ?? "Workspace request failed" },
-        { status },
-      );
-    }
-
-    const taskId = taskData.id ?? "";
-
-    // Persist the taskId so the client can detect and resume monitoring on page reload
-    if (taskId) {
-      await db
-        .update(message)
-        .set({ workspaceTaskId: taskId })
-        .where(eq(message.id, messageId));
-    }
-
-    return NextResponse.json({
-      messageId,
-      taskId,
-      streamUrl: `/api/workspace-tasks/${taskId}/stream`,
-      isFirstMessage,
-    }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Agent unreachable" }, { status: 502 });
+    if (!result.ok) return agentErrorResponse(result.error, result.status);
+    return taskCreatedResponse(messageId, result.data, isFirstMessage);
   }
+
+  if (isFirstMessage) {
+    const taskBody = await buildFirstMessageBody(session, key, content, codebaseResearch, model);
+
+    const result = await agentFetch<TaskResponse>("/api/tasks", {
+      method: "POST",
+      body: taskBody,
+      retries: 2,
+    });
+
+    if (!result.ok) return agentErrorResponse(result.error, result.status);
+    return taskCreatedResponse(messageId, result.data, isFirstMessage);
+  }
+
+  // Follow-up message: resume the existing workspace conversation
+  const followUpContent = buildFollowUpContent(session, key, content, codebaseResearch);
+
+  const result = await agentFetch<TaskResponse>(
+    `/api/conversations/${session.conversationId}/messages`,
+    {
+      method: "POST",
+      body: { content: followUpContent, model },
+      retries: 2,
+    },
+  );
+
+  // Session lost on workspace side: recover
+  if (!result.ok && result.status === 410) {
+    const recovered = await recoverSession(session, key, content);
+    return NextResponse.json(recovered.body, { status: recovered.status });
+  }
+
+  if (!result.ok) return agentErrorResponse(result.error, result.status);
+  return taskCreatedResponse(messageId, result.data, isFirstMessage);
+}
+
+async function taskCreatedResponse(
+  messageId: string,
+  taskData: { id?: string; error?: string },
+  isFirstMessage: boolean,
+) {
+  const taskId = taskData.id ?? "";
+
+  if (taskId) {
+    await db
+      .update(message)
+      .set({ workspaceTaskId: taskId })
+      .where(eq(message.id, messageId));
+  }
+
+  return NextResponse.json({
+    messageId,
+    taskId,
+    streamUrl: `/api/workspace-tasks/${taskId}/stream`,
+    isFirstMessage,
+  }, { status: 201 });
+}
+
+async function buildFirstMessageBody(
+  session: { conversationId: string; localDraft: string | null; targetTicketKey: string | null; targetLocalDraft: string | null },
+  key: string,
+  content: string,
+  codebaseResearch: boolean,
+  model: string | undefined,
+) {
+  const ticketRow = await db
+    .select()
+    .from(ticket)
+    .where(eq(ticket.jiraKey, key))
+    .get();
+
+  const comments = await db
+    .select()
+    .from(jiraComment)
+    .where(eq(jiraComment.ticketKey, key))
+    .all();
+
+  const contextParts = [];
+  if (ticketRow) {
+    contextParts.push(`Ticket: ${key} - ${ticketRow.title}`);
+    contextParts.push(`Current description:\n${ticketRow.description ?? "(empty)"}`);
+  }
+  if (comments.length > 0) {
+    const formatted = comments
+      .map((c) => `[${c.authorName}] ${c.content}`)
+      .join("\n---\n");
+    contextParts.push(`Jira comments (${comments.length}):\n${formatted}`);
+  }
+
+  if (session.targetTicketKey) {
+    const targetTicketRow = await db
+      .select()
+      .from(ticket)
+      .where(eq(ticket.jiraKey, session.targetTicketKey))
+      .get();
+    contextParts.push(
+      `[Split mode] You are helping redistribute content between two stories.\n` +
+      `Original story: ${key}${ticketRow ? ` - ${ticketRow.title}` : ""}\n` +
+      `Target story: ${session.targetTicketKey}${targetTicketRow ? ` - ${targetTicketRow.title}` : ""}\n` +
+      `Target story current content:\n${session.targetLocalDraft || "(empty)"}\n\n` +
+      `Output a revised version of the original story using <story-draft> and a revised version of the target story using <story-draft slot="target">.`,
+    );
+  }
+
+  const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+  contextParts.push(
+    `${researchFlag}\n\nUser request: ${content}\n\n` +
+    `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.`
+  );
+
+  return {
+    skill: "write-story-draft",
+    args: { args: contextParts.join("\n\n") },
+    conversationId: session.conversationId,
+    model,
+  };
+}
+
+function buildFollowUpContent(
+  session: { localDraft: string | null; targetTicketKey: string | null },
+  key: string,
+  content: string,
+  codebaseResearch: boolean,
+): string {
+  const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+
+  const draftContext = session.localDraft
+    ? `\n\n[Current story draft]\n${session.localDraft}\n[End of draft]`
+    : "";
+
+  let splitReminder = "";
+  if (session.targetTicketKey) {
+    splitReminder =
+      `\n\n[Split mode: original=${key}, target=${session.targetTicketKey}. ` +
+      `Output <story-draft> for original and <story-draft slot="target"> for target story.]`;
+  }
+
+  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question.]`;
 }
 
 /**
@@ -250,38 +265,32 @@ async function recoverSession(
     `\nUser message: ${userMessage}`,
   ].filter(Boolean).join("\n\n");
 
-  try {
-    const res = await fetch(agentUrl("/api/tasks"), {
-      method: "POST",
-      headers: agentHeaders(),
-      body: JSON.stringify({
-        skill: "write-story-draft",
-        args: { args: recoveryPrompt },
-        conversationId: session.conversationId,
-      }),
-    });
+  const result = await agentFetch<{ id?: string; error?: string }>("/api/tasks", {
+    method: "POST",
+    body: {
+      skill: "write-story-draft",
+      args: { args: recoveryPrompt },
+      conversationId: session.conversationId,
+    },
+    retries: 2,
+  });
 
-    const taskData = await res.json();
-
-    if (res.status >= 400) {
-      return {
-        body: { error: taskData.error ?? "Recovery failed" },
-        status: res.status,
-      };
-    }
-
-    const taskId = taskData.id ?? "";
+  if (!result.ok) {
     return {
-      body: {
-        messageId: `recovered-${Date.now()}`,
-        taskId,
-        streamUrl: `/api/workspace-tasks/${taskId}/stream`,
-        isFirstMessage: true,
-        recovered: true,
-      },
-      status: 201,
+      body: { error: result.error.error, code: result.error.code },
+      status: result.status || 502,
     };
-  } catch {
-    return { body: { error: "Agent unreachable during recovery" }, status: 502 };
   }
+
+  const taskId = result.data.id ?? "";
+  return {
+    body: {
+      messageId: `recovered-${Date.now()}`,
+      taskId,
+      streamUrl: `/api/workspace-tasks/${taskId}/stream`,
+      isFirstMessage: true,
+      recovered: true,
+    },
+    status: 201,
+  };
 }

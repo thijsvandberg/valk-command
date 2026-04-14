@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { agentFetch } from "@/lib/agent-fetch";
 
 export async function GET() {
-  try {
-    const res = await fetch(agentUrl("/health"), {
-      headers: agentHeaders(),
-      signal: AbortSignal.timeout(5000),
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch {
+  const result = await agentFetch("/health", { timeout: 5000 });
+
+  if (!result.ok) {
     return NextResponse.json(
-      { status: "unreachable", auth: { status: "unknown" } },
-      { status: 502 }
+      { status: "unreachable", auth: { status: "unknown" }, code: result.error.code },
+      { status: 502 },
     );
   }
+
+  return NextResponse.json(result.data, { status: result.status });
 }

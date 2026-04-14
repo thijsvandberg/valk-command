@@ -6,6 +6,7 @@ import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
+import { friendlyAgentError } from "@/lib/agent-errors";
 
 export type { WorkspaceUsage } from "./useTaskMonitoring";
 
@@ -234,8 +235,8 @@ export function useStoryWriter(ticketKey: string) {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setStreamError(body.error ?? "Failed to send message");
+        const body = await res.json().catch(() => null);
+        setStreamError(friendlyAgentError(body, "Failed to send message"));
         setStatus("ready");
         return false;
       }

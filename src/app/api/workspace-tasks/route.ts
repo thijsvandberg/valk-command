@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
@@ -31,27 +31,31 @@ export async function POST(request: Request) {
     conversationId: b.conversationId || `auto-${Date.now()}`,
   };
 
-  try {
-    const res = await fetch(agentUrl("/api/tasks"), {
-      method: "POST",
-      headers: agentHeaders(),
-      body: JSON.stringify(agentBody),
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Agent unreachable" }, { status: 502 });
+  const result = await agentFetch("/api/tasks", {
+    method: "POST",
+    body: agentBody,
+    retries: 2,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json(
+      { error: result.error.error, code: result.error.code },
+      { status: result.status || 502 },
+    );
   }
+
+  return NextResponse.json(result.data, { status: result.status });
 }
 
 export async function GET() {
-  try {
-    const res = await fetch(agentUrl("/api/tasks"), {
-      headers: agentHeaders(),
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Agent unreachable" }, { status: 502 });
+  const result = await agentFetch("/api/tasks");
+
+  if (!result.ok) {
+    return NextResponse.json(
+      { error: result.error.error, code: result.error.code },
+      { status: result.status || 502 },
+    );
   }
+
+  return NextResponse.json(result.data, { status: result.status });
 }

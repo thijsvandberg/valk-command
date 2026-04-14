@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { SSEEvent } from "@/lib/agent-client";
+import { friendlyAgentError } from "@/lib/agent-errors";
 
 export type TaskStreamStatus = "idle" | "submitting" | "streaming" | "completed" | "failed";
 
@@ -84,11 +85,11 @@ export function useWorkspaceTask(): UseWorkspaceTaskReturn {
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
+          const body = await res.json().catch(() => null);
           safeSetState((s) => ({
             ...s,
             status: "failed",
-            error: body.error ?? `Submit failed (${res.status})`,
+            error: friendlyAgentError(body, `Submit failed (${res.status})`),
           }));
           return;
         }

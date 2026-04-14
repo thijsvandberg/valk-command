@@ -4,7 +4,7 @@ import { storyWriterSession, storyWriterDraft, storyWriterExecutionLog, message 
 import { eq, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extractStoryDrafts } from "@/lib/story-draft-parser";
-import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { agentFetch } from "@/lib/agent-fetch";
 import { createNotification } from "@/lib/notifications";
 
 type RouteContext = { params: Promise<{ key: string }> };
@@ -127,12 +127,10 @@ async function fetchAndStoreExecutionLog(
   conversationId: string,
   ticketKey: string,
 ): Promise<void> {
-  const res = await fetch(agentUrl(`/api/tasks/${taskId}/log`), {
-    headers: agentHeaders(),
-  });
-  if (!res.ok) return;
+  const result = await agentFetch<unknown[]>(`/api/tasks/${taskId}/log`, { retries: 2 });
+  if (!result.ok) return;
 
-  const log = await res.json();
+  const log = result.data;
   if (!Array.isArray(log) || log.length === 0) return;
 
   // Deduplicate: skip if a log for this taskId already exists

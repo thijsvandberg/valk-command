@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { storedReview, ticketMetadata, storyVersion } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { agentFetch } from "@/lib/agent-fetch";
 import { parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -37,31 +37,24 @@ export async function POST(
   }
 
   // Submit task to agent
-  let taskId: string;
-  try {
-    const res = await fetch(agentUrl("/api/tasks"), {
-      method: "POST",
-      headers: agentHeaders(),
-      body: JSON.stringify({
-        skill: "review-story-json",
-        args: { args: key },
-        conversationId: `review-${key}-${Date.now()}`,
-      }),
-    });
+  const submitResult = await agentFetch<{ id: string }>("/api/tasks", {
+    method: "POST",
+    body: {
+      skill: "review-story-json",
+      args: { args: key },
+      conversationId: `review-${key}-${Date.now()}`,
+    },
+    retries: 2,
+  });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: err.error ?? `Agent returned ${res.status}` },
-        { status: 502 },
-      );
-    }
-
-    const task = await res.json();
-    taskId = task.id;
-  } catch {
-    return NextResponse.json({ error: "Agent unreachable" }, { status: 502 });
+  if (!submitResult.ok) {
+    return NextResponse.json(
+      { error: submitResult.error.error, code: submitResult.error.code },
+      { status: submitResult.status || 502 },
+    );
   }
+
+  const taskId = submitResult.data.id;
 
   // Poll for completion (max 3 minutes, check every 3 seconds)
   const maxAttempts = 60;
@@ -70,28 +63,22 @@ export async function POST(
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, 3000));
 
-    try {
-      const res = await fetch(agentUrl(`/api/tasks/${taskId}`), {
-        headers: agentHeaders(),
-      });
+    const pollResult = await agentFetch<{ status: string; output?: string; error?: string }>(
+      `/api/tasks/${taskId}`,
+    );
 
-      if (!res.ok) continue;
+    if (!pollResult.ok) continue;
 
-      const task = await res.json();
+    if (pollResult.data.status === "completed" && pollResult.data.output) {
+      output = pollResult.data.output;
+      break;
+    }
 
-      if (task.status === "completed" && task.output) {
-        output = task.output;
-        break;
-      }
-
-      if (task.status === "failed") {
-        return NextResponse.json(
-          { error: task.error ?? "Agent review failed" },
-          { status: 502 },
-        );
-      }
-    } catch {
-      // Transient error, keep polling
+    if (pollResult.data.status === "failed") {
+      return NextResponse.json(
+        { error: pollResult.data.error ?? "Agent review failed" },
+        { status: 502 },
+      );
     }
   }
 

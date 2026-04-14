@@ -18,6 +18,8 @@ vi.mock("@/lib/activity-logger", () => ({
   logActivity: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
+
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
@@ -71,10 +73,10 @@ function seedSession(db: BetterSQLite3Database<typeof schema>, key: string, opts
   return { convId, sessionId };
 }
 
-function mockAgentResponse(taskId: string, status = 201) {
-  mockFetch.mockResolvedValueOnce({
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
     status,
-    json: async () => ({ id: taskId }),
+    headers: { "Content-Type": "application/json" },
   });
 }
 
@@ -86,7 +88,7 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
 
   it("sends first message as skill invocation", async () => {
     seedSession(testDb, "VPL-100");
-    mockAgentResponse("task_abc");
+    mockFetch.mockResolvedValueOnce(jsonResponse({ id: "task_abc" }, 201));
 
     const res = await POST(
       makeRequest("VPL-100", { content: "Improve the acceptance criteria" }),
@@ -111,7 +113,7 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
 
   it("sends follow-up as conversation message", async () => {
     seedSession(testDb, "VPL-100", { withAssistantMessage: true });
-    mockAgentResponse("task_def");
+    mockFetch.mockResolvedValueOnce(jsonResponse({ id: "task_def" }, 201));
 
     const res = await POST(
       makeRequest("VPL-100", { content: "Make the scope more specific" }),
@@ -133,7 +135,7 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
 
   it("saves user message to database", async () => {
     const { convId } = seedSession(testDb, "VPL-100");
-    mockAgentResponse("task_abc");
+    mockFetch.mockResolvedValueOnce(jsonResponse({ id: "task_abc" }, 201));
 
     await POST(
       makeRequest("VPL-100", { content: "Test message" }),
@@ -155,12 +157,9 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
     seedSession(testDb, "VPL-100", { withAssistantMessage: true });
 
     // First call returns 410 (session lost)
-    mockFetch.mockResolvedValueOnce({
-      status: 410,
-      json: async () => ({ error: "session_expired" }),
-    });
+    mockFetch.mockResolvedValueOnce(jsonResponse({ error: "session_expired" }, 410));
     // Recovery call succeeds
-    mockAgentResponse("task_recovered");
+    mockFetch.mockResolvedValueOnce(jsonResponse({ id: "task_recovered" }, 201));
 
     const res = await POST(
       makeRequest("VPL-100", { content: "Continue working" }),
@@ -214,5 +213,7 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
     );
 
     expect(res.status).toBe(502);
+    const data = await res.json();
+    expect(data.code).toBe("UNREACHABLE");
   });
 });
