@@ -238,7 +238,7 @@ export function ChatMessage({
 
       <div
         ref={containerRef}
-        className={`max-w-[85%] rounded-xl text-sm leading-[1.75] ${
+        className={`max-w-[85%] rounded-xl text-sm leading-[1.75] ${allTitleSuggestions.length > 0 ? "w-full" : ""} ${
           draftOnly
             ? ""
             : isUser
