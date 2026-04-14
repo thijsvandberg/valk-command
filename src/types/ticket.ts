@@ -173,3 +173,52 @@ export interface ActivityLogEntry {
   completedAt: string | null;
   acknowledged: boolean;
 }
+
+export interface ActivityLogDayStats {
+  totalEvents: number;
+  successRate: number;
+  avgDurationMs: number;
+  activeErrorCount: number;
+}
+
+export interface RecurringFailure {
+  pattern: string;
+  type: ActivityLogType;
+  count: number;
+  lastOccurrence: string;
+  affectedScopes: string[];
+  mostRecentEntryId: string;
+}
+
+export interface ActivityLogTimelineEntry {
+  id: string;
+  startedAt: string;
+  status: "running" | "success" | "failed" | "cancelled";
+  type: ActivityLogType;
+  scope: string | null;
+  durationMs: number | null;
+}
+
+export interface HealthScore {
+  score: number;
+  band: "green" | "amber" | "red";
+  trend: "up" | "flat" | "down";
+  components: {
+    successRate: number;
+    durationConsistency: number;
+    errorFreeStreak: number;
+  };
+}
+
+export interface ActivityLogStats {
+  today: ActivityLogDayStats;
+  yesterday: ActivityLogDayStats;
+  recurringFailures: RecurringFailure[];
+  timeline: ActivityLogTimelineEntry[];
+  healthScore: HealthScore;
+}
+
+export interface ActivityLogStatsResponse {
+  entries: ActivityLogEntry[];
+  stats: ActivityLogStats;
+}

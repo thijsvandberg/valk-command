@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { activityLog } from "@/db/schema";
-import { desc, eq, and, lt, notInArray, inArray, sql } from "drizzle-orm";
+import { desc, eq, and, lt, gte, notInArray, inArray, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { ActivityLogType } from "@/types/ticket";
+import { computeStats } from "./compute-stats";
 
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 const RETENTION_DAYS = 7;
@@ -78,5 +79,43 @@ export async function GET(request: Request) {
     .limit(limit)
     .offset(offset);
 
-  return NextResponse.json(rows);
+  const includeStats = searchParams.get("include") === "stats";
+  if (!includeStats) {
+    return NextResponse.json(rows);
+  }
+
+  // Compute date boundaries
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const startOfYesterday = new Date(new Date(startOfToday).getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // 7-day window shifted back 7 days (for trend comparison)
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgoEnd = sevenDaysAgo;
+
+  const [todayRows, yesterdayRows, sevenDayFailedRows, timelineRows, sevenDaysAgoPeriodRows] = await Promise.all([
+    db.select().from(activityLog).where(gte(activityLog.startedAt, startOfToday)),
+    db.select().from(activityLog).where(
+      and(gte(activityLog.startedAt, startOfYesterday), lt(activityLog.startedAt, startOfToday)),
+    ),
+    db.select().from(activityLog).where(
+      and(gte(activityLog.startedAt, sevenDaysAgo), eq(activityLog.status, "failed")),
+    ),
+    db.select().from(activityLog).where(gte(activityLog.startedAt, twentyFourHoursAgo)),
+    db.select().from(activityLog).where(
+      and(gte(activityLog.startedAt, fourteenDaysAgo), lt(activityLog.startedAt, sevenDaysAgoEnd)),
+    ),
+  ]);
+
+  const stats = computeStats(
+    todayRows,
+    yesterdayRows,
+    sevenDayFailedRows,
+    timelineRows,
+    timelineRows,
+    sevenDaysAgoPeriodRows,
+  );
+
+  return NextResponse.json({ entries: rows, stats });
 }

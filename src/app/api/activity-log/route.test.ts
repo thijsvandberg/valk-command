@@ -134,4 +134,67 @@ describe("GET /api/activity-log", () => {
 
     expect(data).toHaveLength(2);
   });
+
+  it("still returns a plain array when include=stats is absent", async () => {
+    const response = await GET(makeRequest());
+    const data = await response.json();
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it("returns { entries, stats } shape when include=stats is present", async () => {
+    const response = await GET(makeRequest({ include: "stats" }));
+    const data = await response.json();
+    expect(data).toHaveProperty("entries");
+    expect(data).toHaveProperty("stats");
+    expect(Array.isArray(data.entries)).toBe(true);
+    expect(data.stats).toHaveProperty("today");
+    expect(data.stats).toHaveProperty("yesterday");
+    expect(data.stats).toHaveProperty("recurringFailures");
+    expect(data.stats).toHaveProperty("timeline");
+    expect(data.stats).toHaveProperty("healthScore");
+  });
+
+  it("stats.today counts today's events correctly", async () => {
+    const now = new Date().toISOString();
+    testDb.insert(activityLog).values({ id: "a1", type: "sprint-sync", scope: "sprints", status: "success", startedAt: now }).run();
+    testDb.insert(activityLog).values({ id: "a2", type: "sprint-sync", scope: "sprints", status: "failed", startedAt: now }).run();
+
+    const response = await GET(makeRequest({ include: "stats" }));
+    const { stats } = await response.json();
+
+    expect(stats.today.totalEvents).toBeGreaterThanOrEqual(2);
+    expect(stats.today.successRate).toBeGreaterThan(0);
+    expect(stats.today.successRate).toBeLessThanOrEqual(100);
+  });
+
+  it("stats.recurringFailures is empty when no failures", async () => {
+    const response = await GET(makeRequest({ include: "stats" }));
+    const { stats } = await response.json();
+    expect(stats.recurringFailures).toEqual([]);
+  });
+
+  it("stats.timeline contains last-24h entries", async () => {
+    const recent = new Date(Date.now() - 60 * 1000).toISOString();
+    testDb.insert(activityLog).values({ id: "tl1", type: "sprint-sync", scope: "sprints", status: "success", startedAt: recent }).run();
+
+    const response = await GET(makeRequest({ include: "stats" }));
+    const { stats } = await response.json();
+    const found = stats.timeline.find((t: { id: string }) => t.id === "tl1");
+    expect(found).toBeDefined();
+  });
+
+  it("stats.healthScore has required fields", async () => {
+    const response = await GET(makeRequest({ include: "stats" }));
+    const { stats } = await response.json();
+    expect(stats.healthScore).toMatchObject({
+      score: expect.any(Number),
+      band: expect.stringMatching(/^(green|amber|red)$/),
+      trend: expect.stringMatching(/^(up|flat|down)$/),
+      components: {
+        successRate: expect.any(Number),
+        durationConsistency: expect.any(Number),
+        errorFreeStreak: expect.any(Number),
+      },
+    });
+  });
 });

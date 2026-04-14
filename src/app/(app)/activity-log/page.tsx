@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useActivityContext } from "@/contexts/ActivityContext";
 import Link from "next/link";
@@ -17,12 +17,27 @@ import {
   Activity,
   ChevronRight,
   X,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  RepeatIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
-import type { ActivityLogEntry } from "@/types/ticket";
+import { Tooltip } from "@/components/shared/Tooltip";
+import type {
+  ActivityLogEntry,
+  ActivityLogStatsResponse,
+  ActivityLogStats,
+  ActivityLogDayStats,
+  RecurringFailure,
+  ActivityLogTimelineEntry,
+  HealthScore,
+} from "@/types/ticket";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
+const statsFetcher = (url: string) =>
+  fetch(url).then((r) => (r.ok ? r.json() : null));
 
 const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "All types" },
@@ -84,6 +99,16 @@ function formatTimestamp(dateStr: string): string {
   return `${day} ${time}`;
 }
 
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 /** Parse errorDetail if it's JSON from agent-fetch; otherwise return as plain string. */
 function parseErrorDetail(raw: string | null): { display: string; structured: Record<string, unknown> | null } {
   if (!raw) return { display: "", structured: null };
@@ -121,6 +146,391 @@ function statusLabel(status: ActivityLogEntry["status"]): string {
   return "Running";
 }
 
+// --- Phase 4: Health Score Badge ---
+
+function HealthScoreBadge({ healthScore }: { healthScore: HealthScore }) {
+  const { score, band, trend, components } = healthScore;
+
+  const bandColor =
+    band === "green"
+      ? { ring: "rgba(74,222,128,0.25)", text: "text-green-400", bg: "rgba(74,222,128,0.08)" }
+      : band === "amber"
+      ? { ring: "rgba(251,191,36,0.25)", text: "text-amber-400", bg: "rgba(251,191,36,0.08)" }
+      : { ring: "rgba(248,113,113,0.25)", text: "text-red-400", bg: "rgba(248,113,113,0.08)" };
+
+  const tooltipContent = `Health score ${score}/100 — Success rate: ${components.successRate} · Duration consistency: ${components.durationConsistency} · Error-free streak: ${components.errorFreeStreak}`;
+
+  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+  const trendColor = trend === "up" ? "text-green-400/70" : trend === "down" ? "text-red-400/70" : "text-white/25";
+
+  return (
+    <Tooltip content={tooltipContent}>
+      <div
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-default select-none"
+        style={{ background: bandColor.bg, boxShadow: `0 0 0 1px ${bandColor.ring}` }}
+      >
+        <span className={`text-sm font-bold tabular-nums font-[var(--font-display)] tracking-tight ${bandColor.text}`}>
+          {score}
+        </span>
+        <span className="text-[10px] text-white/20 font-[var(--font-body)]">/100</span>
+        <TrendIcon className={`h-3 w-3 ${trendColor}`} strokeWidth={2} />
+      </div>
+    </Tooltip>
+  );
+}
+
+// --- Phase 1: Stats Bar ---
+
+function DeltaChip({
+  current,
+  previous,
+  higherIsBetter,
+  format,
+}: {
+  current: number;
+  previous: number;
+  higherIsBetter: boolean;
+  format: (v: number) => string;
+}) {
+  const diff = current - previous;
+  if (diff === 0) {
+    return (
+      <span className="flex items-center gap-0.5 text-[10px] text-white/20 font-[var(--font-body)]">
+        <Minus className="h-2.5 w-2.5" strokeWidth={2.5} />
+        <span>same</span>
+      </span>
+    );
+  }
+  const isGood = higherIsBetter ? diff > 0 : diff < 0;
+  const Icon = diff > 0 ? TrendingUp : TrendingDown;
+  const color = isGood ? "text-green-400/70" : "text-red-400/70";
+  const sign = diff > 0 ? "+" : "";
+  return (
+    <span className={`flex items-center gap-0.5 text-[10px] font-[var(--font-body)] ${color}`}>
+      <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+      <span>{sign}{format(diff)}</span>
+    </span>
+  );
+}
+
+function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yesterday: ActivityLogDayStats }) {
+  const metrics = [
+    {
+      label: "Events today",
+      value: today.totalEvents.toString(),
+      delta: (
+        <DeltaChip
+          current={today.totalEvents}
+          previous={yesterday.totalEvents}
+          higherIsBetter={true}
+          format={(v) => Math.abs(v).toString()}
+        />
+      ),
+    },
+    {
+      label: "Success rate",
+      value: `${today.successRate}%`,
+      delta: (
+        <DeltaChip
+          current={today.successRate}
+          previous={yesterday.successRate}
+          higherIsBetter={true}
+          format={(v) => `${Math.abs(v)}%`}
+        />
+      ),
+    },
+    {
+      label: "Avg duration",
+      value: formatDuration(today.avgDurationMs),
+      delta: (
+        <DeltaChip
+          current={today.avgDurationMs}
+          previous={yesterday.avgDurationMs}
+          higherIsBetter={false}
+          format={(v) => formatDuration(Math.abs(v))}
+        />
+      ),
+    },
+    {
+      label: "Active errors",
+      value: today.activeErrorCount.toString(),
+      delta: (
+        <DeltaChip
+          current={today.activeErrorCount}
+          previous={yesterday.activeErrorCount}
+          higherIsBetter={false}
+          format={(v) => Math.abs(v).toString()}
+        />
+      ),
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-4 gap-3 mb-5">
+      {metrics.map((m) => (
+        <div
+          key={m.label}
+          className="flex flex-col gap-1 rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+        >
+          <span className="text-[10px] uppercase tracking-widest text-white/20 font-semibold font-[var(--font-body)]">
+            {m.label}
+          </span>
+          <span className="text-xl font-bold tabular-nums font-[var(--font-display)] tracking-tight text-white/85">
+            {m.value}
+          </span>
+          {m.delta}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Phase 2: Recurring Failures ---
+
+function RecurringFailures({
+  failures,
+  sprintMap,
+  onJumpToEntry,
+}: {
+  failures: RecurringFailure[];
+  sprintMap: Map<string, string>;
+  onJumpToEntry: (id: string) => void;
+}) {
+  if (failures.length === 0) {
+    return (
+      <div className="mb-5 rounded-xl border border-white/[0.04] bg-[var(--color-surface-elevated)] px-4 py-4">
+        <div className="flex items-center gap-2 mb-3">
+          <RepeatIcon className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
+            Recurring Failures
+          </span>
+        </div>
+        <div className="flex items-center gap-2 py-2">
+          <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-brand-400)]/50" strokeWidth={1.5} />
+          <span className="text-xs text-white/25 font-[var(--font-body)]">
+            No recurring failures in the last 7 days
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-5 rounded-xl border border-amber-400/[0.12] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.04] bg-amber-400/[0.03]">
+        <RepeatIcon className="h-3.5 w-3.5 text-amber-400/60" strokeWidth={1.5} />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-400/60 font-[var(--font-body)]">
+          Recurring Failures
+        </span>
+        <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400/15 px-1.5 text-[10px] font-bold text-amber-400 font-[var(--font-body)]">
+          {failures.length}
+        </span>
+      </div>
+      <div className="divide-y divide-white/[0.03]">
+        {failures.map((f) => (
+          <button
+            key={`${f.type}::${f.pattern}`}
+            type="button"
+            onClick={() => onJumpToEntry(f.mostRecentEntryId)}
+            className="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/[0.015] transition-colors duration-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] text-left"
+          >
+            <div className="flex flex-col items-start gap-0.5 min-w-[110px] shrink-0">
+              <span className="text-[11px] text-white/50 font-[var(--font-body)]">
+                {entryTypeLabel(f.type)}
+              </span>
+              <span className="text-[10px] text-white/20 font-[var(--font-body)]">
+                {formatRelativeTime(f.lastOccurrence)}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-amber-400/70 font-[var(--font-body)] truncate leading-relaxed">
+                {f.pattern}
+              </p>
+              {f.affectedScopes.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {f.affectedScopes.slice(0, 5).map((scope) => {
+                    const sprintName = sprintMap.get(scope);
+                    return (
+                      <span
+                        key={scope}
+                        className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] bg-white/[0.04] text-white/30 font-[var(--font-body)]"
+                      >
+                        {sprintName ?? scope}
+                      </span>
+                    );
+                  })}
+                  {f.affectedScopes.length > 5 && (
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] text-white/20 font-[var(--font-body)]">
+                      +{f.affectedScopes.length - 5} more
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="shrink-0 flex flex-col items-end gap-0.5">
+              <span className="text-sm font-bold tabular-nums font-[var(--font-display)] text-amber-400/80">
+                {f.count}
+              </span>
+              <span className="text-[10px] text-white/20 font-[var(--font-body)]">occurrences</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Phase 3: Event Timeline ---
+
+function EventTimeline({
+  entries,
+  onClickEntry,
+}: {
+  entries: ActivityLogTimelineEntry[];
+  onClickEntry: (id: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    entry: ActivityLogTimelineEntry;
+  } | null>(null);
+
+  const now = +new Date();
+  const windowStart = now - 24 * 60 * 60 * 1000;
+
+  const dotColor = (status: ActivityLogTimelineEntry["status"]) => {
+    if (status === "success") return "#3389d8"; // brand-400
+    if (status === "failed") return "#f87171"; // red-400
+    return "#fbbf24"; // amber-400 for running/cancelled
+  };
+
+  const hourLabels = Array.from({ length: 7 }, (_, i) => {
+    const ts = windowStart + (i * 4 * 60 * 60 * 1000);
+    const pct = ((ts - windowStart) / (now - windowStart)) * 100;
+    if (pct < 0 || pct > 100) return null;
+    const h = new Date(ts).getHours();
+    return { label: `${h.toString().padStart(2, "0")}:00`, pct };
+  }).filter(Boolean) as { label: string; pct: number }[];
+
+  return (
+    <div className="mb-5 rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+      <div className="flex items-center gap-2 mb-3">
+        <Activity className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
+          Last 24 Hours
+        </span>
+        <span className="ml-auto text-[10px] text-white/15 font-[var(--font-body)]">
+          {entries.length} {entries.length === 1 ? "event" : "events"}
+        </span>
+      </div>
+
+      {/* Timeline track */}
+      <div
+        ref={containerRef}
+        className="relative h-6 rounded-full bg-white/[0.03] border border-white/[0.04] overflow-visible"
+        style={{ marginBottom: "20px" }}
+      >
+        {/* Track fill */}
+        <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.015))" }} />
+
+        {/* Dots */}
+        {entries.map((entry) => {
+          const pct =
+            ((new Date(entry.startedAt).getTime() - windowStart) / (now - windowStart)) * 100;
+          if (pct < 0 || pct > 100) return null;
+          const color = dotColor(entry.status);
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              style={{
+                position: "absolute",
+                left: `${pct}%`,
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                background: color,
+                boxShadow: `0 0 4px ${color}60`,
+                cursor: "pointer",
+                border: "none",
+                padding: 0,
+                outline: "none",
+                zIndex: 1,
+                transition: "transform 0.1s ease, box-shadow 0.1s ease",
+              }}
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setTooltip({ x: rect.left + rect.width / 2, y: rect.top, entry });
+                (e.currentTarget as HTMLButtonElement).style.transform = "translate(-50%, -50%) scale(1.6)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 8px ${color}90`;
+              }}
+              onMouseLeave={(e) => {
+                setTooltip(null);
+                (e.currentTarget as HTMLButtonElement).style.transform = "translate(-50%, -50%)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 4px ${color}60`;
+              }}
+              onClick={() => onClickEntry(entry.id)}
+              aria-label={`${entryTypeLabel(entry.type)} at ${formatTimestamp(entry.startedAt)}`}
+              className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            />
+          );
+        })}
+
+        {/* Now indicator */}
+        <div
+          className="absolute top-0 bottom-0 right-0 w-px bg-white/[0.08]"
+          style={{ borderRight: "1px dashed rgba(255,255,255,0.08)" }}
+        />
+      </div>
+
+      {/* Hour labels */}
+      <div className="relative h-4" style={{ marginTop: "-16px" }}>
+        {hourLabels.map(({ label, pct }) => (
+          <span
+            key={label}
+            className="absolute text-[9px] text-white/15 font-[var(--font-body)] -translate-x-1/2"
+            style={{ left: `${pct}%` }}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {/* Floating tooltip */}
+      {tooltip && (
+        <div
+          className="pointer-events-none fixed z-[100] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+          style={{
+            top: tooltip.y - 8,
+            left: tooltip.x,
+            transform: "translate(-50%, -100%)",
+          }}
+        >
+          <div className="text-[11px] font-semibold text-white/80 font-[var(--font-body)]">
+            {entryTypeLabel(tooltip.entry.type)}
+          </div>
+          <div className="text-[10px] text-white/40 font-[var(--font-body)] mt-0.5 space-y-0.5">
+            <div>{formatTimestamp(tooltip.entry.startedAt)}</div>
+            {tooltip.entry.scope && <div>{tooltip.entry.scope}</div>}
+            {tooltip.entry.durationMs && <div>{formatDuration(tooltip.entry.durationMs)}</div>}
+          </div>
+        </div>
+      )}
+
+      {entries.length === 0 && (
+        <div className="flex items-center justify-center py-2">
+          <span className="text-xs text-white/15 font-[var(--font-body)]">No events in the last 24 hours</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Main Page ---
+
 export default function ActivityLogPage() {
   const pageTitle = usePageTitle("Activity Log");
   const { acknowledgeAllErrors, mutateActivityLog } = useActivityContext();
@@ -133,6 +543,8 @@ export default function ActivityLogPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [jumpTarget, setJumpTarget] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const params = new URLSearchParams();
   params.set("limit", String(PAGE_SIZE));
@@ -160,6 +572,14 @@ export default function ActivityLogPage() {
     fetcher,
     { refreshInterval: 10000 },
   );
+
+  const { data: statsResponse } = useSWR<ActivityLogStatsResponse>(
+    "/api/activity-log?include=stats",
+    statsFetcher,
+    { refreshInterval: 30000 },
+  );
+
+  const stats: ActivityLogStats | undefined = statsResponse?.stats;
 
   const refresh = useCallback(() => {
     mutate();
@@ -212,15 +632,58 @@ export default function ActivityLogPage() {
     setOffset(0);
   }, []);
 
+  // Jump to a specific entry: clear filters, reset pagination, expand the target row
+  const jumpToEntry = useCallback((id: string) => {
+    setSelectedTypes(new Set());
+    setStatusFilter("");
+    setOffset(0);
+    setExpandedIds(new Set([id]));
+    setJumpTarget(id);
+  }, []);
+
+  // Scroll to row after data loads
+  useEffect(() => {
+    if (!jumpTarget || !entries) return;
+    const found = entries.find((e) => e.id === jumpTarget);
+    if (!found) return;
+    const el = rowRefs.current.get(jumpTarget);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => setJumpTarget(null), 0);
+    }
+  }, [jumpTarget, entries]);
+
   const hasMore = entries?.length === PAGE_SIZE;
 
   return (
     <>
       {pageTitle}
-      <ViewHeader icon={<Activity size={16} strokeWidth={1.5} />}>
+      <ViewHeader
+        icon={<Activity size={16} strokeWidth={1.5} />}
+        actions={stats?.healthScore ? <HealthScoreBadge healthScore={stats.healthScore} /> : undefined}
+      >
         <ViewHeaderTitle>Activity Log</ViewHeaderTitle>
       </ViewHeader>
       <div className="mx-auto max-w-5xl px-6 py-8">
+
+        {/* Phase 1: Stats bar */}
+        {stats && (
+          <StatsBar today={stats.today} yesterday={stats.yesterday} />
+        )}
+
+        {/* Phase 2: Recurring failures */}
+        {stats && (
+          <RecurringFailures
+            failures={stats.recurringFailures}
+            sprintMap={sprintMap}
+            onJumpToEntry={jumpToEntry}
+          />
+        )}
+
+        {/* Phase 3: Timeline */}
+        {stats && (
+          <EventTimeline entries={stats.timeline} onClickEntry={jumpToEntry} />
+        )}
 
       {/* Filters */}
       <div className="flex flex-col gap-3 mb-5">
@@ -312,7 +775,7 @@ export default function ActivityLogPage() {
           const hasExpandableContent = !!(entry.summary || entry.errorDetail);
 
           return (
-            <div key={entry.id}>
+            <div key={entry.id} ref={(el) => { if (el) rowRefs.current.set(entry.id, el); else rowRefs.current.delete(entry.id); }}>
               <div
                 className={`grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-3 items-start transition-colors duration-100 ${
                   i < (entries.length - 1) || isExpanded ? "border-b border-white/[0.03]" : ""
