@@ -9,6 +9,8 @@ import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { toStakeholderTickets, toStakeholderSprint } from "@/lib/stakeholder-data";
 import { SprintOverviewCard } from "@/components/stakeholder/SprintOverviewCard";
 import { CopyMarkdownButton } from "@/components/stakeholder/CopyMarkdownButton";
+import { VelocitySparkline } from "@/components/stakeholder/VelocitySparkline";
+import { useVelocityData } from "@/hooks/useVelocityData";
 import { LoadingState } from "@/components/shared/LoadingState";
 import {
   ViewHeader,
@@ -187,6 +189,15 @@ function StakeholderView() {
     previousSprint?.id ?? null,
   );
 
+  // Last 5 sprints for velocity sparkline (including current)
+  const velocitySprints = useMemo(() => {
+    const end = selectedIndex + 1;
+    const start = Math.max(0, end - 5);
+    return teamSprints.slice(start, end).map((s) => ({ id: s.id, name: s.name }));
+  }, [teamSprints, selectedIndex]);
+
+  const { data: velocityData, isLoading: isVelocityLoading } = useVelocityData(velocitySprints);
+
   const stakeholderSprint = useMemo(
     () => (currentSprint ? toStakeholderSprint(currentSprint) : null),
     [currentSprint],
@@ -309,13 +320,17 @@ function StakeholderView() {
           <LoadingState label="No sprint selected" />
         ) : (
           <div className="mx-auto max-w-5xl space-y-10">
-            <div>
+            <div className="space-y-3">
               <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/25">
                 Sprint overview
               </p>
               <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
                 {stakeholderSprint.name}
               </h1>
+              <VelocitySparkline
+                data={velocityData ?? []}
+                isLoading={isVelocityLoading}
+              />
             </div>
 
             {/* Carry-over summary */}
