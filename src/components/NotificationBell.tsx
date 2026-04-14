@@ -75,6 +75,28 @@ function TimeAgo({ iso }: { iso: string }) {
   );
 }
 
+function renderMessage(
+  message: string,
+  jiraKey: string | null,
+  onLinkClick: () => void,
+): React.ReactNode {
+  if (!jiraKey || !message.includes(jiraKey)) return message;
+  const idx = message.indexOf(jiraKey);
+  return (
+    <>
+      {message.slice(0, idx)}
+      <Link
+        href={`/tickets/${jiraKey}`}
+        onClick={onLinkClick}
+        className="font-mono text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
+      >
+        {jiraKey}
+      </Link>
+      {message.slice(idx + jiraKey.length)}
+    </>
+  );
+}
+
 function notificationIcon(type: string) {
   switch (type) {
     case "deployment":
@@ -201,16 +223,23 @@ export function NotificationBell() {
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] text-white/60 leading-relaxed">{n.message}</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <p className="text-[12px] text-white/65 leading-relaxed">
+                      {renderMessage(n.message, n.jiraKey, () => setOpen(false))}
+                    </p>
+                    {n.jiraTitle && (
+                      <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/35">
+                        {n.jiraTitle}
+                      </p>
+                    )}
+                    <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
                       <TimeAgo iso={n.createdAt} />
-                      {n.jiraKey && (
+                      {n.type === "story-writer" && n.jiraKey && (
                         <Link
-                          href={`/tickets/${n.jiraKey}`}
+                          href={`/tickets/${n.jiraKey}/write`}
                           onClick={() => setOpen(false)}
-                          className="max-w-[180px] truncate text-[10px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                          className="text-[10px] text-white/30 hover:text-[var(--color-brand-400)] transition-colors duration-150"
                         >
-                          {n.jiraTitle ?? n.jiraKey}
+                          Open story writer
                         </Link>
                       )}
                       {n.linkUrl && (
@@ -218,7 +247,7 @@ export function NotificationBell() {
                           href={n.linkUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-white/15 hover:text-white/40 transition-colors duration-150 cursor-pointer"
+                          className="text-white/15 hover:text-white/40 transition-colors duration-150"
                         >
                           <ExternalLink size={10} strokeWidth={1.5} />
                         </a>
