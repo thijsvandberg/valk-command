@@ -3,6 +3,7 @@
 import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
 import { ProgressBar } from "./ProgressBar";
 import { TicketGroup } from "./TicketGroup";
+import { SprintHealthBanner } from "./SprintHealthBanner";
 
 interface SprintOverviewCardProps {
   sprint: StakeholderSprint;
@@ -152,6 +153,14 @@ export function SprintOverviewCard({
           </div>
         )}
       </div>
+
+      {/* Health banner — only for active sprints */}
+      <SprintHealthBanner
+        sprint={sprint}
+        doneTickets={doneTickets}
+        inProgressTickets={inProgressTickets}
+        todoTickets={todoTickets}
+      />
 
       {/* Progress: story points bar + ticket count summary */}
       {showProgress && (
