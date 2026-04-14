@@ -118,6 +118,7 @@ export function SplitTargetApp() {
         </div>
       ),
     });
+    return () => pane.unregisterToolbar("split-target");
   }, [pane, contextLabel, viewMode]);
 
   if (!writer.targetTicketKey) {

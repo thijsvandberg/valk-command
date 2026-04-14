@@ -173,6 +173,7 @@ export function DiffApp() {
         </div>
       ),
     });
+    return () => pane.unregisterToolbar("diff");
   }, [pane, contextLabel, rightVersions, diffNewId, diffViewMode, handleDiffNewIdChange]);
 
   return (

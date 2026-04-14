@@ -11,7 +11,7 @@ import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
 import { MultiSprintView } from "@/components/sprint-board/MultiSprintView";
 import { SearchModal } from "@/components/sprint-board/SearchModal";
-import { StoryWriterLauncherModal } from "@/components/sprint-board/StoryWriterLauncherModal";
+import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLauncherModal";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";

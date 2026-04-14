@@ -173,6 +173,8 @@ export function ChatMessage({
   const displayContent = message.content
     .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
     .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
+    .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
+    .replace(/<summary>[\s\S]*?<\/summary>/g, "")
     .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "")
     .trim();
 

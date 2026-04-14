@@ -83,6 +83,7 @@ export function useStoryWriter(ticketKey: string) {
   });
 
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
       unmountedRef.current = true;
       drafts.clearTimers();
@@ -113,6 +114,48 @@ export function useStoryWriter(ticketKey: string) {
             ? loadedMsgs.some((m: Message) => m.role === "assistant" && m.timestamp > lastUserMsg.timestamp)
             : true;
           if (lastUserMsg?.workspaceTaskId && !hasFollowingAssistant && !cancelled) {
+            // Check if the task already completed while we were away
+            try {
+              const taskRes = await fetch(`/api/workspace-tasks/${lastUserMsg.workspaceTaskId}`);
+              if (cancelled) return;
+              if (taskRes.ok) {
+                const task = await taskRes.json();
+                if (task.status === "completed" && task.output) {
+                  // Apply the completed result directly
+                  setStatus("streaming");
+                  setStreamProgress("Applying result...");
+                  await fetch(`${apiBase}/apply-draft`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ output: task.output, taskId: lastUserMsg.workspaceTaskId, assistantContent: task.output }),
+                  });
+                  if (cancelled) return;
+                  const refreshRes = await fetch(apiBase);
+                  if (refreshRes.ok) {
+                    const refreshed = await refreshRes.json();
+                    if (!cancelled) {
+                      setSession(refreshed.session);
+                      setMessages(refreshed.messages);
+                      setAllDrafts(refreshed.aiDrafts ?? []);
+                      setRelatedCandidates(refreshed.relatedCandidates ?? []);
+                    }
+                  }
+                  if (!cancelled) {
+                    setStatus("ready");
+                    setStreamProgress("");
+                  }
+                  return;
+                } else if (task.status === "failed") {
+                  setStreamError(task.error ?? "Task failed on workspace");
+                  setStatus("ready");
+                  return;
+                }
+              } else if (taskRes.status === 404) {
+                setStatus("ready");
+                return;
+              }
+            } catch { /* fall through to monitoring */ }
+            if (cancelled) return;
             startMonitoringRef.current?.(lastUserMsg.workspaceTaskId, "Resuming...");
           } else {
             setStatus("ready");

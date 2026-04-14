@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ScrollText } from "lucide-react";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { ExecutionLogViewer } from "@/components/story-writer/ExecutionLogViewer";
@@ -12,15 +12,6 @@ export function ChatApp() {
   const pane = usePaneContext();
   const { registerToolbar, unregisterToolbar } = pane;
   const [showLogs, setShowLogs] = useState(false);
-
-  // Auto-open related panel when candidates first arrive
-  const prevCandidatesLength = useRef(writer.relatedCandidates.length);
-  useEffect(() => {
-    if (writer.relatedCandidates.length > 0 && prevCandidatesLength.current === 0) {
-      pane.openRelated();
-    }
-    prevCandidatesLength.current = writer.relatedCandidates.length;
-  }, [writer.relatedCandidates.length, pane]);
 
   const { messageDraftMap, draftContentMap } = useMemo(() => {
     const msgMap: Record<string, string> = {};
@@ -44,7 +35,6 @@ export function ChatApp() {
   };
 
   const handleFindRelated = async () => {
-    pane.openRelated();
     await writer.onSend("Find related stories", "find-related");
   };
 

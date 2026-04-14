@@ -305,6 +305,11 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     onTargetTitleChange: handleTargetTitleChange,
     onSend: writer.sendMessage,
     onLinkCandidate: writer.linkCandidate,
+    onAcceptDraft: async (draftId: string) => {
+      await writer.acceptDraft(draftId);
+      editVersionRef.current += 1;
+      setIsDraftDirty(true);
+    },
     onDismissDraft: writer.dismissDraft,
     onCodebaseResearchChange: writer.setCodbaseResearch,
     onModelChange: writer.setModel,
@@ -347,15 +352,27 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 </button>
               )}
 
-              <Button
-                variant="primary"
-                size="md"
-                icon={pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
-                onClick={handlePush}
-                disabled={pushing || (!isDraftDirty && !hasLocalSave)}
-              >
-                Push to Jira
-              </Button>
+              {!isDraftDirty && !hasLocalSave && writer.messages.length > 0 ? (
+                <Button
+                  variant="ghost"
+                  size="md"
+                  icon={<Trash2 size={13} strokeWidth={1.5} />}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="border-red-500/20 text-red-400/80 hover:bg-red-500/[0.08] hover:text-red-400"
+                >
+                  Delete session
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon={pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
+                  onClick={handlePush}
+                  disabled={pushing || (!isDraftDirty && !hasLocalSave)}
+                >
+                  Push to Jira
+                </Button>
+              )}
 
               <div ref={moreMenuRef} className="relative">
                 <Button

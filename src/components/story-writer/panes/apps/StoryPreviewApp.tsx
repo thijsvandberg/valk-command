@@ -16,6 +16,7 @@ export function StoryPreviewApp() {
     pane.registerToolbar("story-preview", {
       label: "Story preview",
     });
+    return () => pane.unregisterToolbar("story-preview");
   }, [pane]);
 
   return (

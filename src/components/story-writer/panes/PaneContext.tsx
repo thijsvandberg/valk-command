@@ -199,11 +199,18 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
   const [relatedSelectedKey, setRelatedSelectedKey] = useState<string | null>(null);
   const [draggedApp, setDraggedApp] = useState<PaneAppId | null>(null);
 
-  // Refs so event handlers always see the latest values without stale closure issues
+  // Refs so chained calls within the same event handler see each other's changes
   const paneVisibleRef = useRef(paneVisible);
   const paneWidthsRef = useRef(paneWidths);
-  useEffect(() => { paneVisibleRef.current = paneVisible; }, [paneVisible]);
-  useEffect(() => { paneWidthsRef.current = paneWidths; }, [paneWidths]);
+
+  function setVisible(v: PaneVisible) {
+    paneVisibleRef.current = v;
+    setPaneVisibleState(v);
+  }
+  function setWidths(w: PaneWidths) {
+    paneWidthsRef.current = w;
+    setPaneWidthsState(w);
+  }
 
   // paneCount is derived — callers that need a number use this
   const paneCount = paneVisible.filter(Boolean).length as 1 | 2 | 3;
@@ -220,14 +227,14 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
 
   function showPane(idx: 0 | 1 | 2) {
     const { visible, widths } = computeShowPane(paneVisibleRef.current, paneWidthsRef.current, idx);
-    setPaneVisibleState(visible);
-    setPaneWidthsState(widths);
+    setVisible(visible);
+    setWidths(widths);
   }
 
   function hidePane(idx: 0 | 1 | 2) {
     const { visible, widths } = computeHidePane(paneVisibleRef.current, paneWidthsRef.current, idx);
-    setPaneVisibleState(visible);
-    setPaneWidthsState(widths);
+    setVisible(visible);
+    setWidths(widths);
   }
 
   // Preset toggle (1/2/3 pane buttons): always sets the first N panes visible with equal widths
@@ -242,12 +249,12 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
       }
       return next;
     });
-    setPaneVisibleState(nextVisible);
-    setPaneWidthsState(nextWidths);
+    setVisible(nextVisible);
+    setWidths(nextWidths);
   }
 
   function setPaneWidths(w: PaneWidths) {
-    setPaneWidthsState(w);
+    setWidths(w);
   }
 
   function openApp(appId: PaneAppId) {
@@ -257,8 +264,8 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
       paneWidthsRef.current,
       targetPane,
     );
-    setPaneVisibleState(visible);
-    setPaneWidthsState(widths);
+    setVisible(visible);
+    setWidths(widths);
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = appId;
@@ -276,8 +283,8 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
       return next;
     });
     const { visible, widths } = computeHidePane(paneVisibleRef.current, paneWidthsRef.current, idx);
-    setPaneVisibleState(visible);
-    setPaneWidthsState(widths);
+    setVisible(visible);
+    setWidths(widths);
   }
 
   function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {
@@ -288,8 +295,8 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
     if (sourceIdx !== -1 && sourceIdx !== paneIndex) {
       ({ visible, widths } = computeHidePane(visible, widths, sourceIdx as 0 | 1 | 2));
     }
-    setPaneVisibleState(visible);
-    setPaneWidthsState(widths);
+    setVisible(visible);
+    setWidths(widths);
 
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
@@ -335,8 +342,8 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
       paneWidthsRef.current,
       targetPane,
     );
-    setPaneVisibleState(visible);
-    setPaneWidthsState(widths);
+    setVisible(visible);
+    setWidths(widths);
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = "draft-preview";
@@ -352,8 +359,8 @@ export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
       paneWidthsRef.current,
       targetPane,
     );
-    setPaneVisibleState(visible);
-    setPaneWidthsState(widths);
+    setVisible(visible);
+    setWidths(widths);
     setPaneApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = "related";

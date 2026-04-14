@@ -11,6 +11,7 @@ export function HistoryApp() {
 
   useEffect(() => {
     pane.registerToolbar("history", { label: "History" });
+    return () => pane.unregisterToolbar("history");
   }, [pane]);
 
   if (!writer.ticketData) {
