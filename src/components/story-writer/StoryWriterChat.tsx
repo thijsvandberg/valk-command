@@ -43,6 +43,8 @@ interface StoryWriterChatProps {
   model: string;
   onModelChange: (m: string) => void;
   onSend: (content: string, skill?: string) => Promise<boolean>;
+  onRetry?: (messageId: string) => Promise<boolean>;
+  onClearFailed?: () => Promise<void>;
   onFindRelated?: () => void;
   onOpenRelatedPanel?: () => void;
   onStoryKeyClick?: (key: string) => void;
@@ -113,6 +115,8 @@ export function StoryWriterChat({
   model,
   onModelChange,
   onSend,
+  onRetry,
+  onClearFailed,
   onFindRelated,
   onOpenRelatedPanel,
   onStoryKeyClick,
@@ -128,6 +132,7 @@ export function StoryWriterChat({
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [dupWarning, setDupWarning] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -163,11 +168,15 @@ export function StoryWriterChat({
     return null;
   });
 
+  const hasFailedMessages = messages.some((m) => m.status === "failed" || m.status === "pending");
+
   const unansweredIdx =
     !isStreaming &&
     status === "ready" &&
     messages.length > 0 &&
-    messages[messages.length - 1].role === "user"
+    messages[messages.length - 1].role === "user" &&
+    messages[messages.length - 1].status !== "failed" &&
+    messages[messages.length - 1].status !== "pending"
       ? messages.length - 1
       : -1;
 
@@ -220,6 +229,18 @@ export function StoryWriterChat({
   const handleSubmit = useCallback(async () => {
     const trimmed = inputValue.trim();
     if (!trimmed || sending || isStreaming) return;
+
+    // Client-side dedup: block identical message sent within 10s
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (lastUserMsg && lastUserMsg.content.trim() === trimmed) {
+      const elapsed = Date.now() - new Date(lastUserMsg.timestamp).getTime();
+      if (elapsed < 10_000) {
+        setDupWarning(true);
+        setTimeout(() => setDupWarning(false), 3000);
+        return;
+      }
+    }
+
     setSending(true);
     setInputValue("");
     setManualInputHeight(null);
@@ -229,7 +250,7 @@ export function StoryWriterChat({
     if (!success) setInputValue(trimmed);
     setSending(false);
     textareaRef.current?.focus();
-  }, [inputValue, sending, isStreaming, onSend]);
+  }, [inputValue, sending, isStreaming, messages, onSend]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -281,6 +302,32 @@ export function StoryWriterChat({
                 onOpenLogs={onOpenLogs}
                 onStoryKeyClick={onStoryKeyClick}
               />
+              {msg.role === "user" && msg.status === "failed" && (
+                <div className="flex justify-end mt-1">
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-red-500/[0.06] border border-red-500/10">
+                    <AlertCircle size={11} className="shrink-0 text-red-400/60" strokeWidth={1.5} />
+                    <span className="text-[10px] text-red-300/60">Message could not be sent.</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={<RotateCcw size={9} strokeWidth={2} />}
+                      onClick={() => onRetry?.(msg.id)}
+                      disabled={isBusy}
+                      className="text-[10px] text-red-300/70 hover:text-red-200/90 cursor-pointer"
+                    >
+                      Tap to retry
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {msg.role === "user" && msg.status === "pending" && !isStreaming && status === "ready" && (
+                <div className="flex justify-end mt-1">
+                  <div className="flex items-center gap-1.5 px-2 py-1">
+                    <AlertCircle size={10} className="shrink-0 text-amber-500/40" strokeWidth={1.5} />
+                    <span className="text-[10px] text-white/30">Not sent</span>
+                  </div>
+                </div>
+              )}
               {idx === lastAssistantIdx && lastResponseDurationMs != null && (
                 <div className="mt-1 pl-1">
                   <span className="text-[10px] text-white/25 select-none">
@@ -331,6 +378,24 @@ export function StoryWriterChat({
       {streamError && (
         <div className="border-t border-red-500/20 px-4 py-2">
           <span className="text-xs text-red-400">{streamError}</span>
+        </div>
+      )}
+
+      {dupWarning && (
+        <div className="border-t border-amber-500/20 px-4 py-2">
+          <span className="text-xs text-amber-400">Duplicate message blocked</span>
+        </div>
+      )}
+
+      {hasFailedMessages && !isStreaming && onClearFailed && (
+        <div className="border-t border-white/[0.06] px-4 py-1.5">
+          <button
+            type="button"
+            onClick={onClearFailed}
+            className="text-[10px] text-white/35 hover:text-white/55 cursor-pointer"
+          >
+            Clear failed messages
+          </button>
         </div>
       )}
 

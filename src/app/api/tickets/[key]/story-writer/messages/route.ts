@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { randomUUID, createHash } from "crypto";
 import { agentFetch, type AgentError } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
@@ -13,6 +13,15 @@ function agentErrorResponse(error: AgentError, status: number) {
     { error: error.error, code: error.code },
     { status: status || 502 },
   );
+}
+
+function computeContentHash(conversationId: string, content: string): string {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  return createHash("sha256").update(conversationId + normalized).digest("hex");
+}
+
+async function markMessageFailed(messageId: string) {
+  await db.update(message).set({ status: "failed" }).where(eq(message.id, messageId));
 }
 
 /**
@@ -42,6 +51,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const codebaseResearch = body.codebaseResearch === true;
   const model = typeof body.model === "string" ? body.model : undefined;
   const skill = typeof body.skill === "string" ? body.skill : null;
+  const retryMessageId = typeof body.retryMessageId === "string" ? body.retryMessageId : null;
 
   const session = await db
     .select()
@@ -58,14 +68,52 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
   }
 
-  // Save user message locally and bump session activity timestamp
-  const messageId = randomUUID();
-  await db.insert(message).values({
-    id: messageId,
-    conversationId: session.conversationId,
-    role: "user",
-    content,
-  });
+  const contentHash = computeContentHash(session.conversationId, content);
+
+  // Server-side dedup: reject identical message within 30s window
+  if (!retryMessageId) {
+    const recent = await db
+      .select({ id: message.id })
+      .from(message)
+      .where(
+        and(
+          eq(message.conversationId, session.conversationId),
+          eq(message.contentHash, contentHash),
+          sql`${message.timestamp} > datetime('now', '-30 seconds')`,
+        ),
+      )
+      .get();
+
+    if (recent) {
+      return NextResponse.json(
+        { error: "Duplicate message", code: "DUPLICATE" },
+        { status: 409 },
+      );
+    }
+  }
+
+  let messageId: string;
+
+  if (retryMessageId) {
+    // Retry: reuse the existing failed message row
+    await db
+      .update(message)
+      .set({ status: "pending", contentHash })
+      .where(eq(message.id, retryMessageId));
+    messageId = retryMessageId;
+  } else {
+    // New message: insert as pending
+    messageId = randomUUID();
+    await db.insert(message).values({
+      id: messageId,
+      conversationId: session.conversationId,
+      role: "user",
+      content,
+      status: "pending",
+      contentHash,
+    });
+  }
+
   await db
     .update(storyWriterSession)
     .set({ updatedAt: new Date().toISOString() })
@@ -99,7 +147,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       retries: 2,
     });
 
-    if (!result.ok) return agentErrorResponse(result.error, result.status);
+    if (!result.ok) {
+      await markMessageFailed(messageId);
+      return agentErrorResponse(result.error, result.status);
+    }
     return taskCreatedResponse(messageId, result.data, isFirstMessage);
   }
 
@@ -112,7 +163,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       retries: 2,
     });
 
-    if (!result.ok) return agentErrorResponse(result.error, result.status);
+    if (!result.ok) {
+      await markMessageFailed(messageId);
+      return agentErrorResponse(result.error, result.status);
+    }
     return taskCreatedResponse(messageId, result.data, isFirstMessage);
   }
 
@@ -131,11 +185,52 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Session lost on workspace side: recover
   if (!result.ok && result.status === 410) {
     const recovered = await recoverSession(session, key, content);
+    if (recovered.status !== 201) {
+      await markMessageFailed(messageId);
+    }
     return NextResponse.json(recovered.body, { status: recovered.status });
   }
 
-  if (!result.ok) return agentErrorResponse(result.error, result.status);
+  if (!result.ok) {
+    await markMessageFailed(messageId);
+    return agentErrorResponse(result.error, result.status);
+  }
   return taskCreatedResponse(messageId, result.data, isFirstMessage);
+}
+
+export async function DELETE(request: Request, { params }: RouteContext) {
+  const { key } = await params;
+  const url = new URL(request.url);
+  const failedOnly = url.searchParams.get("failed") === "true";
+
+  const session = await db
+    .select()
+    .from(storyWriterSession)
+    .where(
+      and(
+        eq(storyWriterSession.ticketKey, key),
+        eq(storyWriterSession.status, "active"),
+      ),
+    )
+    .get();
+
+  if (!session) {
+    return NextResponse.json({ error: "No active session" }, { status: 404 });
+  }
+
+  if (failedOnly) {
+    const deleted = await db
+      .delete(message)
+      .where(
+        and(
+          eq(message.conversationId, session.conversationId),
+          sql`${message.status} IN ('pending', 'failed')`,
+        ),
+      );
+    return NextResponse.json({ success: true, deleted: deleted.changes });
+  }
+
+  return NextResponse.json({ error: "Missing query parameter" }, { status: 400 });
 }
 
 async function taskCreatedResponse(
@@ -145,12 +240,10 @@ async function taskCreatedResponse(
 ) {
   const taskId = taskData.id ?? "";
 
-  if (taskId) {
-    await db
-      .update(message)
-      .set({ workspaceTaskId: taskId })
-      .where(eq(message.id, messageId));
-  }
+  await db
+    .update(message)
+    .set({ workspaceTaskId: taskId || null, status: "sent" })
+    .where(eq(message.id, messageId));
 
   return NextResponse.json({
     messageId,

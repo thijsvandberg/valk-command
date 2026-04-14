@@ -219,6 +219,7 @@ export function useStoryWriter(ticketKey: string) {
       content,
       timestamp: new Date().toISOString(),
       workspaceTaskId: null,
+      status: "pending",
     };
     setMessages((prev) => [...prev, tempMsg]);
 
@@ -236,20 +237,86 @@ export function useStoryWriter(ticketKey: string) {
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        if (res.status === 409 && body?.code === "DUPLICATE") {
+          // Remove optimistic message, show dedup warning
+          setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
+          setStreamError("Duplicate message blocked");
+          setStatus("ready");
+          return false;
+        }
+        // Mark message as failed in local state
+        setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, status: "failed" as const } : m));
+        setStreamError(friendlyAgentError(body, "Failed to send message"));
+        setStatus("ready");
+        return false;
+      }
+
+      const { messageId, taskId } = await res.json();
+      // Replace temp message with server-confirmed message
+      setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, id: messageId, status: "sent" as const, workspaceTaskId: taskId } : m));
+      monitoring.startMonitoring(taskId);
+      return true;
+    } catch {
+      setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, status: "failed" as const } : m));
+      setStreamError("Failed to send message");
+      setStatus("ready");
+      return false;
+    }
+  }, [session, apiBase, monitoring]);
+
+  const retryMessage = useCallback(async (messageId: string): Promise<boolean> => {
+    if (!session) return false;
+
+    const failedMsg = messages.find((m) => m.id === messageId);
+    if (!failedMsg) return false;
+
+    setStatus("sending");
+    setStreamError(null);
+    setStreamProgress("");
+    setLastResponseDurationMs(null);
+    monitoring.sendStartRef.current = Date.now();
+
+    // Mark as pending in local state
+    setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "pending" as const } : m));
+
+    try {
+      const res = await fetch(`${apiBase}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: failedMsg.content,
+          retryMessageId: messageId,
+          codebaseResearch: codebaseResearchRef.current,
+          model: modelRef.current,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "failed" as const } : m));
         setStreamError(friendlyAgentError(body, "Failed to send message"));
         setStatus("ready");
         return false;
       }
 
       const { taskId } = await res.json();
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "sent" as const, workspaceTaskId: taskId } : m));
       monitoring.startMonitoring(taskId);
       return true;
     } catch {
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "failed" as const } : m));
       setStreamError("Failed to send message");
       setStatus("ready");
       return false;
     }
-  }, [session, apiBase, monitoring]);
+  }, [session, messages, apiBase, monitoring]);
+
+  const clearFailedMessages = useCallback(async () => {
+    try {
+      await fetch(`${apiBase}/messages?failed=true`, { method: "DELETE" });
+      setMessages((prev) => prev.filter((m) => m.status !== "failed" && m.status !== "pending"));
+    } catch { /* ignore */ }
+  }, [apiBase]);
 
   const activateSplit = useCallback(async (targetKey?: string, sprintId?: string): Promise<{ targetTicketKey: string }> => {
     const res = await fetch(`${apiBase}/split`, {
@@ -328,6 +395,8 @@ export function useStoryWriter(ticketKey: string) {
     model,
     setModel,
     sendMessage,
+    retryMessage,
+    clearFailedMessages,
     updateLocalDraft: drafts.updateLocalDraft,
     updateLocalTitle: drafts.updateLocalTitle,
     updateTargetLocalDraft: drafts.updateTargetLocalDraft,

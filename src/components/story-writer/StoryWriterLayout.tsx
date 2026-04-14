@@ -304,6 +304,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     onTargetDraftChange: handleTargetDraftChange,
     onTargetTitleChange: handleTargetTitleChange,
     onSend: writer.sendMessage,
+    onRetry: writer.retryMessage,
+    onClearFailed: writer.clearFailedMessages,
     onLinkCandidate: writer.linkCandidate,
     onAcceptDraft: async (draftId: string) => {
       await writer.acceptDraft(draftId);

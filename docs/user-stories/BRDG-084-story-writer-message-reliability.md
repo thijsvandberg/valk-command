@@ -24,6 +24,20 @@ This was discovered when VPL-44652's story writer showed 4 identical user messag
 
 These fixes resolve the immediate hang, but the underlying issues (orphaned messages, no dedup, fragile monitoring) remain.
 
+## Implementation Plan
+
+1. **Schema**: Add `status` column (`pending`/`sent`/`failed`, default `sent`) to `message` table. Add `contentHash` column for dedup. Migration `0031_message_status.sql`. Update `src/types/chat.ts`.
+2. **Server-side rollback** (Phase 1.1): Insert messages as `pending`, update to `sent` on agent success, `failed` on agent failure. File: `messages/route.ts`.
+3. **UI indicators** (Phase 1.4): Render "Not sent" badge on `failed`/`pending` messages. File: `StoryWriterChat.tsx`.
+4. **Retry button** (Phase 1.2-3): Add retry support that reuses the existing DB row via `retryMessageId`. Files: `StoryWriterChat.tsx`, `useStoryWriter.ts`, `messages/route.ts`.
+5. **Client-side dedup** (Phase 2.1-2): Verify `isBusy` covers all paths. Add 10s dedup check with inline toast. File: `StoryWriterChat.tsx`.
+6. **Server-side dedup** (Phase 2.3): Check `contentHash` + 30s window, return 409. File: `messages/route.ts`.
+7. **Resume error handling** (Phase 3.1): Wrap `apply-draft` call in init with error display + retry. File: `useStoryWriter.ts`.
+8. **Poll timeout closes EventSource** (Phase 3.3): Already implemented; verify and add test.
+9. **resultHandled double-apply test** (Phase 3.4): New test in `useTaskMonitoring.test.ts`.
+10. **Clear failed messages** (Phase 4.1): DELETE handler + UI button. Files: `messages/route.ts`, `StoryWriterChat.tsx`, `useStoryWriter.ts`.
+11. **Session discard cleanup** (Phase 4.2): Delete `pending`/`failed` messages on discard. File: `story-writer/route.ts`.
+
 ## Acceptance Criteria
 
 ### Phase 1: Message send atomicity

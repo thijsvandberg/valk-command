@@ -113,6 +113,8 @@ export function ChatApp() {
           model={writer.model}
           onModelChange={writer.onModelChange}
           onSend={writer.onSend}
+          onRetry={writer.onRetry}
+          onClearFailed={writer.onClearFailed}
           onFindRelated={handleFindRelated}
           onOpenRelatedPanel={handleOpenRelatedPanel}
           onStoryKeyClick={handleStoryKeyClick}

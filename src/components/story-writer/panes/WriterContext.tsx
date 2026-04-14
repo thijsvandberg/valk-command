@@ -33,6 +33,8 @@ export interface WriterContextValue {
   onTargetDraftChange: (content: string) => void;
   onTargetTitleChange: (title: string) => void;
   onSend: (content: string, skill?: string) => Promise<boolean>;
+  onRetry: (messageId: string) => Promise<boolean>;
+  onClearFailed: () => Promise<void>;
   onLinkCandidate: (candidateId: string, isLinked: boolean) => Promise<void>;
   onAcceptDraft: (draftId: string) => Promise<void>;
   onDismissDraft: (draftId: string) => void;
