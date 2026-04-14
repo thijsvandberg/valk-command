@@ -10,7 +10,9 @@ export type NotificationCategory =
   | "pr"
   | "sync"
   | "story-writer"
-  | "system";
+  | "system"
+  | "agent"
+  | "scheduler";
 
 export type NotificationPreferences = Record<NotificationCategory, boolean>;
 
@@ -24,6 +26,8 @@ export const DEFAULT_PREFERENCES: NotificationPreferences = {
   sync: false,
   "story-writer": true,
   system: true,
+  agent: true,
+  scheduler: true,
 };
 
 export function getPreferences(): NotificationPreferences {

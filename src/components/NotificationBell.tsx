@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -13,6 +13,10 @@ import {
   NotebookPen,
   Info,
   Trash2,
+  X,
+  Check,
+  Bot,
+  Timer,
 } from "lucide-react";
 import { useNotifications } from "@/hooks/usePipelines";
 import { Button } from "@/components/ui/Button";
@@ -46,7 +50,6 @@ function TimeAgo({ iso }: { iso: string }) {
   const handleMouseEnter = () => {
     if (ref.current) {
       const rect = ref.current.getBoundingClientRect();
-      // Show above unless there's not enough room
       setPos(rect.top > 60 ? "above" : "below");
     }
     setVisible(true);
@@ -112,19 +115,19 @@ function notificationIcon(type: string) {
       return <NotebookPen size={13} strokeWidth={1.5} className="text-sky-400" />;
     case "system":
       return <Info size={13} strokeWidth={1.5} className="text-white/40" />;
+    case "agent":
+      return <Bot size={13} strokeWidth={1.5} className="text-purple-400" />;
+    case "scheduler":
+      return <Timer size={13} strokeWidth={1.5} className="text-orange-400" />;
     default:
       return <Bell size={13} strokeWidth={1.5} className="text-white/30" />;
   }
 }
 
-// 5 seconds after the panel opens, mark all currently-visible unread notifications as read
-const AUTO_MARK_READ_DELAY = 5000;
-
 export function NotificationBell() {
-  const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications(20);
+  const { notifications, unreadCount, totalCount, markRead, markAllRead, clearRead, dismissOne } = useNotifications(50);
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const autoMarkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -136,25 +139,8 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  // Auto-mark unread notifications as read after 5 seconds of panel being open
-  const scheduleAutoMarkRead = useCallback(() => {
-    if (autoMarkTimerRef.current) clearTimeout(autoMarkTimerRef.current);
-    autoMarkTimerRef.current = setTimeout(() => {
-      const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
-      if (unreadIds.length === 0) return;
-      // Mark each visible unread notification as read
-      Promise.all(unreadIds.map((id) => markRead(id))).catch(() => {});
-    }, AUTO_MARK_READ_DELAY);
-  }, [notifications, markRead]);
-
-  useEffect(() => {
-    if (open && unreadCount > 0) {
-      scheduleAutoMarkRead();
-    }
-    return () => {
-      if (autoMarkTimerRef.current) clearTimeout(autoMarkTimerRef.current);
-    };
-  }, [open, unreadCount, scheduleAutoMarkRead]);
+  const hasReadNotifications = notifications.some((n) => n.read);
+  const hiddenCount = totalCount > 50 ? totalCount - 50 : 0;
 
   return (
     <div ref={panelRef} className="relative">
@@ -192,14 +178,14 @@ export function NotificationBell() {
                   Mark all read
                 </Button>
               )}
-              {notifications.length > 0 && (
+              {hasReadNotifications && (
                 <Button
                   variant="ghost"
                   size="sm"
                   icon={<Trash2 size={12} strokeWidth={1.5} />}
-                  onClick={() => clearAll()}
+                  onClick={() => clearRead()}
                 >
-                  Clear all
+                  Clear read
                 </Button>
               )}
             </div>
@@ -212,65 +198,85 @@ export function NotificationBell() {
                 No notifications yet
               </div>
             ) : (
-              notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className={`group flex items-start gap-3 px-4 py-3 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
-                    !n.read ? "bg-[var(--color-brand-500)]/[0.04]" : ""
-                  }`}
-                >
-                  {/* Icon */}
-                  <div className="mt-0.5 shrink-0">{notificationIcon(n.type)}</div>
+              <>
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={`group flex items-start gap-3 px-4 py-3 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
+                      !n.read ? "bg-[var(--color-brand-500)]/[0.04]" : ""
+                    }`}
+                  >
+                    {/* Icon */}
+                    <div className="mt-0.5 shrink-0">{notificationIcon(n.type)}</div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] text-white/65 leading-relaxed">
-                      {renderMessage(
-                        n.message,
-                        n.jiraKey,
-                        n.jiraKey
-                          ? n.type === "story-writer"
-                            ? `/tickets/${n.jiraKey}/write`
-                            : `/tickets/${n.jiraKey}`
-                          : null,
-                        () => setOpen(false),
-                      )}
-                    </p>
-                    {n.jiraTitle && (
-                      <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/35">
-                        {n.jiraTitle}
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] text-white/65 leading-relaxed">
+                        {renderMessage(
+                          n.message,
+                          n.jiraKey,
+                          n.jiraKey
+                            ? n.type === "story-writer"
+                              ? `/tickets/${n.jiraKey}/write`
+                              : `/tickets/${n.jiraKey}`
+                            : null,
+                          () => setOpen(false),
+                        )}
                       </p>
-                    )}
-                    <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
-                      <TimeAgo iso={n.createdAt} />
-                      {n.linkUrl && (
-                        <a
-                          href={n.linkUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-white/15 hover:text-white/40 transition-colors duration-150"
-                        >
-                          <ExternalLink size={10} strokeWidth={1.5} />
-                        </a>
+                      {n.jiraTitle && (
+                        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/35">
+                          {n.jiraTitle}
+                        </p>
                       )}
+                      <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
+                        <TimeAgo iso={n.createdAt} />
+                        {n.linkUrl && (
+                          <a
+                            href={n.linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex h-5 w-5 items-center justify-center rounded text-white/30 hover:text-white/55 transition-colors duration-150"
+                            title="Open link"
+                          >
+                            <ExternalLink size={12} strokeWidth={1.5} />
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Unread dot + mark read */}
-                  <div className="shrink-0 flex items-center gap-1">
-                    {!n.read && (
+                    {/* Right-side actions */}
+                    <div className="shrink-0 flex items-center gap-0.5 mt-0.5">
+                      {/* Unread dot / mark-read button */}
+                      {!n.read && (
+                        <button
+                          type="button"
+                          onClick={() => markRead(n.id)}
+                          className="group/dot flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-white/[0.06] transition-colors duration-150"
+                          title="Mark as read"
+                        >
+                          {/* Dot at rest, check on hover */}
+                          <span className="block group-hover/dot:hidden h-2 w-2 rounded-full bg-[var(--color-brand-400)]" />
+                          <Check size={11} strokeWidth={2.5} className="hidden group-hover/dot:block text-[var(--color-brand-400)]" />
+                        </button>
+                      )}
+                      {/* Dismiss button — always visible on row hover */}
                       <button
                         type="button"
-                        onClick={() => markRead(n.id)}
-                        className="flex h-5 w-5 items-center justify-center rounded-md cursor-pointer hover:bg-white/[0.06] transition-colors duration-150"
-                        title="Mark as read"
+                        onClick={() => dismissOne(n.id)}
+                        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-white/0 group-hover:text-white/30 hover:!text-white/60 hover:bg-white/[0.06] transition-colors duration-150"
+                        title="Dismiss"
                       >
-                        <span className="h-2 w-2 rounded-full bg-[var(--color-brand-400)]" />
+                        <X size={11} strokeWidth={2} />
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+                {hiddenCount > 0 && (
+                  <div className="border-t border-white/[0.04] px-4 py-2.5 text-center text-[11px] text-white/25">
+                    {hiddenCount} more notification{hiddenCount === 1 ? "" : "s"} not shown
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useNotification } from "@/hooks/useNotification";
-import { Bell, BellOff, ShieldCheck, ShieldX, GitBranch, Rocket, GitPullRequest, RefreshCw, BookOpen, Info, Zap } from "lucide-react";
+import { Bell, BellOff, ShieldCheck, ShieldX, GitBranch, Rocket, GitPullRequest, RefreshCw, BookOpen, Info, Zap, Bot, Timer } from "lucide-react";
 import useSWR from "swr";
 import type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
 
@@ -49,13 +49,25 @@ const CATEGORY_META: Record<NotificationCategory, CategoryMeta> = {
     description: "Critical system messages and errors.",
     icon: <Info size={14} strokeWidth={1.5} />,
   },
+  agent: {
+    label: "Agent tasks",
+    description: "Task completions and failures from the remote workspace.",
+    icon: <Bot size={14} strokeWidth={1.5} />,
+  },
+  scheduler: {
+    label: "Scheduler",
+    description: "Scheduled job failures and completions.",
+    icon: <Timer size={14} strokeWidth={1.5} />,
+  },
 };
 
 const CATEGORY_ORDER: NotificationCategory[] = [
+  "agent",
   "story-writer",
   "pipeline",
   "deployment",
   "pr",
+  "scheduler",
   "sync",
   "general",
   "system",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { alert, ticket } from "@/db/schema";
-import { desc, eq, lt, sql } from "drizzle-orm";
+import { desc, eq, lt, sql, and } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
 
 // GET /api/notifications - list notifications (alerts) with optional unread filter
@@ -41,9 +41,15 @@ export async function GET(request: Request) {
     .where(eq(alert.read, false))
     .get();
 
+  const totalCount = db
+    .select({ count: sql<number>`count(*)` })
+    .from(alert)
+    .get();
+
   return NextResponse.json({
     notifications: rows,
     unreadCount: unreadCount?.count ?? 0,
+    totalCount: totalCount?.count ?? 0,
   });
 }
 
@@ -94,8 +100,18 @@ export async function PATCH(request: Request) {
   return NextResponse.json({ error: "id or markAll required" }, { status: 400 });
 }
 
-// DELETE /api/notifications - clear all notifications
-export async function DELETE() {
-  db.delete(alert).run();
-  return NextResponse.json({ status: "cleared" });
+// DELETE /api/notifications - delete a single notification or clear all read notifications
+// ?id=<uuid>  → delete that specific notification
+// (no params) → delete all read notifications
+export async function DELETE(request: Request) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
+
+  if (id) {
+    db.delete(alert).where(eq(alert.id, id)).run();
+    return NextResponse.json({ status: "dismissed" });
+  }
+
+  db.delete(alert).where(and(eq(alert.read, true))).run();
+  return NextResponse.json({ status: "cleared_read" });
 }

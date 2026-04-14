@@ -146,7 +146,7 @@ export const alert = sqliteTable("alert", {
   createdAt: text("created_at").notNull(),
   read: integer("read", { mode: "boolean" }).notNull().default(false),
   category: text("category", {
-    enum: ["general", "pipeline", "deployment", "pr", "sync", "story-writer", "system"],
+    enum: ["general", "pipeline", "deployment", "pr", "sync", "story-writer", "system", "agent", "scheduler"],
   }),
   linkUrl: text("link_url"),
 }, (table) => [

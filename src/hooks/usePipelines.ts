@@ -168,6 +168,7 @@ interface NotificationResponse {
     linkUrl: string | null;
   }>;
   unreadCount: number;
+  totalCount: number;
 }
 
 export function useNotifications(limit = 50) {
@@ -199,8 +200,15 @@ export function useNotifications(limit = 50) {
     swr.mutate();
   }, [swr]);
 
-  const clearAll = useCallback(async () => {
+  // Deletes only read notifications (bulk clear)
+  const clearRead = useCallback(async () => {
     await fetch("/api/notifications", { method: "DELETE" });
+    swr.mutate();
+  }, [swr]);
+
+  // Deletes a single notification by id
+  const dismissOne = useCallback(async (id: string) => {
+    await fetch(`/api/notifications?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     swr.mutate();
   }, [swr]);
 
@@ -208,8 +216,10 @@ export function useNotifications(limit = 50) {
     ...swr,
     notifications: swr.data?.notifications ?? [],
     unreadCount: swr.data?.unreadCount ?? 0,
+    totalCount: swr.data?.totalCount ?? 0,
     markRead,
     markAllRead,
-    clearAll,
+    clearRead,
+    dismissOne,
   };
 }
