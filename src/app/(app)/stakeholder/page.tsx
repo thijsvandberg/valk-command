@@ -33,6 +33,12 @@ function extractTeamPrefix(sprintName: string): string | null {
   return match ? match[1] : null;
 }
 
+// Sprints named "BT: 135" sort before "BT: TODO" / "BT: Backlog" (no trailing number)
+function extractSprintNumber(sprintName: string): number {
+  const match = sprintName.match(/(\d+)\s*$/);
+  return match ? parseInt(match[1], 10) : Infinity;
+}
+
 export default function StakeholderPage() {
   const { data: sprints } = useJiraSprints();
 
@@ -61,10 +67,12 @@ export default function StakeholderPage() {
     return sprints.length > 0 ? extractTeamPrefix(sprints[0].name) : null;
   }, [manualTeamPrefix, sprints]);
 
-  // Sprints for the selected team, in Jira order (as returned by API)
+  // Sprints for the selected team, sorted numerically; non-numeric (TODO, Backlog) go last
   const teamSprints = useMemo(() => {
     if (!sprints || !selectedTeamPrefix) return [];
-    return sprints.filter((s) => extractTeamPrefix(s.name) === selectedTeamPrefix);
+    return sprints
+      .filter((s) => extractTeamPrefix(s.name) === selectedTeamPrefix)
+      .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
   }, [sprints, selectedTeamPrefix]);
 
   // Derive current index: honour manual pick, fallback to active sprint
