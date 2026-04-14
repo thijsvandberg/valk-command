@@ -46,11 +46,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Stakeholder view has its own auth (excluded per spec)
-  if (pathname.startsWith("/stakeholder")) {
-    return NextResponse.next();
-  }
-
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
   if (!token) {
