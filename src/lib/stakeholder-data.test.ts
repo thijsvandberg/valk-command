@@ -42,9 +42,9 @@ describe("toStakeholderTickets", () => {
     expect(t).not.toHaveProperty("flagged");
   });
 
-  it("sets jiraKey to null (keys always hidden in main sections)", () => {
-    const result = toStakeholderTickets([makeTicket()]);
-    expect(result[0].jiraKey).toBeNull();
+  it("passes jiraKey through for Jira link generation", () => {
+    const result = toStakeholderTickets([makeTicket({ key: "VPL-1" })]);
+    expect(result[0].jiraKey).toBe("VPL-1");
   });
 
   it("maps DONE to Completed", () => {

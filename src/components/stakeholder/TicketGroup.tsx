@@ -1,6 +1,8 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import type { StakeholderTicket } from "@/lib/stakeholder-data";
+import { getJiraUrl } from "@/lib/jira-url";
 
 interface TicketGroupProps {
   tickets: StakeholderTicket[];
@@ -70,6 +72,17 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false }:
                   {t.title}
                 </span>
                 <TypeBadge type={t.type} />
+                {t.jiraKey && (
+                  <a
+                    href={getJiraUrl(t.jiraKey)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-[3px] shrink-0 opacity-0 group-hover:opacity-50 hover:!opacity-90 transition-opacity duration-100 cursor-pointer"
+                    aria-label={`Open ${t.jiraKey} in Jira`}
+                  >
+                    <ExternalLink size={11} strokeWidth={1.5} className="text-white/60" />
+                  </a>
+                )}
                 {showKeys && t.jiraKey && (
                   <span className="shrink-0 rounded bg-white/[0.06] px-1 py-0.5 text-[10px] font-mono text-white/30">
                     {t.jiraKey}

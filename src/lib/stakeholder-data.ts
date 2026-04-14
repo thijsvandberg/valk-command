@@ -71,7 +71,7 @@ export function toStakeholderTickets(tickets: Ticket[]): StakeholderTicket[] {
     status: toHumanStatus(t.jiraStatus),
     storyPoints: t.storyPoints ?? null,
     assignee: t.assignee ? { name: t.assignee.name, initials: t.assignee.initials } : null,
-    jiraKey: null,
+    jiraKey: t.key,
   }));
 }
 
