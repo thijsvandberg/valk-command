@@ -3,6 +3,8 @@ import type { Ticket } from "@/types/ticket";
 export interface StakeholderTicket {
   title: string;
   epic: string | null;
+  /** Normalized ticket type for visual differentiation */
+  type: "story" | "bug" | "spike" | "task";
   status: "Completed" | "In Progress" | "In Review" | "To Do" | "Deprecated";
   storyPoints: number | null;
   assignee: { name: string; initials: string } | null;
@@ -52,10 +54,20 @@ function countWorkingDaysRemaining(endDate: Date, now: Date): number {
   return count;
 }
 
+function toTicketType(raw: string): StakeholderTicket["type"] {
+  switch (raw) {
+    case "bug": return "bug";
+    case "spike": return "spike";
+    case "story": return "story";
+    default: return "task";
+  }
+}
+
 export function toStakeholderTickets(tickets: Ticket[]): StakeholderTicket[] {
   return tickets.map((t) => ({
     title: t.title,
     epic: t.epic ?? null,
+    type: toTicketType(t.type),
     status: toHumanStatus(t.jiraStatus),
     storyPoints: t.storyPoints ?? null,
     assignee: t.assignee ? { name: t.assignee.name, initials: t.assignee.initials } : null,
@@ -68,6 +80,7 @@ export function toUpcomingTickets(tickets: Ticket[]): StakeholderTicket[] {
   return tickets.map((t) => ({
     title: t.title,
     epic: t.epic ?? null,
+    type: toTicketType(t.type),
     status: toHumanStatus(t.jiraStatus),
     storyPoints: t.storyPoints ?? null,
     assignee: t.assignee ? { name: t.assignee.name, initials: t.assignee.initials } : null,

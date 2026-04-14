@@ -16,7 +16,25 @@ function StatusDot({ status }: { status: StakeholderTicket["status"] }) {
     "To Do": "bg-white/20",
     Deprecated: "bg-white/10",
   };
-  return <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${colors[status]}`} />;
+  return <span className={`mt-[5px] inline-block h-1.5 w-1.5 shrink-0 rounded-full ${colors[status]}`} />;
+}
+
+function TypeBadge({ type }: { type: StakeholderTicket["type"] }) {
+  if (type === "bug") {
+    return (
+      <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-red-500/15 text-red-400/70">
+        bug
+      </span>
+    );
+  }
+  if (type === "spike") {
+    return (
+      <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-violet-500/15 text-violet-400/70">
+        spike
+      </span>
+    );
+  }
+  return null;
 }
 
 function groupByEpic(tickets: StakeholderTicket[]): [string, StakeholderTicket[]][] {
@@ -51,6 +69,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false }:
                 <span className="flex-1 text-sm leading-snug text-white/75 group-hover:text-white/90 transition-colors duration-100">
                   {t.title}
                 </span>
+                <TypeBadge type={t.type} />
                 {showKeys && t.jiraKey && (
                   <span className="shrink-0 rounded bg-white/[0.06] px-1 py-0.5 text-[10px] font-mono text-white/30">
                     {t.jiraKey}

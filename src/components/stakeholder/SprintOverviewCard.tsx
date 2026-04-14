@@ -42,10 +42,12 @@ function SprintStateBadge({ state }: { state: string }) {
 function SectionHeader({
   label,
   count,
+  pts,
   color,
 }: {
   label: string;
   count: number;
+  pts: number;
   color: "green" | "brand" | "muted";
 }) {
   const styles = {
@@ -73,8 +75,15 @@ function SectionHeader({
       <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${styles.badge}`}>
         {count}
       </span>
+      {pts > 0 && (
+        <span className="text-[10px] tabular-nums opacity-60">{pts}pt</span>
+      )}
     </h3>
   );
+}
+
+function pts(tickets: StakeholderTicket[]): number {
+  return tickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
 }
 
 export function SprintOverviewCard({
@@ -87,13 +96,14 @@ export function SprintOverviewCard({
   const isClosed = sprint.state === "closed";
   const isActive = sprint.state === "active";
 
-  const allTickets = [...doneTickets, ...inProgressTickets, ...todoTickets];
-  const totalPoints = allTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
-  const donePoints = doneTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+  const donePoints = pts(doneTickets);
+  const inProgressPoints = pts(inProgressTickets);
+  const todoPoints = pts(todoTickets);
+  const totalPoints = donePoints + inProgressPoints + todoPoints;
 
   const showCompleted = doneTickets.length > 0;
   const showInProgress = inProgressTickets.length > 0;
-  // For closed sprints, don't show To Do (remaining work irrelevant after sprint ends)
+  // For closed sprints, remaining work is irrelevant
   const showTodo = !isClosed && todoTickets.length > 0;
   const showProgress = totalPoints > 0;
 
@@ -102,14 +112,20 @@ export function SprintOverviewCard({
       ? `${formatDate(sprint.startDate)} – ${formatDate(sprint.endDate)}`
       : null;
 
-  // Build visible column list for grid sizing
+  // Grid grows to fill available space as columns disappear
   const visibleColumns = [showCompleted, showInProgress, showTodo].filter(Boolean).length;
   const gridClass =
     visibleColumns === 1
-      ? "max-w-sm"
+      ? "" // single column, full container width
       : visibleColumns === 2
-      ? "grid gap-10 sm:grid-cols-2 max-w-3xl"
+      ? "grid gap-10 sm:grid-cols-2"
       : "grid gap-10 sm:grid-cols-2 lg:grid-cols-3";
+
+  // Item count summary line
+  const itemParts: string[] = [];
+  if (doneTickets.length > 0) itemParts.push(`${doneTickets.length} done`);
+  if (inProgressTickets.length > 0) itemParts.push(`${inProgressTickets.length} in progress`);
+  if (!isClosed && todoTickets.length > 0) itemParts.push(`${todoTickets.length} to do`);
 
   return (
     <div className="space-y-8">
@@ -135,25 +151,35 @@ export function SprintOverviewCard({
         )}
       </div>
 
-      {showProgress && <ProgressBar completed={donePoints} total={totalPoints} />}
+      {/* Progress: story points bar + ticket count summary */}
+      {showProgress && (
+        <div className="space-y-3">
+          <ProgressBar completed={donePoints} total={totalPoints} />
+          {itemParts.length > 0 && (
+            <p className="text-xs text-white/30 tabular-nums">
+              {itemParts.join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Ticket columns */}
       <div className={gridClass}>
         {showCompleted && (
           <section>
-            <SectionHeader label="Completed" count={doneTickets.length} color="green" />
+            <SectionHeader label="Completed" count={doneTickets.length} pts={donePoints} color="green" />
             <TicketGroup tickets={doneTickets} />
           </section>
         )}
         {showInProgress && (
           <section>
-            <SectionHeader label="In Progress" count={inProgressTickets.length} color="brand" />
+            <SectionHeader label="In Progress" count={inProgressTickets.length} pts={inProgressPoints} color="brand" />
             <TicketGroup tickets={inProgressTickets} showAssignee />
           </section>
         )}
         {showTodo && (
           <section>
-            <SectionHeader label="To Do" count={todoTickets.length} color="muted" />
+            <SectionHeader label="To Do" count={todoTickets.length} pts={todoPoints} color="muted" />
             <TicketGroup tickets={todoTickets} />
           </section>
         )}
@@ -162,7 +188,7 @@ export function SprintOverviewCard({
       {/* Deprecated tickets — always at the bottom, separate from main columns */}
       {deprecatedTickets.length > 0 && (
         <div className="border-t border-white/[0.04] pt-6">
-          <SectionHeader label="Deprecated" count={deprecatedTickets.length} color="muted" />
+          <SectionHeader label="Deprecated" count={deprecatedTickets.length} pts={pts(deprecatedTickets)} color="muted" />
           <TicketGroup tickets={deprecatedTickets} />
         </div>
       )}

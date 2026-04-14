@@ -155,15 +155,15 @@ describe("buildMarkdownSummary", () => {
   const sprint = { name: "Sprint 5", state: "active", startDate: null, endDate: null, workingDaysRemaining: null, goal: null };
 
   const done = [
-    { title: "Feature A", epic: "BT: UPSELL", status: "Completed" as const, storyPoints: 5, assignee: null, jiraKey: null },
-    { title: "Feature B", epic: "BT: UPSELL", status: "Completed" as const, storyPoints: 3, assignee: null, jiraKey: null },
+    { title: "Feature A", epic: "BT: UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 5, assignee: null, jiraKey: null },
+    { title: "Feature B", epic: "BT: UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 3, assignee: null, jiraKey: null },
   ];
   const inProgress = [
-    { title: "Feature C", epic: null, status: "In Progress" as const, storyPoints: 2, assignee: { name: "Alice", initials: "AL" }, jiraKey: null },
+    { title: "Feature C", epic: null, type: "task" as const, status: "In Progress" as const, storyPoints: 2, assignee: { name: "Alice", initials: "AL" }, jiraKey: null },
   ];
   const todo: typeof done = [];
   const upcoming = [
-    { title: "Feature D", epic: "Other", status: "To Do" as const, storyPoints: null, assignee: null, jiraKey: "VPL-99" },
+    { title: "Feature D", epic: "Other", type: "story" as const, status: "To Do" as const, storyPoints: null, assignee: null, jiraKey: "VPL-99" },
   ];
 
   it("includes sprint name in heading", () => {
