@@ -12,6 +12,7 @@ export interface WorkspaceUsage {
 
 interface TaskMonitoringOptions {
   apiBase: string;
+  ticketKey?: string;
   unmountedRef: React.RefObject<boolean>;
   onStatus: (s: StoryWriterStatus) => void;
   onProgress: (s: string) => void;
@@ -30,9 +31,23 @@ function extractUsage(data: Record<string, unknown>): WorkspaceUsage {
   return { inputTokens, outputTokens, cost };
 }
 
+function notifyStoryWriterFailure(ticketKey: string | undefined, message: string) {
+  if (!ticketKey) return;
+  fetch("/api/notifications", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "story-writer",
+      message,
+      category: "story-writer",
+      jiraKey: ticketKey,
+    }),
+  }).catch(() => { /* fire-and-forget, non-critical */ });
+}
+
 export function useTaskMonitoring(options: TaskMonitoringOptions) {
   const {
-    apiBase, unmountedRef,
+    apiBase, ticketKey, unmountedRef,
     onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates,
   } = options;
 
@@ -123,6 +138,7 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
           onError("Request timed out");
           onStatus("ready");
           onProgress("");
+          notifyStoryWriterFailure(ticketKey, `Story writer timed out for ${ticketKey}`);
         }
         return;
       }
@@ -153,6 +169,7 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
             onError(task.error ?? "Task failed on workspace");
             onStatus("ready");
             onProgress("");
+            notifyStoryWriterFailure(ticketKey, `Story writer failed for ${ticketKey}`);
           }
         } else {
           if (!unmountedRef.current) {
@@ -216,7 +233,7 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       es.close();
       eventSourceRef.current = null;
     });
-  }, [apiBase, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
+  }, [apiBase, ticketKey, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
 
   return { startMonitoring, sendStartRef, pollTimerRef };
 }

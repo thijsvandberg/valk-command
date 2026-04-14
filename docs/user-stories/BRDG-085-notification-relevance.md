@@ -32,9 +32,9 @@ Note: Phase 3 goes before Phase 2 so new notifications are preference-gated from
 
 ### Phase 2: Story writer notifications (keep and improve)
 
-- [ ] Keep the existing "Draft ready for {key}" notification on story writer completion
-- [ ] Add a notification when a story writer session fails or times out: "Story writer failed for {key}" with category `story-writer`
-- [ ] Add a notification when a story writer review completes with a score below the configured threshold (e.g. quality score < 60): "Low quality score ({score}) for {key}" with category `story-writer`
+- [x] Keep the existing "Draft ready for {key}" notification on story writer completion
+- [x] Add a notification when a story writer session fails or times out: "Story writer failed for {key}" with category `story-writer`
+- [x] Add a notification when a story writer review completes with a score below the configured threshold (e.g. quality score < 60): "Low quality score ({score}) for {key}" with category `story-writer`
 
 ### Phase 3: Notification preferences
 

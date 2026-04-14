@@ -61,6 +61,7 @@ export function useStoryWriter(ticketKey: string) {
 
   const monitoring = useTaskMonitoring({
     apiBase,
+    ticketKey,
     unmountedRef,
     onStatus: setStatus,
     onProgress: setStreamProgress,

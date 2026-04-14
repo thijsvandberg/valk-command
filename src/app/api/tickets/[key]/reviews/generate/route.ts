@@ -6,6 +6,9 @@ import { randomUUID } from "crypto";
 import { agentFetch } from "@/lib/agent-fetch";
 import { parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import { logActivity } from "@/lib/activity-logger";
+import { createNotification } from "@/lib/notifications";
+
+const QUALITY_ALERT_THRESHOLD = 60;
 
 /**
  * POST /api/tickets/[key]/reviews/generate
@@ -144,6 +147,14 @@ export async function POST(
     scope: key,
     summary: `Review score ${result.overallScore}/100 (${agentData.verdict})`,
   });
+
+  if (result.overallScore < QUALITY_ALERT_THRESHOLD) {
+    createNotification(
+      "story-writer",
+      `Low quality score (${result.overallScore}) for ${key}`,
+      { category: "story-writer", jiraKey: key },
+    );
+  }
 
   const saved = await db.query.storedReview.findFirst({
     where: (r, { eq: eqFn }) => eqFn(r.id, id),
