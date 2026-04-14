@@ -17,7 +17,7 @@ export interface VelocityPoint {
  */
 export function useVelocityData(
   teamPrefix: string | null,
-  limit = 10,
+  limit = 100,
 ): { data: VelocityPoint[] | null; isLoading: boolean } {
   const key = teamPrefix
     ? `/api/velocity?teamPrefix=${encodeURIComponent(teamPrefix)}&limit=${limit}`

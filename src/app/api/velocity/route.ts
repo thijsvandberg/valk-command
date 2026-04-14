@@ -28,7 +28,7 @@ function sprintNumber(name: string): number {
  */
 export async function GET(request: NextRequest) {
   const teamPrefix = request.nextUrl.searchParams.get("teamPrefix");
-  const limit = Math.min(parseInt(request.nextUrl.searchParams.get("limit") ?? "10", 10), 30);
+  const limit = Math.min(parseInt(request.nextUrl.searchParams.get("limit") ?? "100", 10), 200);
 
   if (!teamPrefix) {
     return NextResponse.json({ error: "teamPrefix required" }, { status: 400 });

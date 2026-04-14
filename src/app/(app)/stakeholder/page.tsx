@@ -189,7 +189,7 @@ function StakeholderView() {
       await fetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" });
       await mutate(ticketKey);
       if (selectedTeamPrefix) {
-        await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=10`);
+        await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
       }
       lastUpdatedRef.current = new Date();
       setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
@@ -202,15 +202,14 @@ function StakeholderView() {
     if (!selectedTeamPrefix || isSyncingHistory) return;
     const closedSprints = teamSprints
       .filter((s) => s.state === "closed")
-      .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name))
-      .slice(-5);
+      .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
     if (closedSprints.length === 0) return;
     setIsSyncingHistory(true);
     try {
       for (const sprint of closedSprints) {
         await fetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
       }
-      await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=10`);
+      await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
     } finally {
       setIsSyncingHistory(false);
     }
@@ -260,7 +259,7 @@ function StakeholderView() {
   const prevTodoTickets = prevAllTickets.filter((t) => t.status === "To Do");
   const prevDeprecatedTickets = prevAllTickets.filter((t) => t.status === "Deprecated");
 
-  const { data: velocityData, isLoading: isVelocityLoading } = useVelocityData(selectedTeamPrefix, 10);
+  const { data: velocityData, isLoading: isVelocityLoading } = useVelocityData(selectedTeamPrefix);
 
   const stakeholderSprint = useMemo(
     () => (currentSprint ? toStakeholderSprint(currentSprint) : null),
