@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
-import type { Metadata } from "next";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { toStakeholderTickets, toUpcomingTickets, toStakeholderSprint } from "@/lib/stakeholder-data";
@@ -26,20 +25,63 @@ function formatRelativeTime(date: Date | null): string {
   return `${diffMin} minutes ago`;
 }
 
+// Extracts the team prefix from a sprint name, e.g. "BM: 135" → "BM".
+// Returns null for sprints that don't follow the "{PREFIX}: {rest}" pattern.
+function extractTeamPrefix(sprintName: string): string | null {
+  const match = sprintName.match(/^([A-Z]+):/);
+  return match ? match[1] : null;
+}
+
 export default function StakeholderPage() {
   const { data: sprints } = useJiraSprints();
-  // null = user has not made a selection yet; "explicit" value overrides the default
+
+  // User-controlled selections; null means "use the smart default"
+  const [manualTeamPrefix, setManualTeamPrefix] = useState<string | null>(null);
   const [manualSprintId, setManualSprintId] = useState<string | null>(null);
+
   const lastUpdatedRef = useRef<Date | null>(null);
   const [lastUpdatedDisplay, setLastUpdatedDisplay] = useState<string>("Never");
 
-  // Derive selected sprint: honour manual pick, fallback to active, then first in list
+  // Derive sorted list of unique team prefixes found in the sprint list
+  const availableTeams = useMemo<string[]>(() => {
+    if (!sprints) return [];
+    const prefixes = new Set<string>();
+    for (const s of sprints) {
+      const p = extractTeamPrefix(s.name);
+      if (p) prefixes.add(p);
+    }
+    return Array.from(prefixes).sort();
+  }, [sprints]);
+
+  // Derive selected team: honour manual pick, fallback to team of first active sprint
+  const selectedTeamPrefix = useMemo<string | null>(() => {
+    if (manualTeamPrefix !== null) return manualTeamPrefix;
+    if (!sprints) return null;
+    const active = sprints.find((s) => s.state === "active");
+    if (active) return extractTeamPrefix(active.name);
+    if (sprints.length > 0) return extractTeamPrefix(sprints[0].name);
+    return null;
+  }, [manualTeamPrefix, sprints]);
+
+  // Sprints filtered to the selected team only
+  const teamSprints = useMemo(() => {
+    if (!sprints || !selectedTeamPrefix) return sprints ?? [];
+    return sprints.filter((s) => extractTeamPrefix(s.name) === selectedTeamPrefix);
+  }, [sprints, selectedTeamPrefix]);
+
+  // Derive selected sprint: honour manual pick, fallback to active sprint for team
   const selectedSprintId = useMemo<string | null>(() => {
     if (manualSprintId !== null) return manualSprintId;
-    if (!sprints || sprints.length === 0) return null;
-    const active = sprints.find((s) => s.state === "active");
-    return active ? String(active.id) : String(sprints[0].id);
-  }, [manualSprintId, sprints]);
+    if (teamSprints.length === 0) return null;
+    const active = teamSprints.find((s) => s.state === "active");
+    return active ? String(active.id) : String(teamSprints[0].id);
+  }, [manualSprintId, teamSprints]);
+
+  // When the team changes, clear the manual sprint so we re-default to that team's active sprint
+  function handleTeamChange(prefix: string) {
+    setManualTeamPrefix(prefix);
+    setManualSprintId(null);
+  }
 
   const ticketKey = selectedSprintId
     ? `/api/tickets?sprintId=${encodeURIComponent(selectedSprintId)}`
@@ -54,17 +96,21 @@ export default function StakeholderPage() {
     },
   });
 
-  // Find next (future) sprint relative to selected
+  // Find next sprint: must be future AND share the same team prefix as the selected sprint
   const nextSprint = useMemo(() => {
-    if (!sprints || !selectedSprintId) return null;
+    if (!sprints || !selectedSprintId || !selectedTeamPrefix) return null;
     const idx = sprints.findIndex((s) => String(s.id) === selectedSprintId);
     if (idx === -1) return null;
-    // First future sprint after the current position
     for (let i = idx + 1; i < sprints.length; i++) {
-      if (sprints[i].state === "future") return sprints[i];
+      if (
+        sprints[i].state === "future" &&
+        extractTeamPrefix(sprints[i].name) === selectedTeamPrefix
+      ) {
+        return sprints[i];
+      }
     }
     return null;
-  }, [sprints, selectedSprintId]);
+  }, [sprints, selectedSprintId, selectedTeamPrefix]);
 
   const nextTicketKey = nextSprint
     ? `/api/tickets?sprintId=${encodeURIComponent(String(nextSprint.id))}`
@@ -109,11 +155,14 @@ export default function StakeholderPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const selectClass =
+    "rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] hover:border-white/[0.12] transition-colors duration-150";
+
   return (
     <div className="flex min-h-full flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/[0.06] bg-[var(--color-surface-base)]/90 px-6 py-3 backdrop-blur-md sm:px-8 lg:px-12">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
           <Link
             href="/"
             className="flex items-center gap-1.5 text-xs text-white/30 cursor-pointer hover:text-white/60 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
@@ -125,19 +174,40 @@ export default function StakeholderPage() {
 
           <span className="text-white/10">|</span>
 
-          {/* Sprint selector */}
-          {sprints && sprints.length > 0 ? (
+          {/* Team selector */}
+          {availableTeams.length > 1 && selectedTeamPrefix && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="team-select" className="text-xs text-white/30">
+                Team
+              </label>
+              <select
+                id="team-select"
+                value={selectedTeamPrefix}
+                onChange={(e) => handleTeamChange(e.target.value)}
+                className={selectClass}
+              >
+                {availableTeams.map((prefix) => (
+                  <option key={prefix} value={prefix}>
+                    {prefix}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Sprint selector — scoped to selected team */}
+          {teamSprints.length > 0 && selectedSprintId && (
             <div className="flex items-center gap-2">
               <label htmlFor="sprint-select" className="text-xs text-white/30">
                 Sprint
               </label>
               <select
                 id="sprint-select"
-                value={selectedSprintId ?? ""}
+                value={selectedSprintId}
                 onChange={(e) => setManualSprintId(e.target.value)}
-                className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] hover:border-white/[0.12] transition-colors duration-150"
+                className={selectClass}
               >
-                {sprints.map((s) => (
+                {teamSprints.map((s) => (
                   <option key={s.id} value={String(s.id)}>
                     {s.name}
                     {s.state === "active" ? " (active)" : ""}
@@ -145,7 +215,7 @@ export default function StakeholderPage() {
                 ))}
               </select>
             </div>
-          ) : null}
+          )}
         </div>
 
         <div className="flex items-center gap-3">

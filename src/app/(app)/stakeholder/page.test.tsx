@@ -1,8 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import StakeholderPage from "./page";
 
-// SWR mock: keyed by URL pattern
 const SWR_DATA: Record<string, unknown> = {};
 
 vi.mock("swr", async (importOriginal) => {
@@ -12,11 +11,7 @@ vi.mock("swr", async (importOriginal) => {
     default: vi.fn((key: string | null) => {
       if (!key) return { data: undefined, isLoading: false };
       const data = SWR_DATA[key] ?? undefined;
-      if (data !== undefined) {
-        // Simulate onSuccess callback for the tickets key
-        return { data, isLoading: false };
-      }
-      return { data: undefined, isLoading: true };
+      return { data, isLoading: data === undefined };
     }),
   };
 });
@@ -24,8 +19,10 @@ vi.mock("swr", async (importOriginal) => {
 vi.mock("@/hooks/useSprintBoard", () => ({
   useJiraSprints: vi.fn(() => ({
     data: [
-      { id: 10, name: "Sprint 10", state: "active", startDate: "2026-04-01T00:00:00Z", endDate: "2026-04-14T00:00:00Z" },
-      { id: 11, name: "Sprint 11", state: "future", startDate: "2026-04-15T00:00:00Z", endDate: "2026-04-28T00:00:00Z" },
+      { id: 10, name: "BM: 135", state: "active", startDate: "2026-04-01T00:00:00Z", endDate: "2026-04-14T00:00:00Z" },
+      { id: 11, name: "BM: 136", state: "future", startDate: "2026-04-15T00:00:00Z", endDate: "2026-04-28T00:00:00Z" },
+      { id: 20, name: "GXP: 135", state: "active", startDate: "2026-04-01T00:00:00Z", endDate: "2026-04-14T00:00:00Z" },
+      { id: 21, name: "GXP: 136", state: "future", startDate: "2026-04-15T00:00:00Z", endDate: "2026-04-28T00:00:00Z" },
     ],
   })),
 }));
@@ -94,27 +91,52 @@ beforeEach(() => {
   Object.assign(SWR_DATA, {
     "/api/tickets?sprintId=10": MOCK_TICKETS,
     "/api/tickets?sprintId=11": [],
+    "/api/tickets?sprintId=20": [],
+    "/api/tickets?sprintId=21": [],
   });
 });
 
 describe("StakeholderPage", () => {
-  it("renders the sprint name", async () => {
+  it("renders the active sprint name", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sprint 10");
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("BM: 135");
     });
   });
 
-  it("renders sprint selector with both sprints", async () => {
+  it("renders team selector when multiple teams exist", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
-      const select = screen.getByRole("combobox");
-      expect(select).toBeInTheDocument();
+      expect(screen.getByLabelText("Team")).toBeInTheDocument();
     });
-    const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(2);
-    expect(options[0]).toHaveTextContent("Sprint 10");
-    expect(options[1]).toHaveTextContent("Sprint 11");
+    const teamOptions = Array.from(screen.getByLabelText("Team").querySelectorAll("option"));
+    const values = teamOptions.map((o) => o.textContent);
+    expect(values).toContain("BM");
+    expect(values).toContain("GXP");
+  });
+
+  it("sprint selector only shows sprints for the selected team", async () => {
+    render(<StakeholderPage />);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Sprint")).toBeInTheDocument();
+    });
+    const sprintOptions = Array.from(screen.getByLabelText("Sprint").querySelectorAll("option"));
+    const names = sprintOptions.map((o) => o.textContent);
+    // Only BM sprints visible (BM is the default active team)
+    expect(names.some((n) => n?.includes("BM"))).toBe(true);
+    expect(names.every((n) => !n?.includes("GXP"))).toBe(true);
+  });
+
+  it("switching team updates the sprint selector", async () => {
+    render(<StakeholderPage />);
+    await waitFor(() => expect(screen.getByLabelText("Team")).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText("Team"), { target: { value: "GXP" } });
+
+    const sprintOptions = Array.from(screen.getByLabelText("Sprint").querySelectorAll("option"));
+    const names = sprintOptions.map((o) => o.textContent);
+    expect(names.some((n) => n?.includes("GXP"))).toBe(true);
+    expect(names.every((n) => !n?.includes("BM"))).toBe(true);
   });
 
   it("renders ticket titles in the overview", async () => {
@@ -126,14 +148,13 @@ describe("StakeholderPage", () => {
     });
   });
 
-  it("shows human-readable status sections, not Jira statuses", async () => {
+  it("shows human-readable status sections, not raw Jira statuses", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
       expect(screen.getByText("Completed")).toBeInTheDocument();
       expect(screen.getByText("In Progress")).toBeInTheDocument();
       expect(screen.getByText("To Do")).toBeInTheDocument();
     });
-    // Raw Jira status strings should not appear
     expect(screen.queryByText("DONE")).toBeNull();
     expect(screen.queryByText("IN PROGRESS")).toBeNull();
     expect(screen.queryByText("TO DO")).toBeNull();
@@ -150,7 +171,7 @@ describe("StakeholderPage", () => {
     expect(screen.queryByText("internal note")).toBeNull();
   });
 
-  it("shows assignee name in in-progress section", async () => {
+  it("shows assignee name in the in-progress section", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
       expect(screen.getByText("Bob Jones")).toBeInTheDocument();
