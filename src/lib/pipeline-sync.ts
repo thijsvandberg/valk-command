@@ -1,10 +1,10 @@
 import "server-only";
 import { db } from "@/db";
-import { pipelineRun, alert, followedTicket, ticketMetadata, appSetting } from "@/db/schema";
+import { pipelineRun, alert, ticketMetadata, appSetting } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
+import { createNotification } from "@/lib/notifications";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
-import { randomUUID } from "crypto";
 
 // -- Environment detection --
 
@@ -434,6 +434,7 @@ export async function syncPipelines(): Promise<SyncResult> {
 
   // Persist and advance watermark (process newest last so watermark advances progressively)
   // Sort oldest-first so we advance the watermark safely
+  const prCandidates: PrCandidate[] = [];
   const sorted = allNew
     .map((entry, idx) => ({ ...entry, idx }))
     .sort((a, b) => (a.pipeline.created_on ?? "").localeCompare(b.pipeline.created_on ?? ""));
@@ -481,6 +482,9 @@ export async function syncPipelines(): Promise<SyncResult> {
         .run();
       newRuns++;
       if (state !== "IN_PROGRESS") pendingDeployDetection.push({ repoSlug, buildNumber: p.build_number, id });
+      if (pr.url && pr.title) {
+        prCandidates.push({ prUrl: pr.url, prTitle: pr.title, ticketKey: rd.ticketKey, isMerge: !!rd.sourceBranch });
+      }
     }
 
     // Advance watermark after each pipeline (oldest-first order)
@@ -507,6 +511,7 @@ export async function syncPipelines(): Promise<SyncResult> {
     );
   }
 
+  processPRNotifications(prCandidates);
   processStateChanges(stateChanges);
 
   // Run enrichment backfill for existing rows missing commit data
@@ -517,23 +522,77 @@ export async function syncPipelines(): Promise<SyncResult> {
 
 // -- State change processing --
 
-function processStateChanges(stateChanges: Array<{ run: typeof pipelineRun.$inferSelect; oldState: string }>) {
+interface PrCandidate {
+  prUrl: string;
+  prTitle: string;
+  ticketKey: string | null;
+  isMerge: boolean;
+}
+
+export function processStateChanges(stateChanges: Array<{ run: typeof pipelineRun.$inferSelect; oldState: string }>) {
   if (stateChanges.length === 0) return;
-  const followedKeys = new Set(db.select().from(followedTicket).all().map((f) => f.ticketKey));
 
   for (const { run, oldState } of stateChanges) {
-    if (!run.ticketKey) continue;
     const finalState = run.state;
     if (oldState !== "IN_PROGRESS" || (finalState !== "SUCCESSFUL" && finalState !== "FAILED" && finalState !== "STOPPED")) continue;
 
-    db.update(ticketMetadata)
-      .set({ testStatus: finalState === "SUCCESSFUL" ? "pass" : "fail", lastTestRunAt: new Date().toISOString(), lastTestReportUrl: run.pipelineUrl })
-      .where(eq(ticketMetadata.jiraKey, run.ticketKey))
-      .run();
+    if (run.ticketKey) {
+      db.update(ticketMetadata)
+        .set({ testStatus: finalState === "SUCCESSFUL" ? "pass" : "fail", lastTestRunAt: new Date().toISOString(), lastTestReportUrl: run.pipelineUrl })
+        .where(eq(ticketMetadata.jiraKey, run.ticketKey))
+        .run();
+    }
 
-    if (!followedKeys.has(run.ticketKey)) continue;
-    const stateLabel = finalState === "SUCCESSFUL" ? "completed" : finalState.toLowerCase();
-    const message = run.isDeployment ? `Deployment to ${run.environment} ${stateLabel} for ${run.ticketKey}` : `Pipeline #${run.buildNumber} ${stateLabel} for ${run.ticketKey}`;
-    db.insert(alert).values({ id: randomUUID(), type: run.isDeployment ? "deployment" : "pipeline", jiraKey: run.ticketKey, message, createdAt: new Date().toISOString(), category: run.isDeployment ? "deployment" : "pipeline", linkUrl: run.pipelineUrl }).run();
+    if (run.isDeployment) {
+      if (!run.ticketKey || !run.environment) continue;
+      const message = finalState === "SUCCESSFUL"
+        ? `Deployed ${run.ticketKey} to ${run.environment}`
+        : `Deployment to ${run.environment} failed for ${run.ticketKey}`;
+      createNotification("deployment", message, { category: "deployment", jiraKey: run.ticketKey, linkUrl: run.pipelineUrl ?? undefined });
+    } else {
+      // Only notify on failures — successful pipeline completions are too noisy
+      if (finalState === "SUCCESSFUL") continue;
+      const subject = run.ticketKey ? `for ${run.ticketKey}` : `on ${run.branchName ?? "unknown branch"}`;
+      createNotification("pipeline", `Pipeline #${run.buildNumber} failed ${subject}`, {
+        category: "pipeline",
+        jiraKey: run.ticketKey ?? undefined,
+        linkUrl: run.pipelineUrl ?? undefined,
+      });
+    }
+  }
+}
+
+export function processPRNotifications(candidates: PrCandidate[]) {
+  if (candidates.length === 0) return;
+
+  for (const { prUrl, prTitle, ticketKey, isMerge } of candidates) {
+    // "PR opened": dedup by checking for any existing pr alert with this linkUrl
+    const openedExists = db.select({ id: alert.id })
+      .from(alert)
+      .where(and(eq(alert.linkUrl, prUrl), eq(alert.category, "pr")))
+      .get();
+    if (!openedExists) {
+      createNotification("pr", `PR opened: ${prTitle}`, {
+        category: "pr",
+        jiraKey: ticketKey ?? undefined,
+        linkUrl: prUrl,
+      });
+    }
+
+    // "PR merged": dedup by appending "#merged" to distinguish from "opened"
+    if (isMerge) {
+      const mergedLinkUrl = `${prUrl}#merged`;
+      const mergedExists = db.select({ id: alert.id })
+        .from(alert)
+        .where(and(eq(alert.linkUrl, mergedLinkUrl), eq(alert.category, "pr")))
+        .get();
+      if (!mergedExists) {
+        createNotification("pr", `PR merged: ${prTitle}`, {
+          category: "pr",
+          jiraKey: ticketKey ?? undefined,
+          linkUrl: mergedLinkUrl,
+        });
+      }
+    }
   }
 }
