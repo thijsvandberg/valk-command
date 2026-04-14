@@ -2,8 +2,8 @@
 
 import { Suspense, useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import useSWR from "swr";
-import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2 } from "lucide-react";
+import useSWR, { useSWRConfig } from "swr";
+import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, CloudDownload, History } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { toStakeholderTickets, toStakeholderSprint } from "@/lib/stakeholder-data";
@@ -82,10 +82,17 @@ const navBtnClass =
 const selectClass =
   "rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer hover:border-white/[0.12] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
+// First number after team prefix: "BT: 130 - Align sidebars" → 130
+function sprintNum(name: string): number {
+  const m = name.match(/[: ]\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : Infinity;
+}
+
 function StakeholderView() {
   const { data: sprints } = useJiraSprints();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { mutate } = useSWRConfig();
 
   // URL params take precedence; session storage is the fallback for within-session memory
   const urlTeam = searchParams.get("team") ?? sessionGet(SESSION_KEY_TEAM);
@@ -96,6 +103,8 @@ function StakeholderView() {
 
   const lastUpdatedRef = useRef<Date | null>(null);
   const [lastUpdatedDisplay, setLastUpdatedDisplay] = useState<string>("Never");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingHistory, setIsSyncingHistory] = useState(false);
 
   const availableTeams = useMemo<string[]>(() => {
     if (!sprints) return [];
@@ -178,6 +187,40 @@ function StakeholderView() {
     if (sprint && selectedTeamPrefix) updateUrl(selectedTeamPrefix, sprint.id);
   }
 
+  async function handleSyncSprint() {
+    if (!currentSprint || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await fetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" });
+      await mutate(ticketKey);
+      if (selectedTeamPrefix) {
+        await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=10`);
+      }
+      lastUpdatedRef.current = new Date();
+      setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  async function handleSyncHistory() {
+    if (!selectedTeamPrefix || isSyncingHistory) return;
+    const closedSprints = teamSprints
+      .filter((s) => s.state === "closed")
+      .sort((a, b) => sprintNum(a.name) - sprintNum(b.name))
+      .slice(-5);
+    if (closedSprints.length === 0) return;
+    setIsSyncingHistory(true);
+    try {
+      for (const sprint of closedSprints) {
+        await fetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
+      }
+      await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=10`);
+    } finally {
+      setIsSyncingHistory(false);
+    }
+  }
+
   // Sync URL and session whenever selection is known (handles first load with no params)
   useEffect(() => {
     if (!currentSprint || !selectedTeamPrefix) return;
@@ -254,9 +297,31 @@ function StakeholderView() {
         icon={<Users size={15} strokeWidth={1.5} />}
         actions={
           <div className="flex items-center gap-2">
-            {isLoading && (
+            {(isLoading || isSyncing) && (
               <RefreshCw size={12} strokeWidth={1.5} className="animate-spin text-white/20" />
             )}
+            {/* Sync history: last 5 closed sprints for velocity data */}
+            <button
+              type="button"
+              onClick={handleSyncHistory}
+              disabled={isSyncingHistory || !selectedTeamPrefix}
+              title="Sync last 5 closed sprints for velocity history"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <History size={12} strokeWidth={1.5} className={isSyncingHistory ? "animate-spin" : ""} />
+              Sync history
+            </button>
+            {/* Sync sprint: current sprint tickets */}
+            <button
+              type="button"
+              onClick={handleSyncSprint}
+              disabled={isSyncing || !currentSprint}
+              title="Sync current sprint tickets from Jira"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <CloudDownload size={12} strokeWidth={1.5} />
+              Sync sprint
+            </button>
             {previousSprint && (
               <button
                 type="button"
