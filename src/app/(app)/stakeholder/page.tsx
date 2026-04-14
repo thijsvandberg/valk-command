@@ -222,14 +222,7 @@ function StakeholderView() {
   const prevTodoTickets = prevAllTickets.filter((t) => t.status === "To Do");
   const prevDeprecatedTickets = prevAllTickets.filter((t) => t.status === "Deprecated");
 
-  // Last 5 sprints for velocity sparkline (including current)
-  const velocitySprints = useMemo(() => {
-    const end = selectedIndex + 1;
-    const start = Math.max(0, end - 5);
-    return teamSprints.slice(start, end).map((s) => ({ id: s.id, name: s.name }));
-  }, [teamSprints, selectedIndex]);
-
-  const { data: velocityData, isLoading: isVelocityLoading } = useVelocityData(velocitySprints);
+  const { data: velocityData, isLoading: isVelocityLoading } = useVelocityData(selectedTeamPrefix, 10);
 
   const stakeholderSprint = useMemo(
     () => (currentSprint ? toStakeholderSprint(currentSprint) : null),
