@@ -51,6 +51,7 @@ See [Improvement Roadmap](plans/2026-04-10-improvement-roadmap.md) for the full 
 - [ ] BRDG-050: Story Writer Pane System
 - [ ] BRDG-051: Inline Ticket Editing on Sprint Board
 - [ ] BRDG-053: Advanced Search with Filters
+- [ ] BRDG-089: Activity Log Coverage (story writer messages, agent errors, session recovery, schema cleanup)
 
 ## Medium Priority - Performance
 
