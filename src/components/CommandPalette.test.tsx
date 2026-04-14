@@ -3,8 +3,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CommandPalette } from "./CommandPalette";
 
 const mockPush = vi.fn();
+const mockPathname = vi.fn(() => "/");
+
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: mockPush, refresh: vi.fn() })),
+  usePathname: () => mockPathname(),
 }));
 
 // Mock fuse.js to keep tests synchronous
@@ -37,11 +40,11 @@ describe("CommandPalette", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockPush.mockClear();
-    // Mock fetch for ticket/conversation searches
+    mockPathname.mockReturnValue("/");
+    // Mock fetch for ticket/conversation/session searches
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       const urlStr = typeof url === "string" ? url : url.toString();
       if (urlStr.includes("/api/search/local")) {
-        // Only return results for queries that make sense
         if (urlStr.includes("login") || urlStr.includes("bug") || urlStr.includes("VPL")) {
           return new Response(JSON.stringify({ results: [
             { key: "VPL-123", summary: "Fix login bug", status: "In Progress", issueType: "Bug" },
@@ -51,8 +54,28 @@ describe("CommandPalette", () => {
       }
       if (urlStr.includes("/api/conversations") && !urlStr.includes("POST")) {
         return new Response(JSON.stringify([
-          { id: "conv-1", title: "Sprint planning", createdAt: "2026-04-01" },
+          { id: "conv-1", title: "Sprint planning", createdAt: "2026-04-01", relatedTicket: null },
         ]));
+      }
+      if (urlStr.includes("/api/story-writer/active-sessions")) {
+        return new Response(JSON.stringify([
+          { sessionId: "sess-1", ticketKey: "VPL-42", title: "Implement auth flow", sprintName: "Sprint 5", epic: null, epicKey: null, issueType: "story", status: "TO DO", updatedAt: "2026-04-10", jiraUpdatedAt: null },
+        ]));
+      }
+      if (urlStr.includes("/api/sprint-slots")) {
+        return new Response(JSON.stringify([
+          { slotIndex: 0, sprintId: "sprint-5", sprintName: "Sprint 5" },
+        ]));
+      }
+      if (urlStr.match(/\/api\/tickets\/([A-Z]+-\d+)$/)) {
+        const key = urlStr.match(/\/api\/tickets\/([A-Z]+-\d+)$/)![1];
+        if (key === "VPL-99") {
+          return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+        }
+        return new Response(JSON.stringify({ key, title: "Some ticket" }));
+      }
+      if (urlStr.includes("/api/story-writer/create")) {
+        return new Response(JSON.stringify({ key: "VPL-200" }), { status: 201 });
       }
       return new Response(JSON.stringify({}));
     });
@@ -94,6 +117,14 @@ describe("CommandPalette", () => {
     expect(screen.getByText("Sync Jira")).toBeInTheDocument();
     expect(screen.getByText("New Conversation")).toBeInTheDocument();
     expect(screen.getByText("Toggle Sidebar")).toBeInTheDocument();
+  });
+
+  it("shows New Story action by default when open", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+    expect(screen.getByText("New Story")).toBeInTheDocument();
   });
 
   it("closes with Escape", async () => {
@@ -224,6 +255,277 @@ describe("CommandPalette", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/no results/i)).toBeInTheDocument();
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  Phase 1: New Story sub-flow                                       */
+  /* ------------------------------------------------------------------ */
+
+  it("transitions to New Story sub-flow when action is selected", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    // Click the "New Story" action
+    const newStoryItem = screen.getByText("New Story");
+    await act(async () => {
+      fireEvent.click(newStoryItem.closest("[data-palette-row]")!);
+    });
+
+    // Sub-flow UI should appear
+    await waitFor(() => {
+      expect(screen.getByText("Create new")).toBeInTheDocument();
+      expect(screen.getByText("Use existing")).toBeInTheDocument();
+    });
+
+    // Search input is replaced by breadcrumb
+    expect(screen.queryByPlaceholderText(/search pages/i)).not.toBeInTheDocument();
+  });
+
+  it("Escape from sub-flow returns to palette without closing", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const newStoryItem = screen.getByText("New Story");
+    await act(async () => {
+      fireEvent.click(newStoryItem.closest("[data-palette-row]")!);
+    });
+
+    // Should be in sub-flow
+    await waitFor(() => {
+      expect(screen.getByText("Create new")).toBeInTheDocument();
+    });
+
+    // Press Escape on the back button (bubbles up to palette container's onKeyDown)
+    const backBtn = screen.getByRole("button", { name: /back to palette/i });
+    await act(async () => {
+      fireEvent.keyDown(backBtn, { key: "Escape" });
+    });
+
+    // The palette should still be open, now showing normal results
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/search pages/i)).toBeInTheDocument();
+    }, { timeout: 300 });
+  });
+
+  it("navigates to existing ticket write page from sub-flow", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const newStoryItem = screen.getByText("New Story");
+    await act(async () => {
+      fireEvent.click(newStoryItem.closest("[data-palette-row]")!);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Use existing")).toBeInTheDocument();
+    });
+
+    // Switch to "Use existing" mode
+    await act(async () => {
+      fireEvent.click(screen.getByText("Use existing"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("VPL-123")).toBeInTheDocument();
+    });
+
+    // Type a ticket key
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText("VPL-123"), { target: { value: "vpl-55" } });
+    });
+
+    // Input auto-uppercases
+    await waitFor(() => {
+      expect((screen.getByPlaceholderText("VPL-123") as HTMLInputElement).value).toBe("VPL-55");
+    });
+
+    // Confirm
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /open/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-55/write");
+    });
+  });
+
+  it("shows inline error when ticket not found locally", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const newStoryItem = screen.getByText("New Story");
+    await act(async () => {
+      fireEvent.click(newStoryItem.closest("[data-palette-row]")!);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Use existing")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Use existing"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("VPL-123")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText("VPL-123"), { target: { value: "VPL-99" } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /open/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/VPL-99 not found locally/i)).toBeInTheDocument();
+    });
+  });
+
+  it("creates a new story and navigates to its write page", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const newStoryItem = screen.getByText("New Story");
+    await act(async () => {
+      fireEvent.click(newStoryItem.closest("[data-palette-row]")!);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Create new")).toBeInTheDocument();
+    });
+
+    // Sprint loads lazily
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Fill in the title
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/story title/i)).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText(/story title/i), { target: { value: "New feature" } });
+    });
+
+    // Use exact name match to avoid matching the "Create new" mode toggle button
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-200/write");
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  Phase 2: Story Writer sessions in search results                  */
+  /* ------------------------------------------------------------------ */
+
+  it("shows story writer session in results when query matches", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "auth" } });
+    });
+
+    // Sessions are filtered client-side without debounce
+    await waitFor(() => {
+      expect(screen.getByText("Implement auth flow")).toBeInTheDocument();
+    });
+  });
+
+  it("shows Story Writer category label for session results", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "auth" } });
+    });
+
+    // The category label and the result pill both render "Story Writer", so use getAllByText
+    await waitFor(() => {
+      const labels = screen.getAllByText("Story Writer");
+      expect(labels.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("navigates to write page when story writer session is selected", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "auth" } });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Implement auth flow")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Implement auth flow").closest("[data-palette-row]")!);
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-42/write");
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  Phase 3: Active session indicator                                 */
+  /* ------------------------------------------------------------------ */
+
+  it("shows currently editing hint on New Story action when on write page", async () => {
+    mockPathname.mockReturnValue("/tickets/VPL-42/write");
+
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Currently editing VPL-42")).toBeInTheDocument();
+    });
+  });
+
+  it("surfaces current session in empty-query results when on write page", async () => {
+    mockPathname.mockReturnValue("/tickets/VPL-42/write");
+
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    // Wait for sessions to load
+    await act(async () => {
+      vi.advanceTimersByTime(50);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Implement auth flow")).toBeInTheDocument();
     });
   });
 });
