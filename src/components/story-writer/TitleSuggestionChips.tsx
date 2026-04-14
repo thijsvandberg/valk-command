@@ -19,43 +19,37 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
   };
 
   return (
-    <div className="mt-2.5 overflow-hidden rounded-lg border border-white/[0.07]">
+    <div className="mt-1 space-y-0.5">
       {titles.map((title, i) => {
         const isSelected = selected === title;
         return (
           <div
             key={title}
             className={[
-              "flex items-center gap-3 px-3 py-2 transition-colors duration-150",
-              i > 0 ? "border-t border-white/[0.05]" : "",
-              isSelected ? "bg-[var(--color-brand-500)]/[0.07]" : "hover:bg-white/[0.025]",
+              "group flex items-baseline gap-2.5 rounded-md px-1 py-0.5 -mx-1 transition-colors duration-150",
+              isSelected ? "bg-[var(--color-brand-500)]/[0.07]" : "hover:bg-white/[0.03]",
             ].join(" ")}
           >
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-              {isSelected ? (
-                <Check size={10} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
-              ) : (
-                <span className="font-mono text-[10px] tabular-nums text-white/20 select-none">
-                  {i + 1}
-                </span>
-              )}
+            <span className="shrink-0 w-3.5 text-right font-mono text-[11px] tabular-nums text-white/25 select-none leading-[1.7]">
+              {isSelected
+                ? <Check size={10} strokeWidth={2.5} className="text-[var(--color-brand-400)] inline-block" />
+                : i + 1}
             </span>
-            <span
-              className={[
-                "flex-1 text-[12px] leading-snug",
-                isSelected ? "text-white/80" : "text-white/60",
-              ].join(" ")}
-            >
+            <span className={[
+              "flex-1 text-sm leading-[1.7]",
+              isSelected ? "text-white/90" : "text-white/75",
+            ].join(" ")}>
               {title}
             </span>
             <button
               type="button"
               onClick={() => handleApply(title)}
+              disabled={isSelected}
               className={[
-                "shrink-0 text-[10px] font-medium cursor-pointer transition-colors duration-150",
+                "shrink-0 text-[11px] font-medium cursor-pointer transition-colors duration-150 leading-[1.7]",
                 isSelected
                   ? "text-[var(--color-brand-400)]/60 pointer-events-none"
-                  : "text-white/25 hover:text-[var(--color-brand-400)]",
+                  : "text-white/20 hover:text-[var(--color-brand-400)] group-hover:text-white/35",
               ].join(" ")}
             >
               {isSelected ? "Applied" : "Use"}
