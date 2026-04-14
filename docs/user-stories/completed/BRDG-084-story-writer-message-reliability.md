@@ -1,6 +1,6 @@
 # BRDG-084: Story Writer Message Reliability
 
-**Status:** Open
+**Status:** Done
 **Priority:** High
 
 ## Description

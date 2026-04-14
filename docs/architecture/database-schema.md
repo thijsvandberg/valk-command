@@ -205,6 +205,8 @@ Messages within conversations.
 | `content` | text | Markdown / structured content |
 | `timestamp` | text | |
 | `workspace_task_id` | text | Links to workspace task that produced this message |
+| `status` | enum | `pending`, `sent`, `failed` (default: `sent`) |
+| `content_hash` | text | SHA-256 hash for dedup (conversationId + normalized content) |
 
 ### Story Writer
 

@@ -45,6 +45,14 @@ Ticket Detail -> "Write Story" -> Story Writer Session
 
 **Follow-up messages:** Resumes the existing workspace conversation. If the workspace returns 410 (session lost), the route recovers by reconstructing context and re-sending as a new first message.
 
+**Message reliability (BRDG-084):**
+- Messages are inserted with `status: "pending"`, updated to `"sent"` on agent success or `"failed"` on agent failure.
+- Failed messages show an inline retry button; retry reuses the existing DB row via `retryMessageId`.
+- Server-side dedup: a `contentHash` (SHA-256 of conversationId + normalized content) is checked against recent messages (30s window). Returns 409 on duplicate.
+- Client-side dedup: blocks identical content within 10s of the last message.
+- `DELETE /api/tickets/[key]/story-writer/messages?failed=true` clears orphaned (pending/failed) messages.
+- Session discard automatically cleans up orphaned messages.
+
 ### Draft Extraction
 
 When the workspace completes a task, `POST /api/tickets/[key]/story-writer/apply-draft` parses the output for `<story-draft>` XML tags:
