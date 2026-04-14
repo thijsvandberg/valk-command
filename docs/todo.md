@@ -18,6 +18,8 @@ See [Improvement Roadmap](plans/2026-04-10-improvement-roadmap.md) for the full 
 
 ## High Priority
 
+- [x] BRDG-083: Agent Communication Resilience (timeouts, retries, error classification for all agent routes)
+- [ ] BRDG-084: Story Writer Message Reliability (orphaned messages, dedup, resume flow hardening)
 - [ ] BRDG-037: Dashboard Widgets
 - [ ] BRDG-038: Refinement Agenda
 - [ ] BRDG-039: Test Center
