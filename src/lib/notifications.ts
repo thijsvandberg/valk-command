@@ -1,16 +1,7 @@
 import { db } from "@/db";
-import { alert, appSetting } from "@/db/schema";
+import { alert } from "@/db/schema";
 import { randomUUID } from "crypto";
-import { eq } from "drizzle-orm";
-
-type NotificationCategory =
-  | "general"
-  | "pipeline"
-  | "deployment"
-  | "pr"
-  | "sync"
-  | "story-writer"
-  | "system";
+import { getPreferences, type NotificationCategory } from "@/lib/notification-preferences";
 
 interface CreateNotificationOptions {
   category?: NotificationCategory;
@@ -18,27 +9,9 @@ interface CreateNotificationOptions {
   linkUrl?: string;
 }
 
-const PREFS_KEY = "notification_preferences";
-
-const DEFAULT_ENABLED: Record<NotificationCategory, boolean> = {
-  general: true,
-  pipeline: true,
-  deployment: true,
-  pr: true,
-  sync: false,
-  "story-writer": true,
-  system: true,
-};
-
 function isCategoryEnabled(category: NotificationCategory): boolean {
-  const row = db.select().from(appSetting).where(eq(appSetting.key, PREFS_KEY)).get();
-  if (!row) return DEFAULT_ENABLED[category] ?? true;
-  try {
-    const prefs = JSON.parse(row.value) as Record<string, boolean>;
-    return prefs[category] ?? DEFAULT_ENABLED[category] ?? true;
-  } catch {
-    return DEFAULT_ENABLED[category] ?? true;
-  }
+  const prefs = getPreferences();
+  return prefs[category] ?? true;
 }
 
 export function createNotification(

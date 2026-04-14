@@ -3,7 +3,7 @@
 import { useNotification } from "@/hooks/useNotification";
 import { Bell, BellOff, ShieldCheck, ShieldX, GitBranch, Rocket, GitPullRequest, RefreshCw, BookOpen, Info, Zap } from "lucide-react";
 import useSWR from "swr";
-import type { NotificationCategory, NotificationPreferences } from "@/app/api/settings/notification-preferences/route";
+import type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
