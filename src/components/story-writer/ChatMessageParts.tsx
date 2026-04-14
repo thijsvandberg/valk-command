@@ -187,19 +187,18 @@ export function ChatMessage({
     onStoryKeyClick(match[1]);
   }, [onStoryKeyClick]);
 
-  const displayContent = message.content
+  // Strip non-title-suggestions tags first, keep the title-suggestions tag for positional splitting
+  const baseContent = message.content
     .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
     .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
     .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
     .replace(/<summary>[\s\S]*?<\/summary>/g, "")
-    .replace(/<title-suggestions>[\s\S]*?<\/title-suggestions>/g, "")
-    .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "")
-    .trim();
+    .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "");
 
   // Structured title suggestions (Phase 1 tag format)
   const titleSuggestions = (() => {
     if (message.role !== "assistant") return [];
-    const match = message.content.match(/<title-suggestions>([\s\S]*?)<\/title-suggestions>/);
+    const match = baseContent.match(/<title-suggestions>([\s\S]*?)<\/title-suggestions>/);
     if (!match) return [];
     return match[1]
       .split(/\n/)
@@ -207,11 +206,18 @@ export function ChatMessage({
       .filter((line) => line.length > 0);
   })();
 
+  // Split content around the tag so text after the tag renders below the chips
+  const titleTagSplit = baseContent.match(/([\s\S]*?)<title-suggestions>[\s\S]*?<\/title-suggestions>([\s\S]*)/);
+  const contentBefore = titleTagSplit
+    ? titleTagSplit[1].trim()
+    : baseContent.replace(/<title-suggestions>[\s\S]*?<\/title-suggestions>/g, "").trim();
+  const contentAfter = titleTagSplit ? titleTagSplit[2].trim() : "";
+
   // Legacy fallback: "Here are N title options:" + numbered **bold** items
   const legacyTitleSuggestions = titleSuggestions.length === 0 && message.role === "assistant"
     ? (() => {
         const pattern = /here are \d+ title (?:options|suggestions|ideas)[:\s]*\n((?:\d+\.\s+\*\*.+\*\*[^\n]*\n?)+)/i;
-        const match = message.content.match(pattern);
+        const match = baseContent.match(pattern);
         if (!match) return [];
         return [...match[1].matchAll(/\d+\.\s+\*\*(.+?)\*\*/g)]
           .map((m) => m[1].trim())
@@ -221,7 +227,9 @@ export function ChatMessage({
 
   const allTitleSuggestions = titleSuggestions.length > 0 ? titleSuggestions : legacyTitleSuggestions;
 
-  const draftOnly = !displayContent && !!draftId;
+  // For backward-compatible logic (Show more, draftOnly), treat contentBefore as the primary display content
+  const displayContent = contentBefore || (titleSuggestions.length === 0 ? contentAfter : "");
+  const draftOnly = !displayContent && !contentAfter && !allTitleSuggestions.length && !!draftId;
   const isLong = countWords(displayContent) > SHOW_MORE_WORD_THRESHOLD;
   const truncatedContent = isLong ? truncateAtWords(displayContent, TRUNCATE_WORD_COUNT) : displayContent;
 
@@ -273,8 +281,16 @@ export function ChatMessage({
         {allTitleSuggestions.length > 0 && onApplyTitle && (
           <TitleSuggestionChips titles={allTitleSuggestions} onApply={onApplyTitle} />
         )}
+        {contentAfter && (
+          <div
+            onClick={handleContentClick}
+            className={`description-content chat-markdown ${allTitleSuggestions.length > 0 ? "mt-2" : ""}`}
+          >
+            {renderMarkdown(contentAfter)}
+          </div>
+        )}
         {draftId && (
-          <div className={`${displayContent || allTitleSuggestions.length > 0 ? "mt-2.5" : ""} rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]`}>
+          <div className={`${displayContent || contentAfter || allTitleSuggestions.length > 0 ? "mt-2.5" : ""} rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]`}>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -312,7 +328,7 @@ export function ChatMessage({
         )}
       </div>
 
-      {!isUser && (displayContent || draftId) && (
+      {!isUser && (displayContent || contentAfter || draftId || allTitleSuggestions.length > 0) && (
         <MessageInfoButton
           message={message}
           logsTaskId={logsTaskId ?? null}
