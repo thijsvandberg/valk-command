@@ -12,6 +12,8 @@ interface CopyMarkdownButtonProps {
   todoTickets: StakeholderTicket[];
   upcomingTickets: StakeholderTicket[];
   nextSprintName: string | null;
+  aiNarrative?: string | null;
+  aiRisks?: string[];
 }
 
 export function CopyMarkdownButton({
@@ -21,6 +23,8 @@ export function CopyMarkdownButton({
   todoTickets,
   upcomingTickets,
   nextSprintName,
+  aiNarrative,
+  aiRisks,
 }: CopyMarkdownButtonProps) {
   const [copied, setCopied] = useState(false);
 
@@ -32,6 +36,8 @@ export function CopyMarkdownButton({
       todoTickets,
       upcomingTickets,
       nextSprintName,
+      aiNarrative,
+      aiRisks,
     );
     try {
       await navigator.clipboard.writeText(md);

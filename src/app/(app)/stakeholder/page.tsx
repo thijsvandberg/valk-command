@@ -1,17 +1,19 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect, useRef } from "react";
+import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
-import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, CloudDownload, History } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, CloudDownload, History, Sparkles } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { toStakeholderTickets, toStakeholderSprint } from "@/lib/stakeholder-data";
+import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload } from "@/lib/stakeholder-data";
 import { SprintOverviewCard } from "@/components/stakeholder/SprintOverviewCard";
 import { CopyMarkdownButton } from "@/components/stakeholder/CopyMarkdownButton";
 import { VelocitySparkline } from "@/components/stakeholder/VelocitySparkline";
 import { useVelocityData } from "@/hooks/useVelocityData";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { AiInsightsPanel, parseBriefingOutput } from "@/components/stakeholder/AiInsightsPanel";
+import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
 import {
   ViewHeader,
   ViewHeaderTitle,
@@ -100,6 +102,13 @@ function StakeholderView() {
   const [lastUpdatedDisplay, setLastUpdatedDisplay] = useState<string>("Never");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingHistory, setIsSyncingHistory] = useState(false);
+
+  // AI Insights state
+  const briefing = useWorkspaceTask();
+  const [briefingNarrative, setBriefingNarrative] = useState<string | null>(null);
+  const [briefingRisks, setBriefingRisks] = useState<string[]>([]);
+  const [briefingDismissed, setBriefingDismissed] = useState(false);
+  const prevSprintIdRef = useRef<number | null>(null);
 
   const availableTeams = useMemo<string[]>(() => {
     if (!sprints) return [];
@@ -222,6 +231,28 @@ function StakeholderView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSprint?.id, selectedTeamPrefix]);
 
+  // Parse briefing output when agent completes
+  useEffect(() => {
+    if (briefing.status === "completed" && briefing.output) {
+      const { narrative, risks } = parseBriefingOutput(briefing.output);
+      setBriefingNarrative(narrative);
+      setBriefingRisks(risks);
+    }
+  }, [briefing.status, briefing.output]);
+
+  // Reset briefing state when sprint changes
+  useEffect(() => {
+    if (currentSprint?.id === undefined) return;
+    if (prevSprintIdRef.current !== null && prevSprintIdRef.current !== currentSprint.id) {
+      briefing.reset();
+      setBriefingNarrative(null);
+      setBriefingRisks([]);
+      setBriefingDismissed(false);
+    }
+    prevSprintIdRef.current = currentSprint.id;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSprint?.id]);
+
   // Fetch current sprint tickets
   const ticketKey = currentSprint
     ? `/api/tickets?sprintId=${encodeURIComponent(String(currentSprint.id))}`
@@ -277,6 +308,18 @@ function StakeholderView() {
   );
   const todoTickets = allTickets.filter((t) => t.status === "To Do");
   const deprecatedTickets = allTickets.filter((t) => t.status === "Deprecated");
+
+  const handleGenerateInsights = useCallback(() => {
+    if (!stakeholderSprint) return;
+    setBriefingDismissed(false);
+    setBriefingNarrative(null);
+    setBriefingRisks([]);
+    briefing.submitAndStream(
+      "stakeholder-briefing",
+      buildBriefingPayload(stakeholderSprint, doneTickets, inProgressTickets, todoTickets),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stakeholderSprint, doneTickets, inProgressTickets, todoTickets]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -334,14 +377,28 @@ function StakeholderView() {
               </button>
             )}
             {!isCompareMode && stakeholderSprint && (
-              <CopyMarkdownButton
-                sprint={stakeholderSprint}
-                doneTickets={doneTickets}
-                inProgressTickets={inProgressTickets}
-                todoTickets={todoTickets}
-                upcomingTickets={[]}
-                nextSprintName={null}
-              />
+              <>
+                <button
+                  type="button"
+                  onClick={handleGenerateInsights}
+                  disabled={briefing.status === "submitting" || briefing.status === "streaming"}
+                  title="Generate AI insights for this sprint"
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  <Sparkles size={12} strokeWidth={1.5} />
+                  Generate insights
+                </button>
+                <CopyMarkdownButton
+                  sprint={stakeholderSprint}
+                  doneTickets={doneTickets}
+                  inProgressTickets={inProgressTickets}
+                  todoTickets={todoTickets}
+                  upcomingTickets={[]}
+                  nextSprintName={null}
+                  aiNarrative={briefingDismissed ? null : briefingNarrative}
+                  aiRisks={briefingDismissed ? [] : briefingRisks}
+                />
+              </>
             )}
           </div>
         }
@@ -491,6 +548,18 @@ function StakeholderView() {
             ) : (
               // Single sprint view
               <div className="space-y-6">
+                {/* AI Insights panel: shown above ticket sections when not dismissed */}
+                {briefing.status !== "idle" && !briefingDismissed && (
+                  <AiInsightsPanel
+                    status={briefing.status}
+                    progressText={briefing.progressText}
+                    narrative={briefingNarrative}
+                    risks={briefingRisks}
+                    error={briefing.error}
+                    onDismiss={() => setBriefingDismissed(true)}
+                    onRetry={handleGenerateInsights}
+                  />
+                )}
                 {/* Carry-over summary */}
                 {isCarryOverLoading && previousSprint && (
                   <p className="flex items-center gap-1.5 text-xs text-white/20">
