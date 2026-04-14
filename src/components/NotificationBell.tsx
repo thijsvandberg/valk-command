@@ -25,6 +25,56 @@ function formatTimeAgo(iso: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+function formatExactTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function TimeAgo({ iso }: { iso: string }) {
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos] = useState<"above" | "below">("above");
+  const ref = useRef<HTMLSpanElement>(null);
+
+  const handleMouseEnter = () => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      // Show above unless there's not enough room
+      setPos(rect.top > 60 ? "above" : "below");
+    }
+    setVisible(true);
+  };
+
+  return (
+    <span
+      ref={ref}
+      className="relative inline-block"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setVisible(false)}
+    >
+      <span className="text-[10px] text-white/20 tabular-nums cursor-default select-none">
+        {formatTimeAgo(iso)}
+      </span>
+      {visible && (
+        <span
+          className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-[11px] text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+            pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          }`}
+        >
+          {formatExactTime(iso)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function notificationIcon(type: string) {
   switch (type) {
     case "deployment":
@@ -153,16 +203,14 @@ export function NotificationBell() {
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] text-white/60 leading-relaxed">{n.message}</p>
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="text-[10px] text-white/20 tabular-nums">
-                        {formatTimeAgo(n.createdAt)}
-                      </span>
+                      <TimeAgo iso={n.createdAt} />
                       {n.jiraKey && (
                         <Link
                           href={`/tickets/${n.jiraKey}`}
                           onClick={() => setOpen(false)}
-                          className="text-[10px] font-mono text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                          className="max-w-[180px] truncate text-[10px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
                         >
-                          {n.jiraKey}
+                          {n.jiraTitle ?? n.jiraKey}
                         </Link>
                       )}
                       {n.linkUrl && (

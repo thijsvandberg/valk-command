@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { alert } from "@/db/schema";
+import { alert, ticket } from "@/db/schema";
 import { desc, eq, lt, sql } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
 
@@ -17,8 +17,19 @@ export async function GET(request: Request) {
   const conditions = unreadOnly ? eq(alert.read, false) : undefined;
 
   const rows = db
-    .select()
+    .select({
+      id: alert.id,
+      type: alert.type,
+      jiraKey: alert.jiraKey,
+      message: alert.message,
+      createdAt: alert.createdAt,
+      read: alert.read,
+      category: alert.category,
+      linkUrl: alert.linkUrl,
+      jiraTitle: ticket.title,
+    })
     .from(alert)
+    .leftJoin(ticket, eq(alert.jiraKey, ticket.jiraKey))
     .where(conditions)
     .orderBy(desc(alert.createdAt))
     .limit(limit)

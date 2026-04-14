@@ -160,6 +160,7 @@ interface NotificationResponse {
     id: string;
     type: string;
     jiraKey: string | null;
+    jiraTitle: string | null;
     message: string;
     createdAt: string;
     read: boolean;
