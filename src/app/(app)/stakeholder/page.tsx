@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Users, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2 } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { toStakeholderTickets, toStakeholderSprint } from "@/lib/stakeholder-data";
@@ -18,19 +18,21 @@ import {
   ViewHeaderDivider,
 } from "@/components/shared/ViewHeader";
 
-function useCarryOver(
-  currentTickets: Ticket[] | undefined,
-  previousSprintId: number | null,
-): { carriedKeys: Set<string>; previousSprintName: string | null; isLoading: boolean } {
+function usePreviousSprintTickets(previousSprintId: number | null) {
   const key = previousSprintId !== null
     ? `/api/tickets?sprintId=${encodeURIComponent(String(previousSprintId))}`
     : null;
-  const { data: prevTickets, isLoading } = useSWR<Ticket[]>(key, fetcher, {
+  return useSWR<Ticket[]>(key, fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 30000,
   });
+}
 
-  const carriedKeys = useMemo(() => {
+function useCarryOver(
+  currentTickets: Ticket[] | undefined,
+  prevTickets: Ticket[] | undefined,
+): Set<string> {
+  return useMemo(() => {
     if (!currentTickets || !prevTickets) return new Set<string>();
     const prevKeys = new Set(prevTickets.map((t) => t.key.toLowerCase()));
     const carried = new Set<string>();
@@ -39,8 +41,6 @@ function useCarryOver(
     }
     return carried;
   }, [currentTickets, prevTickets]);
-
-  return { carriedKeys, previousSprintName: null, isLoading };
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
@@ -137,12 +137,26 @@ function StakeholderView() {
   const currentSprint = teamSprints[selectedIndex] ?? null;
   const previousSprint = selectedIndex > 0 ? teamSprints[selectedIndex - 1] ?? null : null;
 
+  const isCompareMode = searchParams.get("compare") === "1" && previousSprint !== null;
+
   function updateUrl(team: string, sprintId: number) {
     sessionSet(SESSION_KEY_TEAM, team);
     sessionSet(SESSION_KEY_SPRINT, String(sprintId));
     const params = new URLSearchParams();
     params.set("team", team);
     params.set("sprintId", String(sprintId));
+    // Preserve compare param when navigating
+    if (isCompareMode) params.set("compare", "1");
+    router.replace(`/stakeholder?${params.toString()}`);
+  }
+
+  function toggleCompareMode() {
+    const params = new URLSearchParams(searchParams.toString());
+    if (isCompareMode) {
+      params.delete("compare");
+    } else {
+      params.set("compare", "1");
+    }
     router.replace(`/stakeholder?${params.toString()}`);
   }
 
@@ -184,10 +198,29 @@ function StakeholderView() {
     },
   });
 
-  const { carriedKeys, isLoading: isCarryOverLoading } = useCarryOver(
-    rawTickets,
+  // Previous sprint tickets: shared by carry-over detection and comparison mode
+  const { data: prevRawTickets, isLoading: isPrevLoading } = usePreviousSprintTickets(
     previousSprint?.id ?? null,
   );
+
+  const carriedKeys = useCarryOver(rawTickets, prevRawTickets);
+  const isCarryOverLoading = isPrevLoading && previousSprint !== null;
+
+  // Previous sprint data for comparison panel
+  const prevStakeholderSprint = useMemo(
+    () => (previousSprint ? toStakeholderSprint(previousSprint) : null),
+    [previousSprint],
+  );
+  const prevAllTickets = useMemo(
+    () => (prevRawTickets ? toStakeholderTickets(prevRawTickets) : []),
+    [prevRawTickets],
+  );
+  const prevDoneTickets = prevAllTickets.filter((t) => t.status === "Completed");
+  const prevInProgressTickets = prevAllTickets.filter(
+    (t) => t.status === "In Progress" || t.status === "In Review",
+  );
+  const prevTodoTickets = prevAllTickets.filter((t) => t.status === "To Do");
+  const prevDeprecatedTickets = prevAllTickets.filter((t) => t.status === "Deprecated");
 
   // Last 5 sprints for velocity sparkline (including current)
   const velocitySprints = useMemo(() => {
@@ -231,7 +264,24 @@ function StakeholderView() {
             {isLoading && (
               <RefreshCw size={12} strokeWidth={1.5} className="animate-spin text-white/20" />
             )}
-            {stakeholderSprint && (
+            {previousSprint && (
+              <button
+                type="button"
+                onClick={toggleCompareMode}
+                className={[
+                  "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors duration-150 cursor-pointer",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
+                  isCompareMode
+                    ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
+                    : "bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60",
+                ].join(" ")}
+                aria-label={isCompareMode ? "Exit comparison mode" : "Compare with previous sprint"}
+              >
+                <Columns2 size={12} strokeWidth={1.5} />
+                Compare
+              </button>
+            )}
+            {!isCompareMode && stakeholderSprint && (
               <CopyMarkdownButton
                 sprint={stakeholderSprint}
                 doneTickets={doneTickets}
@@ -278,7 +328,7 @@ function StakeholderView() {
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                disabled={selectedIndex === 0}
+                disabled={selectedIndex === 0 || isCompareMode}
                 className={navBtnClass}
                 aria-label="Previous sprint"
               >
@@ -301,7 +351,7 @@ function StakeholderView() {
               <button
                 type="button"
                 onClick={() => navigate(1)}
-                disabled={selectedIndex === teamSprints.length - 1}
+                disabled={selectedIndex === teamSprints.length - 1 || isCompareMode}
                 className={navBtnClass}
                 aria-label="Next sprint"
               >
@@ -319,41 +369,98 @@ function StakeholderView() {
         ) : !stakeholderSprint ? (
           <LoadingState label="No sprint selected" />
         ) : (
-          <div className="mx-auto max-w-5xl space-y-10">
+          <div className="mx-auto max-w-7xl space-y-10">
+            {/* Sprint heading + sparkline */}
             <div className="space-y-3">
               <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/25">
                 Sprint overview
               </p>
-              <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
-                {stakeholderSprint.name}
-              </h1>
+              {!isCompareMode && (
+                <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
+                  {stakeholderSprint.name}
+                </h1>
+              )}
               <VelocitySparkline
                 data={velocityData ?? []}
                 isLoading={isVelocityLoading}
               />
             </div>
 
-            {/* Carry-over summary */}
-            {isCarryOverLoading && previousSprint && (
-              <p className="flex items-center gap-1.5 text-xs text-white/20">
-                <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
-                Loading carry-over data...
-              </p>
-            )}
-            {!isCarryOverLoading && carriedKeys.size > 0 && previousSprint && (
-              <p className="text-xs text-amber-400/60">
-                {carriedKeys.size} ticket{carriedKeys.size === 1 ? "" : "s"} carried from {previousSprint.name}
-              </p>
-            )}
+            {isCompareMode && prevStakeholderSprint ? (
+              // Two-panel comparison layout
+              <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+                {/* Previous sprint panel */}
+                <div className="space-y-6 overflow-auto">
+                  <h2 className="text-lg font-semibold tracking-tight text-white/60">
+                    {prevStakeholderSprint.name}
+                    <span className="ml-2 text-xs font-normal text-white/25">Previous</span>
+                  </h2>
+                  {isPrevLoading ? (
+                    <LoadingState label="Loading previous sprint..." variant="spinner" />
+                  ) : (
+                    <SprintOverviewCard
+                      sprint={prevStakeholderSprint}
+                      doneTickets={prevDoneTickets}
+                      inProgressTickets={prevInProgressTickets}
+                      todoTickets={prevTodoTickets}
+                      deprecatedTickets={prevDeprecatedTickets}
+                    />
+                  )}
+                </div>
 
-            <SprintOverviewCard
-              sprint={stakeholderSprint}
-              doneTickets={doneTickets}
-              inProgressTickets={inProgressTickets}
-              todoTickets={todoTickets}
-              deprecatedTickets={deprecatedTickets}
-              carriedKeys={carriedKeys.size > 0 ? carriedKeys : undefined}
-            />
+                {/* Current sprint panel */}
+                <div className="space-y-6 overflow-auto">
+                  <h2 className="text-lg font-semibold tracking-tight text-white/90">
+                    {stakeholderSprint.name}
+                    <span className="ml-2 text-xs font-normal text-white/25">Current</span>
+                  </h2>
+                  {/* Carry-over summary (shown in current panel) */}
+                  {isCarryOverLoading && (
+                    <p className="flex items-center gap-1.5 text-xs text-white/20">
+                      <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
+                      Loading carry-over data...
+                    </p>
+                  )}
+                  {!isCarryOverLoading && carriedKeys.size > 0 && (
+                    <p className="text-xs text-amber-400/60">
+                      {carriedKeys.size} ticket{carriedKeys.size === 1 ? "" : "s"} carried from {previousSprint?.name}
+                    </p>
+                  )}
+                  <SprintOverviewCard
+                    sprint={stakeholderSprint}
+                    doneTickets={doneTickets}
+                    inProgressTickets={inProgressTickets}
+                    todoTickets={todoTickets}
+                    deprecatedTickets={deprecatedTickets}
+                    carriedKeys={carriedKeys.size > 0 ? carriedKeys : undefined}
+                  />
+                </div>
+              </div>
+            ) : (
+              // Single sprint view
+              <div className="space-y-6">
+                {/* Carry-over summary */}
+                {isCarryOverLoading && previousSprint && (
+                  <p className="flex items-center gap-1.5 text-xs text-white/20">
+                    <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
+                    Loading carry-over data...
+                  </p>
+                )}
+                {!isCarryOverLoading && carriedKeys.size > 0 && previousSprint && (
+                  <p className="text-xs text-amber-400/60">
+                    {carriedKeys.size} ticket{carriedKeys.size === 1 ? "" : "s"} carried from {previousSprint.name}
+                  </p>
+                )}
+                <SprintOverviewCard
+                  sprint={stakeholderSprint}
+                  doneTickets={doneTickets}
+                  inProgressTickets={inProgressTickets}
+                  todoTickets={todoTickets}
+                  deprecatedTickets={deprecatedTickets}
+                  carriedKeys={carriedKeys.size > 0 ? carriedKeys : undefined}
+                />
+              </div>
+            )}
 
             <p className="text-xs text-white/20">Last updated: {lastUpdatedDisplay}</p>
           </div>
