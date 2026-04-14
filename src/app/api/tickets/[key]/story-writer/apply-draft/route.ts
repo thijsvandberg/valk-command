@@ -5,7 +5,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extractStoryDrafts } from "@/lib/story-draft-parser";
 import { agentFetch } from "@/lib/agent-fetch";
-import { createNotification } from "@/lib/notifications";
+import { createOrUpdateNotification } from "@/lib/notifications";
 import { logActivity } from "@/lib/activity-logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
@@ -115,7 +115,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     summary: `Draft saved for ${key}`,
   });
 
-  createNotification(
+  createOrUpdateNotification(
     "story-writer",
     `Draft ready for ${key}`,
     { category: "story-writer", jiraKey: key },

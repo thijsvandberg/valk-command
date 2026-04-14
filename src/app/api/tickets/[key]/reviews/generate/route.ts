@@ -173,7 +173,7 @@ export async function POST(
     createNotification(
       "story-writer",
       `Low quality score (${result.overallScore}) for ${key}`,
-      { category: "story-writer", jiraKey: key },
+      { category: "story-writer", jiraKey: key, linkUrl: `/tickets/${key}` },
     );
   }
 

@@ -19,6 +19,7 @@ import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { defineTask, type TaskResult } from "@/lib/scheduler";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
+import { createNotification } from "@/lib/notifications";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -105,6 +106,16 @@ async function runIncrementalSync(): Promise<TaskResult> {
       completedAt: new Date().toISOString(),
     });
 
+    // Notify only when tickets were actually updated — not on no-op runs
+    if (results.length > 0) {
+      const suffix = remaining > 0 ? ` (${remaining} more pending)` : "";
+      createNotification(
+        "sync",
+        `Jira sync: ${results.length} ticket${results.length === 1 ? "" : "s"} updated${suffix}`,
+        { category: "sync" },
+      );
+    }
+
     return {
       count: results.length,
       checked: changed.length,
@@ -118,6 +129,7 @@ async function runIncrementalSync(): Promise<TaskResult> {
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Incremental sync failed:", message);
+    createNotification("sync", `Jira sync failed: ${message}`, { category: "sync" });
     return { error: message };
   } finally {
     unregisterSync(syncId);

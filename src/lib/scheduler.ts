@@ -13,6 +13,7 @@
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { createNotification } from "@/lib/notifications";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -147,10 +148,14 @@ export async function tick(): Promise<TickResult> {
           results[task.name] = result;
           await setLastResult(task.name, result);
         } catch (err) {
+          const errMsg = err instanceof Error ? err.message : "Unknown error";
           console.error(`Scheduler: task "${task.name}" failed:`, err);
-          await setLastResult(task.name, {
-            error: err instanceof Error ? err.message : "Unknown error",
-          });
+          await setLastResult(task.name, { error: errMsg });
+          createNotification(
+            "scheduler",
+            `Scheduled task "${task.label}" failed: ${errMsg}`,
+            { category: "scheduler" },
+          );
         }
       }
     }
