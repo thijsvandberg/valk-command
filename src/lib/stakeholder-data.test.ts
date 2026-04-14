@@ -64,7 +64,11 @@ describe("toStakeholderTickets", () => {
 
   it("maps TO DO and unknown statuses to To Do", () => {
     expect(toStakeholderTickets([makeTicket({ jiraStatus: "TO DO" })])[0].status).toBe("To Do");
-    expect(toStakeholderTickets([makeTicket({ jiraStatus: "DEPRECATED" })])[0].status).toBe("To Do");
+    expect(toStakeholderTickets([makeTicket({ jiraStatus: "TO DO" })])[0].status).toBe("To Do");
+  });
+
+  it("maps DEPRECATED to Deprecated", () => {
+    expect(toStakeholderTickets([makeTicket({ jiraStatus: "DEPRECATED" })])[0].status).toBe("Deprecated");
   });
 
   it("preserves title, epic, storyPoints, and assignee name/initials", () => {
@@ -98,37 +102,57 @@ describe("toUpcomingTickets", () => {
 });
 
 describe("toStakeholderSprint", () => {
-  it("computes daysRemaining from endDate", () => {
+  it("computes workingDaysRemaining for active sprint (Mon-Fri only)", () => {
+    // 2025-04-14 is a Monday; end 2025-04-18 is a Friday → 5 working days
     const now = new Date("2025-04-14T00:00:00Z");
     const sprint = toStakeholderSprint(
-      { name: "Sprint 1", startDate: "2025-04-07T00:00:00Z", endDate: "2025-04-21T00:00:00Z" },
+      { name: "Sprint 1", state: "active", startDate: "2025-04-07T00:00:00Z", endDate: "2025-04-18T00:00:00Z" },
       now,
     );
-    expect(sprint.daysRemaining).toBe(7);
+    expect(sprint.workingDaysRemaining).toBe(5);
   });
 
-  it("sets daysRemaining to 0 for past sprints", () => {
+  it("sets workingDaysRemaining to 0 for active sprint whose end is in the past", () => {
     const now = new Date("2025-04-30T00:00:00Z");
     const sprint = toStakeholderSprint(
-      { name: "Sprint 1", startDate: "2025-04-07T00:00:00Z", endDate: "2025-04-14T00:00:00Z" },
+      { name: "Sprint 1", state: "active", startDate: "2025-04-07T00:00:00Z", endDate: "2025-04-14T00:00:00Z" },
       now,
     );
-    expect(sprint.daysRemaining).toBe(0);
+    expect(sprint.workingDaysRemaining).toBe(0);
   });
 
-  it("sets daysRemaining to null when no endDate", () => {
-    const sprint = toStakeholderSprint({ name: "Sprint 1", startDate: null, endDate: null });
-    expect(sprint.daysRemaining).toBeNull();
+  it("sets workingDaysRemaining to null for closed sprints", () => {
+    const sprint = toStakeholderSprint(
+      { name: "Sprint 1", state: "closed", startDate: "2025-04-07T00:00:00Z", endDate: "2025-04-14T00:00:00Z" },
+    );
+    expect(sprint.workingDaysRemaining).toBeNull();
+  });
+
+  it("sets workingDaysRemaining to null for future sprints", () => {
+    const sprint = toStakeholderSprint(
+      { name: "Sprint 1", state: "future", startDate: "2025-04-07T00:00:00Z", endDate: "2025-04-14T00:00:00Z" },
+    );
+    expect(sprint.workingDaysRemaining).toBeNull();
+  });
+
+  it("sets workingDaysRemaining to null when no endDate", () => {
+    const sprint = toStakeholderSprint({ name: "Sprint 1", state: "active", startDate: null, endDate: null });
+    expect(sprint.workingDaysRemaining).toBeNull();
+  });
+
+  it("exposes state on the sprint object", () => {
+    const sprint = toStakeholderSprint({ name: "Sprint 1", state: "active", startDate: null, endDate: null });
+    expect(sprint.state).toBe("active");
   });
 
   it("always sets goal to null (not in data model yet)", () => {
-    const sprint = toStakeholderSprint({ name: "Sprint 1", startDate: null, endDate: null });
+    const sprint = toStakeholderSprint({ name: "Sprint 1", state: "active", startDate: null, endDate: null });
     expect(sprint.goal).toBeNull();
   });
 });
 
 describe("buildMarkdownSummary", () => {
-  const sprint = { name: "Sprint 5", startDate: null, endDate: null, daysRemaining: null, goal: null };
+  const sprint = { name: "Sprint 5", state: "active", startDate: null, endDate: null, workingDaysRemaining: null, goal: null };
 
   const done = [
     { title: "Feature A", epic: "BT: UPSELL", status: "Completed" as const, storyPoints: 5, assignee: null, jiraKey: null },

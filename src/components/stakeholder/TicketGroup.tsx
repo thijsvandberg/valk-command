@@ -14,6 +14,7 @@ function StatusDot({ status }: { status: StakeholderTicket["status"] }) {
     "In Progress": "bg-[var(--color-brand-400)]/80",
     "In Review": "bg-violet-400/80",
     "To Do": "bg-white/20",
+    Deprecated: "bg-white/10",
   };
   return <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${colors[status]}`} />;
 }

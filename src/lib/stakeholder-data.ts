@@ -3,7 +3,7 @@ import type { Ticket } from "@/types/ticket";
 export interface StakeholderTicket {
   title: string;
   epic: string | null;
-  status: "Completed" | "In Progress" | "In Review" | "To Do";
+  status: "Completed" | "In Progress" | "In Review" | "To Do" | "Deprecated";
   storyPoints: number | null;
   assignee: { name: string; initials: string } | null;
   // Null for main sprint sections; set only for upcoming section (reveal via toggle)
@@ -12,9 +12,12 @@ export interface StakeholderTicket {
 
 export interface StakeholderSprint {
   name: string;
+  /** Jira state: "active" | "future" | "closed" */
+  state: string;
   startDate: string | null;
   endDate: string | null;
-  daysRemaining: number | null;
+  /** Number of Mon–Fri working days from today to end date. Null for closed/future sprints. */
+  workingDaysRemaining: number | null;
   goal: string | null;
 }
 
@@ -26,9 +29,27 @@ function toHumanStatus(jiraStatus: string): StakeholderTicket["status"] {
       return "In Progress";
     case "TEST":
       return "In Review";
+    case "DEPRECATED":
+      return "Deprecated";
     default:
       return "To Do";
   }
+}
+
+function countWorkingDaysRemaining(endDate: Date, now: Date): number {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  if (end < today) return 0;
+  let count = 0;
+  const d = new Date(today);
+  while (d <= end) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
 }
 
 export function toStakeholderTickets(tickets: Ticket[]): StakeholderTicket[] {
@@ -55,20 +76,21 @@ export function toUpcomingTickets(tickets: Ticket[]): StakeholderTicket[] {
 }
 
 export function toStakeholderSprint(
-  raw: { name: string; startDate: string | null; endDate: string | null },
+  raw: { name: string; state: string; startDate: string | null; endDate: string | null },
   now: Date = new Date(),
 ): StakeholderSprint {
-  let daysRemaining: number | null = null;
-  if (raw.endDate) {
-    const end = new Date(raw.endDate);
-    const diff = end.getTime() - now.getTime();
-    daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }
+  // Only show days remaining for the active sprint
+  const workingDaysRemaining =
+    raw.state === "active" && raw.endDate
+      ? countWorkingDaysRemaining(new Date(raw.endDate), now)
+      : null;
+
   return {
     name: raw.name,
+    state: raw.state,
     startDate: raw.startDate,
     endDate: raw.endDate,
-    daysRemaining,
+    workingDaysRemaining,
     goal: null,
   };
 }
@@ -105,8 +127,8 @@ export function buildMarkdownSummary(
   if (sprint.startDate && sprint.endDate) {
     dateParts.push(`${formatDate(sprint.startDate)} – ${formatDate(sprint.endDate)}`);
   }
-  if (sprint.daysRemaining !== null) {
-    dateParts.push(`${sprint.daysRemaining} day${sprint.daysRemaining === 1 ? "" : "s"} remaining`);
+  if (sprint.workingDaysRemaining !== null) {
+    dateParts.push(`${sprint.workingDaysRemaining} working day${sprint.workingDaysRemaining === 1 ? "" : "s"} remaining`);
   }
   if (dateParts.length > 0) lines.push(dateParts.join(" | "));
 

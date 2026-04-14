@@ -102,6 +102,7 @@ const MOCK_TICKETS = [
 beforeEach(() => {
   mockSearchParams = new URLSearchParams();
   mockReplace.mockClear();
+  sessionStorage.clear();
   // ViewHeader portals into this element — create it so the portal renders in tests
   if (!document.getElementById("view-header-portal")) {
     const portal = document.createElement("div");

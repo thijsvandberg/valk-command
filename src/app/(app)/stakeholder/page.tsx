@@ -18,6 +18,8 @@ import {
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 const REFRESH_INTERVAL = 5 * 60 * 1000;
+const SESSION_KEY_TEAM = "stakeholder_team";
+const SESSION_KEY_SPRINT = "stakeholder_sprintId";
 
 function formatRelativeTime(date: Date | null): string {
   if (!date) return "Never";
@@ -40,6 +42,13 @@ function extractSprintNumber(sprintName: string): number {
   return match ? parseInt(match[1], 10) : Infinity;
 }
 
+function sessionGet(key: string): string | null {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+function sessionSet(key: string, value: string): void {
+  try { sessionStorage.setItem(key, value); } catch {}
+}
+
 const navBtnClass =
   "flex items-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
@@ -51,8 +60,12 @@ function StakeholderView() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const urlTeam = searchParams.get("team");
-  const urlSprintId = searchParams.get("sprintId") ? Number(searchParams.get("sprintId")) : null;
+  // URL params take precedence; session storage is the fallback for within-session memory
+  const urlTeam = searchParams.get("team") ?? sessionGet(SESSION_KEY_TEAM);
+  const urlSprintId = (() => {
+    const raw = searchParams.get("sprintId") ?? sessionGet(SESSION_KEY_SPRINT);
+    return raw ? Number(raw) : null;
+  })();
 
   const lastUpdatedRef = useRef<Date | null>(null);
   const [lastUpdatedDisplay, setLastUpdatedDisplay] = useState<string>("Never");
@@ -67,7 +80,7 @@ function StakeholderView() {
     return Array.from(prefixes).sort();
   }, [sprints]);
 
-  // Team: URL param takes precedence, then fall back to team of the active sprint
+  // Team: URL/session param takes precedence, then fall back to team of the active sprint
   const selectedTeamPrefix = useMemo<string | null>(() => {
     if (urlTeam) return urlTeam;
     if (!sprints) return null;
@@ -84,7 +97,7 @@ function StakeholderView() {
       .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
   }, [sprints, selectedTeamPrefix]);
 
-  // Sprint index: URL sprintId → active sprint → first
+  // Sprint index: URL/session sprintId → active sprint → first
   const selectedIndex = useMemo<number>(() => {
     if (urlSprintId !== null) {
       const idx = teamSprints.findIndex((s) => s.id === urlSprintId);
@@ -97,6 +110,8 @@ function StakeholderView() {
   const currentSprint = teamSprints[selectedIndex] ?? null;
 
   function updateUrl(team: string, sprintId: number) {
+    sessionSet(SESSION_KEY_TEAM, team);
+    sessionSet(SESSION_KEY_SPRINT, String(sprintId));
     const params = new URLSearchParams();
     params.set("team", team);
     params.set("sprintId", String(sprintId));
@@ -121,10 +136,9 @@ function StakeholderView() {
     if (sprint && selectedTeamPrefix) updateUrl(selectedTeamPrefix, sprint.id);
   }
 
-  // Set URL defaults on first load (no params in URL)
+  // Sync URL and session whenever selection is known (handles first load with no params)
   useEffect(() => {
     if (!currentSprint || !selectedTeamPrefix) return;
-    if (urlTeam && urlSprintId) return;
     updateUrl(selectedTeamPrefix, currentSprint.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSprint?.id, selectedTeamPrefix]);
@@ -157,6 +171,7 @@ function StakeholderView() {
     (t) => t.status === "In Progress" || t.status === "In Review",
   );
   const todoTickets = allTickets.filter((t) => t.status === "To Do");
+  const deprecatedTickets = allTickets.filter((t) => t.status === "Deprecated");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -213,7 +228,7 @@ function StakeholderView() {
           </>
         )}
 
-        {/* Sprint navigation: ← [sprint dropdown] [active badge] → */}
+        {/* Sprint navigation: ← [sprint dropdown] → */}
         {teamSprints.length > 0 && currentSprint && (
           <>
             <ViewHeaderDivider />
@@ -240,12 +255,6 @@ function StakeholderView() {
                   </option>
                 ))}
               </select>
-
-              {currentSprint.state === "active" && (
-                <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-brand-400)]/70">
-                  active
-                </span>
-              )}
 
               <button
                 type="button"
@@ -283,6 +292,7 @@ function StakeholderView() {
               doneTickets={doneTickets}
               inProgressTickets={inProgressTickets}
               todoTickets={todoTickets}
+              deprecatedTickets={deprecatedTickets}
             />
 
             <p className="text-xs text-white/20">Last updated: {lastUpdatedDisplay}</p>
