@@ -63,9 +63,9 @@ function extractTeamPrefix(sprintName: string): string | null {
   return match ? match[1] : null;
 }
 
-// Numeric suffix for sort: "BT: 133" → 133, "BT: TODO" → Infinity
+// First number after team prefix: "BT: 133" → 133, "BT: 130 - Align sidebars" → 130, "BT: TODO" → Infinity
 function extractSprintNumber(sprintName: string): number {
-  const match = sprintName.match(/(\d+)\s*$/);
+  const match = sprintName.match(/[: ]\s*(\d+)/);
   return match ? parseInt(match[1], 10) : Infinity;
 }
 
@@ -82,11 +82,6 @@ const navBtnClass =
 const selectClass =
   "rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer hover:border-white/[0.12] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
-// First number after team prefix: "BT: 130 - Align sidebars" → 130
-function sprintNum(name: string): number {
-  const m = name.match(/[: ]\s*(\d+)/);
-  return m ? parseInt(m[1], 10) : Infinity;
-}
 
 function StakeholderView() {
   const { data: sprints } = useJiraSprints();
@@ -207,7 +202,7 @@ function StakeholderView() {
     if (!selectedTeamPrefix || isSyncingHistory) return;
     const closedSprints = teamSprints
       .filter((s) => s.state === "closed")
-      .sort((a, b) => sprintNum(a.name) - sprintNum(b.name))
+      .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name))
       .slice(-5);
     if (closedSprints.length === 0) return;
     setIsSyncingHistory(true);
