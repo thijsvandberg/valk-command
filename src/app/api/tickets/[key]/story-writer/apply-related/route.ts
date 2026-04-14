@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { env } from "@/lib/env";
 import { jiraClient } from "@/lib/jira-client";
+import { logActivity } from "@/lib/activity-logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -249,6 +250,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       } catch { /* ignore */ }
     }
   }
+
+  await logActivity({
+    type: "story-writer",
+    scope: key,
+    summary: `Related story ${candidate.jiraKey} ${isLinked ? "linked" : "unlinked"} for ${key}`,
+  });
 
   const updated = await db
     .select()

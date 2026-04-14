@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { extractStoryDrafts } from "@/lib/story-draft-parser";
 import { agentFetch } from "@/lib/agent-fetch";
 import { createNotification } from "@/lib/notifications";
+import { logActivity } from "@/lib/activity-logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -107,6 +108,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (taskId) {
     fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key).catch(() => {});
   }
+
+  await logActivity({
+    type: "story-writer",
+    scope: key,
+    summary: `Draft saved for ${key}`,
+  });
 
   createNotification(
     "story-writer",

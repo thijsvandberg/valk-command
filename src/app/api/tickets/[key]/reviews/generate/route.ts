@@ -51,6 +51,13 @@ export async function POST(
   });
 
   if (!submitResult.ok) {
+    await logActivity({
+      type: source === "bulk-action" ? "bulk-action" : "review",
+      scope: key,
+      status: "failed",
+      summary: `Review submission failed for ${key}: ${submitResult.error.code}`,
+      errorDetail: JSON.stringify({ code: submitResult.error.code, error: submitResult.error.error, httpStatus: submitResult.status, retryCount: submitResult.retryCount }),
+    });
     return NextResponse.json(
       { error: submitResult.error.error, code: submitResult.error.code },
       { status: submitResult.status || 502 },
@@ -78,6 +85,13 @@ export async function POST(
     }
 
     if (pollResult.data.status === "failed") {
+      await logActivity({
+        type: source === "bulk-action" ? "bulk-action" : "review",
+        scope: key,
+        status: "failed",
+        summary: `Review task failed for ${key}`,
+        errorDetail: pollResult.data.error ?? "Agent review failed",
+      });
       return NextResponse.json(
         { error: pollResult.data.error ?? "Agent review failed" },
         { status: 502 },
@@ -86,6 +100,13 @@ export async function POST(
   }
 
   if (!output) {
+    await logActivity({
+      type: source === "bulk-action" ? "bulk-action" : "review",
+      scope: key,
+      status: "failed",
+      summary: `Review timed out for ${key}`,
+      errorDetail: "Polling exceeded 3-minute limit without a completed result",
+    });
     return NextResponse.json({ error: "Review timed out" }, { status: 504 });
   }
 

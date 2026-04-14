@@ -14,6 +14,11 @@ export interface AgentError {
 }
 
 export type AgentResult<T> =
+  | { ok: true; data: T; status: number; retryCount: number }
+  | { ok: false; error: AgentError; status: number; retryCount: number };
+
+// Internal type returned by singleFetch before retryCount is attached
+type SingleFetchResult<T> =
   | { ok: true; data: T; status: number }
   | { ok: false; error: AgentError; status: number };
 
@@ -52,7 +57,7 @@ function classifyNetworkError(err: unknown): AgentError {
   return { error: "Cannot reach workspace", code: "UNREACHABLE" };
 }
 
-function isRetryable(result: AgentResult<unknown>): boolean {
+function isRetryable(result: SingleFetchResult<unknown>): boolean {
   if (result.ok) return false;
   const { code } = result.error;
   if (code === "TIMEOUT" || code === "UNREACHABLE") return true;
@@ -109,14 +114,14 @@ export async function agentFetch<T = unknown>(
       await delay(delayMs);
     }
 
-    const result = await singleFetch<T>(path, method, body, timeout, extraHeaders);
+    const raw = await singleFetch<T>(path, method, body, timeout, extraHeaders);
 
-    if (result.ok) return result;
+    if (raw.ok) return { ...raw, retryCount: attempt };
 
-    lastResult = result;
+    lastResult = { ...raw, retryCount: attempt };
 
-    if (!isRetryable(result) || NON_RETRYABLE_STATUSES.has(result.status)) {
-      return result;
+    if (!isRetryable(raw) || NON_RETRYABLE_STATUSES.has(raw.status)) {
+      return lastResult;
     }
   }
 
@@ -129,7 +134,7 @@ async function singleFetch<T>(
   body: unknown,
   timeout: number,
   extraHeaders?: Record<string, string>,
-): Promise<AgentResult<T>> {
+): Promise<SingleFetchResult<T>> {
   try {
     const baseHeaders = agentHeaders();
     const mergedHeaders = extraHeaders ? { ...baseHeaders, ...extraHeaders } : baseHeaders;
@@ -205,17 +210,18 @@ export async function agentFetchStream(
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       if (res.status === 401 || res.status === 403) {
-        return { ok: false, error: classifyHttpError(res.status, text), status: res.status };
+        return { ok: false, error: classifyHttpError(res.status, text), status: res.status, retryCount: 0 };
       }
       return {
         ok: false,
         error: classifyHttpError(res.status, text),
         status: res.status,
+        retryCount: 0,
       };
     }
 
-    return { ok: true, data: res, status: res.status };
+    return { ok: true, data: res, status: res.status, retryCount: 0 };
   } catch (err) {
-    return { ok: false, error: classifyNetworkError(err), status: 0 };
+    return { ok: false, error: classifyNetworkError(err), status: 0, retryCount: 0 };
   }
 }

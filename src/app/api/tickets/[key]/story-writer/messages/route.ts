@@ -5,6 +5,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
 import { agentFetch, type AgentError } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { logActivity } from "@/lib/activity-logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -135,6 +136,9 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   interface TaskResponse { id?: string; error?: string }
 
+  const messageStart = Date.now();
+  const messageStartedAt = new Date().toISOString();
+
   if (skill === "find-related") {
     const result = await agentFetch<TaskResponse>("/api/tasks", {
       method: "POST",
@@ -149,8 +153,25 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     if (!result.ok) {
       await markMessageFailed(messageId);
+      await logActivity({
+        type: "story-writer",
+        scope: key,
+        status: "failed",
+        summary: `Story writer message failed for ${key}: ${result.error.code}`,
+        errorDetail: JSON.stringify({ code: result.error.code, error: result.error.error, httpStatus: result.status, retryCount: result.retryCount }),
+        durationMs: Date.now() - messageStart,
+        startedAt: messageStartedAt,
+      });
       return agentErrorResponse(result.error, result.status);
     }
+    await logActivity({
+      type: "story-writer",
+      scope: key,
+      status: "success",
+      summary: `Story writer message sent for ${key}`,
+      durationMs: Date.now() - messageStart,
+      startedAt: messageStartedAt,
+    });
     return taskCreatedResponse(messageId, result.data, isFirstMessage);
   }
 
@@ -165,8 +186,25 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     if (!result.ok) {
       await markMessageFailed(messageId);
+      await logActivity({
+        type: "story-writer",
+        scope: key,
+        status: "failed",
+        summary: `Story writer message failed for ${key}: ${result.error.code}`,
+        errorDetail: JSON.stringify({ code: result.error.code, error: result.error.error, httpStatus: result.status, retryCount: result.retryCount }),
+        durationMs: Date.now() - messageStart,
+        startedAt: messageStartedAt,
+      });
       return agentErrorResponse(result.error, result.status);
     }
+    await logActivity({
+      type: "story-writer",
+      scope: key,
+      status: "success",
+      summary: `Story writer message sent for ${key}`,
+      durationMs: Date.now() - messageStart,
+      startedAt: messageStartedAt,
+    });
     return taskCreatedResponse(messageId, result.data, isFirstMessage);
   }
 
@@ -182,9 +220,33 @@ export async function POST(request: Request, { params }: RouteContext) {
     },
   );
 
-  // Session lost on workspace side: recover
+  // Session lost on workspace side: log the 410, then attempt recovery as a sibling entry
   if (!result.ok && result.status === 410) {
+    await logActivity({
+      type: "story-writer",
+      scope: key,
+      status: "failed",
+      summary: `Story writer message failed for ${key}: session lost (410)`,
+      errorDetail: JSON.stringify({ code: result.error.code, error: result.error.error, httpStatus: 410, retryCount: result.retryCount }),
+      durationMs: Date.now() - messageStart,
+      startedAt: messageStartedAt,
+    });
+
+    const recoveryStart = Date.now();
+    const recoveryStartedAt = new Date().toISOString();
     const recovered = await recoverSession(session, key, content);
+
+    await logActivity({
+      type: "story-writer",
+      scope: key,
+      status: recovered.status === 201 ? "success" : "failed",
+      summary: recovered.status === 201
+        ? `Story writer session recovered for ${key}`
+        : `Story writer session recovery failed for ${key}`,
+      durationMs: Date.now() - recoveryStart,
+      startedAt: recoveryStartedAt,
+    });
+
     if (recovered.status !== 201) {
       await markMessageFailed(messageId);
     }
@@ -193,8 +255,25 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!result.ok) {
     await markMessageFailed(messageId);
+    await logActivity({
+      type: "story-writer",
+      scope: key,
+      status: "failed",
+      summary: `Story writer message failed for ${key}: ${result.error.code}`,
+      errorDetail: JSON.stringify({ code: result.error.code, error: result.error.error, httpStatus: result.status, retryCount: result.retryCount }),
+      durationMs: Date.now() - messageStart,
+      startedAt: messageStartedAt,
+    });
     return agentErrorResponse(result.error, result.status);
   }
+  await logActivity({
+    type: "story-writer",
+    scope: key,
+    status: "success",
+    summary: `Story writer message sent for ${key}`,
+    durationMs: Date.now() - messageStart,
+    startedAt: messageStartedAt,
+  });
   return taskCreatedResponse(messageId, result.data, isFirstMessage);
 }
 

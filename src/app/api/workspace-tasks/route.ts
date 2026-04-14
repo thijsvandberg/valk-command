@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function POST(request: Request) {
   const limited = applyRateLimit("workspace");
@@ -38,6 +39,13 @@ export async function POST(request: Request) {
   });
 
   if (!result.ok) {
+    await logActivity({
+      type: "story-writer",
+      scope: null,
+      status: "failed",
+      summary: `Agent task failed (skill: ${skillName}): ${result.error.code}`,
+      errorDetail: JSON.stringify({ code: result.error.code, error: result.error.error, httpStatus: result.status, retryCount: result.retryCount, skill: skillName }),
+    });
     return NextResponse.json(
       { error: result.error.error, code: result.error.code },
       { status: result.status || 502 },
