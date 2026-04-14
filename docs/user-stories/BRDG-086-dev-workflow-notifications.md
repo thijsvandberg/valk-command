@@ -1,6 +1,6 @@
 # BRDG-086: Dev Workflow Notifications
 
-**Status:** Open
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
@@ -13,36 +13,45 @@ The pipeline sync (`src/lib/pipeline-sync.ts`) already detects state changes and
 
 The Bitbucket integration is mature: pipeline sync runs every 5 minutes via lazy-cron, the `pipelineRun` table tracks state/previous state, and PR data is fetched per-ticket via the dev-info route. What's missing is broader notification coverage and PR event detection.
 
+## Implementation Plan
+
+1. **Refactor `processStateChanges()`** in `src/lib/pipeline-sync.ts`: remove `followedKeys` filter, remove early exit on missing `ticketKey` (allow branch-name fallback), split non-deployment and deployment notification paths.
+2. **Phase 1 (pipeline failures):** Notify on FAILED/STOPPED for all tickets. Use `run.ticketKey` in message when present, fall back to `run.branchName`. Skip SUCCESSFUL non-deployment pipelines. Use `createNotification()` from `src/lib/notifications.ts`.
+3. **Phase 2 (deployment notifications):** When `run.isDeployment`, notify on both SUCCESSFUL and FAILED/STOPPED for all tickets. Keep existing message format.
+4. **Phase 3 (PR notifications):** Add `processPRNotifications()` called from `syncPipelines()` after PR data is resolved. Dedup via SELECT before INSERT checking `linkUrl + category = 'pr'`. "PR opened" when new row with `prUrl` has no prior notification; "PR merged" when `sourceBranch` is set (merge commit).
+5. **Phase 4 (cleanup):** Remove `followedKeys` query and `followedTicket` import from `pipeline-sync.ts`.
+6. **Tests:** Create `src/lib/pipeline-sync.test.ts` — export `processStateChanges` and `processPRNotifications`, use `createTestDb()`, mock `@/db` and `@/lib/notifications`.
+
 ## Acceptance Criteria
 
 ### Phase 1: Broaden pipeline failure notifications
 
-- [ ] When a pipeline transitions from `IN_PROGRESS` to `FAILED` or `STOPPED`, create a notification regardless of whether the ticket is followed
-- [ ] Notification message: "Pipeline #{buildNumber} failed for {ticketKey}" (or "Pipeline #{buildNumber} failed on {branchName}" if no ticket key)
-- [ ] Category: `pipeline`, with `linkUrl` pointing to the Bitbucket pipeline page
-- [ ] Include `jiraKey` when available
-- [ ] Do NOT notify on successful pipeline completions (too noisy)
+- [x] When a pipeline transitions from `IN_PROGRESS` to `FAILED` or `STOPPED`, create a notification regardless of whether the ticket is followed
+- [x] Notification message: "Pipeline #{buildNumber} failed for {ticketKey}" (or "Pipeline #{buildNumber} failed on {branchName}" if no ticket key)
+- [x] Category: `pipeline`, with `linkUrl` pointing to the Bitbucket pipeline page
+- [x] Include `jiraKey` when available
+- [x] Do NOT notify on successful pipeline completions (too noisy)
 
 ### Phase 2: Deployment notifications
 
-- [ ] When a deployment pipeline completes (success or failure), create a notification for all sprint tickets, not just followed ones
-- [ ] Success message: "Deployed {ticketKey} to {environment}" with category `deployment`
-- [ ] Failure message: "Deployment to {environment} failed for {ticketKey}" with category `deployment`
-- [ ] Include `linkUrl` to the pipeline page and `jiraKey`
+- [x] When a deployment pipeline completes (success or failure), create a notification for all sprint tickets, not just followed ones
+- [x] Success message: "Deployed {ticketKey} to {environment}" with category `deployment`
+- [x] Failure message: "Deployment to {environment} failed for {ticketKey}" with category `deployment`
+- [x] Include `linkUrl` to the pipeline page and `jiraKey`
 
 ### Phase 3: PR notifications
 
-- [ ] Detect new PRs during pipeline sync (the sync already fetches PR data for merge commits)
-- [ ] When a new PR is first seen for a sprint ticket, create a notification: "PR opened: {prTitle}" with category `pr`
-- [ ] When a PR is merged (detected via pipeline merge commit data), create a notification: "PR merged: {prTitle}" with category `pr`
-- [ ] Include `linkUrl` to the Bitbucket PR page and `jiraKey`
-- [ ] Deduplicate: do not re-notify for PRs already seen (track by PR URL or build the check into the existing upsert logic)
+- [x] Detect new PRs during pipeline sync (the sync already fetches PR data for merge commits)
+- [x] When a new PR is first seen for a sprint ticket, create a notification: "PR opened: {prTitle}" with category `pr`
+- [x] When a PR is merged (detected via pipeline merge commit data), create a notification: "PR merged: {prTitle}" with category `pr`
+- [x] Include `linkUrl` to the Bitbucket PR page and `jiraKey`
+- [x] Deduplicate: do not re-notify for PRs already seen (track by PR URL or build the check into the existing upsert logic)
 
 ### Phase 4: Clean up followed-only logic
 
-- [ ] Remove the `followedKeys` filter from `processStateChanges()` so all pipeline state changes generate notifications
-- [ ] Keep the `followedTicket` table and feature for other uses (it may serve sprint board highlighting or other filtering)
-- [ ] Verify existing followed-ticket notification tests still pass
+- [x] Remove the `followedKeys` filter from `processStateChanges()` so all pipeline state changes generate notifications
+- [x] Keep the `followedTicket` table and feature for other uses (it may serve sprint board highlighting or other filtering)
+- [x] Verify existing followed-ticket notification tests still pass
 
 ## Technical Notes
 
