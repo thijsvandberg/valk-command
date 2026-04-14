@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import { TitleSuggestionChips } from "@/components/story-writer/TitleSuggestionChips";
 
 export const SHOW_MORE_WORD_THRESHOLD = 80;
 export const TRUNCATE_WORD_COUNT = 40;
@@ -145,6 +146,7 @@ export function ChatMessage({
   logsTaskId,
   onOpenLogs,
   onStoryKeyClick,
+  onApplyTitle,
 }: {
   message: Message;
   draftId?: string;
@@ -153,6 +155,7 @@ export function ChatMessage({
   logsTaskId?: string | null;
   onOpenLogs?: (taskId: string) => void;
   onStoryKeyClick?: (key: string) => void;
+  onApplyTitle?: (title: string) => void;
 }) {
   const isUser = message.role === "user";
   const [expanded, setExpanded] = useState(false);
@@ -189,8 +192,34 @@ export function ChatMessage({
     .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
     .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
     .replace(/<summary>[\s\S]*?<\/summary>/g, "")
+    .replace(/<title-suggestions>[\s\S]*?<\/title-suggestions>/g, "")
     .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "")
     .trim();
+
+  // Structured title suggestions (Phase 1 tag format)
+  const titleSuggestions = (() => {
+    if (message.role !== "assistant") return [];
+    const match = message.content.match(/<title-suggestions>([\s\S]*?)<\/title-suggestions>/);
+    if (!match) return [];
+    return match[1]
+      .split(/\n/)
+      .map((line) => line.replace(/^[\s]*[-*]\s*/, "").trim())
+      .filter((line) => line.length > 0);
+  })();
+
+  // Legacy fallback: "Here are N title options:" + numbered **bold** items
+  const legacyTitleSuggestions = titleSuggestions.length === 0 && message.role === "assistant"
+    ? (() => {
+        const pattern = /here are \d+ title (?:options|suggestions|ideas)[:\s]*\n((?:\d+\.\s+\*\*.+\*\*[^\n]*\n?)+)/i;
+        const match = message.content.match(pattern);
+        if (!match) return [];
+        return [...match[1].matchAll(/\d+\.\s+\*\*(.+?)\*\*/g)]
+          .map((m) => m[1].trim())
+          .filter(Boolean);
+      })()
+    : [];
+
+  const allTitleSuggestions = titleSuggestions.length > 0 ? titleSuggestions : legacyTitleSuggestions;
 
   const draftOnly = !displayContent && !!draftId;
   const isLong = countWords(displayContent) > SHOW_MORE_WORD_THRESHOLD;
@@ -241,8 +270,11 @@ export function ChatMessage({
             )}
           </div>
         )}
+        {allTitleSuggestions.length > 0 && onApplyTitle && (
+          <TitleSuggestionChips titles={allTitleSuggestions} onApply={onApplyTitle} />
+        )}
         {draftId && (
-          <div className={`${displayContent ? "mt-2.5" : ""} rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]`}>
+          <div className={`${displayContent || allTitleSuggestions.length > 0 ? "mt-2.5" : ""} rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]`}>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"

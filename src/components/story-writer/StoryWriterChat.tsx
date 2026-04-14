@@ -54,6 +54,7 @@ interface StoryWriterChatProps {
   draftContentMap: Record<string, string>;
   onViewDraft?: (draftId: string) => void;
   onOpenLogs?: (taskId: string) => void;
+  onApplyTitle?: (title: string) => void;
   issueType?: IssueType;
 }
 
@@ -126,6 +127,7 @@ export function StoryWriterChat({
   draftContentMap,
   onViewDraft,
   onOpenLogs,
+  onApplyTitle,
   issueType = "story",
 }: StoryWriterChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -301,6 +303,7 @@ export function StoryWriterChat({
                 logsTaskId={messageLogsTaskIds[idx]}
                 onOpenLogs={onOpenLogs}
                 onStoryKeyClick={onStoryKeyClick}
+                onApplyTitle={onApplyTitle}
               />
               {msg.role === "user" && msg.status === "failed" && (
                 <div className="flex justify-end mt-1">
