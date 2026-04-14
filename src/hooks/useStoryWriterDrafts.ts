@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { mutate as globalMutate } from "swr";
 import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
 
 interface DraftOptions {
@@ -186,6 +187,17 @@ export function useStoryWriterDrafts(options: DraftOptions) {
 
     if (result.success) {
       await refreshSession();
+      // Invalidate SWR caches so the ticket detail page shows fresh data after navigation
+      const keys = [ticketKey];
+      if (targetKey) keys.push(targetKey);
+      await Promise.all([
+        ...keys.map((k) => globalMutate(`/api/tickets/${encodeURIComponent(k)}`)),
+        globalMutate(
+          (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
+          undefined,
+          { revalidate: true },
+        ),
+      ]);
     }
 
     return result;

@@ -157,6 +157,20 @@ export function ChatMessage({
   const isUser = message.role === "user";
   const [expanded, setExpanded] = useState(false);
   const [draftExpanded, setDraftExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const handleContentClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!onStoryKeyClick) return;
@@ -194,6 +208,7 @@ export function ChatMessage({
       )}
 
       <div
+        ref={containerRef}
         className={`max-w-[85%] rounded-xl text-sm leading-[1.75] ${
           draftOnly
             ? ""
@@ -248,7 +263,14 @@ export function ChatMessage({
               </button>
             </div>
             {draftExpanded && draftContent && (
-              <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2.5 max-h-[300px] overflow-y-auto">
+              <div
+                className="border-t border-[var(--color-brand-500)]/10 px-3 py-2.5 overflow-y-auto"
+                style={{
+                  maxHeight: containerWidth > 0
+                    ? Math.min(Math.round(containerWidth * 0.65), typeof window !== "undefined" ? window.innerHeight - 180 : 600)
+                    : 300,
+                }}
+              >
                 <div className="description-content chat-markdown text-xs leading-[1.7] text-white/70">
                   {renderMarkdown(draftContent)}
                 </div>

@@ -18,6 +18,11 @@
   outline: none;
 }
 
+/* Borderless mode (story writer): reduced padding to match compact pane layout */
+.rich-editor-wrapper--borderless .tiptap {
+  padding: 0.25rem 1rem 1rem;
+}
+
 /* When the editor is used full-width (no card border), the surrounding page container
    provides all padding — zero out the tiptap's own padding to match .description-content */
 .rich-editor-wrapper--no-x-pad .tiptap {

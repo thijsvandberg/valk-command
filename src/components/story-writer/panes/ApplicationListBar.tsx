@@ -18,13 +18,13 @@ const APP_DEFS: Array<{
   label: string;
   icon: React.ReactNode;
 }> = [
-  { id: "chat", label: "Chat", icon: <MessageSquare size={11} strokeWidth={1.5} /> },
-  { id: "editor", label: "Editor", icon: <FileText size={11} strokeWidth={1.5} /> },
-  { id: "diff", label: "Diff", icon: <GitCompare size={11} strokeWidth={1.5} /> },
-  { id: "history", label: "History", icon: <History size={11} strokeWidth={1.5} /> },
-  { id: "draft-preview", label: "Draft preview", icon: <Eye size={11} strokeWidth={1.5} /> },
-  { id: "related", label: "Related", icon: <Network size={11} strokeWidth={1.5} /> },
-  { id: "story-preview", label: "Story preview", icon: <BookOpen size={11} strokeWidth={1.5} /> },
+  { id: "chat", label: "Chat", icon: <MessageSquare size={12} strokeWidth={1.5} /> },
+  { id: "editor", label: "Editor", icon: <FileText size={12} strokeWidth={1.5} /> },
+  { id: "diff", label: "Diff", icon: <GitCompare size={12} strokeWidth={1.5} /> },
+  { id: "history", label: "History", icon: <History size={12} strokeWidth={1.5} /> },
+  { id: "draft-preview", label: "Draft preview", icon: <Eye size={12} strokeWidth={1.5} /> },
+  { id: "related", label: "Related", icon: <Network size={12} strokeWidth={1.5} /> },
+  { id: "story-preview", label: "Story preview", icon: <BookOpen size={12} strokeWidth={1.5} /> },
 ];
 
 const PANE_COUNTS: (1 | 2 | 3)[] = [1, 2, 3];
@@ -36,7 +36,7 @@ export function ApplicationListBar() {
   const visibleApps: Array<{ id: PaneAppId; label: string; icon: React.ReactNode }> = [
     ...APP_DEFS,
     ...(writer.targetTicketKey
-      ? [{ id: "split-target" as PaneAppId, label: writer.targetTicketKey, icon: <Scissors size={11} strokeWidth={1.5} /> }]
+      ? [{ id: "split-target" as PaneAppId, label: writer.targetTicketKey, icon: <Scissors size={12} strokeWidth={1.5} /> }]
       : []),
   ];
 
@@ -84,9 +84,9 @@ export function ApplicationListBar() {
               <button
                 type="button"
                 onClick={() => handleAppClick(app.id)}
-                className={`flex h-7 items-center gap-1.5 rounded px-2 text-[10px] font-medium cursor-pointer select-none transition-colors duration-100 ${
+                className={`flex h-6 items-center gap-1.5 rounded px-1.5 text-[11px] font-medium cursor-pointer select-none transition-colors duration-100 ${
                   isActive
-                    ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/20"
+                    ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
                     : "text-white/35 hover:text-white/60 hover:bg-white/[0.04]"
                 }`}
               >

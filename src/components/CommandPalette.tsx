@@ -26,7 +26,7 @@ import type { Conversation } from "@/types/chat";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ResultCategory = "page" | "action" | "ticket" | "conversation";
+type ResultCategory = "page" | "action" | "ticket" | "conversation" | "direct-ticket";
 
 interface PageResult {
   category: "page";
@@ -62,7 +62,13 @@ interface ConversationResult {
   conversationId: string;
 }
 
-type PaletteResult = PageResult | ActionResult | TicketResult | ConversationResult;
+interface DirectTicketResult {
+  category: "direct-ticket";
+  id: string;
+  key: string;
+}
+
+type PaletteResult = PageResult | ActionResult | TicketResult | ConversationResult | DirectTicketResult;
 
 /* ------------------------------------------------------------------ */
 /*  Static data                                                        */
@@ -90,6 +96,29 @@ const pageFuse = new Fuse(PAGES, {
 });
 
 /* ------------------------------------------------------------------ */
+/*  Jira ticket key extraction                                         */
+/* ------------------------------------------------------------------ */
+
+function extractTicketKey(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // Plain ticket key: VPL-12345
+  const plainMatch = trimmed.match(/^([A-Z]{2,10}-\d+)$/i);
+  if (plainMatch) return plainMatch[1].toUpperCase();
+
+  // Jira browse URL: https://...atlassian.net/browse/VPL-12345
+  const browseMatch = trimmed.match(/atlassian\.net\/browse\/([A-Z]{2,10}-\d+)/i);
+  if (browseMatch) return browseMatch[1].toUpperCase();
+
+  // Jira board URL with selectedIssue param
+  const selectedMatch = trimmed.match(/selectedIssue=([A-Z]{2,10}-\d+)/i);
+  if (selectedMatch) return selectedMatch[1].toUpperCase();
+
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Status badge colors                                                */
 /* ------------------------------------------------------------------ */
 
@@ -111,6 +140,7 @@ const CATEGORY_LABELS: Record<ResultCategory, string> = {
   action: "Actions",
   ticket: "Tickets",
   conversation: "Conversations",
+  "direct-ticket": "Direct",
 };
 
 /* ------------------------------------------------------------------ */
@@ -254,7 +284,8 @@ export function CommandPalette() {
     if (!open) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (query.trim().length < 2) {
+    // Skip fuzzy search when we already have a direct ticket key match
+    if (extractTicketKey(query) || query.trim().length < 2) {
       setTicketResults([]);
       setLoadingTickets(false);
       return;
@@ -296,7 +327,7 @@ export function CommandPalette() {
   useEffect(() => {
     if (!open) return;
 
-    if (query.trim().length < 2) {
+    if (extractTicketKey(query) || query.trim().length < 2) {
       setConversationResults([]);
       setLoadingConversations(false);
       return;
@@ -337,9 +368,22 @@ export function CommandPalette() {
     return () => clearTimeout(timeout);
   }, [query, open]);
 
+  /* ---- Detect direct ticket key from query (URL or plain key) ---- */
+  const directTicketKey = useMemo(() => extractTicketKey(query), [query]);
+
   /* ---- Build combined results ---- */
   const allResults: PaletteResult[] = useMemo(() => {
     const q = query.trim();
+
+    // If we detected a direct ticket key, show only that as a quick-open result
+    if (directTicketKey) {
+      const direct: DirectTicketResult = {
+        category: "direct-ticket",
+        id: `direct-${directTicketKey}`,
+        key: directTicketKey,
+      };
+      return [direct, ...ticketResults.filter((t) => t.key !== directTicketKey)];
+    }
 
     if (!q) {
       // No query: show pages first, then actions
@@ -385,7 +429,7 @@ export function CommandPalette() {
     ];
 
     return combined.slice(0, MAX_TOTAL);
-  }, [query, actions, actionFuse, ticketResults, conversationResults]);
+  }, [query, actions, actionFuse, ticketResults, conversationResults, directTicketKey]);
 
   /* ---- Reset active index when results change ---- */
   useEffect(() => {
@@ -404,6 +448,10 @@ export function CommandPalette() {
         handleClose();
         break;
       case "ticket":
+        router.push(`/tickets/${result.key}`);
+        handleClose();
+        break;
+      case "direct-ticket":
         router.push(`/tickets/${result.key}`);
         handleClose();
         break;
@@ -635,6 +683,12 @@ function ResultIcon({ result, isActive }: { result: PaletteResult; isActive: boo
           <KanbanSquare className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
+    case "direct-ticket":
+      return (
+        <span className={`${base} ${isActive ? "bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]" : "bg-white/[0.04] text-white/30"}`}>
+          <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
+        </span>
+      );
     case "conversation":
       return (
         <span className={`${base} ${isActive ? "bg-purple-500/15 text-purple-400" : "bg-white/[0.04] text-white/30"}`}>
@@ -679,6 +733,17 @@ function ResultLabel({ result, isActive }: { result: PaletteResult; isActive: bo
         </div>
       );
     }
+    case "direct-ticket":
+      return (
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-mono font-semibold bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]">
+            {result.key}
+          </span>
+          <span className={`text-sm ${isActive ? "text-white/60" : "text-white/35"}`}>
+            Press Enter to open directly
+          </span>
+        </div>
+      );
     case "conversation":
       return (
         <div className="flex flex-col min-w-0 flex-1">

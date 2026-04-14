@@ -10,13 +10,18 @@ import {
   Loader2,
   Star,
   Scissors,
-  NotebookPen,
+  IterationCw,
+  Zap,
   MoreHorizontal,
+  ArrowUpRight,
 } from "lucide-react";
+import Link from "next/link";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useNotification } from "@/hooks/useNotification";
-import { useTicketDetail, useTicketReviews } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
@@ -55,6 +60,9 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const { notify } = useNotification();
   const { data: ticketData } = useTicketDetail(ticketKey);
   const { data: reviewData } = useTicketReviews(ticketKey);
+  const { data: rawSprints } = useJiraSprints();
+  const ticketSprintId = ticketData?.sprintId ?? null;
+  const ticketSprintLabel = rawSprints?.find((s) => String(s.id) === ticketSprintId)?.name ?? ticketSprintId;
   const latestReview = reviewData?.reviews?.[0];
 
   const [pushing, setPushing] = useState(false);
@@ -255,6 +263,9 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   }
 
   const baseDescription = ticketData?.description ?? "";
+  const initialEditorOpen = ticketData === undefined
+    ? true
+    : !!(writer.session?.localDraft?.trim() || ticketData.description?.trim());
   const splitButtonLabel = !targetTicketKey
     ? "Split story"
     : splitModeVisible
@@ -318,15 +329,52 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   };
 
   return (
-    <PaneProvider ticketKey={ticketKey}>
+    <PaneProvider ticketKey={ticketKey} initialEditorOpen={initialEditorOpen}>
       <WriterProvider value={writerContextValue}>
         <SplitModeSync />
         <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
           {/* Action bar — unchanged */}
           <ViewHeader
-            icon={<NotebookPen size={15} strokeWidth={1.5} className="text-white/30" />}
+            icon={ticketAsTicket ? <IssueTypeIcon type={ticketAsTicket.type} size={15} /> : undefined}
             className="shrink-0"
             actions={<>
+              {(ticketSprintId || ticketAsTicket?.epic) && (
+                <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
+                  {ticketSprintId && (
+                    <Tooltip content={ticketSprintLabel || "Sprint"}>
+                      <Link
+                        href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
+                        className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      >
+                        <IterationCw size={12} strokeWidth={1.5} />
+                        <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
+                      </Link>
+                    </Tooltip>
+                  )}
+                  {ticketAsTicket?.epic && (
+                    <Tooltip content={ticketAsTicket.epic}>
+                      {ticketAsTicket.epicKey ? (
+                        <Link
+                          href={`/tickets/${ticketAsTicket.epicKey}`}
+                          className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                        >
+                          <Zap size={12} strokeWidth={1.5} />
+                          <span className="max-w-[120px] truncate">{ticketAsTicket.epic}</span>
+                        </Link>
+                      ) : (
+                        <span className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35">
+                          <Zap size={12} strokeWidth={1.5} />
+                          <span className="max-w-[120px] truncate">{ticketAsTicket.epic}</span>
+                        </span>
+                      )}
+                    </Tooltip>
+                  )}
+                </nav>
+              )}
+              {(ticketSprintId || ticketAsTicket?.epic) && (
+                <div className="h-5 w-px shrink-0 bg-white/[0.06]" />
+              )}
+
               {latestReview && (
                 <div className="flex h-7 items-center gap-1 rounded-md bg-white/[0.04] px-2 text-[11px] text-white/40 border border-white/[0.04]">
                   <Star size={11} strokeWidth={1.5} />
@@ -416,6 +464,15 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                       <span>Pull from Jira</span>
                     </button>
 
+                    <Link
+                      href={`/tickets/${ticketKey}`}
+                      onClick={() => setShowMoreMenu(false)}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                    >
+                      <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
+                      <span>View ticket in Bridge</span>
+                    </Link>
+
                     {(((isDraftDirty || hasLocalSave) && writer.messages.length === 0) || writer.messages.length > 0) && (
                       <div className="mx-2 my-1 h-px bg-white/[0.06]" />
                     )}
@@ -446,15 +503,19 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               </div>
             </>}
           >
-            {ticketData && (
-              <>
-                <TicketKeyPill ticketKey={ticketKey} />
-                <ViewHeaderDivider />
-                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white/90">
-                  {writer.session?.localTitle ?? ticketData.title}
-                </span>
-              </>
-            )}
+            {ticketData && (() => {
+              const status = (ticketData.jiraStatus ?? "TO DO") as import("@/types/ticket").JiraStatus;
+              const sc = JIRA_STATUS_COLORS[status] ?? JIRA_STATUS_COLORS["TO DO"];
+              return (
+                <>
+                  <TicketKeyPill ticketKey={ticketKey} statusLabel={status} statusBg={sc.bg} statusColor={sc.text} />
+                  <ViewHeaderDivider />
+                  <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+                    {writer.session?.localTitle ?? ticketData.title}
+                  </span>
+                </>
+              );
+            })()}
           </ViewHeader>
 
           {/* Push error */}

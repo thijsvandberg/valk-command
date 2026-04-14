@@ -10,6 +10,7 @@ import {
 import {
   CloudDownload,
   CloudUpload,
+  Copy,
   Flag,
   Loader2,
   AlertTriangle,
@@ -18,6 +19,7 @@ import {
   IterationCw,
   Trash2,
   Star,
+  Check,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
@@ -45,6 +47,7 @@ import { TicketDevelopment } from "@/components/ticket-detail/TicketDevelopment"
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
+import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 
 
 export default function TicketDetailPage({
@@ -134,7 +137,22 @@ export default function TicketDetailPage({
   const [showConflictDiff, setShowConflictDiff] = useState(false);
   const [metadataOnlyConflict, setMetadataOnlyConflict] = useState(false);
   const [historyResetKey, setHistoryResetKey] = useState(0);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const linkCopyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const handleCopyLink = useCallback(async () => {
+    if (!ticket) return;
+    const url = getJiraUrl(key);
+    const text = `${ticket.title} - ${url}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setLinkCopied(true);
+      if (linkCopyTimer.current) clearTimeout(linkCopyTimer.current);
+      linkCopyTimer.current = setTimeout(() => setLinkCopied(false), 1500);
+    } catch {
+      console.warn("Clipboard write failed");
+    }
+  }, [ticket, key]);
 
   const { data: reviewData } = useTicketReviews(key);
   const reviewCount = reviewData?.reviews?.length ?? 0;
@@ -363,6 +381,18 @@ export default function TicketDetailPage({
                   strokeWidth={1.5}
                   className={isFollowed ? "text-amber-400 fill-amber-400" : ""}
                 />
+              }
+            />
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              onClick={handleCopyLink}
+              title="Copy title and Jira link"
+              icon={
+                linkCopied
+                  ? <Check size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                  : <Copy size={14} strokeWidth={1.5} />
               }
             />
             <Button

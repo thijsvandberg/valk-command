@@ -172,22 +172,24 @@ function writeStorage(
 
 interface PaneProviderProps {
   ticketKey: string;
+  initialEditorOpen?: boolean;
   children: ReactNode;
 }
 
-export function PaneProvider({ ticketKey, children }: PaneProviderProps) {
+export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: PaneProviderProps) {
   const stored = readStorage(ticketKey);
 
-  const defaultVisible: PaneVisible = [true, true, false];
+  const defaultApps: PaneApps = initialEditorOpen ? ["chat", "editor", null] : ["chat", null, null];
+  const defaultVisible: PaneVisible = initialEditorOpen ? [true, true, false] : [true, false, false];
 
   const [paneVisible, setPaneVisibleState] = useState<PaneVisible>(
     stored?.paneVisible ?? defaultVisible,
   );
   const [paneApps, setPaneApps] = useState<PaneApps>(
-    stored?.paneApps ?? ["chat", "editor", null],
+    stored?.paneApps ?? defaultApps,
   );
   const [paneWidths, setPaneWidthsState] = useState<PaneWidths>(() => {
-    if (!stored) return [50, 50, 0];
+    if (!stored) return initialEditorOpen ? [50, 50, 0] : [100, 0, 0];
     const { paneVisible: sv, paneWidths: sw } = stored;
     for (let i = 0; i < 3; i++) {
       if (sv[i] && (sw[i] ?? 0) <= 0) return buildEqualWidths(sv);

@@ -221,7 +221,7 @@ export function RichEditor({
 
   const toolbarWrapperClasses = stickyToolbar
     ? `sticky top-0 z-10 border-b border-white/[0.06] bg-[var(--color-surface-elevated)]${fullWidthToolbar ? "" : " rounded-t-lg"}`
-    : "border-b border-white/[0.06]";
+    : `border-b border-white/[0.06] bg-[var(--color-surface-elevated)]${borderless ? " px-2" : ""}`;
 
   const toolbarContent = (
     <Toolbar
@@ -253,7 +253,7 @@ export function RichEditor({
         {mode === "rich" ? (
           <EditorContent
             editor={editor}
-            className={`rich-editor-wrapper ${fullWidthToolbar ? "rich-editor-wrapper--no-x-pad" : ""}`}
+            className={`rich-editor-wrapper ${borderless ? "rich-editor-wrapper--borderless" : ""} ${fullWidthToolbar ? "rich-editor-wrapper--no-x-pad" : ""}`}
           />
         ) : (
           <textarea

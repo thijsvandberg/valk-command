@@ -10,6 +10,10 @@ import type { HunkState } from "@/components/story-diff/StoryDiff";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
 
+function stripLeadingH1(markdown: string): string {
+  return markdown.replace(/^#\s+[^\n]*\n*/, "");
+}
+
 export function EditorApp() {
   const writer = useWriterContext();
   const pane = usePaneContext();
@@ -134,7 +138,7 @@ export function EditorApp() {
     <div className="flex h-full flex-col overflow-hidden">
       {activeViewMode === "editor" ? (
         <RichEditor
-          value={writer.session?.localDraft ?? ""}
+          value={stripLeadingH1(writer.session?.localDraft ?? "")}
           onChange={writer.onDraftChange}
           placeholder="Story description..."
           borderless
