@@ -14,8 +14,10 @@ import {
   ChevronDown,
   Square,
   Ban,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import type { ActivityLogEntry } from "@/types/ticket";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
@@ -172,16 +174,10 @@ export default function ActivityLogPage() {
   return (
     <>
       {pageTitle}
+      <ViewHeader icon={<Activity size={16} strokeWidth={1.5} />}>
+        <ViewHeaderTitle>Activity Log</ViewHeaderTitle>
+      </ViewHeader>
       <div className="mx-auto max-w-5xl px-6 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] text-white">
-          Activity Log
-        </h1>
-        <p className="mt-1.5 text-sm text-white/35 font-[var(--font-body)] leading-relaxed">
-          Audit trail of all system and user activity
-        </p>
-      </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-3 mb-5">
