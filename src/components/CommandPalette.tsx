@@ -504,41 +504,46 @@ export function CommandPalette() {
 
   /* ---- Filter story writer sessions by query (client-side) ---- */
   const filteredStoryWriterSessions = useMemo((): StoryWriterResult[] => {
-    if (directTicketKey) return [];
     const q = query.trim().toLowerCase();
     if (!q) {
-      // Phase 3: when no query and currently on a write page, surface that session
-      if (currentWriterKey) {
-        const current = storyWriterSessions.find((s) => s.ticketKey === currentWriterKey);
-        return current ? [current] : [];
-      }
-      return [];
+      // No query: surface all open sessions so the user can jump to any of them
+      return storyWriterSessions.slice(0, MAX_PER_CATEGORY);
+    }
+    if (directTicketKey) {
+      // Typing a ticket key: show the session for that specific ticket (if open)
+      const match = storyWriterSessions.find((s) => s.ticketKey === directTicketKey);
+      return match ? [match] : [];
     }
     return storyWriterSessions
       .filter((s) => s.ticketKey.toLowerCase().includes(q) || s.title.toLowerCase().includes(q))
       .slice(0, MAX_PER_CATEGORY);
-  }, [query, storyWriterSessions, directTicketKey, currentWriterKey]);
+  }, [query, storyWriterSessions, directTicketKey]);
 
   /* ---- Build combined results ---- */
   const allResults: PaletteResult[] = useMemo(() => {
     const q = query.trim();
 
-    // If we detected a direct ticket key, show only that as a quick-open result
+    // If we detected a direct ticket key, show the story writer session for that
+    // ticket first (if open), then the direct-open result, then fuzzy ticket results
     if (directTicketKey) {
       const direct: DirectTicketResult = {
         category: "direct-ticket",
         id: `direct-${directTicketKey}`,
         key: directTicketKey,
       };
-      return [direct, ...ticketResults.filter((t) => t.key !== directTicketKey)];
+      return [
+        ...filteredStoryWriterSessions,
+        direct,
+        ...ticketResults.filter((t) => t.key !== directTicketKey),
+      ];
     }
 
     if (!q) {
-      // No query: show pages, actions, and current story writer session (if any)
+      // No query: open story writer sessions first, then pages and actions
       const combined: PaletteResult[] = [
+        ...filteredStoryWriterSessions,
         ...PAGES.slice(0, MAX_PER_CATEGORY),
         ...actions.slice(0, MAX_PER_CATEGORY),
-        ...filteredStoryWriterSessions,
       ];
       return combined.slice(0, MAX_TOTAL);
     }
