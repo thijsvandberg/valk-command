@@ -36,7 +36,7 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
                 : <span className="font-mono text-[11px] tabular-nums text-white/25 select-none">{i + 1}</span>}
             </span>
             <span className={[
-              "flex-1 text-sm leading-snug",
+              "flex-1 leading-[1.75]",
               isSelected ? "text-white/90" : "text-white/75",
             ].join(" ")}>
               {title}
