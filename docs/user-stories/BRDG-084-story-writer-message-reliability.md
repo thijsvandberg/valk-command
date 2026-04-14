@@ -42,23 +42,23 @@ These fixes resolve the immediate hang, but the underlying issues (orphaned mess
 
 ### Phase 1: Message send atomicity
 
-- [ ] If the agent POST (to create a workspace task) fails, roll back the user message from the database instead of leaving it orphaned
-- [ ] Show a clear error in the chat UI: "Message could not be sent. Tap to retry." with a retry button on the failed message
-- [ ] Retry button re-sends the same message content without creating a duplicate DB row
-- [ ] If the page is reloaded while a message has no `workspaceTaskId`, show it with a "Not sent" indicator instead of displaying it as a normal message
+- [x] If the agent POST (to create a workspace task) fails, roll back the user message from the database instead of leaving it orphaned
+- [x] Show a clear error in the chat UI: "Message could not be sent. Tap to retry." with a retry button on the failed message
+- [x] Retry button re-sends the same message content without creating a duplicate DB row
+- [x] If the page is reloaded while a message has no `workspaceTaskId`, show it with a "Not sent" indicator instead of displaying it as a normal message
 
 ### Phase 2: Duplicate send prevention
 
-- [ ] Disable the send button and input while a message is in-flight (already partially done via `sending` state, but verify it covers all paths including quick prompts and AI action buttons)
-- [ ] Add a client-side dedup check: if the last message in the conversation has identical content and was sent within the last 10 seconds, block the send and show a brief toast
-- [ ] Server-side: the POST `/api/tickets/[key]/story-writer/messages` endpoint checks for a recent identical message (same content, same conversation, within 30s) and returns 409 instead of creating a duplicate
+- [x] Disable the send button and input while a message is in-flight (already partially done via `sending` state, but verify it covers all paths including quick prompts and AI action buttons)
+- [x] Add a client-side dedup check: if the last message in the conversation has identical content and was sent within the last 10 seconds, block the send and show a brief toast
+- [x] Server-side: the POST `/api/tickets/[key]/story-writer/messages` endpoint checks for a recent identical message (same content, same conversation, within 30s) and returns 409 instead of creating a duplicate
 
 ### Phase 3: Resume flow hardening
 
-- [ ] The direct task-status check in init (current ad-hoc fix) handles errors gracefully: if `apply-draft` fails, show an error with a retry option instead of silently proceeding
-- [ ] If the task status check returns a still-running task, fall through to `startMonitoring` (already works)
-- [ ] `useTaskMonitoring`: when the 5-minute poll timeout fires, also close the EventSource (currently only polling stops)
-- [ ] `useTaskMonitoring`: ensure `resultHandled` prevents true double-apply even under race between SSE and polling (current implementation is correct but add a test)
+- [x] The direct task-status check in init (current ad-hoc fix) handles errors gracefully: if `apply-draft` fails, show an error with a retry option instead of silently proceeding
+- [x] If the task status check returns a still-running task, fall through to `startMonitoring` (already works)
+- [x] `useTaskMonitoring`: when the 5-minute poll timeout fires, also close the EventSource (currently only polling stops)
+- [x] `useTaskMonitoring`: ensure `resultHandled` prevents true double-apply even under race between SSE and polling (current implementation is correct but add a test)
 
 ### Phase 4: Conversation cleanup
 

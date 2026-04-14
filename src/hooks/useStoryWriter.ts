@@ -125,12 +125,18 @@ export function useStoryWriter(ticketKey: string) {
                   // Apply the completed result directly
                   setStatus("streaming");
                   setStreamProgress("Applying result...");
-                  await fetch(`${apiBase}/apply-draft`, {
+                  const applyRes = await fetch(`${apiBase}/apply-draft`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ output: task.output, taskId: lastUserMsg.workspaceTaskId, assistantContent: task.output }),
                   });
                   if (cancelled) return;
+                  if (!applyRes.ok) {
+                    setStreamError("Could not apply completed result. Use retry to try again.");
+                    setStatus("ready");
+                    setStreamProgress("");
+                    return;
+                  }
                   const refreshRes = await fetch(apiBase);
                   if (refreshRes.ok) {
                     const refreshed = await refreshRes.json();
@@ -151,6 +157,7 @@ export function useStoryWriter(ticketKey: string) {
                   setStatus("ready");
                   return;
                 }
+                // Still running: fall through to startMonitoring below
               } else if (taskRes.status === 404) {
                 setStatus("ready");
                 return;

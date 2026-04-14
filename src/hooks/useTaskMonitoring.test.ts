@@ -283,5 +283,96 @@ describe("useTaskMonitoring", () => {
 
       vi.useRealTimers();
     });
+
+    it("prevents double-apply when SSE result and poll complete near-simultaneously", async () => {
+      vi.useFakeTimers();
+
+      const applyDraftCalls: string[] = [];
+      const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/apply-draft")) {
+          applyDraftCalls.push(urlStr);
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        if (urlStr.includes("/apply-related")) {
+          return { ok: true, json: async () => ({ candidates: [] }) } as Response;
+        }
+        if (urlStr.includes("/api/workspace-tasks/task-1")) {
+          return {
+            ok: true,
+            json: async () => ({
+              status: "completed",
+              output: "Polled output",
+              inputTokens: 10,
+              outputTokens: 20,
+              cost: 0.001,
+            }),
+          } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+
+      const refreshSession = vi.fn().mockResolvedValue(undefined);
+      const opts = createOptions({ refreshSession });
+      const { result } = renderHook(() => useTaskMonitoring(opts));
+
+      act(() => {
+        result.current.startMonitoring("task-1");
+      });
+
+      const es = MockEventSource.instances[0];
+
+      // SSE result arrives first
+      await act(async () => {
+        es.emit("result", {
+          output: "SSE output",
+          inputTokens: 100,
+          outputTokens: 200,
+          cost: 0.05,
+        });
+      });
+
+      // Poll fires after SSE already handled the result
+      await act(async () => {
+        vi.advanceTimersByTime(2_000);
+      });
+
+      // apply-draft should only have been called once (from the SSE result)
+      expect(applyDraftCalls).toHaveLength(1);
+
+      vi.useRealTimers();
+      fetchSpy.mockRestore();
+    });
+
+    it("closes EventSource on 5-minute poll timeout", async () => {
+      vi.useFakeTimers();
+
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: "running" }),
+      } as Response);
+
+      const opts = createOptions();
+      const { result } = renderHook(() => useTaskMonitoring(opts));
+
+      act(() => {
+        result.current.startMonitoring("task-1");
+      });
+
+      const es = MockEventSource.instances[0];
+      expect(es.readyState).not.toBe(2);
+
+      // Advance past the 5-minute timeout (300s + buffer for poll intervals)
+      for (let i = 0; i < 110; i++) {
+        await act(async () => {
+          vi.advanceTimersByTime(3_000);
+        });
+      }
+
+      expect(es.readyState).toBe(2);
+      expect(opts.onError).toHaveBeenCalledWith("Request timed out");
+
+      vi.useRealTimers();
+    });
   });
 });
