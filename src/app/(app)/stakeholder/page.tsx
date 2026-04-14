@@ -3,17 +3,20 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { toStakeholderTickets, toUpcomingTickets, toStakeholderSprint } from "@/lib/stakeholder-data";
+import {
+  toStakeholderTickets,
+  toUpcomingTickets,
+  toStakeholderSprint,
+} from "@/lib/stakeholder-data";
 import { SprintOverviewCard } from "@/components/stakeholder/SprintOverviewCard";
-import { UpcomingSection } from "@/components/stakeholder/UpcomingSection";
+import { AdjacentSprintSection } from "@/components/stakeholder/AdjacentSprintSection";
 import { CopyMarkdownButton } from "@/components/stakeholder/CopyMarkdownButton";
 import { LoadingState } from "@/components/shared/LoadingState";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
-
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 
 function formatRelativeTime(date: Date | null): string {
@@ -25,8 +28,6 @@ function formatRelativeTime(date: Date | null): string {
   return `${diffMin} minutes ago`;
 }
 
-// Extracts the team prefix from a sprint name, e.g. "BM: 135" → "BM".
-// Returns null for sprints that don't follow the "{PREFIX}: {rest}" pattern.
 function extractTeamPrefix(sprintName: string): string | null {
   const match = sprintName.match(/^([A-Z]+):/);
   return match ? match[1] : null;
@@ -35,14 +36,13 @@ function extractTeamPrefix(sprintName: string): string | null {
 export default function StakeholderPage() {
   const { data: sprints } = useJiraSprints();
 
-  // User-controlled selections; null means "use the smart default"
   const [manualTeamPrefix, setManualTeamPrefix] = useState<string | null>(null);
-  const [manualSprintId, setManualSprintId] = useState<string | null>(null);
+  // Index within teamSprints; null = use smart default (active sprint)
+  const [manualTeamIndex, setManualTeamIndex] = useState<number | null>(null);
 
   const lastUpdatedRef = useRef<Date | null>(null);
   const [lastUpdatedDisplay, setLastUpdatedDisplay] = useState<string>("Never");
 
-  // Derive sorted list of unique team prefixes found in the sprint list
   const availableTeams = useMemo<string[]>(() => {
     if (!sprints) return [];
     const prefixes = new Set<string>();
@@ -53,40 +53,49 @@ export default function StakeholderPage() {
     return Array.from(prefixes).sort();
   }, [sprints]);
 
-  // Derive selected team: honour manual pick, fallback to team of first active sprint
   const selectedTeamPrefix = useMemo<string | null>(() => {
     if (manualTeamPrefix !== null) return manualTeamPrefix;
     if (!sprints) return null;
     const active = sprints.find((s) => s.state === "active");
     if (active) return extractTeamPrefix(active.name);
-    if (sprints.length > 0) return extractTeamPrefix(sprints[0].name);
-    return null;
+    return sprints.length > 0 ? extractTeamPrefix(sprints[0].name) : null;
   }, [manualTeamPrefix, sprints]);
 
-  // Sprints filtered to the selected team only
+  // Sprints for the selected team, in Jira order (as returned by API)
   const teamSprints = useMemo(() => {
-    if (!sprints || !selectedTeamPrefix) return sprints ?? [];
+    if (!sprints || !selectedTeamPrefix) return [];
     return sprints.filter((s) => extractTeamPrefix(s.name) === selectedTeamPrefix);
   }, [sprints, selectedTeamPrefix]);
 
-  // Derive selected sprint: honour manual pick, fallback to active sprint for team
-  const selectedSprintId = useMemo<string | null>(() => {
-    if (manualSprintId !== null) return manualSprintId;
-    if (teamSprints.length === 0) return null;
-    const active = teamSprints.find((s) => s.state === "active");
-    return active ? String(active.id) : String(teamSprints[0].id);
-  }, [manualSprintId, teamSprints]);
+  // Derive current index: honour manual pick, fallback to active sprint
+  const selectedIndex = useMemo<number>(() => {
+    if (manualTeamIndex !== null) {
+      return Math.max(0, Math.min(manualTeamIndex, teamSprints.length - 1));
+    }
+    const activeIdx = teamSprints.findIndex((s) => s.state === "active");
+    return activeIdx >= 0 ? activeIdx : 0;
+  }, [manualTeamIndex, teamSprints]);
 
-  // When the team changes, clear the manual sprint so we re-default to that team's active sprint
+  const currentSprint = teamSprints[selectedIndex] ?? null;
+  const prevSprint = selectedIndex > 0 ? teamSprints[selectedIndex - 1] : null;
+  const nextSprint = selectedIndex < teamSprints.length - 1 ? teamSprints[selectedIndex + 1] : null;
+
   function handleTeamChange(prefix: string) {
     setManualTeamPrefix(prefix);
-    setManualSprintId(null);
+    setManualTeamIndex(null);
   }
 
-  const ticketKey = selectedSprintId
-    ? `/api/tickets?sprintId=${encodeURIComponent(selectedSprintId)}`
-    : null;
+  function navigate(delta: -1 | 1) {
+    setManualTeamIndex((prev) => {
+      const base = prev ?? selectedIndex;
+      return Math.max(0, Math.min(base + delta, teamSprints.length - 1));
+    });
+  }
 
+  // Fetch current sprint tickets
+  const ticketKey = currentSprint
+    ? `/api/tickets?sprintId=${encodeURIComponent(String(currentSprint.id))}`
+    : null;
   const { data: rawTickets, isLoading } = useSWR<Ticket[]>(ticketKey, fetcher, {
     refreshInterval: REFRESH_INTERVAL,
     revalidateOnFocus: false,
@@ -96,46 +105,37 @@ export default function StakeholderPage() {
     },
   });
 
-  // Find next sprint: must be future AND share the same team prefix as the selected sprint
-  const nextSprint = useMemo(() => {
-    if (!sprints || !selectedSprintId || !selectedTeamPrefix) return null;
-    const idx = sprints.findIndex((s) => String(s.id) === selectedSprintId);
-    if (idx === -1) return null;
-    for (let i = idx + 1; i < sprints.length; i++) {
-      if (
-        sprints[i].state === "future" &&
-        extractTeamPrefix(sprints[i].name) === selectedTeamPrefix
-      ) {
-        return sprints[i];
-      }
-    }
-    return null;
-  }, [sprints, selectedSprintId, selectedTeamPrefix]);
+  // Fetch previous sprint tickets
+  const prevTicketKey = prevSprint
+    ? `/api/tickets?sprintId=${encodeURIComponent(String(prevSprint.id))}`
+    : null;
+  const { data: rawPrevTickets } = useSWR<Ticket[]>(prevTicketKey, fetcher, {
+    refreshInterval: REFRESH_INTERVAL,
+    revalidateOnFocus: false,
+  });
 
+  // Fetch next sprint tickets
   const nextTicketKey = nextSprint
     ? `/api/tickets?sprintId=${encodeURIComponent(String(nextSprint.id))}`
     : null;
-
   const { data: rawNextTickets } = useSWR<Ticket[]>(nextTicketKey, fetcher, {
     refreshInterval: REFRESH_INTERVAL,
     revalidateOnFocus: false,
   });
 
-  const selectedSprint = useMemo(() => {
-    if (!sprints || !selectedSprintId) return null;
-    return sprints.find((s) => String(s.id) === selectedSprintId) ?? null;
-  }, [sprints, selectedSprintId]);
-
   const stakeholderSprint = useMemo(
-    () => (selectedSprint ? toStakeholderSprint(selectedSprint) : null),
-    [selectedSprint],
+    () => (currentSprint ? toStakeholderSprint(currentSprint) : null),
+    [currentSprint],
   );
 
   const allTickets = useMemo(
     () => (rawTickets ? toStakeholderTickets(rawTickets) : []),
     [rawTickets],
   );
-
+  const prevTickets = useMemo(
+    () => (rawPrevTickets ? toStakeholderTickets(rawPrevTickets) : []),
+    [rawPrevTickets],
+  );
   const upcomingTickets = useMemo(
     () => (rawNextTickets ? toUpcomingTickets(rawNextTickets) : []),
     [rawNextTickets],
@@ -147,7 +147,6 @@ export default function StakeholderPage() {
   );
   const todoTickets = allTickets.filter((t) => t.status === "To Do");
 
-  // Update relative time display every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
@@ -155,8 +154,11 @@ export default function StakeholderPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const navBtnClass =
+    "flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
+
   const selectClass =
-    "rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] hover:border-white/[0.12] transition-colors duration-150";
+    "rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer hover:border-white/[0.12] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
   return (
     <div className="flex min-h-full flex-col">
@@ -195,25 +197,39 @@ export default function StakeholderPage() {
             </div>
           )}
 
-          {/* Sprint selector — scoped to selected team */}
-          {teamSprints.length > 0 && selectedSprintId && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="sprint-select" className="text-xs text-white/30">
-                Sprint
-              </label>
-              <select
-                id="sprint-select"
-                value={selectedSprintId}
-                onChange={(e) => setManualSprintId(e.target.value)}
-                className={selectClass}
+          {/* Sprint navigation */}
+          {teamSprints.length > 0 && currentSprint && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                disabled={selectedIndex === 0}
+                className={navBtnClass}
+                aria-label="Previous sprint"
               >
-                {teamSprints.map((s) => (
-                  <option key={s.id} value={String(s.id)}>
-                    {s.name}
-                    {s.state === "active" ? " (active)" : ""}
-                  </option>
-                ))}
-              </select>
+                <ChevronLeft size={13} strokeWidth={1.5} />
+                <span className="hidden sm:inline">Previous</span>
+              </button>
+
+              <span className="px-2 text-sm text-white/70 font-medium whitespace-nowrap">
+                {currentSprint.name}
+                {currentSprint.state === "active" && (
+                  <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-brand-400)]/70">
+                    active
+                  </span>
+                )}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => navigate(1)}
+                disabled={selectedIndex === teamSprints.length - 1}
+                className={navBtnClass}
+                aria-label="Next sprint"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight size={13} strokeWidth={1.5} />
+              </button>
             </div>
           )}
         </div>
@@ -242,29 +258,45 @@ export default function StakeholderPage() {
         ) : !stakeholderSprint ? (
           <LoadingState label="No sprint selected" />
         ) : (
-          <div className="mx-auto max-w-6xl space-y-12">
-            {/* Sprint heading */}
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/25">
-                Sprint overview
-              </p>
-              <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
-                {stakeholderSprint.name}
-              </h1>
+          <div className="mx-auto max-w-6xl space-y-10">
+            {/* Previous sprint */}
+            {prevSprint && (
+              <div className="border-b border-white/[0.04] pb-10">
+                <AdjacentSprintSection
+                  label="Previous"
+                  sprintName={prevSprint.name}
+                  tickets={prevTickets}
+                />
+              </div>
+            )}
+
+            {/* Current sprint */}
+            <div className="space-y-12">
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/25">
+                  Sprint overview
+                </p>
+                <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
+                  {stakeholderSprint.name}
+                </h1>
+              </div>
+
+              <SprintOverviewCard
+                sprint={stakeholderSprint}
+                doneTickets={doneTickets}
+                inProgressTickets={inProgressTickets}
+                todoTickets={todoTickets}
+              />
             </div>
 
-            <SprintOverviewCard
-              sprint={stakeholderSprint}
-              doneTickets={doneTickets}
-              inProgressTickets={inProgressTickets}
-              todoTickets={todoTickets}
-            />
-
+            {/* Next sprint */}
             {nextSprint && (
               <div className="border-t border-white/[0.06] pt-10">
-                <UpcomingSection
+                <AdjacentSprintSection
+                  label="Upcoming"
                   sprintName={nextSprint.name}
                   tickets={upcomingTickets}
+                  allowKeyReveal
                 />
               </div>
             )}

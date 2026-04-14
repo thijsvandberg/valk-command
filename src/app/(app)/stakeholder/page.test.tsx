@@ -115,28 +115,26 @@ describe("StakeholderPage", () => {
     expect(values).toContain("GXP");
   });
 
-  it("sprint selector only shows sprints for the selected team", async () => {
+  it("sprint navigation shows sprint name for the selected team", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
-      expect(screen.getByLabelText("Sprint")).toBeInTheDocument();
+      // Active sprint for BM team is BM: 135 - appears in both header nav and h1
+      expect(screen.getAllByText("BM: 135").length).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: /previous sprint/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /next sprint/i })).toBeInTheDocument();
     });
-    const sprintOptions = Array.from(screen.getByLabelText("Sprint").querySelectorAll("option"));
-    const names = sprintOptions.map((o) => o.textContent);
-    // Only BM sprints visible (BM is the default active team)
-    expect(names.some((n) => n?.includes("BM"))).toBe(true);
-    expect(names.every((n) => !n?.includes("GXP"))).toBe(true);
   });
 
-  it("switching team updates the sprint selector", async () => {
+  it("switching team updates the current sprint shown", async () => {
     render(<StakeholderPage />);
     await waitFor(() => expect(screen.getByLabelText("Team")).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText("Team"), { target: { value: "GXP" } });
 
-    const sprintOptions = Array.from(screen.getByLabelText("Sprint").querySelectorAll("option"));
-    const names = sprintOptions.map((o) => o.textContent);
-    expect(names.some((n) => n?.includes("GXP"))).toBe(true);
-    expect(names.every((n) => !n?.includes("BM"))).toBe(true);
+    // After switching to GXP, the h1 heading should show GXP's active sprint
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("GXP: 135");
+    });
   });
 
   it("renders ticket titles in the overview", async () => {
