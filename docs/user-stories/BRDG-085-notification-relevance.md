@@ -38,9 +38,9 @@ Note: Phase 3 goes before Phase 2 so new notifications are preference-gated from
 
 ### Phase 3: Notification preferences
 
-- [ ] Add a notification preferences section in settings (or a small config object in the DB) that lets the user toggle notification categories on/off
-- [ ] Default: `story-writer` ON, `pipeline` ON, `pr` ON, `deployment` ON, `sync` OFF, `general` ON, `system` ON
-- [ ] Preferences are checked in `createNotification()` before inserting; if the category is disabled, the notification is silently skipped
+- [x] Add a notification preferences section in settings (or a small config object in the DB) that lets the user toggle notification categories on/off
+- [x] Default: `story-writer` ON, `pipeline` ON, `pr` ON, `deployment` ON, `sync` OFF, `general` ON, `system` ON
+- [x] Preferences are checked in `createNotification()` before inserting; if the category is disabled, the notification is silently skipped
 
 ## Technical Notes
 
