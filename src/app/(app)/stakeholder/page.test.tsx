@@ -2,6 +2,8 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import StakeholderPage from "./page";
 
+// --- Mocks ---
+
 const SWR_DATA: Record<string, unknown> = {};
 
 vi.mock("swr", async (importOriginal) => {
@@ -26,6 +28,16 @@ vi.mock("@/hooks/useSprintBoard", () => ({
     ],
   })),
 }));
+
+const mockReplace = vi.fn();
+let mockSearchParams = new URLSearchParams();
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn(() => mockSearchParams),
+  useRouter: vi.fn(() => ({ replace: mockReplace })),
+}));
+
+// --- Fixtures ---
 
 const MOCK_TICKETS = [
   {
@@ -88,6 +100,8 @@ const MOCK_TICKETS = [
 ];
 
 beforeEach(() => {
+  mockSearchParams = new URLSearchParams();
+  mockReplace.mockClear();
   Object.assign(SWR_DATA, {
     "/api/tickets?sprintId=10": MOCK_TICKETS,
     "/api/tickets?sprintId=11": [],
@@ -96,12 +110,22 @@ beforeEach(() => {
   });
 });
 
+// --- Tests ---
+
 describe("StakeholderPage", () => {
-  it("renders the active sprint name", async () => {
+  it("renders the active sprint name by default", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("BM: 135");
     });
+  });
+
+  it("sets URL params on first load (no existing params)", async () => {
+    render(<StakeholderPage />);
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining("team=BM"));
+    });
+    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining("sprintId=10"));
   });
 
   it("renders team selector when multiple teams exist", async () => {
@@ -115,25 +139,41 @@ describe("StakeholderPage", () => {
     expect(values).toContain("GXP");
   });
 
-  it("sprint navigation shows sprint name for the selected team", async () => {
+  it("renders sprint selector dropdown with team sprints", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
-      // Active sprint for BM team is BM: 135 - appears in both header nav and h1
-      expect(screen.getAllByText("BM: 135").length).toBeGreaterThan(0);
-      expect(screen.getByRole("button", { name: /previous sprint/i })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /next sprint/i })).toBeInTheDocument();
+      expect(screen.getByLabelText("Sprint")).toBeInTheDocument();
+    });
+    const sprintOptions = Array.from(screen.getByLabelText("Sprint").querySelectorAll("option"));
+    const names = sprintOptions.map((o) => o.textContent);
+    // BM team sprints only
+    expect(names.some((n) => n?.includes("BM: 135"))).toBe(true);
+    expect(names.some((n) => n?.includes("BM: 136"))).toBe(true);
+    expect(names.every((n) => !n?.includes("GXP"))).toBe(true);
+  });
+
+  it("renders correct sprint when URL params are preset", async () => {
+    mockSearchParams = new URLSearchParams("team=GXP&sprintId=20");
+    render(<StakeholderPage />);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("GXP: 135");
     });
   });
 
-  it("switching team updates the current sprint shown", async () => {
+  it("switching team calls router.replace with new team URL", async () => {
     render(<StakeholderPage />);
     await waitFor(() => expect(screen.getByLabelText("Team")).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText("Team"), { target: { value: "GXP" } });
 
-    // After switching to GXP, the h1 heading should show GXP's active sprint
+    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining("team=GXP"));
+  });
+
+  it("renders prev/next navigation buttons", async () => {
+    render(<StakeholderPage />);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("GXP: 135");
+      expect(screen.getByRole("button", { name: /previous sprint/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /next sprint/i })).toBeInTheDocument();
     });
   });
 
