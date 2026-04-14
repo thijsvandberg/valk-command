@@ -26,12 +26,13 @@ const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "ticket-sync", label: "Ticket sync" },
   { value: "single-ticket", label: "Single ticket" },
   { value: "comment-sync", label: "Comment sync" },
-  { value: "webhook", label: "Webhook" },
   { value: "review", label: "Review" },
   { value: "metadata-update", label: "Metadata update" },
   { value: "local-edit", label: "Local edit" },
   { value: "push-to-jira", label: "Push to Jira" },
   { value: "bulk-action", label: "Bulk action" },
+  { value: "story-writer", label: "Story writer" },
+  { value: "incremental-sync", label: "Incremental sync" },
 ];
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -50,7 +51,6 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
     "ticket-sync": "Ticket sync",
     "single-ticket": "Single ticket",
     "comment-sync": "Comment sync",
-    "webhook": "Webhook",
     "review": "Review",
     "metadata-update": "Metadata update",
     "local-edit": "Local edit",

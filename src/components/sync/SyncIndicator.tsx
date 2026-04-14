@@ -64,7 +64,6 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
     "ticket-sync": "Ticket sync",
     "single-ticket": "Single ticket",
     "comment-sync": "Comment sync",
-    "webhook": "Webhook",
     "review": "Review",
     "metadata-update": "Metadata update",
     "local-edit": "Local edit",

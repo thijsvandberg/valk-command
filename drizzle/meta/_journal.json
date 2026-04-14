@@ -225,6 +225,13 @@
       "when": 1776278400000,
       "tag": "0031_message_status",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1776201308498,
+      "tag": "0032_remove_webhook_activity_type",
+      "breakpoints": true
     }
   ]
 }

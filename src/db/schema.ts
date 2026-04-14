@@ -259,7 +259,7 @@ export const activityLog = sqliteTable("activity_log", {
   id: text("id").primaryKey(),
   type: text("type", {
     enum: [
-      "sprint-sync", "ticket-sync", "single-ticket", "comment-sync", "webhook",
+      "sprint-sync", "ticket-sync", "single-ticket", "comment-sync",
       "review", "metadata-update", "local-edit", "push-to-jira", "bulk-action",
       "story-writer", "incremental-sync",
     ],
