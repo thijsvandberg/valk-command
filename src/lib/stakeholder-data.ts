@@ -89,7 +89,7 @@ export function toUpcomingTickets(tickets: Ticket[]): StakeholderTicket[] {
 }
 
 export function toStakeholderSprint(
-  raw: { name: string; state: string; startDate: string | null; endDate: string | null },
+  raw: { name: string; state: string; startDate: string | null; endDate: string | null; goal?: string | null },
   now: Date = new Date(),
 ): StakeholderSprint {
   // Only show days remaining for the active sprint
@@ -104,7 +104,7 @@ export function toStakeholderSprint(
     startDate: raw.startDate,
     endDate: raw.endDate,
     workingDaysRemaining,
-    goal: null,
+    goal: raw.goal ?? null,
   };
 }
 

@@ -147,7 +147,9 @@ export function SprintOverviewCard({
           </span>
         )}
         {sprint.goal && (
-          <p className="w-full text-sm italic text-white/40">{sprint.goal}</p>
+          <div className="w-full border-l-2 border-[var(--color-brand-400)]/25 pl-3 py-1">
+            <p className="text-sm italic text-white/40">{sprint.goal}</p>
+          </div>
         )}
       </div>
 

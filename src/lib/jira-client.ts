@@ -38,6 +38,7 @@ export interface JiraSprint {
   endDate?: string;
   completeDate?: string;
   boardId?: number;
+  goal?: string;
 }
 
 export interface JiraSprintListResponse {

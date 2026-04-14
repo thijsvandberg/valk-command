@@ -145,8 +145,18 @@ describe("toStakeholderSprint", () => {
     expect(sprint.state).toBe("active");
   });
 
-  it("always sets goal to null (not in data model yet)", () => {
+  it("passes goal through when provided", () => {
+    const sprint = toStakeholderSprint({ name: "Sprint 1", state: "active", startDate: null, endDate: null, goal: "Ship the MVP" });
+    expect(sprint.goal).toBe("Ship the MVP");
+  });
+
+  it("sets goal to null when absent", () => {
     const sprint = toStakeholderSprint({ name: "Sprint 1", state: "active", startDate: null, endDate: null });
+    expect(sprint.goal).toBeNull();
+  });
+
+  it("sets goal to null when explicitly null", () => {
+    const sprint = toStakeholderSprint({ name: "Sprint 1", state: "active", startDate: null, endDate: null, goal: null });
     expect(sprint.goal).toBeNull();
   });
 });

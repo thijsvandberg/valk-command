@@ -41,7 +41,7 @@ export async function GET() {
       getHiddenIds(),
     ]);
 
-    let sprints: Array<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null }>;
+    let sprints: Array<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null }>;
 
     if (sprintRow) {
       sprints = JSON.parse(sprintRow.value);
@@ -53,6 +53,7 @@ export async function GET() {
         state: s.state,
         startDate: s.startDate ?? null,
         endDate: s.endDate ?? null,
+        goal: s.goal ?? null,
       }));
     }
 

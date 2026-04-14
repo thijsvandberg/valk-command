@@ -17,7 +17,7 @@ export function useSprintSlots() {
 
 // Fetches cached sprint list from the DB
 export function useJiraSprints() {
-  return useSWR<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; hidden?: boolean }[]>(
+  return useSWR<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null; hidden?: boolean }[]>(
     "/api/jira/sprints",
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
