@@ -102,6 +102,12 @@ const MOCK_TICKETS = [
 beforeEach(() => {
   mockSearchParams = new URLSearchParams();
   mockReplace.mockClear();
+  // ViewHeader portals into this element — create it so the portal renders in tests
+  if (!document.getElementById("view-header-portal")) {
+    const portal = document.createElement("div");
+    portal.id = "view-header-portal";
+    document.body.appendChild(portal);
+  }
   Object.assign(SWR_DATA, {
     "/api/tickets?sprintId=10": MOCK_TICKETS,
     "/api/tickets?sprintId=11": [],
