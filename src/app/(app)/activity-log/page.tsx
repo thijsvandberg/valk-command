@@ -15,6 +15,8 @@ import {
   Square,
   Ban,
   Activity,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
@@ -65,7 +67,7 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
 }
 
 function formatDuration(ms: number | null): string {
-  if (ms === null) return "-";
+  if (ms === null || ms === 0) return "-";
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
 }
@@ -80,6 +82,23 @@ function formatTimestamp(dateStr: string): string {
 
   const day = date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return `${day} ${time}`;
+}
+
+/** Parse errorDetail if it's JSON from agent-fetch; otherwise return as plain string. */
+function parseErrorDetail(raw: string | null): { display: string; structured: Record<string, unknown> | null } {
+  if (!raw) return { display: "", structured: null };
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "object" && parsed !== null) {
+      const parts: string[] = [];
+      if (typeof parsed.code === "string") parts.push(parsed.code);
+      if (typeof parsed.error === "string" && parsed.error !== parsed.code) parts.push(parsed.error);
+      if (typeof parsed.httpStatus === "number" && parsed.httpStatus > 0) parts.push(`HTTP ${parsed.httpStatus}`);
+      if (typeof parsed.retryCount === "number" && parsed.retryCount > 0) parts.push(`${parsed.retryCount} retr${parsed.retryCount === 1 ? "y" : "ies"}`);
+      return { display: parts.join(" · ") || raw, structured: parsed as Record<string, unknown> };
+    }
+  } catch { /* not JSON */ }
+  return { display: raw, structured: null };
 }
 
 function StatusIcon({ status }: { status: ActivityLogEntry["status"] }) {
@@ -104,7 +123,7 @@ function statusLabel(status: ActivityLogEntry["status"]): string {
 
 export default function ActivityLogPage() {
   const pageTitle = usePageTitle("Activity Log");
-  const { acknowledgeAllErrors } = useActivityContext();
+  const { acknowledgeAllErrors, mutateActivityLog } = useActivityContext();
 
   useEffect(() => {
     acknowledgeAllErrors();
@@ -113,6 +132,7 @@ export default function ActivityLogPage() {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const params = new URLSearchParams();
   params.set("limit", String(PAGE_SIZE));
@@ -141,6 +161,11 @@ export default function ActivityLogPage() {
     { refreshInterval: 10000 },
   );
 
+  const refresh = useCallback(() => {
+    mutate();
+    mutateActivityLog();
+  }, [mutate, mutateActivityLog]);
+
   const cancelSync = useCallback(async (id: string) => {
     await fetch(`/api/activity-log/${id}/cancel`, { method: "POST" });
     mutate();
@@ -150,6 +175,24 @@ export default function ActivityLogPage() {
     await fetch("/api/activity-log/cancel-all", { method: "POST" });
     mutate();
   }, [mutate]);
+
+  const acknowledgeEntry = useCallback(async (id: string) => {
+    await fetch(`/api/activity-log/${id}/acknowledge`, { method: "POST" });
+    mutate();
+    mutateActivityLog();
+  }, [mutate, mutateActivityLog]);
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   const toggleType = useCallback((type: string) => {
     setSelectedTypes((prev) => {
@@ -188,6 +231,14 @@ export default function ActivityLogPage() {
             options={STATUS_OPTIONS}
             onChange={handleStatusChange}
           />
+          <button
+            type="button"
+            onClick={refresh}
+            title="Refresh"
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-transparent px-2.5 py-1.5 text-xs text-white/40 cursor-pointer hover:border-white/[0.1] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+          >
+            <RefreshCw className="h-3 w-3" strokeWidth={2} />
+          </button>
           {entries?.some((e) => e.status === "running") && (
             <Button
               variant="destructive"
@@ -230,7 +281,8 @@ export default function ActivityLogPage() {
       {/* Table */}
       <div className="rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
         {/* Header row */}
-        <div className="grid grid-cols-[1fr_140px_100px_140px_140px] gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.015]">
+        <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.015]">
+          <span />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Type</span>
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Status</span>
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Duration</span>
@@ -254,69 +306,128 @@ export default function ActivityLogPage() {
         )}
 
         {/* Rows */}
-        {entries?.map((entry, i) => (
-          <div
-            key={entry.id}
-            className={`grid grid-cols-[1fr_140px_100px_140px_140px] gap-3 px-4 py-3 items-start hover:bg-white/[0.015] transition-colors duration-100 ${
-              i < (entries.length - 1) ? "border-b border-white/[0.03]" : ""
-            }`}
-          >
-            {/* Type + summary/error */}
-            <div className="min-w-0">
-              <span className="text-xs text-white/70 font-[var(--font-body)]">
-                {entryTypeLabel(entry.type)}
-              </span>
-              {entry.summary && (
-                <div className="text-[11px] text-white/30 truncate font-[var(--font-body)] mt-0.5">
-                  {entry.summary}
+        {entries?.map((entry, i) => {
+          const isExpanded = expandedIds.has(entry.id);
+          const { display: errorDisplay, structured } = parseErrorDetail(entry.errorDetail);
+          const hasExpandableContent = !!(entry.summary || entry.errorDetail);
+
+          return (
+            <div key={entry.id}>
+              <div
+                className={`grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-3 items-start transition-colors duration-100 ${
+                  i < (entries.length - 1) || isExpanded ? "border-b border-white/[0.03]" : ""
+                } ${hasExpandableContent ? "hover:bg-white/[0.015] cursor-pointer" : ""}`}
+                onClick={() => hasExpandableContent && toggleExpanded(entry.id)}
+              >
+                {/* Expand chevron */}
+                <div className="flex items-center justify-center pt-0.5">
+                  {hasExpandableContent && (
+                    <ChevronRight
+                      className={`h-3 w-3 text-white/20 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+                      strokeWidth={2}
+                    />
+                  )}
                 </div>
-              )}
-              {entry.status === "failed" && entry.errorDetail && (
-                <div className="text-[11px] text-amber-400/60 truncate font-[var(--font-body)] mt-0.5">
-                  {entry.errorDetail}
+
+                {/* Type + summary preview */}
+                <div className="min-w-0">
+                  <span className="text-xs text-white/70 font-[var(--font-body)]">
+                    {entryTypeLabel(entry.type)}
+                  </span>
+                  {entry.summary && !isExpanded && (
+                    <div className="text-[11px] text-white/30 truncate font-[var(--font-body)] mt-0.5">
+                      {entry.summary}
+                    </div>
+                  )}
+                  {entry.status === "failed" && entry.errorDetail && !isExpanded && (
+                    <div className="text-[11px] text-amber-400/60 truncate font-[var(--font-body)] mt-0.5">
+                      {errorDisplay}
+                    </div>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <StatusIcon status={entry.status} />
+                  <span className={`text-xs font-[var(--font-body)] ${
+                    entry.status === "success" ? "text-[var(--color-brand-400)]/70" :
+                    entry.status === "failed" ? "text-amber-400/70" :
+                    entry.status === "cancelled" ? "text-white/30" :
+                    "text-white/30"
+                  }`}>
+                    {statusLabel(entry.status)}
+                  </span>
+                  {entry.status === "running" && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      icon={<Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />}
+                      onClick={() => cancelSync(entry.id)}
+                      title="Cancel this sync"
+                      className="ml-1"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                  {entry.status === "failed" && !entry.acknowledged && (
+                    <button
+                      type="button"
+                      title="Dismiss"
+                      onClick={() => acknowledgeEntry(entry.id)}
+                      className="ml-1 flex items-center justify-center h-4 w-4 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                    >
+                      <X className="h-2.5 w-2.5" strokeWidth={2.5} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Duration */}
+                <span className="text-xs text-white/30 font-[var(--font-body)] tabular-nums">
+                  {formatDuration(entry.durationMs)}
+                </span>
+
+                {/* Scope */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ScopeCell scope={entry.scope} type={entry.type} sprintMap={sprintMap} />
+                </div>
+
+                {/* Timestamp */}
+                <span className="text-xs text-white/25 font-[var(--font-body)] tabular-nums text-right">
+                  {formatTimestamp(entry.startedAt)}
+                </span>
+              </div>
+
+              {/* Expanded detail panel */}
+              {isExpanded && (
+                <div className={`px-10 py-3 bg-white/[0.008] ${i < (entries.length - 1) ? "border-b border-white/[0.03]" : ""}`}>
+                  {entry.summary && (
+                    <div className="mb-2">
+                      <span className="text-[10px] uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Summary</span>
+                      <p className="mt-1 text-xs text-white/50 font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
+                    </div>
+                  )}
+                  {entry.errorDetail && (
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Error detail</span>
+                      {structured ? (
+                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                          {Object.entries(structured).map(([k, v]) => (
+                            <span key={k} className="text-[11px] font-[var(--font-body)]">
+                              <span className="text-white/25">{k}: </span>
+                              <span className="text-amber-400/70">{String(v)}</span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs text-amber-400/60 font-[var(--font-body)] leading-relaxed break-all">{entry.errorDetail}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-
-            {/* Status */}
-            <div className="flex items-center gap-1.5">
-              <StatusIcon status={entry.status} />
-              <span className={`text-xs font-[var(--font-body)] ${
-                entry.status === "success" ? "text-[var(--color-brand-400)]/70" :
-                entry.status === "failed" ? "text-amber-400/70" :
-                entry.status === "cancelled" ? "text-white/30" :
-                "text-white/30"
-              }`}>
-                {statusLabel(entry.status)}
-              </span>
-              {entry.status === "running" && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  icon={<Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />}
-                  onClick={() => cancelSync(entry.id)}
-                  title="Cancel this sync"
-                  className="ml-1"
-                >
-                  Cancel
-                </Button>
-              )}
-            </div>
-
-            {/* Duration */}
-            <span className="text-xs text-white/30 font-[var(--font-body)] tabular-nums">
-              {formatDuration(entry.durationMs)}
-            </span>
-
-            {/* Scope */}
-            <ScopeCell scope={entry.scope} type={entry.type} sprintMap={sprintMap} />
-
-            {/* Timestamp */}
-            <span className="text-xs text-white/25 font-[var(--font-body)] tabular-nums text-right">
-              {formatTimestamp(entry.startedAt)}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Pagination */}

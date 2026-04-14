@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { activityLog } from "@/db/schema";
-import { desc, eq, and, lt, notInArray, inArray } from "drizzle-orm";
+import { desc, eq, and, lt, notInArray, inArray, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { ActivityLogType } from "@/types/ticket";
 
@@ -10,10 +10,12 @@ const RETENTION_DAYS = 7;
 const RETENTION_MAX_ENTRIES = 200;
 
 /**
- * GET /api/activity-log?limit=20&unacknowledged=true&type=review,metadata-update
+ * GET /api/activity-log?limit=20&offset=0&unacknowledged=true&type=review,metadata-update&status=failed
  *
  * Returns recent activity log entries, newest first.
  * Supports comma-separated type filter via the `type` query param.
+ * Supports `status` filter (running|success|failed|cancelled).
+ * Supports `offset` for pagination.
  * Also marks running entries older than 5 minutes as failed (stale cleanup).
  * Prunes entries older than 7 days or beyond the 200 most recent.
  */
@@ -21,8 +23,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const parsedLimit = parseInt(searchParams.get("limit") ?? "20", 10);
   const limit = Math.max(1, Math.min(isNaN(parsedLimit) ? 20 : parsedLimit, 500));
+  const parsedOffset = parseInt(searchParams.get("offset") ?? "0", 10);
+  const offset = Math.max(0, isNaN(parsedOffset) ? 0 : parsedOffset);
   const onlyUnacked = searchParams.get("unacknowledged") === "true";
   const typeFilter = searchParams.get("type")?.split(",").filter(Boolean) ?? [];
+  const VALID_STATUSES = new Set(["running", "success", "failed", "cancelled"]);
+  const statusFilter = searchParams.get("status") ?? "";
+  const statusParam = VALID_STATUSES.has(statusFilter) ? statusFilter : null;
 
   // Stale cleanup: mark running syncs older than 5 min as failed
   const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
@@ -59,13 +66,17 @@ export async function GET(request: Request) {
   if (typeFilter.length > 0) {
     conditions.push(inArray(activityLog.type, typeFilter as ActivityLogType[]));
   }
+  if (statusParam) {
+    conditions.push(eq(activityLog.status, statusParam as "running" | "success" | "failed" | "cancelled"));
+  }
 
   const rows = await db
     .select()
     .from(activityLog)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(activityLog.startedAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 
   return NextResponse.json(rows);
 }
