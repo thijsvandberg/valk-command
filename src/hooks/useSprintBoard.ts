@@ -129,6 +129,22 @@ export function useJiraHealth() {
   );
 }
 
+export function useConfluenceHealth() {
+  return useSWR<{ ok: boolean; live: boolean; error?: string }>(
+    "/api/confluence/health",
+    fetcher,
+    { refreshInterval: 60000, revalidateOnFocus: false },
+  );
+}
+
+export function useTicketConfluenceLinks(ticketKey: string | null) {
+  return useSWR<{ links: Array<{ id: string; ticketKey: string; pageId: string; pageTitle: string; pageUrl: string; source: string; lastModifiedAt: string | null; lastModifiedBy: string | null; createdAt: string }> }>(
+    ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/confluence-links` : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 },
+  );
+}
+
 // Checks if a ticket's Jira data is stale (lazy: only when key is provided)
 export function useConflictCheck(ticketKey: string | null) {
   return useSWR<{ stale: boolean; localUpdated: string | null; remoteUpdated: string; key: string }>(

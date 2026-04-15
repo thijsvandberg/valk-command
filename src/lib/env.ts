@@ -17,6 +17,12 @@ const envSchema = z.object({
   VALK_AGENT_URL: z.string().url().default("http://localhost:3001"),
   VALK_AGENT_KEY: z.string().default(""),
 
+  // Confluence Integration
+  CONFLUENCE_BASE_URL: z.string().default(""),
+  CONFLUENCE_EMAIL: z.string().default(""),
+  CONFLUENCE_API_TOKEN: z.string().default(""),
+  CONFLUENCE_SPACE_KEY: z.string().default(""),
+
   // Bitbucket Cloud
   BITBUCKET_WORKSPACE: z.string().default(""),
   BITBUCKET_REPO_SLUG: z.string().default(""),
@@ -29,8 +35,8 @@ const envSchema = z.object({
   BT_NEXT_SPRINT_ID: z.string().default(""),
   DB_PATH: z.string().default("sqlite.db"),
 
-  // Auth (set at runtime via JWT signing)
-  JWT_SECRET: z.string().default(""),
+  // Auth (Clerk) — CLERK_SECRET_KEY is read by @clerk/nextjs directly from process.env
+  CLERK_ORG_ID: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

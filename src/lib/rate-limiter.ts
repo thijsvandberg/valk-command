@@ -94,9 +94,10 @@ interface OutboundCounter {
 const outboundCounters: Record<string, OutboundCounter> = {
   jira: { timestamps: [], windowMs: 60_000, limit: 100 },
   bitbucket: { timestamps: [], windowMs: 3_600_000, limit: 1000 },
+  confluence: { timestamps: [], windowMs: 60_000, limit: 100 },
 };
 
-export function trackOutboundCall(service: "jira" | "bitbucket"): void {
+export function trackOutboundCall(service: "jira" | "bitbucket" | "confluence"): void {
   const counter = outboundCounters[service];
   const now = Date.now();
   counter.timestamps.push(now);
@@ -106,7 +107,7 @@ export function trackOutboundCall(service: "jira" | "bitbucket"): void {
   counter.timestamps = counter.timestamps.filter((t) => t > cutoff);
 }
 
-export function getOutboundUsage(service: "jira" | "bitbucket"): {
+export function getOutboundUsage(service: "jira" | "bitbucket" | "confluence"): {
   current: number;
   limit: number;
   percentUsed: number;
@@ -124,7 +125,7 @@ export function getOutboundUsage(service: "jira" | "bitbucket"): {
   };
 }
 
-export function isOutboundLimitApproaching(service: "jira" | "bitbucket"): boolean {
+export function isOutboundLimitApproaching(service: "jira" | "bitbucket" | "confluence"): boolean {
   const usage = getOutboundUsage(service);
   return usage.percentUsed >= 80;
 }
@@ -136,6 +137,7 @@ export function resetRateLimits(): void {
   buckets.clear();
   outboundCounters.jira.timestamps = [];
   outboundCounters.bitbucket.timestamps = [];
+  outboundCounters.confluence.timestamps = [];
 }
 
 // Exported for testing
