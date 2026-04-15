@@ -262,6 +262,23 @@ describe("buildBriefingPayload", () => {
     expect(parsed.percentComplete).toBe(50);
   });
 
+  it("includes ticket counts and unassigned in-progress count", () => {
+    const result = buildBriefingPayload(sprintData, done, inProgress, todo);
+    const parsed = JSON.parse(result.sprintData);
+    expect(parsed.inProgressCount).toBe(1);
+    expect(parsed.todoCount).toBe(1);
+    expect(parsed.unassignedInProgressCount).toBe(1); // inProgress ticket has no assignee
+  });
+
+  it("counts only unassigned in-progress tickets", () => {
+    const assignedInProgress = [
+      { ...inProgress[0], assignee: { name: "Bob", initials: "BO" } },
+    ];
+    const result = buildBriefingPayload(sprintData, done, assignedInProgress, todo);
+    const parsed = JSON.parse(result.sprintData);
+    expect(parsed.unassignedInProgressCount).toBe(0);
+  });
+
   it("groups ticket titles by epic (not including assignee or jiraKey)", () => {
     const result = buildBriefingPayload(sprintData, done, inProgress, todo);
     const parsed = JSON.parse(result.sprintData);

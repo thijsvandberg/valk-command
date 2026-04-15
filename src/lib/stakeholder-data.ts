@@ -119,6 +119,9 @@ interface BriefingPayload {
   donePoints: number;
   totalPoints: number;
   percentComplete: number;
+  todoCount: number;
+  inProgressCount: number;
+  unassignedInProgressCount: number;
   done: BriefingTicketGroup[];
   inProgress: BriefingTicketGroup[];
   todo: BriefingTicketGroup[];
@@ -152,6 +155,9 @@ export function buildBriefingPayload(
     donePoints,
     totalPoints,
     percentComplete,
+    todoCount: todoTickets.length,
+    inProgressCount: inProgressTickets.length,
+    unassignedInProgressCount: inProgressTickets.filter((t) => !t.assignee).length,
     done: groupTitlesByEpic(doneTickets),
     inProgress: groupTitlesByEpic(inProgressTickets),
     todo: groupTitlesByEpic(todoTickets),
