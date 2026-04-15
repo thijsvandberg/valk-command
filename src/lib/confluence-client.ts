@@ -92,14 +92,34 @@ class ConfluenceClient {
     };
   }
 
-  async searchPages(query: string, spaceKey?: string): Promise<ConfluenceSearchResult[]> {
-    const space = spaceKey ?? this.spaceKey;
-    const cql = space
-      ? `title~"${query}" AND space="${space}" AND type=page`
-      : `title~"${query}" AND type=page`;
+  private mapSearchResults(
+    data: {
+      results: Array<{
+        id: string;
+        title: string;
+        _links: { webui: string };
+        space: { key: string; name: string };
+        history?: { lastUpdated?: { when: string } };
+        excerpt?: string;
+      }>;
+    },
+  ): ConfluenceSearchResult[] {
+    return data.results.map((r) => ({
+      pageId: r.id,
+      title: r.title,
+      url: `${this.baseUrl}/wiki${r._links.webui}`,
+      spaceKey: r.space.key,
+      spaceTitle: r.space.name,
+      lastModified: r.history?.lastUpdated?.when ?? null,
+      // Strip HTML highlight tags from excerpts so callers get clean text
+      excerpt: (r.excerpt ?? "").replace(/<[^>]+>/g, ""),
+    }));
+  }
+
+  private async fetchSearchResults(cql: string, limit = 10): Promise<ConfluenceSearchResult[]> {
     const params = new URLSearchParams({
       cql,
-      limit: "10",
+      limit: String(limit),
       expand: "space,version,history.lastUpdated",
     });
     const data = await this.fetch<{
@@ -112,16 +132,27 @@ class ConfluenceClient {
         excerpt?: string;
       }>;
     }>(`/wiki/rest/api/content/search?${params}`);
+    return this.mapSearchResults(data);
+  }
 
-    return data.results.map((r) => ({
-      pageId: r.id,
-      title: r.title,
-      url: `${this.baseUrl}/wiki${r._links.webui}`,
-      spaceKey: r.space.key,
-      spaceTitle: r.space.name,
-      lastModified: r.history?.lastUpdated?.when ?? null,
-      excerpt: r.excerpt ?? "",
-    }));
+  async searchPages(query: string, spaceKey?: string): Promise<ConfluenceSearchResult[]> {
+    const space = spaceKey ?? this.spaceKey;
+    const cql = space
+      ? `title~"${query}" AND space="${space}" AND type=page`
+      : `title~"${query}" AND type=page`;
+    return this.fetchSearchResults(cql);
+  }
+
+  async searchByText(query: string, spaceKey?: string): Promise<ConfluenceSearchResult[]> {
+    const space = spaceKey ?? this.spaceKey;
+    const cql = space
+      ? `text~"${query}" AND space="${space}" AND type=page`
+      : `text~"${query}" AND type=page`;
+    return this.fetchSearchResults(cql);
+  }
+
+  async searchByCql(cql: string, limit = 10): Promise<ConfluenceSearchResult[]> {
+    return this.fetchSearchResults(cql, limit);
   }
 
   async getPageMetadata(pageId: string): Promise<ConfluencePageMetadata> {
