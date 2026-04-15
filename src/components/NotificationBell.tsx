@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   Bell,
@@ -160,27 +161,54 @@ function notificationIcon(type: string) {
 export function NotificationBell() {
   const { notifications, unreadCount, totalCount, markRead, markAllRead, clearRead, dismissOne } = useNotifications(50);
   const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const computePos = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setDropdownPos({
+      top: rect.bottom + 8,
+      right: window.innerWidth - rect.right,
+    });
+  }, []);
+
+  function handleToggle() {
+    if (!open) computePos();
+    setOpen((v) => !v);
+  }
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+    if (!open) return;
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current && !buttonRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     }
-    if (open) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+    function handleResize() { computePos(); }
+    document.addEventListener("mousedown", handleOutside);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [open, computePos]);
 
   const hasReadNotifications = notifications.some((n) => n.read);
   const hiddenCount = totalCount > 50 ? totalCount - 50 : 0;
 
   return (
-    <div ref={panelRef} className="relative">
+    <div className="relative">
       {/* Bell button */}
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="relative flex h-8 w-8 items-center justify-center rounded-lg text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
@@ -192,9 +220,13 @@ export function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown panel */}
-      {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-[360px] rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+      {/* Dropdown portal — rendered on document.body to escape any stacking context */}
+      {open && dropdownPos && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+          className="w-[360px] rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
             <span className="font-[var(--font-display)] text-[13px] font-semibold text-white/70">
@@ -317,7 +349,8 @@ export function NotificationBell() {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
