@@ -62,14 +62,21 @@ const mockMessages = [
 ];
 
 function mockFetchSequence(responses: Array<{ ok: boolean; data?: unknown; status?: number }>) {
-  const mocked = vi.spyOn(global, "fetch");
-  for (const response of responses) {
-    mocked.mockResolvedValueOnce({
+  const queue = [...responses];
+  const mocked = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
+    // Running tasks poll should always return empty so it doesn't consume sequenced responses
+    if (url.includes("workspace-tasks?status=running")) {
+      return { ok: true, status: 200, json: async () => [] } as Response;
+    }
+    const response = queue.shift();
+    if (!response) return { ok: true, status: 200, json: async () => null } as Response;
+    return {
       ok: response.ok,
       status: response.status ?? (response.ok ? 200 : 500),
       json: async () => response.data,
-    } as Response);
-  }
+    } as Response;
+  });
   return mocked;
 }
 

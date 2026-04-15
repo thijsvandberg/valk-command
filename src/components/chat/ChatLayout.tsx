@@ -23,6 +23,8 @@ import { MessageCircle, X, PenLine, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 
+const RUNNING_TASK_POLL_INTERVAL_MS = 10_000;
+
 interface ChatLayoutProps {
   conversationId?: string;
 }
@@ -146,6 +148,32 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
   // Track the last skill invocation so we can persist review results from chat
   const lastInvocationRef = useRef<{ skill: string; args: string } | null>(null);
+
+  // Poll for running tasks across all conversations so we can show indicators in the sidebar
+  const [runningTaskConversationIds, setRunningTaskConversationIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/workspace-tasks?status=running");
+        if (!res.ok || cancelled) return;
+        const rows = await res.json() as Array<{ conversationId: string | null }>;
+        if (cancelled) return;
+        const ids = new Set(rows.map((r) => r.conversationId).filter(Boolean) as string[]);
+        setRunningTaskConversationIds(ids);
+      } catch {
+        // Silently ignore poll errors
+      }
+    }
+
+    poll();
+    const interval = setInterval(poll, RUNNING_TASK_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // When a task completes (either from live stream or from reconnection after navigation),
   // refresh messages so the server-saved assistant message becomes visible.
@@ -296,6 +324,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
             activeId={activeId}
             loading={convLoading}
             error={convError}
+            runningTaskConversationIds={runningTaskConversationIds}
             onSelect={handleSelect}
             onCreate={handleCreate}
             onDelete={handleDelete}

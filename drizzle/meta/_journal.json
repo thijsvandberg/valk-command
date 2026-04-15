@@ -260,6 +260,13 @@
       "when": 1776241861484,
       "tag": "0036_charming_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1776300000000,
+      "tag": "0037_workspace_task_output",
+      "breakpoints": true
     }
   ]
 }

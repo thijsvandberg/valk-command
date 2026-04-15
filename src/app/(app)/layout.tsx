@@ -5,6 +5,7 @@ import { SWRProvider } from "@/components/SWRProvider";
 import { CommandPalette } from "@/components/command-palette";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { DeployNotifier } from "@/components/DeployNotifier";
+import { TaskCompletionNotifier } from "@/components/chat/TaskCompletionNotifier";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <ActivityToast />
+      <TaskCompletionNotifier />
       <CommandPalette />
       <GlobalSearch />
       <DeployNotifier />

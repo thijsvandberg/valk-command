@@ -13,6 +13,7 @@ interface ConversationListProps {
   activeId: string | null;
   loading: boolean;
   error: string | null;
+  runningTaskConversationIds?: Set<string>;
   onSelect: (id: string) => void;
   onCreate: (type: ConversationType) => void;
   onDelete: (id: string) => void;
@@ -23,6 +24,7 @@ export default function ConversationList({
   activeId,
   loading,
   error,
+  runningTaskConversationIds,
   onSelect,
   onCreate,
   onDelete,
@@ -50,6 +52,7 @@ export default function ConversationList({
         <ul className="flex-1 overflow-y-auto px-2 pb-2" role="listbox" aria-label="Conversation list">
           {conversations.map((conversation) => {
             const isActive = conversation.id === activeId;
+            const hasRunningTask = runningTaskConversationIds?.has(conversation.id) ?? false;
             return (
               <li key={conversation.id} role="option" aria-selected={isActive}>
                 <div className="flex items-center">
@@ -71,6 +74,12 @@ export default function ConversationList({
                       <span className="block truncate font-[var(--font-body)] text-sm font-medium">
                         {conversation.title}
                       </span>
+                      {hasRunningTask && (
+                        <span
+                          className="ml-auto shrink-0 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse"
+                          aria-label="Task running"
+                        />
+                      )}
                     </span>
                   </button>
                   <Button

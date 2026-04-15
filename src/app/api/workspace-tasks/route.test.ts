@@ -16,41 +16,41 @@ vi.mock("@/lib/task-stream-handler", () => ({
   captureTaskStream: vi.fn(),
 }));
 
-vi.mock("next/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("next/server")>();
-  return {
-    ...actual,
-    after: vi.fn((cb: () => void) => cb()),
-  };
-});
-
-const mockDb = {
-  query: {
-    conversation: {
-      findFirst: vi.fn().mockResolvedValue(null),
+const { mockDb } = vi.hoisted(() => {
+  const mockDb = {
+    query: {
+      conversation: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+      workspaceTask: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
     },
-    workspaceTask: {
-      findFirst: vi.fn().mockResolvedValue(null),
-    },
-  },
-  insert: vi.fn().mockReturnValue({
-    values: vi.fn().mockReturnValue({
-      run: vi.fn(),
-      then: vi.fn((res: (v: void) => void) => Promise.resolve().then(res)),
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue(Promise.resolve()),
     }),
-  }),
-  select: vi.fn().mockReturnValue({
-    from: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        all: vi.fn().mockReturnValue([]),
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          all: vi.fn().mockReturnValue([]),
+        }),
       }),
     }),
-  }),
-};
+  };
+  return { mockDb };
+});
 
 vi.mock("@/db", () => ({
   db: mockDb,
 }));
+
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: vi.fn((cb: () => unknown) => cb()),
+  };
+});
 
 import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -98,9 +98,9 @@ describe("GET /api/workspace-tasks", () => {
   it("queries local DB when conversationId filter provided", async () => {
     const mockRows = [{ id: "task-1", status: "running", conversationId: "conv-1" }];
     mockDb.select.mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          all: vi.fn().mockReturnValue(mockRows),
+      from: () => ({
+        where: () => ({
+          all: () => mockRows,
         }),
       }),
     });

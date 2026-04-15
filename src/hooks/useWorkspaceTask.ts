@@ -48,7 +48,10 @@ function attachStreamListeners(
   safeSetState: (action: WorkspaceTaskState | ((s: WorkspaceTaskState) => WorkspaceTaskState)) => void,
   eventSourceRef: React.MutableRefObject<EventSource | null>,
 ) {
-  es.addEventListener("status", () => {
+  es.addEventListener("status", (e) => {
+    try {
+      JSON.parse((e as MessageEvent).data);
+    } catch { return; }
     safeSetState((s) => ({
       ...s,
       status: "streaming",
