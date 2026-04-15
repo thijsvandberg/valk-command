@@ -60,12 +60,14 @@ export async function PATCH(
       });
 
       const typeLabel = row.type === "brief" ? "Sprint Brief" : "Deep Dive";
+      const teamMatch = row.sprintName.match(/^([A-Z]+)[: ]/);
+      const teamParam = teamMatch ? `&team=${teamMatch[1]}` : "";
       createNotification(
         "stakeholder-analysis",
         `${typeLabel} ready for ${row.sprintName}`,
         {
           category: "agent",
-          linkUrl: `/chat/${row.conversationId}`,
+          linkUrl: `/stakeholder?sprintId=${row.sprintId}${teamParam}`,
         },
       );
     }

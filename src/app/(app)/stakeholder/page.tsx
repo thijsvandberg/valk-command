@@ -71,10 +71,10 @@ function extractSprintNumber(sprintName: string): number {
 }
 
 function sessionGet(key: string): string | null {
-  try { return sessionStorage.getItem(key); } catch { return null; }
+  try { return localStorage.getItem(key); } catch { return null; }
 }
 function sessionSet(key: string, value: string): void {
-  try { sessionStorage.setItem(key, value); } catch {}
+  try { localStorage.setItem(key, value); } catch {}
 }
 
 const navBtnClass =
