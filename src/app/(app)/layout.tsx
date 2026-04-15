@@ -12,7 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <ActivityProvider>
       <div className="flex flex-col h-screen bg-[var(--color-surface-base)] text-white">
         {/* Full-width header — ViewHeader portals its content here */}
-        <div id="view-header-portal" className="shrink-0" />
+        <div id="view-header-portal" className="relative z-10 shrink-0" />
         {/* Sidebar + content below the header */}
         <div className="flex flex-1 min-h-0">
           <Sidebar />
