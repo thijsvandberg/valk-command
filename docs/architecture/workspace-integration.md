@@ -144,6 +144,32 @@ When the agent returns review results, they are wrapped in `<json-output>` tags.
 
 Queries all configured repositories in parallel. Auth via Bitbucket app password (Basic auth). Returns empty payload when not configured.
 
+## Investigate Skill and Confluence Integration
+
+The `investigate` skill (v2.0.0) in VRW searches both code repos and Confluence documentation.
+
+Since VRW has no Confluence MCP server, it calls Bridge's Confluence proxy endpoints via `WebFetch`:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/confluence/search?q=<term>&mode=title\|text\|cql` | Search Confluence pages |
+| `GET /api/confluence/pages/<pageId>?format=text&maxWords=<n>` | Fetch page content as plain text |
+
+These endpoints require no auth (rate-limited only). The investigation degrades gracefully if Confluence is not configured (503 response is silently ignored).
+
+**Search modes:**
+- `mode=title` (default): CQL `title~"term"` search
+- `mode=text`: CQL `text~"term"` search for full-text content
+- `mode=cql`: Raw CQL expression passthrough
+
+**Investigation flow with Confluence (Step 3b):**
+1. Title and text searches using domain terms derived from the question
+2. Ticket key search in Confluence (if a Jira key was provided)
+3. Selective page fetch (at most 3 pages based on title/excerpt relevance)
+4. Cross-reference: after finding key files with Jira keys in code, search Confluence for those keys
+5. Discrepancies between Confluence docs and code surfaced in "What's missing"
+6. Explain mode: Confluence business context enriches the non-technical summary
+
 ## Environment Variables
 
 | Variable | Required | Purpose |

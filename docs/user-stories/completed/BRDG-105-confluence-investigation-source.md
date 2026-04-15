@@ -1,6 +1,6 @@
 # BRDG-105: Confluence as Investigation Source
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 **Depends on:** BRDG-073 (Confluence connection), BRDG-104 (Code Investigation Skill)
 
@@ -9,6 +9,15 @@
 As the PO, I want the code investigation skill (BRDG-104) to also search Confluence for relevant documentation, specs, and decisions alongside the codebase, so I get a complete picture that includes both what is built and what was designed or decided.
 
 Currently the investigate skill only searches code repos. Many questions ("why does X work this way?", "what was decided about Y?") have answers documented in Confluence pages (technical specs, architecture decisions, meeting notes, PRDs) that are not reflected in code comments.
+
+## Implementation Plan
+
+1. **Extend `confluence-client.ts`** - Add `searchByText()`, `searchByCql()` methods; refactor shared response mapping into private helper; strip HTML from excerpts
+2. **Extend `/api/confluence/search` route** - Add `mode=title|text|cql` param; `space` param passthrough; test file
+3. **Extend `/api/confluence/pages/[pageId]` route** - Add `format=html|text` and `maxWords` params; plain-text extraction helper; test file
+4. **Update VRW investigate skill Phase 1** - Add Step 3b (Confluence search via WebFetch); add Documentation references section to output format; update synthesis step to weave findings
+5. **Update VRW investigate skill Phase 2** - Extend Step 5 (cross-reference Jira keys against Confluence); add discrepancy surfacing in synthesis
+6. **Update VRW investigate skill Phase 3** - Extend Step 7 (explain mode uses Confluence content for business context; cites pages by title)
 
 ## Prerequisites
 
@@ -19,21 +28,21 @@ Currently the investigate skill only searches code repos. Many questions ("why d
 
 ### Phase 1: Confluence Search in Investigations
 
-- [ ] VRW investigate skill can search Confluence via CQL when running an investigation
-- [ ] Search terms are derived from the user's question (key domain terms, feature names, ticket keys)
-- [ ] Confluence results include: page title, space, last modified date, relevant excerpt
-- [ ] Confluence findings are integrated into the investigation output (not a separate section dump, but woven into the narrative where relevant)
+- [x] VRW investigate skill can search Confluence via CQL when running an investigation
+- [x] Search terms are derived from the user's question (key domain terms, feature names, ticket keys)
+- [x] Confluence results include: page title, space, last modified date, relevant excerpt
+- [x] Confluence findings are integrated into the investigation output (not a separate section dump, but woven into the narrative where relevant)
 
 ### Phase 2: Documentation Cross-Reference
 
-- [ ] When the investigation finds relevant code, also search Confluence for pages that reference the same ticket keys, service names, or feature names
-- [ ] Surface discrepancies between what the code does and what Confluence documents say it should do
-- [ ] Include a "Documentation references" section in the output linking to relevant Confluence pages
+- [x] When the investigation finds relevant code, also search Confluence for pages that reference the same ticket keys, service names, or feature names
+- [x] Surface discrepancies between what the code does and what Confluence documents say it should do
+- [x] Include a "Documentation references" section in the output linking to relevant Confluence pages
 
 ### Phase 3: Explain Mode Enhancement
 
-- [ ] In explain mode, use Confluence content to enrich the non-technical summary with business context, original requirements, and design rationale
-- [ ] Cite Confluence pages by title (not URL) in the non-technical summary where relevant
+- [x] In explain mode, use Confluence content to enrich the non-technical summary with business context, original requirements, and design rationale
+- [x] Cite Confluence pages by title (not URL) in the non-technical summary where relevant
 
 ## Output Format Addition
 
