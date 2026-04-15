@@ -48,7 +48,9 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     refresh: refreshMessages,
   } = useMessages(activeId);
 
-  const workspaceTask = useWorkspaceTask();
+  // Pass activeId so the hook can reconnect to any running task when the user
+  // navigates to this conversation (handles navigation-away scenarios)
+  const workspaceTask = useWorkspaceTask(activeId ?? undefined);
   const { notify } = useNotification();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
   const isInvestigation = activeConv?.type === "investigation";
@@ -145,41 +147,34 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   // Track the last skill invocation so we can persist review results from chat
   const lastInvocationRef = useRef<{ skill: string; args: string } | null>(null);
 
-  // Save completed task output as assistant message (once)
-  // Also persist review results when /review-story completes
-  const savedTaskRef = useRef<string | null>(null);
+  // When a task completes (either from live stream or from reconnection after navigation),
+  // refresh messages so the server-saved assistant message becomes visible.
+  // Also send a browser notification and persist review results when /review-story completes.
+  const notifiedTaskRef = useRef<string | null>(null);
   useEffect(() => {
     if (
       workspaceTask.status !== "completed" ||
-      !workspaceTask.output ||
       !workspaceTask.taskId ||
-      !activeId ||
-      savedTaskRef.current === workspaceTask.taskId
+      notifiedTaskRef.current === workspaceTask.taskId
     ) return;
 
-    savedTaskRef.current = workspaceTask.taskId;
+    notifiedTaskRef.current = workspaceTask.taskId;
 
-    const firstLine = workspaceTask.output.split("\n").find((l) => l.trim())?.slice(0, 120) ?? "";
-    notify("Chat response ready", {
-      body: firstLine,
-      tag: "chat-response",
-    });
+    // Refresh messages to pick up the assistant message saved by captureTaskStream
+    refreshMessages();
 
-    const displayContent = workspaceTask.output;
+    if (workspaceTask.output) {
+      const firstLine = workspaceTask.output.split("\n").find((l) => l.trim())?.slice(0, 120) ?? "";
+      notify("Chat response ready", {
+        body: firstLine,
+        tag: "chat-response",
+      });
+    }
 
-    fetch(`/api/conversations/${activeId}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        role: "assistant",
-        content: displayContent,
-        workspaceTaskId: workspaceTask.taskId,
-      }),
-    }).then(() => refreshMessages());
-
-    // Auto-generate investigation title from the result
-    if (isInvestigation && activeConv?.title === "New investigation") {
-      const title = extractInvestigationTitle(displayContent);
+    // Auto-generate investigation title from the result (client best-effort only,
+    // server-side handler does not know conversation type)
+    if (workspaceTask.output && isInvestigation && activeConv?.title === "New investigation") {
+      const title = extractInvestigationTitle(workspaceTask.output);
       if (title) {
         fetch(`/api/conversations/${activeId}`, {
           method: "PATCH",
@@ -193,7 +188,11 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
     // Persist review results from /review-story commands
     const invocation = lastInvocationRef.current;
-    if ((invocation?.skill === "review-story" || invocation?.skill === "review-story-json") && invocation.args) {
+    if (
+      workspaceTask.output &&
+      (invocation?.skill === "review-story" || invocation?.skill === "review-story-json") &&
+      invocation.args
+    ) {
       const ticketKey = invocation.args.trim();
       const agentData = parseReviewOutput(workspaceTask.output);
       if (agentData) {
@@ -211,7 +210,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         }).catch((err) => console.warn("[chat] persist review failed", err));
       }
     }
-  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations]);
+  }, [workspaceTask.status, workspaceTask.taskId, workspaceTask.output, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations]);
 
   const headerIcon = isInvestigation
     ? <Search size={15} strokeWidth={1.5} className="text-white/30" />
@@ -240,6 +239,15 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
             <ViewHeaderDivider />
             <span className="text-sm text-white/35">
               {messages.length} messages
+            </span>
+          </>
+        )}
+        {(workspaceTask.status === "streaming" || workspaceTask.status === "submitting") && (
+          <>
+            <ViewHeaderDivider />
+            <span className="flex items-center gap-1.5 text-xs text-white/40">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse inline-block" />
+              Task running...
             </span>
           </>
         )}
