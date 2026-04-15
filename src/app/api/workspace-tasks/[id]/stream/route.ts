@@ -32,9 +32,10 @@ export async function GET(
   // Use an AbortController so we can kill the upstream read when:
   // - the client disconnects
   // - the stream goes idle for too long
+  // The background captureTaskStream handler has its own independent connection
+  // to the VRW, so aborting this proxy's upstream does not affect result capture.
   const upstreamAbort = new AbortController();
 
-  // Detect client disconnect via the incoming request's abort signal
   request.signal.addEventListener("abort", () => {
     upstreamAbort.abort();
   });
@@ -48,7 +49,6 @@ export async function GET(
     }, INACTIVITY_TIMEOUT_MS);
   };
 
-  // Start the inactivity timer
   resetInactivityTimer();
 
   const transform = new TransformStream({
@@ -61,11 +61,9 @@ export async function GET(
     },
   });
 
-  // Pipe upstream through the transform, abort on signal
   upstream.body
     .pipeTo(transform.writable, { signal: upstreamAbort.signal })
     .catch(() => {
-      // Expected when aborted (client disconnect / inactivity timeout)
       if (inactivityTimer) clearTimeout(inactivityTimer);
     });
 

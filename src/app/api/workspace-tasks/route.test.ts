@@ -12,16 +12,53 @@ vi.mock("@/lib/activity-logger", () => ({
   logActivity: vi.fn(),
 }));
 
-// Needed because workspace-tasks imports from a db-backed logger chain
-vi.mock("@/db", () => ({
-  get db() {
-    return undefined;
+vi.mock("@/lib/task-stream-handler", () => ({
+  captureTaskStream: vi.fn(),
+}));
+
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: vi.fn((cb: () => void) => cb()),
+  };
+});
+
+const mockDb = {
+  query: {
+    conversation: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    workspaceTask: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
   },
+  insert: vi.fn().mockReturnValue({
+    values: vi.fn().mockReturnValue({
+      run: vi.fn(),
+      then: vi.fn((res: (v: void) => void) => Promise.resolve().then(res)),
+    }),
+  }),
+  select: vi.fn().mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        all: vi.fn().mockReturnValue([]),
+      }),
+    }),
+  }),
+};
+
+vi.mock("@/db", () => ({
+  db: mockDb,
 }));
 
 import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { GET, POST } from "./route";
+
+function makeGetRequest(search = "") {
+  return new Request(`http://localhost:3100/api/workspace-tasks${search}`);
+}
 
 describe("GET /api/workspace-tasks", () => {
   beforeEach(() => {
@@ -37,7 +74,7 @@ describe("GET /api/workspace-tasks", () => {
       retryCount: 0,
     });
 
-    const response = await GET();
+    const response = await GET(makeGetRequest());
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data).toEqual([{ id: "task-1", status: "running" }]);
@@ -51,11 +88,29 @@ describe("GET /api/workspace-tasks", () => {
       retryCount: 0,
     });
 
-    const response = await GET();
+    const response = await GET(makeGetRequest());
     expect(response.status).toBe(502);
     const data = await response.json();
     expect(data.error).toBe("Agent unreachable");
     expect(data.code).toBe("UNREACHABLE");
+  });
+
+  it("queries local DB when conversationId filter provided", async () => {
+    const mockRows = [{ id: "task-1", status: "running", conversationId: "conv-1" }];
+    mockDb.select.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          all: vi.fn().mockReturnValue(mockRows),
+        }),
+      }),
+    });
+
+    const response = await GET(makeGetRequest("?conversationId=conv-1&status=running"));
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toEqual(mockRows);
+    // Should NOT call agentFetch when filtering by conversationId
+    expect(vi.mocked(agentFetch)).not.toHaveBeenCalled();
   });
 });
 
@@ -63,9 +118,10 @@ describe("POST /api/workspace-tasks", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(applyRateLimit).mockReturnValue(null);
+    mockDb.query.conversation.findFirst.mockResolvedValue({ id: "conv-1" });
   });
 
-  it("posts valid task and returns agent data", async () => {
+  it("posts valid task and returns agent data with conversationId", async () => {
     vi.mocked(agentFetch).mockResolvedValue({
       ok: true,
       data: { id: "task-new" },
@@ -82,6 +138,7 @@ describe("POST /api/workspace-tasks", () => {
     expect(response.status).toBe(201);
     const data = await response.json();
     expect(data.id).toBe("task-new");
+    expect(data.conversationId).toBe("conv-1");
   });
 
   it("returns 400 when skillName is missing", async () => {

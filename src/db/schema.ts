@@ -95,6 +95,8 @@ export const workspaceTask = sqliteTable("workspace_task", {
   completedAt: text("completed_at"),
   relatedTicket: text("related_ticket"),
   conversationId: text("conversation_id"),
+  output: text("output"),
+  error: text("error"),
 }, (table) => [
   index("workspace_task_status_idx").on(table.status),
   index("workspace_task_conversation_id_idx").on(table.conversationId),
@@ -509,6 +511,9 @@ export const relatedStoryCandidate = sqliteTable("related_story_candidate", {
   index("related_story_candidate_session_id_idx").on(table.sessionId),
   index("related_story_candidate_ticket_key_idx").on(table.ticketKey),
 ]);
+
+export type WorkspaceTask = typeof workspaceTask.$inferSelect;
+export type NewWorkspaceTask = typeof workspaceTask.$inferInsert;
 
 export type StoryWriterSessionRow = typeof storyWriterSession.$inferSelect;
 export type NewStoryWriterSessionRow = typeof storyWriterSession.$inferInsert;

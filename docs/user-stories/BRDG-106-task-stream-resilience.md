@@ -24,6 +24,64 @@ This is a problem for long-running skills like `investigate` (which can take 30-
 2. Running tasks are visible (the user can see that something is in progress)
 3. If the user returns to a conversation with a completed task, the result is shown
 
+## Implementation Plan
+
+### Architecture
+
+The core change decouples the upstream VRW stream from the browser connection. When a task is submitted, the server spawns a background SSE consumer (via `after()` from `next/server`) that persists independently of the browser. The browser stream proxy remains a secondary consumer for real-time progress only.
+
+### Step 1: DB Migration + schema.ts
+Add `output` (text, nullable) and `error` (text, nullable) to `workspace_task` table.
+- Create `drizzle/0037_workspace_task_output.sql`
+- Update `src/db/schema.ts`
+
+### Step 2: Server-side background stream handler
+Create `src/lib/task-stream-handler.ts` (server-only):
+- Inserts a `workspace_task` row with `status: "running"`
+- Opens SSE stream to VRW independently
+- Parses SSE events, accumulates output
+- On `result`: updates workspace_task (`completed`, stores output), saves assistant message, creates notification
+- On error/timeout: marks task `failed`, saves error message
+
+### Step 3: Modify POST /api/workspace-tasks
+- Ensure conversation exists in Bridge DB (create if needed)
+- Call `after(() => captureTaskStream(...))` to run background handler
+- Return `conversationId` in response
+
+### Step 4: Decouple stream proxy from browser lifecycle
+- In `/api/workspace-tasks/[id]/stream/route.ts`, remove the `request.signal` abort propagation to upstream
+- Browser disconnect closes the proxy, not the upstream
+
+### Step 5: GET /api/workspace-tasks with local DB filter
+- Accept `?conversationId=X&status=running` query params
+- Query Bridge's local `workspace_task` table when params provided
+- Fallback to VRW proxy when no params
+
+### Step 6: useWorkspaceTask reconnection on mount
+- Accept optional `conversationId` parameter
+- On mount, if `conversationId` provided and status is idle, check for running tasks
+- If running: reconnect to stream
+- If completed: show output (already saved by background handler)
+
+### Step 7: ChatLayout updates
+- Pass `activeId` to `useWorkspaceTask(activeId)`
+- Remove client-side message save (now done server-side)
+- Keep review-persistence logic for when browser is connected
+
+### Step 8: ConversationList running indicator
+- Accept `runningTaskConversationIds: Set<string>` prop
+- Render pulsing dot for conversations with active tasks
+
+### Step 9: Header "Task running..." indicator
+- In conversation header, show indicator when task is streaming
+
+### Step 10: Background task completion toast
+- TaskCompletionNotifier component polls for `category: "agent"` alerts
+- Mount in app layout alongside ActivityToast
+
+### Implementation Order
+Phase 1 (Steps 1-4), then Phase 2 (Steps 5-7), then Phase 3 (Steps 8-10). Each phase depends on the previous.
+
 ## Acceptance Criteria
 
 ### Phase 1: Server-side result capture
