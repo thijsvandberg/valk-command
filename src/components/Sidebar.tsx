@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, useCallback } from "react";
+import { useClerk } from "@clerk/nextjs";
 import {
   LayoutGrid,
   MessageCircle,
@@ -92,6 +93,7 @@ function getCollapsedServerSnapshot(): boolean {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { signOut } = useClerk();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const collapsed = useSyncExternalStore(
@@ -205,11 +207,7 @@ export default function Sidebar() {
           </div>
           <button
             type="button"
-            onClick={async () => {
-              await fetch("/api/auth/logout", { method: "POST" });
-              router.push("/login");
-              router.refresh();
-            }}
+            onClick={() => signOut({ redirectUrl: "/login" })}
             className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             title={collapsed ? "Sign out" : undefined}
           >
