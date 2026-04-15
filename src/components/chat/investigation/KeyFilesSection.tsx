@@ -2,7 +2,6 @@
 
 import { FileCode } from "lucide-react";
 import type { InvestigationKeyFile } from "@/lib/investigation-parser";
-import { Tooltip } from "@/components/shared/Tooltip";
 import { CollapsibleSection } from "./CollapsibleSection";
 
 function extractRepoBadge(filePath: string): string | null {
@@ -29,27 +28,23 @@ function FileRow({ file }: { file: InvestigationKeyFile }) {
   const { directory, filename } = truncatePath(file.file);
 
   return (
-    <div className="flex items-center gap-2 py-1.5 border-b border-white/[0.03] last:border-0 min-w-0 overflow-hidden">
-      <FileCode
-        size={13}
-        strokeWidth={1.5}
-        className="text-white/20 shrink-0"
-      />
-      {repo && (
-        <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-white/[0.06] text-white/35">
-          {repo}
-        </span>
-      )}
-      <Tooltip content={file.file}>
-        <span className="font-mono text-xs text-white/60 min-w-0 truncate block">
+    <div className="py-1.5 border-b border-white/[0.03] last:border-0">
+      <div className="flex items-center gap-2">
+        <FileCode size={13} strokeWidth={1.5} className="text-white/20 shrink-0" />
+        {repo && (
+          <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-white/[0.06] text-white/35">
+            {repo}
+          </span>
+        )}
+        <span className="font-mono text-xs text-white/60 break-all">
           <span className="text-white/30">{directory}</span>
           <span className="text-[var(--color-brand-300)]">{filename}</span>
         </span>
-      </Tooltip>
+      </div>
       {file.purpose && (
-        <span className="text-[11px] text-white/35 shrink-0 ml-auto max-w-[40%] truncate hidden sm:block">
+        <p className="text-[11px] text-white/35 mt-0.5 ml-[29px]">
           {file.purpose}
-        </span>
+        </p>
       )}
     </div>
   );
@@ -68,7 +63,7 @@ export function KeyFilesSection({ files, defaultOpen = false }: KeyFilesSectionP
 
   return (
     <CollapsibleSection title="Key files" icon={FileCode} defaultOpen={defaultOpen} copyContent={copyContent}>
-      <div className="space-y-0 overflow-hidden">
+      <div className="space-y-0">
         {files.map((file) => (
           <FileRow key={file.file} file={file} />
         ))}

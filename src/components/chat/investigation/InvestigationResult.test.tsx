@@ -105,14 +105,14 @@ describe("InvestigationResult", () => {
     expect(localLink.closest("a")?.getAttribute("href")).toBe("/tickets/VPL-12345");
   });
 
-  it("renders external story link to Jira when not in local DB", () => {
+  it("always links story key to Bridge and shows Jira external link", () => {
     render(<InvestigationResult data={FULL_DATA} rawContent={RAW_CONTENT} />);
     fireEvent.click(screen.getByText("Related stories"));
-    // Key renders as plain text (not a local link) when not in DB
+    // Key always links to Bridge regardless of local DB
     const keyEl = screen.getByText("VPL-99999");
-    expect(keyEl.tagName.toLowerCase()).not.toBe("a");
-    // A separate Jira external link (icon button) should be present in the same row
-    const row = keyEl.closest(".flex");
+    expect(keyEl.closest("a")?.getAttribute("href")).toBe("/tickets/VPL-99999");
+    // Jira external link is also present
+    const row = keyEl.closest("div");
     expect(row?.querySelector('a[href*="browse/VPL-99999"]')).not.toBeNull();
   });
 

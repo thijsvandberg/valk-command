@@ -12,33 +12,31 @@ function StoryRow({ story }: { story: InvestigationRelatedStory }) {
   const { exists, status } = useTicketExists(story.key);
 
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-white/[0.03] last:border-0 min-w-0">
-      <div className="flex items-center gap-1.5 shrink-0">
-        {exists ? (
-          <Link
-            href={`/tickets/${story.key}`}
-            className="text-xs font-semibold text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] hover:underline transition-colors duration-150"
-          >
-            {story.key}
-          </Link>
-        ) : (
-          <span className="text-xs font-semibold text-white/60">{story.key}</span>
-        )}
+    <div className="py-2 border-b border-white/[0.03] last:border-0">
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/tickets/${story.key}`}
+          className="text-xs font-semibold text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] hover:underline transition-colors duration-150 shrink-0"
+        >
+          {story.key}
+        </Link>
         <a
           href={getJiraUrl(story.key)}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-white/25 cursor-pointer hover:text-white/50 transition-colors duration-150"
+          className="text-white/25 cursor-pointer hover:text-white/50 transition-colors duration-150 shrink-0"
           title="Open in Jira"
         >
           <ExternalLink size={11} strokeWidth={1.5} />
         </a>
+        {exists && status && <StatusBadge status={status} />}
+        <span className="text-xs text-white/50">{story.summary}</span>
       </div>
-      {exists && status && <StatusBadge status={status} />}
-      <span className="text-xs text-white/50 flex-1 min-w-0 truncate">{story.summary}</span>
-      <span className="text-[11px] text-white/25 shrink-0 hidden sm:block max-w-[35%] truncate text-right">
-        {story.relevance}
-      </span>
+      {story.relevance && (
+        <p className="text-[11px] text-white/25 mt-0.5">
+          {story.relevance}
+        </p>
+      )}
     </div>
   );
 }
