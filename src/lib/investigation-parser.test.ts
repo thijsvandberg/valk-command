@@ -159,3 +159,28 @@ Step 2`;
     expect(result!.stakeholderSummary).toBeNull();
   });
 });
+
+describe("extractInvestigationTitle", () => {
+  it("extracts a short title from the question", () => {
+    const title = extractInvestigationTitle(BASIC_RESULT);
+    expect(title).not.toBeNull();
+    expect(title!.length).toBeLessThanOrEqual(60);
+    expect(title!).toContain("cancellation button");
+  });
+
+  it("truncates long questions at word boundary", () => {
+    const long = `## Question
+How does the very complex upgrade service determine the available room types for loyalty program members in the booking flow
+
+## Finding
+Test finding`;
+    const title = extractInvestigationTitle(long);
+    expect(title).not.toBeNull();
+    expect(title!.length).toBeLessThanOrEqual(60);
+    expect(title!.endsWith("...")).toBe(true);
+  });
+
+  it("returns null for non-investigation content", () => {
+    expect(extractInvestigationTitle("no investigation here")).toBeNull();
+  });
+});
