@@ -12,12 +12,20 @@ Browser                    valk-command (Next.js)          valk-agent
   |-- POST /api/workspace-tasks ->                            |
   |                              |-- POST /agent/api/tasks --->|
   |                              |<-- { taskId } -------------|
-  |<-- { taskId } --------------|                              |
+  |<-- { taskId, convId } ------|                              |
+  |                              |                            |
+  |                              | [after()] captureTaskStream |
+  |                              |-- GET /agent/api/tasks/X/stream ->|
+  |                              |<========= SSE (server-side, persistent) ======|
+  |                              | saves assistant message to DB on completion   |
   |                              |                            |
   |-- GET /stream ------------->|                              |
   |                              |-- GET /agent/api/tasks/X/stream ->|
   |<========= SSE events ======|<========= SSE events ======|
+  |        (browser, optional)   |
 ```
+
+The server-side stream (`captureTaskStream`) is independent of the browser connection and ensures task results are always persisted even if the user navigates away.
 
 ## Agent Proxy (`src/lib/agent-proxy.ts`)
 
@@ -42,7 +50,7 @@ Server-side helper that constructs agent URLs and auth headers.
 }
 ```
 
-The route generates a `conversationId` if missing, normalizes the payload, and forwards to the agent. Returns the `taskId` for streaming.
+The route generates a `conversationId` if missing, ensures the conversation exists in Bridge's DB, and forwards to the agent. It then spawns a background server-side stream handler via Next.js `after()` that connects to the VRW SSE stream independently of the browser. Returns `{ taskId, conversationId }` to the browser.
 
 ### 2. Stream Progress
 
@@ -88,6 +96,8 @@ idle -> submitting -> streaming -> completed
 ```
 
 **Key behavior:**
+- `useWorkspaceTask(conversationId?)` - accepts optional conversationId for reconnection
+- On mount with `conversationId`: polls `GET /api/workspace-tasks?conversationId=X` to find any running/completed tasks and reconnects automatically
 - `submitAndStream(skill, args, conversationId?)` submits the task and opens an EventSource
 - Parses SSE events into structured state: `toolCalls`, `progressText`, `output`
 - 5-minute timeout on streaming
