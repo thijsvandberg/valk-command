@@ -44,7 +44,7 @@ export function useColumnWidths() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ widths: next }),
-      }).catch(() => {});
+      }).catch((err) => console.warn("[column-widths] persist failed", err));
     }, DEBOUNCE_MS);
   }, []);
 

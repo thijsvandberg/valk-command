@@ -161,6 +161,7 @@ interface NotificationResponse {
     type: string;
     jiraKey: string | null;
     jiraTitle: string | null;
+    sprintName: string | null;
     message: string;
     createdAt: string;
     eventAt: string | null;

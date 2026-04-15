@@ -159,7 +159,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
             summary: result.summary,
             suggestions: result.suggestions,
           }),
-        }).catch(() => {});
+        }).catch((err) => console.warn("[chat] persist review failed", err));
       }
     }
   }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages, notify]);

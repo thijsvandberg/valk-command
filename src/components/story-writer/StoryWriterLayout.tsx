@@ -119,7 +119,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       .then((data) => {
         if (!cancelled && data?.title) setTargetTicketTitle(data.title);
       })
-      .catch(() => {});
+      .catch((err) => console.warn("[story-writer] fetch target ticket failed", err));
     return () => { cancelled = true; };
   }, [targetTicketKey]);
 

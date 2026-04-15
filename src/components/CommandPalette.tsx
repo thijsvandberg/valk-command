@@ -372,7 +372,7 @@ export function CommandPalette() {
           })),
         );
       })
-      .catch(() => {});
+      .catch((err) => console.warn("[command-palette] fetch sessions failed", err));
   }, [open]);
 
   /* ---- Lazily fetch sprint slots when the sub-flow opens ---- */

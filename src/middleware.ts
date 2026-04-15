@@ -25,9 +25,9 @@ async function isValidSession(token: string): Promise<boolean> {
   try {
     let secret = process.env.JWT_SECRET;
     if (!secret) {
-      // Fallback: in middleware (Edge runtime) we cannot access the DB
-      // so if JWT_SECRET env is not set, we pass through and let the
-      // API route or page server component do the full check.
+      // Edge runtime cannot access the DB where the auto-generated secret
+      // is stored. Pass through and let the server component / API route
+      // perform the full verification with DB access.
       return true;
     }
     const key = new TextEncoder().encode(secret);

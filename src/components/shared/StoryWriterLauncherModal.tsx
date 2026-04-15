@@ -389,7 +389,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
       setSprintOptions(ordered);
       const def = nextId && ordered.find((o) => o.value === nextId) ? nextId : ordered[0]?.value ?? "";
       setSelectedSprintId(def);
-    }).catch(() => {});
+    }).catch((err) => console.warn("[launcher-modal] fetch sprints failed", err));
 
     setSessionsLoading(true);
     fetch("/api/story-writer/active-sessions")

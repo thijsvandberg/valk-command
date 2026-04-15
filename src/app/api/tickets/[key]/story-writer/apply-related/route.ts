@@ -122,7 +122,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ticketKeys: keysToSync }),
-    }).catch(() => {});
+    }).catch((err) => console.error("[apply-related] background sync failed", err));
   }
 
   return NextResponse.json({ candidates, found: true });

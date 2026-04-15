@@ -46,7 +46,7 @@ export function useColumnConfig() {
             order: nextOrder,
             visible: [...nextVisible],
           }),
-        }).catch(() => {});
+        }).catch((err) => console.warn("[column-config] persist failed", err));
       }, DEBOUNCE_MS);
     },
     [],

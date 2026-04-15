@@ -367,6 +367,23 @@ async function jiraPut(path: string, body: unknown, signal?: AbortSignal): Promi
   );
 }
 
+async function jiraDelete(path: string, signal?: AbortSignal): Promise<void> {
+  const cfg = getConfig();
+  const url = `${cfg.baseUrl}${path}`;
+  const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
+
+  return withRetry(
+    () => fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Basic ${auth}` },
+      signal,
+    }),
+    async () => {},
+    path,
+    signal,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Field helpers
 // ---------------------------------------------------------------------------
@@ -779,15 +796,7 @@ export class JiraClient {
    */
   async deleteIssueLink(linkId: string): Promise<void> {
     if (!isConfigured()) return;
-
-    const cfg = getConfig();
-    const url = `${cfg.baseUrl}/rest/api/3/issueLink/${linkId}`;
-    const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
-
-    await fetch(url, {
-      method: "DELETE",
-      headers: { Authorization: `Basic ${auth}` },
-    });
+    await jiraDelete(`/rest/api/3/issueLink/${linkId}`);
   }
 
   /**

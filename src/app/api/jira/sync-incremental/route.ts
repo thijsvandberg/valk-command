@@ -108,10 +108,13 @@ export async function POST() {
       const sprintName = sprint ? String(sprint.id) : "";
       const info = await upsertIssue(issue, sprintName, controller.signal);
       results.push(info);
+    }
 
-      if (issue.fields.updated) {
-        await upsertSetting(WATERMARK_KEY, issue.fields.updated);
-      }
+    // Advance watermark once after processing the entire batch (issues are
+    // sorted by updated asc, so the last entry is the most recent).
+    const lastUpdated = issues[issues.length - 1]?.fields.updated;
+    if (lastUpdated) {
+      await upsertSetting(WATERMARK_KEY, lastUpdated);
     }
 
     invalidateSearchCache();

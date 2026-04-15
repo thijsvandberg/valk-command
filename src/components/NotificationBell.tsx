@@ -263,6 +263,11 @@ export function NotificationBell() {
                       )}
                       <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
                         <TimeAgo createdAt={n.createdAt} eventAt={n.eventAt} />
+                        {n.sprintName && (
+                          <span className="inline-flex items-center rounded-md bg-white/[0.06] px-1.5 py-px text-[10px] text-white/30 leading-tight">
+                            {n.sprintName}
+                          </span>
+                        )}
                         {n.linkUrl && (
                           <a
                             href={n.linkUrl}

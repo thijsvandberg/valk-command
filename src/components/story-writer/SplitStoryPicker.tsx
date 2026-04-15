@@ -39,7 +39,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
         const match = data.find((s) => s.sprintId === originalSprintId);
         setSelectedSprintId(match?.sprintId ?? data[0]?.sprintId ?? "");
       })
-      .catch(() => {});
+      .catch((err) => console.warn("[split-picker] fetch sprints failed", err));
   }, [open, originalSprintId]);
 
   if (!open) return null;

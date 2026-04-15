@@ -106,7 +106,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Fetch and store the raw execution log from the workspace in the background.
   // This is non-critical and can be slow, so we don't block the response on it.
   if (taskId) {
-    fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key).catch(() => {});
+    fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key)
+      .catch((err) => console.error("[apply-draft] execution log fetch failed", err));
   }
 
   await logActivity({

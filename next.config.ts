@@ -32,7 +32,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net https://avatar-management--avatars.*.atlassian.com",
+      "img-src 'self' data: https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net https://*.atlassian.com https://*.atl-paas.net",
       "font-src 'self'",
       "connect-src 'self'",
       "frame-ancestors 'none'",

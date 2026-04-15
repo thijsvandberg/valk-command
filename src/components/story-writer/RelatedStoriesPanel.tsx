@@ -163,7 +163,7 @@ function TicketDetail({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticketKeys: [jiraKey] }),
-      }).catch(() => {});
+      }).catch((err) => console.warn("[related-stories] background sync failed", err));
       const r2 = await fetch(`/api/tickets/${encodeURIComponent(jiraKey)}`);
       if (r2.ok) return r2.json();
       return null;
