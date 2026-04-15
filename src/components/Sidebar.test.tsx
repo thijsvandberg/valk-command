@@ -15,6 +15,11 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+// Mock @clerk/nextjs to avoid needing a ClerkProvider
+vi.mock("@clerk/nextjs", () => ({
+  useClerk: () => ({ signOut: vi.fn() }),
+}));
+
 // Mock SyncIndicator to avoid needing ActivityProvider
 vi.mock("@/components/sync/SyncIndicator", () => ({
   SyncIndicator: () => <div data-testid="sync-indicator" />,

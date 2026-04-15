@@ -1,17 +1,23 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-const isDev = process.env.NODE_ENV === "development";
-const bypassAuth = isDev && process.env.BYPASS_AUTH === "true";
+const isPublicRoute = createRouteMatcher([
+  "/login(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  // Dev bypass activation endpoint must be reachable before auth is established
+  "/api/dev/bypass",
+]);
 
-const isPublicRoute = createRouteMatcher(["/login(.*)", "/sign-in(.*)", "/sign-up(.*)"]);
+export default clerkMiddleware(async (auth, req) => {
+  // Dev-only: honor cookie set by GET /api/dev/bypass
+  if (
+    process.env.NODE_ENV === "development" &&
+    req.cookies.get("dev_bypass")?.value === "1"
+  ) {
+    return NextResponse.next();
+  }
 
-function devMiddleware(_req: NextRequest) {
-  return NextResponse.next();
-}
-
-const clerkHandler = clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
 
   const isApiRoute = req.nextUrl.pathname.startsWith("/api/");
@@ -37,8 +43,6 @@ const clerkHandler = clerkMiddleware(async (auth, req) => {
     }
   }
 });
-
-export default bypassAuth ? devMiddleware : clerkHandler;
 
 export const config = {
   matcher: [

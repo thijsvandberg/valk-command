@@ -2,25 +2,16 @@
 
 import { SignIn, useAuth, useOrganizationList, useClerk } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 const BRIDGE_ORG_ID = process.env.NEXT_PUBLIC_CLERK_ORG_ID;
-const BYPASS_AUTH = process.env.NEXT_PUBLIC_BYPASS_AUTH === "true";
 
 export default function LoginPage() {
   const { isSignedIn, orgId, isLoaded } = useAuth();
   const { setActive, isLoaded: orgListLoaded } = useOrganizationList();
   const { signOut } = useClerk();
-  const router = useRouter();
   const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
-    // Local dev shortcut: skip auth entirely
-    if (BYPASS_AUTH) {
-      router.replace("/");
-      return;
-    }
-
     if (!isLoaded || !orgListLoaded) return;
     if (!isSignedIn) return;
 
@@ -42,10 +33,10 @@ export default function LoginPage() {
           setAccessDenied(true);
         });
     }
-  }, [isLoaded, orgListLoaded, isSignedIn, orgId, setActive, router]);
+  }, [isLoaded, orgListLoaded, isSignedIn, orgId, setActive]);
 
   // While Clerk is initializing, show a spinner
-  if (!BYPASS_AUTH && !isLoaded) {
+  if (!isLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)]">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-400)]" />
@@ -80,7 +71,7 @@ export default function LoginPage() {
   }
 
   // Signed in and switching org — show spinner
-  if (!BYPASS_AUTH && isSignedIn) {
+  if (isSignedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)]">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-400)]" />
