@@ -1,49 +1,111 @@
 "use client";
 
-import { X, AlertTriangle, Sparkles, RefreshCw } from "lucide-react";
-import type { TaskStreamStatus } from "@/hooks/useWorkspaceTask";
+import { X, AlertTriangle, Sparkles, RefreshCw, BookOpen, Clock } from "lucide-react";
+import type { LiveStreamState, AnalysisType } from "@/hooks/useStakeholderAnalysis";
+
+// Re-export from shared lib for backward compatibility
+export { parseBriefingOutput } from "@/lib/stakeholder-data";
 
 export interface AiInsightsPanelProps {
-  status: TaskStreamStatus;
-  progressText: string;
+  type: AnalysisType;
+  live: LiveStreamState;
   narrative: string | null;
   risks: string[];
-  error: string | null;
+  content: string | null;
+  generatedAt: string | null;
+  isStale: boolean;
   onDismiss: () => void;
   onRetry: () => void;
 }
 
-export function parseBriefingOutput(output: string): { narrative: string; risks: string[] } {
-  const jsonMatch = output.match(/<json-output>([\s\S]*?)<\/json-output>/);
-  if (jsonMatch) {
-    const narrative = output.slice(0, output.indexOf("<json-output>")).trim();
-    try {
-      const parsed = JSON.parse(jsonMatch[1]);
-      const risks = Array.isArray(parsed.risks) ? (parsed.risks as string[]) : [];
-      return { narrative, risks };
-    } catch {
-      return { narrative, risks: [] };
+function formatRelative(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin === 1) return "1 minute ago";
+  if (diffMin < 60) return `${diffMin} minutes ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH === 1) return "1 hour ago";
+  if (diffH < 24) return `${diffH} hours ago`;
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function renderDeepDiveContent(content: string) {
+  // Split on markdown headings (## or ###) and render as sections
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let buffer: string[] = [];
+  let key = 0;
+
+  function flushBuffer() {
+    if (buffer.length === 0) return;
+    const text = buffer.join("\n").trim();
+    if (text) {
+      elements.push(
+        <p key={key++} className="text-sm leading-relaxed text-white/65 whitespace-pre-wrap">
+          {text}
+        </p>,
+      );
+    }
+    buffer = [];
+  }
+
+  for (const line of lines) {
+    if (line.startsWith("## ") || line.startsWith("### ")) {
+      flushBuffer();
+      const level = line.startsWith("### ") ? "###" : "##";
+      const text = line.slice(level.length + 1).trim();
+      elements.push(
+        <p key={key++} className={`font-semibold text-white/80 ${level === "##" ? "text-sm mt-3" : "text-xs mt-2"}`}>
+          {text}
+        </p>,
+      );
+    } else {
+      buffer.push(line);
     }
   }
-  return { narrative: output.trim(), risks: [] };
+  flushBuffer();
+
+  return <div className="space-y-1.5">{elements}</div>;
 }
 
 export function AiInsightsPanel({
-  status,
-  progressText,
+  type,
+  live,
   narrative,
   risks,
-  error,
+  content,
+  generatedAt,
+  isStale,
   onDismiss,
   onRetry,
 }: AiInsightsPanelProps) {
-  if (status === "idle") return null;
+  const isRunning = live.status === "submitting" || live.status === "streaming";
+  const hasSavedResult = !!(type === "brief" ? narrative : content) && live.status === "idle";
+  const hasLiveResult = live.status === "completed";
+  const hasFailed = live.status === "failed";
+  const isVisible = isRunning || hasSavedResult || hasLiveResult || hasFailed;
+
+  if (!isVisible) return null;
+
+  const label = type === "brief" ? "Sprint Brief" : "Deep Dive";
+  const Icon = type === "brief" ? Sparkles : BookOpen;
+
+  const displayNarrative = hasLiveResult || hasSavedResult
+    ? narrative
+    : null;
+  const displayRisks = hasLiveResult || hasSavedResult
+    ? risks
+    : [];
+  const displayContent = hasLiveResult || hasSavedResult
+    ? content
+    : null;
 
   return (
     <div
       role="region"
-      aria-label="AI-generated sprint insights"
-      aria-busy={status === "submitting" || status === "streaming"}
+      aria-label={`AI-generated ${label}`}
+      aria-busy={isRunning}
       className="relative rounded-xl border border-[var(--color-brand-400)]/20 bg-[var(--color-brand-900)]/30 overflow-hidden"
       style={{
         boxShadow: "0 0 0 1px rgba(51,137,216,0.06), 0 4px 24px -4px rgba(51,137,216,0.08)",
@@ -61,20 +123,27 @@ export function AiInsightsPanel({
         {/* Header row */}
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles
-              size={13}
-              strokeWidth={1.5}
-              className="text-[var(--color-brand-400)]/70 shrink-0"
-            />
+            <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
-              AI Insights
+              AI {label}
             </span>
+            {generatedAt && (hasSavedResult || hasLiveResult) && (
+              <span className="flex items-center gap-1 text-[10px] text-white/25">
+                <Clock size={9} strokeWidth={1.5} />
+                {formatRelative(generatedAt)}
+                {isStale && (
+                  <span className="ml-1 rounded-sm bg-amber-400/10 px-1 py-px text-amber-400/60">
+                    data changed
+                  </span>
+                )}
+              </span>
+            )}
           </div>
-          {(status === "completed" || status === "failed") && (
+          {!isRunning && (
             <button
               type="button"
               onClick={onDismiss}
-              aria-label="Dismiss AI insights"
+              aria-label={`Dismiss AI ${label}`}
               className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <X size={12} strokeWidth={1.5} />
@@ -83,11 +152,11 @@ export function AiInsightsPanel({
         </div>
 
         {/* Loading state */}
-        {(status === "submitting" || status === "streaming") && (
+        {isRunning && (
           <div className="space-y-2.5">
             <div className="flex items-center gap-2 text-xs text-white/30">
               <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
-              <span>{progressText || "Generating insights..."}</span>
+              <span>{live.progressText || "Generating..."}</span>
             </div>
             <div className="space-y-2 pt-1">
               <div className="h-2.5 w-full animate-pulse rounded-full bg-white/[0.05]" />
@@ -97,19 +166,15 @@ export function AiInsightsPanel({
           </div>
         )}
 
-        {/* Completed state: narrative + risks */}
-        {status === "completed" && narrative && (
+        {/* Brief: narrative + risks */}
+        {!isRunning && type === "brief" && displayNarrative && (
           <div className="space-y-3">
-            <p className="text-sm leading-relaxed text-white/70">{narrative}</p>
-            {risks.length > 0 && (
+            <p className="text-sm leading-relaxed text-white/70">{displayNarrative}</p>
+            {displayRisks.length > 0 && (
               <div className="space-y-1.5 pt-1">
-                {risks.map((risk, i) => (
+                {displayRisks.map((risk, i) => (
                   <div key={i} className="flex items-start gap-2">
-                    <AlertTriangle
-                      size={12}
-                      strokeWidth={1.5}
-                      className="mt-0.5 shrink-0 text-amber-400/60"
-                    />
+                    <AlertTriangle size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-amber-400/60" />
                     <p className="text-xs text-amber-400/60">{risk}</p>
                   </div>
                 ))}
@@ -118,10 +183,17 @@ export function AiInsightsPanel({
           </div>
         )}
 
+        {/* Deep Dive: structured long-form content */}
+        {!isRunning && type === "deep-dive" && displayContent && (
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+            {renderDeepDiveContent(displayContent)}
+          </div>
+        )}
+
         {/* Error state */}
-        {status === "failed" && (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-red-400/70">{error ?? "Failed to generate insights"}</p>
+        {hasFailed && (
+          <div className="flex items-center justify-between gap-3 mt-2">
+            <p className="text-xs text-red-400/70">{live.error ?? "Failed to generate"}</p>
             <button
               type="button"
               onClick={onRetry}

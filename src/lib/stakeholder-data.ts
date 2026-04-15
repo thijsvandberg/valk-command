@@ -166,6 +166,81 @@ export function buildBriefingPayload(
   return { sprintData: JSON.stringify(payload) };
 }
 
+// ── AI output parsers ────────────────────────────────────────────────────────
+
+// Parses agent output from the stakeholder-briefing skill.
+// Expects: narrative text, optionally followed by <json-output>{"risks":[...]}</json-output>
+export function parseBriefingOutput(output: string): { narrative: string; risks: string[] } {
+  const jsonMatch = output.match(/<json-output>([\s\S]*?)<\/json-output>/);
+  if (jsonMatch) {
+    const narrative = output.slice(0, output.indexOf("<json-output>")).trim();
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      const risks = Array.isArray(parsed.risks) ? (parsed.risks as string[]) : [];
+      return { narrative, risks };
+    } catch {
+      return { narrative, risks: [] };
+    }
+  }
+  return { narrative: output.trim(), risks: [] };
+}
+
+// ── Deep Dive payload ─────────────────────────────────────────────────────────
+
+interface DeepDiveTicket {
+  title: string;
+  epic: string;
+  storyPoints: number | null;
+  assignee: string | null;
+}
+
+interface DeepDivePayload {
+  sprintName: string;
+  daysRemaining: number | null;
+  goal: string | null;
+  donePoints: number;
+  totalPoints: number;
+  percentComplete: number;
+  done: DeepDiveTicket[];
+  inProgress: DeepDiveTicket[];
+  todo: DeepDiveTicket[];
+}
+
+export function buildDeepDivePayload(
+  sprint: StakeholderSprint,
+  doneTickets: StakeholderTicket[],
+  inProgressTickets: StakeholderTicket[],
+  todoTickets: StakeholderTicket[],
+): Record<string, string> {
+  const allTickets = [...doneTickets, ...inProgressTickets, ...todoTickets];
+  const donePoints = doneTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+  const totalPoints = allTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+  const percentComplete = totalPoints > 0 ? Math.round((donePoints / totalPoints) * 100) : 0;
+
+  function toDeepDiveTickets(tickets: StakeholderTicket[]): DeepDiveTicket[] {
+    return tickets.map((t) => ({
+      title: t.title,
+      epic: t.epic ?? "Other",
+      storyPoints: t.storyPoints,
+      assignee: t.assignee?.name ?? null,
+    }));
+  }
+
+  const payload: DeepDivePayload = {
+    sprintName: sprint.name,
+    daysRemaining: sprint.workingDaysRemaining,
+    goal: sprint.goal,
+    donePoints,
+    totalPoints,
+    percentComplete,
+    done: toDeepDiveTickets(doneTickets),
+    inProgress: toDeepDiveTickets(inProgressTickets),
+    todo: toDeepDiveTickets(todoTickets),
+  };
+
+  return { sprintData: JSON.stringify(payload) };
+}
+
 function groupByEpic(tickets: StakeholderTicket[]): Map<string, StakeholderTicket[]> {
   const groups = new Map<string, StakeholderTicket[]>();
   for (const t of tickets) {

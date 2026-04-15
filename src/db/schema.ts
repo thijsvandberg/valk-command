@@ -158,6 +158,31 @@ export const alert = sqliteTable("alert", {
   index("alert_jira_key_idx").on(table.jiraKey),
 ]);
 
+export const stakeholderAnalysis = sqliteTable("stakeholder_analysis", {
+  id: text("id").primaryKey(),
+  sprintId: integer("sprint_id").notNull(),
+  sprintName: text("sprint_name").notNull(),
+  type: text("type", { enum: ["brief", "deep-dive"] }).notNull(),
+  status: text("status", { enum: ["running", "completed", "failed"] }).notNull().default("running"),
+  content: text("content"),
+  narrative: text("narrative"),
+  risks: text("risks"),
+  workspaceTaskId: text("workspace_task_id"),
+  conversationId: text("conversation_id"),
+  snapshotDonePoints: integer("snapshot_done_points").notNull().default(0),
+  snapshotTodoCount: integer("snapshot_todo_count").notNull().default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  completedAt: text("completed_at"),
+}, (table) => [
+  index("stakeholder_analysis_sprint_id_idx").on(table.sprintId),
+  index("stakeholder_analysis_sprint_type_idx").on(table.sprintId, table.type),
+]);
+
+export type StakeholderAnalysisRow = typeof stakeholderAnalysis.$inferSelect;
+export type NewStakeholderAnalysisRow = typeof stakeholderAnalysis.$inferInsert;
+
 // Phase 3: Comments
 export const poComment = sqliteTable("po_comment", {
   id: text("id").primaryKey(),

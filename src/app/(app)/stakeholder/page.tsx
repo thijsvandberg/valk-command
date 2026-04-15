@@ -1,19 +1,20 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
-import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, CloudDownload, History, Sparkles } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload } from "@/lib/stakeholder-data";
+import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload, buildDeepDivePayload } from "@/lib/stakeholder-data";
 import { SprintOverviewCard } from "@/components/stakeholder/SprintOverviewCard";
 import { CopyMarkdownButton } from "@/components/stakeholder/CopyMarkdownButton";
 import { VelocitySparkline } from "@/components/stakeholder/VelocitySparkline";
 import { useVelocityData } from "@/hooks/useVelocityData";
 import { LoadingState } from "@/components/shared/LoadingState";
-import { AiInsightsPanel, parseBriefingOutput } from "@/components/stakeholder/AiInsightsPanel";
-import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
+import { AiInsightsPanel } from "@/components/stakeholder/AiInsightsPanel";
+import { SyncDropdown } from "@/components/stakeholder/SyncDropdown";
+import { useStakeholderAnalysis, type AnalysisType } from "@/hooks/useStakeholderAnalysis";
 import {
   ViewHeader,
   ViewHeaderTitle,
@@ -59,13 +60,11 @@ function formatRelativeTime(date: Date | null): string {
   return `${diffMin} minutes ago`;
 }
 
-// Supports "BT: 133" and "BT 133" (colon-space or space separator)
 function extractTeamPrefix(sprintName: string): string | null {
   const match = sprintName.match(/^([A-Z]+)[: ]/);
   return match ? match[1] : null;
 }
 
-// First number after team prefix: "BT: 133" → 133, "BT: 130 - Align sidebars" → 130, "BT: TODO" → Infinity
 function extractSprintNumber(sprintName: string): number {
   const match = sprintName.match(/[: ]\s*(\d+)/);
   return match ? parseInt(match[1], 10) : Infinity;
@@ -84,14 +83,58 @@ const navBtnClass =
 const selectClass =
   "rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer hover:border-white/[0.12] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
+// Analysis trigger button with state indicator
+function AnalysisButton({
+  type,
+  label,
+  isRunning,
+  hasResult,
+  isStale,
+  onClick,
+  disabled,
+}: {
+  type: AnalysisType;
+  label: string;
+  isRunning: boolean;
+  hasResult: boolean;
+  isStale: boolean;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  const Icon = type === "brief" ? Sparkles : BookOpen;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={`Generate ${label} for this sprint`}
+      className="relative flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+    >
+      {isRunning ? (
+        <RefreshCw size={12} strokeWidth={1.5} className="animate-spin" />
+      ) : (
+        <Icon size={12} strokeWidth={1.5} />
+      )}
+      {label}
+      {hasResult && !isRunning && (
+        <span
+          className={`ml-0.5 h-1.5 w-1.5 rounded-full ${isStale ? "bg-amber-400/60" : "bg-emerald-400/60"}`}
+          title={isStale ? "Data changed since last analysis" : "Analysis up to date"}
+        />
+      )}
+      {hasResult && !isRunning && !isStale && (
+        <Check size={9} strokeWidth={2} className="text-emerald-400/60" />
+      )}
+    </button>
+  );
+}
 
 function StakeholderView() {
   const { data: sprints } = useJiraSprints();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { mutate } = useSWRConfig();
+  const { mutate: globalMutate } = useSWRConfig();
 
-  // URL params take precedence; session storage is the fallback for within-session memory
   const urlTeam = searchParams.get("team") ?? sessionGet(SESSION_KEY_TEAM);
   const urlSprintId = (() => {
     const raw = searchParams.get("sprintId") ?? sessionGet(SESSION_KEY_SPRINT);
@@ -103,12 +146,11 @@ function StakeholderView() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingHistory, setIsSyncingHistory] = useState(false);
 
-  // AI Insights state
-  const briefing = useWorkspaceTask();
-  const [briefingNarrative, setBriefingNarrative] = useState<string | null>(null);
-  const [briefingRisks, setBriefingRisks] = useState<string[]>([]);
-  const [briefingDismissed, setBriefingDismissed] = useState(false);
-  const prevSprintIdRef = useRef<number | null>(null);
+  // Per-type dismissed state (local UI only — resets on sprint change)
+  const [dismissed, setDismissed] = useState<Record<AnalysisType, boolean>>({
+    brief: false,
+    "deep-dive": false,
+  });
 
   const availableTeams = useMemo<string[]>(() => {
     if (!sprints) return [];
@@ -120,7 +162,6 @@ function StakeholderView() {
     return Array.from(prefixes).sort();
   }, [sprints]);
 
-  // Team: URL/session param takes precedence, then fall back to team of the active sprint
   const selectedTeamPrefix = useMemo<string | null>(() => {
     if (urlTeam) return urlTeam;
     if (!sprints) return null;
@@ -129,7 +170,6 @@ function StakeholderView() {
     return sprints.length > 0 ? extractTeamPrefix(sprints[0].name) : null;
   }, [urlTeam, sprints]);
 
-  // Sorted sprints for selected team; non-numeric (TODO, Backlog) go last
   const teamSprints = useMemo(() => {
     if (!sprints || !selectedTeamPrefix) return [];
     return sprints
@@ -137,7 +177,6 @@ function StakeholderView() {
       .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
   }, [sprints, selectedTeamPrefix]);
 
-  // Sprint index: URL/session sprintId → active sprint → first
   const selectedIndex = useMemo<number>(() => {
     if (urlSprintId !== null) {
       const idx = teamSprints.findIndex((s) => s.id === urlSprintId);
@@ -149,8 +188,17 @@ function StakeholderView() {
 
   const currentSprint = teamSprints[selectedIndex] ?? null;
   const previousSprint = selectedIndex > 0 ? teamSprints[selectedIndex - 1] ?? null : null;
-
   const isCompareMode = searchParams.get("compare") === "1" && previousSprint !== null;
+
+  // Reset dismissed state on sprint change
+  const prevSprintIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!currentSprint?.id) return;
+    if (prevSprintIdRef.current !== null && prevSprintIdRef.current !== currentSprint.id) {
+      setDismissed({ brief: false, "deep-dive": false });
+    }
+    prevSprintIdRef.current = currentSprint.id;
+  }, [currentSprint?.id]);
 
   function updateUrl(team: string, sprintId: number) {
     sessionSet(SESSION_KEY_TEAM, team);
@@ -158,18 +206,14 @@ function StakeholderView() {
     const params = new URLSearchParams();
     params.set("team", team);
     params.set("sprintId", String(sprintId));
-    // Preserve compare param when navigating
     if (isCompareMode) params.set("compare", "1");
     router.replace(`/stakeholder?${params.toString()}`);
   }
 
   function toggleCompareMode() {
     const params = new URLSearchParams(searchParams.toString());
-    if (isCompareMode) {
-      params.delete("compare");
-    } else {
-      params.set("compare", "1");
-    }
+    if (isCompareMode) params.delete("compare");
+    else params.set("compare", "1");
     router.replace(`/stakeholder?${params.toString()}`);
   }
 
@@ -191,67 +235,11 @@ function StakeholderView() {
     if (sprint && selectedTeamPrefix) updateUrl(selectedTeamPrefix, sprint.id);
   }
 
-  async function handleSyncSprint() {
-    if (!currentSprint || isSyncing) return;
-    setIsSyncing(true);
-    try {
-      await fetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" });
-      await mutate(ticketKey);
-      if (selectedTeamPrefix) {
-        await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
-      }
-      lastUpdatedRef.current = new Date();
-      setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
-    } finally {
-      setIsSyncing(false);
-    }
-  }
-
-  async function handleSyncHistory() {
-    if (!selectedTeamPrefix || isSyncingHistory) return;
-    const closedSprints = teamSprints
-      .filter((s) => s.state === "closed")
-      .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
-    if (closedSprints.length === 0) return;
-    setIsSyncingHistory(true);
-    try {
-      for (const sprint of closedSprints) {
-        await fetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
-      }
-      await mutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
-    } finally {
-      setIsSyncingHistory(false);
-    }
-  }
-
-  // Sync URL and session whenever selection is known (handles first load with no params)
   useEffect(() => {
     if (!currentSprint || !selectedTeamPrefix) return;
     updateUrl(selectedTeamPrefix, currentSprint.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSprint?.id, selectedTeamPrefix]);
-
-  // Parse briefing output when agent completes
-  useEffect(() => {
-    if (briefing.status === "completed" && briefing.output) {
-      const { narrative, risks } = parseBriefingOutput(briefing.output);
-      setBriefingNarrative(narrative);
-      setBriefingRisks(risks);
-    }
-  }, [briefing.status, briefing.output]);
-
-  // Reset briefing state when sprint changes
-  useEffect(() => {
-    if (currentSprint?.id === undefined) return;
-    if (prevSprintIdRef.current !== null && prevSprintIdRef.current !== currentSprint.id) {
-      briefing.reset();
-      setBriefingNarrative(null);
-      setBriefingRisks([]);
-      setBriefingDismissed(false);
-    }
-    prevSprintIdRef.current = currentSprint.id;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSprint?.id]);
 
   // Fetch current sprint tickets
   const ticketKey = currentSprint
@@ -266,7 +254,6 @@ function StakeholderView() {
     },
   });
 
-  // Previous sprint tickets: shared by carry-over detection and comparison mode
   const { data: prevRawTickets, isLoading: isPrevLoading } = usePreviousSprintTickets(
     previousSprint?.id ?? null,
   );
@@ -274,7 +261,6 @@ function StakeholderView() {
   const carriedKeys = useCarryOver(rawTickets, prevRawTickets);
   const isCarryOverLoading = isPrevLoading && previousSprint !== null;
 
-  // Previous sprint data for comparison panel
   const prevStakeholderSprint = useMemo(
     () => (previousSprint ? toStakeholderSprint(previousSprint) : null),
     [previousSprint],
@@ -309,17 +295,58 @@ function StakeholderView() {
   const todoTickets = allTickets.filter((t) => t.status === "To Do");
   const deprecatedTickets = allTickets.filter((t) => t.status === "Deprecated");
 
-  const handleGenerateInsights = useCallback(() => {
-    if (!stakeholderSprint) return;
-    setBriefingDismissed(false);
-    setBriefingNarrative(null);
-    setBriefingRisks([]);
-    briefing.submitAndStream(
-      "stakeholder-briefing",
-      buildBriefingPayload(stakeholderSprint, doneTickets, inProgressTickets, todoTickets),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stakeholderSprint, doneTickets, inProgressTickets, todoTickets]);
+  // Current snapshot values for staleness detection
+  const currentDonePoints = useMemo(
+    () => doneTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0),
+    [doneTickets],
+  );
+  const currentTodoCount = todoTickets.length;
+
+  // Persistent analysis hook
+  const analysis = useStakeholderAnalysis(currentSprint?.id ?? null);
+
+  async function handleSyncSprint() {
+    if (!currentSprint || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await fetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" });
+      await globalMutate(ticketKey);
+      if (selectedTeamPrefix) {
+        await globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
+      }
+      lastUpdatedRef.current = new Date();
+      setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  async function handleSyncHistory() {
+    if (!selectedTeamPrefix || isSyncingHistory) return;
+    const closedSprints = teamSprints
+      .filter((s) => s.state === "closed")
+      .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
+    if (closedSprints.length === 0) return;
+    setIsSyncingHistory(true);
+    try {
+      for (const sprint of closedSprints) {
+        await fetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
+      }
+      await globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
+    } finally {
+      setIsSyncingHistory(false);
+    }
+  }
+
+  function handleGenerate(type: AnalysisType) {
+    if (!stakeholderSprint || !currentSprint) return;
+    setDismissed((d) => ({ ...d, [type]: false }));
+    const payload =
+      type === "brief"
+        ? buildBriefingPayload(stakeholderSprint, doneTickets, inProgressTickets, todoTickets)
+        : buildDeepDivePayload(stakeholderSprint, doneTickets, inProgressTickets, todoTickets);
+    analysis.generate(type, currentSprint.name, payload.sprintData, currentDonePoints, currentTodoCount);
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -328,37 +355,38 @@ function StakeholderView() {
     return () => clearInterval(interval);
   }, []);
 
+  const briefLive = analysis.liveState["brief"];
+  const deepDiveLive = analysis.liveState["deep-dive"];
+  const anyRunning =
+    briefLive.status === "submitting" || briefLive.status === "streaming" ||
+    deepDiveLive.status === "submitting" || deepDiveLive.status === "streaming";
+
+  // Parse stored risks for display
+  const storedBriefRisks = useMemo(() => {
+    if (!analysis.brief?.risks) return [];
+    try { return JSON.parse(analysis.brief.risks) as string[]; } catch { return []; }
+  }, [analysis.brief?.risks]);
+
   return (
     <>
       <ViewHeader
         icon={<Users size={15} strokeWidth={1.5} />}
         actions={
-          <div className="flex items-center gap-2">
-            {(isLoading || isSyncing) && (
-              <RefreshCw size={12} strokeWidth={1.5} className="animate-spin text-white/20" />
+          <div className="flex items-center gap-1.5">
+            {isLoading && (
+              <RefreshCw size={12} strokeWidth={1.5} className="animate-spin text-white/20 mr-1" />
             )}
-            {/* Sync history: last 5 closed sprints for velocity data */}
-            <button
-              type="button"
-              onClick={handleSyncHistory}
-              disabled={isSyncingHistory || !selectedTeamPrefix}
-              title="Sync last 5 closed sprints for velocity history"
-              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            >
-              <History size={12} strokeWidth={1.5} className={isSyncingHistory ? "animate-spin" : ""} />
-              Sync history
-            </button>
-            {/* Sync sprint: current sprint tickets */}
-            <button
-              type="button"
-              onClick={handleSyncSprint}
-              disabled={isSyncing || !currentSprint}
-              title="Sync current sprint tickets from Jira"
-              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            >
-              <CloudDownload size={12} strokeWidth={1.5} />
-              Sync sprint
-            </button>
+
+            {/* Sync dropdown */}
+            <SyncDropdown
+              onSyncSprint={handleSyncSprint}
+              onSyncHistory={handleSyncHistory}
+              isSyncing={isSyncing}
+              isSyncingHistory={isSyncingHistory}
+              disabled={!currentSprint}
+            />
+
+            {/* Compare toggle */}
             {previousSprint && (
               <button
                 type="button"
@@ -376,18 +404,33 @@ function StakeholderView() {
                 Compare
               </button>
             )}
+
+            {/* Visual separator before AI actions */}
+            {!isCompareMode && stakeholderSprint && (
+              <span className="h-4 w-px bg-white/[0.08] mx-0.5" aria-hidden />
+            )}
+
+            {/* AI analysis buttons */}
             {!isCompareMode && stakeholderSprint && (
               <>
-                <button
-                  type="button"
-                  onClick={handleGenerateInsights}
-                  disabled={briefing.status === "submitting" || briefing.status === "streaming"}
-                  title="Generate AI insights for this sprint"
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                >
-                  <Sparkles size={12} strokeWidth={1.5} />
-                  Generate insights
-                </button>
+                <AnalysisButton
+                  type="brief"
+                  label="Brief"
+                  isRunning={briefLive.status === "submitting" || briefLive.status === "streaming"}
+                  hasResult={!!(analysis.brief?.status === "completed")}
+                  isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
+                  onClick={() => handleGenerate("brief")}
+                  disabled={anyRunning}
+                />
+                <AnalysisButton
+                  type="deep-dive"
+                  label="Deep Dive"
+                  isRunning={deepDiveLive.status === "submitting" || deepDiveLive.status === "streaming"}
+                  hasResult={!!(analysis.deepDive?.status === "completed")}
+                  isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
+                  onClick={() => handleGenerate("deep-dive")}
+                  disabled={anyRunning}
+                />
                 <CopyMarkdownButton
                   sprint={stakeholderSprint}
                   doneTickets={doneTickets}
@@ -395,8 +438,8 @@ function StakeholderView() {
                   todoTickets={todoTickets}
                   upcomingTickets={[]}
                   nextSprintName={null}
-                  aiNarrative={briefingDismissed ? null : briefingNarrative}
-                  aiRisks={briefingDismissed ? [] : briefingRisks}
+                  aiNarrative={analysis.brief?.narrative ?? null}
+                  aiRisks={storedBriefRisks}
                 />
               </>
             )}
@@ -429,7 +472,7 @@ function StakeholderView() {
           </>
         )}
 
-        {/* Sprint navigation: ← [sprint dropdown] → */}
+        {/* Sprint navigation */}
         {teamSprints.length > 0 && currentSprint && (
           <>
             <ViewHeaderDivider />
@@ -496,9 +539,7 @@ function StakeholderView() {
             </div>
 
             {isCompareMode && prevStakeholderSprint ? (
-              // Two-panel comparison layout
               <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-                {/* Previous sprint panel */}
                 <div className="space-y-6 overflow-auto">
                   <h2 className="text-lg font-semibold tracking-tight text-white/60">
                     {prevStakeholderSprint.name}
@@ -516,14 +557,11 @@ function StakeholderView() {
                     />
                   )}
                 </div>
-
-                {/* Current sprint panel */}
                 <div className="space-y-6 overflow-auto">
                   <h2 className="text-lg font-semibold tracking-tight text-white/90">
                     {stakeholderSprint.name}
                     <span className="ml-2 text-xs font-normal text-white/25">Current</span>
                   </h2>
-                  {/* Carry-over summary (shown in current panel) */}
                   {isCarryOverLoading && (
                     <p className="flex items-center gap-1.5 text-xs text-white/20">
                       <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
@@ -546,20 +584,37 @@ function StakeholderView() {
                 </div>
               </div>
             ) : (
-              // Single sprint view
               <div className="space-y-6">
-                {/* AI Insights panel: shown above ticket sections when not dismissed */}
-                {briefing.status !== "idle" && !briefingDismissed && (
+                {/* Brief analysis panel */}
+                {!dismissed.brief && (
                   <AiInsightsPanel
-                    status={briefing.status}
-                    progressText={briefing.progressText}
-                    narrative={briefingNarrative}
-                    risks={briefingRisks}
-                    error={briefing.error}
-                    onDismiss={() => setBriefingDismissed(true)}
-                    onRetry={handleGenerateInsights}
+                    type="brief"
+                    live={briefLive}
+                    narrative={analysis.brief?.narrative ?? null}
+                    risks={storedBriefRisks}
+                    content={analysis.brief?.content ?? null}
+                    generatedAt={analysis.brief?.completedAt ?? null}
+                    isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
+                    onDismiss={() => setDismissed((d) => ({ ...d, brief: true }))}
+                    onRetry={() => handleGenerate("brief")}
                   />
                 )}
+
+                {/* Deep Dive analysis panel */}
+                {!dismissed["deep-dive"] && (
+                  <AiInsightsPanel
+                    type="deep-dive"
+                    live={deepDiveLive}
+                    narrative={null}
+                    risks={[]}
+                    content={analysis.deepDive?.content ?? null}
+                    generatedAt={analysis.deepDive?.completedAt ?? null}
+                    isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
+                    onDismiss={() => setDismissed((d) => ({ ...d, "deep-dive": true }))}
+                    onRetry={() => handleGenerate("deep-dive")}
+                  />
+                )}
+
                 {/* Carry-over summary */}
                 {isCarryOverLoading && previousSprint && (
                   <p className="flex items-center gap-1.5 text-xs text-white/20">
