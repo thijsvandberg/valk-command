@@ -53,7 +53,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const pageTitle = usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
 
   // Investigation-specific config (Tech/Explain toggle, Jira key)
-  const investigationConfigRef = useRef<InvestigationConfig>({ explainMode: false, jiraKey: null });
+  const investigationConfigRef = useRef<InvestigationConfig>({ explainMode: false });
   const handleInvestigationConfigChange = useCallback((config: InvestigationConfig) => {
     investigationConfigRef.current = config;
   }, []);
@@ -103,7 +103,6 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         const config = investigationConfigRef.current;
         const parts: string[] = [];
         if (config.explainMode) parts.push("explain");
-        if (config.jiraKey) parts.push(config.jiraKey);
         parts.push(content.trim());
         const args = parts.join(" ");
 
@@ -111,12 +110,13 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         workspaceTask.reset();
         await workspaceTask.submitAndStream("investigate", { args }, activeId);
 
-        // Set relatedTicket if Jira key was provided and conversation doesn't have one yet
-        if (config.jiraKey && activeConv && !activeConv.relatedTicket) {
+        // Auto-detect Jira key from message text and set relatedTicket
+        const jiraMatch = content.match(/[A-Z]{2,10}-\d+/);
+        if (jiraMatch && activeConv && !activeConv.relatedTicket) {
           fetch(`/api/conversations/${activeId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ relatedTicket: config.jiraKey }),
+            body: JSON.stringify({ relatedTicket: jiraMatch[0] }),
           }).catch((err) => console.warn("[chat] set relatedTicket failed", err));
         }
 

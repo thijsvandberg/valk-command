@@ -231,6 +231,23 @@ function MessageContent({ content }: { content: string }) {
           </pre>
         ),
         hr: () => <hr className="my-3 border-white/[0.08]" />,
+        table: ({ children }) => (
+          <div className="overflow-x-auto mb-2 last:mb-0">
+            <table className="min-w-full text-xs border-collapse">
+              {children}
+            </table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="border-b border-white/[0.1] px-3 py-1.5 text-left text-[11px] font-semibold text-white/60 uppercase tracking-wider">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border-b border-white/[0.04] px-3 py-1.5 text-white/70">
+            {children}
+          </td>
+        ),
       }}
     >
       {preprocessMarkdown(content)}
@@ -320,7 +337,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
               className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-[1.7] font-[var(--font-body)] ${
+                className={`max-w-[80%] overflow-x-auto rounded-xl px-4 py-3 text-sm leading-[1.7] font-[var(--font-body)] ${
                   message.role === "user"
                     ? "bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.18)]"
                     : "bg-[var(--color-surface-floating)] text-white/80 border border-white/[0.06]"
