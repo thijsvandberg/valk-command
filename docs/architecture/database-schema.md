@@ -277,6 +277,26 @@ Tickets identified by the AI as related to the current story.
 | `is_linked` | boolean | Whether a Jira link was created |
 | `created_at` | text | |
 
+### Workspace Tasks
+
+#### `workspace_task`
+
+Tracks tasks submitted to the valk-agent backend. Created when a skill is invoked, updated as the agent reports progress.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `skill_name` | text | Workspace skill that was invoked |
+| `status` | enum | `queued`, `running`, `completed`, `failed` |
+| `started_at` | text | ISO timestamp |
+| `completed_at` | text | ISO timestamp |
+| `related_ticket` | text | Optional linked ticket key |
+| `conversation_id` | text | Optional linked conversation |
+| `output` | text | Final output from agent |
+| `error` | text | Error message on failure |
+
+**Indexes:** `status`, `conversation_id`
+
 ### Scheduling & Jobs
 
 #### `scheduled_job`
@@ -302,6 +322,15 @@ Maps slot positions to sprints for the multi-sprint board view.
 | `slot_index` | integer PK | Display position |
 | `sprint_id` | text | Jira sprint ID |
 | `sprint_name` | text | Sprint name |
+
+#### `sprint_name_cache`
+
+Simple lookup cache mapping Jira sprint IDs to display names.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `sprint_id` | text PK | Jira sprint ID |
+| `display_name` | text | Human-readable sprint name |
 
 #### `app_setting`
 
@@ -349,18 +378,99 @@ Confluence pages linked to a ticket (manually or auto-detected from URLs in desc
 
 **Indexes:** `ticket_key`, `page_id`
 
-#### `alert`
+#### `stakeholder_analysis`
 
-System alerts (currently unused in active features).
+Cached AI-generated stakeholder reports (brief and deep-dive) per sprint.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | text PK | |
-| `type` | text | |
-| `jira_key` | text | |
-| `message` | text | |
+| `sprint_id` | integer | Jira sprint ID |
+| `sprint_name` | text | |
+| `type` | enum | `brief`, `deep-dive` |
+| `status` | enum | `running`, `completed`, `failed` |
+| `content` | text | Full analysis content |
+| `narrative` | text | Narrative section |
+| `risks` | text | Risks section |
+| `workspace_task_id` | text | Agent task that generated this |
+| `conversation_id` | text | Linked conversation |
+| `snapshot_done_points` | integer | Story points done at generation time |
+| `snapshot_todo_count` | integer | Open ticket count at generation time |
 | `created_at` | text | |
-| `read` | boolean | |
+| `completed_at` | text | |
+
+**Indexes:** `sprint_id`, `(sprint_id, type)`
+
+#### `alert`
+
+Notification records surfaced in the notifications panel. Used for pipeline events, deployments, PR merges, sync events, etc.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `type` | text | Event type (e.g. `pipeline:completed`) |
+| `jira_key` | text | Optional linked ticket |
+| `message` | text | Human-readable notification text |
+| `created_at` | text | |
+| `event_at` | text | When the underlying event occurred (may differ from `created_at` on late sync) |
+| `read` | boolean | Whether dismissed by user |
+| `category` | enum | `general`, `pipeline`, `deployment`, `pr`, `sync`, `story-writer`, `system`, `agent`, `scheduler` |
+| `link_url` | text | Optional deep-link URL |
+
+**Indexes:** `read`, `created_at`, `jira_key`
+
+### Pipelines & Notifications
+
+#### `pipeline_run`
+
+CI/CD pipeline runs synced from Bitbucket. Includes deployment-specific enrichment for UAT/prod deploy tracking.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `repo` | text | Bitbucket repo slug |
+| `build_number` | integer | Bitbucket build number |
+| `branch_name` | text | Branch that triggered the pipeline |
+| `ticket_key` | text | Primary linked ticket key |
+| `state` | enum | `SUCCESSFUL`, `FAILED`, `IN_PROGRESS`, `STOPPED`, `PAUSED` |
+| `creator` | text | Who triggered the pipeline |
+| `duration_seconds` | integer | |
+| `pipeline_url` | text | Link to Bitbucket pipeline page |
+| `is_deployment` | boolean | Whether this is a deploy pipeline |
+| `environment` | text | Deploy target environment name |
+| `environment_type` | enum | `Production`, `Staging`, `Test` |
+| `created_at` | text | |
+| `completed_at` | text | |
+| `previous_state` | text | Used to detect state changes for notification triggers |
+| `commit_message` | text | Enriched commit message |
+| `ticket_keys` | text | JSON array when pipeline touches multiple tickets |
+| `source_branch` | text | Original branch for merge-triggered pipelines |
+| `pr_url` | text | Linked PR URL |
+| `pr_title` | text | |
+| `pr_author` | text | |
+
+**Indexes:** `repo`, `ticket_key`, `state`, `created_at`, `(is_deployment, environment)`
+
+#### `followed_ticket`
+
+User preference for which Jira tickets to receive pipeline/deploy notifications about.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `ticket_key` | text | Jira key (e.g. VPL-123) |
+| `created_at` | text | |
+
+**Indexes:** `ticket_key`
+
+#### `followed_sprint`
+
+User preference for which sprints to receive UAT deploy notifications about.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `sprint_name` | text PK | Sprint name (used as identifier, not Jira sprint ID) |
+| `created_at` | text | |
 
 ## Relationships
 
@@ -375,6 +485,7 @@ ticket (1) --- (*) ticket_local_edit
 ticket (1) --- (*) story_version
 ticket (1) --- (*) stored_review
 ticket (1) --- (*) story_writer_session
+ticket (1) --- (*) ticket_confluence_link
 
 conversation (1) --- (*) message
 conversation (1) --- (*) story_writer_session
@@ -396,7 +507,7 @@ story_writer_session (1) --- (*) related_story_candidate
 
 ## Migrations
 
-29 migration directories in `drizzle/`. Managed via:
+41 migration files in `drizzle/` (0000–0040). Managed via:
 
 - `npm run db:generate` - Generate new migration from schema changes
 - `npm run db:push` - Push schema directly to DB (development)

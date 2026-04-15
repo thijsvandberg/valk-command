@@ -160,6 +160,9 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 | `/api/followed-tickets` | GET | List followed ticket keys |
 | `/api/followed-tickets` | POST | Follow a ticket. Body: `{ ticketKey }` |
 | `/api/followed-tickets` | DELETE | Unfollow. `?ticketKey=X` |
+| `/api/followed-sprints` | GET | List followed sprint names |
+| `/api/followed-sprints` | POST | Follow a sprint. Body: `{ sprintName }` |
+| `/api/followed-sprints` | DELETE | Unfollow. `?sprintName=X` |
 | `/api/notifications` | GET | List notifications. `?unread=true&limit=N` |
 | `/api/notifications` | PATCH | Mark read. Body: `{ id }` or `{ markAll: true }` |
 
