@@ -1,6 +1,6 @@
 # BRDG-073: Confluence Integration
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
@@ -39,26 +39,26 @@ As the PO, I want to link Confluence pages to tickets and view page summaries in
 ## Acceptance Criteria
 
 ### Phase 1: Confluence connection
-- [ ] Confluence API credentials in settings (base URL + API token)
-- [ ] Health check endpoint: `GET /api/confluence/health`
-- [ ] Connection test on settings page
+- [x] Confluence API credentials in settings (base URL + API token)
+- [x] Health check endpoint: `GET /api/confluence/health`
+- [x] Connection test on settings page
 
 ### Phase 2: Link Confluence pages to tickets
-- [ ] "Link Confluence page" button in ticket detail
-- [ ] Search Confluence by title (CQL search)
-- [ ] Select a page to link; store mapping in DB (`ticketConfluenceLink` table: ticketKey, pageId, pageTitle, pageUrl)
-- [ ] Show linked pages in ticket sidebar
+- [x] "Link Confluence page" button in ticket detail
+- [x] Search Confluence by title (CQL search)
+- [x] Select a page to link; store mapping in DB (`ticketConfluenceLink` table: ticketKey, pageId, pageTitle, pageUrl)
+- [x] Show linked pages in ticket sidebar
 
 ### Phase 3: Page preview
-- [ ] Click linked page to expand an inline preview
-- [ ] Fetch page content via Confluence API (convert from Atlassian storage format to HTML)
-- [ ] Show title, last modified date, author
-- [ ] Truncate to first 500 words with "Open in Confluence" link
+- [x] Click linked page to expand an inline preview
+- [x] Fetch page content via Confluence API (convert from Atlassian storage format to HTML)
+- [x] Show title, last modified date, author
+- [x] Truncate to first 500 words with "Open in Confluence" link
 
 ### Phase 4: Auto-detection
-- [ ] Scan ticket description and comments for Confluence URLs
-- [ ] Auto-suggest linking detected Confluence pages
-- [ ] Show as "Mentioned pages" section (separate from manually linked)
+- [x] Scan ticket description and comments for Confluence URLs
+- [x] Auto-suggest linking detected Confluence pages
+- [x] Show as "Mentioned pages" section (separate from manually linked)
 
 ## Technical Notes
 

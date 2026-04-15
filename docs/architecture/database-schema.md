@@ -331,6 +331,24 @@ Audit trail for all sync and system operations.
 | `completed_at` | text | |
 | `acknowledged` | integer (boolean) | Whether user dismissed a failure |
 
+#### `ticket_confluence_link`
+
+Confluence pages linked to a ticket (manually or auto-detected from URLs in description/comments).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | UUID |
+| `ticket_key` | text FK -> ticket | Cascade delete |
+| `page_id` | text | Confluence page ID |
+| `page_title` | text | Page title at time of linking |
+| `page_url` | text | Full URL to page |
+| `source` | enum | `manual` or `auto-detected` |
+| `last_modified_at` | text | ISO timestamp from Confluence |
+| `last_modified_by` | text | Author display name |
+| `created_at` | text | ISO timestamp |
+
+**Indexes:** `ticket_key`, `page_id`
+
 #### `alert`
 
 System alerts (currently unused in active features).

@@ -163,6 +163,18 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 | `/api/notifications` | GET | List notifications. `?unread=true&limit=N` |
 | `/api/notifications` | PATCH | Mark read. Body: `{ id }` or `{ markAll: true }` |
 
+## Confluence
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/confluence/health` | GET | Verify Confluence connectivity and credentials |
+| `/api/confluence/search` | GET | CQL title search. `?q=searchTerm` |
+| `/api/confluence/pages/[pageId]` | GET | Fetch page content (sanitized HTML, truncated to ~500 words) |
+| `/api/tickets/[key]/confluence-links` | GET | List pages linked to a ticket |
+| `/api/tickets/[key]/confluence-links` | POST | Link a page. Body: `{ pageId, pageTitle, pageUrl, ... }` |
+| `/api/tickets/[key]/confluence-links` | DELETE | Unlink a page. Body: `{ linkId }` |
+| `/api/tickets/[key]/confluence-mentions` | GET | Auto-detected Confluence URLs in ticket description/comments |
+
 ## Attachments
 
 | Route | Method | Purpose |
