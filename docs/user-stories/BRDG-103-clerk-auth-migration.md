@@ -43,8 +43,8 @@ Clima (`/Users/thijsvandenberg/Projects/clima`) uses `@clerk/nextjs` with:
 - [ ] Install `@clerk/nextjs` and configure Clerk env vars (`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`)
 - [ ] Replace `src/middleware.ts` with Clerk middleware (`clerkMiddleware` + `createRouteMatcher`)
 - [ ] Keep API routes (`/api/*`) protected; return 401 for unauthenticated API requests
-- [ ] Stakeholder view (`/stakeholder`) decision: either keep it behind auth or make it a public route in Clerk config
-- [ ] Replace custom login page with Clerk sign-in (either redirect to Clerk hosted page or use `<SignIn />` component)
+- [ ] Stakeholder view (`/stakeholder`) stays behind auth (no public exception)
+- [ ] Replace custom login page with embedded Clerk `<SignIn />` component
 - [ ] Remove custom auth files: `src/lib/auth.ts`, `src/app/api/auth/login/route.ts`, `src/app/api/auth/setup/route.ts`, `src/app/api/auth/logout/route.ts`, `src/app/login/page.tsx`
 - [ ] Remove `jose` dependency (only used for custom JWT; not needed with Clerk)
 - [ ] Remove `auth_password_hash` and `jwt_secret` from `appSetting` table (migration or manual cleanup)
@@ -56,6 +56,6 @@ Clima (`/Users/thijsvandenberg/Projects/clima`) uses `@clerk/nextjs` with:
 ## Notes
 
 - Single-user app, so Clerk is a bit heavyweight, but consistency with Clima/Pronto outweighs that
-- The Jira webhook endpoints and any cron/scheduler endpoints may need to stay unprotected (they use their own auth mechanisms). Review which API routes should be public
-- Consider whether `src/lib/auth.test.ts` tests should be replaced with Clerk integration tests or removed
+- All sync and cron endpoints are frontend-driven (lazy-cron pattern). No external webhook receivers exist, so no routes need special public access. Only `/sign-in` and `/sign-up` are public.
+- `src/lib/auth.test.ts` can be removed along with the custom auth code
 - The `appSetting` rows for `jwt_secret` and `auth_password_hash` can be cleaned up via a Drizzle migration or left as orphaned data

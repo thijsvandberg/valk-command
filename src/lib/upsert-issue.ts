@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache } from "@/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
@@ -35,6 +35,14 @@ export function userColor(name: string): string {
   }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 55%, 50%)`;
+}
+
+export function cacheSprintName(sprintId: string, displayName: string) {
+  if (!sprintId || !displayName) return;
+  db.insert(sprintNameCache)
+    .values({ sprintId, displayName })
+    .onConflictDoUpdate({ target: sprintNameCache.sprintId, set: { displayName } })
+    .run();
 }
 
 export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: AbortSignal, jiraRank?: number) {

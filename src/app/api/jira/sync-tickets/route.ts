@@ -5,7 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { jiraClient, extractSprint, JiraApiError, type JiraIssue } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
-import { upsertIssue } from "@/lib/upsert-issue";
+import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
@@ -75,6 +75,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
         const issue = await jiraClient.getIssue(key, controller.signal);
         const sprint = extractSprint(issue.fields);
         const sprintName = sprint ? String(sprint.id) : "";
+        if (sprint) cacheSprintName(String(sprint.id), sprint.name);
         const info = await upsertIssue(issue, sprintName, controller.signal);
 
         if (removedMap.get(key)) {
@@ -205,6 +206,7 @@ async function syncSprint(sprintId: string | null, strategy: string) {
           // Still exists: update with current Jira sprint
           const sprint = extractSprint(issue.fields);
           const newSprintName = sprint ? String(sprint.id) : "";
+          if (sprint) cacheSprintName(String(sprint.id), sprint.name);
           await db.update(ticket)
             .set({ sprintName: newSprintName })
             .where(eq(ticket.jiraKey, key));

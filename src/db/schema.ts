@@ -115,6 +115,11 @@ export const sprintSlot = sqliteTable("sprint_slot", {
   sprintName: text("sprint_name").notNull(),
 });
 
+export const sprintNameCache = sqliteTable("sprint_name_cache", {
+  sprintId: text("sprint_id").primaryKey(),
+  displayName: text("display_name").notNull(),
+});
+
 export const appSetting = sqliteTable("app_setting", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

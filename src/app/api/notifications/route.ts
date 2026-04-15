@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { alert, ticket, sprintSlot } from "@/db/schema";
+import { alert, ticket, sprintNameCache } from "@/db/schema";
 import { desc, eq, lt, sql, and } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
 
@@ -28,11 +28,11 @@ export async function GET(request: Request) {
       category: alert.category,
       linkUrl: alert.linkUrl,
       jiraTitle: ticket.title,
-      sprintName: sprintSlot.sprintName,
+      sprintName: sprintNameCache.displayName,
     })
     .from(alert)
     .leftJoin(ticket, eq(alert.jiraKey, ticket.jiraKey))
-    .leftJoin(sprintSlot, eq(ticket.sprintName, sprintSlot.sprintId))
+    .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId))
     .where(conditions)
     .orderBy(desc(alert.createdAt))
     .limit(limit)

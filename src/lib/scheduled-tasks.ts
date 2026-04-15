@@ -14,7 +14,7 @@ import {
 } from "@/db/schema";
 import { eq, inArray, and, isNotNull, lt } from "drizzle-orm";
 import { jiraClient, extractSprint } from "@/lib/jira-client";
-import { upsertIssue } from "@/lib/upsert-issue";
+import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { defineTask, type TaskResult } from "@/lib/scheduler";
@@ -85,6 +85,7 @@ async function runIncrementalSync(): Promise<TaskResult> {
     for (const issue of issues) {
       const sprint = extractSprint(issue.fields);
       const sprintName = sprint ? String(sprint.id) : "";
+      if (sprint) cacheSprintName(String(sprint.id), sprint.name);
       const info = await upsertIssue(issue, sprintName, controller.signal);
       results.push(info);
 

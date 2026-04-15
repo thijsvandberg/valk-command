@@ -5,7 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { jiraClient, extractSprint } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
-import { upsertIssue } from "@/lib/upsert-issue";
+import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
@@ -106,6 +106,7 @@ export async function POST() {
     for (const issue of issues) {
       const sprint = extractSprint(issue.fields);
       const sprintName = sprint ? String(sprint.id) : "";
+      if (sprint) cacheSprintName(String(sprint.id), sprint.name);
       const info = await upsertIssue(issue, sprintName, controller.signal);
       results.push(info);
     }
