@@ -295,6 +295,23 @@ export function CommandPalette() {
         });
       },
     },
+    {
+      category: "action",
+      id: "action-new-investigation",
+      label: "New Investigation",
+      aliases: ["investigate", "search code", "code search", "codebase"],
+      execute: async () => {
+        const res = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: "New investigation", type: "investigation" }),
+        });
+        if (res.ok) {
+          const conv = await res.json();
+          router.push(`/chat/${conv.id}`);
+        }
+      },
+    },
   ], [router, toggleSidebar, currentWriterKey]);
 
   const actionFuse = useMemo(

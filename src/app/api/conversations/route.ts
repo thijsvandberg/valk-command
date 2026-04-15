@@ -34,10 +34,16 @@ export async function POST(request: Request) {
     );
   }
 
+  const validTypes = ["chat", "investigation"] as const;
+  const convType = body.type && validTypes.includes(body.type as typeof validTypes[number])
+    ? (body.type as typeof validTypes[number])
+    : "chat";
+
   const id = randomUUID();
   const conv = {
     id,
     title: body.title.trim(),
+    type: convType,
     createdAt: new Date().toISOString(),
     relatedTicket: body.relatedTicket ?? null,
   };

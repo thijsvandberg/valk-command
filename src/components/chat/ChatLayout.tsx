@@ -8,14 +8,17 @@ import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
 import { useNotification } from "@/hooks/useNotification";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { parseSkillInvocation, parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
+import type { ConversationType } from "@/types/chat";
 import ConversationList from "./ConversationList";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
+import InvestigationInput from "./InvestigationInput";
+import type { InvestigationConfig } from "./InvestigationInput";
 import TaskProgress from "./TaskProgress";
 import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { prefetchConversation, cancelAllPrefetches } from "@/lib/prefetch";
-import { MessageCircle, X, PenLine } from "lucide-react";
+import { MessageCircle, X, PenLine, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 
@@ -46,7 +49,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const workspaceTask = useWorkspaceTask();
   const { notify } = useNotification();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
+  const isInvestigation = activeConv?.type === "investigation";
   const pageTitle = usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
+
+  // Investigation-specific config (Tech/Explain toggle, Jira key)
+  const investigationConfigRef = useRef<InvestigationConfig>({ explainMode: false, jiraKey: null });
+  const handleInvestigationConfigChange = useCallback((config: InvestigationConfig) => {
+    investigationConfigRef.current = config;
+  }, []);
 
   // Prefetch most recent conversation when chat list loads
   useEffect(() => {
@@ -56,8 +66,9 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     return () => cancelAllPrefetches();
   }, [conversations, activeId]);
 
-  const handleCreate = useCallback(async () => {
-    const conversation = await createConversation();
+  const handleCreate = useCallback(async (type: ConversationType = "chat") => {
+    const title = type === "investigation" ? "New investigation" : "New conversation";
+    const conversation = await createConversation(title, type);
     if (conversation) {
       router.push(`/chat/${conversation.id}`);
       setSidebarOpen(false);
@@ -87,7 +98,32 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       const saved = await sendMessage(content);
       if (!saved) return false;
 
-      // Check if this is a skill invocation
+      // For investigation conversations, auto-wrap as /investigate skill invocation
+      if (isInvestigation && !content.trim().startsWith("/")) {
+        const config = investigationConfigRef.current;
+        const parts: string[] = [];
+        if (config.explainMode) parts.push("explain");
+        if (config.jiraKey) parts.push(config.jiraKey);
+        parts.push(content.trim());
+        const args = parts.join(" ");
+
+        lastInvocationRef.current = { skill: "investigate", args };
+        workspaceTask.reset();
+        await workspaceTask.submitAndStream("investigate", { args }, activeId);
+
+        // Set relatedTicket if Jira key was provided and conversation doesn't have one yet
+        if (config.jiraKey && activeConv && !activeConv.relatedTicket) {
+          fetch(`/api/conversations/${activeId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ relatedTicket: config.jiraKey }),
+          }).catch((err) => console.warn("[chat] set relatedTicket failed", err));
+        }
+
+        return true;
+      }
+
+      // Check if this is a skill invocation (regular chat or explicit /command in investigation)
       const invocation = parseSkillInvocation(content);
       if (invocation) {
         lastInvocationRef.current = invocation;
@@ -97,14 +133,11 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           invocation.args ? { args: invocation.args } : {},
           activeId
         );
-
-        // When the task completes, save the result as an assistant message
-        // This is handled by an effect watching workspaceTask.output
       }
 
       return true;
     },
-    [activeId, sendMessage, workspaceTask]
+    [activeId, sendMessage, workspaceTask, isInvestigation, activeConv]
   );
 
   // Track the last skill invocation so we can persist review results from chat
@@ -164,6 +197,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     }
   }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages, notify]);
 
+  const headerIcon = isInvestigation
+    ? <Search size={15} strokeWidth={1.5} className="text-white/30" />
+    : <MessageCircle size={15} strokeWidth={1.5} className="text-white/30" />;
+
+  const headerTitle = activeConv
+    ? activeConv.title
+    : "Chat";
+
   return (
     <>
       {pageTitle}
@@ -174,10 +215,10 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       </div>
 
       <ViewHeader
-        icon={<MessageCircle size={15} strokeWidth={1.5} className="text-white/30" />}
+        icon={headerIcon}
         className="z-10"
       >
-        <ViewHeaderTitle>{activeConv ? activeConv.title : "Chat"}</ViewHeaderTitle>
+        <ViewHeaderTitle>{headerTitle}</ViewHeaderTitle>
         {activeConv && (
           <>
             <ViewHeaderDivider />
@@ -264,10 +305,18 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
                 error={workspaceTask.error}
               />
             )}
-            <MessageInput
-              onSend={handleSend}
-              disabled={workspaceTask.status === "submitting" || workspaceTask.status === "streaming"}
-            />
+            {isInvestigation ? (
+              <InvestigationInput
+                onSend={handleSend}
+                onConfigChange={handleInvestigationConfigChange}
+                disabled={workspaceTask.status === "submitting" || workspaceTask.status === "streaming"}
+              />
+            ) : (
+              <MessageInput
+                onSend={handleSend}
+                disabled={workspaceTask.status === "submitting" || workspaceTask.status === "streaming"}
+              />
+            )}
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center">

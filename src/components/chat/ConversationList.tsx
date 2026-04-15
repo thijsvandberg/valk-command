@@ -1,11 +1,12 @@
 "use client";
 
-import type { Conversation } from "@/types/chat";
-import { Plus, Trash2 } from "lucide-react";
+import type { Conversation, ConversationType } from "@/types/chat";
+import { Trash2, Search, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { LoadingState } from "@/components/shared/LoadingState";
+import ConversationTypePicker from "./ConversationTypePicker";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -13,7 +14,7 @@ interface ConversationListProps {
   loading: boolean;
   error: string | null;
   onSelect: (id: string) => void;
-  onCreate: () => void;
+  onCreate: (type: ConversationType) => void;
   onDelete: (id: string) => void;
 }
 
@@ -32,13 +33,7 @@ export default function ConversationList({
         <h2 className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-white/70">
           Conversations
         </h2>
-        <Button
-          variant="soft"
-          iconOnly
-          icon={<Plus className="h-4 w-4" strokeWidth={2} />}
-          onClick={onCreate}
-          aria-label="New conversation"
-        />
+        <ConversationTypePicker onCreate={onCreate} />
       </div>
 
       {error && (
@@ -67,8 +62,15 @@ export default function ConversationList({
                         : "text-white/60 hover:bg-white/[0.04] hover:text-white/80 active:bg-white/[0.06]"
                     }`}
                   >
-                    <span className="block truncate font-[var(--font-body)] text-sm font-medium">
-                      {conversation.title}
+                    <span className="flex items-center gap-2 min-w-0">
+                      {conversation.type === "investigation" ? (
+                        <Search size={13} strokeWidth={1.5} className="shrink-0 text-white/30" />
+                      ) : (
+                        <MessageCircle size={13} strokeWidth={1.5} className="shrink-0 text-white/30" />
+                      )}
+                      <span className="block truncate font-[var(--font-body)] text-sm font-medium">
+                        {conversation.title}
+                      </span>
                     </span>
                   </button>
                   <Button

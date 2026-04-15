@@ -69,7 +69,7 @@ describe("useConversations", () => {
     expect(fetch).toHaveBeenCalledWith("/api/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Test conversation" }),
+      body: JSON.stringify({ title: "Test conversation", type: "chat" }),
     });
   });
 
@@ -94,7 +94,7 @@ describe("useConversations", () => {
     expect(fetch).toHaveBeenCalledWith("/api/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "New conversation" }),
+      body: JSON.stringify({ title: "New conversation", type: "chat" }),
     });
   });
 

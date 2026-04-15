@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Message } from "@/types/chat";
 import type { ReviewStoryData } from "@/lib/agent-client";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { copyAsMarkdown, copyAsRTF } from "@/lib/clipboard";
+import { Copy, FileText, Check } from "lucide-react";
 
 interface MessageListProps {
   messages: Message[];
@@ -236,6 +238,50 @@ function MessageContent({ content }: { content: string }) {
   );
 }
 
+function CopyActions({ content }: { content: string }) {
+  const [copiedMd, setCopiedMd] = useState(false);
+  const [copiedRtf, setCopiedRtf] = useState(false);
+
+  const handleCopyMd = useCallback(async () => {
+    const ok = await copyAsMarkdown(content);
+    if (ok) {
+      setCopiedMd(true);
+      setTimeout(() => setCopiedMd(false), 2000);
+    }
+  }, [content]);
+
+  const handleCopyRtf = useCallback(async () => {
+    const ok = await copyAsRTF(content);
+    if (ok) {
+      setCopiedRtf(true);
+      setTimeout(() => setCopiedRtf(false), 2000);
+    }
+  }, [content]);
+
+  return (
+    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.04]">
+      <button
+        type="button"
+        onClick={handleCopyMd}
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/30 cursor-pointer hover:text-white/50 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors duration-100"
+        title="Copy as Markdown"
+      >
+        {copiedMd ? <Check size={11} strokeWidth={2} /> : <Copy size={11} strokeWidth={1.5} />}
+        <span>{copiedMd ? "Copied" : "Markdown"}</span>
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyRtf}
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/30 cursor-pointer hover:text-white/50 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors duration-100"
+        title="Copy as formatted text"
+      >
+        {copiedRtf ? <Check size={11} strokeWidth={2} /> : <FileText size={11} strokeWidth={1.5} />}
+        <span>{copiedRtf ? "Copied" : "Rich text"}</span>
+      </button>
+    </div>
+  );
+}
+
 export default function MessageList({ messages, loading, error }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -284,6 +330,9 @@ export default function MessageList({ messages, loading, error }: MessageListPro
                 <MessageContent content={message.content} />
                 {isSending && (
                   <p className="mt-1 text-[10px] text-white/30">Sending...</p>
+                )}
+                {message.role === "assistant" && !isSending && (
+                  <CopyActions content={message.content} />
                 )}
               </div>
             </div>

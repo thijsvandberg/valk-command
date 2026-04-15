@@ -253,6 +253,13 @@
       "when": 1776239430087,
       "tag": "0035_chief_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1776241861484,
+      "tag": "0036_charming_spectrum",
+      "breakpoints": true
     }
   ]
 }

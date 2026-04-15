@@ -116,6 +116,7 @@ describe("ChatLayout", () => {
     });
 
     fireEvent.click(screen.getByLabelText("New conversation"));
+    fireEvent.click(screen.getByText("Chat"));
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/chat/conv-new");

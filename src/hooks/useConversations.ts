@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Conversation } from "@/types/chat";
+import type { Conversation, ConversationType } from "@/types/chat";
 
 interface UseConversationsReturn {
   conversations: Conversation[];
   loading: boolean;
   error: string | null;
-  createConversation: (title?: string) => Promise<Conversation | null>;
+  createConversation: (title?: string, type?: ConversationType) => Promise<Conversation | null>;
   deleteConversation: (id: string) => Promise<boolean>;
   refresh: () => Promise<void>;
 }
@@ -37,12 +37,14 @@ export function useConversations(): UseConversationsReturn {
   }, [fetchConversations]);
 
   const createConversation = useCallback(
-    async (title?: string): Promise<Conversation | null> => {
+    async (title?: string, type: ConversationType = "chat"): Promise<Conversation | null> => {
       setError(null);
       const optimisticId = `optimistic-${Date.now()}`;
+      const defaultTitle = type === "investigation" ? "New investigation" : "New conversation";
       const optimistic: Conversation = {
         id: optimisticId,
-        title: title || "New conversation",
+        title: title || defaultTitle,
+        type,
         createdAt: new Date().toISOString(),
         relatedTicket: null,
       };
@@ -52,7 +54,7 @@ export function useConversations(): UseConversationsReturn {
         const res = await fetch("/api/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: title || "New conversation" }),
+          body: JSON.stringify({ title: title || defaultTitle, type }),
         });
         if (!res.ok) throw new Error("Failed to create conversation");
         const conversation: Conversation = await res.json();

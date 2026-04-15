@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 export const conversation = sqliteTable("conversation", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
+  type: text("type", { enum: ["chat", "investigation"] }).notNull().default("chat"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

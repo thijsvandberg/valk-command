@@ -8,9 +8,12 @@ export interface Message {
   status?: "pending" | "sent" | "failed";
 }
 
+export type ConversationType = "chat" | "investigation";
+
 export interface Conversation {
   id: string;
   title: string;
+  type: ConversationType;
   createdAt: string;
   relatedTicket: string | null;
 }

@@ -4,8 +4,8 @@ import ConversationList from "./ConversationList";
 import type { Conversation } from "@/types/chat";
 
 const mockConversations: Conversation[] = [
-  { id: "conv-1", title: "First conversation", createdAt: "2026-03-28T09:15:00Z", relatedTicket: null },
-  { id: "conv-2", title: "Second conversation", createdAt: "2026-03-27T16:30:00Z", relatedTicket: null },
+  { id: "conv-1", title: "First conversation", type: "chat", createdAt: "2026-03-28T09:15:00Z", relatedTicket: null },
+  { id: "conv-2", title: "Second conversation", type: "chat", createdAt: "2026-03-27T16:30:00Z", relatedTicket: null },
 ];
 
 const defaultProps = {
@@ -44,11 +44,21 @@ describe("ConversationList", () => {
     expect(onSelect).toHaveBeenCalledWith("conv-2");
   });
 
-  it("calls onCreate when the new button is clicked", () => {
+  it("opens type picker and calls onCreate with type when option clicked", () => {
     const onCreate = vi.fn();
     render(<ConversationList {...defaultProps} onCreate={onCreate} />);
     fireEvent.click(screen.getByLabelText("New conversation"));
-    expect(onCreate).toHaveBeenCalled();
+    // Picker should show options
+    fireEvent.click(screen.getByText("Chat"));
+    expect(onCreate).toHaveBeenCalledWith("chat");
+  });
+
+  it("calls onCreate with investigation type", () => {
+    const onCreate = vi.fn();
+    render(<ConversationList {...defaultProps} onCreate={onCreate} />);
+    fireEvent.click(screen.getByLabelText("New conversation"));
+    fireEvent.click(screen.getByText("Investigation"));
+    expect(onCreate).toHaveBeenCalledWith("investigation");
   });
 
   it("calls onDelete when the delete button is clicked", () => {
