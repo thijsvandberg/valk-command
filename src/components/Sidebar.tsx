@@ -72,6 +72,7 @@ const navItems = [
 ];
 
 const STORAGE_KEY = "sidebar-collapsed";
+const BYPASS_AUTH = process.env.NEXT_PUBLIC_BYPASS_AUTH === "true";
 
 function subscribeToStorage(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -205,15 +206,17 @@ export default function Sidebar() {
               }
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => signOut({ redirectUrl: "/login" })}
-            className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
-            title={collapsed ? "Sign out" : undefined}
-          >
-            <LogOut size={14} strokeWidth={1.5} />
-            {!collapsed && <span>Sign out</span>}
-          </button>
+          {!BYPASS_AUTH && (
+            <button
+              type="button"
+              onClick={() => signOut({ redirectUrl: "/login" })}
+              className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+              title={collapsed ? "Sign out" : undefined}
+            >
+              <LogOut size={14} strokeWidth={1.5} />
+              {!collapsed && <span>Sign out</span>}
+            </button>
+          )}
         </div>
 
         {/* Sidebar right edge accent */}
