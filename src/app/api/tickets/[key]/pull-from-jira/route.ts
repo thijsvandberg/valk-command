@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { jiraClient } from "@/lib/jira-client";
-import { adfToMarkdown } from "@/lib/adf-to-markdown";
+import * as ticketService from "@/services/ticket-service";
+import { handleServiceError } from "@/services/handle-service-error";
 
 export async function POST(
   _request: Request,
@@ -9,16 +9,9 @@ export async function POST(
   const { key } = await params;
 
   try {
-    const issue = await jiraClient.getIssue(key);
-    const fields = issue.fields;
-    const description =
-      typeof fields.description === "string"
-        ? fields.description
-        : adfToMarkdown(fields.description);
-
-    return NextResponse.json({ description: description ?? "" });
+    const result = await ticketService.pullFromJira(key);
+    return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to fetch from Jira";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return handleServiceError(err);
   }
 }

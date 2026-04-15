@@ -1,23 +1,14 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { ticketLocalEdit, storyVersion } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
-import { randomUUID } from "crypto";
-import { logActivity } from "@/lib/activity-logger";
-import { sanitizeHtml, sanitizeText } from "@/lib/sanitize";
+import * as ticketService from "@/services/ticket-service";
+import type { UpsertLocalEditInput } from "@/services/ticket-service";
+import { handleServiceError } from "@/services/handle-service-error";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
-
-  const edits = await db
-    .select()
-    .from(ticketLocalEdit)
-    .where(eq(ticketLocalEdit.ticketKey, key))
-    .all();
-
+  const edits = await ticketService.getLocalEdits(key);
   return NextResponse.json(edits);
 }
 
@@ -26,98 +17,18 @@ export async function PUT(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
-
   let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-
-  const rawField = body.field;
-  const localValue = body.localValue;
-  const baseJiraVersion = body.baseJiraVersion as string | undefined;
-  const isDraft = body.isDraft;
-
-  if (!rawField || !["title", "description"].includes(rawField as string)) {
-    return NextResponse.json(
-      { error: "field must be 'title' or 'description'" },
-      { status: 400 },
-    );
+  try {
+    const result = await ticketService.upsertLocalEdit(key, body as unknown as UpsertLocalEditInput);
+    return NextResponse.json(result);
+  } catch (err) {
+    return handleServiceError(err);
   }
-  const field = rawField as "title" | "description";
-
-  if (typeof localValue !== "string") {
-    return NextResponse.json(
-      { error: "localValue must be a string" },
-      { status: 400 },
-    );
-  }
-
-  const maxLen = field === "title" ? 500 : 50000;
-  if (localValue.length > maxLen) {
-    return NextResponse.json(
-      { error: `localValue must not exceed ${maxLen} characters` },
-      { status: 400 },
-    );
-  }
-
-  const sanitizedValue = field === "title" ? sanitizeText(localValue) : sanitizeHtml(localValue);
-
-  const now = new Date().toISOString();
-  const draftFlag = isDraft === true;
-
-  const existing = await db
-    .select()
-    .from(ticketLocalEdit)
-    .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, field)))
-    .get();
-
-  // Resolve baseJiraVersion: use explicit value, keep existing, or look up latest
-  let resolvedBase: string | null = baseJiraVersion ?? existing?.baseJiraVersion ?? null;
-  if (!resolvedBase) {
-    const latestVersion = await db.query.storyVersion.findFirst({
-      where: eq(storyVersion.jiraKey, key),
-      orderBy: [desc(storyVersion.createdAt)],
-    });
-    resolvedBase = latestVersion?.contentHash ?? null;
-  }
-
-  if (existing) {
-    // When saving (isDraft=false) over a draft, promote it.
-    // When auto-saving (isDraft=true) over a saved edit, keep it saved.
-    const newDraftFlag = draftFlag && existing.isDraft;
-    await db
-      .update(ticketLocalEdit)
-      .set({ localValue: sanitizedValue, modifiedAt: now, baseJiraVersion: resolvedBase, isDraft: newDraftFlag })
-      .where(eq(ticketLocalEdit.id, existing.id));
-  } else {
-    await db.insert(ticketLocalEdit).values({
-      id: randomUUID(),
-      ticketKey: key,
-      field: field as "title" | "description",
-      localValue: sanitizedValue,
-      baseJiraVersion: resolvedBase,
-      isDraft: draftFlag,
-      modifiedAt: now,
-    });
-  }
-
-  const result = await db
-    .select()
-    .from(ticketLocalEdit)
-    .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, field)))
-    .get();
-
-  if (!draftFlag) {
-    await logActivity({
-      type: "local-edit",
-      scope: key,
-      summary: `Edited ${field}`,
-    });
-  }
-
-  return NextResponse.json(result);
 }
 
 export async function DELETE(
@@ -125,25 +36,8 @@ export async function DELETE(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
-  const url = new URL(request.url);
-  const draftsOnly = url.searchParams.get("draftsOnly") === "true";
-
-  if (draftsOnly) {
-    await db
-      .delete(ticketLocalEdit)
-      .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.isDraft, true)));
-  } else {
-    await db
-      .delete(ticketLocalEdit)
-      .where(eq(ticketLocalEdit.ticketKey, key));
-
-    await logActivity({
-      type: "local-edit",
-      scope: key,
-      summary: "Discarded all local edits",
-    });
-  }
-
+  const draftsOnly = new URL(request.url).searchParams.get("draftsOnly") === "true";
+  await ticketService.deleteLocalEdits(key, { draftsOnly });
   return NextResponse.json({ success: true });
 }
 
@@ -152,50 +46,17 @@ export async function PATCH(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
-
   let body: Record<string, unknown> = {};
+  try { body = await request.json(); } catch { /* no body is fine */ }
+
   try {
-    body = await request.json();
-  } catch {
-    // No body is fine for rebase
+    if (body.promoteDrafts === true) {
+      await ticketService.promoteDrafts(key);
+      return NextResponse.json({ success: true });
+    }
+    const result = await ticketService.rebaseLocalEdits(key);
+    return NextResponse.json({ success: true, ...result });
+  } catch (err) {
+    return handleServiceError(err);
   }
-
-  // Promote drafts to saved edits
-  if (body.promoteDrafts === true) {
-    await db
-      .update(ticketLocalEdit)
-      .set({ isDraft: false, modifiedAt: new Date().toISOString() })
-      .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.isDraft, true)));
-
-    await logActivity({
-      type: "local-edit",
-      scope: key,
-      summary: "Saved draft as local edit",
-    });
-
-    return NextResponse.json({ success: true });
-  }
-
-  // Rebase: update baseJiraVersion on all local edits to match the latest stored version
-  const latestVersion = await db.query.storyVersion.findFirst({
-    where: eq(storyVersion.jiraKey, key),
-    orderBy: [desc(storyVersion.createdAt)],
-  });
-
-  if (!latestVersion) {
-    return NextResponse.json({ error: "No version found to rebase onto" }, { status: 404 });
-  }
-
-  await db
-    .update(ticketLocalEdit)
-    .set({ baseJiraVersion: latestVersion.contentHash })
-    .where(eq(ticketLocalEdit.ticketKey, key));
-
-  await logActivity({
-    type: "local-edit",
-    scope: key,
-    summary: "Rebased local edits onto latest Jira version",
-  });
-
-  return NextResponse.json({ success: true, newBase: latestVersion.contentHash });
 }

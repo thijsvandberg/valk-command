@@ -1,6 +1,6 @@
 # BRDG-102: Service Layer Extraction
 
-**Status:** Open
+**Status:** Done
 **Priority:** Low
 
 ## Description
@@ -75,13 +75,13 @@ Extract all business logic from 4 route handlers (plain objects in, plain object
 
 ## Acceptance Criteria
 
-- [ ] New `src/services/` directory with service modules per domain
-- [ ] At least ticket operations (area 1) fully extracted to `src/services/ticket-service.ts`
-- [ ] Route handlers for extracted services are under 30 lines each
-- [ ] Service functions are independently testable (no NextRequest/NextResponse in signatures)
-- [ ] Existing route tests still pass
-- [ ] New unit tests for service functions (separate from route integration tests)
-- [ ] No behavioral changes
+- [x] New `src/services/` directory with service modules per domain
+- [x] At least ticket operations (area 1) fully extracted to `src/services/ticket-service.ts`
+- [x] Route handlers for extracted services are under 30 lines each
+- [x] Service functions are independently testable (no NextRequest/NextResponse in signatures)
+- [x] Existing route tests still pass
+- [x] New unit tests for service functions (separate from route integration tests)
+- [x] No behavioral changes
 
 ## Notes
 
