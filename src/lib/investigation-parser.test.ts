@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isInvestigationResult, parseInvestigationResult } from "./investigation-parser";
+import { isInvestigationResult, parseInvestigationResult, extractInvestigationTitle } from "./investigation-parser";
 
 const BASIC_RESULT = `## Question
 When do we show the cancellation button on the booking detail page?

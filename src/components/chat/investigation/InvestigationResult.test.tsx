@@ -108,8 +108,12 @@ describe("InvestigationResult", () => {
   it("renders external story link to Jira when not in local DB", () => {
     render(<InvestigationResult data={FULL_DATA} rawContent={RAW_CONTENT} />);
     fireEvent.click(screen.getByText("Related stories"));
-    const externalLink = screen.getByText("VPL-99999");
-    expect(externalLink.closest("a")?.getAttribute("href")).toContain("browse/VPL-99999");
+    // Key renders as plain text (not a local link) when not in DB
+    const keyEl = screen.getByText("VPL-99999");
+    expect(keyEl.tagName.toLowerCase()).not.toBe("a");
+    // A separate Jira external link (icon button) should be present in the same row
+    const row = keyEl.closest(".flex");
+    expect(row?.querySelector('a[href*="browse/VPL-99999"]')).not.toBeNull();
   });
 
   it("collapses How it works when isLong is true", async () => {
@@ -134,9 +138,9 @@ describe("InvestigationResult", () => {
 
   it("renders copy actions for the full result", () => {
     render(<InvestigationResult data={BASIC_DATA} rawContent={RAW_CONTENT} />);
-    // Full result copy actions
-    expect(screen.getByText("Markdown")).toBeDefined();
-    expect(screen.getByText("Rich text")).toBeDefined();
+    // Full result copy actions (multiple CopyActions instances may be rendered)
+    expect(screen.getAllByText("Markdown").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Rich text").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders per-card copy actions on stakeholder summary", () => {

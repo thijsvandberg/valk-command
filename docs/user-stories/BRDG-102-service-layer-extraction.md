@@ -39,6 +39,40 @@ export async function POST(request: Request) {
 3. **Jira sync** - `sync-tickets`, `sync-incremental`, `sync-comments`
 4. **Workspace tasks** - `workspace-tasks` CRUD and streaming
 
+## Implementation Plan
+
+### Step 1: Create `src/services/errors.ts`
+- `ServiceError` base class with `code`, `message`, `statusCode`
+- Subclasses: `NotFoundError`, `ValidationError`, `ConflictError`, `JiraUnavailableError`, `JiraOperationError`
+- `ConflictError` carries `details: { contentChanged: boolean }` for push-to-jira conflict shape
+
+### Step 2: Create `src/services/ticket-service.ts`
+Extract all business logic from 4 route handlers (plain objects in, plain objects out, no HTTP types):
+- `pushToJira(key, { force })` - conflict detection, Jira push, mirror refresh, activity log
+- `pullFromJira(key)` - fetch + ADF conversion
+- `getLocalEdits(key)`, `upsertLocalEdit(key, input)`, `deleteLocalEdits(key, opts)`, `rebaseLocalEdits(key)`, `promoteDrafts(key)`
+- `updateTicketMetadata(key, input)` - validation, upsert, cache invalidation
+
+### Step 3: Create `src/services/handle-service-error.ts`
+- Small utility: if `ServiceError`, return `NextResponse.json({ error, code }, { status: statusCode })`
+- Otherwise log and return 500
+
+### Step 4: Write tests `src/services/ticket-service.test.ts` and `src/services/errors.test.ts`
+- Test service functions with plain args and testDb (same `createTestDb()` pattern)
+- No Request/Response construction needed
+- Target: ~30 test cases covering happy paths and error branches
+
+### Step 5: Rewrite the 4 route handlers as thin wrappers (target <30 lines each)
+- Order: `pull-from-jira` → `metadata` → `local-edits` → `push-to-jira`
+- `push-to-jira` catches `ConflictError` specially and returns `{ conflict: true, ... }` at 200 to preserve API contract
+
+### Implementation order: errors → service → handle-service-error → tests → routes
+
+### Key decisions
+- `ConflictError` maps to HTTP 409 by default but push-to-jira route catches it specially for backwards compatibility
+- Services throw typed errors; routes catch and map to HTTP status codes via `handleServiceError`
+- No changes to `@/db`, `@/lib/*`, or `@/types/*` - purely additive
+
 ## Acceptance Criteria
 
 - [ ] New `src/services/` directory with service modules per domain

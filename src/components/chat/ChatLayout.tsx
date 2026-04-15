@@ -8,6 +8,7 @@ import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
 import { useNotification } from "@/hooks/useNotification";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { parseSkillInvocation, parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
+import { extractInvestigationTitle } from "@/lib/investigation-parser";
 import type { ConversationType } from "@/types/chat";
 import ConversationList from "./ConversationList";
 import MessageList from "./MessageList";
@@ -36,6 +37,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     error: convError,
     createConversation,
     deleteConversation,
+    refresh: refreshConversations,
   } = useConversations();
 
   const {
@@ -175,6 +177,20 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       }),
     }).then(() => refreshMessages());
 
+    // Auto-generate investigation title from the result
+    if (isInvestigation && activeConv?.title === "New investigation") {
+      const title = extractInvestigationTitle(displayContent);
+      if (title) {
+        fetch(`/api/conversations/${activeId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        })
+          .then(() => refreshConversations())
+          .catch((err) => console.warn("[chat] set investigation title failed", err));
+      }
+    }
+
     // Persist review results from /review-story commands
     const invocation = lastInvocationRef.current;
     if ((invocation?.skill === "review-story" || invocation?.skill === "review-story-json") && invocation.args) {
@@ -195,7 +211,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         }).catch((err) => console.warn("[chat] persist review failed", err));
       }
     }
-  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages, notify]);
+  }, [workspaceTask.status, workspaceTask.output, workspaceTask.taskId, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations]);
 
   const headerIcon = isInvestigation
     ? <Search size={15} strokeWidth={1.5} className="text-white/30" />

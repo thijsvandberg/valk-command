@@ -1,0 +1,385 @@
+"use client";
+
+import { useMemo } from "react";
+import Link from "next/link";
+import {
+  GitBranch,
+  GitPullRequest,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  OctagonX,
+  Rocket,
+  Pause,
+  User,
+} from "lucide-react";
+import { Card } from "@/components/shared/Card";
+import { EmptyState } from "@/components/shared/EmptyState";
+import type { PipelineRunPayload } from "@/app/api/pipelines/route";
+import { formatTimeAgo, formatDuration } from "./pipeline-helpers";
+
+function stateIcon(state: PipelineRunPayload["state"], size = 13) {
+  switch (state) {
+    case "SUCCESSFUL":
+      return <CheckCircle2 size={size} strokeWidth={2} className="text-emerald-400" />;
+    case "FAILED":
+      return <XCircle size={size} strokeWidth={2} className="text-red-400" />;
+    case "IN_PROGRESS":
+      return <Loader2 size={size} strokeWidth={2} className="text-[var(--color-brand-400)] animate-spin" />;
+    case "PAUSED":
+      return <Pause size={size} strokeWidth={2} className="text-amber-400" />;
+    case "STOPPED":
+      return <OctagonX size={size} strokeWidth={2} className="text-amber-400/70" />;
+  }
+}
+
+// -- Running Section --
+
+export function RunningSection({ runs }: { runs: PipelineRunPayload[] }) {
+  const active = runs.filter((r) => r.state === "IN_PROGRESS" || r.state === "PAUSED");
+  if (active.length === 0) return null;
+
+  const runningCount = active.filter((r) => r.state === "IN_PROGRESS").length;
+  const pausedCount = active.filter((r) => r.state === "PAUSED").length;
+  const label = [
+    runningCount > 0 ? `${runningCount} running` : null,
+    pausedCount > 0 ? `${pausedCount} paused` : null,
+  ].filter(Boolean).join(", ");
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <div className={`h-2 w-2 rounded-full ${runningCount > 0 ? "bg-[var(--color-brand-400)] animate-pulse" : "bg-amber-400"}`} />
+        <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+          Active ({label})
+        </span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        {active.map((run) => (
+          <RunningCard key={run.id} run={run} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RunningCard({ run }: { run: PipelineRunPayload }) {
+  const isPaused = run.state === "PAUSED";
+  return (
+    <Card className={`relative overflow-hidden px-4 py-3 ${isPaused ? "border-amber-500/20" : "border-[var(--color-brand-500)]/20"}`}>
+      <div className={`pointer-events-none absolute inset-0 ${isPaused ? "bg-[radial-gradient(ellipse_at_top_left,rgba(251,191,36,0.06),transparent_70%)]" : "bg-[radial-gradient(ellipse_at_top_left,rgba(26,111,194,0.08),transparent_70%)]"}`} />
+      <div className="relative flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {isPaused ? (
+            <Pause size={14} strokeWidth={2} className="shrink-0 text-amber-400" />
+          ) : (
+            <Loader2 size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)] animate-spin" />
+          )}
+          {run.pipelineUrl ? (
+            <a
+              href={run.pipelineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
+            >
+              #{run.buildNumber}
+            </a>
+          ) : (
+            <span className="text-[12px] font-mono font-medium text-white/70 truncate">
+              #{run.buildNumber}
+            </span>
+          )}
+          <span className="text-[11px] text-white/30 truncate">{run.repo}</span>
+        </div>
+        {run.ticketKey && (
+          <Link
+            href={`/tickets/${run.ticketKey}`}
+            className="shrink-0 text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+          >
+            {run.ticketKey}
+          </Link>
+        )}
+      </div>
+      <p className="relative mt-1.5 text-[12px] text-white/40 truncate">
+        <GitBranch size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-px" />
+        {run.branchName}
+      </p>
+    </Card>
+  );
+}
+
+// -- Status Pill --
+
+export function StatusPill({ state }: { state: PipelineRunPayload["state"] }) {
+  const config = {
+    SUCCESSFUL: { bg: "bg-emerald-500/10", text: "text-emerald-400/80", label: "Passed" },
+    FAILED:     { bg: "bg-red-500/10", text: "text-red-400/80", label: "Failed" },
+    IN_PROGRESS:{ bg: "bg-[var(--color-brand-500)]/10", text: "text-[var(--color-brand-400)]", label: "Running" },
+    PAUSED:     { bg: "bg-amber-500/10", text: "text-amber-400/70", label: "Paused" },
+    STOPPED:    { bg: "bg-white/[0.04]", text: "text-white/35", label: "Stopped" },
+  }[state];
+
+  return (
+    <span className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${config.bg} ${config.text}`}>
+      {stateIcon(state, 11)}
+      {config.label}
+    </span>
+  );
+}
+
+// -- Pipeline Row --
+
+function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketTitleMap?: Map<string, string> }) {
+  const isFailed = run.state === "FAILED";
+  const allKeys = run.ticketKeys ?? (run.ticketKey ? [run.ticketKey] : []);
+  const hasDetail = run.commitMessage || run.prTitle;
+
+  return (
+    <a
+      href={run.pipelineUrl || undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`group block border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.025] ${
+        isFailed ? "bg-red-500/[0.02]" : ""
+      }`}
+    >
+      {/* Primary row */}
+      <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.5fr)_100px_80px_68px_54px] gap-x-4 items-center px-4 py-2.5">
+        {/* Pipeline: icon + number + repo + env badge */}
+        <div className="flex items-center gap-2 min-w-0">
+          {run.isDeployment ? (
+            <Rocket size={13} strokeWidth={1.5} className="shrink-0 text-violet-400/60" />
+          ) : (
+            <GitBranch size={13} strokeWidth={1.5} className="shrink-0 text-white/15" />
+          )}
+          <span className="text-[12px] font-mono font-semibold text-white/70 group-hover:text-[var(--color-brand-400)] transition-colors duration-150">
+            #{run.buildNumber}
+          </span>
+          <span className="text-[11px] text-white/20">{run.repo}</span>
+          {run.environment && (
+            <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-px text-[10px] font-medium text-violet-400/70">
+              {run.environment}
+            </span>
+          )}
+          {run.creator && (
+            <span className="hidden lg:flex items-center gap-1 ml-auto shrink-0 text-[11px] text-white/20">
+              <User size={10} strokeWidth={1.5} className="text-white/15" />
+              {run.creator}
+            </span>
+          )}
+        </div>
+
+        {/* Branch */}
+        <span className="text-[12px] text-white/35 truncate">{run.branchName}</span>
+
+        {/* Ticket */}
+        <div className="flex flex-col gap-0.5 min-w-0">
+          {allKeys.length > 0 ? (
+            allKeys.slice(0, 2).map((k) => (
+              <Link
+                key={k}
+                href={`/tickets/${k}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer truncate"
+              >
+                {k}
+              </Link>
+            ))
+          ) : (
+            <span className="text-[11px] text-white/10">-</span>
+          )}
+        </div>
+
+        {/* Status */}
+        <div className="flex justify-center">
+          <StatusPill state={run.state} />
+        </div>
+
+        {/* Duration */}
+        <span className="text-[11px] text-white/25 text-right tabular-nums">
+          {formatDuration(run.durationSeconds)}
+        </span>
+
+        {/* When */}
+        <span className="text-[11px] text-white/20 text-right tabular-nums">
+          {formatTimeAgo(run.createdAt)}
+        </span>
+      </div>
+
+      {/* Detail row: commit message + PR (only when present) */}
+      {hasDetail && (
+        <div className="flex items-center gap-3 px-4 pb-2.5 -mt-1 pl-[42px]">
+          {run.commitMessage && (
+            <span className="text-[11px] text-white/20 truncate">{run.commitMessage}</span>
+          )}
+          {run.prTitle && run.prUrl && (
+            <span
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(run.prUrl!, "_blank"); }}
+              className="shrink-0 flex items-center gap-1 text-[11px] text-white/25 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer"
+            >
+              <GitPullRequest size={10} strokeWidth={1.5} />
+              PR
+              {run.prAuthor && <span className="text-white/15">by {run.prAuthor}</span>}
+            </span>
+          )}
+        </div>
+      )}
+    </a>
+  );
+}
+
+// -- Pipeline Table --
+
+export function PipelineTable({
+  runs,
+  repoFilter,
+  ticketTitleMap,
+}: {
+  runs: PipelineRunPayload[];
+  repoFilter: string | null;
+  ticketTitleMap?: Map<string, string>;
+}) {
+  const filtered = repoFilter ? runs.filter((r) => r.repo === repoFilter) : runs;
+
+  if (filtered.length === 0) {
+    return (
+      <Card variant="dashed" className="px-6 py-12">
+        <EmptyState
+          icon={<GitBranch size={20} strokeWidth={1.5} className="text-white/30" />}
+          title="No pipeline runs"
+          description={repoFilter ? `No runs found for "${repoFilter}".` : "Pipeline data will appear here once Bitbucket is configured and a sync completes."}
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+      {/* Table header */}
+      <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.5fr)_100px_80px_68px_54px] gap-x-4 px-4 py-2 bg-white/[0.02] border-b border-white/[0.06] text-[10px] font-medium text-white/25 uppercase tracking-wider">
+        <span>Pipeline</span>
+        <span>Branch</span>
+        <span>Ticket</span>
+        <span className="text-center">Status</span>
+        <span className="text-right">Duration</span>
+        <span className="text-right">When</span>
+      </div>
+
+      {/* Rows */}
+      {filtered.map((run) => (
+        <PipelineRow key={run.id} run={run} ticketTitleMap={ticketTitleMap} />
+      ))}
+    </div>
+  );
+}
+
+// -- Grouped by Ticket View --
+
+export function GroupedByTicketView({
+  runs,
+  ticketTitleMap,
+}: {
+  runs: PipelineRunPayload[];
+  ticketTitleMap: Map<string, string>;
+}) {
+  const groups = useMemo(() => {
+    const map = new Map<string, PipelineRunPayload[]>();
+    const noTicket: PipelineRunPayload[] = [];
+    for (const run of runs) {
+      const key = run.ticketKey;
+      if (!key) {
+        noTicket.push(run);
+        continue;
+      }
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(run);
+    }
+    // Sort groups by most recent pipeline first
+    const sorted = [...map.entries()].sort((a, b) => {
+      const aDate = a[1][0]?.createdAt ?? "";
+      const bDate = b[1][0]?.createdAt ?? "";
+      return bDate.localeCompare(aDate);
+    });
+    if (noTicket.length > 0) sorted.push(["_unlinked", noTicket]);
+    return sorted;
+  }, [runs]);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      {groups.map(([ticketKey, ticketRuns]) => {
+        const title = ticketKey === "_unlinked" ? null : ticketTitleMap.get(ticketKey);
+        const passCount = ticketRuns.filter((r) => r.state === "SUCCESSFUL").length;
+        const failCount = ticketRuns.filter((r) => r.state === "FAILED").length;
+
+        return (
+          <div key={ticketKey} className="rounded-xl border border-white/[0.08] overflow-hidden">
+            {/* Group header */}
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+              {ticketKey !== "_unlinked" ? (
+                <Link
+                  href={`/tickets/${ticketKey}`}
+                  className="text-[12px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                >
+                  {ticketKey}
+                </Link>
+              ) : (
+                <span className="text-[12px] font-medium text-white/30">Unlinked pipelines</span>
+              )}
+              {title && (
+                <span className="text-[12px] text-white/40 truncate">{title}</span>
+              )}
+              <div className="ml-auto flex items-center gap-3 text-[11px]">
+                {passCount > 0 && (
+                  <span className="flex items-center gap-1 text-emerald-400/70">
+                    <CheckCircle2 size={11} strokeWidth={2} /> {passCount}
+                  </span>
+                )}
+                {failCount > 0 && (
+                  <span className="flex items-center gap-1 text-red-400/70">
+                    <XCircle size={11} strokeWidth={2} /> {failCount}
+                  </span>
+                )}
+                <span className="text-white/25">{ticketRuns.length} run{ticketRuns.length !== 1 ? "s" : ""}</span>
+              </div>
+            </div>
+
+            {/* Compact pipeline rows */}
+            {ticketRuns.map((run) => (
+              <div
+                key={run.id}
+                className={`flex items-center gap-3 px-4 py-2 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
+                  run.state === "FAILED" ? "bg-red-500/[0.03]" : ""
+                }`}
+              >
+                {stateIcon(run.state)}
+                <a
+                  href={run.pipelineUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer"
+                >
+                  #{run.buildNumber}
+                </a>
+                <span className="text-[11px] text-white/25 truncate">{run.repo}</span>
+                {run.environment && (
+                  <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+                    {run.environment}
+                  </span>
+                )}
+                <span className="text-[12px] text-white/30 truncate flex-1">{run.branchName}</span>
+                {run.commitMessage && (
+                  <span className="hidden lg:block text-[11px] text-white/20 truncate max-w-[200px]">{run.commitMessage}</span>
+                )}
+                <span className="text-[11px] text-white/25 tabular-nums shrink-0">
+                  {formatTimeAgo(run.createdAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

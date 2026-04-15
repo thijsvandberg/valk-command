@@ -2,7 +2,7 @@ import Sidebar from "@/components/Sidebar";
 import { ActivityProvider } from "@/contexts/ActivityContext";
 import { ActivityToast } from "@/components/sync/SyncToast";
 import { SWRProvider } from "@/components/SWRProvider";
-import { CommandPalette } from "@/components/CommandPalette";
+import { CommandPalette } from "@/components/command-palette";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { DeployNotifier } from "@/components/DeployNotifier";
 

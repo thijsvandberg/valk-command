@@ -7,9 +7,10 @@ import { copyAsMarkdown, copyAsRTF } from "@/lib/clipboard";
 interface CopyActionsProps {
   content: string;
   className?: string;
+  label?: string;
 }
 
-export function CopyActions({ content, className }: CopyActionsProps) {
+export function CopyActions({ content, className, label }: CopyActionsProps) {
   const [copiedMd, setCopiedMd] = useState(false);
   const [copiedRtf, setCopiedRtf] = useState(false);
 
@@ -31,6 +32,7 @@ export function CopyActions({ content, className }: CopyActionsProps) {
 
   return (
     <div className={`flex items-center gap-1 ${className ?? "mt-2 pt-2 border-t border-white/[0.04]"}`}>
+      {label && <span className="text-[10px] text-white/20 mr-1">{label}</span>}
       <button
         type="button"
         onClick={handleCopyMd}

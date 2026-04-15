@@ -41,6 +41,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
             {data.finding}
           </ReactMarkdown>
         </div>
+        <CopyActions content={`## Finding\n\n${data.finding}`} className="mt-2 pt-1.5 border-t border-[var(--color-brand-500)]/[0.08]" />
       </div>
 
       {/* How it works - collapsible */}
@@ -49,6 +50,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
           title="How it works"
           icon={Layers}
           defaultOpen={!collapseDetails}
+          copyContent={`## How it works\n\n${data.howItWorks}`}
         >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {data.howItWorks}
@@ -62,6 +64,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
           title="What's missing"
           icon={AlertTriangle}
           defaultOpen={!collapseDetails}
+          copyContent={`## What's missing\n\n${data.whatsMissing}`}
         >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {data.whatsMissing}
@@ -75,6 +78,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
           title="What would be needed"
           icon={AlertTriangle}
           defaultOpen={!collapseDetails}
+          copyContent={`## What would be needed\n\n${data.whatWouldBeNeeded}`}
         >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {data.whatWouldBeNeeded}
@@ -94,7 +98,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
       )}
 
       {/* Full result copy actions */}
-      <CopyActions content={rawContent} className="pt-3 border-t border-white/[0.06]" />
+      <CopyActions content={rawContent} className="pt-3 border-t border-white/[0.06]" label="Copy full result" />
     </div>
   );
 }

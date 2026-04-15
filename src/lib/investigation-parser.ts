@@ -22,6 +22,26 @@ export interface InvestigationData {
 }
 
 /**
+ * Extract a short title (max ~60 chars) from an investigation result.
+ * Takes the first sentence of the question and truncates if needed.
+ */
+export function extractInvestigationTitle(content: string): string | null {
+  const match = content.match(/^## Question\s*\n+([\s\S]*?)(?=\n##\s)/m);
+  if (!match) return null;
+
+  let question = match[1].trim();
+  // Remove trailing question mark for cleaner title
+  question = question.replace(/\?$/, "");
+
+  if (question.length <= 60) return question;
+
+  // Truncate at word boundary
+  const truncated = question.slice(0, 57);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return (lastSpace > 30 ? truncated.slice(0, lastSpace) : truncated) + "...";
+}
+
+/**
  * Detect whether content looks like an investigation result.
  * Requires both "## Question" and "## Finding" headings.
  */

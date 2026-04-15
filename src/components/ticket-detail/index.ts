@@ -1,4 +1,10 @@
-export { EditableTitle, EditableDescription, AttachmentsSection, SubtasksSection, LinkedIssuesSection, CommentsSection } from "./TicketContent";
+export { EditableTitle } from "./EditableTitle";
+export { EditableDescription } from "./EditableDescription";
+export { AttachmentsSection } from "./AttachmentsSection";
+export { SubtasksSection } from "./SubtasksSection";
+export { LinkedIssuesSection } from "./LinkedIssuesSection";
+export { EpicChildrenSection } from "./EpicChildrenSection";
+export { CommentsSection } from "./CommentsSection";
 export { TicketHistory } from "./TicketHistory";
 export { TicketReview } from "./TicketReview";
 export { TicketSidebar } from "./TicketSidebar";

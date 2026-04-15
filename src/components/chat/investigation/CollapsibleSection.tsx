@@ -2,11 +2,13 @@
 
 import { useState, type ReactNode } from "react";
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import { CopyActions } from "../CopyActions";
 
 interface CollapsibleSectionProps {
   title: string;
   icon: LucideIcon;
   defaultOpen?: boolean;
+  copyContent?: string;
   children: ReactNode;
 }
 
@@ -14,6 +16,7 @@ export function CollapsibleSection({
   title,
   icon: Icon,
   defaultOpen = true,
+  copyContent,
   children,
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -43,6 +46,9 @@ export function CollapsibleSection({
       {open && (
         <div className="pb-2 text-sm leading-[1.7] text-white/70 font-[var(--font-body)]">
           {children}
+          {copyContent && (
+            <CopyActions content={copyContent} className="mt-2 pt-1.5 border-t border-white/[0.03]" />
+          )}
         </div>
       )}
     </div>

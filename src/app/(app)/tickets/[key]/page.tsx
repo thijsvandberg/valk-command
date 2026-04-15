@@ -31,15 +31,13 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
-import {
-  EditableTitle,
-  EditableDescription,
-  AttachmentsSection,
-  SubtasksSection,
-  LinkedIssuesSection,
-  EpicChildrenSection,
-  CommentsSection,
-} from "@/components/ticket-detail/TicketContent";
+import { EditableTitle } from "@/components/ticket-detail/EditableTitle";
+import { EditableDescription } from "@/components/ticket-detail/EditableDescription";
+import { AttachmentsSection } from "@/components/ticket-detail/AttachmentsSection";
+import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
+import { LinkedIssuesSection } from "@/components/ticket-detail/LinkedIssuesSection";
+import { EpicChildrenSection } from "@/components/ticket-detail/EpicChildrenSection";
+import { CommentsSection } from "@/components/ticket-detail/CommentsSection";
 import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
 import { TicketReview } from "@/components/ticket-detail/TicketReview";
 import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
