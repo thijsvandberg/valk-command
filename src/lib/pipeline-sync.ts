@@ -4,6 +4,7 @@ import { pipelineRun, alert, ticketMetadata, appSetting } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { createNotification } from "@/lib/notifications";
+import { logger } from "@/lib/logger";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
 
 // -- Environment detection --
@@ -91,7 +92,7 @@ async function bbFetch<T>(repoSlug: string, path: string, silent404 = false): Pr
   const res = await fetch(url, { redirect: "follow", headers: bbAuthHeaders() });
   if (!res.ok) {
     if (!(silent404 && res.status === 404)) {
-      console.log(`[pipeline-sync] bbFetch ${res.status} for ${path} on ${repoSlug}`);
+      logger.info("pipeline-sync", `bbFetch ${res.status} for ${path} on ${repoSlug}`);
     }
     return null;
   }
@@ -228,7 +229,7 @@ export async function backfillEnrichment(): Promise<number> {
     enriched++;
   }
 
-  console.log(`[pipeline-sync] backfill: enriched ${enriched}/${rows.length} rows`);
+  logger.info("pipeline-sync", `backfill: enriched ${enriched}/${rows.length} rows`);
 
   // Second pass: re-extract ticket keys from rows that have commit_message but no ticket_key
   const needsReExtraction = db
@@ -271,7 +272,7 @@ export async function backfillEnrichment(): Promise<number> {
   }
 
   if (needsReExtraction.length > 0) {
-    console.log(`[pipeline-sync] re-extraction: checked ${needsReExtraction.length} rows`);
+    logger.info("pipeline-sync", `re-extraction: checked ${needsReExtraction.length} rows`);
   }
 
   return rows.length + needsReExtraction.length;

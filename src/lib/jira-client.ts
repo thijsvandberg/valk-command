@@ -8,6 +8,7 @@
  * of the app can run without a Jira connection.
  */
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 import { trackOutboundCall, isOutboundLimitApproaching } from "@/lib/rate-limiter";
 
 // ---------------------------------------------------------------------------
@@ -213,7 +214,7 @@ async function throttle(): Promise<void> {
   trackOutboundCall("jira");
 
   if (isOutboundLimitApproaching("jira")) {
-    console.warn("[jira-client] Approaching Jira API rate limit (80%+)");
+    logger.warn("jira-client", "Approaching Jira API rate limit (80%+)");
   }
 }
 
@@ -273,13 +274,13 @@ async function withRetry<T>(
         } else {
           delayMs = INITIAL_BACKOFF_MS * 2 ** attempt;
         }
-        console.warn(`Jira API ${res.status} on ${path}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        logger.warn("jira-client", `API ${res.status} on ${path}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
       }
 
       const body = await res.text().catch(() => "");
-      console.error(`Jira API error: ${res.status} ${res.statusText} path=${path} body=${body}`);
+      logger.error("jira-client", `API error: ${res.status} ${res.statusText} path=${path} body=${body}`);
       throw new JiraApiError(res.status, res.statusText, body, path);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
@@ -288,7 +289,7 @@ async function withRetry<T>(
       // Network errors / timeouts are retryable
       if (attempt < MAX_RETRIES) {
         const delayMs = INITIAL_BACKOFF_MS * 2 ** attempt;
-        console.warn(`Jira API network error on ${path}: ${err instanceof Error ? err.message : err}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        logger.warn("jira-client", `network error on ${path}: ${err instanceof Error ? err.message : err}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         lastError = err instanceof Error ? err : new Error(String(err));
         continue;

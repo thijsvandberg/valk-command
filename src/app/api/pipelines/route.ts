@@ -4,6 +4,7 @@ import { pipelineRun, appSetting } from "@/db/schema";
 import { cache } from "@/lib/cache";
 import { desc, eq, inArray, and, or, like, isNull } from "drizzle-orm";
 import { syncPipelines, isPipelineConfigured } from "@/lib/pipeline-sync";
+import { logger } from "@/lib/logger";
 
 export interface PipelineRunPayload {
   id: string;
@@ -43,10 +44,10 @@ export async function GET(request: Request) {
     syncPipelines()
       .then((result) => {
         cache.set(cacheKey, Date.now(), 60_000);
-        console.log("[pipelines] background sync:", result);
+        logger.info("pipelines", "background sync:", result);
       })
       .catch((err) => {
-        console.error("[pipelines] background sync failed:", err);
+        logger.error("pipelines", "background sync failed:", err);
       });
   }
 
@@ -128,7 +129,7 @@ export async function POST() {
     cache.set("/api/pipelines:synced", Date.now(), 60_000);
     return NextResponse.json(result);
   } catch (err) {
-    console.error("[pipelines] force sync failed:", err);
+    logger.error("pipelines", "force sync failed:", err);
     return NextResponse.json({ error: "Pipeline sync failed" }, { status: 500 });
   }
 }

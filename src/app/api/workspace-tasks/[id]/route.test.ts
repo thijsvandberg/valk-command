@@ -19,6 +19,7 @@ describe("GET /api/workspace-tasks/[id]", () => {
       ok: true,
       data: { id: "task-1", status: "running" },
       status: 200,
+      retryCount: 0,
     });
 
     const response = await GET(
@@ -33,8 +34,9 @@ describe("GET /api/workspace-tasks/[id]", () => {
   it("returns error response when agent fails", async () => {
     vi.mocked(agentFetch).mockResolvedValue({
       ok: false,
-      error: { error: "Not found", code: "NOT_FOUND" },
+      error: { error: "Not found", code: "SERVER_ERROR" },
       status: 404,
+      retryCount: 0,
     });
 
     const response = await GET(
@@ -57,6 +59,7 @@ describe("DELETE /api/workspace-tasks/[id]", () => {
       ok: true,
       data: { deleted: true },
       status: 200,
+      retryCount: 0,
     });
 
     const response = await DELETE(
@@ -71,8 +74,9 @@ describe("DELETE /api/workspace-tasks/[id]", () => {
   it("returns error when agent delete fails", async () => {
     vi.mocked(agentFetch).mockResolvedValue({
       ok: false,
-      error: { error: "Not found", code: "NOT_FOUND" },
+      error: { error: "Not found", code: "SERVER_ERROR" },
       status: 404,
+      retryCount: 0,
     });
 
     const response = await DELETE(

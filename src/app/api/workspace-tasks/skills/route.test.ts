@@ -17,6 +17,7 @@ describe("GET /api/workspace-tasks/skills", () => {
       ok: true,
       data: [{ name: "investigate", description: "Investigate code" }],
       status: 200,
+      retryCount: 0,
     });
 
     const response = await GET();
@@ -29,8 +30,9 @@ describe("GET /api/workspace-tasks/skills", () => {
   it("returns error when agent fails", async () => {
     vi.mocked(agentFetch).mockResolvedValue({
       ok: false,
-      error: { error: "Agent unavailable", code: "NETWORK_ERROR" },
+      error: { error: "Agent unavailable", code: "UNREACHABLE" },
       status: 502,
+      retryCount: 0,
     });
 
     const response = await GET();

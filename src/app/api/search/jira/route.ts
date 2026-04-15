@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jiraClient, extractSprint } from "@/lib/jira-client";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 export interface JiraSearchResult {
   key: string;
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
     if (err instanceof DOMException && err.name === "AbortError") {
       return NextResponse.json({ issues: [] });
     }
-    console.error("[search/jira GET]", err);
+    logger.error("search-jira", "GET failed", err);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   } finally {
     inFlightController = null;

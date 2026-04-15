@@ -34,6 +34,7 @@ describe("GET /api/workspace-tasks", () => {
       ok: true,
       data: [{ id: "task-1", status: "running" }],
       status: 200,
+      retryCount: 0,
     });
 
     const response = await GET();
@@ -45,15 +46,16 @@ describe("GET /api/workspace-tasks", () => {
   it("returns 502 error when agent fails", async () => {
     vi.mocked(agentFetch).mockResolvedValue({
       ok: false,
-      error: { error: "Agent unreachable", code: "NETWORK_ERROR" },
+      error: { error: "Agent unreachable", code: "UNREACHABLE" },
       status: 502,
+      retryCount: 0,
     });
 
     const response = await GET();
     expect(response.status).toBe(502);
     const data = await response.json();
     expect(data.error).toBe("Agent unreachable");
-    expect(data.code).toBe("NETWORK_ERROR");
+    expect(data.code).toBe("UNREACHABLE");
   });
 });
 
@@ -68,6 +70,7 @@ describe("POST /api/workspace-tasks", () => {
       ok: true,
       data: { id: "task-new" },
       status: 201,
+      retryCount: 0,
     });
 
     const request = new Request("http://localhost:3100/api/workspace-tasks", {
@@ -96,7 +99,7 @@ describe("POST /api/workspace-tasks", () => {
   it("returns 502 when agent returns error", async () => {
     vi.mocked(agentFetch).mockResolvedValue({
       ok: false,
-      error: { error: "Internal agent error", code: "AGENT_ERROR" },
+      error: { error: "Internal agent error", code: "SERVER_ERROR" },
       status: 500,
       retryCount: 2,
     });
@@ -139,6 +142,7 @@ describe("POST /api/workspace-tasks", () => {
       ok: true,
       data: { id: "task-alias" },
       status: 201,
+      retryCount: 0,
     });
 
     const request = new Request("http://localhost:3100/api/workspace-tasks", {

@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { env } from "@/lib/env";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -122,7 +123,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ticketKeys: keysToSync }),
-    }).catch((err) => console.error("[apply-related] background sync failed", err));
+    }).catch((err) => logger.error("apply-related", "background sync failed", err));
   }
 
   return NextResponse.json({ candidates, found: true });

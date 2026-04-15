@@ -18,6 +18,7 @@ import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { defineTask, type TaskResult } from "@/lib/scheduler";
+import { logger } from "@/lib/logger";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { createNotification } from "@/lib/notifications";
 
@@ -129,7 +130,7 @@ async function runIncrementalSync(): Promise<TaskResult> {
       return { error: "Sync cancelled" };
     }
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("Incremental sync failed:", message);
+    logger.error("scheduled-tasks", "Incremental sync failed:", message);
     createNotification("sync", `Jira sync failed: ${message}`, { category: "sync" });
     return { error: message };
   } finally {

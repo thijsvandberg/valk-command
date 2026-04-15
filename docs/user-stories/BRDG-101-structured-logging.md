@@ -1,6 +1,6 @@
 # BRDG-101: Structured Logging System
 
-**Status:** Open
+**Status:** Done
 **Priority:** Low
 
 ## Description
@@ -48,14 +48,14 @@ This story introduces a lightweight structured logger that:
 
 ## Acceptance Criteria
 
-- [ ] New `src/lib/logger.ts` module with `debug`, `info`, `warn`, `error` methods
-- [ ] Each method accepts a context tag (e.g. `"jira-client"`) and message
-- [ ] Log level controlled by `LOG_LEVEL` env var (default: `"info"` in prod, `"debug"` in dev)
-- [ ] All existing `console.log/warn/error` calls in `src/lib/` migrated to use the logger
-- [ ] All existing `console.error` calls in `src/app/api/` migrated to use the logger
-- [ ] Client-side `console.warn` calls in hooks/components left as-is (browser devtools are the right tool there)
-- [ ] No behavioral changes; same information is logged at same severity levels
-- [ ] Logger is tree-shakeable and adds no bundle size to client components
+- [x] New `src/lib/logger.ts` module with `debug`, `info`, `warn`, `error` methods
+- [x] Each method accepts a context tag (e.g. `"jira-client"`) and message
+- [x] Log level controlled by `LOG_LEVEL` env var (default: `"info"` in prod, `"debug"` in dev)
+- [x] All existing `console.log/warn/error` calls in `src/lib/` migrated to use the logger
+- [x] All existing `console.error` calls in `src/app/api/` migrated to use the logger
+- [x] Client-side `console.warn` calls in hooks/components left as-is (browser devtools are the right tool there)
+- [x] No behavioral changes; same information is logged at same severity levels
+- [x] Logger is tree-shakeable and adds no bundle size to client components
 
 ## Notes
 

@@ -7,6 +7,7 @@ import { extractStoryDrafts } from "@/lib/story-draft-parser";
 import { agentFetch } from "@/lib/agent-fetch";
 import { createOrUpdateNotification } from "@/lib/notifications";
 import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -107,7 +108,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   // This is non-critical and can be slow, so we don't block the response on it.
   if (taskId) {
     fetchAndStoreExecutionLog(session.id, taskId, session.conversationId, key)
-      .catch((err) => console.error("[apply-draft] execution log fetch failed", err));
+      .catch((err) => logger.error("apply-draft", "execution log fetch failed", err));
   }
 
   await logActivity({

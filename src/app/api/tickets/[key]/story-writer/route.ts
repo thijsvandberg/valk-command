@@ -4,6 +4,7 @@ import { storyWriterSession, storyWriterDraft, conversation, message, storyVersi
 import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -48,7 +49,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     return NextResponse.json({ session, messages, aiDrafts, relatedCandidates });
   } catch (err) {
-    console.error("[story-writer GET]", err);
+    logger.error("story-writer", "GET failed", err);
     return NextResponse.json({ error: "Failed to load story writer session" }, { status: 500 });
   }
 }
@@ -147,7 +148,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
     return NextResponse.json({ session, messages: [], aiDrafts: [] }, { status: 201 });
   } catch (err) {
-    console.error("[story-writer POST]", err);
+    logger.error("story-writer", "POST failed", err);
     return NextResponse.json({ error: "Failed to create story writer session" }, { status: 500 });
   }
 }

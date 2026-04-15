@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { env } from "@/lib/env";
 import { getSearchCache, setSearchCache, type SearchDoc, type TicketDetail, type FuseResultMatchType } from "@/lib/search-index-cache";
+import { logger } from "@/lib/logger";
 
 export interface LocalSearchResult {
   key: string;
@@ -219,7 +220,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ results });
   } catch (err) {
-    console.error("[search/local GET]", err);
+    logger.error("search-local", "GET failed", err);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }

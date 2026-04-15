@@ -4,6 +4,7 @@ import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { logger } from "@/lib/logger";
 
 /**
  * Creates a brand-new Jira story and a minimal local ticket record.
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     });
     newKey = result.key;
   } catch (err) {
-    console.error("[story-writer/create] Failed to create Jira issue:", err);
+    logger.error("story-writer-create", "Failed to create Jira issue:", err);
     return NextResponse.json(
       { error: "Failed to create story in Jira" },
       { status: 502 },

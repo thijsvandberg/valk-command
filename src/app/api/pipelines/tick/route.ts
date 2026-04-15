@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { registerIndependentTask } from "@/lib/task-registry";
+import { logger } from "@/lib/logger";
 
 const LAST_RUN_KEY = "pipeline_sync:last_run";
 const LAST_RESULT_KEY = "pipeline_sync:last_result";
@@ -90,7 +91,7 @@ export async function POST() {
 
     return NextResponse.json({ ran: true, ...result });
   } catch (err) {
-    console.error("[pipeline-tick] sync failed:", err);
+    logger.error("pipeline-tick", "sync failed:", err);
     return NextResponse.json({
       error: err instanceof Error ? err.message : "Unknown error",
     });

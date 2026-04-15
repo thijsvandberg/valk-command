@@ -1,5 +1,6 @@
 import "server-only";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
+import { logger } from "@/lib/logger";
 
 export type AgentErrorCode =
   | "TIMEOUT"
@@ -103,14 +104,7 @@ export async function agentFetch<T = unknown>(
   for (let attempt = 0; attempt <= retries; attempt++) {
     if (attempt > 0) {
       const delayMs = backoffDelay(attempt - 1);
-      console.warn(JSON.stringify({
-        event: "agent_fetch_retry",
-        path,
-        attempt,
-        maxRetries: retries,
-        errorCode: lastResult && !lastResult.ok ? lastResult.error.code : null,
-        delayMs,
-      }));
+      logger.warn("agent-fetch", "retry", { event: "agent_fetch_retry", path, attempt, maxRetries: retries, errorCode: lastResult && !lastResult.ok ? lastResult.error.code : null, delayMs });
       await delay(delayMs);
     }
 

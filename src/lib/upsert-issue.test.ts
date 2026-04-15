@@ -38,7 +38,7 @@ function makeIssue(overrides: Partial<JiraIssue["fields"]> = {}): JiraIssue {
       status: { name: "To Do" },
       assignee: null,
       reporter: null,
-      priority: null,
+      priority: undefined,
       labels: [],
       flagged: false,
       description: null,
@@ -48,7 +48,7 @@ function makeIssue(overrides: Partial<JiraIssue["fields"]> = {}): JiraIssue {
       attachment: [],
       subtasks: [],
       issuelinks: [],
-      comment: { comments: [] },
+      comment: { total: 0, comments: [] },
       ...overrides,
     },
   };

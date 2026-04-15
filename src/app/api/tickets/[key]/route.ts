@@ -8,6 +8,7 @@ import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
 
 function userInitials(name: string): string {
   return name
@@ -120,8 +121,8 @@ export async function GET(
 
   let labels: string[] = [];
   let components: string[] = [];
-  try { labels = t.labels ? JSON.parse(t.labels) : []; } catch { console.warn(`[ticket/${key}] malformed labels JSON: ${t.labels}`); }
-  try { components = t.components ? JSON.parse(t.components) : []; } catch { console.warn(`[ticket/${key}] malformed components JSON: ${t.components}`); }
+  try { labels = t.labels ? JSON.parse(t.labels) : []; } catch { logger.warn("ticket-detail", `malformed labels JSON: ${t.labels}`); }
+  try { components = t.components ? JSON.parse(t.components) : []; } catch { logger.warn("ticket-detail", `malformed components JSON: ${t.components}`); }
 
   // Compute edit state from local edits vs latest Jira mirror
   const [localEdits, latestVersion] = await Promise.all([
@@ -272,7 +273,7 @@ export async function PATCH(
   const jiraName = JIRA_TYPE_NAMES[newType];
   if (jiraName) {
     jiraClient.updateIssue(key, { issuetype: { name: jiraName } }).catch((err: unknown) => {
-      console.error(`[PATCH /api/tickets/${key}] Jira type sync failed:`, err);
+      logger.error("ticket-detail", `PATCH Jira type sync failed for ${key}:`, err);
     });
   }
 

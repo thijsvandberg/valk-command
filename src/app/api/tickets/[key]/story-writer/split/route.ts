@@ -5,6 +5,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -81,7 +82,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       });
       newJiraKey = result.key;
     } catch (err) {
-      console.error("[story-writer split] Failed to create Jira issue:", err);
+      logger.error("story-writer-split", "Failed to create Jira issue:", err);
       return NextResponse.json(
         { error: "Failed to create story in Jira" },
         { status: 502 },

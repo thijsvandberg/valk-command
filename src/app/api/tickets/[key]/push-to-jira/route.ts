@@ -7,6 +7,7 @@ import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { createHash } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 function contentHash(description: unknown, ac: string | null | undefined): string {
   const text = `${JSON.stringify(description ?? "")}|${ac ?? ""}`;
@@ -159,7 +160,7 @@ export async function POST(
       newContentHash: postPushVersion?.contentHash ?? null,
     });
   } catch (err) {
-    console.error(`push-to-jira failed for ${key}:`, err);
+    logger.error("push-to-jira", `failed for ${key}:`, err);
 
     let userMessage: string;
     let errorDetail: string;

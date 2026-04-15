@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/attachments/[id]
@@ -46,7 +47,7 @@ export async function GET(
       "api.media.atlassian.com",
     ]);
     if (!allowedHostnames.has(parsed.hostname)) {
-      console.error("[attachments] SSRF blocked: URL hostname mismatch", parsed.hostname);
+      logger.error("attachments", "SSRF blocked: URL hostname mismatch", parsed.hostname);
       return new NextResponse(null, { status: 403 });
     }
   } catch {

@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 const SLOW_QUERY_THRESHOLD_MS = 100;
 const MAX_STATS_ENTRIES = 200;
 
@@ -25,7 +27,7 @@ export async function timedQuery<T>(
   const durationMs = Math.round(performance.now() - start);
 
   if (durationMs > SLOW_QUERY_THRESHOLD_MS) {
-    console.warn(`[slow-query] ${label}: ${durationMs}ms (threshold: ${SLOW_QUERY_THRESHOLD_MS}ms)`);
+    logger.warn("slow-query", `${label}: ${durationMs}ms (threshold: ${SLOW_QUERY_THRESHOLD_MS}ms)`);
   }
 
   const existing = stats.get(label);

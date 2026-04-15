@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 // Normalised shapes returned to the client
 export interface DevBranch {
@@ -457,7 +458,7 @@ export async function GET(
       headers: { "X-Cache": "MISS", "Cache-Control": "private, max-age=10, stale-while-revalidate=20" },
     });
   } catch (err) {
-    console.error("Dev-info fetch failed:", err);
+    logger.error("dev-info", "fetch failed:", err);
     return NextResponse.json(EMPTY);
   }
 }
