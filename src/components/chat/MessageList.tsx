@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Message } from "@/types/chat";
 import type { ReviewStoryData } from "@/lib/agent-client";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { LoadingState } from "@/components/shared/LoadingState";
-import { copyAsMarkdown, copyAsRTF } from "@/lib/clipboard";
-import { Copy, FileText, Check } from "lucide-react";
+import { markdownComponents } from "./markdown-components";
+import { CopyActions } from "./CopyActions";
+import { isInvestigationResult, parseInvestigationResult } from "@/lib/investigation-parser";
+import { InvestigationResult } from "./investigation/InvestigationResult";
 
 interface MessageListProps {
   messages: Message[];
@@ -184,120 +186,23 @@ function MessageContent({ content }: { content: string }) {
     );
   }
 
+  // Investigation result (structured rendering)
+  const investigationData = parseInvestigationResult(content);
+  if (investigationData) {
+    return <InvestigationResult data={investigationData} rawContent={content} />;
+  }
+
   // Markdown
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      components={{
-        h1: ({ children }) => (
-          <h1 className="mb-2 mt-4 font-[var(--font-display)] text-base font-semibold tracking-[-0.02em] text-white first:mt-0">
-            {children}
-          </h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="mb-2 mt-4 font-[var(--font-display)] text-sm font-semibold tracking-[-0.01em] text-white/90 first:mt-0">
-            {children}
-          </h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="mb-1.5 mt-3 font-[var(--font-display)] text-sm font-semibold text-white/80 first:mt-0">
-            {children}
-          </h3>
-        ),
-        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-        ul: ({ children }) => (
-          <ul className="mb-2 space-y-1 pl-4 last:mb-0">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>
-        ),
-        li: ({ children }) => (
-          <li className="relative pl-2 before:absolute before:left-[-0.75rem] before:text-white/30 before:content-['–']">
-            {children}
-          </li>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-semibold text-white/95">{children}</strong>
-        ),
-        em: ({ children }) => <em className="italic text-white/70">{children}</em>,
-        code: ({ children }) => (
-          <code className="rounded bg-white/[0.07] px-1.5 py-0.5 font-mono text-xs text-[var(--color-brand-300)]">
-            {children}
-          </code>
-        ),
-        pre: ({ children }) => (
-          <pre className="mb-2 overflow-x-auto rounded-lg bg-white/[0.05] p-3 font-mono text-xs last:mb-0">
-            {children}
-          </pre>
-        ),
-        hr: () => <hr className="my-3 border-white/[0.08]" />,
-        table: ({ children }) => (
-          <div className="overflow-x-auto mb-2 last:mb-0">
-            <table className="min-w-full text-xs border-collapse">
-              {children}
-            </table>
-          </div>
-        ),
-        th: ({ children }) => (
-          <th className="border-b border-white/[0.1] px-3 py-1.5 text-left text-[11px] font-semibold text-white/60 uppercase tracking-wider">
-            {children}
-          </th>
-        ),
-        td: ({ children }) => (
-          <td className="border-b border-white/[0.04] px-3 py-1.5 text-white/70">
-            {children}
-          </td>
-        ),
-      }}
+      components={markdownComponents}
     >
       {preprocessMarkdown(content)}
     </ReactMarkdown>
   );
 }
 
-function CopyActions({ content }: { content: string }) {
-  const [copiedMd, setCopiedMd] = useState(false);
-  const [copiedRtf, setCopiedRtf] = useState(false);
-
-  const handleCopyMd = useCallback(async () => {
-    const ok = await copyAsMarkdown(content);
-    if (ok) {
-      setCopiedMd(true);
-      setTimeout(() => setCopiedMd(false), 2000);
-    }
-  }, [content]);
-
-  const handleCopyRtf = useCallback(async () => {
-    const ok = await copyAsRTF(content);
-    if (ok) {
-      setCopiedRtf(true);
-      setTimeout(() => setCopiedRtf(false), 2000);
-    }
-  }, [content]);
-
-  return (
-    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.04]">
-      <button
-        type="button"
-        onClick={handleCopyMd}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/30 cursor-pointer hover:text-white/50 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors duration-100"
-        title="Copy as Markdown"
-      >
-        {copiedMd ? <Check size={11} strokeWidth={2} /> : <Copy size={11} strokeWidth={1.5} />}
-        <span>{copiedMd ? "Copied" : "Markdown"}</span>
-      </button>
-      <button
-        type="button"
-        onClick={handleCopyRtf}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/30 cursor-pointer hover:text-white/50 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors duration-100"
-        title="Copy as formatted text"
-      >
-        {copiedRtf ? <Check size={11} strokeWidth={2} /> : <FileText size={11} strokeWidth={1.5} />}
-        <span>{copiedRtf ? "Copied" : "Rich text"}</span>
-      </button>
-    </div>
-  );
-}
 
 export default function MessageList({ messages, loading, error }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -331,6 +236,22 @@ export default function MessageList({ messages, loading, error }: MessageListPro
       <div className="mx-auto max-w-3xl space-y-4">
         {messages.map((message) => {
           const isSending = message.id.startsWith("optimistic-");
+          const isInvestigation = message.role === "assistant" && isInvestigationResult(message.content);
+
+          // Investigation results use a report-style container instead of a chat bubble
+          if (isInvestigation) {
+            return (
+              <div key={message.id} className="flex justify-start">
+                <div
+                  className={`w-full rounded-xl border border-white/[0.06] bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-white/80 ${isSending ? "opacity-60" : ""}`}
+                  data-testid="message-investigation"
+                >
+                  <MessageContent content={message.content} />
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={message.id}
