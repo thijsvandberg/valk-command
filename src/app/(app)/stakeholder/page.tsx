@@ -3,17 +3,16 @@
 import { Suspense, useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
-import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload, buildDeepDivePayload } from "@/lib/stakeholder-data";
+import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload, buildDeepDivePayload, buildMarkdownSummary } from "@/lib/stakeholder-data";
+import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
 import { SprintOverviewCard } from "@/components/stakeholder/SprintOverviewCard";
-import { CopyMarkdownButton } from "@/components/stakeholder/CopyMarkdownButton";
 import { VelocitySparkline } from "@/components/stakeholder/VelocitySparkline";
 import { useVelocityData } from "@/hooks/useVelocityData";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { AiInsightsPanel } from "@/components/stakeholder/AiInsightsPanel";
-import { SyncDropdown } from "@/components/stakeholder/SyncDropdown";
 import { useStakeholderAnalysis, type AnalysisType } from "@/hooks/useStakeholderAnalysis";
 import {
   ViewHeader,
@@ -126,6 +125,144 @@ function AnalysisButton({
         <Check size={9} strokeWidth={2} className="text-emerald-400/60" />
       )}
     </button>
+  );
+}
+
+function OverflowMenu({
+  onSyncSprint,
+  onSyncHistory,
+  isSyncing,
+  isSyncingHistory,
+  syncDisabled,
+  hasPreviousSprint,
+  isCompareMode,
+  onToggleCompare,
+  sprint,
+  doneTickets,
+  inProgressTickets,
+  todoTickets,
+  aiNarrative,
+  aiRisks,
+}: {
+  onSyncSprint: () => void;
+  onSyncHistory: () => void;
+  isSyncing: boolean;
+  isSyncingHistory: boolean;
+  syncDisabled: boolean;
+  hasPreviousSprint: boolean;
+  isCompareMode: boolean;
+  onToggleCompare: () => void;
+  sprint: StakeholderSprint | null;
+  doneTickets: StakeholderTicket[];
+  inProgressTickets: StakeholderTicket[];
+  todoTickets: StakeholderTicket[];
+  aiNarrative: string | null;
+  aiRisks: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function outside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", outside);
+    return () => document.removeEventListener("mousedown", outside);
+  }, [open]);
+
+  async function handleCopy() {
+    if (!sprint) return;
+    const md = buildMarkdownSummary(sprint, doneTickets, inProgressTickets, todoTickets, [], null, aiNarrative ?? undefined, aiRisks);
+    try {
+      await navigator.clipboard.writeText(md);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  const itemClass =
+    "flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/50 cursor-pointer hover:bg-white/[0.05] hover:text-white/80 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={[
+          navBtnClass,
+          open ? "bg-white/[0.06] text-white/70" : "",
+        ].join(" ")}
+        aria-label="More options"
+        title="More options"
+      >
+        <MoreHorizontal size={15} strokeWidth={1.5} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[188px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-lg shadow-black/50">
+          <button
+            type="button"
+            onClick={() => { onSyncSprint(); setOpen(false); }}
+            disabled={isSyncing || syncDisabled}
+            className={itemClass}
+          >
+            <CloudDownload size={12} strokeWidth={1.5} className={isSyncing ? "animate-spin" : ""} />
+            Sync current sprint
+          </button>
+          <button
+            type="button"
+            onClick={() => { onSyncHistory(); setOpen(false); }}
+            disabled={isSyncingHistory || syncDisabled}
+            className={itemClass}
+          >
+            <History size={12} strokeWidth={1.5} className={isSyncingHistory ? "animate-spin" : ""} />
+            Sync history
+          </button>
+
+          {hasPreviousSprint && (
+            <>
+              <div className="my-1 h-px bg-white/[0.06]" />
+              <button
+                type="button"
+                onClick={() => { onToggleCompare(); setOpen(false); }}
+                className={itemClass}
+              >
+                <Columns2 size={12} strokeWidth={1.5} />
+                <span className="flex-1 text-left">Compare sprints</span>
+                {isCompareMode && <Check size={10} strokeWidth={2} className="text-[var(--color-brand-400)]/70" />}
+              </button>
+            </>
+          )}
+
+          {sprint && (
+            <>
+              <div className="my-1 h-px bg-white/[0.06]" />
+              <button
+                type="button"
+                onClick={handleCopy}
+                className={itemClass}
+              >
+                {copied ? (
+                  <>
+                    <Check size={12} strokeWidth={2} className="text-emerald-400" />
+                    <span className="text-emerald-400">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} strokeWidth={1.5} />
+                    Copy as Markdown
+                  </>
+                )}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -377,39 +514,6 @@ function StakeholderView() {
               <RefreshCw size={12} strokeWidth={1.5} className="animate-spin text-white/20 mr-1" />
             )}
 
-            {/* Sync dropdown */}
-            <SyncDropdown
-              onSyncSprint={handleSyncSprint}
-              onSyncHistory={handleSyncHistory}
-              isSyncing={isSyncing}
-              isSyncingHistory={isSyncingHistory}
-              disabled={!currentSprint}
-            />
-
-            {/* Compare toggle */}
-            {previousSprint && (
-              <button
-                type="button"
-                onClick={toggleCompareMode}
-                className={[
-                  "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors duration-150 cursor-pointer",
-                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
-                  isCompareMode
-                    ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
-                    : "bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60",
-                ].join(" ")}
-                aria-label={isCompareMode ? "Exit comparison mode" : "Compare with previous sprint"}
-              >
-                <Columns2 size={12} strokeWidth={1.5} />
-                Compare
-              </button>
-            )}
-
-            {/* Visual separator before AI actions */}
-            {!isCompareMode && stakeholderSprint && (
-              <span className="h-4 w-px bg-white/[0.08] mx-0.5" aria-hidden />
-            )}
-
             {/* AI analysis buttons */}
             {!isCompareMode && stakeholderSprint && (
               <>
@@ -431,18 +535,27 @@ function StakeholderView() {
                   onClick={() => handleGenerate("deep-dive")}
                   disabled={anyRunning}
                 />
-                <CopyMarkdownButton
-                  sprint={stakeholderSprint}
-                  doneTickets={doneTickets}
-                  inProgressTickets={inProgressTickets}
-                  todoTickets={todoTickets}
-                  upcomingTickets={[]}
-                  nextSprintName={null}
-                  aiNarrative={analysis.brief?.narrative ?? null}
-                  aiRisks={storedBriefRisks}
-                />
+                <span className="h-4 w-px bg-white/[0.08] mx-0.5" aria-hidden />
               </>
             )}
+
+            {/* Overflow menu: sync, compare, copy */}
+            <OverflowMenu
+              onSyncSprint={handleSyncSprint}
+              onSyncHistory={handleSyncHistory}
+              isSyncing={isSyncing}
+              isSyncingHistory={isSyncingHistory}
+              syncDisabled={!currentSprint}
+              hasPreviousSprint={!!previousSprint}
+              isCompareMode={isCompareMode}
+              onToggleCompare={toggleCompareMode}
+              sprint={stakeholderSprint}
+              doneTickets={doneTickets}
+              inProgressTickets={inProgressTickets}
+              todoTickets={todoTickets}
+              aiNarrative={analysis.brief?.narrative ?? null}
+              aiRisks={storedBriefRisks}
+            />
           </div>
         }
       >

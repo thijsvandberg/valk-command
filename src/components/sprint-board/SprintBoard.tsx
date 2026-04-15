@@ -19,7 +19,7 @@ import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories 
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -201,6 +201,27 @@ export default function SprintBoard() {
   const tickets = f.sortedTickets;
 
   const activeSprint = isAllView ? null : sprints.find((s) => s.id === activeSprintId);
+  const activeSprintName = activeSprint?.name ?? null;
+  const [isSprintFollowed, setIsSprintFollowed] = useState(false);
+
+  useEffect(() => {
+    if (!activeSprintName) { setIsSprintFollowed(false); return; }
+    fetch("/api/followed-sprints")
+      .then((r) => r.ok ? r.json() : [])
+      .then((names: string[]) => setIsSprintFollowed(names.includes(activeSprintName)))
+      .catch(() => {});
+  }, [activeSprintName]);
+
+  const handleToggleFollowSprint = useCallback(async () => {
+    if (!activeSprintName) return;
+    if (isSprintFollowed) {
+      await fetch(`/api/followed-sprints?sprintName=${encodeURIComponent(activeSprintName)}`, { method: "DELETE" });
+      setIsSprintFollowed(false);
+    } else {
+      await fetch("/api/followed-sprints", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sprintName: activeSprintName }) });
+      setIsSprintFollowed(true);
+    }
+  }, [activeSprintName, isSprintFollowed]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
   const selected = tickets.find((t) => t.key === selectedTicket);
   const todoCount = allTickets.filter((t) => t.jiraStatus === "TO DO").length;
@@ -609,6 +630,19 @@ export default function SprintBoard() {
               : f.activeView ? <Bookmark size={15} strokeWidth={1.5} className="text-white/30" fill="currentColor" />
               : <CalendarRange size={15} strokeWidth={1.5} className="text-white/30" />}
             actions={<>
+              {!isAllView && !f.activeView && activeSprint && (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  iconOnly
+                  icon={isSprintFollowed
+                    ? <BellOff className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    : <Bell className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                  onClick={handleToggleFollowSprint}
+                  title={isSprintFollowed ? "Unfollow sprint (stop UAT deploy notifications)" : "Follow sprint (get UAT deploy notifications)"}
+                  className={isSprintFollowed ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-400)]" : ""}
+                />
+              )}
               <Button variant="soft" size="md" icon={<NotebookPen className="h-3 w-3" strokeWidth={1.5} />} onClick={() => setShowStoryWriterLauncher(true)} className="shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
                 Story writer
               </Button>

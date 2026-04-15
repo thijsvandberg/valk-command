@@ -1,6 +1,6 @@
 # BRDG-103: Migrate Authentication to Clerk
 
-**Status:** Open
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
@@ -38,20 +38,38 @@ Clima (`/Users/thijsvandenberg/Projects/clima`) uses `@clerk/nextjs` with:
 - `BYPASS_AUTH` env var for local dev convenience
 - Public routes: `/login`, `/sign-in`, `/sign-up`
 
+## Implementation Plan
+
+1. **Install `@clerk/nextjs`, uninstall `jose`** — `package.json`
+2. **Add `ClerkProvider` to root layout** — `src/app/layout.tsx`
+3. **Replace middleware** — rewrite `src/middleware.ts` with `clerkMiddleware` + `createRouteMatcher`; API routes return 401 for unauthenticated requests; org check via `CLERK_ORG_ID`; `BYPASS_AUTH` dev escape hatch; matcher excludes static assets and `manifest.webmanifest`
+4. **Replace login page** — rewrite `src/app/login/page.tsx` with embedded Clerk `<SignIn />` + dark appearance to match existing theme
+5. **Move old auth files to `deleted/`** — `src/lib/auth.ts`, `src/lib/auth.test.ts`, `src/app/api/auth/login/route.ts`, `src/app/api/auth/setup/route.ts`, `src/app/api/auth/logout/route.ts`
+6. **Clean up `env.ts`** — remove `JWT_SECRET` from Zod schema; add `CLERK_ORG_ID`
+7. **Drizzle migration 0039** — data-only `DELETE FROM app_setting WHERE key IN ('auth_password_hash', 'jwt_secret')`
+8. **Update `.env.example`** — replace auth section with Clerk vars
+9. **Update `routes.test.tsx`** — remove the three `auth` API route entries
+10. **Update `docs/architecture/api-routes.md`** — add authentication section describing Clerk setup
+11. **Run full test suite** — `npm run lint && npm run typecheck && npm run test && npm run build`
+
+**Dependency note:** Steps 2-6 form one atomic commit since removing `jose` and the old auth files must happen together to avoid broken imports.
+
+**Org check:** Middleware reads `CLERK_ORG_ID` from env; after `auth.protect()` confirms the user is authenticated, `await auth()` is called to get `orgId`. If `orgId` does not match `CLERK_ORG_ID`, API routes receive a 403 and page routes are redirected to `/login`. This requires the user to have the Bridge Clerk org set as their active organization.
+
 ## Acceptance Criteria
 
-- [ ] Install `@clerk/nextjs` and configure Clerk env vars (`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`)
-- [ ] Replace `src/middleware.ts` with Clerk middleware (`clerkMiddleware` + `createRouteMatcher`)
-- [ ] Keep API routes (`/api/*`) protected; return 401 for unauthenticated API requests
-- [ ] Stakeholder view (`/stakeholder`) stays behind auth (no public exception)
-- [ ] Replace custom login page with embedded Clerk `<SignIn />` component
-- [ ] Remove custom auth files: `src/lib/auth.ts`, `src/app/api/auth/login/route.ts`, `src/app/api/auth/setup/route.ts`, `src/app/api/auth/logout/route.ts`, `src/app/login/page.tsx`
-- [ ] Remove `jose` dependency (only used for custom JWT; not needed with Clerk)
-- [ ] Remove `auth_password_hash` and `jwt_secret` from `appSetting` table (migration or manual cleanup)
-- [ ] Add `BYPASS_AUTH` env var option for local development (matching Clima pattern)
-- [ ] Update `.env.example` with Clerk env vars
-- [ ] All existing tests pass or are updated for new auth approach
-- [ ] Update `docs/architecture/api-routes.md` auth section
+- [x] Install `@clerk/nextjs` and configure Clerk env vars (`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`)
+- [x] Replace `src/middleware.ts` with Clerk middleware (`clerkMiddleware` + `createRouteMatcher`)
+- [x] Keep API routes (`/api/*`) protected; return 401 for unauthenticated API requests
+- [x] Stakeholder view (`/stakeholder`) stays behind auth (no public exception)
+- [x] Replace custom login page with embedded Clerk `<SignIn />` component
+- [x] Remove custom auth files: `src/lib/auth.ts`, `src/app/api/auth/login/route.ts`, `src/app/api/auth/setup/route.ts`, `src/app/api/auth/logout/route.ts`, `src/app/login/page.tsx`
+- [x] Remove `jose` dependency (only used for custom JWT; not needed with Clerk)
+- [x] Remove `auth_password_hash` and `jwt_secret` from `appSetting` table (migration or manual cleanup)
+- [x] Add `BYPASS_AUTH` env var option for local development (matching Clima pattern)
+- [x] Update `.env.example` with Clerk env vars
+- [x] All existing tests pass or are updated for new auth approach
+- [x] Update `docs/architecture/api-routes.md` auth section
 
 ## Notes
 

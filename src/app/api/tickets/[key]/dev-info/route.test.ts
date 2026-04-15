@@ -19,7 +19,7 @@ const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_APP_URL: "http://localhost:3100",
   BT_NEXT_SPRINT_ID: "",
   DB_PATH: "sqlite.db",
-  JWT_SECRET: "",
+  CLERK_ORG_ID: "",
 }));
 
 vi.mock("@/lib/env", () => ({ env: mockEnv }));

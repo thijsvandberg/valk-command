@@ -1,5 +1,19 @@
 # API Routes Reference
 
+## Authentication
+
+All routes (API and page) are protected by Clerk middleware (`@clerk/nextjs`). The middleware is configured in `src/middleware.ts`.
+
+| Detail | Value |
+|--------|-------|
+| Public routes | `/login`, `/sign-in`, `/sign-up` |
+| Unauthenticated API requests | Returns `401 { "error": "Authentication required" }` |
+| Unauthenticated page requests | Redirects to `/login` |
+| Org restriction | `CLERK_ORG_ID` env var restricts access to one Clerk org |
+| Dev bypass | `BYPASS_AUTH=true` disables auth in `NODE_ENV=development` |
+
+The `CLERK_ORG_ID` check requires the signed-in user to have the Bridge Clerk organization set as their active organization. The login UI is the embedded Clerk `<SignIn />` component rendered at `/login`.
+
 All routes live under `src/app/api/`. Next.js App Router conventions: each `route.ts` exports HTTP method handlers (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
 
 ## Jira Sync

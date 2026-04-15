@@ -391,9 +391,18 @@ export const followedTicket = sqliteTable("followed_ticket", {
   index("followed_ticket_key_idx").on(table.ticketKey),
 ]);
 
+// Followed sprints: user preference for which sprints to receive UAT deploy notifications about
+export const followedSprint = sqliteTable("followed_sprint", {
+  sprintName: text("sprint_name").primaryKey(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export type PipelineRunRow = typeof pipelineRun.$inferSelect;
 export type NewPipelineRunRow = typeof pipelineRun.$inferInsert;
 export type FollowedTicketRow = typeof followedTicket.$inferSelect;
+export type FollowedSprintRow = typeof followedSprint.$inferSelect;
 export type Alert = typeof alert.$inferSelect;
 
 export type Conversation = typeof conversation.$inferSelect;
@@ -511,6 +520,31 @@ export const relatedStoryCandidate = sqliteTable("related_story_candidate", {
   index("related_story_candidate_session_id_idx").on(table.sessionId),
   index("related_story_candidate_ticket_key_idx").on(table.ticketKey),
 ]);
+
+// Confluence pages manually linked (or auto-detected) to a ticket
+export const ticketConfluenceLink = sqliteTable("ticket_confluence_link", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey, { onDelete: "cascade" }),
+  pageId: text("page_id").notNull(),
+  pageTitle: text("page_title").notNull(),
+  pageUrl: text("page_url").notNull(),
+  source: text("source", { enum: ["manual", "auto-detected"] })
+    .notNull()
+    .default("manual"),
+  lastModifiedAt: text("last_modified_at"),
+  lastModifiedBy: text("last_modified_by"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("ticket_confluence_link_ticket_key_idx").on(table.ticketKey),
+  index("ticket_confluence_link_page_id_idx").on(table.pageId),
+]);
+
+export type TicketConfluenceLink = typeof ticketConfluenceLink.$inferSelect;
+export type NewTicketConfluenceLink = typeof ticketConfluenceLink.$inferInsert;
 
 export type WorkspaceTask = typeof workspaceTask.$inferSelect;
 export type NewWorkspaceTask = typeof workspaceTask.$inferInsert;

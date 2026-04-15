@@ -22,7 +22,7 @@ describe("env validation", () => {
       NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3100"),
       BT_NEXT_SPRINT_ID: z.string().default(""),
       DB_PATH: z.string().default("sqlite.db"),
-      JWT_SECRET: z.string().default(""),
+      CLERK_ORG_ID: z.string().default(""),
     });
 
     const result = envSchema.safeParse({});

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Bricolage_Grotesque } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import "./globals.css";
 
@@ -44,8 +45,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${bricolage.variable}`}>
-        <ServiceWorkerRegistrar />
-        {children}
+        <ClerkProvider>
+          <ServiceWorkerRegistrar />
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );

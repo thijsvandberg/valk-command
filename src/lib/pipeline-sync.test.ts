@@ -12,7 +12,7 @@ vi.mock("@/db", () => ({
 }));
 
 import { processStateChanges, processPRNotifications } from "./pipeline-sync";
-import { alert } from "@/db/schema";
+import { alert, followedTicket, followedSprint, ticket } from "@/db/schema";
 
 function makePipelineRun(overrides: Partial<typeof schema.pipelineRun.$inferSelect> = {}): typeof schema.pipelineRun.$inferSelect {
   return {
@@ -108,9 +108,9 @@ describe("processStateChanges - deployment notifications", () => {
     testDb = createTestDb();
   });
 
-  it("creates deployment success notification", () => {
+  it("creates production deployment success notification regardless of follow status", () => {
     processStateChanges([{
-      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "Production" }),
+      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "Production", environmentType: "Production" }),
       oldState: "IN_PROGRESS",
     }]);
 
@@ -121,16 +121,16 @@ describe("processStateChanges - deployment notifications", () => {
     expect(alerts[0].jiraKey).toBe("VPL-123");
   });
 
-  it("creates deployment failure notification", () => {
+  it("creates production deployment failure notification regardless of follow status", () => {
     processStateChanges([{
-      run: makePipelineRun({ state: "FAILED", isDeployment: true, environment: "UAT2" }),
+      run: makePipelineRun({ state: "FAILED", isDeployment: true, environment: "Production", environmentType: "Production" }),
       oldState: "IN_PROGRESS",
     }]);
 
     const alerts = testDb.select().from(alert).all();
     expect(alerts).toHaveLength(1);
     expect(alerts[0].category).toBe("deployment");
-    expect(alerts[0].message).toBe("Deployment to UAT2 failed for VPL-123");
+    expect(alerts[0].message).toBe("Deployment to Production failed for VPL-123");
   });
 
   it("skips deployment notification when environment is null", () => {
@@ -143,15 +143,70 @@ describe("processStateChanges - deployment notifications", () => {
     expect(alerts).toHaveLength(0);
   });
 
-  it("notifies for deployment even for non-followed tickets", () => {
+  it("skips UAT deployment for non-followed ticket without followed sprint", () => {
     processStateChanges([{
-      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "Staging", ticketKey: "VPL-999" }),
+      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "UAT2", environmentType: "Staging", ticketKey: "VPL-999" }),
+      oldState: "IN_PROGRESS",
+    }]);
+
+    expect(testDb.select().from(alert).all()).toHaveLength(0);
+  });
+
+  it("notifies for UAT deployment when ticket is directly followed", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-123" }).run();
+
+    processStateChanges([{
+      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "UAT2", environmentType: "Staging" }),
       oldState: "IN_PROGRESS",
     }]);
 
     const alerts = testDb.select().from(alert).all();
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].message).toBe("Deployed VPL-999 to Staging");
+    expect(alerts[0].message).toBe("Deployed VPL-123 to UAT2");
+  });
+
+  it("notifies for UAT deployment when ticket sprint is followed", () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-123", title: "Test ticket", status: "IN PROGRESS", sprintName: "VPL Sprint 42",
+    }).run();
+    testDb.insert(followedSprint).values({ sprintName: "VPL Sprint 42" }).run();
+
+    processStateChanges([{
+      run: makePipelineRun({ state: "FAILED", isDeployment: true, environment: "UAT1", environmentType: "Staging" }),
+      oldState: "IN_PROGRESS",
+    }]);
+
+    const alerts = testDb.select().from(alert).all();
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].message).toBe("Deployment to UAT1 failed for VPL-123");
+  });
+
+  it("skips UAT deployment when sprint exists but is not followed", () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-123", title: "Test ticket", status: "IN PROGRESS", sprintName: "VPL Sprint 42",
+    }).run();
+
+    processStateChanges([{
+      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "UAT3", environmentType: "Staging" }),
+      oldState: "IN_PROGRESS",
+    }]);
+
+    expect(testDb.select().from(alert).all()).toHaveLength(0);
+  });
+
+  it("notifies for UAT when both ticket followed AND sprint followed (no duplicates)", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-123" }).run();
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-123", title: "Test ticket", status: "IN PROGRESS", sprintName: "VPL Sprint 42",
+    }).run();
+    testDb.insert(followedSprint).values({ sprintName: "VPL Sprint 42" }).run();
+
+    processStateChanges([{
+      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "UAT2", environmentType: "Staging" }),
+      oldState: "IN_PROGRESS",
+    }]);
+
+    expect(testDb.select().from(alert).all()).toHaveLength(1);
   });
 });
 

@@ -1,93 +1,47 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const COOKIE_NAME = "bridge_session";
+const isDev = process.env.NODE_ENV === "development";
+const bypassAuth = isDev && process.env.BYPASS_AUTH === "true";
 
-const PUBLIC_PATHS = [
-  "/login",
-  "/api/auth/",
-  "/_next/",
-  "/favicon.ico",
-  "/apple-touch-icon.png",
-  "/manifest.webmanifest",
-  "/sw.js",
-];
+const isPublicRoute = createRouteMatcher(["/login(.*)", "/sign-in(.*)", "/sign-up(.*)"]);
 
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+function devMiddleware(_req: NextRequest) {
+  return NextResponse.next();
 }
 
-function isStaticAsset(pathname: string): boolean {
-  return /\.(ico|png|jpg|jpeg|svg|gif|webp|css|js|woff2?|ttf|eot|map)$/.test(pathname);
-}
+const clerkHandler = clerkMiddleware(async (auth, req) => {
+  if (isPublicRoute(req)) return NextResponse.next();
 
-async function isValidSession(token: string): Promise<boolean> {
-  try {
-    let secret = process.env.JWT_SECRET;
-    if (!secret) {
-      // Edge runtime cannot access the DB where the auto-generated secret
-      // is stored. Pass through and let the server component / API route
-      // perform the full verification with DB access.
-      return true;
+  const isApiRoute = req.nextUrl.pathname.startsWith("/api/");
+  const { userId } = await auth();
+
+  if (!userId) {
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    const key = new TextEncoder().encode(secret);
-    await jwtVerify(token, key);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Always allow public paths and static assets
-  if (isPublicPath(pathname) || isStaticAsset(pathname)) {
-    return NextResponse.next();
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-
-  if (!token) {
-    return handleUnauthenticated(request);
+  // Restrict access to the Bridge Clerk org when CLERK_ORG_ID is configured.
+  // The user must have this org set as their active organization in Clerk.
+  const requiredOrgId = process.env.CLERK_ORG_ID;
+  if (requiredOrgId) {
+    const { orgId } = await auth();
+    if (orgId !== requiredOrgId) {
+      if (isApiRoute) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
   }
+});
 
-  const valid = await isValidSession(token);
-  if (!valid) {
-    return handleUnauthenticated(request);
-  }
-
-  // Sliding expiry: refresh the cookie on each request
-  const response = NextResponse.next();
-  response.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  });
-  return response;
-}
-
-function handleUnauthenticated(request: NextRequest): NextResponse {
-  const { pathname } = request.nextUrl;
-
-  // API routes return 401
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
-
-  // Pages redirect to login
-  const loginUrl = new URL("/login", request.url);
-  return NextResponse.redirect(loginUrl);
-}
+export default bypassAuth ? devMiddleware : clerkHandler;
 
 export const config = {
   matcher: [
-    // Match all paths except _next/static, _next/image, and static files
-    "/((?!_next/static|_next/image).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|apple-touch-icon.png|icons/|sw\\.js).*)",
   ],
 };

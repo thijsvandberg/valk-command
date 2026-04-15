@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/db";
-import { pipelineRun, alert, ticketMetadata, appSetting } from "@/db/schema";
+import { pipelineRun, alert, ticketMetadata, appSetting, followedTicket, followedSprint, ticket } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { createNotification } from "@/lib/notifications";
@@ -368,6 +368,7 @@ export async function syncPipelines(): Promise<SyncResult> {
   }
 
   if (allNew.length === 0) {
+    await runDeployDetectionForStateChanges(stateChanges);
     processStateChanges(stateChanges);
     const backfilled = await backfillEnrichment();
     return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: 0, backfilled };
@@ -512,6 +513,7 @@ export async function syncPipelines(): Promise<SyncResult> {
     );
   }
 
+  await runDeployDetectionForStateChanges(stateChanges);
   processPRNotifications(prCandidates);
   processStateChanges(stateChanges);
 
@@ -531,7 +533,66 @@ interface PrCandidate {
   eventAt: string;
 }
 
-export function processStateChanges(stateChanges: Array<{ run: typeof pipelineRun.$inferSelect; oldState: string }>) {
+type StateChangeEntry = { run: typeof pipelineRun.$inferSelect; oldState: string };
+
+// Pipelines that go from IN_PROGRESS → completed transition through the existing-pipeline
+// code path, which never queues deployment detection. This function fills that gap by
+// fetching steps for unchecked transitions and updating the DB before notifications fire.
+async function runDeployDetectionForStateChanges(stateChanges: StateChangeEntry[]): Promise<void> {
+  const candidates = stateChanges.filter(
+    ({ run, oldState }) =>
+      oldState === "IN_PROGRESS" &&
+      !run.isDeployment &&
+      (run.state === "SUCCESSFUL" || run.state === "FAILED" || run.state === "STOPPED"),
+  );
+  if (candidates.length === 0) return;
+
+  await Promise.all(
+    candidates.slice(0, 5).map(async (sc) => {
+      try {
+        const repoSlug = fullRepoSlug(sc.run.repo);
+        const stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repoSlug, `/pipelines/${sc.run.buildNumber}/steps?pagelen=25`);
+        let detectedEnv: { environment: string; type: "Production" | "Staging" | "Test" } | null = null;
+        for (const step of stepsRes?.values ?? []) {
+          const envFromStep = detectEnvironment(step.name);
+          if (envFromStep) detectedEnv = envFromStep;
+          if (step.name.toLowerCase().includes("deploy") && !step.name.toLowerCase().includes("set build") && detectedEnv) {
+            db.update(pipelineRun)
+              .set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type })
+              .where(eq(pipelineRun.id, sc.run.id))
+              .run();
+            // Refresh the run object in place so processStateChanges sees the updated values
+            const updated = db.select().from(pipelineRun).where(eq(pipelineRun.id, sc.run.id)).get();
+            if (updated) sc.run = updated;
+            break;
+          }
+        }
+      } catch { /* best-effort */ }
+    }),
+  );
+}
+
+function isDeploymentFollowed(ticketKey: string): boolean {
+  const isTicketFollowed = !!db.select({ ticketKey: followedTicket.ticketKey })
+    .from(followedTicket)
+    .where(eq(followedTicket.ticketKey, ticketKey))
+    .get();
+  if (isTicketFollowed) return true;
+
+  const ticketRow = db.select({ sprintName: ticket.sprintName })
+    .from(ticket)
+    .where(eq(ticket.jiraKey, ticketKey))
+    .get();
+
+  if (!ticketRow?.sprintName) return false;
+
+  return !!db.select({ sprintName: followedSprint.sprintName })
+    .from(followedSprint)
+    .where(eq(followedSprint.sprintName, ticketRow.sprintName))
+    .get();
+}
+
+export function processStateChanges(stateChanges: StateChangeEntry[]) {
   if (stateChanges.length === 0) return;
 
   for (const { run, oldState } of stateChanges) {
@@ -548,6 +609,9 @@ export function processStateChanges(stateChanges: Array<{ run: typeof pipelineRu
     const eventAt = run.completedAt ?? run.createdAt;
     if (run.isDeployment) {
       if (!run.ticketKey || !run.environment) continue;
+      // Non-production deployments (UAT, Staging, Test) only notify when the ticket
+      // or its sprint is explicitly followed — production always notifies.
+      if (run.environmentType !== "Production" && !isDeploymentFollowed(run.ticketKey)) continue;
       const message = finalState === "SUCCESSFUL"
         ? `Deployed ${run.ticketKey} to ${run.environment}`
         : `Deployment to ${run.environment} failed for ${run.ticketKey}`;

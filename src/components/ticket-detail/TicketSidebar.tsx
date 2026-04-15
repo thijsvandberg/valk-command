@@ -13,6 +13,7 @@ import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintB
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
+import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -353,6 +354,9 @@ export function TicketSidebar({
               </div>
             </div>
           </div>
+
+          {/* Confluence pages */}
+          <ConfluencePagesSection ticketKey={ticket.key} />
 
           {/* Development panel */}
           <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={onNavigateToDev} />

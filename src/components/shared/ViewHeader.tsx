@@ -30,8 +30,13 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
   if (!target) return null;
 
   return createPortal(
-    <div className={`relative flex items-center justify-between border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-5 py-3.5${className ? ` ${className}` : ""}`}>
-      <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,rgba(26,111,194,0.06)_0%,transparent_70%)]" />
+    <div className={`relative flex items-center justify-between border-b border-white/[0.09] bg-[var(--color-surface-elevated)]/95 px-5 py-3.5${className ? ` ${className}` : ""}`}>
+      {/* Top accent gradient */}
+      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(26,111,194,0.35)] to-transparent" />
+      {/* Left glow */}
+      <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,rgba(26,111,194,0.10)_0%,transparent_70%)]" />
+      {/* Right glow */}
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,rgba(26,111,194,0.05)_0%,transparent_70%)]" />
 
       {/* Brand: mark + wordmark */}
       <div className="relative flex shrink-0 items-center gap-2.5">

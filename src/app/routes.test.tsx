@@ -26,6 +26,7 @@ const EXPECTED_ROUTES = [
   { path: "/settings/prompts", file: "src/app/(app)/settings/prompts/page.tsx", name: "Settings Prompts" },
   { path: "/settings/scheduler", file: "src/app/(app)/settings/scheduler/page.tsx", name: "Settings Scheduler" },
   { path: "/settings/notifications", file: "src/app/(app)/settings/notifications/page.tsx", name: "Settings Notifications" },
+  { path: "/settings/integrations", file: "src/app/(app)/settings/integrations/page.tsx", name: "Settings Integrations" },
   { path: "/login", file: "src/app/login/page.tsx", name: "Login" },
 ];
 
@@ -36,9 +37,6 @@ const EXPECTED_API_ROUTES = [
   { path: "/api/settings/quick-prompts", file: "src/app/api/settings/quick-prompts/route.ts", name: "Quick Prompts Settings API" },
   { path: "/api/scheduler/tick", file: "src/app/api/scheduler/tick/route.ts", name: "Scheduler Tick API" },
   { path: "/api/tickets/[key]/versions/import", file: "src/app/api/tickets/[key]/versions/import/route.ts", name: "Versions Import API" },
-  { path: "/api/auth/login", file: "src/app/api/auth/login/route.ts", name: "Auth Login API" },
-  { path: "/api/auth/logout", file: "src/app/api/auth/logout/route.ts", name: "Auth Logout API" },
-  { path: "/api/auth/setup", file: "src/app/api/auth/setup/route.ts", name: "Auth Setup API" },
 ];
 
 const ROOT = join(__dirname, "../..");

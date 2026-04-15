@@ -223,10 +223,15 @@ describe("StakeholderPage", () => {
     });
   });
 
-  it("renders the copy button", async () => {
+  it("renders the copy button inside the more options dropdown", async () => {
     render(<StakeholderPage />);
+    // The copy button lives inside the "More options" dropdown — open it first
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /copy.*markdown/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /more options/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /more options/i }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /copy as markdown/i })).toBeInTheDocument();
     });
   });
 
