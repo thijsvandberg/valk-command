@@ -1,6 +1,6 @@
 # BRDG-100: Close Critical Test Coverage Gaps
 
-**Status:** Open
+**Status:** Done
 **Priority:** High
 
 ## Description
@@ -73,15 +73,15 @@ Target: 94 new tests across 23 test files. All follow existing patterns (testDb 
 
 ## Acceptance Criteria
 
-- [ ] All auth routes have tests covering: valid login, invalid credentials, logout, setup flow
-- [ ] All workspace-tasks endpoints tested: list, detail, stream, skills, health
-- [ ] All settings endpoints tested: GET/PUT for column-config, column-widths, quick-prompts, notification-preferences
-- [ ] `scheduler.ts` tested: job queue, timing, error handling, concurrent execution
-- [ ] `cron.ts` tested: expression parsing, next-run calculation
-- [ ] `upsert-issue.ts` tested: insert, update, conflict handling
-- [ ] Pipeline endpoints tested: list, tick, health, last-deployed
-- [ ] Overall test count increases by at least 80 new test cases
-- [ ] All new tests follow existing patterns (vitest, test-utils for DB, vi.mock for externals)
+- [x] All auth routes have tests covering: valid login, invalid credentials, logout, setup flow
+- [x] All workspace-tasks endpoints tested: list, detail, stream, skills, health
+- [x] All settings endpoints tested: GET/PUT for column-config, column-widths, quick-prompts, notification-preferences
+- [x] `scheduler.ts` tested: job queue, timing, error handling, concurrent execution
+- [x] `cron.ts` tested: expression parsing, next-run calculation
+- [x] `upsert-issue.ts` tested: insert, update, conflict handling
+- [x] Pipeline endpoints tested: list, tick, health, last-deployed
+- [x] Overall test count increases by at least 80 new test cases (115 added)
+- [x] All new tests follow existing patterns (vitest, test-utils for DB, vi.mock for externals)
 
 ## Notes
 

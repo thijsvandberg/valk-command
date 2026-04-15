@@ -1,0 +1,152 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/agent-fetch", () => ({
+  agentFetch: vi.fn(),
+}));
+
+vi.mock("@/lib/rate-limiter", () => ({
+  applyRateLimit: vi.fn().mockReturnValue(null),
+}));
+
+vi.mock("@/lib/activity-logger", () => ({
+  logActivity: vi.fn(),
+}));
+
+// Needed because workspace-tasks imports from a db-backed logger chain
+vi.mock("@/db", () => ({
+  get db() {
+    return undefined;
+  },
+}));
+
+import { agentFetch } from "@/lib/agent-fetch";
+import { applyRateLimit } from "@/lib/rate-limiter";
+import { GET, POST } from "./route";
+
+describe("GET /api/workspace-tasks", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(applyRateLimit).mockReturnValue(null);
+  });
+
+  it("returns agent data on success", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: [{ id: "task-1", status: "running" }],
+      status: 200,
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toEqual([{ id: "task-1", status: "running" }]);
+  });
+
+  it("returns 502 error when agent fails", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: false,
+      error: { error: "Agent unreachable", code: "NETWORK_ERROR" },
+      status: 502,
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(502);
+    const data = await response.json();
+    expect(data.error).toBe("Agent unreachable");
+    expect(data.code).toBe("NETWORK_ERROR");
+  });
+});
+
+describe("POST /api/workspace-tasks", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(applyRateLimit).mockReturnValue(null);
+  });
+
+  it("posts valid task and returns agent data", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-new" },
+      status: 201,
+    });
+
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({ skillName: "investigate", conversationId: "conv-1" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.id).toBe("task-new");
+  });
+
+  it("returns 400 when skillName is missing", async () => {
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({ conversationId: "conv-1" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toMatch(/skillName/);
+  });
+
+  it("returns 502 when agent returns error", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: false,
+      error: { error: "Internal agent error", code: "AGENT_ERROR" },
+      status: 500,
+      retryCount: 2,
+    });
+
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({ skillName: "investigate" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(500);
+  });
+
+  it("returns 429 when rate limited", async () => {
+    vi.mocked(applyRateLimit).mockReturnValue(
+      new Response(JSON.stringify({ error: "Too many requests" }), { status: 429 })
+    );
+
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({ skillName: "investigate" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(429);
+  });
+
+  it("returns 400 for invalid JSON", async () => {
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: "not-valid-json",
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("accepts skill field as alias for skillName", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-alias" },
+      status: 201,
+    });
+
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({ skill: "investigate" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+  });
+});
