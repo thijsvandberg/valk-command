@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, PanelRight, PanelRightClose, ListFilter, Clock, Bookmark, BookmarkCheck, Trash2 } from "lucide-react";
+import { Search, X, PanelRight, PanelRightClose, ListFilter, Clock, Bookmark, BookmarkCheck, Trash2, Check } from "lucide-react";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useSavedSearches } from "@/hooks/useSavedSearches";
 import { Button } from "@/components/ui/Button";
@@ -93,11 +93,14 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   // Per-section "show all" state (expand beyond SECTION_LIMIT)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [savingSearch, setSavingSearch] = useState(false);
+  const [saveLabel, setSaveLabel] = useState("");
   const filterOptionsFetchedRef = useRef(false);
   const { history: searchHistory, addSearch, clearHistory } = useSearchHistory();
   const { savedSearches, saveSearch, deleteSearch, isFull } = useSavedSearches();
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const saveInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const previewPaneRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -149,6 +152,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       setFilters(EMPTY_FILTERS);
       setCollapsedSections(new Set());
       setExpandedSections(new Set());
+      setSavingSearch(false);
+      setSaveLabel("");
     }
   }, [open, initialQuery]);
 
@@ -451,6 +456,26 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       setTimeout(() => runJiraSearch(), 0);
     }
   }, [query, runJiraSearch]);
+
+  const handleSaveConfirm = useCallback(() => {
+    const label = saveLabel.trim();
+    if (label) saveSearch(label, query.trim(), filters);
+    setSavingSearch(false);
+    setSaveLabel("");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [saveLabel, saveSearch, query, filters]);
+
+  const handleSaveOpen = useCallback(() => {
+    setSaveLabel(query.trim());
+    setSavingSearch(true);
+    requestAnimationFrame(() => saveInputRef.current?.focus());
+  }, [query]);
+
+  const handleSaveCancel = useCallback(() => {
+    setSavingSearch(false);
+    setSaveLabel("");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
 
   if (!open) return null;
 
@@ -946,29 +971,80 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           <div className="flex-1" />
           {/* Save this search — shown in local mode when there's a meaningful query */}
           {mode === "local" && query.trim().length >= 2 && (
-            <button
-              type="button"
-              disabled={isCurrentSearchSaved || isFull}
-              title={isCurrentSearchSaved ? "Already saved" : isFull ? "Max 10 saved searches reached" : "Save this search"}
-              onClick={() => {
-                if (isCurrentSearchSaved || isFull) return;
-                const label = window.prompt("Name this saved search:", query.trim());
-                if (label?.trim()) {
-                  saveSearch(label.trim(), query.trim(), filters);
-                }
-              }}
-              className="flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-default"
-              style={{
-                backgroundColor: isCurrentSearchSaved ? "rgba(74, 170, 96, 0.1)" : "rgba(255,255,255,0.04)",
-                color: isCurrentSearchSaved ? "var(--color-brand-400)" : isFull ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.25)",
-                transition: "background-color 120ms, color 120ms",
-              }}
-            >
-              {isCurrentSearchSaved
-                ? <BookmarkCheck className="h-3 w-3" strokeWidth={1.5} />
-                : <Bookmark className="h-3 w-3" strokeWidth={1.5} />}
-              {isCurrentSearchSaved ? "Saved" : "Save"}
-            </button>
+            savingSearch ? (
+              <div
+                className="flex items-center gap-1"
+                style={{ animation: "saveInputIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleSaveConfirm(); }
+                  if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); handleSaveCancel(); }
+                }}
+              >
+                <div
+                  className="flex items-center gap-1.5 overflow-hidden rounded-md"
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(74, 170, 96, 0.35)",
+                    padding: "2px 6px 2px 8px",
+                  }}
+                >
+                  <Bookmark className="h-3 w-3 shrink-0" style={{ color: "var(--color-brand-400)", opacity: 0.7 }} strokeWidth={1.5} />
+                  <input
+                    ref={saveInputRef}
+                    type="text"
+                    value={saveLabel}
+                    onChange={(e) => setSaveLabel(e.target.value)}
+                    placeholder="Name this search..."
+                    maxLength={200}
+                    className="bg-transparent text-[12px] text-white/80 placeholder-white/20 focus:outline-none"
+                    style={{ width: 160 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveConfirm}
+                    disabled={!saveLabel.trim()}
+                    title="Save"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded cursor-pointer disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{
+                      backgroundColor: saveLabel.trim() ? "rgba(74, 170, 96, 0.2)" : "transparent",
+                      color: saveLabel.trim() ? "var(--color-brand-400)" : "rgba(255,255,255,0.2)",
+                      transition: "background-color 100ms, color 100ms",
+                    }}
+                  >
+                    <Check className="h-3 w-3" strokeWidth={2} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveCancel}
+                    title="Cancel"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{ color: "rgba(255,255,255,0.2)", transition: "color 100ms" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.2)")}
+                  >
+                    <X className="h-3 w-3" strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={isCurrentSearchSaved || isFull}
+                title={isCurrentSearchSaved ? "Already saved" : isFull ? "Max 10 saved searches reached" : "Save this search"}
+                onClick={handleSaveOpen}
+                className="flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-default"
+                style={{
+                  backgroundColor: isCurrentSearchSaved ? "rgba(74, 170, 96, 0.1)" : "rgba(255,255,255,0.04)",
+                  color: isCurrentSearchSaved ? "var(--color-brand-400)" : isFull ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.25)",
+                  transition: "background-color 120ms, color 120ms",
+                }}
+              >
+                {isCurrentSearchSaved
+                  ? <BookmarkCheck className="h-3 w-3" strokeWidth={1.5} />
+                  : <Bookmark className="h-3 w-3" strokeWidth={1.5} />}
+                {isCurrentSearchSaved ? "Saved" : "Save"}
+              </button>
+            )
           )}
           {mode === "local" && (
             <button
@@ -992,6 +1068,10 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         @keyframes searchModalIn {
           from { opacity: 0; transform: scale(0.96) translateY(-4px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes saveInputIn {
+          from { opacity: 0; transform: scaleX(0.85) translateX(6px); }
+          to { opacity: 1; transform: scaleX(1) translateX(0); }
         }
       `}</style>
     </div>
