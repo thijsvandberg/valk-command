@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useLayoutEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { BridgeMark } from "@/components/shared/BridgeMark";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -13,12 +13,14 @@ interface ViewHeaderProps {
 }
 
 export function ViewHeader({ icon, children, actions, className }: ViewHeaderProps) {
-  // Lazy init runs synchronously on first client render; portal target is always
-  // present in the layout HTML so this resolves without a deferred re-render.
-  const [target] = useState<HTMLElement | null>(() => {
-    if (typeof document === "undefined") return null;
-    return document.getElementById("view-header-portal");
-  });
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+
+  // useLayoutEffect fires after DOM commit, before the browser paints, so there
+  // is no visible flash. It is not called server-side, which means both server
+  // and client start with null and there is no hydration mismatch.
+  useLayoutEffect(() => {
+    setTarget(document.getElementById("view-header-portal"));
+  }, []);
 
   if (!target) return null;
 
