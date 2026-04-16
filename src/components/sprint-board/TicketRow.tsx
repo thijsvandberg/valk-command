@@ -16,15 +16,21 @@ import { prefetchTicketDetail } from "@/lib/prefetch";
 
 const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
 
-function DragHandle({ listeners, attributes, isDragActive }: { listeners?: ReturnType<typeof useSortable>["listeners"]; attributes?: ReturnType<typeof useSortable>["attributes"]; isDragActive?: boolean }) {
-  if (!listeners) {
-    return <td className="w-5 py-1.5 pl-1 pr-0" />;
+// Visual-only drag affordance icon — event listeners are now on the <tr> itself (Phase 4).
+function DragHandle({ showIcon, isDragActive, stickyLeft }: {
+  showIcon?: boolean;
+  isDragActive?: boolean;
+  stickyLeft?: number;
+}) {
+  const stickyStyle = stickyLeft !== undefined ? { position: "sticky" as const, left: stickyLeft, zIndex: 2 } : undefined;
+  const bgClass = stickyLeft !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : "";
+  if (!showIcon) {
+    return <td className={`w-5 py-1.5 pl-1 pr-0${bgClass}`} style={stickyStyle} />;
   }
   return (
     <td
-      className={`w-5 py-1.5 pl-1 pr-0 opacity-0 transition-opacity duration-100 cursor-grab active:cursor-grabbing ${isDragActive ? "" : "group-hover/row:opacity-100"}`}
-      {...listeners}
-      {...attributes}
+      className={`w-5 py-1.5 pl-1 pr-0 opacity-0 transition-opacity duration-100 ${isDragActive ? "" : "group-hover/row:opacity-100"}${bgClass}`}
+      style={stickyStyle}
     >
       <GripVertical className="h-3.5 w-3.5 text-white/25 hover:text-white/50" strokeWidth={1.5} />
     </td>
@@ -57,6 +63,7 @@ export interface TicketRowBaseProps {
   rowStyle?: React.CSSProperties;
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
+  stickyOffsets?: Record<string, number>;
   "data-index"?: number;
 }
 
@@ -87,6 +94,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     rowStyle,
     dragListeners,
     dragAttributes,
+    stickyOffsets,
     "data-index": dataIndex,
   },
   ref
@@ -137,15 +145,26 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const renderCell = (id: ColumnId) => {
     if (!col(id)) return null;
     switch (id) {
-      case "type":
+      case "type": {
+        const sl = stickyOffsets?.[id];
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-2">
+          <td
+            key={id}
+            className={`overflow-hidden py-1.5 pr-2${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+            style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
+          >
             <IssueTypeIcon type={ticket.type} />
           </td>
         );
-      case "key":
+      }
+      case "key": {
+        const sl = stickyOffsets?.[id];
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3 font-mono text-xs text-white/50 leading-none">
+          <td
+            key={id}
+            className={`overflow-hidden py-1.5 pr-3 font-mono text-xs text-white/50 leading-none${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+            style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
+          >
             <span className="flex items-center gap-1.5">
               {ticket.key}
               {ticket.editState === "draft" && <EditStateDot state="draft" />}
@@ -153,6 +172,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
               {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
               <button
                 type="button"
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   isFollowed ? unfollow(ticket.key) : follow(ticket.key);
@@ -171,12 +191,19 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             </span>
           </td>
         );
-      case "title":
+      }
+      case "title": {
+        const sl = stickyOffsets?.[id];
         return (
-          <td key={id} className="max-w-0 truncate py-1.5 pr-3 text-white/80">
+          <td
+            key={id}
+            className={`max-w-0 truncate py-1.5 pr-3 text-white/80${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+            style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
+          >
             {ticket.title}
           </td>
         );
+      }
       case "epic":
         return (
           <td key={id} className="py-1.5 pr-3 overflow-hidden">
@@ -238,6 +265,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           <td
             key={id}
             className="overflow-hidden py-1.5 pr-2 text-center"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <POStatusCell
@@ -251,6 +279,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           <td
             key={id}
             className="overflow-hidden py-1.5 pr-3 text-xs tabular-nums leading-none"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <QualityBadge
@@ -313,6 +342,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     }
   };
 
+  // Drag listeners go on the row itself so any part of the row can initiate a drag.
+  // Interactive children (checkbox, buttons, inputs) stop pointer propagation to prevent accidental drag starts.
   return (
     <tr
       ref={ref}
@@ -328,7 +359,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
       }}
-      className={`group/row border-b border-white/[0.03] cursor-pointer transition-colors duration-100 ${
+      className={`group/row border-b border-white/[0.03] transition-colors duration-100 ${
+        dragListeners ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+      } ${
         isSelected
           ? "bg-[var(--color-brand-600)]/12 border-l-2 border-l-[var(--color-brand-500)]"
           : isHovered
@@ -337,12 +370,16 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           ? "bg-[rgba(229,83,75,0.06)]"
           : ""
       } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
+      {...dragListeners}
+      {...dragAttributes}
     >
-      <DragHandle listeners={dragListeners} attributes={dragAttributes} isDragActive={isDragActive} />
+      <DragHandle showIcon={!!dragListeners} isDragActive={isDragActive} stickyLeft={stickyOffsets?._drag} />
 
-      {/* Checkbox */}
+      {/* Checkbox — stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
-        className="cursor-pointer select-none py-1.5 pl-1 pr-1"
+        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+        style={stickyOffsets?._check !== undefined ? { position: "sticky", left: stickyOffsets._check, zIndex: 2 } : undefined}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           onCheckboxClick(ticket.key, ticketIdx, e.shiftKey);

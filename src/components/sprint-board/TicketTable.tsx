@@ -211,6 +211,26 @@ export function TicketTable({
     if (id === "title") return undefined;
     return columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
   }, [columnWidths]);
+
+  // Compute left-pixel offsets for sticky columns (drag handle, checkbox, type, key, title).
+  // Sticky columns let key/title remain visible during horizontal scroll.
+  const stickyOffsets = useMemo<Record<string, number>>(() => {
+    const DRAG_W = 20;  // w-5
+    const CHECK_W = 40; // w-10
+    const offsets: Record<string, number> = { _drag: 0, _check: DRAG_W };
+    let offset = DRAG_W + CHECK_W;
+    for (const id of effectiveOrder) {
+      if (!col(id)) continue;
+      if (id === "type" || id === "key" || id === "title") {
+        offsets[id] = offset;
+      }
+      if (id === "title") break;
+      const w = colW(id) ?? DEFAULT_COLUMN_WIDTHS[id] ?? 0;
+      offset += w;
+    }
+    return offsets;
+  }, [effectiveOrder, col, colW]);
+
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
   const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
@@ -313,7 +333,8 @@ export function TicketTable({
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
+    stickyOffsets,
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
@@ -329,13 +350,19 @@ export function TicketTable({
     const isCenter = CENTER_COLUMNS.has(id);
     // Title is always the flex filler column: no explicit width, it takes remaining space.
     const widthStyle = id === "title" ? undefined : { width: colW(id) };
+    const stickyLeft = stickyOffsets[id];
+    const isStickyCol = stickyLeft !== undefined;
+    const fullStyle = isStickyCol
+      ? { ...widthStyle, position: "sticky" as const, left: stickyLeft, zIndex: 12 }
+      : widthStyle;
+    const bgClass = isStickyCol ? " bg-[var(--color-surface-base)]" : "";
 
     if (!label) {
-      return <th key={id} className="overflow-hidden py-2 pr-2" style={widthStyle} />;
+      return <th key={id} className={`overflow-hidden py-2 pr-2${bgClass}`} style={fullStyle} />;
     }
 
     return (
-      <th key={id} className={`group/th relative overflow-hidden py-2 pr-3${isCenter ? " text-center" : ""}`} style={widthStyle}>
+      <th key={id} className={`group/th relative overflow-hidden py-2 pr-3${isCenter ? " text-center" : ""}${bgClass}`} style={fullStyle}>
         {isSortable ? (
           <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-white/60${isCenter ? " justify-center w-full" : ""}`}>
             {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
@@ -344,13 +371,13 @@ export function TicketTable({
         {rh(id)}
       </th>
     );
-  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
+  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh, stickyOffsets]);
 
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
       <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
-        <th className="w-5 py-2 pl-1" />
-        <th className="w-10 py-2 pl-1 pr-1">
+        <th className="w-5 py-2 pl-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._drag, zIndex: 12 }} />
+        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
           <div
             className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
               someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
@@ -476,7 +503,7 @@ export function TicketTable({
   return (
     <div
       ref={tableContainerRef}
-      className="flex-1 overflow-auto focus:outline-none"
+      className="flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none"
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
