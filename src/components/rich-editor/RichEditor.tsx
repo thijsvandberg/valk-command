@@ -47,21 +47,32 @@ interface RichEditorProps {
   hideToolbar?: boolean;
 }
 
-function markdownToEditorHtml(markdown: string): string {
-  // Normalize bold delimiters that end with trailing punctuation to prevent markdown-it
-  // from failing to close them. Two cases need handling:
+// Exported for testing only. Normalizes markdown delimiter edge cases before
+// passing to TipTap so that markdown-it reliably closes bold/italic spans.
+export function normalizeMarkdownForEditor(markdown: string): string {
+  // Bold (**):
+  //   1. `**word:**` (original ADF form): colon is inside the closing **, which some
+  //      parsers treat as an ambiguous right-flanking delimiter → move colon outside.
+  //   2. `**word****:**` (corrupted DB form): colon wrapped in its own **:**. Strip → colon.
   //
-  // 1. `**word:**` (original ADF form): colon is inside the closing **, which some
-  //    parsers treat as an ambiguous right-flanking delimiter → move colon outside.
+  // Italic (*):
+  //   3. `*word:*` (Jira wiki / tiptap-markdown round-trip): colon inside closing *.
+  //   4. `*word*:*` (tiptap-markdown round-trip artifact): orphan * after italic+colon.
+  //   5. `*:*` (stray italic colon): reduce to bare colon.
   //
-  // 2. `**word****:**` (corrupted DB form after a bad round-trip): the colon ended up
-  //    wrapped in its own failed bold pair **:**. Strip **:** → bare colon.
-  //
-  // Apply (2) first because it simplifies the string before (1) runs.
-  const normalized = markdown
+  // Apply in order: specific multi-token patterns first, then simple ones, to avoid
+  // the *:* simplification consuming the trailing *:* inside a *word*:* pattern.
+  // Lookbehind/lookahead guards prevent matching inside ***bold+italic*** spans.
+  return markdown
     .replace(/\*\*:\*\*/g, ":")
-    .replace(/\*\*([^*\n]+):\*\*/g, "**$1**:");
-  return calloutMarkdownToHtml(expandEmojiShortcodes(normalized));
+    .replace(/(?<!\*)\*([^*\n]+)\*:\*(?!\*)/g, "*$1*:")
+    .replace(/(?<!\*)\*:\*(?!\*)/g, ":")
+    .replace(/\*\*([^*\n]+):\*\*/g, "**$1**:")
+    .replace(/(?<!\*)\*([^*\n]+):\*(?!\*)/g, "*$1*:");
+}
+
+function markdownToEditorHtml(markdown: string): string {
+  return calloutMarkdownToHtml(expandEmojiShortcodes(normalizeMarkdownForEditor(markdown)));
 }
 
 function getInitialMode(): EditorMode {

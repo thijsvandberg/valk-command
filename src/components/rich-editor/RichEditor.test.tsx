@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { RichEditor } from "./RichEditor";
+import { RichEditor, normalizeMarkdownForEditor } from "./RichEditor";
 
 // TipTap requires a DOM environment but jsdom has limitations with contentEditable.
 // We test the component renders, the mode toggle works, and the markdown textarea.
@@ -16,6 +16,52 @@ beforeEach(() => {
       clear: () => Object.keys(mockStorage).forEach((k) => delete mockStorage[k]),
     },
     writable: true,
+  });
+});
+
+describe("normalizeMarkdownForEditor", () => {
+  // Bold cases
+  it("strips **:** corrupted form to bare colon", () => {
+    expect(normalizeMarkdownForEditor("**:**")).toBe(":");
+  });
+
+  it("moves colon outside bold: **word:** → **word**:", () => {
+    expect(normalizeMarkdownForEditor("**Feature flag:**")).toBe("**Feature flag**:");
+  });
+
+  it("preserves bold without trailing colon", () => {
+    expect(normalizeMarkdownForEditor("**hello**")).toBe("**hello**");
+  });
+
+  // Italic cases
+  it("strips *:* stray italic colon to bare colon", () => {
+    expect(normalizeMarkdownForEditor("*:*")).toBe(":");
+  });
+
+  it("moves colon outside italic: *word:* → *word*:", () => {
+    expect(normalizeMarkdownForEditor("*Feature flag:*")).toBe("*Feature flag*:");
+  });
+
+  it("strips orphan * after italic+colon: *word*:* → *word*:", () => {
+    expect(normalizeMarkdownForEditor("*Feature flag*:*")).toBe("*Feature flag*:");
+  });
+
+  it("preserves italic without trailing colon", () => {
+    expect(normalizeMarkdownForEditor("*hello*")).toBe("*hello*");
+  });
+
+  it("does not modify bold+italic (***text***)", () => {
+    expect(normalizeMarkdownForEditor("***bold italic***")).toBe("***bold italic***");
+  });
+
+  it("handles multiple occurrences in one string", () => {
+    const input = "- **Feature flag:** value\n- *Another:* text";
+    const expected = "- **Feature flag**: value\n- *Another*: text";
+    expect(normalizeMarkdownForEditor(input)).toBe(expected);
+  });
+
+  it("returns plain text unchanged", () => {
+    expect(normalizeMarkdownForEditor("plain text here")).toBe("plain text here");
   });
 });
 
