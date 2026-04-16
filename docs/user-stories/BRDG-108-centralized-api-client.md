@@ -1,6 +1,6 @@
 # BRDG-108: Centralized Internal API Client
 
-**Status:** Open
+**Status:** Done
 **Priority:** High
 
 ## Description
@@ -24,11 +24,11 @@ The codebase has 199 `fetch()` calls spread across 65 files. Each call manually 
 ## Acceptance Criteria
 
 - [x] Create `src/lib/api-client.ts` with typed wrapper functions per endpoint group (tickets, conversations, settings, etc.)
-- [ ] All internal API calls go through the client (no direct fetch to `/api/*` in components/hooks)
-- [ ] Consistent error handling: throw on non-OK, parse error body into typed error
-- [ ] Abort signal forwarding for cancellable requests
-- [ ] TypeScript return types matching API response schemas
-- [ ] Existing tests still pass after migration
+- [x] All internal API calls go through the client (no direct fetch to `/api/*` in components/hooks)
+- [x] Consistent error handling: throw on non-OK, parse error body into typed error
+- [x] Abort signal forwarding for cancellable requests
+- [x] TypeScript return types matching API response schemas
+- [x] Existing tests still pass after migration
 
 ## Impact
 
