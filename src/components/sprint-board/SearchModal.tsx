@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, PanelRight, PanelRightClose, ListFilter, Clock } from "lucide-react";
+import { Search, X, PanelRight, PanelRightClose, ListFilter, Clock, Bookmark, BookmarkCheck, Trash2 } from "lucide-react";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
+import { useSavedSearches } from "@/hooks/useSavedSearches";
 import { Button } from "@/components/ui/Button";
 
 import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
@@ -24,6 +25,7 @@ import {
   EMPTY_FILTERS,
   hasActiveFilters,
   filtersToParams,
+  serializeFilters,
   type SearchFilters,
   type FilterOptionsData,
   type SectionCounts,
@@ -93,6 +95,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const filterOptionsFetchedRef = useRef(false);
   const { history: searchHistory, addSearch, clearHistory } = useSearchHistory();
+  const { savedSearches, saveSearch, deleteSearch, isFull } = useSavedSearches();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -475,6 +478,17 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
 
   // Show history panel when query is short, history exists, and we're in local mode
   const showHistory = mode === "local" && query.trim().length < 2 && searchHistory.length > 0;
+  const showSavedSearches = mode === "local" && query.trim().length < 2 && savedSearches.length > 0;
+
+  // Whether the current query+filters combination is already saved
+  const isCurrentSearchSaved =
+    mode === "local" &&
+    query.trim().length >= 2 &&
+    savedSearches.some(
+      (s) =>
+        s.query === query.trim() &&
+        JSON.stringify(serializeFilters(s.filters)) === JSON.stringify(serializeFilters(filters)),
+    );
 
   return (
     <div
@@ -797,6 +811,57 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 ))}
               </div>
             )}
+            {/* Saved searches — shown when query is empty and saved searches exist */}
+            {!showLocalSkeleton && showSavedSearches && (
+              <div className="py-2">
+                <div className="flex items-center px-5 pb-1 pt-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Saved searches</span>
+                </div>
+                {savedSearches.map((s) => (
+                  <div
+                    key={s.id}
+                    className="group flex w-full items-center gap-3 px-6 py-2.5 text-left"
+                    style={{ transition: "background-color 80ms" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.025)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery(s.query);
+                        setFilters(s.filters);
+                        if (hasActiveFilters(s.filters)) setShowFilters(true);
+                      }}
+                      className="flex flex-1 items-center gap-3 cursor-pointer focus-visible:outline-none min-w-0"
+                    >
+                      <Bookmark className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-brand-400)", opacity: 0.7 }} strokeWidth={1.5} />
+                      <span className="text-[13px] truncate" style={{ color: "rgba(255,255,255,0.65)" }}>{s.label}</span>
+                      {hasActiveFilters(s.filters) && (
+                        <span
+                          className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                          style={{ backgroundColor: "rgba(74, 170, 96, 0.1)", color: "var(--color-brand-400)" }}
+                        >
+                          filtered
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete saved search "${s.label}"`}
+                      onClick={(e) => { e.stopPropagation(); deleteSearch(s.id); }}
+                      className="shrink-0 opacity-0 group-hover:opacity-100 cursor-pointer rounded p-0.5 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                      style={{ color: "rgba(255,255,255,0.3)", transition: "opacity 100ms, color 100ms" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,100,100,0.7)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ))}
+                {showHistory && <div className="mx-5 my-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.04)" }} />}
+              </div>
+            )}
+
             {/* Search history — shown when query is empty and history exists */}
             {!showLocalSkeleton && showHistory && (
               <div className="py-2">
@@ -830,7 +895,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               </div>
             )}
 
-            {!showLocalSkeleton && !showJiraSkeleton && !jiraError && !showHistory && (
+            {!showLocalSkeleton && !showJiraSkeleton && !jiraError && !showHistory && !showSavedSearches && (
               (mode === "local" && totalGroupedCount === 0) ||
               (mode === "jira" && jiraResults.length === 0 && !loadingJira)
             ) && <EmptyState query={displayQuery} mode={mode} onSwitchToJira={switchToJira} />}
@@ -879,6 +944,32 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u21e7\u21b5"}</kbd> new tab</span>
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">esc</kbd> close</span>
           <div className="flex-1" />
+          {/* Save this search — shown in local mode when there's a meaningful query */}
+          {mode === "local" && query.trim().length >= 2 && (
+            <button
+              type="button"
+              disabled={isCurrentSearchSaved || isFull}
+              title={isCurrentSearchSaved ? "Already saved" : isFull ? "Max 10 saved searches reached" : "Save this search"}
+              onClick={() => {
+                if (isCurrentSearchSaved || isFull) return;
+                const label = window.prompt("Name this saved search:", query.trim());
+                if (label?.trim()) {
+                  saveSearch(label.trim(), query.trim(), filters);
+                }
+              }}
+              className="flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-default"
+              style={{
+                backgroundColor: isCurrentSearchSaved ? "rgba(74, 170, 96, 0.1)" : "rgba(255,255,255,0.04)",
+                color: isCurrentSearchSaved ? "var(--color-brand-400)" : isFull ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.25)",
+                transition: "background-color 120ms, color 120ms",
+              }}
+            >
+              {isCurrentSearchSaved
+                ? <BookmarkCheck className="h-3 w-3" strokeWidth={1.5} />
+                : <Bookmark className="h-3 w-3" strokeWidth={1.5} />}
+              {isCurrentSearchSaved ? "Saved" : "Save"}
+            </button>
+          )}
           {mode === "local" && (
             <button
               type="button"

@@ -59,8 +59,8 @@ describe("useSavedSearches", () => {
   });
 
   it("saveSearch calls PUT with serialized filters", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ searches: [] }), { status: 200 }),
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ searches: [] }), { status: 200 })),
     );
 
     const { result } = renderHook(() => useSavedSearches(), { wrapper });
