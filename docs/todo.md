@@ -65,6 +65,7 @@ See [Improvement Roadmap](plans/2026-04-10-improvement-roadmap.md) for the full 
 - [ ] BRDG-067: Command Palette
 - [ ] BRDG-069: Notification Center
 - [ ] BRDG-071: Customizable Sprint Board Columns
+- [x] BRDG-100: Notification Panel Filter Bar (type + team filters, scoped bulk actions)
 
 ## Medium Priority - Security
 
