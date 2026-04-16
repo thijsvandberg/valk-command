@@ -1,9 +1,9 @@
 "use client";
 
-import { Search, ExternalLink, IterationCw, Zap } from "lucide-react";
+import { Search, ExternalLink, IterationCw, Zap, ChevronRight, MessageSquare, FileText } from "lucide-react";
 import type { FuseResultMatch } from "fuse.js";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
-import type { LocalSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import type { IssueType } from "@/types/ticket";
@@ -345,11 +345,204 @@ export function EmptyState({ query, mode }: { query: string; mode: SearchMode })
       <p className="text-sm text-white/30">
         {query.length < 2
           ? "Type at least 2 characters to search"
-          : mode === "local" ? `No tickets matched "${query}"` : `No Jira results for "${query}"`}
+          : mode === "local" ? `No results matched "${query}"` : `No Jira results for "${query}"`}
       </p>
       {query.length >= 2 && mode === "local" && (
         <p className="text-xs text-white/20">Try switching to Jira mode for live results</p>
       )}
     </div>
+  );
+}
+
+const INITIAL_SECTION_LIMIT = 5;
+
+export function GroupedResultSection({
+  label,
+  count,
+  collapsed,
+  onToggle,
+  showAll,
+  onShowMore,
+  children,
+}: {
+  label: string;
+  count: number;
+  collapsed: boolean;
+  onToggle: () => void;
+  showAll: boolean;
+  onShowMore: () => void;
+  children: React.ReactNode;
+}) {
+  const hasMore = !showAll && count > INITIAL_SECTION_LIMIT;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 px-5 py-2 cursor-pointer focus-visible:outline-none"
+        style={{
+          backgroundColor: "rgba(255,255,255,0.025)",
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
+        <ChevronRight
+          className="h-3 w-3 shrink-0"
+          strokeWidth={2}
+          style={{
+            color: "rgba(255,255,255,0.3)",
+            transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
+            transition: "transform 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        />
+        <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+          {label}
+        </span>
+        <span
+          className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+          style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}
+        >
+          {count}
+        </span>
+      </button>
+
+      {!collapsed && (
+        <>
+          {children}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={onShowMore}
+              className="flex w-full items-center justify-center px-6 py-2 text-[11px] cursor-pointer focus-visible:outline-none"
+              style={{ color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
+            >
+              Show {count - INITIAL_SECTION_LIMIT} more
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function relativeCreatedAt(isoString: string): string {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+export function ConversationResultRow({
+  result,
+  active,
+  onSelect,
+  onHover,
+}: {
+  result: ConversationSearchResult;
+  active: boolean;
+  onSelect: (newTab: boolean) => void;
+  onHover: () => void;
+}) {
+  return (
+    <a
+      href={`/chat/${result.id}`}
+      onClick={(e) => {
+        const newTab = e.metaKey || e.ctrlKey;
+        if (!newTab) e.preventDefault();
+        onSelect(newTab);
+      }}
+      onMouseMove={onHover}
+      className="group relative flex w-full items-center gap-3 px-6 py-3 focus-visible:outline-none"
+      style={{
+        display: "flex",
+        textDecoration: "none",
+        backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
+        borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
+        cursor: "pointer",
+      }}
+    >
+      {!active && (
+        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
+      )}
+      <MessageSquare className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "rgba(255,255,255,0.2)" }} />
+      <span className="min-w-0 flex-1 truncate text-[13px] text-white/70">
+        {result.title}
+      </span>
+      <span className="ml-auto flex shrink-0 items-center gap-2">
+        {result.relatedTicket && (
+          <span className="font-mono text-[11px] text-white/30 tracking-tight">{result.relatedTicket}</span>
+        )}
+        <span
+          className="rounded px-1.5 py-0.5 text-[10px] font-medium capitalize"
+          style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
+        >
+          {result.type}
+        </span>
+        <span className="text-[10px] text-white/20">{relativeCreatedAt(result.createdAt)}</span>
+      </span>
+    </a>
+  );
+}
+
+export function CommentResultRow({
+  result,
+  active,
+  onSelect,
+  onHover,
+}: {
+  result: CommentSearchResult;
+  active: boolean;
+  onSelect: (newTab: boolean) => void;
+  onHover: () => void;
+}) {
+  return (
+    <a
+      href={`/tickets/${result.ticketKey}`}
+      onClick={(e) => {
+        const newTab = e.metaKey || e.ctrlKey;
+        if (!newTab) e.preventDefault();
+        onSelect(newTab);
+      }}
+      onMouseMove={onHover}
+      className="group relative flex w-full items-start gap-3 px-6 py-3 focus-visible:outline-none"
+      style={{
+        display: "flex",
+        textDecoration: "none",
+        backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
+        borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
+        cursor: "pointer",
+      }}
+    >
+      {!active && (
+        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
+      )}
+      <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" strokeWidth={1.5} style={{ color: "rgba(255,255,255,0.2)" }} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] text-white/70">{result.content}</span>
+        <span className="text-[11px] text-white/30">{result.author}</span>
+      </span>
+      <span className="ml-auto flex shrink-0 items-center gap-2 pt-0.5">
+        <span className="font-mono text-[11px] text-white/35 tracking-tight">{result.ticketKey}</span>
+        <span
+          className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+          style={{
+            backgroundColor: result.source === "jira" ? "rgba(96, 165, 250, 0.1)" : "rgba(74, 170, 96, 0.1)",
+            color: result.source === "jira" ? "#60a5fa" : "var(--color-brand-400)",
+          }}
+        >
+          {result.source === "jira" ? "Jira" : "PO"}
+        </span>
+      </span>
+    </a>
   );
 }

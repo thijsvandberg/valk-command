@@ -25,7 +25,7 @@ const { db } = await import("@/db");
 
 // Helper to chain the drizzle mock: select().from().all() and select().from().where().get()
 // Order of .all() calls matches the Promise.all in buildIndex:
-// [0] tickets, [1] metadata, [2] jiraComments, [3] poComments, [4] localEdits
+// [0] tickets, [1] metadata, [2] jiraComments, [3] poComments, [4] localEdits, [5] appSetting (via .where().get()), [6] conversations, [7] messages
 // The appSetting query uses .where().get() and is handled separately.
 function setupDbMock(
   tickets: unknown[],
@@ -33,9 +33,11 @@ function setupDbMock(
   jiraComments: unknown[],
   poComments: unknown[],
   localEdits: unknown[],
+  conversations: unknown[] = [],
+  messages: unknown[] = [],
 ) {
   let callCount = 0;
-  const responses = [tickets, metadata, jiraComments, poComments, localEdits];
+  const responses = [tickets, metadata, jiraComments, poComments, localEdits, conversations, messages];
 
   (db.select as Mock).mockImplementation(() => ({
     from: () => ({
@@ -98,6 +100,124 @@ describe("GET /api/search/local", () => {
     expect(body.results).toBeInstanceOf(Array);
     expect(body.results.length).toBeGreaterThan(0);
     expect(body.results[0].key).toBe("VPL-42");
+    // Also verify grouped response
+    expect(body.groups.tickets[0].key).toBe("VPL-42");
+  });
+
+  it("returns groups.tickets that mirrors results (backward compat)", async () => {
+    const sampleTicket = {
+      jiraKey: "VPL-50",
+      title: "Payment processing",
+      status: "TO DO",
+      priority: null,
+      assignee: null,
+      reporter: null,
+      sprintName: null,
+      labels: "",
+      description: null,
+    };
+
+    setupDbMock([sampleTicket], [], [], [], []);
+
+    const res = await GET(makeRequest("payment"));
+    const body = await res.json();
+    expect(body.groups).toBeDefined();
+    expect(body.groups.tickets).toEqual(body.results);
+    expect(body.groups.conversations).toBeInstanceOf(Array);
+    expect(body.groups.comments).toBeInstanceOf(Array);
+  });
+
+  it("returns conversations matching query in groups.conversations", async () => {
+    setupDbMock(
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        { id: "conv-1", title: "Auth investigation chat", type: "investigation", relatedTicket: "VPL-42", createdAt: new Date().toISOString() },
+        { id: "conv-2", title: "Sprint planning", type: "chat", relatedTicket: null, createdAt: new Date().toISOString() },
+      ],
+      [
+        { id: "msg-1", conversationId: "conv-1", role: "user", content: "Let us investigate the authentication problem", timestamp: new Date().toISOString(), status: "sent", workspaceTaskId: null, contentHash: null },
+      ],
+    );
+
+    const res = await GET(makeRequest("auth"));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.groups.conversations).toBeInstanceOf(Array);
+    expect(body.groups.conversations.length).toBeGreaterThan(0);
+    expect(body.groups.conversations[0].id).toBe("conv-1");
+    expect(body.groups.conversations[0].title).toBe("Auth investigation chat");
+  });
+
+  it("returns comments matching query in groups.comments", async () => {
+    setupDbMock(
+      [],
+      [],
+      [
+        { id: "jc-1", ticketKey: "VPL-10", jiraCommentId: "jira-1", authorName: "Alice", authorAvatar: null, content: "Authentication logic needs review", createdAt: new Date().toISOString() },
+      ],
+      [
+        { id: "pc-1", ticketKey: "VPL-20", author: "Product Owner", content: "Payment flow discussion", createdAt: new Date().toISOString() },
+      ],
+      [],
+    );
+
+    const res = await GET(makeRequest("auth"));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.groups.comments.length).toBeGreaterThan(0);
+    const jiraComment = body.groups.comments.find((c: { source: string }) => c.source === "jira");
+    expect(jiraComment).toBeDefined();
+    expect(jiraComment.ticketKey).toBe("VPL-10");
+    expect(jiraComment.author).toBe("Alice");
+  });
+
+  it("comment results include correct source field", async () => {
+    setupDbMock(
+      [],
+      [],
+      [{ id: "jc-2", ticketKey: "VPL-5", jiraCommentId: null, authorName: "Dev", authorAvatar: null, content: "Login page refactor", createdAt: new Date().toISOString() }],
+      [{ id: "pc-2", ticketKey: "VPL-6", author: "PO", content: "Login screen notes", createdAt: new Date().toISOString() }],
+      [],
+    );
+
+    const res = await GET(makeRequest("login"));
+    const body = await res.json();
+    const jiraSrc = body.groups.comments.find((c: { source: string }) => c.source === "jira");
+    const poSrc = body.groups.comments.find((c: { source: string }) => c.source === "po");
+    if (jiraSrc) expect(jiraSrc.source).toBe("jira");
+    if (poSrc) expect(poSrc.source).toBe("po");
+  });
+
+  it("empty groups return empty arrays, not undefined", async () => {
+    setupDbMock([], [], [], [], []);
+    const res = await GET(makeRequest("xyz"));
+    const body = await res.json();
+    expect(body.groups.tickets).toEqual([]);
+    expect(body.groups.conversations).toEqual([]);
+    expect(body.groups.comments).toEqual([]);
+  });
+
+  it("ticket-specific filters do not affect conversations group", async () => {
+    setupDbMock(
+      [{ jiraKey: "VPL-1", title: "Authentication flow", status: "TO DO", priority: null, assignee: null, reporter: null, sprintName: null, labels: "", description: null }],
+      [],
+      [],
+      [],
+      [],
+      [{ id: "conv-3", title: "Auth discussion", type: "chat", relatedTicket: null, createdAt: new Date().toISOString() }],
+      [],
+    );
+
+    const res = await GET(makeRequest("auth", { status: "IN PROGRESS" }));
+    const body = await res.json();
+    // Tickets filtered out (none are IN PROGRESS)
+    expect(body.groups.tickets.length).toBe(0);
+    // Conversations unaffected by ticket status filter
+    expect(body.groups.conversations.length).toBeGreaterThan(0);
   });
 
   it("uses local edit title when present", async () => {
@@ -163,7 +283,7 @@ describe("GET /api/search/local", () => {
     expect(body.results.some((r: { key: string }) => r.key === "VPL-99")).toBe(true);
   });
 
-  it("returns at most 25 results", async () => {
+  it("returns at most 25 ticket results", async () => {
     const tickets = Array.from({ length: 50 }, (_, i) => ({
       jiraKey: `VPL-${i}`,
       title: `Authentication ticket ${i}`,
@@ -181,6 +301,7 @@ describe("GET /api/search/local", () => {
     const res = await GET(makeRequest("authentication"));
     const body = await res.json();
     expect(body.results.length).toBeLessThanOrEqual(25);
+    expect(body.groups.tickets.length).toBeLessThanOrEqual(25);
   });
 
   it("status filter excludes non-matching tickets", async () => {

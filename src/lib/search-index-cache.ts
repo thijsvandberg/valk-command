@@ -19,6 +19,25 @@ export interface SearchDoc {
   poCommentBodies: string;
 }
 
+export interface ConversationSearchDoc {
+  id: string;
+  title: string;
+  type: string;
+  relatedTicket: string | null;
+  createdAt: string;
+  // Concatenated message content (truncated to 5000 chars) for full-text search
+  messageBodies: string;
+}
+
+export interface CommentSearchDoc {
+  id: string;
+  ticketKey: string;
+  author: string;
+  content: string;
+  source: "jira" | "po";
+  createdAt: string;
+}
+
 const FUSE_OPTIONS: IFuseOptions<SearchDoc> = {
   threshold: 0.4,
   ignoreLocation: true,
@@ -43,6 +62,32 @@ const FUSE_OPTIONS: IFuseOptions<SearchDoc> = {
   ],
 };
 
+const CONVERSATION_FUSE_OPTIONS: IFuseOptions<ConversationSearchDoc> = {
+  threshold: 0.4,
+  ignoreLocation: true,
+  includeScore: true,
+  includeMatches: false,
+  minMatchCharLength: 2,
+  keys: [
+    { name: "title", weight: 1.0 },
+    { name: "relatedTicket", weight: 0.7 },
+    { name: "messageBodies", weight: 0.4 },
+  ],
+};
+
+const COMMENT_FUSE_OPTIONS: IFuseOptions<CommentSearchDoc> = {
+  threshold: 0.4,
+  ignoreLocation: true,
+  includeScore: true,
+  includeMatches: false,
+  minMatchCharLength: 2,
+  keys: [
+    { name: "content", weight: 1.0 },
+    { name: "author", weight: 0.5 },
+    { name: "ticketKey", weight: 0.6 },
+  ],
+};
+
 export type FuseResultMatchType = FuseResultMatch;
 
 export interface TicketDetail {
@@ -61,6 +106,10 @@ interface CacheEntry {
   ticketDetails: Map<string, TicketDetail>;
   sprintIdToName: Map<string, string>;
   jiraBaseUrl: string;
+  conversationFuse: Fuse<ConversationSearchDoc>;
+  conversationDocs: ConversationSearchDoc[];
+  commentFuse: Fuse<CommentSearchDoc>;
+  commentDocs: CommentSearchDoc[];
   builtAt: number;
 }
 
@@ -82,9 +131,24 @@ export function setSearchCache(
   ticketDetails: Map<string, TicketDetail>,
   sprintIdToName: Map<string, string>,
   jiraBaseUrl: string,
+  conversationDocs: ConversationSearchDoc[],
+  commentDocs: CommentSearchDoc[],
 ): CacheEntry {
   const fuse = new Fuse(docs, FUSE_OPTIONS);
-  cache = { fuse, docs, ticketDetails, sprintIdToName, jiraBaseUrl, builtAt: Date.now() };
+  const conversationFuse = new Fuse(conversationDocs, CONVERSATION_FUSE_OPTIONS);
+  const commentFuse = new Fuse(commentDocs, COMMENT_FUSE_OPTIONS);
+  cache = {
+    fuse,
+    docs,
+    ticketDetails,
+    sprintIdToName,
+    jiraBaseUrl,
+    conversationFuse,
+    conversationDocs,
+    commentFuse,
+    commentDocs,
+    builtAt: Date.now(),
+  };
   return cache;
 }
 

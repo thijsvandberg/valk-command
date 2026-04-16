@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketMetadata, jiraComment, poComment, ticketLocalEdit, appSetting } from "@/db/schema";
+import { ticket, ticketMetadata, jiraComment, poComment, ticketLocalEdit, appSetting, conversation, message } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { env } from "@/lib/env";
-import { getSearchCache, setSearchCache, type SearchDoc, type TicketDetail, type FuseResultMatchType } from "@/lib/search-index-cache";
+import {
+  getSearchCache,
+  setSearchCache,
+  type SearchDoc,
+  type TicketDetail,
+  type FuseResultMatchType,
+  type ConversationSearchDoc,
+  type CommentSearchDoc,
+} from "@/lib/search-index-cache";
 import { logger } from "@/lib/logger";
 
 export interface LocalSearchResult {
@@ -28,6 +36,38 @@ export interface LocalSearchResult {
   matches: readonly FuseResultMatchType[] | undefined;
 }
 
+export interface ConversationSearchResult {
+  id: string;
+  title: string;
+  type: string;
+  relatedTicket: string | null;
+  createdAt: string;
+  // Snippet from a matching message, truncated
+  messageSnippet: string | null;
+  score: number;
+}
+
+export interface CommentSearchResult {
+  id: string;
+  ticketKey: string;
+  author: string;
+  // Truncated content snippet
+  content: string;
+  source: "jira" | "po";
+  createdAt: string;
+  score: number;
+}
+
+export interface GroupedSearchResponse {
+  groups: {
+    tickets: LocalSearchResult[];
+    conversations: ConversationSearchResult[];
+    comments: CommentSearchResult[];
+  };
+  // Backward-compat flat field — mirrors groups.tickets
+  results: LocalSearchResult[];
+}
+
 // Parse ADF JSON string or return plain text if already a string
 function stripAdf(raw: string | null | undefined): string {
   if (!raw) return "";
@@ -43,7 +83,7 @@ function stripAdf(raw: string | null | undefined): string {
 }
 
 async function buildIndex() {
-  const [tickets, metadataRows, jiraCommentRows, poCommentRows, localEditRows, sprintSetting] =
+  const [tickets, metadataRows, jiraCommentRows, poCommentRows, localEditRows, sprintSetting, conversationRows, messageRows] =
     await Promise.all([
       db.select().from(ticket).all(),
       db.select().from(ticketMetadata).all(),
@@ -51,6 +91,8 @@ async function buildIndex() {
       db.select().from(poComment).all(),
       db.select().from(ticketLocalEdit).all(),
       db.select().from(appSetting).where(eq(appSetting.key, "jira_sprints")).get(),
+      db.select().from(conversation).all(),
+      db.select().from(message).all(),
     ]);
 
   const sprintIdToName = new Map<string, string>();
@@ -129,8 +171,49 @@ async function buildIndex() {
     })
   );
 
+  // Build conversation search docs: one doc per conversation, with all message bodies concatenated
+  const messagesByConversation = new Map<string, string[]>();
+  for (const msg of messageRows) {
+    const existing = messagesByConversation.get(msg.conversationId) ?? [];
+    existing.push(msg.content);
+    messagesByConversation.set(msg.conversationId, existing);
+  }
+
+  const conversationDocs: ConversationSearchDoc[] = conversationRows.map((c) => {
+    const bodies = (messagesByConversation.get(c.id) ?? []).join(" ");
+    return {
+      id: c.id,
+      title: c.title,
+      type: c.type,
+      relatedTicket: c.relatedTicket ?? null,
+      createdAt: c.createdAt,
+      // Truncate to avoid excessive Fuse index size on large conversations
+      messageBodies: bodies.slice(0, 5000),
+    };
+  });
+
+  // Build comment search docs from already-loaded jira and PO comment rows
+  const commentDocs: CommentSearchDoc[] = [
+    ...jiraCommentRows.map((c) => ({
+      id: c.id,
+      ticketKey: c.ticketKey,
+      author: c.authorName,
+      content: stripAdf(c.content),
+      source: "jira" as const,
+      createdAt: c.createdAt,
+    })),
+    ...poCommentRows.map((c) => ({
+      id: c.id,
+      ticketKey: c.ticketKey,
+      author: c.author,
+      content: c.content,
+      source: "po" as const,
+      createdAt: c.createdAt,
+    })),
+  ];
+
   const jiraBaseUrl = env.JIRA_BASE_URL;
-  return setSearchCache(docs, ticketDetails, sprintIdToName, jiraBaseUrl);
+  return setSearchCache(docs, ticketDetails, sprintIdToName, jiraBaseUrl, conversationDocs, commentDocs);
 }
 
 export async function GET(request: Request) {
@@ -148,12 +231,12 @@ export async function GET(request: Request) {
   const hasFilters = statusFilter.length > 0 || poStatusFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
 
   if (q.trim().length < 2) {
-    return NextResponse.json({ results: [] });
+    return NextResponse.json({ groups: { tickets: [], conversations: [], comments: [] }, results: [] });
   }
 
   try {
     const entry = getSearchCache() ?? (await buildIndex());
-    const { fuse, ticketDetails, sprintIdToName, jiraBaseUrl } = entry;
+    const { fuse, ticketDetails, sprintIdToName, jiraBaseUrl, conversationFuse, commentFuse } = entry;
 
     const tokens = q.trim().split(/\s+/).filter((t) => t.length >= 2);
     // Bump candidate pool when filters are active so filtering doesn't under-sample
@@ -234,7 +317,8 @@ export async function GET(request: Request) {
     });
 
     // Apply post-Fuse filters (AND across categories, OR within each)
-    const results: LocalSearchResult[] = mapped
+    // Filters only apply to tickets — conversations and comments have no Jira-specific metadata
+    const tickets: LocalSearchResult[] = mapped
       .filter((r) => {
         if (statusFilter.length > 0 && !statusFilter.includes(r.status.toUpperCase())) return false;
         if (poStatusFilter.length > 0 && !(r.poStatus && poStatusFilter.some((p) => p.toLowerCase() === r.poStatus!.toLowerCase()))) return false;
@@ -261,7 +345,38 @@ export async function GET(request: Request) {
       .sort((a, b) => a.score - b.score)
       .slice(0, 25);
 
-    return NextResponse.json({ results });
+    // Search conversations
+    const conversationFuseResults = conversationFuse.search(tokens[0] ?? q, { limit: 15 });
+    const conversations: ConversationSearchResult[] = conversationFuseResults
+      .sort((a, b) => (a.score ?? 1) - (b.score ?? 1))
+      .map((r) => ({
+        id: r.item.id,
+        title: r.item.title,
+        type: r.item.type,
+        relatedTicket: r.item.relatedTicket,
+        createdAt: r.item.createdAt,
+        messageSnippet: r.item.messageBodies ? r.item.messageBodies.slice(0, 200) : null,
+        score: r.score ?? 1,
+      }));
+
+    // Search comments
+    const commentFuseResults = commentFuse.search(tokens[0] ?? q, { limit: 15 });
+    const comments: CommentSearchResult[] = commentFuseResults
+      .sort((a, b) => (a.score ?? 1) - (b.score ?? 1))
+      .map((r) => ({
+        id: r.item.id,
+        ticketKey: r.item.ticketKey,
+        author: r.item.author,
+        content: r.item.content.slice(0, 200),
+        source: r.item.source,
+        createdAt: r.item.createdAt,
+        score: r.score ?? 1,
+      }));
+
+    return NextResponse.json({
+      groups: { tickets, conversations, comments },
+      results: tickets,
+    });
   } catch (err) {
     logger.error("search-local", "GET failed", err);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });

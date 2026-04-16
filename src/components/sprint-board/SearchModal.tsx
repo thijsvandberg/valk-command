@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, PanelRight, PanelRightClose, ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-import type { LocalSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import type { SearchMode, FocusedPanel } from "@/components/sprint-board/SearchResultParts";
 import {
@@ -14,6 +14,9 @@ import {
   LocalResultRow,
   JiraResultRow,
   EmptyState,
+  GroupedResultSection,
+  ConversationResultRow,
+  CommentResultRow,
 } from "@/components/sprint-board/SearchResultParts";
 import {
   SearchFilterPanel,
@@ -23,6 +26,20 @@ import {
   type SearchFilters,
   type FilterOptionsData,
 } from "@/components/sprint-board/SearchFilterPanel";
+
+const SECTION_LIMIT = 5;
+
+interface GroupedResults {
+  tickets: LocalSearchResult[];
+  conversations: ConversationSearchResult[];
+  comments: CommentSearchResult[];
+}
+
+// A flattened navigable row (sections headers and show-more buttons are not rows)
+type VisibleRow =
+  | { group: "tickets"; item: LocalSearchResult }
+  | { group: "conversations"; item: ConversationSearchResult }
+  | { group: "comments"; item: CommentSearchResult };
 
 function parseJiraKeyFromInput(input: string): string | null {
   const trimmed = input.trim();
@@ -51,7 +68,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
 
   const [query, setQuery] = useState(initialQuery);
   const [mode, setMode] = useState<SearchMode>("local");
-  const [localResults, setLocalResults] = useState<LocalSearchResult[]>([]);
+  const [groupedResults, setGroupedResults] = useState<GroupedResults>({ tickets: [], conversations: [], comments: [] });
   const [jiraResults, setJiraResults] = useState<JiraSearchResult[]>([]);
   const [jiraQuery, setJiraQuery] = useState("");
   const [jiraJql, setJiraJql] = useState("");
@@ -67,6 +84,10 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [filterOptions, setFilterOptions] = useState<FilterOptionsData | null>(null);
+  // Per-section collapse/expand state
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  // Per-section "show all" state (expand beyond SECTION_LIMIT)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const filterOptionsFetchedRef = useRef(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -108,7 +129,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     if (open) {
       if (initialQuery) {
         setQuery(initialQuery);
-        setLocalResults([]);
+        setGroupedResults({ tickets: [], conversations: [], comments: [] });
         setJiraResults([]);
         setJiraError(null);
         setActiveIdx(-1);
@@ -116,9 +137,11 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       }
       requestAnimationFrame(() => inputRef.current?.focus());
     } else {
-      // Reset filter state when modal closes (no persistence)
+      // Reset filter and section state when modal closes
       setShowFilters(false);
       setFilters(EMPTY_FILTERS);
+      setCollapsedSections(new Set());
+      setExpandedSections(new Set());
     }
   }, [open, initialQuery]);
 
@@ -138,7 +161,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const effectiveLocalQuery = detectedKey ?? query;
 
   const runLocalSearch = useCallback(async (q: string, activeFilters: SearchFilters) => {
-    if (q.trim().length < 2) { setLocalResults([]); return; }
+    if (q.trim().length < 2) { setGroupedResults({ tickets: [], conversations: [], comments: [] }); return; }
     if (localAbortRef.current) localAbortRef.current.abort();
     localAbortRef.current = new AbortController();
     const { signal } = localAbortRef.current;
@@ -149,8 +172,19 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       const res = await fetch(`/api/search/local?${params.toString()}`, { signal });
       if (res.ok) {
         const data = await res.json();
-        setLocalResults(data.results ?? []);
+        // Support both grouped response (new) and flat results (legacy/backward compat)
+        if (data.groups) {
+          setGroupedResults({
+            tickets: data.groups.tickets ?? [],
+            conversations: data.groups.conversations ?? [],
+            comments: data.groups.comments ?? [],
+          });
+        } else {
+          setGroupedResults({ tickets: data.results ?? [], conversations: [], comments: [] });
+        }
         setActiveIdx(-1);
+        // Reset section expansion when results change
+        setExpandedSections(new Set());
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -210,7 +244,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   }, []);
 
   const navigateToKey = useCallback(async (key: string, newTab: boolean) => {
-    const existsLocally = localResults.some((r) => r.key === key);
+    const existsLocally = groupedResults.tickets.some((r) => r.key === key);
     if (!existsLocally) {
       setFetchingKey(true);
       try {
@@ -232,9 +266,35 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       router.push(`/tickets/${key}`);
       onClose();
     }
-  }, [localResults, router, onClose]);
+  }, [groupedResults.tickets, router, onClose]);
 
-  const resultCount = mode === "local" ? localResults.length : jiraResults.length;
+  // Build a flat array of all visible rows across all non-collapsed sections, respecting limits
+  const visibleRows = useMemo<VisibleRow[]>(() => {
+    if (mode !== "local") return [];
+
+    const rows: VisibleRow[] = [];
+
+    const addGroup = <T extends LocalSearchResult | ConversationSearchResult | CommentSearchResult>(
+      groupKey: "tickets" | "conversations" | "comments",
+      items: T[],
+    ) => {
+      if (collapsedSections.has(groupKey) || items.length === 0) return;
+      const limit = expandedSections.has(groupKey) ? items.length : SECTION_LIMIT;
+      for (const item of items.slice(0, limit)) {
+        rows.push({ group: groupKey, item } as VisibleRow);
+      }
+    };
+
+    addGroup("tickets", groupedResults.tickets);
+    addGroup("conversations", groupedResults.conversations);
+    addGroup("comments", groupedResults.comments);
+
+    return rows;
+  }, [mode, groupedResults, collapsedSections, expandedSections]);
+
+  const totalGroupedCount = groupedResults.tickets.length + groupedResults.conversations.length + groupedResults.comments.length;
+
+  const jiraResultCount = jiraResults.length;
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (focusedPanel === "preview") {
@@ -257,36 +317,40 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       return;
     }
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      const next = Math.min(activeIdx + 1, resultCount - 1);
-      setActiveIdx(next);
-      if (mode === "local" && next >= 0) setPreviewEnabled(true);
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      const next = Math.max(activeIdx - 1, 0);
-      setActiveIdx(next);
-      if (mode === "local" && next >= 0) setPreviewEnabled(true);
-      return;
-    }
-    if (e.key === "ArrowRight" && mode === "local" && previewEnabled && activeIdx >= 0) {
-      e.preventDefault();
-      setFocusedPanel("preview");
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      // When a Jira key or URL is detected, Enter always navigates directly to that ticket.
-      // If the ticket is not in the local DB, it is fetched from Jira first.
-      if (detectedKey) {
-        navigateToKey(detectedKey, e.shiftKey);
+    if (mode === "local") {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = Math.min(activeIdx + 1, visibleRows.length - 1);
+        setActiveIdx(next);
+        if (next >= 0) setPreviewEnabled(true);
         return;
       }
-      if (mode === "local") {
-        const result = localResults[activeIdx];
-        if (result) {
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const next = Math.max(activeIdx - 1, 0);
+        setActiveIdx(next);
+        if (next >= 0) setPreviewEnabled(true);
+        return;
+      }
+      if (e.key === "ArrowRight" && previewEnabled && activeIdx >= 0) {
+        const row = visibleRows[activeIdx];
+        // Preview pane only for ticket results
+        if (row?.group === "tickets") {
+          e.preventDefault();
+          setFocusedPanel("preview");
+          return;
+        }
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (detectedKey) {
+          navigateToKey(detectedKey, e.shiftKey);
+          return;
+        }
+        const row = visibleRows[activeIdx];
+        if (!row) return;
+        if (row.group === "tickets") {
+          const result = row.item as LocalSearchResult;
           if (e.shiftKey) {
             window.open(`/tickets/${result.key}`, "_blank", "noopener,noreferrer");
             window.focus();
@@ -294,8 +358,45 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             router.push(`/tickets/${result.key}`);
             onClose();
           }
+        } else if (row.group === "conversations") {
+          const conv = row.item as ConversationSearchResult;
+          if (e.shiftKey) {
+            window.open(`/chat/${conv.id}`, "_blank", "noopener,noreferrer");
+            window.focus();
+          } else {
+            router.push(`/chat/${conv.id}`);
+            onClose();
+          }
+        } else if (row.group === "comments") {
+          const comment = row.item as CommentSearchResult;
+          if (e.shiftKey) {
+            window.open(`/tickets/${comment.ticketKey}`, "_blank", "noopener,noreferrer");
+            window.focus();
+          } else {
+            router.push(`/tickets/${comment.ticketKey}`);
+            onClose();
+          }
         }
-      } else {
+        return;
+      }
+    } else {
+      // Jira mode
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIdx((i) => Math.min(i + 1, jiraResultCount - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (detectedKey) {
+          navigateToKey(detectedKey, e.shiftKey);
+          return;
+        }
         if (loadingJira) return;
         if (jiraResults.length > 0) {
           const issue = jiraResults[activeIdx];
@@ -305,7 +406,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         }
       }
     }
-  }, [focusedPanel, activeIdx, resultCount, mode, localResults, jiraResults, previewEnabled, loadingJira, detectedKey, navigateToKey, onClose, runJiraSearch, router]);
+  }, [focusedPanel, activeIdx, mode, visibleRows, jiraResults, jiraResultCount, previewEnabled, loadingJira, detectedKey, navigateToKey, onClose, runJiraSearch, router]);
 
   useEffect(() => {
     if (activeIdx < 0) return;
@@ -316,13 +417,34 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     row?.scrollIntoView?.({ block: "nearest" });
   }, [activeIdx]);
 
+  // Which ticket result is active (for preview pane — only tickets have preview)
+  const activeTicketResult = useMemo(() => {
+    if (!previewEnabled || activeIdx < 0) return null;
+    const row = visibleRows[activeIdx];
+    if (row?.group === "tickets") return row.item as LocalSearchResult;
+    return null;
+  }, [previewEnabled, activeIdx, visibleRows]);
+
   if (!open) return null;
 
   const displayQuery = mode === "local" ? query : (jiraQuery || query);
   const showLocalSkeleton = loadingLocal && mode === "local";
   const showJiraSkeleton = loadingJira && mode === "jira";
-  const showPreview = previewEnabled && mode === "local" && localResults.length > 0 && activeIdx >= 0;
-  const activeResult = showPreview ? localResults[activeIdx] : null;
+  const showPreview = previewEnabled && mode === "local" && activeTicketResult !== null;
+  const activeResult = activeTicketResult;
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const showMoreSection = (key: string) => {
+    setExpandedSections((prev) => new Set(prev).add(key));
+  };
 
   return (
     <div
@@ -496,30 +618,126 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             {!loadingJira && mode === "jira" && jiraError && (
               <div className="flex items-center gap-2 px-4 py-6 text-sm text-red-400/70">{jiraError}</div>
             )}
-            {!showLocalSkeleton && mode === "local" && localResults.length > 0 && (
+
+            {/* Local mode — grouped results */}
+            {!showLocalSkeleton && mode === "local" && totalGroupedCount > 0 && (
               <div>
-                {localResults.map((r, i) => (
-                  <div key={r.key} data-result-row="">
-                    <LocalResultRow
-                      result={r}
-                      active={i === activeIdx}
-                      onSelect={(newTab) => {
-                        if (newTab) {
-                          window.open(`/tickets/${r.key}`, "_blank", "noopener,noreferrer");
-                          window.focus();
-                        } else {
-                          router.push(`/tickets/${r.key}`);
-                          onClose();
-                        }
-                      }}
-                      onHover={() => setActiveIdx(i)}
-                      sprintNameMap={sprintNameMap}
-                      showKey={!showPreview}
-                    />
-                  </div>
-                ))}
+                {/* Tickets section */}
+                {groupedResults.tickets.length > 0 && (
+                  <GroupedResultSection
+                    label="Tickets"
+                    count={groupedResults.tickets.length}
+                    collapsed={collapsedSections.has("tickets")}
+                    onToggle={() => toggleSection("tickets")}
+                    showAll={expandedSections.has("tickets")}
+                    onShowMore={() => showMoreSection("tickets")}
+                  >
+                    {(expandedSections.has("tickets")
+                      ? groupedResults.tickets
+                      : groupedResults.tickets.slice(0, SECTION_LIMIT)
+                    ).map((r) => {
+                      const flatIdx = visibleRows.findIndex((row) => row.group === "tickets" && (row.item as LocalSearchResult).key === r.key);
+                      return (
+                        <div key={r.key} data-result-row="">
+                          <LocalResultRow
+                            result={r}
+                            active={flatIdx === activeIdx}
+                            onSelect={(newTab) => {
+                              if (newTab) {
+                                window.open(`/tickets/${r.key}`, "_blank", "noopener,noreferrer");
+                                window.focus();
+                              } else {
+                                router.push(`/tickets/${r.key}`);
+                                onClose();
+                              }
+                            }}
+                            onHover={() => setActiveIdx(flatIdx)}
+                            sprintNameMap={sprintNameMap}
+                            showKey={!showPreview}
+                          />
+                        </div>
+                      );
+                    })}
+                  </GroupedResultSection>
+                )}
+
+                {/* Conversations section */}
+                {groupedResults.conversations.length > 0 && (
+                  <GroupedResultSection
+                    label="Conversations"
+                    count={groupedResults.conversations.length}
+                    collapsed={collapsedSections.has("conversations")}
+                    onToggle={() => toggleSection("conversations")}
+                    showAll={expandedSections.has("conversations")}
+                    onShowMore={() => showMoreSection("conversations")}
+                  >
+                    {(expandedSections.has("conversations")
+                      ? groupedResults.conversations
+                      : groupedResults.conversations.slice(0, SECTION_LIMIT)
+                    ).map((r) => {
+                      const flatIdx = visibleRows.findIndex((row) => row.group === "conversations" && (row.item as ConversationSearchResult).id === r.id);
+                      return (
+                        <div key={r.id} data-result-row="">
+                          <ConversationResultRow
+                            result={r}
+                            active={flatIdx === activeIdx}
+                            onSelect={(newTab) => {
+                              if (newTab) {
+                                window.open(`/chat/${r.id}`, "_blank", "noopener,noreferrer");
+                                window.focus();
+                              } else {
+                                router.push(`/chat/${r.id}`);
+                                onClose();
+                              }
+                            }}
+                            onHover={() => setActiveIdx(flatIdx)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </GroupedResultSection>
+                )}
+
+                {/* Comments section */}
+                {groupedResults.comments.length > 0 && (
+                  <GroupedResultSection
+                    label="Comments"
+                    count={groupedResults.comments.length}
+                    collapsed={collapsedSections.has("comments")}
+                    onToggle={() => toggleSection("comments")}
+                    showAll={expandedSections.has("comments")}
+                    onShowMore={() => showMoreSection("comments")}
+                  >
+                    {(expandedSections.has("comments")
+                      ? groupedResults.comments
+                      : groupedResults.comments.slice(0, SECTION_LIMIT)
+                    ).map((r) => {
+                      const flatIdx = visibleRows.findIndex((row) => row.group === "comments" && (row.item as CommentSearchResult).id === r.id);
+                      return (
+                        <div key={r.id} data-result-row="">
+                          <CommentResultRow
+                            result={r}
+                            active={flatIdx === activeIdx}
+                            onSelect={(newTab) => {
+                              if (newTab) {
+                                window.open(`/tickets/${r.ticketKey}`, "_blank", "noopener,noreferrer");
+                                window.focus();
+                              } else {
+                                router.push(`/tickets/${r.ticketKey}`);
+                                onClose();
+                              }
+                            }}
+                            onHover={() => setActiveIdx(flatIdx)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </GroupedResultSection>
+                )}
               </div>
             )}
+
+            {/* Jira results */}
             {!showJiraSkeleton && mode === "jira" && jiraResults.length > 0 && (
               <div>
                 {jiraResults.map((issue, i) => (
@@ -544,7 +762,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               </div>
             )}
             {!showLocalSkeleton && !showJiraSkeleton && !jiraError && (
-              (mode === "local" && localResults.length === 0) ||
+              (mode === "local" && totalGroupedCount === 0) ||
               (mode === "jira" && jiraResults.length === 0 && !loadingJira)
             ) && <EmptyState query={displayQuery} mode={mode} />}
           </div>
@@ -583,7 +801,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         <div className="flex items-center gap-4 border-t border-white/[0.06] px-6 py-3 text-[10px] text-white/20">
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u2191\u2193"}</kbd> navigate</span>
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u21b5"}</kbd> open</span>
-          {mode === "local" && previewEnabled && activeIdx >= 0 && (
+          {mode === "local" && previewEnabled && activeIdx >= 0 && visibleRows[activeIdx]?.group === "tickets" && (
             <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u2192"}</kbd> preview</span>
           )}
           {focusedPanel === "preview" && (

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { SearchModal } from "./SearchModal";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -11,8 +12,31 @@ vi.mock("next/navigation", () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-function makeLocalResult(key: string, summary: string, status = "TO DO") {
-  return { key, summary, status, issueType: null, assignee: null, sprintName: null, labels: null, epic: null, description: null, jiraUrl: null, storyPoints: null, reporter: null, updatedAt: null, score: 0.1, matches: [] };
+function makeLocalResult(key: string, summary: string, status = "TO DO"): LocalSearchResult {
+  return { key, summary, status, poStatus: null, issueType: null, assignee: null, sprintId: null, sprintName: null, labels: null, epic: null, epicKey: null, description: null, jiraUrl: null, storyPoints: null, reporter: null, updatedAt: null, score: 0.1, matches: [] };
+}
+
+function makeConversationResult(id: string, title: string, type = "chat") {
+  return { id, title, type, relatedTicket: null, createdAt: new Date().toISOString(), messageSnippet: null, score: 0.1 };
+}
+
+function makeCommentResult(id: string, ticketKey: string, content: string, source: "jira" | "po" = "jira") {
+  return { id, ticketKey, author: "Alice", content, source, createdAt: new Date().toISOString(), score: 0.1 };
+}
+
+// Returns a grouped response (new format)
+function makeGroupedResponse(
+  tickets: LocalSearchResult[] = [],
+  conversations: ConversationSearchResult[] = [],
+  comments: CommentSearchResult[] = [],
+) {
+  return {
+    ok: true,
+    json: async () => ({
+      groups: { tickets, conversations, comments },
+      results: tickets,
+    }),
+  };
 }
 
 describe("SearchModal", () => {
@@ -20,14 +44,8 @@ describe("SearchModal", () => {
   const onSelectTicket = vi.fn();
 
   beforeEach(() => {
-    // resetAllMocks clears implementations AND the Once queue, preventing
-    // unconsumed Once values from leaking into subsequent tests.
     vi.resetAllMocks();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ results: [] }),
-    });
-    // Re-assign the global after reset
+    mockFetch.mockResolvedValue(makeGroupedResponse());
     global.fetch = mockFetch;
     mockPush.mockReset();
   });
@@ -67,34 +85,149 @@ describe("SearchModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("shows results from local search API", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        results: [
-          makeLocalResult("VPL-1", "User authentication flow"),
-          makeLocalResult("VPL-2", "Payment service"),
-        ],
-      }),
-    });
+  it("shows ticket results from local search API", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-1", "User authentication flow"), makeLocalResult("VPL-2", "Payment service")],
+    ));
 
     render(
       <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
     );
 
     await waitFor(() => {
-      // The text appears in both the result row and the preview pane
       expect(screen.getAllByText("User authentication flow").length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it("navigates to ticket page and calls onClose when a local result is clicked", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        results: [makeLocalResult("VPL-3", "Login page redesign")],
-      }),
+  it("renders section headers for each non-empty category", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-1", "Auth flow")],
+      [makeConversationResult("c-1", "Auth chat")],
+      [makeCommentResult("cm-1", "VPL-1", "Auth comment")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Tickets")).toBeInTheDocument();
+      expect(screen.getByText("Conversations")).toBeInTheDocument();
+      expect(screen.getByText("Comments")).toBeInTheDocument();
     });
+  });
+
+  it("section headers show result counts", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-1", "Auth flow"), makeLocalResult("VPL-2", "Auth service")],
+      [makeConversationResult("c-1", "Auth chat")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      // Count badge "2" appears next to Tickets header
+      const ticketsHeader = screen.getByText("Tickets").closest("button")!;
+      expect(ticketsHeader).toBeTruthy();
+      expect(ticketsHeader.textContent).toContain("2");
+    });
+  });
+
+  it("does not render section headers for empty categories", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-1", "Auth flow")],
+      // No conversations or comments
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Tickets")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Conversations")).not.toBeInTheDocument();
+    expect(screen.queryByText("Comments")).not.toBeInTheDocument();
+  });
+
+  it("collapses a section when its header is clicked", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-1", "Auth flow")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Auth flow")).toBeInTheDocument());
+
+    // Click the Tickets header to collapse
+    fireEvent.click(screen.getByText("Tickets").closest("button")!);
+
+    expect(screen.queryByText("Auth flow")).not.toBeInTheDocument();
+  });
+
+  it("expands a collapsed section when its header is clicked again", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-1", "Auth flow")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Auth flow")).toBeInTheDocument());
+
+    const header = screen.getByText("Tickets").closest("button")!;
+    // Collapse
+    fireEvent.click(header);
+    expect(screen.queryByText("Auth flow")).not.toBeInTheDocument();
+    // Expand again
+    fireEvent.click(header);
+    expect(screen.getByText("Auth flow")).toBeInTheDocument();
+  });
+
+  it("show more button appears when section has more than 5 results", async () => {
+    const tickets = Array.from({ length: 8 }, (_, i) => makeLocalResult(`VPL-${i}`, `Auth ticket ${i}`));
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(tickets));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Show \d+ more/)).toBeInTheDocument();
+    });
+  });
+
+  it("clicking show more reveals all results in the section", async () => {
+    const tickets = Array.from({ length: 7 }, (_, i) => makeLocalResult(`VPL-${i}`, `Auth ticket ${i}`));
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(tickets));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText(/Show \d+ more/)).toBeInTheDocument());
+
+    // Only first 5 visible initially
+    expect(screen.queryByText("Auth ticket 5")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/Show \d+ more/));
+
+    // All 7 now visible
+    await waitFor(() => {
+      expect(screen.getByText("Auth ticket 5")).toBeInTheDocument();
+      expect(screen.getByText("Auth ticket 6")).toBeInTheDocument();
+    });
+  });
+
+  it("navigates to ticket page and calls onClose when a local result is clicked", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-3", "Login page redesign")],
+    ));
 
     render(
       <SearchModal open={true} initialQuery="login" onClose={onClose} onSelectTicket={onSelectTicket} />,
@@ -111,13 +244,47 @@ describe("SearchModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("navigates to /chat/{id} when a conversation result is clicked", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [],
+      [makeConversationResult("conv-123", "Auth investigation")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Auth investigation")).toBeInTheDocument());
+
+    const resultRow = document.querySelector("[data-result-row] a")!;
+    fireEvent.click(resultRow);
+    expect(mockPush).toHaveBeenCalledWith("/chat/conv-123");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("navigates to /tickets/{ticketKey} when a comment result is clicked", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [],
+      [],
+      [makeCommentResult("cm-99", "VPL-55", "Auth logic needs review")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Auth logic needs review")).toBeInTheDocument());
+
+    const resultRow = document.querySelector("[data-result-row] a")!;
+    fireEvent.click(resultRow);
+    expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-55");
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it("cmd+click opens in new tab and keeps modal open", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        results: [makeLocalResult("VPL-4", "Settings page")],
-      }),
-    });
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-4", "Settings page")],
+    ));
 
     const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
 
@@ -156,55 +323,96 @@ describe("SearchModal", () => {
   });
 
   it("shows empty state when no results are returned", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ results: [] }),
-    });
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse());
 
     render(
       <SearchModal open={true} initialQuery="xyznotfound" onClose={onClose} onSelectTicket={onSelectTicket} />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/No tickets matched/)).toBeInTheDocument();
+      expect(screen.getByText(/No results matched/)).toBeInTheDocument();
     });
   });
 
   it("keyboard navigation: Enter selects result, Escape closes modal", async () => {
-    // Use same setup as the passing "shows results" test (mockResolvedValueOnce with open=true from start)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        results: [
-          makeLocalResult("VPL-10", "Enter key nav test"),
-          makeLocalResult("VPL-11", "Second entry nav"),
-        ],
-      }),
-    });
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-10", "Enter key nav test"), makeLocalResult("VPL-11", "Second entry nav")],
+    ));
 
     render(
       <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
     );
 
-    // Wait for results to appear (same as the passing test)
     await waitFor(() => {
       expect(screen.getAllByText("Enter key nav test").length).toBeGreaterThanOrEqual(1);
     });
 
-    // Find the modal card - it has the onKeyDown handler
     const footer = screen.getByText("navigate");
     const modalCard = footer.closest(".overflow-hidden")!;
 
-    // First navigate down to select the first result (activeIdx starts at -1)
+    // Navigate down to select the first result
     fireEvent.keyDown(modalCard, { key: "ArrowDown" });
     await act(async () => {});
 
-    // Press Enter → should select first active result (VPL-10)
     fireEvent.keyDown(modalCard, { key: "Enter" });
     await act(async () => {});
 
     expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-10");
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("keyboard navigation moves through grouped rows across sections", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [makeLocalResult("VPL-1", "Ticket result")],
+      [makeConversationResult("c-1", "Conversation result")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="result" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Ticket result")).toBeInTheDocument();
+      expect(screen.getByText("Conversation result")).toBeInTheDocument();
+    });
+
+    const footer = screen.getByText("navigate");
+    const modalCard = footer.closest(".overflow-hidden")!;
+
+    // Arrow down twice: first to ticket (idx 0), then to conversation (idx 1)
+    fireEvent.keyDown(modalCard, { key: "ArrowDown" });
+    await act(async () => {});
+    fireEvent.keyDown(modalCard, { key: "ArrowDown" });
+    await act(async () => {});
+
+    // Press Enter — should navigate to conversation
+    fireEvent.keyDown(modalCard, { key: "Enter" });
+    await act(async () => {});
+
+    expect(mockPush).toHaveBeenCalledWith("/chat/c-1");
+  });
+
+  it("preview pane only activates for ticket results, not conversations", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse(
+      [],
+      [makeConversationResult("c-1", "Auth chat")],
+    ));
+
+    render(
+      <SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Auth chat")).toBeInTheDocument());
+
+    const footer = screen.getByText("navigate");
+    const modalCard = footer.closest(".overflow-hidden")!;
+
+    // Navigate to the conversation result
+    fireEvent.keyDown(modalCard, { key: "ArrowDown" });
+    await act(async () => {});
+
+    // The right-arrow shortcut hint should NOT appear (preview only for tickets)
+    expect(screen.queryByText("preview")).not.toBeInTheDocument();
   });
 
   describe("filter panel", () => {
@@ -219,7 +427,7 @@ describe("SearchModal", () => {
         if (url.includes("filter-options")) {
           return Promise.resolve({ ok: true, json: async () => filterOptionsResponse });
         }
-        return Promise.resolve({ ok: true, json: async () => ({ results: [] }) });
+        return Promise.resolve(makeGroupedResponse());
       });
     }
 
@@ -254,7 +462,6 @@ describe("SearchModal", () => {
 
     it("re-runs search with dateRange param when a date range is selected", async () => {
       setupFetchWithFilterOptions();
-      // initialQuery so the search fires (requires >=2 chars)
       render(<SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />);
       fireEvent.click(screen.getByLabelText("Toggle filters"));
       await waitFor(() => expect(screen.getByText("Last 7 days")).toBeInTheDocument());
