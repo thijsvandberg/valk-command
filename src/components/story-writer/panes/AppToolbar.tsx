@@ -94,12 +94,19 @@ export function AppToolbar() {
                     )}
                   </div>
 
+                  {/* Left actions — rendered after the label */}
+                  {toolbar.actions && (
+                    <div className="flex items-center gap-1">
+                      {toolbar.actions}
+                    </div>
+                  )}
+
                   {/* Spacer */}
                   <div className="flex-1" />
 
-                  {/* App-specific actions + close button */}
+                  {/* Right actions + close button */}
                   <div className="flex items-center gap-1">
-                    {toolbar.actions}
+                    {toolbar.rightActions}
                     <button
                       type="button"
                       onClick={() => pane.closeApp(activeApp)}

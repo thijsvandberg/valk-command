@@ -105,42 +105,40 @@ export function EditorApp() {
     registerToolbar("editor", {
       label: inSplitMode ? "Source" : "Editor",
       contextLabel: inSplitMode ? writer.ticketKey : undefined,
-      actions: (
-        <div className="flex items-center gap-1">
+      actions: inSplitMode ? (
+        activeViewMode === "editor" ? (
           <Button
             variant="ghost"
             size="sm"
-            icon={<Type size={11} strokeWidth={1.5} />}
-            onClick={() => setToolbarVisible((v) => !v)}
-            title={toolbarVisible ? "Hide formatting toolbar" : "Show formatting toolbar"}
-            className={`border-0 bg-transparent ${toolbarVisible ? "text-[var(--color-brand-400)]" : "text-white/35 hover:text-white/55 hover:bg-white/[0.04]"}`}
-          />
-          {inSplitMode && (
-            activeViewMode === "editor" ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<GitCompare size={11} strokeWidth={1.5} />}
-                onClick={() => setViewMode("diff")}
-                title="Show diff"
-                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-              >
-                Diff
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<Eye size={11} strokeWidth={1.5} />}
-                onClick={() => setViewMode("editor")}
-                title="Show editor"
-                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-              >
-                Editor
-              </Button>
-            )
-          )}
-        </div>
+            icon={<GitCompare size={11} strokeWidth={1.5} />}
+            onClick={() => setViewMode("diff")}
+            title="Show diff"
+            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+          >
+            Diff
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Eye size={11} strokeWidth={1.5} />}
+            onClick={() => setViewMode("editor")}
+            title="Show editor"
+            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+          >
+            Editor
+          </Button>
+        )
+      ) : undefined,
+      rightActions: (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Type size={11} strokeWidth={1.5} />}
+          onClick={() => setToolbarVisible((v) => !v)}
+          title={toolbarVisible ? "Hide formatting toolbar" : "Show formatting toolbar"}
+          className={`border-0 bg-transparent ${toolbarVisible ? "text-[var(--color-brand-400)]" : "text-white/35 hover:text-white/55 hover:bg-white/[0.04]"}`}
+        />
       ),
     });
     return () => unregisterToolbar("editor");

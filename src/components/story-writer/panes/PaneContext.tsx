@@ -16,7 +16,10 @@ export type PaneAppId =
 export interface ToolbarSlot {
   label: string;
   contextLabel?: string;
+  /** Rendered immediately after the label (left side) */
   actions?: ReactNode;
+  /** Rendered immediately left of the close button (right side) */
+  rightActions?: ReactNode;
 }
 
 export interface DraftPreviewContent {
