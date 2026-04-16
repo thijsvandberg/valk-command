@@ -382,6 +382,7 @@ export function GroupedResultSection({
       <button
         type="button"
         onClick={onToggle}
+        aria-label={`Toggle ${label} section`}
         className="flex w-full items-center gap-2 px-5 py-2 cursor-pointer focus-visible:outline-none"
         style={{
           backgroundColor: "rgba(255,255,255,0.025)",

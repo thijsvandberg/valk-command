@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, PanelRight, PanelRightClose, ListFilter } from "lucide-react";
+import { Search, X, PanelRight, PanelRightClose, ListFilter, Tag, MessageSquare, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
@@ -89,6 +89,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   // Per-section "show all" state (expand beyond SECTION_LIMIT)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  // Active section filters — empty means all sections shown
+  const [activeSectionFilters, setActiveSectionFilters] = useState<Set<string>>(new Set());
   const filterOptionsFetchedRef = useRef(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,6 +145,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       setFilters(EMPTY_FILTERS);
       setCollapsedSections(new Set());
       setExpandedSections(new Set());
+      setActiveSectionFilters(new Set());
     }
   }, [open, initialQuery]);
 
@@ -186,6 +189,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         setActiveIdx(-1);
         // Reset section expansion when results change
         setExpandedSections(new Set());
+        setActiveSectionFilters(new Set());
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -269,7 +273,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     }
   }, [groupedResults.tickets, router, onClose]);
 
-  // Build a flat array of all visible rows across all non-collapsed sections, respecting limits
+  // Build a flat array of all visible rows across all non-collapsed/filtered sections, respecting limits
   const visibleRows = useMemo<VisibleRow[]>(() => {
     if (mode !== "local") return [];
 
@@ -279,7 +283,10 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       groupKey: "tickets" | "conversations" | "comments",
       items: T[],
     ) => {
-      if (collapsedSections.has(groupKey) || items.length === 0) return;
+      if (items.length === 0) return;
+      // Skip section if a filter is active and this section is not selected
+      if (activeSectionFilters.size > 0 && !activeSectionFilters.has(groupKey)) return;
+      if (collapsedSections.has(groupKey)) return;
       const defaultLimit = groupKey === "tickets" ? TICKET_SECTION_LIMIT : SECTION_LIMIT;
       const limit = expandedSections.has(groupKey) ? items.length : defaultLimit;
       for (const item of items.slice(0, limit)) {
@@ -292,7 +299,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     addGroup("comments", groupedResults.comments);
 
     return rows;
-  }, [mode, groupedResults, collapsedSections, expandedSections]);
+  }, [mode, groupedResults, collapsedSections, expandedSections, activeSectionFilters]);
 
   const totalGroupedCount = groupedResults.tickets.length + groupedResults.conversations.length + groupedResults.comments.length;
 
@@ -448,6 +455,18 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     setExpandedSections((prev) => new Set(prev).add(key));
   };
 
+  const toggleSectionFilter = (key: string) => {
+    setActiveSectionFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const sectionVisible = (key: string) =>
+    activeSectionFilters.size === 0 || activeSectionFilters.has(key);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]"
@@ -593,6 +612,48 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           </button>
         )}
 
+        {/* Section filter chips — local mode, visible whenever results exist */}
+        {mode === "local" && totalGroupedCount > 0 && (
+          <div className="flex items-center gap-2 border-b border-white/[0.05] px-5 py-2.5">
+            {([
+              { key: "tickets", label: "Tickets", icon: <Tag className="h-3 w-3" strokeWidth={1.5} />, count: groupedResults.tickets.length },
+              { key: "conversations", label: "Conversations", icon: <MessageSquare className="h-3 w-3" strokeWidth={1.5} />, count: groupedResults.conversations.length },
+              { key: "comments", label: "Comments", icon: <MessageCircle className="h-3 w-3" strokeWidth={1.5} />, count: groupedResults.comments.length },
+            ] as const).filter((s) => s.count > 0).map((s) => {
+              const active = activeSectionFilters.has(s.key);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => toggleSectionFilter(s.key)}
+                  aria-label={`Filter by ${s.label}`}
+                  aria-pressed={active}
+                  className="flex min-w-[64px] flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                  style={{
+                    backgroundColor: active ? "rgba(74, 170, 96, 0.12)" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${active ? "rgba(74, 170, 96, 0.35)" : "rgba(255,255,255,0.07)"}`,
+                    transition: "background-color 120ms, border-color 120ms",
+                  }}
+                >
+                  <span
+                    className="text-[13px] font-semibold leading-none tabular-nums"
+                    style={{ color: active ? "var(--color-brand-400)" : "rgba(255,255,255,0.6)" }}
+                  >
+                    {s.count}
+                  </span>
+                  <span
+                    className="flex items-center gap-1 text-[10px] font-medium leading-none"
+                    style={{ color: active ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}
+                  >
+                    {s.icon}
+                    {s.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Filter panel — only in local mode, hidden by default */}
         {mode === "local" && showFilters && (
           <SearchFilterPanel
@@ -625,7 +686,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             {!showLocalSkeleton && mode === "local" && totalGroupedCount > 0 && (
               <div>
                 {/* Tickets section */}
-                {groupedResults.tickets.length > 0 && (
+                {groupedResults.tickets.length > 0 && sectionVisible("tickets") && (
                   <GroupedResultSection
                     label="Tickets"
                     count={groupedResults.tickets.length}
@@ -665,7 +726,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 )}
 
                 {/* Conversations section */}
-                {groupedResults.conversations.length > 0 && (
+                {groupedResults.conversations.length > 0 && sectionVisible("conversations") && (
                   <GroupedResultSection
                     label="Conversations"
                     count={groupedResults.conversations.length}
@@ -702,7 +763,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 )}
 
                 {/* Comments section */}
-                {groupedResults.comments.length > 0 && (
+                {groupedResults.comments.length > 0 && sectionVisible("comments") && (
                   <GroupedResultSection
                     label="Comments"
                     count={groupedResults.comments.length}

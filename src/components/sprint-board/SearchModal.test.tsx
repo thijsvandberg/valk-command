@@ -111,9 +111,10 @@ describe("SearchModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Tickets")).toBeInTheDocument();
-      expect(screen.getByText("Conversations")).toBeInTheDocument();
-      expect(screen.getByText("Comments")).toBeInTheDocument();
+      // Section filter chips and section headers both contain the label text
+      expect(screen.getByLabelText("Toggle Tickets section")).toBeInTheDocument();
+      expect(screen.getByLabelText("Toggle Conversations section")).toBeInTheDocument();
+      expect(screen.getByLabelText("Toggle Comments section")).toBeInTheDocument();
     });
   });
 
@@ -128,8 +129,8 @@ describe("SearchModal", () => {
     );
 
     await waitFor(() => {
-      // Count badge "2" appears next to Tickets header
-      const ticketsHeader = screen.getByText("Tickets").closest("button")!;
+      // Count badge "2" appears in the section header
+      const ticketsHeader = screen.getByLabelText("Toggle Tickets section");
       expect(ticketsHeader).toBeTruthy();
       expect(ticketsHeader.textContent).toContain("2");
     });
@@ -146,10 +147,10 @@ describe("SearchModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Tickets")).toBeInTheDocument();
+      expect(screen.getByLabelText("Toggle Tickets section")).toBeInTheDocument();
     });
-    expect(screen.queryByText("Conversations")).not.toBeInTheDocument();
-    expect(screen.queryByText("Comments")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Toggle Conversations section")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Toggle Comments section")).not.toBeInTheDocument();
   });
 
   it("collapses a section when its header is clicked", async () => {
@@ -163,8 +164,8 @@ describe("SearchModal", () => {
 
     await waitFor(() => expect(screen.getByText("Auth flow")).toBeInTheDocument());
 
-    // Click the Tickets header to collapse
-    fireEvent.click(screen.getByText("Tickets").closest("button")!);
+    // Click the Tickets section header to collapse
+    fireEvent.click(screen.getByLabelText("Toggle Tickets section"));
 
     expect(screen.queryByText("Auth flow")).not.toBeInTheDocument();
   });
@@ -180,7 +181,7 @@ describe("SearchModal", () => {
 
     await waitFor(() => expect(screen.getByText("Auth flow")).toBeInTheDocument());
 
-    const header = screen.getByText("Tickets").closest("button")!;
+    const header = screen.getByLabelText("Toggle Tickets section");
     // Collapse
     fireEvent.click(header);
     expect(screen.queryByText("Auth flow")).not.toBeInTheDocument();
