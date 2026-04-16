@@ -197,6 +197,86 @@ export function HighlightedText({ text, matches, fieldName }: { text: string; ma
   return <span>{parts}</span>;
 }
 
+// Fields that indicate the match was in a body content area (not the primary title shown in the row)
+const BODY_FIELDS = ["description", "acceptanceCriteria", "localEditDescription", "notes"];
+
+// Field labels displayed in the snippet prefix
+const BODY_FIELD_LABELS: Record<string, string> = {
+  description: "Desc",
+  acceptanceCriteria: "AC",
+  localEditDescription: "Local",
+  notes: "Notes",
+};
+
+// Extracts a short window of text around the first Fuse match for a body field and renders it with inline highlights.
+// Uses match.value (provided by Fuse when includeMatches:true) so no need to pass field values separately.
+export function MatchSnippet({ matches }: { matches?: readonly FuseResultMatch[] }) {
+  if (!matches) return null;
+
+  for (const fieldName of BODY_FIELDS) {
+    const match = matches.find((m) => m.key === fieldName && m.indices && m.indices.length > 0 && m.value);
+    if (!match || !match.value) continue;
+
+    const value = match.value;
+    const indices = [...match.indices].sort((a, b) => a[0] - b[0]);
+
+    // Build a ~120-char window around the first match
+    const WINDOW = 120;
+    const BEFORE = 40;
+    const [firstStart] = indices[0];
+    const windowStart = Math.max(0, firstStart - BEFORE);
+    const windowEnd = Math.min(value.length, windowStart + WINDOW);
+    const snippet = value.slice(windowStart, windowEnd);
+
+    // Re-map match indices relative to the window start
+    const parts: React.ReactNode[] = [];
+    let cursor = 0;
+
+    for (const [start, end] of indices) {
+      const relStart = start - windowStart;
+      const relEnd = end - windowStart;
+      if (relEnd <= 0 || relStart >= snippet.length) continue;
+
+      const clampedStart = Math.max(0, relStart);
+      const clampedEnd = Math.min(snippet.length, relEnd + 1);
+
+      if (clampedStart > cursor) {
+        parts.push(<span key={cursor}>{snippet.slice(cursor, clampedStart)}</span>);
+      }
+      parts.push(
+        <mark
+          key={start}
+          className="rounded-[2px] px-[1px]"
+          style={{ backgroundColor: "rgba(74, 170, 96, 0.18)", color: "#7ac48a", textDecoration: "none" }}
+        >
+          {snippet.slice(clampedStart, clampedEnd)}
+        </mark>
+      );
+      cursor = clampedEnd;
+    }
+    if (cursor < snippet.length) parts.push(<span key={cursor}>{snippet.slice(cursor)}</span>);
+
+    const label = BODY_FIELD_LABELS[fieldName] ?? fieldName;
+
+    return (
+      <span className="block truncate text-[11px] leading-snug" style={{ color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
+        <span className="mr-1 uppercase tracking-wide text-[9px]" style={{ color: "rgba(255,255,255,0.2)" }}>{label}</span>
+        {windowStart > 0 && <span style={{ color: "rgba(255,255,255,0.2)" }}>…</span>}
+        {parts}
+        {windowEnd < value.length && <span style={{ color: "rgba(255,255,255,0.2)" }}>…</span>}
+      </span>
+    );
+  }
+
+  return null;
+}
+
+// Returns true when the best match for a result is in a non-title body field
+function hasBodyFieldMatch(matches?: readonly FuseResultMatch[]): boolean {
+  if (!matches) return false;
+  return matches.some((m) => m.key && BODY_FIELDS.includes(m.key) && m.indices && m.indices.length > 0);
+}
+
 export function SkeletonRow({ idx }: { idx: number }) {
   const widths = ["w-48", "w-56", "w-40", "w-52", "w-44"];
   return (
@@ -247,8 +327,9 @@ export function LocalResultRow({
       {!active && (
         <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
       )}
-      <span className="min-w-0 flex-1 truncate text-[14px] text-white/75">
+      <span className="min-w-0 flex-1 overflow-hidden text-[14px] text-white/75">
         <HighlightedText text={result.summary} matches={result.matches} fieldName="summary" />
+        {hasBodyFieldMatch(result.matches) && <MatchSnippet matches={result.matches} />}
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {(showKey || displaySprintName) && (
@@ -336,19 +417,34 @@ export function JiraResultRow({
   );
 }
 
-export function EmptyState({ query, mode }: { query: string; mode: SearchMode }) {
+export function EmptyState({ query, mode, onSwitchToJira }: { query: string; mode: SearchMode; onSwitchToJira?: () => void }) {
+  const hasQuery = query.length >= 2;
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.04)" }}>
         <Search className="h-4 w-4 text-white/20" strokeWidth={1.5} />
       </div>
       <p className="text-sm text-white/30">
-        {query.length < 2
+        {!hasQuery
           ? "Type at least 2 characters to search"
           : mode === "local" ? `No results matched "${query}"` : `No Jira results for "${query}"`}
       </p>
-      {query.length >= 2 && mode === "local" && (
-        <p className="text-xs text-white/20">Try switching to Jira mode for live results</p>
+      {hasQuery && mode === "local" && onSwitchToJira && (
+        <button
+          type="button"
+          onClick={onSwitchToJira}
+          className="rounded-full px-3 py-1.5 text-[12px] font-medium cursor-pointer"
+          style={{
+            backgroundColor: "rgba(74, 170, 96, 0.1)",
+            color: "var(--color-brand-400)",
+            border: "1px solid rgba(74, 170, 96, 0.2)",
+            transition: "background-color 120ms",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(74, 170, 96, 0.18)")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(74, 170, 96, 0.1)")}
+        >
+          Search in Jira mode
+        </button>
       )}
     </div>
   );
