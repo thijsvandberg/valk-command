@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { X, BookOpen, Bug, CheckSquare, Zap, Layers } from "lucide-react";
+import { useState } from "react";
+import { X } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
+import { userColor, userInitials } from "@/lib/user-display";
 
 export interface SearchFilters {
   status: Set<string>;
@@ -32,14 +36,6 @@ export const STATUS_LABEL_MAP: Record<string, string> = {
   DEPRECATED: "Deprecated",
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  "TO DO": "#6b7280",
-  "IN PROGRESS": "#3b82f6",
-  TEST: "#f59e0b",
-  DONE: "#22c55e",
-  DEPRECATED: "#374151",
-};
-
 export const TYPE_OPTIONS = ["story", "bug", "task", "spike", "epic"];
 
 export const TYPE_LABEL_MAP: Record<string, string> = {
@@ -48,14 +44,6 @@ export const TYPE_LABEL_MAP: Record<string, string> = {
   task: "Task",
   spike: "Spike",
   epic: "Epic",
-};
-
-const TYPE_ICONS: Record<string, ReactNode> = {
-  story: <BookOpen className="h-3.5 w-3.5 shrink-0" style={{ color: "#818cf8" }} strokeWidth={1.5} />,
-  bug: <Bug className="h-3.5 w-3.5 shrink-0" style={{ color: "#f87171" }} strokeWidth={1.5} />,
-  task: <CheckSquare className="h-3.5 w-3.5 shrink-0" style={{ color: "#60a5fa" }} strokeWidth={1.5} />,
-  spike: <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: "#fbbf24" }} strokeWidth={1.5} />,
-  epic: <Layers className="h-3.5 w-3.5 shrink-0" style={{ color: "#a78bfa" }} strokeWidth={1.5} />,
 };
 
 const DATE_RANGE_OPTIONS = [
@@ -102,11 +90,36 @@ interface SearchFilterPanelProps {
 }
 
 function StatusDot({ status }: { status: string }) {
+  const color = JIRA_STATUS_COLORS[status as keyof typeof JIRA_STATUS_COLORS]?.text ?? "#94a3b8";
   return (
     <span
       className="inline-block h-2 w-2 shrink-0 rounded-full"
-      style={{ backgroundColor: STATUS_COLORS[status] ?? "#6b7280" }}
+      style={{ backgroundColor: color }}
     />
+  );
+}
+
+function PoStatusDot({ status }: { status: string }) {
+  const color = PO_STATUS_COLORS[status]?.dot ?? "#94a3b8";
+  return (
+    <span
+      className="inline-block h-2 w-2 shrink-0 rounded-full"
+      style={{ backgroundColor: color }}
+    />
+  );
+}
+
+function AssigneeAvatar({ name }: { name: string }) {
+  const initials = userInitials(name);
+  const color = userColor(name);
+  return (
+    <span
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-semibold text-white"
+      style={{ backgroundColor: color, fontSize: 9 }}
+      title={name}
+    >
+      {initials}
+    </span>
   );
 }
 
@@ -163,6 +176,12 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
         onChange={(next) => onChange({ ...filters, poStatus: next })}
         searchable
         searchPlaceholder="Search PO status..."
+        renderOption={(val) => (
+          <span className="flex items-center gap-2">
+            <PoStatusDot status={val} />
+            <span>{val}</span>
+          </span>
+        )}
         widthClass="w-52"
       />
       <FilterDropdown
@@ -173,7 +192,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
         labelMap={TYPE_LABEL_MAP}
         renderOption={(val) => (
           <span className="flex items-center gap-2">
-            {TYPE_ICONS[val]}
+            <IssueTypeIcon type={val} size={14} />
             <span>{TYPE_LABEL_MAP[val] ?? val}</span>
           </span>
         )}
@@ -196,6 +215,12 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
         onChange={(next) => onChange({ ...filters, assignee: next })}
         searchable
         searchPlaceholder="Search assignees..."
+        renderOption={(val) => (
+          <span className="flex items-center gap-2">
+            <AssigneeAvatar name={val} />
+            <span>{val}</span>
+          </span>
+        )}
         widthClass="w-56"
       />
 
