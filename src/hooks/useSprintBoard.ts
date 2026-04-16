@@ -47,10 +47,10 @@ export function useTicketDetail(ticketKey: string | null) {
   );
 
   const checkedRef = useRef<string | null>(null);
-  const { data, mutate } = swr;
+  const { mutate } = swr;
 
   useEffect(() => {
-    if (!ticketKey || !data) return;
+    if (!ticketKey) return;
     if (checkedRef.current === ticketKey) return;
     checkedRef.current = ticketKey;
 
@@ -70,7 +70,7 @@ export function useTicketDetail(ticketKey: string | null) {
       .catch(() => { /* background check, fail silently */ });
 
     return () => { cancelled = true; };
-  }, [ticketKey, data, mutate]);
+  }, [ticketKey, mutate]);
 
   return swr;
 }

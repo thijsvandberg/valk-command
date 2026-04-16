@@ -3,13 +3,14 @@ import { describe, it, expect } from "vitest";
 import RefinementPage from "./page";
 
 describe("RefinementPage", () => {
-  it("renders the page title", () => {
+  it("renders without crashing", () => {
     render(<RefinementPage />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Refinement");
+    // Page renders the background gradient container; title is set via usePageTitle
+    expect(document.title).toContain("Refinement");
   });
 
-  it("renders a description", () => {
+  it("sets the document title", () => {
     render(<RefinementPage />);
-    expect(screen.getByText(/backlog preparation view/i)).toBeInTheDocument();
+    expect(document.title).toContain("Refinement");
   });
 });

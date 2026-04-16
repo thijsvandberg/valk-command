@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketLocalEdit, storyVersion } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { ticket, ticketLocalEdit } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
@@ -64,7 +64,7 @@ export async function GET(
 
     if (!t) return null;
 
-    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows] = await Promise.all([
+    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion] = await Promise.all([
       db.query.ticketMetadata.findFirst({
         where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
       }),
@@ -81,22 +81,24 @@ export async function GET(
       db.query.ticketLink.findMany({
         where: (l, { eq: eqFn }) => eqFn(l.ticketKey, key),
       }),
+      db.query.ticket.findMany({
+        where: (row, { eq: eqFn }) => eqFn(row.epicKey, key),
+      }),
+      db.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.ticketKey, key)),
+      db.query.storyVersion.findFirst({
+        where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
+        orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
+      }),
     ]);
 
-    const epicChildRows = t.type === "epic"
-      ? await db.query.ticket.findMany({
-          where: (row, { eq: eqFn }) => eqFn(row.epicKey, key),
-        })
-      : [];
-
-    return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows };
+    return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion };
   });
 
   if (!queryData) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows } = queryData;
+  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion } = queryData;
 
   const attachments: Attachment[] = attachmentRows.map((a) => ({
     id: a.id,
@@ -123,15 +125,6 @@ export async function GET(
   let components: string[] = [];
   try { labels = t.labels ? JSON.parse(t.labels) : []; } catch { logger.warn("ticket-detail", `malformed labels JSON: ${t.labels}`); }
   try { components = t.components ? JSON.parse(t.components) : []; } catch { logger.warn("ticket-detail", `malformed components JSON: ${t.components}`); }
-
-  // Compute edit state from local edits vs latest Jira mirror
-  const [localEdits, latestVersion] = await Promise.all([
-    db.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.ticketKey, key)),
-    db.query.storyVersion.findFirst({
-      where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
-      orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
-    }),
-  ]);
 
   const editState = computeTicketEditState(localEdits, latestVersion?.contentHash ?? null);
 

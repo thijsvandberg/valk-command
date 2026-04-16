@@ -1,21 +1,9 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { BridgeMark } from "@/components/shared/BridgeMark";
 import { NotificationBell } from "@/components/NotificationBell";
-
-function getPortalTarget() {
-  return document.getElementById("view-header-portal");
-}
-function getServerTarget() {
-  return null;
-}
-function subscribe(callback: () => void) {
-  const observer = new MutationObserver(callback);
-  observer.observe(document.body, { childList: true, subtree: true });
-  return () => observer.disconnect();
-}
 
 interface ViewHeaderProps {
   icon?: ReactNode;
@@ -25,7 +13,12 @@ interface ViewHeaderProps {
 }
 
 export function ViewHeader({ icon, children, actions, className }: ViewHeaderProps) {
-  const target = useSyncExternalStore(subscribe, getPortalTarget, getServerTarget);
+  // Lazy init runs synchronously on first client render; portal target is always
+  // present in the layout HTML so this resolves without a deferred re-render.
+  const [target] = useState<HTMLElement | null>(() => {
+    if (typeof document === "undefined") return null;
+    return document.getElementById("view-header-portal");
+  });
 
   if (!target) return null;
 

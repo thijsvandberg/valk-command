@@ -48,38 +48,33 @@ export async function GET(request: Request) {
   const { result: { rows, allLocalEdits, allVersions }, durationMs } = await timedQuery(
     `GET /api/tickets${sprintId ? `?sprintId=${sprintId}` : ""}`,
     async () => {
-      const query = db
-        .select({
-          t: ticket,
-          meta: ticketMetadata,
-        })
+      const mainQuery = db
+        .select({ t: ticket, meta: ticketMetadata })
         .from(ticket)
         .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey));
 
-      const rows = sprintId
-        ? await query.where(eq(ticket.sprintName, sprintId))
-        : await query;
+      // Subquery to scope local edits and versions to the same sprint filter without
+      // waiting for the main ticket rows first.
+      const sprintKeySubquery = sprintId
+        ? db.select({ jiraKey: ticket.jiraKey }).from(ticket).where(eq(ticket.sprintName, sprintId))
+        : db.select({ jiraKey: ticket.jiraKey }).from(ticket);
 
-      const allKeys = rows.map(({ t }) => t.jiraKey);
-      const [allLocalEdits, allVersions] = await Promise.all([
-        allKeys.length > 0
-          ? db.select({
-              id: ticketLocalEdit.id,
-              ticketKey: ticketLocalEdit.ticketKey,
-              field: ticketLocalEdit.field,
-              localValue: ticketLocalEdit.localValue,
-              baseJiraVersion: ticketLocalEdit.baseJiraVersion,
-              isDraft: ticketLocalEdit.isDraft,
-              modifiedAt: ticketLocalEdit.modifiedAt,
-            }).from(ticketLocalEdit).where(inArray(ticketLocalEdit.ticketKey, allKeys))
-          : Promise.resolve([]),
-        allKeys.length > 0
-          ? db.select({
-              jiraKey: storyVersion.jiraKey,
-              contentHash: storyVersion.contentHash,
-              createdAt: storyVersion.createdAt,
-            }).from(storyVersion).where(inArray(storyVersion.jiraKey, allKeys))
-          : Promise.resolve([]),
+      const [rows, allLocalEdits, allVersions] = await Promise.all([
+        sprintId ? mainQuery.where(eq(ticket.sprintName, sprintId)) : mainQuery,
+        db.select({
+          id: ticketLocalEdit.id,
+          ticketKey: ticketLocalEdit.ticketKey,
+          field: ticketLocalEdit.field,
+          localValue: ticketLocalEdit.localValue,
+          baseJiraVersion: ticketLocalEdit.baseJiraVersion,
+          isDraft: ticketLocalEdit.isDraft,
+          modifiedAt: ticketLocalEdit.modifiedAt,
+        }).from(ticketLocalEdit).where(inArray(ticketLocalEdit.ticketKey, sprintKeySubquery)),
+        db.select({
+          jiraKey: storyVersion.jiraKey,
+          contentHash: storyVersion.contentHash,
+          createdAt: storyVersion.createdAt,
+        }).from(storyVersion).where(inArray(storyVersion.jiraKey, sprintKeySubquery)),
       ]);
 
       return { rows, allLocalEdits, allVersions };

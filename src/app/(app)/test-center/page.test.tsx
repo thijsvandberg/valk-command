@@ -3,13 +3,14 @@ import { describe, it, expect } from "vitest";
 import TestCenterPage from "./page";
 
 describe("TestCenterPage", () => {
-  it("renders the page title", () => {
+  it("renders without crashing", () => {
     render(<TestCenterPage />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Test Center");
+    // Page renders the background gradient container; title is set via usePageTitle
+    expect(document.title).toContain("Test Center");
   });
 
-  it("renders a description", () => {
+  it("sets the document title", () => {
     render(<TestCenterPage />);
-    expect(screen.getByText(/test status overview/i)).toBeInTheDocument();
+    expect(document.title).toContain("Test Center");
   });
 });
