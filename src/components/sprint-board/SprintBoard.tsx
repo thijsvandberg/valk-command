@@ -116,22 +116,22 @@ const snapToPointer: Modifier = ({ activatorEvent, draggingNodeRect, transform }
   return transform;
 };
 
-// Sprint-slot droppables only activate when the pointer is physically inside them
-// (pointerWithin). They are explicitly excluded from the closestCenter fallback so
-// they don't light up just because they happen to be geometrically close to the cursor.
+// sprint-slot and group-zone droppables only activate when the pointer is physically inside
+// them (pointerWithin). They are excluded from closestCenter so they don't activate just
+// because they are geometrically close to the cursor.
 const boardCollisionDetection: CollisionDetection = (args) => {
-  const sprintSlotContainers = args.droppableContainers.filter((c) =>
-    String(c.id).startsWith("sprint-slot:")
+  const pointerContainers = args.droppableContainers.filter((c) =>
+    String(c.id).startsWith("sprint-slot:") || String(c.id).startsWith("group-zone:")
   );
-  if (sprintSlotContainers.length > 0) {
+  if (pointerContainers.length > 0) {
     const pointerHits = pointerWithin({
       ...args,
-      droppableContainers: sprintSlotContainers,
+      droppableContainers: pointerContainers,
     });
     if (pointerHits.length > 0) return pointerHits;
   }
   const ticketContainers = args.droppableContainers.filter(
-    (c) => !String(c.id).startsWith("sprint-slot:")
+    (c) => !String(c.id).startsWith("sprint-slot:") && !String(c.id).startsWith("group-zone:")
   );
   return closestCenter({ ...args, droppableContainers: ticketContainers });
 };
@@ -409,16 +409,20 @@ export default function SprintBoard() {
   const [inflightKeys, setInflightKeys] = useState<Set<string>>(new Set());
   const [boardActiveDragId, setBoardActiveDragId] = useState<string | null>(null);
   const [boardOverId, setBoardOverId] = useState<string | null>(null);
+  // Sprint ID of the group the user is currently dragging over (for cross-group label in overlay)
+  const [boardDragTargetSprintId, setBoardDragTargetSprintId] = useState<string | null>(null);
 
-  // Jira-rank DnD is only available when sorted by rank, not in All/view mode,
-  // and within the virtualization threshold (80 tickets).
-  // poPriorityOrder is cleared automatically on a successful Jira rank sync.
+  // Jira-rank DnD:
+  // - Single sprint view: enabled when sorted by rank, within virtualization threshold.
+  // - All view: enabled when grouped by sprint + sorted by rank (cross-group = sprint move).
   const VIRTUALIZE_THRESHOLD = 80;
   const jiraRankDndEnabled = (
     f.sortField === "rank" &&
-    !isAllView &&
     !f.activeViewId &&
-    tickets.length <= VIRTUALIZE_THRESHOLD
+    (
+      (!isAllView && tickets.length <= VIRTUALIZE_THRESHOLD) ||
+      (isAllView && groupBy === "sprint")
+    )
   );
 
   const boardSensors = useSensors(
@@ -443,36 +447,50 @@ export default function SprintBoard() {
 
   const handleBoardDragStart = useCallback((event: DragStartEvent) => {
     setBoardActiveDragId(event.active.id as string);
+    setBoardDragTargetSprintId(null);
   }, []);
 
   const handleBoardDragOver = useCallback((event: DragOverEvent) => {
-    const { over } = event;
+    const { active, over } = event;
     const overId = over ? String(over.id) : null;
-    // Only track ticket-key overs for insertion line indicator (not sprint-slot droppables)
-    setBoardOverId(overId && !overId.startsWith("sprint-slot:") ? overId : null);
+    // Only track ticket-key overs for insertion line indicator (not sprint-slot/group-zone droppables)
+    setBoardOverId(
+      overId && !overId.startsWith("sprint-slot:") && !overId.startsWith("group-zone:")
+        ? overId
+        : null
+    );
+    // Track target sprint for cross-group overlay label
+    const activeSprintIdData = active.data.current?.sprintId as string | undefined;
+    let targetSprintId: string | null = null;
+    if (over && activeSprintIdData !== undefined) {
+      const overSprintId = over.data.current?.sprintId as string | undefined;
+      if (overSprintId !== undefined && overSprintId !== activeSprintIdData) {
+        targetSprintId = overSprintId;
+      }
+    }
+    setBoardDragTargetSprintId(targetSprintId);
   }, []);
 
   const handleBoardDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setBoardActiveDragId(null);
     setBoardOverId(null);
+    setBoardDragTargetSprintId(null);
     if (!over) return;
 
     const overId = String(over.id);
     const activeKey = String(active.id);
 
+    // Sprint-slot droppable (SprintDropZoneBar tiles)
     if (overId.startsWith("sprint-slot:")) {
       const targetSprintId = overId.replace("sprint-slot:", "");
       if (targetSprintId === activeSprintId) return;
 
-      // Determine which tickets to move
       const keysToMove = checkedTickets.has(activeKey)
         ? [...checkedTickets].filter((k) => tickets.some((t) => t.key === k))
         : [activeKey];
 
       const targetName = sprintNameMap[targetSprintId] ?? targetSprintId;
-
-      // Optimistic: remove from current view
       const prevData = apiTickets;
       mutateTickets(
         (current) => current?.filter((t) => !keysToMove.includes(t.key)) ?? [],
@@ -493,61 +511,137 @@ export default function SprintBoard() {
         mutateTickets(prevData, { revalidate: true });
         showToast("Failed to move to sprint. Changes reverted.");
       }
-    } else {
-      // Row reorder within sprint -- sync rank to Jira
-      if (activeKey === overId) return;
+      return;
+    }
 
-      const currentTickets = tickets;
-      const oldIndex = currentTickets.findIndex((t) => t.key === activeKey);
-      const overIndex = currentTickets.findIndex((t) => t.key === overId);
+    // Group-zone droppable (empty sprint group in grouped All view)
+    if (overId.startsWith("group-zone:")) {
+      const targetSprintId = over.data.current?.sprintId as string | undefined;
+      if (!targetSprintId || targetSprintId === (active.data.current?.sprintId as string | undefined)) return;
 
-      if (oldIndex === -1 || overIndex === -1) return;
-
-      // Determine which keys to move (multi-select support)
       const keysToMove = checkedTickets.has(activeKey)
-        ? [...checkedTickets].filter((k) => currentTickets.some((t) => t.key === k))
+        ? [...checkedTickets].filter((k) => tickets.some((t) => t.key === k))
         : [activeKey];
 
-      // Build new order: remove moved keys, insert as contiguous block at target position
-      const movedSet = new Set(keysToMove);
-      const without = currentTickets.filter((t) => !movedSet.has(t.key));
-      const anchorWithout = without.findIndex((t) => t.key === overId);
-      const insertAt = oldIndex > overIndex ? anchorWithout : anchorWithout + 1;
-      const movedTickets = keysToMove.map((k) => currentTickets.find((t) => t.key === k)!).filter(Boolean);
-      const reordered = [...without.slice(0, insertAt), ...movedTickets, ...without.slice(insertAt)];
-
-      // Optimistic update
+      const targetName = sprintNameMap[targetSprintId] ?? targetSprintId;
+      const prevData = apiTickets;
       mutateTickets(
-        (current) => {
-          if (!current) return current;
-          const map = new Map(current.map((t) => [t.key, t]));
-          return reordered.map((t, i) => ({ ...map.get(t.key)!, jiraRank: i }));
-        },
+        (current) => current?.map((t) =>
+          keysToMove.includes(t.key) ? { ...t, sprintId: targetSprintId } : t
+        ) ?? [],
         { revalidate: false },
       );
-
-      // Determine rank anchor for Jira API
-      const rankBeforeKey = oldIndex > overIndex ? overId : undefined;
-      const rankAfterKey = oldIndex <= overIndex ? overId : undefined;
+      setCheckedTickets((prev) => {
+        const next = new Set(prev);
+        keysToMove.forEach((k) => next.delete(k));
+        return next;
+      });
 
       try {
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
+        const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
+        showToast(`Moved ${label} to ${targetName}`);
+        mutateTickets();
+      } catch {
+        mutateTickets(prevData, { revalidate: true });
+        showToast("Failed to move to sprint. Changes reverted.");
+      }
+      return;
+    }
+
+    if (activeKey === overId) return;
+
+    const activeTicketSprintId = active.data.current?.sprintId as string | undefined;
+    const overTicketSprintId = over.data.current?.sprintId as string | undefined;
+
+    // Cross-group drop: ticket dropped onto a ticket in a different sprint group
+    if (isAllView && groupBy === "sprint" &&
+        activeTicketSprintId !== undefined && overTicketSprintId !== undefined &&
+        activeTicketSprintId !== overTicketSprintId) {
+
+      const targetSprintId = overTicketSprintId;
+      const keysToMove = checkedTickets.has(activeKey)
+        ? [...checkedTickets].filter((k) => tickets.some((t) => t.key === k))
+        : [activeKey];
+
+      const targetName = sprintNameMap[targetSprintId] ?? targetSprintId;
+      const prevData = apiTickets;
+      mutateTickets(
+        (current) => current?.map((t) =>
+          keysToMove.includes(t.key) ? { ...t, sprintId: targetSprintId } : t
+        ) ?? [],
+        { revalidate: false },
+      );
+      setCheckedTickets((prev) => {
+        const next = new Set(prev);
+        keysToMove.forEach((k) => next.delete(k));
+        return next;
+      });
+
+      try {
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
         await jira.rank({
           issueKeys: keysToMove,
-          rankBeforeKey,
-          rankAfterKey,
-          sprintId: activeSprintId,
+          rankBeforeKey: overId,
+          sprintId: targetSprintId,
         });
-        // Clear any local PO priority override so rank order is now authoritative
         setPoPriorityOrder(null);
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
-        showToast(`Rank updated for ${label}`);
-      } catch (err) {
+        showToast(`Moved ${label} to ${targetName}`);
         mutateTickets();
-        const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to update rank in Jira";
-        showToast(`${msg}. Reverted.`);
+      } catch {
+        mutateTickets(prevData, { revalidate: true });
+        showToast("Failed to move to sprint. Changes reverted.");
       }
+      return;
     }
-  }, [activeSprintId, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder]);
+
+    // Intra-group / same-sprint rank reorder
+    const currentTickets = tickets;
+    const oldIndex = currentTickets.findIndex((t) => t.key === activeKey);
+    const overIndex = currentTickets.findIndex((t) => t.key === overId);
+
+    if (oldIndex === -1 || overIndex === -1) return;
+
+    const keysToMove = checkedTickets.has(activeKey)
+      ? [...checkedTickets].filter((k) => currentTickets.some((t) => t.key === k))
+      : [activeKey];
+
+    const movedSet = new Set(keysToMove);
+    const without = currentTickets.filter((t) => !movedSet.has(t.key));
+    const anchorWithout = without.findIndex((t) => t.key === overId);
+    const insertAt = oldIndex > overIndex ? anchorWithout : anchorWithout + 1;
+    const movedTickets = keysToMove.map((k) => currentTickets.find((t) => t.key === k)!).filter(Boolean);
+    const reordered = [...without.slice(0, insertAt), ...movedTickets, ...without.slice(insertAt)];
+
+    mutateTickets(
+      (current) => {
+        if (!current) return current;
+        const map = new Map(current.map((t) => [t.key, t]));
+        return reordered.map((t, i) => ({ ...map.get(t.key)!, jiraRank: i }));
+      },
+      { revalidate: false },
+    );
+
+    const rankBeforeKey = oldIndex > overIndex ? overId : undefined;
+    const rankAfterKey = oldIndex <= overIndex ? overId : undefined;
+
+    try {
+      await jira.rank({
+        issueKeys: keysToMove,
+        rankBeforeKey,
+        rankAfterKey,
+        sprintId: activeSprintId,
+      });
+      setPoPriorityOrder(null);
+      const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
+      showToast(`Rank updated for ${label}`);
+    } catch (err) {
+      mutateTickets();
+      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to update rank in Jira";
+      showToast(`${msg}. Reverted.`);
+    }
+  }, [activeSprintId, isAllView, groupBy, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder]);
 
   const handleRefresh = useCallback(async () => {
     setSyncing(true);
@@ -764,24 +858,28 @@ export default function SprintBoard() {
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
             {!ticketsLoading && (
-              <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} />
+              <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} />
             )}
 
             {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
 
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {boardActiveDragTicket && (
-                <div
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
-                  style={{ opacity: 0.92 }}
-                >
-                  <IssueTypeIcon type={boardActiveDragTicket.type} />
-                  <span className="font-mono text-xs text-white/40">{boardActiveDragTicket.key}</span>
-                  <span className="max-w-48 truncate text-white/75">{boardActiveDragTicket.title}</span>
-                  {boardDraggedKeys.length > 1 && (
-                    <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-[10px] text-[var(--color-brand-300)]">
-                      +{boardDraggedKeys.length - 1}
-                    </span>
+                <div style={{ opacity: 0.92 }}>
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                    <IssueTypeIcon type={boardActiveDragTicket.type} />
+                    <span className="font-mono text-xs text-white/40">{boardActiveDragTicket.key}</span>
+                    <span className="max-w-48 truncate text-white/75">{boardActiveDragTicket.title}</span>
+                    {boardDraggedKeys.length > 1 && (
+                      <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-[10px] text-[var(--color-brand-300)]">
+                        +{boardDraggedKeys.length - 1}
+                      </span>
+                    )}
+                  </div>
+                  {boardDragTargetSprintId && (
+                    <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-[11px] text-[var(--color-brand-300)]">
+                      Move to {sprintNameMap[boardDragTargetSprintId] ?? boardDragTargetSprintId}
+                    </div>
                   )}
                 </div>
               )}
@@ -802,7 +900,7 @@ export default function SprintBoard() {
 
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
-            {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} />}
+            {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={f.visibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} />}
 
             {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
           </>

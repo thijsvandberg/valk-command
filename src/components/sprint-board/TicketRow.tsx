@@ -17,15 +17,27 @@ import { prefetchTicketDetail } from "@/lib/prefetch";
 const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
 
 // Visual-only drag affordance icon — event listeners are now on the <tr> itself (Phase 4).
-function DragHandle({ showIcon, isDragActive, stickyLeft }: {
+function DragHandle({ showIcon, isDragActive, stickyLeft, disabledTooltip }: {
   showIcon?: boolean;
   isDragActive?: boolean;
   stickyLeft?: number;
+  disabledTooltip?: string;
 }) {
   const stickyStyle = stickyLeft !== undefined ? { position: "sticky" as const, left: stickyLeft, zIndex: 2 } : undefined;
   const bgClass = stickyLeft !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : "";
-  if (!showIcon) {
+  if (!showIcon && !disabledTooltip) {
     return <td className={`w-5 py-1.5 pl-1 pr-0${bgClass}`} style={stickyStyle} />;
+  }
+  if (!showIcon && disabledTooltip) {
+    return (
+      <td
+        className={`w-5 py-1.5 pl-1 pr-0 opacity-0 group-hover/row:opacity-100 transition-opacity duration-100${bgClass}`}
+        style={stickyStyle}
+        title={disabledTooltip}
+      >
+        <GripVertical className="h-3.5 w-3.5 text-white/15 cursor-not-allowed" strokeWidth={1.5} />
+      </td>
+    );
   }
   return (
     <td
@@ -64,6 +76,8 @@ export interface TicketRowBaseProps {
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
   stickyOffsets?: Record<string, number>;
+  // When set, the grip icon renders with cursor:not-allowed + this tooltip (epic grouping case).
+  disabledDragTooltip?: string;
   "data-index"?: number;
 }
 
@@ -95,6 +109,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     dragListeners,
     dragAttributes,
     stickyOffsets,
+    disabledDragTooltip,
     "data-index": dataIndex,
   },
   ref
@@ -373,7 +388,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       {...dragListeners}
       {...dragAttributes}
     >
-      <DragHandle showIcon={!!dragListeners} isDragActive={isDragActive} stickyLeft={stickyOffsets?._drag} />
+      <DragHandle showIcon={!!dragListeners} isDragActive={isDragActive} stickyLeft={stickyOffsets?._drag} disabledTooltip={disabledDragTooltip} />
 
       {/* Checkbox — stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
@@ -412,7 +427,11 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props.ticket.key });
+  } = useSortable({
+    id: props.ticket.key,
+    // sprintId is used by SprintBoard's drag handler to detect cross-group drops in All view
+    data: { sprintId: props.ticket.sprintId },
+  });
 
   const rowStyle: React.CSSProperties = {
     // When dragging, freeze the placeholder at its original position.

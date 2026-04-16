@@ -7,7 +7,7 @@ import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ArrowUp, ArrowDown, ArrowUpDown, Sheet, ChevronDown, ChevronRight } from "lucide-react";
-import type { TicketGroup } from "@/components/sprint-board/useGroupBy";
+import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import {
   DndContext,
   closestCenter,
@@ -15,6 +15,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
@@ -79,6 +80,27 @@ function ResizeHandle({
     >
       <div className="absolute right-0 top-1 bottom-1 w-px bg-white/0 group-hover/resize:bg-white/20 transition-colors duration-100" />
     </div>
+  );
+}
+
+// Droppable zone rendered inside empty sprint groups during an active drag.
+function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; totalColSpan: number }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `group-zone:${groupKey}`,
+    data: { type: "group-zone", sprintId: groupKey },
+  });
+  return (
+    <tr ref={setNodeRef}>
+      <td colSpan={totalColSpan} className={`transition-colors duration-150 ${isOver ? "bg-[var(--color-brand-500)]/[0.04]" : ""}`}>
+        <div className={`mx-3 my-2 flex h-8 items-center justify-center rounded border border-dashed text-xs transition-colors duration-150 ${
+          isOver
+            ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-300)]"
+            : "border-white/[0.07] text-white/20"
+        }`}>
+          Drop to move to this sprint
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -169,6 +191,7 @@ export function TicketTable({
   groups,
   collapsedGroups,
   onToggleCollapse,
+  groupBy,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -207,6 +230,7 @@ export function TicketTable({
   groups?: TicketGroup[];
   collapsedGroups?: Set<string>;
   onToggleCollapse?: (groupKey: string) => void;
+  groupBy?: GroupByOption;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const DEFAULT_ORDER: ColumnId[] = useMemo(() => COLUMNS.map((c) => c.id), []);
@@ -345,7 +369,11 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
     stickyOffsets,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
+    // Show disabled tooltip when grouped by epic: drag cannot change epic assignments
+    disabledDragTooltip: !!groups?.length && !externalDnd && groupBy === "epic"
+      ? "Drag is not available when grouped by epic"
+      : undefined,
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets, groups, externalDnd, groupBy]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
@@ -520,6 +548,37 @@ export function TicketTable({
       {theadContent}
       {groups.map((group, groupIdx) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
+        const groupTicketIds = group.tickets.map((t) => t.key);
+
+        const ticketRows = !isCollapsed && group.tickets.map((ticket) => {
+          const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
+          let insertLine: "above" | "below" | undefined;
+          if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
+            insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
+          }
+          return externalDnd ? (
+            <SortableTicketRow
+              key={ticket.key}
+              {...makeRowProps(ticket, flatIdx)}
+              insertLine={insertLine}
+            />
+          ) : (
+            <TicketRow
+              key={ticket.key}
+              {...makeRowProps(ticket, flatIdx)}
+            />
+          );
+        });
+
+        const groupRows = externalDnd ? (
+          <SortableContext items={groupTicketIds} strategy={() => null}>
+            {ticketRows}
+            {!isCollapsed && group.tickets.length === 0 && (
+              <DroppableGroupZone groupKey={group.key} totalColSpan={totalColSpan} />
+            )}
+          </SortableContext>
+        ) : ticketRows;
+
         return (
           <tbody key={group.key}>
             {/* Spacer row between groups (not before the first group) */}
@@ -540,10 +599,7 @@ export function TicketTable({
               style={{ background: "rgba(255,255,255,0.025)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
-              <td
-                colSpan={totalColSpan}
-                className="py-2 pl-3 pr-4"
-              >
+              <td colSpan={totalColSpan} className="py-2 pl-3 pr-4">
                 <div className="flex items-center gap-2">
                   {isCollapsed
                     ? <ChevronRight className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
@@ -556,16 +612,7 @@ export function TicketTable({
                 </div>
               </td>
             </tr>
-            {/* Ticket rows (hidden when collapsed) — Phase 3 will add per-group SortableContext */}
-            {!isCollapsed && group.tickets.map((ticket) => {
-              const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
-              return (
-                <TicketRow
-                  key={ticket.key}
-                  {...makeRowProps(ticket, flatIdx)}
-                />
-              );
-            })}
+            {groupRows}
           </tbody>
         );
       })}

@@ -57,14 +57,14 @@ Additionally, the horizontal scroll on the sprint board overview must be fixed s
 
 ### Phase 3: Drag-and-drop within the All view (grouped)
 
-- [ ] When "Group by Sprint" is active and sort is "Jira rank", rows within each group are draggable to reorder (same Jira rank sync as BRDG-081)
-- [ ] Dragging a ticket row out of its group and dropping it onto another sprint group moves it to that sprint (calls the sprint move API from BRDG-081)
-- [ ] A drop zone appears between groups and inside empty groups during an active drag, making the target visually obvious
-- [ ] Moving to a group reorders the ticket to the position it was dropped at within that group, not just appended at the bottom
-- [ ] Optimistic update: the row visually moves to the new group immediately; reverts with a toast on API failure
-- [ ] When dragging between groups, the ghost shows the ticket key + title and the target group name below it: "Move to [sprint name]"
-- [ ] Group headers are NOT draggable; only ticket rows can be dragged
-- [ ] When "Group by Epic" is active, cross-group drag is disabled (epics cannot be changed via drag); a tooltip explains why
+- [x] When "Group by Sprint" is active and sort is "Jira rank", rows within each group are draggable to reorder (same Jira rank sync as BRDG-081)
+- [x] Dragging a ticket row out of its group and dropping it onto another sprint group moves it to that sprint (calls the sprint move API from BRDG-081)
+- [x] A drop zone appears between groups and inside empty groups during an active drag, making the target visually obvious
+- [x] Moving to a group reorders the ticket to the position it was dropped at within that group, not just appended at the bottom
+- [x] Optimistic update: the row visually moves to the new group immediately; reverts with a toast on API failure
+- [x] When dragging between groups, the ghost shows the ticket key + title and the target group name below it: "Move to [sprint name]"
+- [x] Group headers are NOT draggable; only ticket rows can be dragged
+- [x] When "Group by Epic" is active, cross-group drag is disabled (epics cannot be changed via drag); a tooltip explains why
 
 ### Phase 4: Row-level drag activation
 
