@@ -19,6 +19,8 @@ import { SelectionDecorationExtension } from "./selection-decoration";
 import { calloutMarkdownToHtml, htmlToCalloutMarkdown } from "./callout-markdown";
 import { expandEmojiShortcodes } from "@/lib/emoji-shortcodes";
 import { Toolbar } from "./Toolbar";
+import { SlashCommandExtension } from "./slash-commands/slash-command-extension";
+import { SlashCommandMenu } from "./slash-commands/SlashCommandMenu";
 
 const STORAGE_KEY = "rich-editor-mode";
 
@@ -145,6 +147,7 @@ export function RichEditor({
       CalloutExtension,
       ExpandExtension,
       SelectionDecorationExtension,
+      SlashCommandExtension,
     ],
     content: markdownToEditorHtml(value),
     editorProps: {
@@ -246,6 +249,7 @@ export function RichEditor({
 
   return (
     <div className={rootClasses}>
+      <SlashCommandMenu editor={editor} />
       {isPortaled ? createPortal(toolbarEl, portalTarget!) : toolbarEl}
 
       <div className={borderless ? "flex-1 overflow-y-auto" : ""}>
