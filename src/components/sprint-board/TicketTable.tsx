@@ -84,6 +84,9 @@ function ResizeHandle({
 const VIRTUALIZE_THRESHOLD = 80;
 const ROW_HEIGHT_ESTIMATE = 32;
 const VIRTUALIZER_OVERSCAN = 20;
+// Below this width the table scrolls horizontally rather than continuing to compress columns.
+// Chosen between 1024-1200px as a clean breakpoint for typical PO workstation widths.
+const MIN_TABLE_WIDTH = 1100;
 
 function SortIndicator({
   colId,
@@ -223,6 +226,8 @@ export function TicketTable({
   // so it is subtracted from available space rather than included in the scale calculation.
   const columnScale = useMemo(() => {
     if (!containerWidth) return 1;
+    // Clamp to MIN_TABLE_WIDTH so columns don't compress below what fits at the scroll breakpoint.
+    const effectiveWidth = Math.max(containerWidth, MIN_TABLE_WIDTH);
     const FIXED_OVERHEAD = 60; // checkbox column (w-5=20px) + select column (w-10=40px)
     const MIN_TITLE_WIDTH = 80;
     let columnSum = 0;
@@ -230,7 +235,7 @@ export function TicketTable({
       if (!visibleColumns.has(id) || id === "title") continue;
       columnSum += columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? 0;
     }
-    const available = containerWidth - FIXED_OVERHEAD - MIN_TITLE_WIDTH;
+    const available = effectiveWidth - FIXED_OVERHEAD - MIN_TITLE_WIDTH;
     if (columnSum <= available) return 1;
     return available / columnSum;
   }, [containerWidth, effectiveOrder, visibleColumns, columnWidths]);
@@ -405,7 +410,7 @@ export function TicketTable({
   );
 
   const virtualizedTable = (
-    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
+    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
       {theadContent}
       <tbody>
         {paddingTop > 0 && (
@@ -458,7 +463,7 @@ export function TicketTable({
   // When externalDnd is true, DndContext + DragOverlay are owned by SprintBoard.
   // We only render SortableContext here so ticket rows register with the parent context.
   const dndTable = externalDnd ? (
-    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
+    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
       {theadContent}
       {sortableTableBody}
     </table>
@@ -469,7 +474,7 @@ export function TicketTable({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed" }}>
+      <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
         {theadContent}
         {sortableTableBody}
       </table>
