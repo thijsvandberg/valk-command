@@ -66,6 +66,40 @@ export function hasActiveFilters(filters: SearchFilters): boolean {
   );
 }
 
+export interface SerializedSearchFilters {
+  sections: string[];
+  status: string[];
+  poStatus: string[];
+  type: string[];
+  assignee: string[];
+  sprint: string[];
+  dateRange: string | null;
+}
+
+export function serializeFilters(filters: SearchFilters): SerializedSearchFilters {
+  return {
+    sections: [...filters.sections],
+    status: [...filters.status],
+    poStatus: [...filters.poStatus],
+    type: [...filters.type],
+    assignee: [...filters.assignee],
+    sprint: [...filters.sprint],
+    dateRange: filters.dateRange,
+  };
+}
+
+export function deserializeFilters(raw: SerializedSearchFilters): SearchFilters {
+  return {
+    sections: new Set(raw.sections),
+    status: new Set(raw.status),
+    poStatus: new Set(raw.poStatus),
+    type: new Set(raw.type),
+    assignee: new Set(raw.assignee),
+    sprint: new Set(raw.sprint),
+    dateRange: raw.dateRange,
+  };
+}
+
 export function filtersToParams(filters: SearchFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.status.size > 0) params.set("status", [...filters.status].join(","));
