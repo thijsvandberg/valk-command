@@ -211,6 +211,7 @@ describe("SearchModal", () => {
     const filterOptionsResponse = {
       assignees: ["Alice", "Bob"],
       sprints: [{ id: "100", name: "Sprint 10" }],
+      poStatuses: ["Ready", "In Review"],
     };
 
     function setupFetchWithFilterOptions() {

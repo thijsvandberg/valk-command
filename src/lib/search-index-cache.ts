@@ -52,6 +52,7 @@ export interface TicketDetail {
   epicKey: string | null;
   storyPoints: number | null;
   jiraUpdatedAt: string | null;
+  poStatus: string | null;
 }
 
 interface CacheEntry {

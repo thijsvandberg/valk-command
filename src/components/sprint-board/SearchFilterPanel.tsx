@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { X, BookOpen, Bug, CheckSquare, Zap, Layers } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
 export interface SearchFilters {
   status: Set<string>;
+  poStatus: Set<string>;
   type: Set<string>;
   assignee: Set<string>;
   sprint: Set<string>;
@@ -14,6 +15,7 @@ export interface SearchFilters {
 
 export const EMPTY_FILTERS: SearchFilters = {
   status: new Set(),
+  poStatus: new Set(),
   type: new Set(),
   assignee: new Set(),
   sprint: new Set(),
@@ -30,6 +32,14 @@ export const STATUS_LABEL_MAP: Record<string, string> = {
   DEPRECATED: "Deprecated",
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  "TO DO": "#6b7280",
+  "IN PROGRESS": "#3b82f6",
+  TEST: "#f59e0b",
+  DONE: "#22c55e",
+  DEPRECATED: "#374151",
+};
+
 export const TYPE_OPTIONS = ["story", "bug", "task", "spike", "epic"];
 
 export const TYPE_LABEL_MAP: Record<string, string> = {
@@ -40,16 +50,24 @@ export const TYPE_LABEL_MAP: Record<string, string> = {
   epic: "Epic",
 };
 
+const TYPE_ICONS: Record<string, ReactNode> = {
+  story: <BookOpen className="h-3.5 w-3.5 shrink-0" style={{ color: "#818cf8" }} strokeWidth={1.5} />,
+  bug: <Bug className="h-3.5 w-3.5 shrink-0" style={{ color: "#f87171" }} strokeWidth={1.5} />,
+  task: <CheckSquare className="h-3.5 w-3.5 shrink-0" style={{ color: "#60a5fa" }} strokeWidth={1.5} />,
+  spike: <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: "#fbbf24" }} strokeWidth={1.5} />,
+  epic: <Layers className="h-3.5 w-3.5 shrink-0" style={{ color: "#a78bfa" }} strokeWidth={1.5} />,
+};
+
 const DATE_RANGE_OPTIONS = [
   { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "this-sprint", label: "This sprint" },
-  { value: "custom", label: "Custom" },
+  { value: "28d", label: "Last 28 days" },
+  { value: "custom", label: "Custom range" },
 ];
 
 export function hasActiveFilters(filters: SearchFilters): boolean {
   return (
     filters.status.size > 0 ||
+    filters.poStatus.size > 0 ||
     filters.type.size > 0 ||
     filters.assignee.size > 0 ||
     filters.sprint.size > 0 ||
@@ -60,6 +78,7 @@ export function hasActiveFilters(filters: SearchFilters): boolean {
 export function filtersToParams(filters: SearchFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.status.size > 0) params.set("status", [...filters.status].join(","));
+  if (filters.poStatus.size > 0) params.set("poStatus", [...filters.poStatus].join(","));
   if (filters.type.size > 0) params.set("type", [...filters.type].join(","));
   if (filters.assignee.size > 0) params.set("assignee", [...filters.assignee].join(","));
   if (filters.sprint.size > 0) params.set("sprint", [...filters.sprint].join(","));
@@ -73,12 +92,22 @@ export function filtersToParams(filters: SearchFilters): URLSearchParams {
 export interface FilterOptionsData {
   assignees: string[];
   sprints: { id: string; name: string }[];
+  poStatuses: string[];
 }
 
 interface SearchFilterPanelProps {
   filters: SearchFilters;
   onChange: (next: SearchFilters) => void;
   filterOptions: FilterOptionsData | null;
+}
+
+function StatusDot({ status }: { status: string }) {
+  return (
+    <span
+      className="inline-block h-2 w-2 shrink-0 rounded-full"
+      style={{ backgroundColor: STATUS_COLORS[status] ?? "#6b7280" }}
+    />
+  );
 }
 
 export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFilterPanelProps) {
@@ -110,7 +139,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-2.5"
+      className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-2.5 overflow-x-auto"
       style={{ backgroundColor: "rgba(255,255,255,0.015)" }}
     >
       <FilterDropdown
@@ -119,7 +148,22 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
         selected={filters.status}
         onChange={(next) => onChange({ ...filters, status: next })}
         labelMap={STATUS_LABEL_MAP}
+        renderOption={(val) => (
+          <span className="flex items-center gap-2">
+            <StatusDot status={val} />
+            <span>{STATUS_LABEL_MAP[val] ?? val}</span>
+          </span>
+        )}
         widthClass="w-48"
+      />
+      <FilterDropdown
+        label="PO Status"
+        options={filterOptions?.poStatuses ?? []}
+        selected={filters.poStatus}
+        onChange={(next) => onChange({ ...filters, poStatus: next })}
+        searchable
+        searchPlaceholder="Search PO status..."
+        widthClass="w-52"
       />
       <FilterDropdown
         label="Type"
@@ -127,6 +171,12 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
         selected={filters.type}
         onChange={(next) => onChange({ ...filters, type: next })}
         labelMap={TYPE_LABEL_MAP}
+        renderOption={(val) => (
+          <span className="flex items-center gap-2">
+            {TYPE_ICONS[val]}
+            <span>{TYPE_LABEL_MAP[val] ?? val}</span>
+          </span>
+        )}
         widthClass="w-44"
       />
       <FilterDropdown
@@ -149,14 +199,17 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
         widthClass="w-56"
       />
 
+      {/* Visual separator between dropdown group and date group */}
+      <div className="h-5 w-px shrink-0 bg-white/[0.10]" />
+
       {/* Date range single-select pills */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 shrink-0">
         {DATE_RANGE_OPTIONS.map((opt) => (
           <button
             key={opt.value}
             type="button"
             onClick={() => setDateRange(selectedDateOption === opt.value ? null : opt.value)}
-            className="rounded-md border px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+            className="rounded-md border px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap"
             style={{
               backgroundColor:
                 selectedDateOption === opt.value
@@ -176,9 +229,9 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
         ))}
       </div>
 
-      {/* Custom date inputs, shown when "custom" is selected */}
+      {/* Custom date inputs, shown when "custom range" is selected */}
       {selectedDateOption === "custom" && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <input
             type="date"
             value={customFrom}
@@ -212,7 +265,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
             setCustomTo("");
             onChange(EMPTY_FILTERS);
           }}
-          className="ml-auto flex items-center gap-1 text-[11px] text-white/30 cursor-pointer hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+          className="ml-auto flex items-center gap-1 text-[11px] text-white/30 cursor-pointer hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] shrink-0"
           style={{ transition: "color 100ms" }}
         >
           <X className="h-3 w-3" strokeWidth={2} />

@@ -11,6 +11,7 @@ export interface LocalSearchResult {
   key: string;
   summary: string;
   status: string;
+  poStatus: string | null;
   issueType: string | null;
   assignee: string | null;
   sprintId: string | null;
@@ -111,17 +112,21 @@ async function buildIndex() {
   });
 
   const ticketDetails = new Map<string, TicketDetail>(
-    tickets.map((t) => [
-      t.jiraKey,
-      {
-        jiraKey: t.jiraKey,
-        type: t.type ?? null,
-        epic: t.epic ?? null,
-        epicKey: t.epicKey ?? null,
-        storyPoints: t.storyPoints ?? null,
-        jiraUpdatedAt: t.jiraUpdatedAt ?? null,
-      },
-    ])
+    tickets.map((t) => {
+      const meta = metaByKey.get(t.jiraKey);
+      return [
+        t.jiraKey,
+        {
+          jiraKey: t.jiraKey,
+          type: t.type ?? null,
+          epic: t.epic ?? null,
+          epicKey: t.epicKey ?? null,
+          storyPoints: t.storyPoints ?? null,
+          jiraUpdatedAt: t.jiraUpdatedAt ?? null,
+          poStatus: meta?.poStatus ?? null,
+        },
+      ];
+    })
   );
 
   const jiraBaseUrl = env.JIRA_BASE_URL;
@@ -134,12 +139,13 @@ export async function GET(request: Request) {
 
   // Parse filter params
   const statusFilter = (searchParams.get("status") ?? "").split(",").map((s) => s.toUpperCase()).filter(Boolean);
+  const poStatusFilter = (searchParams.get("poStatus") ?? "").split(",").filter(Boolean);
   const typeFilter = (searchParams.get("type") ?? "").split(",").map((s) => s.toLowerCase()).filter(Boolean);
   const assigneeFilter = (searchParams.get("assignee") ?? "").split(",").filter(Boolean);
   const sprintFilter = (searchParams.get("sprint") ?? "").split(",").filter(Boolean);
   const dateRange = searchParams.get("dateRange");
 
-  const hasFilters = statusFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
+  const hasFilters = statusFilter.length > 0 || poStatusFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
 
   if (q.trim().length < 2) {
     return NextResponse.json({ results: [] });
@@ -207,6 +213,7 @@ export async function GET(request: Request) {
         key: r.item.key,
         summary: r.item.localEditTitle || r.item.summary,
         status: r.item.status,
+        poStatus: detail?.poStatus ?? null,
         issueType: detail?.type ?? null,
         assignee: r.item.assignee,
         sprintId: r.item.sprintName ?? null,
@@ -230,26 +237,22 @@ export async function GET(request: Request) {
     const results: LocalSearchResult[] = mapped
       .filter((r) => {
         if (statusFilter.length > 0 && !statusFilter.includes(r.status.toUpperCase())) return false;
+        if (poStatusFilter.length > 0 && !(r.poStatus && poStatusFilter.some((p) => p.toLowerCase() === r.poStatus!.toLowerCase()))) return false;
         if (typeFilter.length > 0 && !(r.issueType && typeFilter.includes(r.issueType.toLowerCase()))) return false;
         if (assigneeFilter.length > 0 && !(r.assignee && assigneeFilter.some((a) => a.toLowerCase() === r.assignee!.toLowerCase()))) return false;
         if (sprintFilter.length > 0 && !(r.sprintId && sprintFilter.includes(r.sprintId))) return false;
 
         if (dateRange) {
-          if (dateRange === "this-sprint") {
-            // Treat as sprint membership: must belong to an active sprint
-            if (!r.sprintId || !activeSprintIds.has(r.sprintId)) return false;
-          } else {
-            const updatedMs = r.updatedAt ? new Date(r.updatedAt).getTime() : null;
-            if (dateRange === "7d") {
-              if (!updatedMs || now - updatedMs > 7 * 86400000) return false;
-            } else if (dateRange === "30d") {
-              if (!updatedMs || now - updatedMs > 30 * 86400000) return false;
-            } else if (dateRange.startsWith("custom:")) {
-              const range = dateRange.slice(7);
-              const [from, to] = range.split("..");
-              if (from && updatedMs && updatedMs < new Date(from).getTime()) return false;
-              if (to && updatedMs && updatedMs > new Date(to).getTime() + 86400000) return false;
-            }
+          const updatedMs = r.updatedAt ? new Date(r.updatedAt).getTime() : null;
+          if (dateRange === "7d") {
+            if (!updatedMs || now - updatedMs > 7 * 86400000) return false;
+          } else if (dateRange === "28d") {
+            if (!updatedMs || now - updatedMs > 28 * 86400000) return false;
+          } else if (dateRange.startsWith("custom:")) {
+            const range = dateRange.slice(7);
+            const [from, to] = range.split("..");
+            if (from && updatedMs && updatedMs < new Date(from).getTime()) return false;
+            if (to && updatedMs && updatedMs > new Date(to).getTime() + 86400000) return false;
           }
         }
 

@@ -1,21 +1,27 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, appSetting, sprintNameCache } from "@/db/schema";
+import { ticket, ticketMetadata, appSetting, sprintNameCache } from "@/db/schema";
 import { isNotNull, ne, and, eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 export interface FilterOptionsResponse {
   assignees: string[];
   sprints: { id: string; name: string }[];
+  poStatuses: string[];
 }
 
 export async function GET() {
   try {
-    const [assigneeRows, sprintSetting, sprintCacheRows] = await Promise.all([
+    const [assigneeRows, poStatusRows, sprintSetting, sprintCacheRows] = await Promise.all([
       db
         .selectDistinct({ assignee: ticket.assignee })
         .from(ticket)
         .where(and(isNotNull(ticket.assignee), ne(ticket.assignee, "")))
+        .all(),
+      db
+        .selectDistinct({ poStatus: ticketMetadata.poStatus })
+        .from(ticketMetadata)
+        .where(and(isNotNull(ticketMetadata.poStatus), ne(ticketMetadata.poStatus, "")))
         .all(),
       db.select().from(appSetting).where(eq(appSetting.key, "jira_sprints")).get(),
       db.select().from(sprintNameCache).all(),
@@ -24,6 +30,11 @@ export async function GET() {
     const assignees = assigneeRows
       .map((r) => r.assignee!)
       .filter((a) => a.trim() !== "")
+      .sort((a, b) => a.localeCompare(b));
+
+    const poStatuses = poStatusRows
+      .map((r) => r.poStatus!)
+      .filter((s) => s.trim() !== "")
       .sort((a, b) => a.localeCompare(b));
 
     let sprints: { id: string; name: string }[] = [];
@@ -45,7 +56,7 @@ export async function GET() {
         .sort((a, b) => parseInt(b.id) - parseInt(a.id));
     }
 
-    return NextResponse.json({ assignees, sprints } satisfies FilterOptionsResponse);
+    return NextResponse.json({ assignees, sprints, poStatuses } satisfies FilterOptionsResponse);
   } catch (err) {
     logger.error("search-filter-options", "GET failed", err);
     return NextResponse.json({ error: "Failed to load filter options" }, { status: 500 });
