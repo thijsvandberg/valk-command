@@ -309,14 +309,14 @@ describe("updateTicketMetadata", () => {
 
   it("creates metadata for a ticket with none", async () => {
     seedTicket(testDb, "VPL-1");
-    const result = await updateTicketMetadata("VPL-1", { poStatus: "Nieuw" });
-    expect(result.poStatus).toBe("Nieuw");
+    const result = await updateTicketMetadata("VPL-1", { poStatus: "New" });
+    expect(result.poStatus).toBe("New");
     expect(result.jiraKey).toBe("VPL-1");
   });
 
   it("updates existing metadata", async () => {
     seedTicket(testDb, "VPL-1");
-    await updateTicketMetadata("VPL-1", { poStatus: "Nieuw" });
+    await updateTicketMetadata("VPL-1", { poStatus: "New" });
     const result = await updateTicketMetadata("VPL-1", {
       poStatus: "Ready",
       qualityScore: 90,

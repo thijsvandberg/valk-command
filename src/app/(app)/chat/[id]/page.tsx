@@ -11,12 +11,12 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 
 const PO_STATUS_COLORS: Record<string, { dot: string }> = {
-  Nieuw: { dot: "#94a3b8" },
-  Uitwerken: { dot: "#eab308" },
-  "Wachten op feedback": { dot: "#ea8744" },
-  "Klaar voor refinement": { dot: "#60a5fa" },
+  New: { dot: "#94a3b8" },
+  Draft: { dot: "#eab308" },
+  "Awaiting Feedback": { dot: "#ea8744" },
+  "Ready for Refinement": { dot: "#60a5fa" },
   Ready: { dot: "#4aaa60" },
-  Geparkeerd: { dot: "#64648a" },
+  "On Hold": { dot: "#64648a" },
 };
 
 function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {

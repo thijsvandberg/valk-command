@@ -144,14 +144,14 @@ export function QualityBadge({
 
 export function POStatusIcon({ status, size = 14 }: { status: POStatus; size?: number }) {
   const props = { style: { width: size, height: size }, strokeWidth: 1.5 };
-  if (!status) return <Minus {...props} opacity={0.25} />;
+  if (!status) return <Minus {...props} />;
   switch (status) {
-    case "Nieuw": return <Sparkles {...props} />;
-    case "Uitwerken": return <Pencil {...props} />;
-    case "Wachten op feedback": return <Clock {...props} />;
-    case "Klaar voor refinement": return <CircleDot {...props} />;
+    case "New": return <Sparkles {...props} />;
+    case "Draft": return <Pencil {...props} />;
+    case "Awaiting Feedback": return <Clock {...props} />;
+    case "Ready for Refinement": return <CircleDot {...props} />;
     case "Ready": return <Check {...props} />;
-    case "Geparkeerd": return <Pause {...props} />;
+    case "On Hold": return <Pause {...props} />;
   }
 }
 

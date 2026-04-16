@@ -26,12 +26,12 @@ import { CSS } from "@dnd-kit/utilities";
 // -- PO Status colors (needed for filter rendering) --
 
 export const PO_STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  Nieuw: { bg: "rgba(148, 163, 184, 0.1)", text: "#94a3b8", dot: "#94a3b8" },
-  Uitwerken: { bg: "rgba(234, 179, 8, 0.1)", text: "#eab308", dot: "#eab308" },
-  "Wachten op feedback": { bg: "rgba(234, 135, 68, 0.1)", text: "#ea8744", dot: "#ea8744" },
-  "Klaar voor refinement": { bg: "rgba(96, 165, 250, 0.1)", text: "#60a5fa", dot: "#60a5fa" },
+  New: { bg: "rgba(148, 163, 184, 0.1)", text: "#94a3b8", dot: "#94a3b8" },
+  Draft: { bg: "rgba(234, 179, 8, 0.1)", text: "#eab308", dot: "#eab308" },
+  "Awaiting Feedback": { bg: "rgba(234, 135, 68, 0.1)", text: "#ea8744", dot: "#ea8744" },
+  "Ready for Refinement": { bg: "rgba(96, 165, 250, 0.1)", text: "#60a5fa", dot: "#60a5fa" },
   Ready: { bg: "rgba(46, 145, 73, 0.1)", text: "#4aaa60", dot: "#4aaa60" },
-  Geparkeerd: { bg: "rgba(100, 100, 120, 0.08)", text: "#64648a", dot: "#64648a" },
+  "On Hold": { bg: "rgba(100, 100, 120, 0.08)", text: "#64648a", dot: "#64648a" },
 };
 
 // Edit state display config for filter labels

@@ -616,7 +616,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     {writer.session?.localTitle ?? ticketData.title}
                   </span>
                   <ViewHeaderDivider />
-                  <POStatusCell value={localPoStatus} onChange={handlePoStatusChange} />
+                  <POStatusCell value={localPoStatus} onChange={handlePoStatusChange} showLabel={!localPoStatus} />
                 </>
               );
             })()}
@@ -673,7 +673,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
               <div className="w-full max-w-sm rounded-xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl border border-white/[0.08]">
                 <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/90">
-                  Set PO status to Klaar voor refinement?
+                  Set PO status to Ready for Refinement?
                 </h3>
                 <p className="mt-2 text-xs leading-[1.7] text-white/50">
                   The session has been cleared. Would you like to mark this ticket as ready for refinement?
@@ -686,7 +686,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     variant="primary"
                     size="md"
                     onClick={async () => {
-                      await handlePoStatusChange("Klaar voor refinement");
+                      await handlePoStatusChange("Ready for Refinement");
                       window.history.back();
                     }}
                   >

@@ -45,13 +45,13 @@ describe("PUT /api/tickets/[key]/metadata", () => {
     seedTicket(testDb, "VPL-100");
 
     const response = await PUT(
-      putRequest("VPL-100", { poStatus: "Nieuw" }),
+      putRequest("VPL-100", { poStatus: "New" }),
       makeParams("VPL-100"),
     );
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.poStatus).toBe("Nieuw");
+    expect(data.poStatus).toBe("New");
     expect(data.jiraKey).toBe("VPL-100");
   });
 
@@ -59,7 +59,7 @@ describe("PUT /api/tickets/[key]/metadata", () => {
     seedTicket(testDb, "VPL-100");
 
     await PUT(
-      putRequest("VPL-100", { poStatus: "Nieuw" }),
+      putRequest("VPL-100", { poStatus: "New" }),
       makeParams("VPL-100"),
     );
 
@@ -77,7 +77,7 @@ describe("PUT /api/tickets/[key]/metadata", () => {
     seedTicket(testDb, "VPL-100");
 
     await PUT(
-      putRequest("VPL-100", { poStatus: "Uitwerken", qualityScore: 50 }),
+      putRequest("VPL-100", { poStatus: "Draft", qualityScore: 50 }),
       makeParams("VPL-100"),
     );
 
@@ -87,7 +87,7 @@ describe("PUT /api/tickets/[key]/metadata", () => {
     );
     const data = await response.json();
 
-    expect(data.poStatus).toBe("Uitwerken");
+    expect(data.poStatus).toBe("Draft");
     expect(data.qualityScore).toBe(50);
     expect(data.poNotes).toBe("Some note");
   });

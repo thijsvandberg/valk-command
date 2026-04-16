@@ -401,12 +401,12 @@ export interface UpdateMetadataInput {
 
 const VALID_PO_STATUSES = [
   null,
-  "Nieuw",
-  "Uitwerken",
-  "Wachten op feedback",
-  "Klaar voor refinement",
+  "New",
+  "Draft",
+  "Awaiting Feedback",
+  "Ready for Refinement",
   "Ready",
-  "Geparkeerd",
+  "On Hold",
 ];
 
 export async function updateTicketMetadata(

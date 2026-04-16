@@ -5,21 +5,21 @@ export type IssueType = "task" | "bug" | "story" | "subtask" | "spike" | "epic";
 export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED";
 export type POStatus =
   | null
-  | "Nieuw"
-  | "Uitwerken"
-  | "Wachten op feedback"
-  | "Klaar voor refinement"
+  | "New"
+  | "Draft"
+  | "Awaiting Feedback"
+  | "Ready for Refinement"
   | "Ready"
-  | "Geparkeerd";
+  | "On Hold";
 
 export const PO_STATUS_OPTIONS: { value: POStatus; label: string }[] = [
   { value: null, label: "—" },
-  { value: "Nieuw", label: "Nieuw" },
-  { value: "Uitwerken", label: "Uitwerken" },
-  { value: "Wachten op feedback", label: "Wachten op feedback" },
-  { value: "Klaar voor refinement", label: "Klaar voor refinement" },
+  { value: "New", label: "New" },
+  { value: "Draft", label: "Draft" },
+  { value: "Awaiting Feedback", label: "Awaiting Feedback" },
+  { value: "Ready for Refinement", label: "Ready for Refinement" },
   { value: "Ready", label: "Ready" },
-  { value: "Geparkeerd", label: "Geparkeerd" },
+  { value: "On Hold", label: "On Hold" },
 ];
 
 export const JIRA_STATUS_COLORS: Record<JiraStatus, { bg: string; text: string }> = {

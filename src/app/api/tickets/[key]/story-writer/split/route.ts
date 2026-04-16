@@ -100,7 +100,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     await db.insert(ticketMetadata).values({
       jiraKey: newJiraKey,
-      poStatus: "Uitwerken",
+      poStatus: "Draft",
     });
 
     targetKey = newJiraKey;
