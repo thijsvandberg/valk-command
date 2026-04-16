@@ -158,21 +158,6 @@ function notificationIcon(type: string) {
   }
 }
 
-// Returns the Tailwind bg class for the active state of a type filter button.
-// Full class strings required so Tailwind's JIT can detect them at build time.
-function typeActiveBg(type: string): string {
-  switch (type) {
-    case "pr":           return "bg-amber-400/[0.12]";
-    case "pipeline":     return "bg-[var(--color-brand-400)]/[0.10]";
-    case "deployment":   return "bg-violet-400/[0.12]";
-    case "story-writer": return "bg-sky-400/[0.12]";
-    case "sync":         return "bg-emerald-400/[0.12]";
-    case "agent":        return "bg-purple-400/[0.12]";
-    case "scheduler":    return "bg-orange-400/[0.12]";
-    case "system":       return "bg-white/[0.06]";
-    default:             return "bg-white/[0.06]";
-  }
-}
 
 function typeLabel(type: string): string {
   switch (type) {
@@ -355,35 +340,31 @@ export function NotificationBell() {
           {/* Type filter bar — shown when there are multiple types */}
           {typeCounts.size > 1 && (
             <div
-              className="flex items-center gap-0.5 px-3 py-2 border-b border-white/[0.06]"
+              className="flex items-center gap-0.5 px-3 py-1.5 border-b border-white/[0.06]"
               role="toolbar"
               aria-label="Filter by notification type"
             >
               {[...typeCounts.entries()].map(([type, { total, unread }]) => {
                 const isActive = effectiveType === type;
                 const count = unread > 0 ? unread : total;
-                const isUnreadBadge = unread > 0;
+                const isUnread = unread > 0;
                 return (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setActiveType(isActive ? null : type)}
-                    aria-label={`${typeLabel(type)}: ${count} ${isUnreadBadge ? "unread" : "total"}`}
+                    aria-label={`${typeLabel(type)}: ${count} ${isUnread ? "unread" : "total"}`}
                     aria-pressed={isActive}
-                    className={`relative flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                      isActive
-                        ? `${typeActiveBg(type)} ring-1 ring-inset ring-white/[0.10]`
-                        : "hover:bg-white/[0.05]"
+                    className={`flex items-center gap-1 h-6 rounded-md px-1.5 cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                      isActive ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
                     }`}
                   >
-                    {notificationIcon(type)}
-                    <span
-                      className={`absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-bold tabular-nums leading-none pointer-events-none ${
-                        isUnreadBadge
-                          ? "bg-red-500 text-white shadow-[0_1px_4px_rgba(239,68,68,0.4)]"
-                          : "bg-white/[0.10] text-white/35"
-                      }`}
-                    >
+                    <div className={isActive ? "" : "opacity-35"}>
+                      {notificationIcon(type)}
+                    </div>
+                    <span className={`text-[10px] tabular-nums font-medium leading-none ${
+                      isActive ? "text-white/65" : isUnread ? "text-white/45" : "text-white/22"
+                    }`}>
                       {count > 99 ? "99" : count}
                     </span>
                   </button>
@@ -395,13 +376,10 @@ export function NotificationBell() {
           {/* Team filter chips — only shown when notifications span multiple teams */}
           {teamCounts.size > 1 && (
             <div
-              className="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/[0.06]"
+              className="flex items-center gap-1 px-3 py-1.5 border-b border-white/[0.06]"
               role="toolbar"
               aria-label="Filter by team"
             >
-              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-widest text-white/20 mr-0.5 select-none">
-                Team
-              </span>
               {[...teamCounts.entries()].map(([team, count]) => {
                 const isActive = effectiveTeam === team;
                 return (
