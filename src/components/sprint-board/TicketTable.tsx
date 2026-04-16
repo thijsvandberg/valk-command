@@ -364,11 +364,11 @@ export function TicketTable({
     const widthStyle = id === "title" ? undefined : { width: scaledColW(id) };
 
     if (!label) {
-      return <th key={id} className="py-2 pr-2" style={widthStyle} />;
+      return <th key={id} className="overflow-hidden py-2 pr-2" style={widthStyle} />;
     }
 
     return (
-      <th key={id} className={`group/th relative py-2 pr-3${isCenter ? " text-center" : ""}`} style={widthStyle}>
+      <th key={id} className={`group/th relative overflow-hidden py-2 pr-3${isCenter ? " text-center" : ""}`} style={widthStyle}>
         {isSortable ? (
           <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-white/60${isCenter ? " justify-center w-full" : ""}`}>
             {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
