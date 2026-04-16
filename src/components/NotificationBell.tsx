@@ -337,23 +337,22 @@ export function NotificationBell() {
             </div>
           </div>
 
-          {/* Type filter bar — shown when there are multiple types */}
-          {typeCounts.size > 1 && (
+          {/* Filter bar — type pills and team chips on one row */}
+          {(typeCounts.size > 1 || teamCounts.size > 1) && (
             <div
-              className="flex items-center gap-0.5 px-3 py-1.5 border-b border-white/[0.06]"
+              className="flex items-center gap-1 px-3 py-1.5 border-b border-white/[0.06]"
               role="toolbar"
-              aria-label="Filter by notification type"
+              aria-label="Filter notifications"
             >
-              {[...typeCounts.entries()].map(([type, { total, unread }]) => {
+              {/* Type pills */}
+              {typeCounts.size > 1 && [...typeCounts.entries()].map(([type, { unread }]) => {
                 const isActive = effectiveType === type;
-                const count = unread > 0 ? unread : total;
-                const isUnread = unread > 0;
                 return (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setActiveType(isActive ? null : type)}
-                    aria-label={`${typeLabel(type)}: ${count} ${isUnread ? "unread" : "total"}`}
+                    aria-label={`${typeLabel(type)}${unread > 0 ? `: ${unread} unread` : ""}`}
                     aria-pressed={isActive}
                     className={`flex items-center gap-1 h-6 rounded-md px-1.5 cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
                       isActive ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
@@ -362,25 +361,24 @@ export function NotificationBell() {
                     <div className={isActive ? "" : "opacity-35"}>
                       {notificationIcon(type)}
                     </div>
-                    <span className={`text-[10px] tabular-nums font-medium leading-none ${
-                      isActive ? "text-white/65" : isUnread ? "text-white/45" : "text-white/22"
-                    }`}>
-                      {count > 99 ? "99" : count}
-                    </span>
+                    {unread > 0 && (
+                      <span className={`text-[10px] tabular-nums font-medium leading-none ${
+                        isActive ? "text-white/65" : "text-white/45"
+                      }`}>
+                        {unread > 99 ? "99" : unread}
+                      </span>
+                    )}
                   </button>
                 );
               })}
-            </div>
-          )}
 
-          {/* Team filter chips — only shown when notifications span multiple teams */}
-          {teamCounts.size > 1 && (
-            <div
-              className="flex items-center gap-1 px-3 py-1.5 border-b border-white/[0.06]"
-              role="toolbar"
-              aria-label="Filter by team"
-            >
-              {[...teamCounts.entries()].map(([team, count]) => {
+              {/* Separator between types and teams */}
+              {typeCounts.size > 1 && teamCounts.size > 1 && (
+                <span className="mx-1 h-3.5 w-px shrink-0 bg-white/[0.10]" />
+              )}
+
+              {/* Team chips */}
+              {teamCounts.size > 1 && [...teamCounts.entries()].map(([team, count]) => {
                 const isActive = effectiveTeam === team;
                 return (
                   <button
