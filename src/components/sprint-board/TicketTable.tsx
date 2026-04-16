@@ -201,9 +201,6 @@ export function TicketTable({
   dragOverKey?: string | null;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
-  const colW = useCallback((id: string): number | undefined => {
-    return columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
-  }, [columnWidths]);
   const DEFAULT_ORDER: ColumnId[] = useMemo(() => COLUMNS.map((c) => c.id), []);
   const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -228,7 +225,7 @@ export function TicketTable({
     if (!containerWidth) return 1;
     // Clamp to MIN_TABLE_WIDTH so columns don't compress below what fits at the scroll breakpoint.
     const effectiveWidth = Math.max(containerWidth, MIN_TABLE_WIDTH);
-    const FIXED_OVERHEAD = 60; // checkbox column (w-5=20px) + select column (w-10=40px)
+    const FIXED_OVERHEAD = 64; // checkbox column (~21px) + select column (~43px)
     const MIN_TITLE_WIDTH = 80;
     let columnSum = 0;
     for (const id of effectiveOrder) {
@@ -363,9 +360,8 @@ export function TicketTable({
     const label = HEADER_LABELS[id];
     const isSortable = SORTABLE_COLUMNS.has(id);
     const isCenter = CENTER_COLUMNS.has(id);
-    const widthStyle = id === "title"
-      ? (colW("title") ? { width: colW("title") } : undefined)
-      : { width: scaledColW(id) };
+    // Title is always the flex filler column: no explicit width, it takes remaining space.
+    const widthStyle = id === "title" ? undefined : { width: scaledColW(id) };
 
     if (!label) {
       return <th key={id} className="py-2 pr-2" style={widthStyle} />;
@@ -381,7 +377,7 @@ export function TicketTable({
         {rh(id)}
       </th>
     );
-  }, [col, colW, scaledColW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
+  }, [col, scaledColW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
 
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
