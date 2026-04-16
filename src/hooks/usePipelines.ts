@@ -214,6 +214,25 @@ export function useNotifications(limit = 50) {
     swr.mutate();
   }, [swr]);
 
+  // Marks specific notifications as read (used for filtered "mark all read")
+  const markFilteredRead = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    swr.mutate();
+  }, [swr]);
+
+  // Deletes specific read notifications (used for filtered "clear read")
+  const clearFiltered = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idsParam = ids.map(encodeURIComponent).join(",");
+    await fetch(`/api/notifications?ids=${idsParam}`, { method: "DELETE" });
+    swr.mutate();
+  }, [swr]);
+
   return {
     ...swr,
     notifications: swr.data?.notifications ?? [],
@@ -223,5 +242,7 @@ export function useNotifications(limit = 50) {
     markAllRead,
     clearRead,
     dismissOne,
+    markFilteredRead,
+    clearFiltered,
   };
 }

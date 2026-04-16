@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { alert, ticket, sprintNameCache } from "@/db/schema";
-import { desc, eq, lt, sql, and } from "drizzle-orm";
+import { desc, eq, lt, sql, and, inArray } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
 
 // GET /api/notifications - list notifications (alerts) with optional unread filter
@@ -80,9 +80,12 @@ export async function POST(request: Request) {
 }
 
 // PATCH /api/notifications - mark notification(s) as read
+// { markAll: true }     → mark all unread as read
+// { ids: string[] }     → mark specific IDs as read (filtered bulk action)
+// { id: string }        → mark single notification as read
 export async function PATCH(request: Request) {
   const body = await request.json();
-  const { id, markAll } = body as { id?: string; markAll?: boolean };
+  const { id, markAll, ids } = body as { id?: string; markAll?: boolean; ids?: string[] };
 
   if (markAll) {
     db.update(alert)
@@ -90,6 +93,14 @@ export async function PATCH(request: Request) {
       .where(eq(alert.read, false))
       .run();
     return NextResponse.json({ status: "all_read" });
+  }
+
+  if (Array.isArray(ids) && ids.length > 0) {
+    db.update(alert)
+      .set({ read: true })
+      .where(and(inArray(alert.id, ids), eq(alert.read, false)))
+      .run();
+    return NextResponse.json({ status: "batch_read" });
   }
 
   if (id) {
@@ -100,21 +111,31 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ status: "read" });
   }
 
-  return NextResponse.json({ error: "id or markAll required" }, { status: 400 });
+  return NextResponse.json({ error: "id, ids, or markAll required" }, { status: 400 });
 }
 
-// DELETE /api/notifications - delete a single notification or clear all read notifications
-// ?id=<uuid>  → delete that specific notification
-// (no params) → delete all read notifications
+// DELETE /api/notifications - delete a single notification or clear read notifications
+// ?id=<uuid>         → delete that specific notification
+// ?ids=a,b,c         → delete specific read notifications (filtered bulk clear)
+// (no params)        → delete all read notifications
 export async function DELETE(request: Request) {
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
+  const idsParam = url.searchParams.get("ids");
 
   if (id) {
     db.delete(alert).where(eq(alert.id, id)).run();
     return NextResponse.json({ status: "dismissed" });
   }
 
-  db.delete(alert).where(and(eq(alert.read, true))).run();
+  if (idsParam) {
+    const ids = idsParam.split(",").filter(Boolean);
+    if (ids.length > 0) {
+      db.delete(alert).where(and(inArray(alert.id, ids), eq(alert.read, true))).run();
+    }
+    return NextResponse.json({ status: "batch_dismissed" });
+  }
+
+  db.delete(alert).where(eq(alert.read, true)).run();
   return NextResponse.json({ status: "cleared_read" });
 }
