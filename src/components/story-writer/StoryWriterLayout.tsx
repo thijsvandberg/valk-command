@@ -17,6 +17,7 @@ import {
   NotebookPen,
 } from "lucide-react";
 import Link from "next/link";
+import { mutate as globalMutate } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
@@ -201,6 +202,9 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
   const handleDelete = useCallback(async (deleteConversation: boolean) => {
     await writer.deleteSession(deleteConversation);
+    // Invalidate the active sessions cache so the ticket detail page
+    // immediately reflects the deletion without waiting for the 30s dedupe window.
+    await globalMutate("/api/story-writer/active-sessions");
     setShowDeleteConfirm(false);
     setShowRefinePrompt(true);
   }, [writer]);
