@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, useEffect, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useRef, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
@@ -205,45 +205,12 @@ export function TicketTable({
   const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Track container width to scale down columns when they overflow
-  const [containerWidth, setContainerWidth] = useState(0);
-  useEffect(() => {
-    const el = tableContainerRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(([entry]) => {
-      setContainerWidth(Math.floor(entry.contentRect.width));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // Proportionally scale column widths when total exceeds the container.
-  // The title column is excluded and acts as the flex filler.
-  // FIXED_OVERHEAD (checkbox + drag handle) uses Tailwind classes and cannot be scaled,
-  // so it is subtracted from available space rather than included in the scale calculation.
-  const columnScale = useMemo(() => {
-    if (!containerWidth) return 1;
-    // Clamp to MIN_TABLE_WIDTH so columns don't compress below what fits at the scroll breakpoint.
-    const effectiveWidth = Math.max(containerWidth, MIN_TABLE_WIDTH);
-    const FIXED_OVERHEAD = 64; // checkbox column (~21px) + select column (~43px)
-    const MIN_TITLE_WIDTH = 80;
-    let columnSum = 0;
-    for (const id of effectiveOrder) {
-      if (!visibleColumns.has(id) || id === "title") continue;
-      columnSum += columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? 0;
-    }
-    const available = effectiveWidth - FIXED_OVERHEAD - MIN_TITLE_WIDTH;
-    if (columnSum <= available) return 1;
-    return available / columnSum;
-  }, [containerWidth, effectiveOrder, visibleColumns, columnWidths]);
-
-  const scaledColW = useCallback((id: string): number | undefined => {
+  // Column width lookup. Title is always the flex filler (no explicit width).
+  // All other cells clip overflow so the table fits by design.
+  const colW = useCallback((id: string): number | undefined => {
     if (id === "title") return undefined;
-    const w = columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
-    if (w === undefined) return undefined;
-    if (columnScale === 1) return w;
-    return Math.max(20, Math.round(w * columnScale));
-  }, [columnWidths, columnScale]);
+    return columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
+  }, [columnWidths]);
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
   const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
@@ -361,7 +328,7 @@ export function TicketTable({
     const isSortable = SORTABLE_COLUMNS.has(id);
     const isCenter = CENTER_COLUMNS.has(id);
     // Title is always the flex filler column: no explicit width, it takes remaining space.
-    const widthStyle = id === "title" ? undefined : { width: scaledColW(id) };
+    const widthStyle = id === "title" ? undefined : { width: colW(id) };
 
     if (!label) {
       return <th key={id} className="overflow-hidden py-2 pr-2" style={widthStyle} />;
@@ -377,7 +344,7 @@ export function TicketTable({
         {rh(id)}
       </th>
     );
-  }, [col, scaledColW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
+  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
 
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">

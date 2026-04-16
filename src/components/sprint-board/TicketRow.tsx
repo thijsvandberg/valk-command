@@ -139,13 +139,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     switch (id) {
       case "type":
         return (
-          <td key={id} className="py-1.5 pr-2">
+          <td key={id} className="overflow-hidden py-1.5 pr-2">
             <IssueTypeIcon type={ticket.type} />
           </td>
         );
       case "key":
         return (
-          <td key={id} className="py-1.5 pr-3 font-mono text-xs text-white/50 leading-none">
+          <td key={id} className="overflow-hidden py-1.5 pr-3 font-mono text-xs text-white/50 leading-none">
             <span className="flex items-center gap-1.5">
               {ticket.key}
               {ticket.editState === "draft" && <EditStateDot state="draft" />}
@@ -194,12 +194,12 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td key={id} className="py-1.5 pr-3 overflow-hidden">
             {isRemoved ? (
-              <span className="inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-400/70">
+              <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium bg-red-500/10 text-red-400/70">
                 REMOVED
               </span>
             ) : (
               <span
-                className="inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium"
+                className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
                 style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
               >
                 {ticket.jiraStatus}
@@ -209,7 +209,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "sprint":
         return (
-          <td key={id} className="py-1.5 pr-3 text-xs text-white/35 truncate">
+          <td key={id} className="overflow-hidden py-1.5 pr-3 text-xs text-white/35 truncate">
             {ticket.sprintId
               ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId)
               : <span className="text-white/15">&#8212;</span>}
@@ -217,19 +217,19 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "points":
         return (
-          <td key={id} className="py-1.5 pr-3 text-center tabular-nums text-white/30">
+          <td key={id} className="overflow-hidden py-1.5 pr-3 text-center tabular-nums text-white/30">
             {ticket.storyPoints ?? "-"}
           </td>
         );
       case "assignee":
         return (
-          <td key={id} className="py-1.5 pr-3">
+          <td key={id} className="overflow-hidden py-1.5 pr-3">
             <Avatar assignee={ticket.assignee} />
           </td>
         );
       case "flagged":
         return (
-          <td key={id} className="py-1.5 pr-2">
+          <td key={id} className="overflow-hidden py-1.5 pr-2">
             {ticket.flagged && <Flag className="h-3.5 w-3.5 text-[#e5534b]" fill="currentColor" strokeWidth={0} />}
           </td>
         );
@@ -237,7 +237,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className="py-1.5 pr-2 text-center"
+            className="overflow-hidden py-1.5 pr-2 text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <POStatusCell
@@ -250,7 +250,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className="py-1.5 pr-3 text-xs tabular-nums leading-none"
+            className="overflow-hidden py-1.5 pr-3 text-xs tabular-nums leading-none"
             onClick={(e) => e.stopPropagation()}
           >
             <QualityBadge
@@ -263,7 +263,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "notes":
         return (
-          <td key={id} className="py-1.5 pr-2">
+          <td key={id} className="overflow-hidden py-1.5 pr-2">
             {ticket.notes && (
               <span title={ticket.notes}>
                 <MessageSquare className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
@@ -273,7 +273,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "pipeline":
         return (
-          <td key={id} className="py-1.5 px-2">
+          <td key={id} className="overflow-hidden py-1.5 px-2">
             <div className="flex items-center gap-1.5">
               {health && health.status !== "gray" && (
                 <span
