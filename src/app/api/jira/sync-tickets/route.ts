@@ -40,13 +40,13 @@ export async function POST(request: Request) {
   }
 
   if (ticketKeys) {
-    return syncIndividualTickets(ticketKeys);
+    return syncIndividualTickets(ticketKeys, request.signal);
   }
 
-  return syncSprint(sprintId, searchParams.get("strategy") ?? "bulk");
+  return syncSprint(sprintId, searchParams.get("strategy") ?? "bulk", request.signal);
 }
 
-async function syncIndividualTickets(ticketKeys: string[]) {
+async function syncIndividualTickets(ticketKeys: string[], requestSignal?: AbortSignal) {
   const logId = `sync-${crypto.randomUUID()}`;
   const startedAt = new Date().toISOString();
   const scope = ticketKeys.join(",");
@@ -60,6 +60,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
   });
 
   const controller = registerSync(logId);
+  requestSignal?.addEventListener("abort", () => controller.abort(), { once: true });
 
   try {
     // Batch-fetch existing tickets to avoid N+1 queries for removedFromJiraAt check
@@ -134,7 +135,7 @@ async function syncIndividualTickets(ticketKeys: string[]) {
   }
 }
 
-async function syncSprint(sprintId: string | null, strategy: string) {
+async function syncSprint(sprintId: string | null, strategy: string, requestSignal?: AbortSignal) {
   const logId = `sync-${crypto.randomUUID()}`;
   const startedAt = new Date().toISOString();
 
@@ -147,6 +148,7 @@ async function syncSprint(sprintId: string | null, strategy: string) {
   });
 
   const controller = registerSync(logId);
+  requestSignal?.addEventListener("abort", () => controller.abort(), { once: true });
 
   try {
     if (!sprintId) {

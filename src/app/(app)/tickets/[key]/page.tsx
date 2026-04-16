@@ -103,12 +103,16 @@ export default function TicketDetailPage({
     setJiraCheckState("checking");
     let cancelled = false;
     async function tryFetchFromJira() {
+      const abortCtrl = new AbortController();
+      const timer = setTimeout(() => abortCtrl.abort(), 10_000);
       try {
         const res = await fetch("/api/jira/sync-tickets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ticketKeys: [key] }),
+          signal: abortCtrl.signal,
         });
+        clearTimeout(timer);
         if (cancelled) return;
         const data = await res.json();
         if (data.ok && data.count > 0) {
@@ -117,6 +121,7 @@ export default function TicketDetailPage({
         }
         setJiraCheckState("not-found");
       } catch {
+        clearTimeout(timer);
         if (!cancelled) setJiraCheckState("not-found");
       }
     }
@@ -221,9 +226,9 @@ export default function TicketDetailPage({
       setHasLocalDescEdit(false);
       setPushError(null);
       setOverrideConfirmed(false);
-      // Remount editables so they reflect fresh Jira state
-      setDraftDiscardKey((k) => k + 1);
+      // Await fresh data before remounting so editables initialize without stale localEdits
       await mutateTicket();
+      setDraftDiscardKey((k) => k + 1);
     } catch (err) {
       console.error("Failed to discard draft:", err);
     }
@@ -241,8 +246,9 @@ export default function TicketDetailPage({
         setHasLocalTitleEdit(false);
         setHasLocalDescEdit(false);
         setOverrideConfirmed(false);
-        setDraftDiscardKey((k) => k + 1);
+        // Await fresh data before remounting so editables initialize without stale localEdits
         await mutateTicket();
+        setDraftDiscardKey((k) => k + 1);
       } else {
         setPushError(data.error ?? "Push failed");
       }
@@ -598,7 +604,10 @@ export default function TicketDetailPage({
               onConflictResolved={async () => {
                 setShowConflictDiff(false);
                 setMetadataOnlyConflict(false);
+                setHasLocalTitleEdit(false);
+                setHasLocalDescEdit(false);
                 await mutateTicket();
+                setDraftDiscardKey((k) => k + 1);
                 setActiveTab("content");
               }}
             />

@@ -227,6 +227,8 @@ export { requestTimestamps as _requestTimestamps };
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 500;
+const MAX_RETRY_DELAY_MS = 3_000;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 export class JiraApiError extends Error {
   constructor(
@@ -274,6 +276,7 @@ async function withRetry<T>(
         } else {
           delayMs = INITIAL_BACKOFF_MS * 2 ** attempt;
         }
+        delayMs = Math.min(delayMs, MAX_RETRY_DELAY_MS);
         logger.warn("jira-client", `API ${res.status} on ${path}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
@@ -305,23 +308,53 @@ async function withRetry<T>(
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
+// Returns a signal that aborts after REQUEST_TIMEOUT_MS or when outerSignal fires,
+// whichever comes first. Caller must invoke cleanup() when done.
+function makeTimeoutSignal(outerSignal?: AbortSignal): [AbortSignal, () => void] {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let outerHandler: (() => void) | undefined;
+  if (outerSignal?.aborted) {
+    clearTimeout(timer);
+    controller.abort();
+  } else if (outerSignal) {
+    outerHandler = () => controller.abort();
+    outerSignal.addEventListener("abort", outerHandler, { once: true });
+  }
+
+  function cleanup() {
+    clearTimeout(timer);
+    if (outerHandler && outerSignal) {
+      outerSignal.removeEventListener("abort", outerHandler);
+    }
+  }
+
+  return [controller.signal, cleanup];
+}
+
 async function jiraFetch<T>(path: string, signal?: AbortSignal): Promise<T> {
   const cfg = getConfig();
   const url = `${cfg.baseUrl}${path}`;
   const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
 
-  return withRetry(
-    () => fetch(url, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        Accept: "application/json",
-      },
-      signal,
-    }),
-    (res) => res.json() as Promise<T>,
-    path,
-    signal,
-  );
+  const [timeoutSignal, cleanup] = makeTimeoutSignal(signal);
+  try {
+    return await withRetry(
+      () => fetch(url, {
+        headers: {
+          Authorization: `Basic ${auth}`,
+          Accept: "application/json",
+        },
+        signal: timeoutSignal,
+      }),
+      (res) => res.json() as Promise<T>,
+      path,
+      timeoutSignal,
+    );
+  } finally {
+    cleanup();
+  }
 }
 
 async function jiraPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
@@ -329,21 +362,26 @@ async function jiraPost<T>(path: string, body: unknown, signal?: AbortSignal): P
   const url = `${cfg.baseUrl}${path}`;
   const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
 
-  return withRetry(
-    () => fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal,
-    }),
-    (res) => res.json() as Promise<T>,
-    path,
-    signal,
-  );
+  const [timeoutSignal, cleanup] = makeTimeoutSignal(signal);
+  try {
+    return await withRetry(
+      () => fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: timeoutSignal,
+      }),
+      (res) => res.json() as Promise<T>,
+      path,
+      timeoutSignal,
+    );
+  } finally {
+    cleanup();
+  }
 }
 
 async function jiraPut(path: string, body: unknown, signal?: AbortSignal): Promise<void> {
@@ -351,21 +389,26 @@ async function jiraPut(path: string, body: unknown, signal?: AbortSignal): Promi
   const url = `${cfg.baseUrl}${path}`;
   const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
 
-  return withRetry(
-    () => fetch(url, {
-      method: "PUT",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal,
-    }),
-    async () => {},
-    path,
-    signal,
-  );
+  const [timeoutSignal, cleanup] = makeTimeoutSignal(signal);
+  try {
+    return await withRetry(
+      () => fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: timeoutSignal,
+      }),
+      async () => {},
+      path,
+      timeoutSignal,
+    );
+  } finally {
+    cleanup();
+  }
 }
 
 async function jiraDelete(path: string, signal?: AbortSignal): Promise<void> {
@@ -373,16 +416,21 @@ async function jiraDelete(path: string, signal?: AbortSignal): Promise<void> {
   const url = `${cfg.baseUrl}${path}`;
   const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
 
-  return withRetry(
-    () => fetch(url, {
-      method: "DELETE",
-      headers: { Authorization: `Basic ${auth}` },
-      signal,
-    }),
-    async () => {},
-    path,
-    signal,
-  );
+  const [timeoutSignal, cleanup] = makeTimeoutSignal(signal);
+  try {
+    return await withRetry(
+      () => fetch(url, {
+        method: "DELETE",
+        headers: { Authorization: `Basic ${auth}` },
+        signal: timeoutSignal,
+      }),
+      async () => {},
+      path,
+      timeoutSignal,
+    );
+  } finally {
+    cleanup();
+  }
 }
 
 // ---------------------------------------------------------------------------

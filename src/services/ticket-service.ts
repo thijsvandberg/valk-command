@@ -195,7 +195,7 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
 // pull-from-jira
 // ---------------------------------------------------------------------------
 
-export async function pullFromJira(key: string): Promise<{ description: string }> {
+export async function pullFromJira(key: string): Promise<{ description: string; title: string }> {
   const issue = await jiraClient.getIssue(key);
   const fields = issue.fields;
   const description =
@@ -203,7 +203,7 @@ export async function pullFromJira(key: string): Promise<{ description: string }
       ? fields.description
       : adfToMarkdown(fields.description);
 
-  return { description: description ?? "" };
+  return { description: description ?? "", title: fields.summary ?? "" };
 }
 
 // ---------------------------------------------------------------------------
