@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, PanelRight, PanelRightClose, ListFilter, Tag, MessageSquare, MessageCircle } from "lucide-react";
+import { Search, X, PanelRight, PanelRightClose, ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
@@ -25,6 +25,7 @@ import {
   filtersToParams,
   type SearchFilters,
   type FilterOptionsData,
+  type SectionCounts,
 } from "@/components/sprint-board/SearchFilterPanel";
 
 const TICKET_SECTION_LIMIT = 10;
@@ -89,8 +90,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   // Per-section "show all" state (expand beyond SECTION_LIMIT)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  // Active section filters — empty means all sections shown
-  const [activeSectionFilters, setActiveSectionFilters] = useState<Set<string>>(new Set());
   const filterOptionsFetchedRef = useRef(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +144,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       setFilters(EMPTY_FILTERS);
       setCollapsedSections(new Set());
       setExpandedSections(new Set());
-      setActiveSectionFilters(new Set());
     }
   }, [open, initialQuery]);
 
@@ -189,7 +187,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         setActiveIdx(-1);
         // Reset section expansion when results change
         setExpandedSections(new Set());
-        setActiveSectionFilters(new Set());
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -284,8 +281,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       items: T[],
     ) => {
       if (items.length === 0) return;
-      // Skip section if a filter is active and this section is not selected
-      if (activeSectionFilters.size > 0 && !activeSectionFilters.has(groupKey)) return;
+      // Skip section if a section filter is active and this section is not selected
+      if (filters.sections.size > 0 && !filters.sections.has(groupKey)) return;
       if (collapsedSections.has(groupKey)) return;
       const defaultLimit = groupKey === "tickets" ? TICKET_SECTION_LIMIT : SECTION_LIMIT;
       const limit = expandedSections.has(groupKey) ? items.length : defaultLimit;
@@ -299,7 +296,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     addGroup("comments", groupedResults.comments);
 
     return rows;
-  }, [mode, groupedResults, collapsedSections, expandedSections, activeSectionFilters]);
+  }, [mode, groupedResults, collapsedSections, expandedSections, filters.sections]);
 
   const totalGroupedCount = groupedResults.tickets.length + groupedResults.conversations.length + groupedResults.comments.length;
 
@@ -455,17 +452,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     setExpandedSections((prev) => new Set(prev).add(key));
   };
 
-  const toggleSectionFilter = (key: string) => {
-    setActiveSectionFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
   const sectionVisible = (key: string) =>
-    activeSectionFilters.size === 0 || activeSectionFilters.has(key);
+    filters.sections.size === 0 || filters.sections.has(key);
 
   return (
     <div
@@ -612,54 +600,13 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           </button>
         )}
 
-        {/* Section filter chips — local mode, visible whenever results exist */}
-        {mode === "local" && totalGroupedCount > 0 && (
-          <div className="flex items-center gap-2 border-b border-white/[0.05] px-5 py-2.5">
-            {([
-              { key: "tickets", label: "Tickets", icon: <Tag className="h-3 w-3" strokeWidth={1.5} />, count: groupedResults.tickets.length },
-              { key: "conversations", label: "Conversations", icon: <MessageSquare className="h-3 w-3" strokeWidth={1.5} />, count: groupedResults.conversations.length },
-              { key: "comments", label: "Comments", icon: <MessageCircle className="h-3 w-3" strokeWidth={1.5} />, count: groupedResults.comments.length },
-            ] as const).filter((s) => s.count > 0).map((s) => {
-              const active = activeSectionFilters.has(s.key);
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => toggleSectionFilter(s.key)}
-                  aria-label={`Filter by ${s.label}`}
-                  aria-pressed={active}
-                  className="flex min-w-[64px] flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-                  style={{
-                    backgroundColor: active ? "rgba(74, 170, 96, 0.12)" : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${active ? "rgba(74, 170, 96, 0.35)" : "rgba(255,255,255,0.07)"}`,
-                    transition: "background-color 120ms, border-color 120ms",
-                  }}
-                >
-                  <span
-                    className="text-[13px] font-semibold leading-none tabular-nums"
-                    style={{ color: active ? "var(--color-brand-400)" : "rgba(255,255,255,0.6)" }}
-                  >
-                    {s.count}
-                  </span>
-                  <span
-                    className="flex items-center gap-1 text-[10px] font-medium leading-none"
-                    style={{ color: active ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}
-                  >
-                    {s.icon}
-                    {s.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         {/* Filter panel — only in local mode, hidden by default */}
         {mode === "local" && showFilters && (
           <SearchFilterPanel
             filters={filters}
             onChange={setFilters}
             filterOptions={filterOptions}
+            sectionCounts={{ tickets: groupedResults.tickets.length, conversations: groupedResults.conversations.length, comments: groupedResults.comments.length } satisfies SectionCounts}
           />
         )}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, Tag, MessageSquare, MessageCircle } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
@@ -9,6 +9,7 @@ import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { userColor, userInitials } from "@/lib/user-display";
 
 export interface SearchFilters {
+  sections: Set<string>;
   status: Set<string>;
   poStatus: Set<string>;
   type: Set<string>;
@@ -18,6 +19,7 @@ export interface SearchFilters {
 }
 
 export const EMPTY_FILTERS: SearchFilters = {
+  sections: new Set(),
   status: new Set(),
   poStatus: new Set(),
   type: new Set(),
@@ -54,6 +56,7 @@ const DATE_RANGE_OPTIONS = [
 
 export function hasActiveFilters(filters: SearchFilters): boolean {
   return (
+    filters.sections.size > 0 ||
     filters.status.size > 0 ||
     filters.poStatus.size > 0 ||
     filters.type.size > 0 ||
@@ -83,10 +86,17 @@ export interface FilterOptionsData {
   poStatuses: string[];
 }
 
+export interface SectionCounts {
+  tickets: number;
+  conversations: number;
+  comments: number;
+}
+
 interface SearchFilterPanelProps {
   filters: SearchFilters;
   onChange: (next: SearchFilters) => void;
   filterOptions: FilterOptionsData | null;
+  sectionCounts?: SectionCounts;
 }
 
 function StatusDot({ status }: { status: string }) {
@@ -123,7 +133,13 @@ function AssigneeAvatar({ name }: { name: string }) {
   );
 }
 
-export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFilterPanelProps) {
+const SECTION_DEFS = [
+  { key: "tickets", label: "Tickets", icon: <Tag className="h-3 w-3" strokeWidth={1.5} /> },
+  { key: "conversations", label: "Conversations", icon: <MessageSquare className="h-3 w-3" strokeWidth={1.5} /> },
+  { key: "comments", label: "Comments", icon: <MessageCircle className="h-3 w-3" strokeWidth={1.5} /> },
+] as const;
+
+export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCounts }: SearchFilterPanelProps) {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
@@ -150,11 +166,56 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
 
   const active = hasActiveFilters(filters);
 
+  function toggleSection(key: string) {
+    const next = new Set(filters.sections);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onChange({ ...filters, sections: next });
+  }
+
   return (
     <div
       className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-2.5"
       style={{ backgroundColor: "rgba(255,255,255,0.015)" }}
     >
+      {/* Section filter chips */}
+      {SECTION_DEFS.map((s) => {
+        const active = filters.sections.has(s.key);
+        const count = sectionCounts?.[s.key] ?? 0;
+        return (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => toggleSection(s.key)}
+            aria-label={`Filter by ${s.label}`}
+            aria-pressed={active}
+            className="flex min-w-[64px] flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+            style={{
+              backgroundColor: active ? "rgba(74, 170, 96, 0.12)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${active ? "rgba(74, 170, 96, 0.35)" : "rgba(255,255,255,0.07)"}`,
+              transition: "background-color 120ms, border-color 120ms",
+            }}
+          >
+            <span
+              className="text-[13px] font-semibold leading-none tabular-nums"
+              style={{ color: active ? "var(--color-brand-400)" : "rgba(255,255,255,0.55)" }}
+            >
+              {count > 0 ? count : <span style={{ color: "rgba(255,255,255,0.2)" }}>–</span>}
+            </span>
+            <span
+              className="flex items-center gap-1 text-[10px] font-medium leading-none"
+              style={{ color: active ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}
+            >
+              {s.icon}
+              {s.label}
+            </span>
+          </button>
+        );
+      })}
+
+      {/* Separator between section chips and dropdown filters */}
+      <div className="h-5 w-px shrink-0 bg-white/[0.10]" />
+
       <FilterDropdown
         label="Status"
         options={STATUS_OPTIONS}
@@ -288,7 +349,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
           onClick={() => {
             setCustomFrom("");
             setCustomTo("");
-            onChange(EMPTY_FILTERS);
+            onChange({ ...EMPTY_FILTERS });
           }}
           className="ml-auto flex items-center gap-1 text-[11px] text-white/30 cursor-pointer hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] shrink-0"
           style={{ transition: "color 100ms" }}
