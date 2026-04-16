@@ -241,6 +241,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
             ticketKey: s.ticketKey,
             title: s.title,
             sessionId: s.sessionId,
+            targetTicketKey: s.targetTicketKey ?? null,
+            targetTitle: s.targetTitle ?? null,
           })),
         );
       })

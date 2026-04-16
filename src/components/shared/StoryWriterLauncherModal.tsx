@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   X, Plus, BookOpen, NotebookPen, ChevronDown,
-  Search, ArrowRight, History, Check, Trash2, IterationCw, Zap,
+  Search, ArrowRight, History, Check, Trash2, IterationCw, Zap, Scissors,
 } from "lucide-react";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,7 @@ interface ActiveSession {
   sessionId: string; ticketKey: string; title: string;
   sprintName: string | null; epic: string | null; epicKey: string | null;
   issueType: string | null; status: string; updatedAt: string | null;
+  targetTicketKey: string | null; targetTitle: string | null;
 }
 
 interface TicketSearchResult {
@@ -665,8 +666,20 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                               <IssueTypeIcon type={s.issueType ?? "story"} size={11} />
                               <span className="font-mono font-medium">{s.ticketKey}</span>
                             </span>
+                            {s.targetTicketKey && (
+                              <>
+                                <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
+                                <span className="font-mono font-medium text-white/55">{s.targetTicketKey}</span>
+                                <span className="rounded px-1 py-px text-[9px] font-medium bg-violet-500/10 text-violet-400/80">Split</span>
+                              </>
+                            )}
                           </div>
                           <p className="text-[13px] text-white/55 leading-snug truncate">{s.title}</p>
+                          {s.targetTicketKey && (
+                            <p className="text-[12px] text-white/30 leading-snug truncate mt-0.5">
+                              {s.targetTitle ?? s.targetTicketKey}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <StatusBadge status={s.status} />
@@ -720,8 +733,20 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                               <IssueTypeIcon type={selectedSession.issueType ?? "story"} size={11} />
                               <span className="font-mono font-medium">{selectedSession.ticketKey}</span>
                             </span>
+                            {selectedSession.targetTicketKey && (
+                              <>
+                                <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
+                                <span className="font-mono font-medium text-white/55">{selectedSession.targetTicketKey}</span>
+                                <span className="rounded px-1 py-px text-[9px] font-medium bg-violet-500/10 text-violet-400/80">Split</span>
+                              </>
+                            )}
                           </div>
                           <p className="text-[13px] text-white/55 leading-snug">{selectedSession.title}</p>
+                          {selectedSession.targetTicketKey && (
+                            <p className="text-[12px] text-white/30 leading-snug mt-0.5">
+                              {selectedSession.targetTitle ?? selectedSession.targetTicketKey}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <StatusBadge status={selectedSession.status} />

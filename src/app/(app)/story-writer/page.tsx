@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { NotebookPen, Plus, ArrowRight, AlertTriangle } from "lucide-react";
+import { NotebookPen, Plus, ArrowRight, AlertTriangle, Scissors } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
@@ -22,6 +22,8 @@ interface ActiveSession {
   status: string;
   updatedAt: string | null;
   jiraUpdatedAt: string | null;
+  targetTicketKey: string | null;
+  targetTitle: string | null;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -50,11 +52,12 @@ function SessionCard({
   onResume: () => void;
   onDiscard: () => void;
 }) {
+  const isSplit = !!session.targetTicketKey;
   return (
-    <Card className="group relative flex flex-col justify-between p-4 h-[120px] transition-colors hover:bg-white/[0.04]">
-      {/* Top row: ticket key + Jira changed badge */}
+    <Card className="group relative flex flex-col justify-between p-4 transition-colors hover:bg-white/[0.04]" style={{ minHeight: isSplit ? 140 : 120 }}>
+      {/* Top row: ticket key(s) + badges */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <code className="shrink-0 text-[11px] font-mono font-medium text-[var(--color-brand-400)]">
             {session.ticketKey}
           </code>
@@ -62,6 +65,17 @@ function SessionCard({
             <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/35">
               {session.issueType}
             </span>
+          )}
+          {isSplit && (
+            <>
+              <Scissors size={9} strokeWidth={2} className="shrink-0 text-violet-400/60" />
+              <code className="shrink-0 text-[11px] font-mono font-medium text-[var(--color-brand-400)]">
+                {session.targetTicketKey}
+              </code>
+              <span className="shrink-0 flex items-center gap-1 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+                Split
+              </span>
+            </>
           )}
         </div>
         {jiraChanged && (
@@ -72,10 +86,21 @@ function SessionCard({
         )}
       </div>
 
-      {/* Title */}
-      <p className="font-[var(--font-display)] text-[13px] font-semibold leading-snug text-white/85 line-clamp-2">
-        {session.title}
-      </p>
+      {/* Title(s) */}
+      {isSplit ? (
+        <div className="space-y-1">
+          <p className="text-[12px] font-semibold leading-snug text-white/80 truncate">
+            {session.title}
+          </p>
+          <p className="text-[12px] leading-snug text-white/40 truncate">
+            {session.targetTitle ?? session.targetTicketKey}
+          </p>
+        </div>
+      ) : (
+        <p className="font-[var(--font-display)] text-[13px] font-semibold leading-snug text-white/85 line-clamp-2">
+          {session.title}
+        </p>
+      )}
 
       {/* Bottom row: metadata + actions */}
       <div className="flex items-center justify-between gap-3">

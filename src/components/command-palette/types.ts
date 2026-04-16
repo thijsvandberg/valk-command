@@ -56,6 +56,8 @@ export interface StoryWriterResult {
   ticketKey: string;
   title: string;
   sessionId: string;
+  targetTicketKey: string | null;
+  targetTitle: string | null;
 }
 
 export type PaletteResult =
