@@ -66,9 +66,11 @@ export function DraftPreviewApp() {
     );
   }
 
+  const isFocused = pane.paneCount === 1;
+
   return (
     <div className="flex h-full flex-col overflow-y-auto p-4">
-      <div className="description-content">
+      <div className={`description-content ${isFocused ? "mx-auto w-full max-w-4xl" : ""}`}>
         {renderMarkdown(draftPreviewContent.content)}
       </div>
     </div>

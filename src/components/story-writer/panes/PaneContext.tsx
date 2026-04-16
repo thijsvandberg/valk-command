@@ -48,7 +48,6 @@ interface PaneContextValue {
   openApp: (appId: PaneAppId) => void;
   closeApp: (appId: PaneAppId) => void;
   moveApp: (appId: PaneAppId, paneIndex: 0 | 1 | 2) => void;
-  setPaneCount: (n: 1 | 2 | 3) => void;
   showPane: (idx: 0 | 1 | 2) => void;
   hidePane: (idx: 0 | 1 | 2) => void;
   setPaneWidths: (w: PaneWidths) => void;
@@ -59,6 +58,7 @@ interface PaneContextValue {
 
   draftPreviewContent: DraftPreviewContent | null;
   openDraftPreview: (content: string, label: string, draftId?: string) => void;
+  focusDraftPreview: (content: string, label: string, draftId?: string) => void;
 
   relatedSelectedKey: string | null;
   openRelated: (selectedKey?: string) => void;
@@ -239,22 +239,6 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     setWidths(widths);
   }
 
-  // Preset toggle (1/2/3 pane buttons): always sets the first N panes visible with equal widths
-  function setPaneCount(n: 1 | 2 | 3) {
-    const nextVisible: PaneVisible = [true, n >= 2, n >= 3];
-    const nextWidths = buildEqualWidths(nextVisible);
-    setPaneApps((prev) => {
-      const next: PaneApps = [...prev] as PaneApps;
-      for (let i = 0; i < 3; i++) {
-        const idx = i as 0 | 1 | 2;
-        if (!nextVisible[idx] && next[idx] !== null) next[idx] = null;
-      }
-      return next;
-    });
-    setVisible(nextVisible);
-    setWidths(nextWidths);
-  }
-
   function setPaneWidths(w: PaneWidths) {
     setWidths(w);
   }
@@ -353,6 +337,16 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     });
   }
 
+  function focusDraftPreview(content: string, label: string, draftId?: string) {
+    setDraftPreviewContent({ content, label, draftId });
+    // Close all panes and open draft-preview in pane 0 so it occupies the full width
+    const nextVisible: PaneVisible = [true, false, false];
+    const nextWidths: PaneWidths = [100, 0, 0];
+    setVisible(nextVisible);
+    setWidths(nextWidths);
+    setPaneApps((_prev) => ["draft-preview", null, null]);
+  }
+
   function openRelated(selectedKey?: string) {
     if (selectedKey !== undefined) setRelatedSelectedKey(selectedKey);
     const targetPane = DEFAULT_PANE["related"];
@@ -380,7 +374,6 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
         openApp,
         closeApp,
         moveApp,
-        setPaneCount,
         showPane,
         hidePane,
         setPaneWidths,
@@ -389,6 +382,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
         toolbars,
         draftPreviewContent,
         openDraftPreview,
+        focusDraftPreview,
         relatedSelectedKey,
         openRelated,
         setRelatedSelectedKey,

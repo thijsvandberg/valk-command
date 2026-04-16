@@ -14,6 +14,7 @@ import {
   Info,
   ExternalLink,
   Zap,
+  Maximize2,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -143,6 +144,7 @@ export function ChatMessage({
   draftId,
   draftContent,
   onViewDraft,
+  onFocusDraft,
   logsTaskId,
   onOpenLogs,
   onStoryKeyClick,
@@ -152,6 +154,7 @@ export function ChatMessage({
   draftId?: string;
   draftContent?: string;
   onViewDraft?: (draftId: string) => void;
+  onFocusDraft?: (draftId: string) => void;
   logsTaskId?: string | null;
   onOpenLogs?: (taskId: string) => void;
   onStoryKeyClick?: (key: string) => void;
@@ -308,6 +311,14 @@ export function ChatMessage({
                 title="Open in editor"
               >
                 Open
+              </button>
+              <button
+                type="button"
+                onClick={() => onFocusDraft?.(draftId)}
+                className="px-2 py-1.5 text-[var(--color-brand-400)]/40 cursor-pointer hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                title="Focus mode"
+              >
+                <Maximize2 size={11} strokeWidth={1.5} />
               </button>
             </div>
             {draftExpanded && draftContent && (

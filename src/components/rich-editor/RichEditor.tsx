@@ -43,6 +43,8 @@ interface RichEditorProps {
   fullWidthToolbar?: boolean;
   /** Rendered inside the scroll container, above the editor content */
   slotBeforeContent?: React.ReactNode;
+  /** Hides the formatting toolbar entirely */
+  hideToolbar?: boolean;
 }
 
 function markdownToEditorHtml(markdown: string): string {
@@ -107,6 +109,7 @@ export function RichEditor({
   stickyToolbar = false,
   fullWidthToolbar = false,
   slotBeforeContent,
+  hideToolbar = false,
 }: RichEditorProps) {
   const [mode, setMode] = useState<EditorMode>(getInitialMode);
   const suppressRef = useRef(false);
@@ -250,7 +253,7 @@ export function RichEditor({
   return (
     <div className={rootClasses}>
       <SlashCommandMenu editor={editor} />
-      {isPortaled ? createPortal(toolbarEl, portalTarget!) : toolbarEl}
+      {!hideToolbar && (isPortaled ? createPortal(toolbarEl, portalTarget!) : toolbarEl)}
 
       <div className={borderless ? "flex-1 overflow-y-auto" : ""}>
         {slotBeforeContent}

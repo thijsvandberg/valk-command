@@ -14,6 +14,7 @@ import {
   Zap,
   MoreHorizontal,
   ArrowUpRight,
+  PenLine,
 } from "lucide-react";
 import Link from "next/link";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
@@ -24,6 +25,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { SplitStoryPicker } from "./SplitStoryPicker";
+import { getJiraUrl } from "@/lib/jira-url";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { Button } from "@/components/ui/Button";
@@ -237,16 +239,33 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const handlePullFromJira = useCallback(async () => {
     setPulling(true);
     try {
-      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/pull-from-jira`, { method: "POST" });
-      if (!res.ok) throw new Error("Request failed");
-      const data = await res.json();
-      if (typeof data.description === "string") handleDraftChange(data.description);
+      const pulls: Promise<void>[] = [
+        fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/pull-from-jira`, { method: "POST" })
+          .then((res) => res.ok ? res.json() : null)
+          .then((data) => {
+            if (!data) return;
+            if (typeof data.description === "string") handleDraftChange(data.description);
+            if (typeof data.title === "string" && data.title) handleTitleChange(data.title);
+          }),
+      ];
+      if (targetTicketKey) {
+        pulls.push(
+          fetch(`/api/tickets/${encodeURIComponent(targetTicketKey)}/pull-from-jira`, { method: "POST" })
+            .then((res) => res.ok ? res.json() : null)
+            .then((data) => {
+              if (!data) return;
+              if (typeof data.description === "string") handleTargetDraftChange(data.description);
+              if (typeof data.title === "string" && data.title) handleTargetTitleChange(data.title);
+            }),
+        );
+      }
+      await Promise.all(pulls);
     } catch {
       // silently ignore; user can retry
     } finally {
       setPulling(false);
     }
-  }, [ticketKey, handleDraftChange]);
+  }, [ticketKey, targetTicketKey, handleDraftChange, handleTitleChange, handleTargetDraftChange, handleTargetTitleChange]);
 
   const handleSplitButtonClick = useCallback(() => {
     if (!targetTicketKey) {
@@ -258,8 +277,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     }
   }, [targetTicketKey, splitModeVisible]);
 
-  const handleSplitConfirm = useCallback(async (existingKey?: string, sprintId?: string) => {
-    await writer.activateSplit(existingKey, sprintId);
+  const handleSplitConfirm = useCallback(async (existingKey?: string, sprintId?: string, title?: string, issueType?: string) => {
+    await writer.activateSplit(existingKey, sprintId, title, issueType);
     setShowSplitPicker(false);
     setSplitModeVisible(true);
   }, [writer]);
@@ -466,13 +485,32 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
                     <button
                       type="button"
-                      onClick={() => { handlePullFromJira(); setShowMoreMenu(false); }}
+                      onClick={() => { handlePullFromJira().finally(() => setShowMoreMenu(false)); }}
                       disabled={pulling}
                       className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {pulling ? <Loader2 size={13} className="animate-spin shrink-0" /> : <CloudDownload size={13} strokeWidth={1.5} className="shrink-0" />}
-                      <span>Pull from Jira</span>
+                      <span>{targetTicketKey && splitModeVisible ? "Pull both from Jira" : "Pull from Jira"}</span>
                     </button>
+
+                    <div className="mx-2 my-1 h-px bg-white/[0.06]" />
+
+                    {targetTicketKey && splitModeVisible && (
+                      <p className="px-3 pt-1 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-white/25">
+                        Source: {ticketKey}
+                      </p>
+                    )}
+
+                    <a
+                      href={`{getJiraUrl(ticketKey)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setShowMoreMenu(false)}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                    >
+                      <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
+                      <span>Open in Jira</span>
+                    </a>
 
                     <Link
                       href={`/tickets/${ticketKey}`}
@@ -480,8 +518,43 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                       className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
                     >
                       <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
-                      <span>View ticket in Bridge</span>
+                      <span>View in Bridge</span>
                     </Link>
+
+                    {targetTicketKey && splitModeVisible && (
+                      <>
+                        <div className="mx-2 my-1 h-px bg-white/[0.06]" />
+                        <p className="px-3 pt-1 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-white/25">
+                          Target: {targetTicketKey}
+                        </p>
+                        <a
+                          href={`{getJiraUrl(targetTicketKey)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setShowMoreMenu(false)}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                        >
+                          <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
+                          <span>Open in Jira</span>
+                        </a>
+                        <Link
+                          href={`/tickets/${targetTicketKey}`}
+                          onClick={() => setShowMoreMenu(false)}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                        >
+                          <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
+                          <span>View in Bridge</span>
+                        </Link>
+                        <Link
+                          href={`/tickets/${targetTicketKey}/write`}
+                          onClick={() => setShowMoreMenu(false)}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                        >
+                          <PenLine size={13} strokeWidth={1.5} className="shrink-0" />
+                          <span>Open in Story Writer</span>
+                        </Link>
+                      </>
+                    )}
 
                     {(((isDraftDirty || hasLocalSave) && writer.messages.length === 0) || writer.messages.length > 0) && (
                       <div className="mx-2 my-1 h-px bg-white/[0.06]" />

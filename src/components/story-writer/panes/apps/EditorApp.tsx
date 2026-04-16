@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { GitCompare, Eye } from "lucide-react";
+import { GitCompare, Eye, Type } from "lucide-react";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { TitleInput } from "@/components/story-writer/TitleInput";
 import { DiffPane, type RightVersion, type DiffViewMode } from "@/components/story-writer/DiffPane";
@@ -20,6 +20,7 @@ export function EditorApp() {
   const { registerToolbar, unregisterToolbar } = pane;
 
   const [viewMode, setViewMode] = useState<"editor" | "diff">("editor");
+  const [toolbarVisible, setToolbarVisible] = useState(false);
   const [diffViewMode, setDiffViewMode] = useState<DiffViewMode>("plain");
   const [hunkStates, setHunkStates] = useState<Record<number, HunkState>>({});
   const [selectedDraftIdx, setSelectedDraftIdx] = useState(0);
@@ -102,37 +103,48 @@ export function EditorApp() {
 
   useEffect(() => {
     registerToolbar("editor", {
-      label: "Editor",
-      actions: inSplitMode ? (
-        <div className="flex items-center gap-2">
-          {activeViewMode === "editor" ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<GitCompare size={11} strokeWidth={1.5} />}
-              onClick={() => setViewMode("diff")}
-              title="Show diff"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-            >
-              Diff
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Eye size={11} strokeWidth={1.5} />}
-              onClick={() => setViewMode("editor")}
-              title="Show editor"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
-            >
-              Editor
-            </Button>
+      label: inSplitMode ? "Source" : "Editor",
+      contextLabel: inSplitMode ? writer.ticketKey : undefined,
+      actions: (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Type size={11} strokeWidth={1.5} />}
+            onClick={() => setToolbarVisible((v) => !v)}
+            title={toolbarVisible ? "Hide formatting toolbar" : "Show formatting toolbar"}
+            className={`border-0 bg-transparent ${toolbarVisible ? "text-[var(--color-brand-400)]" : "text-white/35 hover:text-white/55 hover:bg-white/[0.04]"}`}
+          />
+          {inSplitMode && (
+            activeViewMode === "editor" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<GitCompare size={11} strokeWidth={1.5} />}
+                onClick={() => setViewMode("diff")}
+                title="Show diff"
+                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+              >
+                Diff
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Eye size={11} strokeWidth={1.5} />}
+                onClick={() => setViewMode("editor")}
+                title="Show editor"
+                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+              >
+                Editor
+              </Button>
+            )
           )}
         </div>
-      ) : undefined,
+      ),
     });
     return () => unregisterToolbar("editor");
-  }, [registerToolbar, unregisterToolbar, activeViewMode, inSplitMode]);
+  }, [registerToolbar, unregisterToolbar, activeViewMode, inSplitMode, writer.ticketKey, toolbarVisible]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -142,6 +154,7 @@ export function EditorApp() {
           onChange={writer.onDraftChange}
           placeholder="Story description..."
           borderless
+          hideToolbar={!toolbarVisible}
           slotBeforeContent={
             <TitleInput
               value={writer.session?.localTitle ?? writer.ticketData?.title ?? ""}

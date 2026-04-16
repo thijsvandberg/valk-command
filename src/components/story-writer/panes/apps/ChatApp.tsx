@@ -34,6 +34,15 @@ export function ChatApp() {
     }
   };
 
+  const handleFocusDraft = (draftId: string) => {
+    const content = draftContentMap[draftId];
+    const draft = writer.aiDrafts.find((d) => d.id === draftId);
+    const label = draft ? `AI Draft ${draft.draftIndex + 1}` : "Draft";
+    if (content) {
+      pane.focusDraftPreview(content, label, draftId);
+    }
+  };
+
   const handleFindRelated = async () => {
     await writer.onSend("Find related stories", "find-related");
   };
@@ -123,6 +132,7 @@ export function ChatApp() {
           messageDraftMap={messageDraftMap}
           draftContentMap={draftContentMap}
           onViewDraft={handleViewDraft}
+          onFocusDraft={handleFocusDraft}
           onOpenLogs={() => setShowLogs(true)}
           onApplyTitle={writer.onTitleChange}
           issueType={writer.ticketData?.type ?? "story"}

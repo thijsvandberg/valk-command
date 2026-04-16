@@ -17,6 +17,7 @@ import {
   GripHorizontal,
   AlertCircle,
   RotateCcw,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -53,6 +54,7 @@ interface StoryWriterChatProps {
   messageDraftMap: Record<string, string>;
   draftContentMap: Record<string, string>;
   onViewDraft?: (draftId: string) => void;
+  onFocusDraft?: (draftId: string) => void;
   onOpenLogs?: (taskId: string) => void;
   onApplyTitle?: (title: string) => void;
   issueType?: IssueType;
@@ -126,6 +128,7 @@ export function StoryWriterChat({
   messageDraftMap,
   draftContentMap,
   onViewDraft,
+  onFocusDraft,
   onOpenLogs,
   onApplyTitle,
   issueType = "story",
@@ -276,6 +279,24 @@ export function StoryWriterChat({
     }, 0);
   }, [manualInputHeight]);
 
+  const handleDirectSend = useCallback(async (text: string, enableCodebase: boolean) => {
+    if (isBusy || inputValue.trim()) return;
+    // Client-side dedup: block identical message sent within 10s
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (lastUserMsg && lastUserMsg.content.trim() === text.trim()) {
+      const elapsed = Date.now() - new Date(lastUserMsg.timestamp).getTime();
+      if (elapsed < 10_000) {
+        setDupWarning(true);
+        setTimeout(() => setDupWarning(false), 3000);
+        return;
+      }
+    }
+    onCodebaseResearchChange(enableCodebase);
+    setSending(true);
+    await onSend(text);
+    setSending(false);
+  }, [isBusy, inputValue, messages, onCodebaseResearchChange, onSend]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages */}
@@ -300,6 +321,7 @@ export function StoryWriterChat({
                 draftId={messageDraftMap[msg.id]}
                 draftContent={messageDraftMap[msg.id] ? draftContentMap[messageDraftMap[msg.id]] : undefined}
                 onViewDraft={onViewDraft}
+                onFocusDraft={onFocusDraft}
                 logsTaskId={messageLogsTaskIds[idx]}
                 onOpenLogs={onOpenLogs}
                 onStoryKeyClick={onStoryKeyClick}
@@ -409,20 +431,29 @@ export function StoryWriterChat({
           </p>
           <div className="flex flex-wrap items-center gap-1">
             {quickPrompts.map((s) => (
-              <Button
-                key={s.id}
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (inputValue.trim()) return;
-                  onCodebaseResearchChange(s.enableCodebase === true);
-                  fillInput(s.text);
-                }}
-                disabled={isBusy}
-                className="border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/65 hover:bg-white/[0.07] hover:text-white/85 hover:border-white/[0.12]"
-              >
-                {s.label}
-              </Button>
+              <div key={s.id} className="flex items-center rounded border border-white/[0.08] bg-white/[0.03] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (inputValue.trim()) return;
+                    onCodebaseResearchChange(s.enableCodebase === true);
+                    fillInput(s.text);
+                  }}
+                  disabled={isBusy}
+                  className="px-3 py-1.5 text-xs text-white/65 cursor-pointer hover:bg-white/[0.07] hover:text-white/85 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {s.label}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDirectSend(s.text, s.enableCodebase === true)}
+                  disabled={isBusy || !!inputValue.trim()}
+                  className="flex items-center justify-center border-l border-white/[0.08] px-1.5 py-1.5 text-white/30 cursor-pointer hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Submit immediately"
+                >
+                  <ChevronRight size={10} strokeWidth={2} />
+                </button>
+              </div>
             ))}
           </div>
         </div>

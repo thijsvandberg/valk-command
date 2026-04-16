@@ -13,6 +13,7 @@ import { usePaneContext } from "../PaneContext";
 export function SplitTargetApp() {
   const writer = useWriterContext();
   const pane = usePaneContext();
+  const { registerToolbar, unregisterToolbar } = pane;
 
   const [viewMode, setViewMode] = useState<"editor" | "diff">("editor");
   const [diffViewMode, setDiffViewMode] = useState<DiffViewMode>("plain");
@@ -87,7 +88,7 @@ export function SplitTargetApp() {
   const contextLabel = writer.targetTicketKey ?? "";
 
   useEffect(() => {
-    pane.registerToolbar("split-target", {
+    registerToolbar("split-target", {
       label: "Split target",
       contextLabel,
       actions: (
@@ -118,8 +119,8 @@ export function SplitTargetApp() {
         </div>
       ),
     });
-    return () => pane.unregisterToolbar("split-target");
-  }, [pane, contextLabel, viewMode]);
+    return () => unregisterToolbar("split-target");
+  }, [registerToolbar, unregisterToolbar, contextLabel, viewMode]);
 
   if (!writer.targetTicketKey) {
     return (

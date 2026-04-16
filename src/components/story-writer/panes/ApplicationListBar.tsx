@@ -27,8 +27,6 @@ const APP_DEFS: Array<{
   { id: "story-preview", label: "Story preview", icon: <BookOpen size={12} strokeWidth={1.5} /> },
 ];
 
-const PANE_COUNTS: (1 | 2 | 3)[] = [1, 2, 3];
-
 export function ApplicationListBar() {
   const pane = usePaneContext();
   const writer = useWriterContext();
@@ -105,27 +103,6 @@ export function ApplicationListBar() {
         })}
       </div>
 
-      {/* Divider */}
-      <div className="mx-1 h-4 w-px bg-white/[0.08]" />
-
-      {/* Pane count toggle */}
-      <div className="flex items-center gap-0.5">
-        <span className="mr-1 text-[9px] text-white/20 uppercase tracking-wider">Panes</span>
-        {PANE_COUNTS.map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => pane.setPaneCount(n)}
-            className={`flex h-6 w-6 items-center justify-center rounded text-[11px] font-medium cursor-pointer transition-colors duration-100 ${
-              pane.paneCount === n
-                ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/25"
-                : "text-white/30 hover:text-white/55 hover:bg-white/[0.04]"
-            }`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
