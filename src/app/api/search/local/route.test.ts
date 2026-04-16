@@ -256,6 +256,28 @@ describe("GET /api/search/local", () => {
     expect(body.results[0].summary).toBe("Revised payment flow");
   });
 
+  it("matches tickets by acceptanceCriteria content", async () => {
+    const sampleTicket = {
+      jiraKey: "VPL-77",
+      title: "Unrelated title",
+      status: "TO DO",
+      priority: null,
+      assignee: null,
+      reporter: null,
+      sprintName: null,
+      labels: "",
+      description: null,
+      acceptanceCriteria: "User must be able to reset password via email",
+    };
+
+    setupDbMock([sampleTicket], [], [], [], []);
+
+    const res = await GET(makeRequest("reset password"));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.results.some((r: { key: string }) => r.key === "VPL-77")).toBe(true);
+  });
+
   it("strips ADF JSON from description before indexing", async () => {
     const adfDescription = JSON.stringify({
       type: "doc",

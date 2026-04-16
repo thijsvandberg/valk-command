@@ -11,6 +11,7 @@ export interface SearchDoc {
   sprintName: string | null;
   labels: string;
   description: string;
+  acceptanceCriteria: string;
   localEditTitle: string;
   localEditDescription: string;
   notes: string;
@@ -53,6 +54,7 @@ const FUSE_OPTIONS: IFuseOptions<SearchDoc> = {
     { name: "notes", weight: 0.55 },
     { name: "tags", weight: 0.5 },
     { name: "description", weight: 0.45 },
+    { name: "acceptanceCriteria", weight: 0.4 },
     { name: "localEditDescription", weight: 0.45 },
     { name: "reporter", weight: 0.35 },
     { name: "poCommentBodies", weight: 0.25 },

@@ -28,6 +28,7 @@ export interface LocalSearchResult {
   epic: string | null;
   epicKey: string | null;
   description: string | null;
+  acceptanceCriteria: string | null;
   jiraUrl: string | null;
   storyPoints: number | null;
   reporter: string | null;
@@ -144,6 +145,7 @@ async function buildIndex() {
       sprintName: t.sprintName ?? null,
       labels: t.labels ?? "",
       description: stripAdf(t.description),
+      acceptanceCriteria: stripAdf(t.acceptanceCriteria),
       localEditTitle: localEdits?.title ?? "",
       localEditDescription: stripAdf(localEdits?.description),
       notes: meta?.poNotes ?? "",
@@ -307,6 +309,7 @@ export async function GET(request: Request) {
         epic: detail?.epic ?? null,
         epicKey: detail?.epicKey ?? null,
         description: r.item.description || null,
+        acceptanceCriteria: r.item.acceptanceCriteria || null,
         jiraUrl: jiraBaseUrl ? `${jiraBaseUrl}/browse/${r.item.key}` : null,
         storyPoints: detail?.storyPoints ?? null,
         reporter: r.item.reporter,
