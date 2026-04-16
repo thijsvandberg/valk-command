@@ -12,8 +12,20 @@ vi.mock("next/navigation", () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+// localStorage mock for useLocalStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, val: string) => { store[key] = val; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+  };
+})();
+Object.defineProperty(window, "localStorage", { value: localStorageMock, writable: true });
+
 function makeLocalResult(key: string, summary: string, status = "TO DO"): LocalSearchResult {
-  return { key, summary, status, poStatus: null, issueType: null, assignee: null, sprintId: null, sprintName: null, labels: null, epic: null, epicKey: null, description: null, jiraUrl: null, storyPoints: null, reporter: null, updatedAt: null, score: 0.1, matches: [] };
+  return { key, summary, status, poStatus: null, issueType: null, assignee: null, sprintId: null, sprintName: null, labels: null, epic: null, epicKey: null, description: null, acceptanceCriteria: null, jiraUrl: null, storyPoints: null, reporter: null, updatedAt: null, score: 0.1, matches: [] };
 }
 
 function makeConversationResult(id: string, title: string, type = "chat") {
@@ -48,6 +60,7 @@ describe("SearchModal", () => {
     mockFetch.mockResolvedValue(makeGroupedResponse());
     global.fetch = mockFetch;
     mockPush.mockReset();
+    localStorageMock.clear();
   });
 
   it("does not render when open is false", () => {
@@ -507,6 +520,98 @@ describe("SearchModal", () => {
       // Click Clear all — it should disappear
       fireEvent.click(screen.getByText("Clear all"));
       expect(screen.queryByText("Clear all")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows recent searches when query is empty and history exists", async () => {
+    // Pre-populate history
+    localStorageMock.setItem("search_history", JSON.stringify(["auth flow", "payment service"]));
+
+    render(
+      <SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Recent searches")).toBeInTheDocument();
+      expect(screen.getByText("auth flow")).toBeInTheDocument();
+      expect(screen.getByText("payment service")).toBeInTheDocument();
+    });
+  });
+
+  it("clicking a history item populates the query", async () => {
+    localStorageMock.setItem("search_history", JSON.stringify(["auth flow"]));
+
+    render(
+      <SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("auth flow")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("auth flow"));
+
+    expect(screen.getByPlaceholderText("Search tickets...")).toHaveValue("auth flow");
+  });
+
+  it("Clear button removes history", async () => {
+    localStorageMock.setItem("search_history", JSON.stringify(["auth flow"]));
+
+    render(
+      <SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("auth flow")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("Clear"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Recent searches")).not.toBeInTheDocument();
+      expect(screen.queryByText("auth flow")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows 'Search in Jira mode' button in empty state for local mode with no results", async () => {
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse([]));
+
+    render(
+      <SearchModal open={true} initialQuery="xyznotfound" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Search in Jira mode")).toBeInTheDocument();
+    });
+  });
+
+  it("does not show 'Search in Jira mode' button when query is too short", async () => {
+    render(
+      <SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    // Short query — empty state should not have the Jira CTA
+    expect(screen.queryByText("Search in Jira mode")).not.toBeInTheDocument();
+  });
+
+  it("shows match snippet when Fuse match is in description field", async () => {
+    const descriptionMatch = [
+      {
+        key: "description",
+        value: "The user can reset their password using the email link provided",
+        indices: [[15, 19]] as [number, number][],
+      },
+    ];
+    const resultWithDescriptionMatch = {
+      ...makeLocalResult("VPL-55", "Unrelated title"),
+      description: "The user can reset their password using the email link provided",
+      matches: descriptionMatch,
+    };
+    mockFetch.mockResolvedValueOnce(makeGroupedResponse([resultWithDescriptionMatch]));
+
+    render(
+      <SearchModal open={true} initialQuery="reset" onClose={onClose} onSelectTicket={onSelectTicket} />,
+    );
+
+    await waitFor(() => {
+      // The snippet label "Desc" should appear
+      expect(screen.getByText("Desc")).toBeInTheDocument();
     });
   });
 

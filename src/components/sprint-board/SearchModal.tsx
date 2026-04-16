@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, PanelRight, PanelRightClose, ListFilter } from "lucide-react";
+import { Search, X, PanelRight, PanelRightClose, ListFilter, Clock } from "lucide-react";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { Button } from "@/components/ui/Button";
 
 import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
@@ -91,6 +92,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   // Per-section "show all" state (expand beyond SECTION_LIMIT)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const filterOptionsFetchedRef = useRef(false);
+  const { history: searchHistory, addSearch, clearHistory } = useSearchHistory();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -355,6 +357,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         }
         const row = visibleRows[activeIdx];
         if (!row) return;
+        addSearch(effectiveLocalQuery);
         if (row.group === "tickets") {
           const result = row.item as LocalSearchResult;
           if (e.shiftKey) {
@@ -406,13 +409,17 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         if (loadingJira) return;
         if (jiraResults.length > 0) {
           const issue = jiraResults[activeIdx];
-          if (issue) { router.push(`/tickets/${issue.key}`); onClose(); }
+          if (issue) {
+            addSearch(jiraQuery || query);
+            router.push(`/tickets/${issue.key}`);
+            onClose();
+          }
         } else {
           runJiraSearch();
         }
       }
     }
-  }, [focusedPanel, activeIdx, mode, visibleRows, jiraResults, jiraResultCount, previewEnabled, loadingJira, detectedKey, navigateToKey, onClose, runJiraSearch, router]);
+  }, [focusedPanel, activeIdx, mode, visibleRows, jiraResults, jiraResultCount, previewEnabled, loadingJira, detectedKey, navigateToKey, onClose, runJiraSearch, router, addSearch, effectiveLocalQuery, jiraQuery, query]);
 
   useEffect(() => {
     if (activeIdx < 0) return;
@@ -430,6 +437,17 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     if (row?.group === "tickets") return row.item as LocalSearchResult;
     return null;
   }, [previewEnabled, activeIdx, visibleRows]);
+
+  const switchToJira = useCallback(() => {
+    const q = query.trim();
+    setMode("jira");
+    setActiveIdx(-1);
+    if (q) {
+      setJiraQuery(q);
+      // Defer to let state update settle before triggering search
+      setTimeout(() => runJiraSearch(), 0);
+    }
+  }, [query, runJiraSearch]);
 
   if (!open) return null;
 
@@ -454,6 +472,9 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
 
   const sectionVisible = (key: string) =>
     filters.sections.size === 0 || filters.sections.has(key);
+
+  // Show history panel when query is short, history exists, and we're in local mode
+  const showHistory = mode === "local" && query.trim().length < 2 && searchHistory.length > 0;
 
   return (
     <div
@@ -654,6 +675,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                             result={r}
                             active={flatIdx === activeIdx}
                             onSelect={(newTab) => {
+                              addSearch(effectiveLocalQuery);
                               if (newTab) {
                                 window.open(`/tickets/${r.key}`, "_blank", "noopener,noreferrer");
                                 window.focus();
@@ -693,6 +715,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                             result={r}
                             active={flatIdx === activeIdx}
                             onSelect={(newTab) => {
+                              addSearch(effectiveLocalQuery);
                               if (newTab) {
                                 window.open(`/chat/${r.id}`, "_blank", "noopener,noreferrer");
                                 window.focus();
@@ -730,6 +753,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                             result={r}
                             active={flatIdx === activeIdx}
                             onSelect={(newTab) => {
+                              addSearch(effectiveLocalQuery);
                               if (newTab) {
                                 window.open(`/tickets/${r.ticketKey}`, "_blank", "noopener,noreferrer");
                                 window.focus();
@@ -757,6 +781,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                       issue={issue}
                       active={i === activeIdx}
                       onSelect={(newTab) => {
+                        addSearch(jiraQuery || query);
                         if (newTab) {
                           window.open(`/tickets/${issue.key}`, "_blank", "noopener,noreferrer");
                           window.focus();
@@ -772,10 +797,43 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 ))}
               </div>
             )}
-            {!showLocalSkeleton && !showJiraSkeleton && !jiraError && (
+            {/* Search history — shown when query is empty and history exists */}
+            {!showLocalSkeleton && showHistory && (
+              <div className="py-2">
+                <div className="flex items-center justify-between px-5 pb-1 pt-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Recent searches</span>
+                  <button
+                    type="button"
+                    onClick={clearHistory}
+                    className="text-[10px] cursor-pointer"
+                    style={{ color: "rgba(255,255,255,0.25)", transition: "color 100ms" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {searchHistory.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setQuery(q)}
+                    className="flex w-full items-center gap-3 px-6 py-2.5 text-left cursor-pointer focus-visible:outline-none"
+                    style={{ transition: "background-color 80ms" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.025)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                  >
+                    <Clock className="h-3.5 w-3.5 shrink-0 text-white/20" strokeWidth={1.5} />
+                    <span className="text-[13px]" style={{ color: "rgba(255,255,255,0.55)" }}>{q}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!showLocalSkeleton && !showJiraSkeleton && !jiraError && !showHistory && (
               (mode === "local" && totalGroupedCount === 0) ||
               (mode === "jira" && jiraResults.length === 0 && !loadingJira)
-            ) && <EmptyState query={displayQuery} mode={mode} />}
+            ) && <EmptyState query={displayQuery} mode={mode} onSwitchToJira={switchToJira} />}
           </div>
 
           {showPreview && activeResult && (
