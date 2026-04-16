@@ -139,7 +139,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions }: SearchFi
 
   return (
     <div
-      className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-2.5 overflow-x-auto"
+      className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-2.5"
       style={{ backgroundColor: "rgba(255,255,255,0.015)" }}
     >
       <FilterDropdown
