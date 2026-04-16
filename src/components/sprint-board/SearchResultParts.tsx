@@ -176,12 +176,36 @@ export function PreviewPane({
   );
 }
 
+// Merges Fuse match index pairs that are within `gap` characters of each other, then drops
+// spans shorter than `minLength`. This removes the scattered single/double-char highlights
+// Fuse produces for fuzzy character-level matches.
+function mergeAndFilterIndices(
+  raw: readonly [number, number][],
+  mergeGap = 1,
+  minLength = 3,
+): [number, number][] {
+  if (raw.length === 0) return [];
+  const sorted = [...raw].sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [[sorted[0][0], sorted[0][1]]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const [s, e] = sorted[i];
+    if (s <= last[1] + mergeGap + 1) {
+      merged[merged.length - 1][1] = Math.max(last[1], e);
+    } else {
+      merged.push([s, e]);
+    }
+  }
+  return merged.filter(([s, e]) => e - s + 1 >= minLength);
+}
+
 export function HighlightedText({ text, matches, fieldName }: { text: string; matches?: readonly FuseResultMatch[]; fieldName: string }) {
   const summaryMatch = matches?.find((m) => m.key === fieldName && m.value === text);
   if (!summaryMatch || !summaryMatch.indices || summaryMatch.indices.length === 0) {
     return <span>{text}</span>;
   }
-  const intervals = [...summaryMatch.indices].sort((a, b) => a[0] - b[0]);
+  const intervals = mergeAndFilterIndices(summaryMatch.indices as [number, number][]);
+  if (intervals.length === 0) return <span>{text}</span>;
   const parts: React.ReactNode[] = [];
   let cursor = 0;
   for (const [start, end] of intervals) {
@@ -218,12 +242,13 @@ export function MatchSnippet({ matches }: { matches?: readonly FuseResultMatch[]
     if (!match || !match.value) continue;
 
     const value = match.value;
-    const indices = [...match.indices].sort((a, b) => a[0] - b[0]);
+    const cleanedIndices = mergeAndFilterIndices(match.indices as [number, number][]);
+    if (cleanedIndices.length === 0) continue;
 
-    // Build a ~120-char window around the first match
+    // Build a ~120-char window around the first meaningful match
     const WINDOW = 120;
     const BEFORE = 40;
-    const [firstStart] = indices[0];
+    const [firstStart] = cleanedIndices[0];
     const windowStart = Math.max(0, firstStart - BEFORE);
     const windowEnd = Math.min(value.length, windowStart + WINDOW);
     const snippet = value.slice(windowStart, windowEnd);
@@ -232,7 +257,7 @@ export function MatchSnippet({ matches }: { matches?: readonly FuseResultMatch[]
     const parts: React.ReactNode[] = [];
     let cursor = 0;
 
-    for (const [start, end] of indices) {
+    for (const [start, end] of cleanedIndices) {
       const relStart = start - windowStart;
       const relEnd = end - windowStart;
       if (relEnd <= 0 || relStart >= snippet.length) continue;
@@ -271,10 +296,12 @@ export function MatchSnippet({ matches }: { matches?: readonly FuseResultMatch[]
   return null;
 }
 
-// Returns true when the best match for a result is in a non-title body field
+// Returns true when the result has a meaningful match (≥3 chars after merging) in a body field
 function hasBodyFieldMatch(matches?: readonly FuseResultMatch[]): boolean {
   if (!matches) return false;
-  return matches.some((m) => m.key && BODY_FIELDS.includes(m.key) && m.indices && m.indices.length > 0);
+  return matches.some(
+    (m) => m.key && BODY_FIELDS.includes(m.key) && m.indices && mergeAndFilterIndices(m.indices as [number, number][]).length > 0,
+  );
 }
 
 export function SkeletonRow({ idx }: { idx: number }) {
