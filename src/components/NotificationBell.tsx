@@ -233,7 +233,7 @@ export function NotificationBell() {
   // effectiveType/Team auto-clears when the active filter type or team has no more notifications.
   const { typeCounts, teamCounts, filteredNotifications, filteredUnreadIds, filteredReadIds, effectiveType, effectiveTeam } = useMemo(() => {
     const typeCounts = new Map<string, { total: number; unread: number }>();
-    const teamCounts = new Map<string, number>();
+    const teamCounts = new Map<string, { total: number; unread: number }>();
 
     for (const n of notifications) {
       const tc = typeCounts.get(n.type) ?? { total: 0, unread: 0 };
@@ -242,7 +242,12 @@ export function NotificationBell() {
       typeCounts.set(n.type, tc);
 
       const team = extractTeamPrefix(n.sprintName);
-      if (team) teamCounts.set(team, (teamCounts.get(team) ?? 0) + 1);
+      if (team) {
+        const tmc = teamCounts.get(team) ?? { total: 0, unread: 0 };
+        tmc.total++;
+        if (!n.read) tmc.unread++;
+        teamCounts.set(team, tmc);
+      }
     }
 
     // If the active filter type/team has been fully cleared, treat it as inactive
@@ -362,9 +367,7 @@ export function NotificationBell() {
                       {notificationIcon(type)}
                     </div>
                     {unread > 0 && (
-                      <span className={`text-[10px] tabular-nums font-medium leading-none ${
-                        isActive ? "text-white/65" : "text-white/45"
-                      }`}>
+                      <span className="text-[10px] tabular-nums font-medium leading-none text-white/60">
                         {unread > 99 ? "99" : unread}
                       </span>
                     )}
@@ -378,7 +381,7 @@ export function NotificationBell() {
               )}
 
               {/* Team chips */}
-              {teamCounts.size > 1 && [...teamCounts.entries()].map(([team, count]) => {
+              {teamCounts.size > 1 && [...teamCounts.entries()].map(([team, { unread }]) => {
                 const isActive = effectiveTeam === team;
                 return (
                   <button
@@ -386,7 +389,7 @@ export function NotificationBell() {
                     type="button"
                     onClick={() => setActiveTeam(isActive ? null : team)}
                     aria-pressed={isActive}
-                    aria-label={`Team ${team}: ${count} notifications`}
+                    aria-label={`Team ${team}${unread > 0 ? `: ${unread} unread` : ""}`}
                     className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
                       isActive
                         ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)] ring-1 ring-inset ring-[var(--color-brand-500)]/25"
@@ -394,9 +397,11 @@ export function NotificationBell() {
                     }`}
                   >
                     {team}
-                    <span className={`tabular-nums ${isActive ? "text-[var(--color-brand-300)]/60" : "text-white/20"}`}>
-                      {count}
-                    </span>
+                    {unread > 0 && (
+                      <span className="tabular-nums text-white/60">
+                        {unread}
+                      </span>
+                    )}
                   </button>
                 );
               })}
