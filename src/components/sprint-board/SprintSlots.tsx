@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ChevronRight, ChevronDown, ChevronUp, RefreshCw, LayoutGrid } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, RefreshCw, LayoutGrid, Layers } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown } from "./FilterBar";
+import type { GroupByOption } from "./useGroupBy";
 import {
   DndContext,
   closestCenter,
@@ -180,6 +181,68 @@ function SortableTab({
 }
 
 
+// -- Group by dropdown (All view only) --
+
+const GROUP_BY_OPTIONS: { value: GroupByOption; label: string }[] = [
+  { value: "none", label: "None" },
+  { value: "sprint", label: "Sprint" },
+  { value: "epic", label: "Epic" },
+];
+
+function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: (v: GroupByOption) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
+  const isActive = value !== "none";
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        variant={isActive ? "soft" : "ghost"}
+        size="md"
+        iconOnly
+        onClick={() => setOpen(!open)}
+        icon={
+          <span className="relative flex items-center justify-center">
+            <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
+            {isActive && (
+              <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
+            )}
+          </span>
+        }
+        title={isActive ? `Group by: ${value}` : "Group by"}
+        className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"}
+      />
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          {GROUP_BY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-white/[0.04] ${
+                opt.value === value ? "text-white bg-white/[0.03]" : "text-white/50"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${opt.value === value ? "bg-[var(--color-brand-400)]" : "opacity-0"}`} />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SprintSlots({
   slotSprints,
   activeSlot,
@@ -210,6 +273,8 @@ export function SprintSlots({
   onColumnToggle,
   onColumnReorder,
   onColumnReset,
+  groupBy,
+  onGroupByChange,
 }: {
   slotSprints: string[];
   activeSlot: number;
@@ -240,6 +305,8 @@ export function SprintSlots({
   onColumnToggle?: (id: ColumnId, show: boolean) => void;
   onColumnReorder?: (activeId: ColumnId, overId: ColumnId) => void;
   onColumnReset?: () => void;
+  groupBy?: GroupByOption;
+  onGroupByChange?: (v: GroupByOption) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -356,8 +423,13 @@ export function SprintSlots({
       })()}
       </div>
 
-      {/* Right side: column toggle, sort, refresh + toggle filters */}
+      {/* Right side: group by (All view only), column toggle, sort, refresh + toggle filters */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
+        {/* Group by — only visible in the All view */}
+        {allActive && groupBy !== undefined && onGroupByChange && (
+          <GroupByDropdown value={groupBy} onChange={onGroupByChange} />
+        )}
+
         {/* Column toggle */}
         {columnVisible && columnOrder && onColumnToggle && onColumnReorder && (
           <ColumnToggle

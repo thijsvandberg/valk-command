@@ -9,17 +9,43 @@ As the PO, I want the Sprint Board "All" tab to support grouping by sprint or ep
 
 Additionally, the horizontal scroll on the sprint board overview must be fixed so the board is fully usable at any viewport width.
 
+## Implementation Plan
+
+**Recommended implementation order: 5 → 4 → 0 → 1 → 2 → 3** (Phases 4 and 5 are independent of grouping logic)
+
+1. **Phase 5 first (CSS-only, lowest risk)**: Fix horizontal scroll in `TicketTable.tsx` — add `overflow-x-auto min-w-0` to table container, add sticky column support for drag-handle/checkbox/key columns.
+
+2. **Phase 4 (row-level drag)**: In `TicketRow.tsx` / `SortableTicketRow`, move `{...listeners}` and `{...attributes}` from the handle `<td>` to the `<tr>` element. Add `onPointerDown={e => e.stopPropagation()}` to interactive children (checkbox td, follow star button, POStatusCell td, QualityBadge td). Apply `cursor-grab`/`cursor-grabbing` to `<tr>`.
+
+3. **Phase 0 (foundation hooks/types)**:
+   - Create `src/hooks/useSessionStorage.ts` (identical to `useLocalStorage` but using `sessionStorage`)
+   - Create `src/components/sprint-board/useGroupBy.ts` with `groupBy` state, `collapsedGroups` state, and `groupTickets()` utility that groups and sorts sprints (active → future chronological → past → "No sprint")
+
+4. **Phase 1 (Group by control)**: Add `groupBy`/`onGroupByChange` props to `SprintSlots.tsx` and render a "Group by" dropdown (None / Sprint / Epic) visible only when `isAllView`. Wire up in `SprintBoard.tsx`.
+
+5. **Phase 2 (Group headers)**: Add `groups`, `collapsedGroups`, `onToggleCollapse` props to `TicketTable.tsx`. When grouped, render one `<tbody>` per group with: spacer `<tr>` (24px), sticky group header `<tr>` with collapse toggle, then ticket rows. Disable virtualization when groups are active.
+
+6. **Phase 3 (Grouped DnD)**: Extend `jiraRankDndEnabled` to include `isAllView && groupBy === "sprint"`. Add per-group `SortableContext` in `TicketTable`. Extend `handleBoardDragEnd` in `SprintBoard.tsx` to detect cross-group drops (by comparing `active.data.current.sprintId !== over.data.current.sprintId`) and call `moveSprint` + `rank`. Register group header droppables. Update DragOverlay to show "Move to [sprint]" when dragging between groups. Restrict epic cross-group drag.
+
+**New files**: `src/hooks/useSessionStorage.ts`, `src/components/sprint-board/useGroupBy.ts`
+
+**Key tricky parts**:
+- Multiple `<tbody>` + per-group `SortableContext`: cross-group drag must be handled at DndContext level via collision detection
+- Sticky column backgrounds: need explicit opaque bg on sticky `<td>` elements matching all row states
+- `onPointerDown` propagation: every interactive element in a row needs stopPropagation to prevent drag-on-click
+- Session storage (not localStorage) for group-by state (resets on hard refresh)
+
 ## Acceptance Criteria
 
 ### Phase 1: Grouping in the All view
 
-- [ ] A "Group by" control in the Sprint Board toolbar, visible only when the "All" tab is active
-- [ ] Options: None, Sprint, Epic
-- [ ] Default: None (existing flat list behaviour is unchanged)
-- [ ] When "Group by Sprint" is selected, tickets are grouped by their `sprintName`; tickets with no sprint fall into a "No sprint" group at the bottom
-- [ ] When "Group by Epic" is selected, tickets are grouped by their epic link; tickets with no epic fall into a "No epic" group at the bottom
-- [ ] Group order: active sprint first, then future sprints chronologically, then past sprints, then "No sprint"
-- [ ] Group selection persists per-session (localStorage, not DB); resets on hard refresh
+- [x] A "Group by" control in the Sprint Board toolbar, visible only when the "All" tab is active
+- [x] Options: None, Sprint, Epic
+- [x] Default: None (existing flat list behaviour is unchanged)
+- [x] When "Group by Sprint" is selected, tickets are grouped by their `sprintName`; tickets with no sprint fall into a "No sprint" group at the bottom
+- [x] When "Group by Epic" is selected, tickets are grouped by their epic link; tickets with no epic fall into a "No epic" group at the bottom
+- [x] Group order: active sprint first, then future sprints chronologically, then past sprints, then "No sprint"
+- [x] Group selection persists per-session (localStorage, not DB); resets on hard refresh
 
 ### Phase 2: Group headers and visual separation
 
@@ -42,19 +68,19 @@ Additionally, the horizontal scroll on the sprint board overview must be fixed s
 
 ### Phase 4: Row-level drag activation
 
-- [ ] Dragging works when grabbing anywhere on the ticket row, not only via the grip handle icon
-- [ ] The grip handle icon remains visible on hover as a visual affordance, but is no longer the sole activation target
-- [ ] `cursor: grab` is applied to the full row on hover when drag is enabled; `cursor: grabbing` while dragging
-- [ ] Click and selection interactions on the row still work normally (drag activation requires the 150 ms delay already in place)
-- [ ] Links, buttons, checkboxes, and input fields inside the row are excluded from drag activation (pointer-events still handled by those elements)
+- [x] Dragging works when grabbing anywhere on the ticket row, not only via the grip handle icon
+- [x] The grip handle icon remains visible on hover as a visual affordance, but is no longer the sole activation target
+- [x] `cursor: grab` is applied to the full row on hover when drag is enabled; `cursor: grabbing` while dragging
+- [x] Click and selection interactions on the row still work normally (drag activation requires the 150 ms delay already in place)
+- [x] Links, buttons, checkboxes, and input fields inside the row are excluded from drag activation (pointer-events still handled by those elements)
 
 ### Phase 5: Fix horizontal scroll on sprint board overview
 
-- [ ] The sprint board table never overflows the viewport horizontally without a visible scrollbar
-- [ ] A horizontal scrollbar appears at the bottom of the table container (not on the `body`) when column content is wider than the available space
-- [ ] The table header row scrolls horizontally together with the body (no header/body misalignment)
-- [ ] The sticky leftmost columns (ticket key, title) remain fixed during horizontal scroll
-- [ ] No content is clipped or hidden at any viewport width >= 1024px
+- [x] The sprint board table never overflows the viewport horizontally without a visible scrollbar
+- [x] A horizontal scrollbar appears at the bottom of the table container (not on the `body`) when column content is wider than the available space
+- [x] The table header row scrolls horizontally together with the body (no header/body misalignment)
+- [x] The sticky leftmost columns (ticket key, title) remain fixed during horizontal scroll
+- [x] No content is clipped or hidden at any viewport width >= 1024px
 
 ## Technical Notes
 
