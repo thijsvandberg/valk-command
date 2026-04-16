@@ -209,6 +209,7 @@ export function SprintSlots({
   columnOrder,
   onColumnToggle,
   onColumnReorder,
+  onColumnReset,
 }: {
   slotSprints: string[];
   activeSlot: number;
@@ -238,6 +239,7 @@ export function SprintSlots({
   columnOrder?: ColumnId[];
   onColumnToggle?: (id: ColumnId, show: boolean) => void;
   onColumnReorder?: (activeId: ColumnId, overId: ColumnId) => void;
+  onColumnReset?: () => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -363,6 +365,7 @@ export function SprintSlots({
             order={columnOrder}
             onChange={onColumnToggle}
             onReorder={onColumnReorder}
+            onReset={onColumnReset}
           />
         )}
 

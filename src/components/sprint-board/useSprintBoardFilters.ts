@@ -29,6 +29,8 @@ export function useSprintBoardFilters(
   isAllView: boolean,
   poPriorityOrder: string[] | null,
   externalVisible?: Set<ColumnId>,
+  externalOrder?: ColumnId[],
+  onApplyColumnConfig?: (visible: ColumnId[], order: ColumnId[]) => void,
 ) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -212,20 +214,23 @@ export function useSprintBoardFilters(
   }, [setStoredFilters]);
 
   const handleSaveView = useCallback((title: string) => {
+    const columnConfig = externalVisible && externalOrder
+      ? { visible: [...externalVisible], order: [...externalOrder] }
+      : undefined;
     if (activeViewId) {
       setSavedViews((prev) => prev.map((v) =>
         v.id === activeViewId
-          ? { ...v, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir } }
+          ? { ...v, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir }, columnConfig }
           : v
       ));
     } else {
       const id = crypto.randomUUID();
-      setSavedViews((prev) => [...prev, { id, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir } }]);
+      setSavedViews((prev) => [...prev, { id, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir }, columnConfig }]);
       const params = new URLSearchParams(searchParams.toString());
       params.set("view", id);
       router.replace(`?${params.toString()}`, { scroll: false });
     }
-  }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, setSavedViews, searchParams, router]);
+  }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, externalVisible, externalOrder, setSavedViews, searchParams, router]);
 
   const handleViewClick = useCallback((view: SavedView) => {
     setStoredFilters({
@@ -237,11 +242,14 @@ export function useSprintBoardFilters(
       issueType: view.filters.issueType ?? [],
     });
     setStoredSort({ field: view.sort.field, direction: view.sort.direction });
+    if (view.columnConfig && onApplyColumnConfig) {
+      onApplyColumnConfig(view.columnConfig.visible, view.columnConfig.order);
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", view.id);
     params.delete("sprint");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [setStoredFilters, setStoredSort, searchParams, router]);
+  }, [setStoredFilters, setStoredSort, onApplyColumnConfig, searchParams, router]);
 
   const handleDeleteView = useCallback((id: string) => {
     setSavedViews((prev) => prev.filter((v) => v.id !== id));

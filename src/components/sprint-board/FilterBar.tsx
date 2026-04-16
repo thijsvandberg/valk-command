@@ -65,6 +65,10 @@ export interface SavedView {
     issueType?: string[];
   };
   sort: { field: SortField; direction: SortDir };
+  columnConfig?: {
+    visible: ColumnId[];
+    order: ColumnId[];
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -283,11 +287,13 @@ export function ColumnToggle({
   order,
   onChange,
   onReorder,
+  onReset,
 }: {
   visible: Set<ColumnId>;
   order: ColumnId[];
   onChange: (id: ColumnId, show: boolean) => void;
   onReorder: (activeId: ColumnId, overId: ColumnId) => void;
+  onReset?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -346,6 +352,18 @@ export function ColumnToggle({
               ))}
             </SortableContext>
           </DndContext>
+          {onReset && (
+            <>
+              <div className="my-1 h-px bg-white/[0.06]" />
+              <button
+                type="button"
+                onClick={() => { onReset(); setOpen(false); }}
+                className="flex w-full items-center px-3.5 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50"
+              >
+                Reset to default
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

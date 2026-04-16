@@ -82,11 +82,25 @@ export function useColumnConfig() {
     [persist],
   );
 
+  const resetTo = useCallback(
+    (nextOrder: ColumnId[], nextVisible: ColumnId[]) => {
+      const visibleSet = new Set(nextVisible);
+      setOrder(nextOrder);
+      setVisible(visibleSet);
+      persist(nextOrder, visibleSet);
+    },
+    [persist],
+  );
+
+  const resetToDefaults = useCallback(() => {
+    resetTo(DEFAULT_ORDER, DEFAULT_VISIBLE);
+  }, [resetTo]);
+
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
   }, []);
 
-  return { order, visible, loaded, setColumnOrder, toggleColumn };
+  return { order, visible, loaded, setColumnOrder, toggleColumn, resetTo, resetToDefaults };
 }

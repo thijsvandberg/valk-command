@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import type { Ticket, POStatus } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
@@ -204,6 +204,42 @@ export function TicketTable({
   const DEFAULT_ORDER: ColumnId[] = useMemo(() => COLUMNS.map((c) => c.id), []);
   const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Track container width to scale down columns when they overflow
+  const [containerWidth, setContainerWidth] = useState(0);
+  useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => {
+      setContainerWidth(Math.floor(entry.contentRect.width));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Proportionally scale column widths when total exceeds the container.
+  // The title column is excluded and acts as the flex filler.
+  const columnScale = useMemo(() => {
+    if (!containerWidth) return 1;
+    const FIXED_OVERHEAD = 60; // checkbox column (w-5=20px) + select column (w-10=40px)
+    const MIN_TITLE_WIDTH = 80;
+    let fixedSum = FIXED_OVERHEAD;
+    for (const id of effectiveOrder) {
+      if (!visibleColumns.has(id) || id === "title") continue;
+      fixedSum += columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? 0;
+    }
+    const available = containerWidth - MIN_TITLE_WIDTH;
+    if (fixedSum <= available) return 1;
+    return available / fixedSum;
+  }, [containerWidth, effectiveOrder, visibleColumns, columnWidths]);
+
+  const scaledColW = useCallback((id: string): number | undefined => {
+    if (id === "title") return undefined;
+    const w = columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
+    if (w === undefined) return undefined;
+    if (columnScale === 1) return w;
+    return Math.max(20, Math.round(w * columnScale));
+  }, [columnWidths, columnScale]);
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
   const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
@@ -322,7 +358,7 @@ export function TicketTable({
     const isCenter = CENTER_COLUMNS.has(id);
     const widthStyle = id === "title"
       ? (colW("title") ? { width: colW("title") } : undefined)
-      : { width: colW(id) };
+      : { width: scaledColW(id) };
 
     if (!label) {
       return <th key={id} className="py-2 pr-2" style={widthStyle} />;
@@ -338,7 +374,7 @@ export function TicketTable({
         {rh(id)}
       </th>
     );
-  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
+  }, [col, colW, scaledColW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
 
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
