@@ -29,6 +29,29 @@ export async function GET(request: Request, { params }: RouteContext) {
       return NextResponse.json({ session: null, messages: [], aiDrafts: [], relatedCandidates: [] });
     }
 
+    // If targetLocalDraft is empty but the target ticket has a local edit, recover it and persist
+    // so subsequent loads are instant. This heals sessions broken by earlier clearing bugs.
+    let resolvedSession = session;
+    if (session.targetTicketKey && !session.targetLocalDraft) {
+      const targetEdit = await db
+        .select()
+        .from(ticketLocalEdit)
+        .where(
+          and(
+            eq(ticketLocalEdit.ticketKey, session.targetTicketKey),
+            eq(ticketLocalEdit.field, "description"),
+          ),
+        )
+        .get();
+      if (targetEdit?.localValue) {
+        await db
+          .update(storyWriterSession)
+          .set({ targetLocalDraft: targetEdit.localValue, updatedAt: new Date().toISOString() })
+          .where(eq(storyWriterSession.id, session.id));
+        resolvedSession = { ...session, targetLocalDraft: targetEdit.localValue };
+      }
+    }
+
     const aiDrafts = await db.select().from(storyWriterDraft)
       .where(eq(storyWriterDraft.sessionId, session.id))
       .orderBy(storyWriterDraft.draftIndex)
@@ -39,7 +62,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       .all();
 
     if (draftsOnly) {
-      return NextResponse.json({ session, messages: [], aiDrafts, relatedCandidates });
+      return NextResponse.json({ session: resolvedSession, messages: [], aiDrafts, relatedCandidates });
     }
 
     const messages = await db.select().from(message)
@@ -47,7 +70,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       .orderBy(message.timestamp)
       .all();
 
-    return NextResponse.json({ session, messages, aiDrafts, relatedCandidates });
+    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, relatedCandidates });
   } catch (err) {
     logger.error("story-writer", "GET failed", err);
     return NextResponse.json({ error: "Failed to load story writer session" }, { status: 500 });

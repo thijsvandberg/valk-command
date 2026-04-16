@@ -18,7 +18,7 @@ type RouteContext = { params: Promise<{ key: string }> };
 export async function POST(request: Request, { params }: RouteContext) {
   const { key } = await params;
 
-  let body: { targetKey?: string; sprintId?: string } = {};
+  let body: { targetKey?: string; sprintId?: string; title?: string; issueType?: string } = {};
   try {
     body = await request.json();
   } catch {
@@ -70,13 +70,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     targetKey = body.targetKey;
   } else {
     // Create a new story on Jira
-    const splitTitle = `Split: ${originalTicket.title}`;
+    const splitTitle = body.title?.trim() || `Split: ${originalTicket.title}`;
 
     let newJiraKey: string;
     try {
       const result = await jiraClient.createIssue({
         summary: splitTitle,
         sprintId: body.sprintId,
+        issueType: body.issueType,
         // Empty ADF doc prevents Jira from applying its default issue type template
         description: { type: "doc", version: 1, content: [] },
       });
@@ -93,7 +94,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     await db.insert(ticket).values({
       jiraKey: newJiraKey,
       title: splitTitle,
-      type: "story",
+      type: body.issueType ?? "story",
       status: "TO DO",
     });
 

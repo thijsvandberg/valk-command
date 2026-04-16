@@ -247,8 +247,9 @@ describe("useStoryWriterDrafts", () => {
 
     it("pushes original ticket to Jira when localDraft exists", async () => {
       vi.spyOn(global, "fetch")
-        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response);
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: saveLocalEdit
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: patchSession
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response); // push-to-jira
 
       const refreshSession = vi.fn().mockResolvedValue(undefined);
       const opts = createOptions({ refreshSession });
@@ -275,10 +276,12 @@ describe("useStoryWriterDrafts", () => {
 
     it("pushes both original and target when both have drafts", async () => {
       vi.spyOn(global, "fetch")
-        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response);
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: saveLocalEdit main
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: patchSession main
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: saveLocalEdit target
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: patchSession target
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response) // push-to-jira main
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response); // push-to-jira target
 
       const refreshSession = vi.fn().mockResolvedValue(undefined);
       const opts = createOptions({ refreshSession });
@@ -309,11 +312,12 @@ describe("useStoryWriterDrafts", () => {
 
     it("returns failure result when original push fails", async () => {
       vi.spyOn(global, "fetch")
-        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: saveLocalEdit
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response) // saveDraft: patchSession
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ success: false, conflict: true, contentChanged: false }),
-        } as Response);
+        } as Response); // push-to-jira
 
       const opts = createOptions();
       const sessionWithDraft = { ...mockSession, localDraft: "updated" };
@@ -352,7 +356,8 @@ describe("useStoryWriterDrafts", () => {
         await result.current.saveDraft(sessionWithAll);
       });
 
-      expect(fetch).toHaveBeenCalledTimes(4);
+      // 4 local-edit PUTs + 1 PATCH for main story + 1 PATCH for target story
+      expect(fetch).toHaveBeenCalledTimes(6);
       expect(fetch).toHaveBeenCalledWith(
         `/api/tickets/${TICKET_KEY}/local-edits`,
         expect.objectContaining({
@@ -365,6 +370,14 @@ describe("useStoryWriterDrafts", () => {
           body: JSON.stringify({ field: "title", localValue: "title", isDraft: false }),
         }),
       );
+      // Flushes main story localDraft + localTitle to session row to prevent stale reads after push
+      expect(fetch).toHaveBeenCalledWith(
+        API_BASE,
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ localDraft: "desc", localTitle: "title" }),
+        }),
+      );
       expect(fetch).toHaveBeenCalledWith(
         `/api/tickets/BRDG-200/local-edits`,
         expect.objectContaining({
@@ -375,6 +388,14 @@ describe("useStoryWriterDrafts", () => {
         `/api/tickets/BRDG-200/local-edits`,
         expect.objectContaining({
           body: JSON.stringify({ field: "title", localValue: "target title", isDraft: false }),
+        }),
+      );
+      // Flushes target story drafts to session row to prevent stale reads after push
+      expect(fetch).toHaveBeenCalledWith(
+        API_BASE,
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ targetLocalDraft: "target desc", targetLocalTitle: "target title" }),
         }),
       );
     });

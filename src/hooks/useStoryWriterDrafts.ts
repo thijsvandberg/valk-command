@@ -66,10 +66,12 @@ export function useStoryWriterDrafts(options: DraftOptions) {
   const updateTargetLocalDraft = useCallback((content: string) => {
     setSession((prev) => {
       if (!prev) return prev;
+      if (!content && prev.targetLocalDraft) return prev;
       if (content === prev.targetLocalDraft) return prev;
       return { ...prev, targetLocalDraft: content };
     });
 
+    if (!content) return;
     if (targetSaveTimerRef.current) clearTimeout(targetSaveTimerRef.current);
     targetSaveTimerRef.current = setTimeout(async () => {
       try {
@@ -137,22 +139,38 @@ export function useStoryWriterDrafts(options: DraftOptions) {
   const saveDraft = useCallback(async (session: StoryWriterSessionRow | null) => {
     if (!session) return;
     const saves: Promise<unknown>[] = [];
+    // Flush localDraft and localTitle to the session row so that refreshSession()
+    // after a push (or after a failed push + page reload) always returns the current
+    // values. Without this, the patchSession debounce in updateLocalDraft/updateLocalTitle
+    // may not have fired yet, leaving the session DB stale.
+    const sessionPatch: Record<string, string> = {};
     if (session.localDraft) {
       saves.push(saveLocalEdit(ticketKey, "description", session.localDraft, false));
+      sessionPatch.localDraft = session.localDraft;
     }
     if (session.localTitle) {
       saves.push(saveLocalEdit(ticketKey, "title", session.localTitle, false));
+      sessionPatch.localTitle = session.localTitle;
+    }
+    if (Object.keys(sessionPatch).length > 0) {
+      saves.push(patchSession(apiBase, sessionPatch));
     }
     if (session.targetTicketKey) {
+      const targetSessionPatch: Record<string, string> = {};
       if (session.targetLocalDraft) {
         saves.push(saveLocalEdit(session.targetTicketKey, "description", session.targetLocalDraft, false));
+        targetSessionPatch.targetLocalDraft = session.targetLocalDraft;
       }
       if (session.targetLocalTitle) {
         saves.push(saveLocalEdit(session.targetTicketKey, "title", session.targetLocalTitle, false));
+        targetSessionPatch.targetLocalTitle = session.targetLocalTitle;
+      }
+      if (Object.keys(targetSessionPatch).length > 0) {
+        saves.push(patchSession(apiBase, targetSessionPatch));
       }
     }
     await Promise.all(saves);
-  }, [ticketKey]);
+  }, [apiBase, ticketKey]);
 
   const pushToJira = useCallback(async (session: StoryWriterSessionRow | null) => {
     const hasOriginal = !!(session?.localDraft || session?.localTitle);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Scissors, X, Plus, Link, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -14,7 +14,7 @@ interface SplitStoryPickerProps {
   open: boolean;
   originalTitle: string;
   originalSprintId: string | null;
-  onConfirm: (targetKey?: string, sprintId?: string) => Promise<void>;
+  onConfirm: (targetKey?: string, sprintId?: string, title?: string, issueType?: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -23,11 +23,13 @@ type PickerMode = "create" | "existing";
 export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConfirm, onClose }: SplitStoryPickerProps) {
   const [mode, setMode] = useState<PickerMode>("create");
   const [customTitle, setCustomTitle] = useState(`Split: ${originalTitle}`);
+  const [selectedIssueType, setSelectedIssueType] = useState("story");
   const [existingKey, setExistingKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sprints, setSprints] = useState<SprintSlot[]>([]);
   const [selectedSprintId, setSelectedSprintId] = useState<string>("");
+  const mouseDownOnOverlay = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -54,9 +56,9 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
           setError("Enter a ticket key");
           return;
         }
-        await onConfirm(key, undefined);
+        await onConfirm(key, undefined, undefined, undefined);
       } else {
-        await onConfirm(undefined, selectedSprintId || undefined);
+        await onConfirm(undefined, selectedSprintId || undefined, customTitle || undefined, selectedIssueType);
       }
     } catch {
       setError("Failed to activate split mode");
@@ -68,7 +70,8 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => { mouseDownOnOverlay.current = e.target === e.currentTarget; }}
+      onClick={(e) => { if (e.target === e.currentTarget && mouseDownOnOverlay.current) onClose(); }}
     >
       <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-[var(--color-surface-elevated)] shadow-[0_24px_64px_rgba(0,0,0,0.6)] p-6">
         {/* Header */}
@@ -135,26 +138,46 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 placeholder="Story title..."
               />
             </div>
-            <div>
-              <label className="mb-1.5 block text-[11px] font-medium text-white/45">
-                Sprint
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedSprintId}
-                  onChange={(e) => setSelectedSprintId(e.target.value)}
-                  className="w-full appearance-none rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
-                >
-                  {sprints.length === 0 && (
-                    <option value="">No sprints configured</option>
-                  )}
-                  {sprints.map((s) => (
-                    <option key={s.sprintId} value={s.sprintId}>
-                      {s.sprintName}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35" />
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+                  Issue type
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedIssueType}
+                    onChange={(e) => setSelectedIssueType(e.target.value)}
+                    className="w-full appearance-none rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                  >
+                    <option value="story">Story</option>
+                    <option value="task">Task</option>
+                    <option value="bug">Bug</option>
+                    <option value="spike">Spike</option>
+                  </select>
+                  <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+                  Sprint
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedSprintId}
+                    onChange={(e) => setSelectedSprintId(e.target.value)}
+                    className="w-full appearance-none rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                  >
+                    {sprints.length === 0 && (
+                      <option value="">No sprints configured</option>
+                    )}
+                    {sprints.map((s) => (
+                      <option key={s.sprintId} value={s.sprintId}>
+                        {s.sprintName}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35" />
+                </div>
               </div>
             </div>
             <p className="text-[11px] text-white/30">

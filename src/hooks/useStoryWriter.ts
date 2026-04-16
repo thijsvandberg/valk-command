@@ -326,11 +326,16 @@ export function useStoryWriter(ticketKey: string) {
     } catch { /* ignore */ }
   }, [apiBase]);
 
-  const activateSplit = useCallback(async (targetKey?: string, sprintId?: string): Promise<{ targetTicketKey: string }> => {
+  const activateSplit = useCallback(async (targetKey?: string, sprintId?: string, title?: string, issueType?: string): Promise<{ targetTicketKey: string }> => {
     const res = await fetch(`${apiBase}/split`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...(targetKey ? { targetKey } : {}), ...(sprintId ? { sprintId } : {}) }),
+      body: JSON.stringify({
+        ...(targetKey ? { targetKey } : {}),
+        ...(sprintId ? { sprintId } : {}),
+        ...(title ? { title } : {}),
+        ...(issueType ? { issueType } : {}),
+      }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
