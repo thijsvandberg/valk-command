@@ -24,6 +24,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
+import { POStatusCell } from "@/components/sprint-board/TicketTableCells";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -79,8 +80,16 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const editVersionRef = useRef(0);
   const initialDirtyChecked = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRefinePrompt, setShowRefinePrompt] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Local PO status state for optimistic updates
+  const ticketPoStatus = (ticketData?.poStatus ?? null) as import("@/types/ticket").POStatus;
+  const [localPoStatus, setLocalPoStatus] = useState<import("@/types/ticket").POStatus>(ticketPoStatus);
+  useEffect(() => {
+    setLocalPoStatus(ticketPoStatus);
+  }, [ticketPoStatus]);
 
   // Split mode state
   const [splitModeVisible, setSplitModeVisible] = useState(false);
@@ -193,7 +202,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const handleDelete = useCallback(async (deleteConversation: boolean) => {
     await writer.deleteSession(deleteConversation);
     setShowDeleteConfirm(false);
-    window.history.back();
+    setShowRefinePrompt(true);
   }, [writer]);
 
   const handleDraftChange = useCallback((content: string) => {
@@ -235,6 +244,16 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     }
     writer.updateTargetLocalTitle(title);
   }, [writer, showSaved]);
+
+  const handlePoStatusChange = useCallback(async (v: import("@/types/ticket").POStatus) => {
+    setLocalPoStatus(v);
+    await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/metadata`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ poStatus: v }),
+    });
+    mutateTicket();
+  }, [ticketKey, mutateTicket]);
 
   const handlePullFromJira = useCallback(async () => {
     setPulling(true);
@@ -596,6 +615,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
                     {writer.session?.localTitle ?? ticketData.title}
                   </span>
+                  <ViewHeaderDivider />
+                  <POStatusCell value={localPoStatus} onChange={handlePoStatusChange} />
                 </>
               );
             })()}
@@ -641,6 +662,35 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
                   >
                     Delete everything
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Post-delete refine prompt */}
+          {showRefinePrompt && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+              <div className="w-full max-w-sm rounded-xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl border border-white/[0.08]">
+                <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/90">
+                  Set PO status to Klaar voor refinement?
+                </h3>
+                <p className="mt-2 text-xs leading-[1.7] text-white/50">
+                  The session has been cleared. Would you like to mark this ticket as ready for refinement?
+                </p>
+                <div className="mt-5 flex items-center justify-end gap-2">
+                  <Button variant="ghost" size="md" onClick={() => window.history.back()} className="border-0">
+                    Skip
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={async () => {
+                      await handlePoStatusChange("Klaar voor refinement");
+                      window.history.back();
+                    }}
+                  >
+                    Yes, set to Refine
                   </Button>
                 </div>
               </div>
