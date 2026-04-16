@@ -49,11 +49,11 @@ Additionally, the horizontal scroll on the sprint board overview must be fixed s
 
 ### Phase 2: Group headers and visual separation
 
-- [ ] Each group has a sticky header row that shows: group name, ticket count badge, and a collapse/expand toggle
-- [ ] Visual separation between groups uses generous vertical whitespace (at least 24px gap) plus a subtle horizontal rule — not just a thick border
-- [ ] Group header background is elevated (e.g. a faint surface tint), clearly distinguishing it from ticket rows without being heavy
-- [ ] Collapsed groups show only their header; the ticket count remains visible
-- [ ] Collapse state persists per group key in localStorage for the session
+- [x] Each group has a sticky header row that shows: group name, ticket count badge, and a collapse/expand toggle
+- [x] Visual separation between groups uses generous vertical whitespace (at least 24px gap) plus a subtle horizontal rule — not just a thick border
+- [x] Group header background is elevated (e.g. a faint surface tint), clearly distinguishing it from ticket rows without being heavy
+- [x] Collapsed groups show only their header; the ticket count remains visible
+- [x] Collapse state persists per group key in localStorage for the session
 
 ### Phase 3: Drag-and-drop within the All view (grouped)
 

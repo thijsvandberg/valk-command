@@ -6,7 +6,8 @@ import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/Fil
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ArrowUp, ArrowDown, ArrowUpDown, Sheet } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Sheet, ChevronDown, ChevronRight } from "lucide-react";
+import type { TicketGroup } from "@/components/sprint-board/useGroupBy";
 import {
   DndContext,
   closestCenter,
@@ -165,6 +166,9 @@ export function TicketTable({
   externalDnd,
   externalActiveDragId,
   dragOverKey,
+  groups,
+  collapsedGroups,
+  onToggleCollapse,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -199,6 +203,10 @@ export function TicketTable({
   externalActiveDragId?: string | null;
   // Key of the ticket currently being hovered over during external drag (for insertion line).
   dragOverKey?: string | null;
+  // Grouped rendering: when groups are provided, render per-group tbodies with headers.
+  groups?: TicketGroup[];
+  collapsedGroups?: Set<string>;
+  onToggleCollapse?: (groupKey: string) => void;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const DEFAULT_ORDER: ColumnId[] = useMemo(() => COLUMNS.map((c) => c.id), []);
@@ -230,6 +238,9 @@ export function TicketTable({
     }
     return offsets;
   }, [effectiveOrder, col, colW]);
+
+  // Total colspan for group header rows: drag-handle + checkbox + all visible content columns.
+  const totalColSpan = useMemo(() => 2 + effectiveOrder.filter((id) => col(id)).length, [effectiveOrder, col]);
 
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
@@ -500,6 +511,67 @@ export function TicketTable({
     </DndContext>
   );
 
+  // Grouped layout: one <tbody> per group with a header row and ticket rows.
+  // Virtualization is disabled when groups are active since multiple tbodies are incompatible with virtual row indices.
+  const isGrouped = groups && groups.length > 0;
+
+  const groupedTable = isGrouped ? (
+    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
+      {theadContent}
+      {groups.map((group, groupIdx) => {
+        const isCollapsed = collapsedGroups?.has(group.key) ?? false;
+        return (
+          <tbody key={group.key}>
+            {/* Spacer row between groups (not before the first group) */}
+            {groupIdx > 0 && (
+              <tr>
+                <td
+                  colSpan={totalColSpan}
+                  style={{ height: 24, padding: 0, border: "none" }}
+                  className="relative"
+                >
+                  <div className="absolute inset-x-4 top-1/2 h-px -translate-y-1/2 bg-white/[0.05]" />
+                </td>
+              </tr>
+            )}
+            {/* Group header row */}
+            <tr
+              className="border-b border-white/[0.08] cursor-pointer select-none"
+              style={{ background: "rgba(255,255,255,0.025)" }}
+              onClick={() => onToggleCollapse?.(group.key)}
+            >
+              <td
+                colSpan={totalColSpan}
+                className="py-2 pl-3 pr-4"
+              >
+                <div className="flex items-center gap-2">
+                  {isCollapsed
+                    ? <ChevronRight className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
+                    : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
+                  }
+                  <span className="text-xs font-medium text-white/60 truncate">{group.label}</span>
+                  <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-white/[0.06] text-white/30 shrink-0">
+                    {group.tickets.length}
+                  </span>
+                </div>
+              </td>
+            </tr>
+            {/* Ticket rows (hidden when collapsed) — Phase 3 will add per-group SortableContext */}
+            {!isCollapsed && group.tickets.map((ticket) => {
+              const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
+              return (
+                <TicketRow
+                  key={ticket.key}
+                  {...makeRowProps(ticket, flatIdx)}
+                />
+              );
+            })}
+          </tbody>
+        );
+      })}
+    </table>
+  ) : null;
+
   return (
     <div
       ref={tableContainerRef}
@@ -507,12 +579,20 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      {enableVirtualization ? virtualizedTable : dndTable}
-      {tickets.length === 0 && (
+      {isGrouped ? groupedTable : (enableVirtualization ? virtualizedTable : dndTable)}
+      {tickets.length === 0 && !isGrouped && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-white/10" strokeWidth={1} />}
           title="No tickets in this sprint"
           description="Tickets will appear here once they are added to the sprint in Jira"
+          className="py-16"
+        />
+      )}
+      {isGrouped && groups.every((g) => g.tickets.length === 0) && (
+        <EmptyState
+          icon={<Sheet className="h-6 w-6 text-white/10" strokeWidth={1} />}
+          title="No tickets"
+          description="Tickets will appear here once they are added in Jira"
           className="py-16"
         />
       )}
