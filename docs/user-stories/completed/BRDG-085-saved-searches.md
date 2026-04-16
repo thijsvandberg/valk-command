@@ -1,6 +1,6 @@
 # BRDG-085: Search — Saved Searches
 
-**Status:** Open
+**Status:** Done
 **Priority:** Low
 **Follows from:** BRDG-053 Phase 4
 
@@ -24,10 +24,10 @@ As the PO, I want to save frequently used search queries (with their filters) so
 
 ## Acceptance Criteria
 
-- [ ] "Save this search" action that stores query + active filters
-- [ ] Saved searches accessible from search modal (e.g. sidebar or dropdown when input is empty)
-- [ ] Max 10 saved searches
-- [ ] Delete saved search
+- [x] "Save this search" action that stores query + active filters
+- [x] Saved searches accessible from search modal (e.g. sidebar or dropdown when input is empty)
+- [x] Max 10 saved searches
+- [x] Delete saved search
 
 ## Technical Notes
 
