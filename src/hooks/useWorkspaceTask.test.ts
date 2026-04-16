@@ -89,11 +89,11 @@ describe("useWorkspaceTask", () => {
     await waitFor(() => expect(result.current.status).toBe("streaming"));
     expect(result.current.taskId).toBe("task-1");
     expect(result.current.skill).toBe("review");
-    expect(fetch).toHaveBeenCalledWith("/api/workspace-tasks", {
+    expect(fetch).toHaveBeenCalledWith("/api/workspace-tasks", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ skill: "review", args: { key: "VPL-1" } }),
-    });
+    }));
   });
 
   it("includes conversationId when provided", async () => {
@@ -108,11 +108,11 @@ describe("useWorkspaceTask", () => {
       await result.current.submitAndStream("review", { key: "VPL-1" }, "conv-1");
     });
 
-    expect(fetch).toHaveBeenCalledWith("/api/workspace-tasks", {
+    expect(fetch).toHaveBeenCalledWith("/api/workspace-tasks", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ skill: "review", args: { key: "VPL-1" }, conversationId: "conv-1" }),
-    });
+    }));
   });
 
   it("transitions to failed when submit returns non-ok", async () => {
@@ -146,7 +146,7 @@ describe("useWorkspaceTask", () => {
     });
 
     expect(result.current.status).toBe("failed");
-    expect(result.current.error).toBe("Submit failed (500)");
+    expect(result.current.error).toBe("Request failed (500)");
   });
 
   it("transitions to failed when fetch throws", async () => {

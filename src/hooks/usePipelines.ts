@@ -1,8 +1,12 @@
 import useSWR, { mutate as globalMutate } from "swr";
 import { useCallback, useRef, useEffect } from "react";
 import type { PipelineRunPayload } from "@/app/api/pipelines/route";
-
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
+import {
+  swrFetcher,
+  pipelines as pipelinesApi,
+  followedTickets as followedTicketsApi,
+  notifications as notificationsApi,
+} from "@/lib/api-client";
 
 interface SyncStatus {
   watermark: string | null;
@@ -36,7 +40,7 @@ export function usePipelines(filters?: {
 
   const key = `/api/pipelines${params.toString() ? `?${params}` : ""}`;
 
-  const swr = useSWR<PipelineResponse>(key, fetcher, {
+  const swr = useSWR<PipelineResponse>(key, swrFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 15000,
     refreshInterval: IDLE_INTERVAL,
@@ -59,7 +63,7 @@ export function usePipelines(filters?: {
   }, [swr.data?.hasRunning, swr.mutate, swr]);
 
   const refresh = useCallback(() => {
-    return fetch("/api/pipelines", { method: "POST" }).then(() => {
+    return pipelinesApi.refresh().then(() => {
       swr.mutate();
     });
   }, [swr]);
@@ -75,7 +79,7 @@ export function usePipelines(filters?: {
 }
 
 export function useFollowedTickets() {
-  return useSWR<string[]>("/api/followed-tickets", fetcher, {
+  return useSWR<string[]>("/api/followed-tickets", swrFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 30000,
   });
@@ -83,19 +87,13 @@ export function useFollowedTickets() {
 
 export function useFollowTicket() {
   const follow = useCallback(async (ticketKey: string) => {
-    await fetch("/api/followed-tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketKey }),
-    });
-    globalMutate("/api/followed-tickets");
+    await followedTicketsApi.follow(ticketKey);
+    globalMutate(followedTicketsApi.listUrl());
   }, []);
 
   const unfollow = useCallback(async (ticketKey: string) => {
-    await fetch(`/api/followed-tickets?ticketKey=${encodeURIComponent(ticketKey)}`, {
-      method: "DELETE",
-    });
-    globalMutate("/api/followed-tickets");
+    await followedTicketsApi.unfollow(ticketKey);
+    globalMutate(followedTicketsApi.listUrl());
   }, []);
 
   return { follow, unfollow };
@@ -109,16 +107,12 @@ export interface DeployNotificationSettings {
 export function useDeploySettings() {
   const swr = useSWR<DeployNotificationSettings>(
     "/api/pipelines/deploy-settings",
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 
   const update = useCallback(async (settings: DeployNotificationSettings) => {
-    await fetch("/api/pipelines/deploy-settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
-    });
+    await pipelinesApi.updateDeploySettings(settings);
     swr.mutate();
   }, [swr]);
 
@@ -136,7 +130,7 @@ export interface PipelineHealthEntry {
 export function usePipelineHealth() {
   return useSWR<Record<string, PipelineHealthEntry>>(
     "/api/pipelines/health",
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
@@ -150,7 +144,7 @@ export interface LastDeployedInfo {
 export function useLastDeployed() {
   return useSWR<Record<string, LastDeployedInfo>>(
     "/api/pipelines/last-deployed",
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
@@ -176,7 +170,7 @@ interface NotificationResponse {
 export function useNotifications(limit = 50) {
   const swr = useSWR<NotificationResponse>(
     `/api/notifications?limit=${limit}`,
-    fetcher,
+    swrFetcher,
     {
       revalidateOnFocus: false,
       dedupingInterval: 15000,
@@ -185,51 +179,38 @@ export function useNotifications(limit = 50) {
   );
 
   const markRead = useCallback(async (id: string) => {
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
+    await notificationsApi.markRead(id);
     swr.mutate();
   }, [swr]);
 
   const markAllRead = useCallback(async () => {
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markAll: true }),
-    });
+    await notificationsApi.markAllRead();
     swr.mutate();
   }, [swr]);
 
   // Deletes only read notifications (bulk clear)
   const clearRead = useCallback(async () => {
-    await fetch("/api/notifications", { method: "DELETE" });
+    await notificationsApi.clearRead();
     swr.mutate();
   }, [swr]);
 
   // Deletes a single notification by id
   const dismissOne = useCallback(async (id: string) => {
-    await fetch(`/api/notifications?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    await notificationsApi.dismiss(id);
     swr.mutate();
   }, [swr]);
 
   // Marks specific notifications as read (used for filtered "mark all read")
   const markFilteredRead = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
+    await notificationsApi.markFilteredRead(ids);
     swr.mutate();
   }, [swr]);
 
   // Deletes specific read notifications (used for filtered "clear read")
   const clearFiltered = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
-    const idsParam = ids.map(encodeURIComponent).join(",");
-    await fetch(`/api/notifications?ids=${idsParam}`, { method: "DELETE" });
+    await notificationsApi.clearFiltered(ids);
     swr.mutate();
   }, [swr]);
 

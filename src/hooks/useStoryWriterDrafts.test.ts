@@ -205,6 +205,8 @@ describe("useStoryWriterDrafts", () => {
     it("DELETEs the draft and removes it from state", async () => {
       vi.spyOn(global, "fetch").mockResolvedValueOnce({
         ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
       } as Response);
 
       const setAllDrafts = vi.fn();

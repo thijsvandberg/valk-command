@@ -92,7 +92,7 @@ export default function TicketDetailPage({
   } : undefined;
 
   // Local edits are now included in the API response to avoid flicker
-  const localEdits: Record<string, { value: string; isDraft: boolean }> | undefined = apiData?.localEdits;
+  const localEdits: Record<string, { value: string; isDraft: boolean }> | undefined = (apiData as Record<string, unknown> | undefined)?.localEdits as Record<string, { value: string; isDraft: boolean }> | undefined;
 
   // Auto-fetch from Jira when ticket is not in local DB
   const [jiraCheckState, setJiraCheckState] = useState<"idle" | "checking" | "not-found">("idle");

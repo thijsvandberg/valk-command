@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { SSEEvent } from "@/lib/agent-client";
 import { friendlyAgentError } from "@/lib/agent-errors";
+import { workspaceTasks as workspaceTasksApi, ApiError } from "@/lib/api-client";
 
 export type TaskStreamStatus = "idle" | "submitting" | "streaming" | "completed" | "failed";
 
@@ -159,17 +160,14 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
     let cancelled = false;
 
     async function checkActiveTasks() {
-      const res = await fetch(
-        `/api/workspace-tasks?conversationId=${encodeURIComponent(conversationId!)}`
-      );
-      if (!res.ok || cancelled) return;
-      const rows = await res.json() as Array<{
+      const rows = await workspaceTasksApi.list(conversationId!) as Array<{
         id: string;
         skillName: string;
         status: string;
         output: string | null;
         error: string | null;
       }>;
+      if (cancelled) return;
 
       if (cancelled) return;
 
@@ -257,24 +255,12 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
       });
 
       try {
-        const res = await fetch("/api/workspace-tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ skill, args, ...(convId ? { conversationId: convId } : {}) }),
+        const task = await workspaceTasksApi.create({
+          skill,
+          args,
+          ...(convId ? { conversationId: convId } : {}),
         });
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          safeSetState((s) => ({
-            ...s,
-            status: "failed",
-            error: friendlyAgentError(body, `Submit failed (${res.status})`),
-          }));
-          return;
-        }
-
-        const task = await res.json();
-        const taskId = task.id as string;
+        const taskId = task.id;
 
         safeSetState((s) => ({
           ...s,

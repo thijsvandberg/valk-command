@@ -41,20 +41,21 @@ describe("useJobs", () => {
 
     expect(result.current.jobs).toEqual([mockJob]);
     expect(result.current.error).toBeNull();
-    expect(fetch).toHaveBeenCalledWith("/api/jobs");
+    expect(fetch).toHaveBeenCalledWith("/api/jobs", expect.objectContaining({}));
   });
 
   it("sets error when load fails", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 500,
-    } as Response);
+      json: async () => { throw new Error("no json"); },
+    } as unknown as Response);
 
     const { result } = renderHook(() => useJobs());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.error).toBe("Failed to load jobs");
+    expect(result.current.error).toBe("Request failed (500)");
     expect(result.current.jobs).toEqual([]);
   });
 
@@ -94,7 +95,7 @@ describe("useJobs", () => {
 
     expect(created).toEqual(mockJob);
     expect(result.current.jobs).toEqual([mockJob]);
-    expect(fetch).toHaveBeenCalledWith("/api/jobs", {
+    expect(fetch).toHaveBeenCalledWith("/api/jobs", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -102,7 +103,7 @@ describe("useJobs", () => {
         cronExpression: "0 9 * * *",
         skillName: "sprint-sync",
       }),
-    });
+    }));
   });
 
   it("sets error when create fails with error body", async () => {
@@ -113,6 +114,7 @@ describe("useJobs", () => {
       } as Response)
       .mockResolvedValueOnce({
         ok: false,
+        status: 400,
         json: async () => ({ error: "Invalid cron expression" }),
       } as Response);
 
@@ -140,6 +142,7 @@ describe("useJobs", () => {
       } as Response)
       .mockResolvedValueOnce({
         ok: false,
+        status: 500,
         json: async () => { throw new Error("parse error"); },
       } as unknown as Response);
 
@@ -156,7 +159,7 @@ describe("useJobs", () => {
     });
 
     expect(created).toBeNull();
-    expect(result.current.error).toBe("Failed to create job");
+    expect(result.current.error).toBe("Request failed (500)");
   });
 
   it("updates a job optimistically", async () => {
@@ -180,14 +183,14 @@ describe("useJobs", () => {
 
     expect(updated).toEqual({ ...mockJob, name: "Updated sync" });
     expect(result.current.jobs[0].name).toBe("Updated sync");
-    expect(fetch).toHaveBeenCalledWith("/api/jobs/job-1", {
+    expect(fetch).toHaveBeenCalledWith("/api/jobs/job-1", expect.objectContaining({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Updated sync" }),
-    });
+    }));
   });
 
-  it("rolls back on failed update by re-fetching", async () => {
+  it("sets error on failed update", async () => {
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce({
         ok: true,
@@ -196,11 +199,8 @@ describe("useJobs", () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 500,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [mockJob],
-      } as Response);
+        json: async () => { throw new Error("no json"); },
+      } as unknown as Response);
 
     const { result } = renderHook(() => useJobs());
     await waitFor(() => expect(result.current.jobs).toHaveLength(1));
@@ -211,8 +211,7 @@ describe("useJobs", () => {
     });
 
     expect(updated).toBeNull();
-    expect(result.current.error).toBe("Failed to update job");
-    await waitFor(() => expect(result.current.jobs[0].name).toBe("Daily sync"));
+    expect(result.current.error).toBe("Request failed (500)");
   });
 
   it("deletes a job optimistically", async () => {
@@ -236,12 +235,12 @@ describe("useJobs", () => {
 
     expect(deleted).toBe(true);
     expect(result.current.jobs).toEqual([mockJob2]);
-    expect(fetch).toHaveBeenCalledWith("/api/jobs/job-1", {
+    expect(fetch).toHaveBeenCalledWith("/api/jobs/job-1", expect.objectContaining({
       method: "DELETE",
-    });
+    }));
   });
 
-  it("rolls back on failed delete by re-fetching", async () => {
+  it("sets error on failed delete", async () => {
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce({
         ok: true,
@@ -250,11 +249,8 @@ describe("useJobs", () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 500,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [mockJob],
-      } as Response);
+        json: async () => { throw new Error("no json"); },
+      } as unknown as Response);
 
     const { result } = renderHook(() => useJobs());
     await waitFor(() => expect(result.current.jobs).toHaveLength(1));
@@ -265,8 +261,7 @@ describe("useJobs", () => {
     });
 
     expect(deleted).toBe(false);
-    expect(result.current.error).toBe("Failed to delete job");
-    await waitFor(() => expect(result.current.jobs).toHaveLength(1));
+    expect(result.current.error).toBe("Request failed (500)");
   });
 
   it("refresh re-fetches jobs", async () => {

@@ -7,6 +7,7 @@ import type { StoryWriterStatus } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
 import { friendlyAgentError } from "@/lib/agent-errors";
+import { storyWriter as storyWriterApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError } from "@/lib/api-client";
 
 export type { WorkspaceUsage } from "./useTaskMonitoring";
 
@@ -44,18 +45,15 @@ export function useStoryWriter(ticketKey: string) {
 
   const refreshSession = useCallback(async () => {
     try {
-      const res = await fetch(apiBase);
-      if (res.ok) {
-        const data = await res.json();
-        if (!unmountedRef.current) {
-          setSession(data.session);
-          setMessages(data.messages);
-          setAllDrafts(data.aiDrafts ?? []);
-          setRelatedCandidates(data.relatedCandidates ?? []);
-        }
+      const data = await storyWriterApi.getSession(ticketKey);
+      if (!unmountedRef.current) {
+        setSession((data as Record<string, unknown>).session as StoryWriterSessionRow | null);
+        setMessages((data as Record<string, unknown>).messages as Message[]);
+        setAllDrafts(((data as Record<string, unknown>).aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
+        setRelatedCandidates(((data as Record<string, unknown>).relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
       }
     } catch { /* ignore */ }
-  }, [apiBase, setSession]);
+  }, [ticketKey, setSession]);
 
   const startMonitoringRef = useRef<((taskId: string, progressMessage?: string) => void) | null>(null);
 
@@ -98,19 +96,17 @@ export function useStoryWriter(ticketKey: string) {
     async function init() {
       setStatus("loading");
       try {
-        const res = await fetch(apiBase);
-        if (!res.ok) throw new Error("Failed to load session");
-        const data = await res.json();
+        const data = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
 
         if (cancelled) return;
 
         if (data.session) {
-          setSession(data.session);
-          setMessages(data.messages);
-          setAllDrafts(data.aiDrafts ?? []);
-          setRelatedCandidates(data.relatedCandidates ?? []);
+          setSession(data.session as StoryWriterSessionRow);
+          setMessages(data.messages as Message[]);
+          setAllDrafts((data.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
+          setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
 
-          const loadedMsgs: Message[] = data.messages ?? [];
+          const loadedMsgs: Message[] = (data.messages as Message[]) ?? [];
           const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
           const hasFollowingAssistant = lastUserMsg
             ? loadedMsgs.some((m: Message) => m.role === "assistant" && m.timestamp > lastUserMsg.timestamp)
@@ -118,82 +114,77 @@ export function useStoryWriter(ticketKey: string) {
           if (lastUserMsg?.workspaceTaskId && !hasFollowingAssistant && !cancelled) {
             // Check if the task already completed while we were away
             try {
-              const taskRes = await fetch(`/api/workspace-tasks/${lastUserMsg.workspaceTaskId}`);
+              const task = await workspaceTasksApi.get(lastUserMsg.workspaceTaskId) as Record<string, unknown>;
               if (cancelled) return;
-              if (taskRes.ok) {
-                const task = await taskRes.json();
-                if (task.status === "completed" && task.output) {
-                  // Apply the completed result directly
-                  setStatus("streaming");
-                  setStreamProgress("Applying result...");
-                  const applyRes = await fetch(`${apiBase}/apply-draft`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ output: task.output, taskId: lastUserMsg.workspaceTaskId, assistantContent: task.output }),
-                  });
+              if ((task.status as string) === "completed" && task.output) {
+                // Apply the completed result directly
+                setStatus("streaming");
+                setStreamProgress("Applying result...");
+                try {
+                  await storyWriterApi.applyDraft(ticketKey, { output: task.output, taskId: lastUserMsg.workspaceTaskId, assistantContent: task.output });
+                } catch {
                   if (cancelled) return;
-                  if (!applyRes.ok) {
-                    setStreamError("Could not apply completed result. Use retry to try again.");
-                    setStatus("ready");
-                    setStreamProgress("");
-                    return;
-                  }
-                  const refreshRes = await fetch(apiBase);
-                  if (refreshRes.ok) {
-                    const refreshed = await refreshRes.json();
-                    if (!cancelled) {
-                      setSession(refreshed.session);
-                      setMessages(refreshed.messages);
-                      setAllDrafts(refreshed.aiDrafts ?? []);
-                      setRelatedCandidates(refreshed.relatedCandidates ?? []);
-                    }
-                  }
-                  if (!cancelled) {
-                    setStatus("ready");
-                    setStreamProgress("");
-                  }
-                  return;
-                } else if (task.status === "failed") {
-                  setStreamError(task.error ?? "Task failed on workspace");
+                  setStreamError("Could not apply completed result. Use retry to try again.");
                   setStatus("ready");
+                  setStreamProgress("");
                   return;
                 }
-                // Still running: fall through to startMonitoring below
-              } else if (taskRes.status === 404) {
+                if (cancelled) return;
+                try {
+                  const refreshed = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+                  if (!cancelled) {
+                    setSession(refreshed.session as StoryWriterSessionRow);
+                    setMessages(refreshed.messages as Message[]);
+                    setAllDrafts((refreshed.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
+                    setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+                  }
+                } catch { /* ignore refresh failure */ }
+                if (!cancelled) {
+                  setStatus("ready");
+                  setStreamProgress("");
+                }
+                return;
+              } else if ((task.status as string) === "failed") {
+                setStreamError((task.error as string) ?? "Task failed on workspace");
                 setStatus("ready");
                 return;
               }
-            } catch { /* fall through to monitoring */ }
+              // Still running: fall through to startMonitoring below
+            } catch (err) {
+              if (err instanceof ApiError && err.status === 404) {
+                setStatus("ready");
+                return;
+              }
+              /* fall through to monitoring */
+            }
             if (cancelled) return;
             startMonitoringRef.current?.(lastUserMsg.workspaceTaskId, "Resuming...");
           } else {
             setStatus("ready");
           }
         } else {
-          const createRes = await fetch(apiBase, { method: "POST" });
-          if (cancelled) return;
-
-          if (createRes.status === 409 || createRes.status === 500) {
-            const retryRes = await fetch(apiBase);
-            if (!retryRes.ok) throw new Error("Failed to load session");
-            const retryData = await retryRes.json();
+          try {
+            const created = await storyWriterApi.createSession(ticketKey) as Record<string, unknown>;
             if (cancelled) return;
-            if (retryData.session) {
-              setSession(retryData.session);
-              setMessages(retryData.messages ?? []);
-              setAllDrafts(retryData.aiDrafts ?? []);
-              setRelatedCandidates(retryData.relatedCandidates ?? []);
+            setSession(created.session as StoryWriterSessionRow);
+            setMessages([]);
+            setAllDrafts([]);
+          } catch (err) {
+            if (cancelled) return;
+            if (err instanceof ApiError && (err.status === 409 || err.status === 500)) {
+              const retryData = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+              if (cancelled) return;
+              if (retryData.session) {
+                setSession(retryData.session as StoryWriterSessionRow);
+                setMessages((retryData.messages as Message[] | undefined) ?? []);
+                setAllDrafts((retryData.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
+                setRelatedCandidates((retryData.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+              } else {
+                throw new Error("Failed to create session");
+              }
             } else {
               throw new Error("Failed to create session");
             }
-          } else if (!createRes.ok) {
-            throw new Error("Failed to create session");
-          } else {
-            const created = await createRes.json();
-            if (cancelled) return;
-            setSession(created.session);
-            setMessages([]);
-            setAllDrafts([]);
           }
           setStatus("ready");
         }
@@ -204,7 +195,7 @@ export function useStoryWriter(ticketKey: string) {
 
     init();
     return () => { cancelled = true; };
-  }, [apiBase, setSession]);
+  }, [ticketKey, apiBase, setSession]);
 
   const sendMessage = useCallback(async (content: string, skill?: string): Promise<boolean> => {
     if (!session) return false;
@@ -232,20 +223,19 @@ export function useStoryWriter(ticketKey: string) {
     setMessages((prev) => [...prev, tempMsg]);
 
     try {
-      const res = await fetch(`${apiBase}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          codebaseResearch: codebaseResearchRef.current,
-          model: modelRef.current,
-          ...(skill ? { skill } : {}),
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        if (res.status === 409 && body?.code === "DUPLICATE") {
+      const result = await storyWriterApi.sendMessage(ticketKey, {
+        content,
+        codebaseResearch: codebaseResearchRef.current,
+        model: modelRef.current,
+        ...(skill ? { skill } : {}),
+      }) as { messageId: string; taskId: string };
+      // Replace temp message with server-confirmed message
+      setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, id: result.messageId, status: "sent" as const, workspaceTaskId: result.taskId } : m));
+      monitoring.startMonitoring(result.taskId);
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409 && err.code === "DUPLICATE") {
           // Remove optimistic message, show dedup warning
           setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
           setStreamError("Duplicate message blocked");
@@ -254,23 +244,16 @@ export function useStoryWriter(ticketKey: string) {
         }
         // Mark message as failed in local state
         setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, status: "failed" as const } : m));
-        setStreamError(friendlyAgentError(body, "Failed to send message"));
+        setStreamError(friendlyAgentError(err.body, "Failed to send message"));
         setStatus("ready");
         return false;
       }
-
-      const { messageId, taskId } = await res.json();
-      // Replace temp message with server-confirmed message
-      setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, id: messageId, status: "sent" as const, workspaceTaskId: taskId } : m));
-      monitoring.startMonitoring(taskId);
-      return true;
-    } catch {
       setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, status: "failed" as const } : m));
       setStreamError("Failed to send message");
       setStatus("ready");
       return false;
     }
-  }, [session, apiBase, monitoring]);
+  }, [session, ticketKey, monitoring]);
 
   const retryMessage = useCallback(async (messageId: string): Promise<boolean> => {
     if (!session) return false;
@@ -288,99 +271,72 @@ export function useStoryWriter(ticketKey: string) {
     setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "pending" as const } : m));
 
     try {
-      const res = await fetch(`${apiBase}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: failedMsg.content,
-          retryMessageId: messageId,
-          codebaseResearch: codebaseResearchRef.current,
-          model: modelRef.current,
-        }),
-      });
+      const result = await storyWriterApi.sendMessage(ticketKey, {
+        content: failedMsg.content,
+        retryMessageId: messageId,
+        codebaseResearch: codebaseResearchRef.current,
+        model: modelRef.current,
+      }) as { taskId: string };
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "sent" as const, workspaceTaskId: result.taskId } : m));
+      monitoring.startMonitoring(result.taskId);
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError) {
         setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "failed" as const } : m));
-        setStreamError(friendlyAgentError(body, "Failed to send message"));
+        setStreamError(friendlyAgentError(err.body, "Failed to send message"));
         setStatus("ready");
         return false;
       }
-
-      const { taskId } = await res.json();
-      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "sent" as const, workspaceTaskId: taskId } : m));
-      monitoring.startMonitoring(taskId);
-      return true;
-    } catch {
       setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "failed" as const } : m));
       setStreamError("Failed to send message");
       setStatus("ready");
       return false;
     }
-  }, [session, messages, apiBase, monitoring]);
+  }, [session, messages, ticketKey, monitoring]);
 
   const clearFailedMessages = useCallback(async () => {
     try {
-      await fetch(`${apiBase}/messages?failed=true`, { method: "DELETE" });
+      await apiFetch<void>(`${apiBase}/messages?failed=true`, { method: "DELETE" });
       setMessages((prev) => prev.filter((m) => m.status !== "failed" && m.status !== "pending"));
     } catch { /* ignore */ }
   }, [apiBase]);
 
   const activateSplit = useCallback(async (targetKey?: string, sprintId?: string, title?: string, issueType?: string): Promise<{ targetTicketKey: string }> => {
-    const res = await fetch(`${apiBase}/split`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...(targetKey ? { targetKey } : {}),
-        ...(sprintId ? { sprintId } : {}),
-        ...(title ? { title } : {}),
-        ...(issueType ? { issueType } : {}),
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "Failed to activate split mode");
-    }
-    const data = await res.json();
+    const data = await storyWriterApi.activateSplit(ticketKey, {
+      ...(targetKey ? { targetKey } : {}),
+      ...(sprintId ? { sprintId } : {}),
+      ...(title ? { title } : {}),
+      ...(issueType ? { issueType } : {}),
+    }) as { session?: StoryWriterSessionRow; targetTicketKey: string };
     if (data.session && !unmountedRef.current) {
       setSession(data.session);
     }
     void refreshSession();
     return { targetTicketKey: data.targetTicketKey };
-  }, [apiBase, refreshSession, setSession]);
+  }, [ticketKey, refreshSession, setSession]);
 
   const deactivateSplit = useCallback(async () => {
     try {
-      await fetch(apiBase, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clearSplit: true }),
-      });
+      await storyWriterApi.patchSession(ticketKey, { clearSplit: true });
       await refreshSession();
     } catch { /* ignore */ }
-  }, [apiBase, refreshSession]);
+  }, [ticketKey, refreshSession]);
 
   const linkCandidate = useCallback(async (candidateId: string, isLinked: boolean) => {
     try {
-      const res = await fetch(`${apiBase}/apply-related`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidateId, isLinked }),
-      });
-      if (res.ok) {
-        const { candidate } = await res.json();
-        if (!unmountedRef.current && candidate) {
-          setRelatedCandidates((prev) =>
-            prev.map((c) => (c.id === candidateId ? candidate : c)),
-          );
-        }
+      const result = await storyWriterApi.toggleRelated(ticketKey, { candidateId, isLinked }) as { candidate?: RelatedStoryCandidateRow };
+      if (!unmountedRef.current && result.candidate) {
+        setRelatedCandidates((prev) =>
+          prev.map((c) => (c.id === candidateId ? result.candidate! : c)),
+        );
       }
     } catch { /* ignore */ }
-  }, [apiBase]);
+  }, [ticketKey]);
 
   const deleteSession = useCallback(async (deleteConversation = false) => {
     const url = deleteConversation ? `${apiBase}?deleteConversation=true` : apiBase;
-    await fetch(url, { method: "DELETE" });
+    await apiFetch<void>(url, { method: "DELETE" });
     if (!unmountedRef.current) {
       setSession(null);
       setMessages([]);

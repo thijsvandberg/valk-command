@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { settings as settingsApi } from "@/lib/api-client";
 
 export type ColumnWidths = Record<string, number>;
 
@@ -28,9 +29,8 @@ export function useColumnWidths() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch("/api/settings/column-widths")
-      .then((r) => r.ok ? r.json() : { widths: {} })
-      .then((data: { widths: ColumnWidths }) => {
+    settingsApi.getColumnWidths()
+      .then((data) => {
         setWidths(data.widths);
         setLoaded(true);
       })
@@ -40,11 +40,8 @@ export function useColumnWidths() {
   const persist = useCallback((next: ColumnWidths) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      fetch("/api/settings/column-widths", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ widths: next }),
-      }).catch((err) => console.warn("[column-widths] persist failed", err));
+      settingsApi.saveColumnWidths(next)
+        .catch((err) => console.warn("[column-widths] persist failed", err));
     }, DEBOUNCE_MS);
   }, []);
 

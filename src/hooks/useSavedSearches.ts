@@ -8,11 +8,10 @@ import {
   type SearchFilters,
   type SerializedSearchFilters,
 } from "@/components/sprint-board/SearchFilterPanel";
+import { swrFetcher, settings as settingsApi } from "@/lib/api-client";
 
 const SWR_KEY = "/api/settings/saved-searches";
 const MAX_SAVED = 10;
-
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : { searches: [] }));
 
 export interface SavedSearch {
   id: string;
@@ -37,7 +36,7 @@ function fromSerialized(s: SerializedSavedSearch): SavedSearch {
 }
 
 export function useSavedSearches() {
-  const { data, isLoading } = useSWR<{ searches: SerializedSavedSearch[] }>(SWR_KEY, fetcher, {
+  const { data, isLoading } = useSWR<{ searches: SerializedSavedSearch[] }>(SWR_KEY, swrFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 30000,
   });
@@ -60,11 +59,7 @@ export function useSavedSearches() {
       const next = [newEntry, ...current];
       await mutate(
         SWR_KEY,
-        fetch(SWR_KEY, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ searches: next }),
-        }).then((r) => (r.ok ? r.json() : data)),
+        settingsApi.saveSavedSearches({ searches: next }).catch(() => data),
         { revalidate: false },
       );
     },
@@ -77,11 +72,7 @@ export function useSavedSearches() {
       const next = current.filter((s) => s.id !== id);
       await mutate(
         SWR_KEY,
-        fetch(SWR_KEY, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ searches: next }),
-        }).then((r) => (r.ok ? r.json() : data)),
+        settingsApi.saveSavedSearches({ searches: next }).catch(() => data),
         { revalidate: false },
       );
     },

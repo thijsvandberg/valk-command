@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { mutate as globalMutate } from "swr";
+import { pipelines as pipelinesApi } from "@/lib/api-client";
 
 const TICK_INTERVAL_MS = 60_000;
 
@@ -23,14 +24,14 @@ export function usePipelineTick() {
 
     runningRef.current = true;
     try {
-      const res = await fetch("/api/pipelines/tick", { method: "POST" });
-      if (!res.ok || !mountedRef.current) return;
-
-      const data = await res.json();
+      const data = await pipelinesApi.tick() as Record<string, unknown>;
       if (!mountedRef.current) return;
 
       // If sync actually ran and found new data, revalidate pipeline caches
-      if (data.ran && (data.newRuns > 0 || data.updatedRuns > 0)) {
+      const hasNewPipelineData = (data.newRuns as number) > 0 || (data.updatedRuns as number) > 0;
+      const prSync = data.prSync as Record<string, number> | undefined;
+      const hasNewPrData = (prSync?.newOpened ?? 0) > 0 || (prSync?.newMerged ?? 0) > 0;
+      if (data.ran && (hasNewPipelineData || hasNewPrData)) {
         globalMutate((key: unknown) =>
           typeof key === "string" && key.startsWith("/api/pipelines"),
         );

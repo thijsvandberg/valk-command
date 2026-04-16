@@ -3,6 +3,7 @@
 import { useCallback, useRef } from "react";
 import { mutate as globalMutate } from "swr";
 import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
+import { storyWriter as storyWriterApi, tickets as ticketsApi, apiFetch, ApiError } from "@/lib/api-client";
 
 interface DraftOptions {
   apiBase: string;
@@ -14,24 +15,19 @@ interface DraftOptions {
   refreshSession: () => Promise<void>;
 }
 
-function patchSession(apiBase: string, data: Record<string, unknown>) {
-  return fetch(apiBase, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+function patchSession(ticketKey: string, data: Record<string, unknown>) {
+  return storyWriterApi.patchSession(ticketKey, data);
 }
 
 function saveLocalEdit(ticketKey: string, field: string, value: string, isDraft = true) {
-  return fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
+  return apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ field, localValue: value, isDraft }),
+    body: { field, localValue: value, isDraft },
   });
 }
 
 export function useStoryWriterDrafts(options: DraftOptions) {
-  const { apiBase, ticketKey, sessionRef, unmountedRef, setSession, setAllDrafts, refreshSession } = options;
+  const { ticketKey, sessionRef, unmountedRef, setSession, setAllDrafts, refreshSession } = options;
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,11 +53,11 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        await patchSession(apiBase, { localDraft: content });
+        await patchSession(ticketKey, { localDraft: content });
         await saveLocalEdit(ticketKey, "description", content);
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase, ticketKey, setSession]);
+  }, [ticketKey, setSession]);
 
   const updateTargetLocalDraft = useCallback((content: string) => {
     setSession((prev) => {
@@ -75,10 +71,10 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     if (targetSaveTimerRef.current) clearTimeout(targetSaveTimerRef.current);
     targetSaveTimerRef.current = setTimeout(async () => {
       try {
-        await patchSession(apiBase, { targetLocalDraft: content });
+        await patchSession(ticketKey, { targetLocalDraft: content });
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase, setSession]);
+  }, [ticketKey, setSession]);
 
   const updateLocalTitle = useCallback((title: string) => {
     setSession((prev) => {
@@ -90,11 +86,11 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
     titleSaveTimerRef.current = setTimeout(async () => {
       try {
-        await patchSession(apiBase, { localTitle: title });
+        await patchSession(ticketKey, { localTitle: title });
         await saveLocalEdit(ticketKey, "title", title);
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase, ticketKey, setSession]);
+  }, [ticketKey, setSession]);
 
   const updateTargetLocalTitle = useCallback((title: string) => {
     setSession((prev) => {
@@ -108,33 +104,31 @@ export function useStoryWriterDrafts(options: DraftOptions) {
       try {
         const targetKey = sessionRef.current?.targetTicketKey ?? null;
         if (!targetKey) return;
-        await patchSession(apiBase, { targetLocalTitle: title });
+        await patchSession(ticketKey, { targetLocalTitle: title });
         await saveLocalEdit(targetKey, "title", title);
       } catch { /* ignore */ }
     }, 500);
-  }, [apiBase, sessionRef, setSession]);
+  }, [ticketKey, sessionRef, setSession]);
 
   const acceptDraft = useCallback(async (draftId: string) => {
     try {
-      const res = await patchSession(apiBase, { acceptDraftId: draftId });
-      if (res.ok) {
-        const { session: updated } = await res.json();
-        if (!unmountedRef.current) setSession(updated);
-        if (updated?.localDraft) {
-          await saveLocalEdit(ticketKey, "description", updated.localDraft);
-        }
+      const data = await patchSession(ticketKey, { acceptDraftId: draftId }) as { session: StoryWriterSessionRow };
+      const updated = data.session;
+      if (!unmountedRef.current) setSession(updated);
+      if (updated?.localDraft) {
+        await saveLocalEdit(ticketKey, "description", updated.localDraft);
       }
     } catch { /* ignore */ }
-  }, [apiBase, ticketKey, setSession, unmountedRef]);
+  }, [ticketKey, setSession, unmountedRef]);
 
   const dismissDraft = useCallback(async (draftId: string) => {
     try {
-      await fetch(`${apiBase}/apply-draft?draftId=${draftId}`, { method: "DELETE" });
+      await apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}/story-writer/apply-draft?draftId=${draftId}`, { method: "DELETE" });
       if (!unmountedRef.current) {
         setAllDrafts((prev) => prev.filter((d) => d.id !== draftId));
       }
     } catch { /* ignore */ }
-  }, [apiBase, unmountedRef, setAllDrafts]);
+  }, [ticketKey, unmountedRef, setAllDrafts]);
 
   const saveDraft = useCallback(async (session: StoryWriterSessionRow | null) => {
     if (!session) return;
@@ -153,7 +147,7 @@ export function useStoryWriterDrafts(options: DraftOptions) {
       sessionPatch.localTitle = session.localTitle;
     }
     if (Object.keys(sessionPatch).length > 0) {
-      saves.push(patchSession(apiBase, sessionPatch));
+      saves.push(patchSession(ticketKey, sessionPatch));
     }
     if (session.targetTicketKey) {
       const targetSessionPatch: Record<string, string> = {};
@@ -166,11 +160,11 @@ export function useStoryWriterDrafts(options: DraftOptions) {
         targetSessionPatch.targetLocalTitle = session.targetLocalTitle;
       }
       if (Object.keys(targetSessionPatch).length > 0) {
-        saves.push(patchSession(apiBase, targetSessionPatch));
+        saves.push(patchSession(ticketKey, targetSessionPatch));
       }
     }
     await Promise.all(saves);
-  }, [apiBase, ticketKey]);
+  }, [ticketKey]);
 
   const pushToJira = useCallback(async (session: StoryWriterSessionRow | null) => {
     const hasOriginal = !!(session?.localDraft || session?.localTitle);
@@ -184,22 +178,12 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     let result = { success: true, conflict: false, contentChanged: false };
 
     if (hasOriginal) {
-      const pushRes = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/push-to-jira`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const data = await pushRes.json();
+      const data = await ticketsApi.pushToJira(ticketKey, {}) as { success: boolean; conflict: boolean; contentChanged: boolean };
       if (!data.success) result = data;
     }
 
     if (hasTarget && targetKey) {
-      const targetPushRes = await fetch(`/api/tickets/${encodeURIComponent(targetKey)}/push-to-jira`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const targetData = await targetPushRes.json();
+      const targetData = await ticketsApi.pushToJira(targetKey, {}) as { success: boolean; conflict: boolean; contentChanged: boolean };
       if (!targetData.success && result.success) result = targetData;
     }
 

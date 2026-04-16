@@ -29,7 +29,7 @@ export function DiffApp() {
 
   const rightVersions = useMemo<RightVersion[]>(() => {
     const versions: RightVersion[] = [];
-    const rawRows = Array.isArray(versionsData) ? (versionsData as StoredVersionRow[]) : [];
+    const rawRows = Array.isArray(versionsData) ? (versionsData as unknown as StoredVersionRow[]) : [];
     const sortedRows = [...rawRows].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );

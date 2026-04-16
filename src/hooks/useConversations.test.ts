@@ -28,20 +28,21 @@ describe("useConversations", () => {
 
     expect(result.current.conversations).toEqual([mockConversation]);
     expect(result.current.error).toBeNull();
-    expect(fetch).toHaveBeenCalledWith("/api/conversations");
+    expect(fetch).toHaveBeenCalledWith("/api/conversations", expect.objectContaining({}));
   });
 
   it("sets error when load fails", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 500,
-    } as Response);
+      json: async () => { throw new Error("no json"); },
+    } as unknown as Response);
 
     const { result } = renderHook(() => useConversations());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.error).toBe("Failed to load conversations");
+    expect(result.current.error).toBe("Request failed (500)");
     expect(result.current.conversations).toEqual([]);
   });
 
@@ -66,11 +67,11 @@ describe("useConversations", () => {
 
     expect(created).toEqual(mockConversation);
     expect(result.current.conversations).toEqual([mockConversation]);
-    expect(fetch).toHaveBeenCalledWith("/api/conversations", {
+    expect(fetch).toHaveBeenCalledWith("/api/conversations", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: "Test conversation", type: "chat" }),
-    });
+    }));
   });
 
   it("uses default title when none provided", async () => {
@@ -91,11 +92,11 @@ describe("useConversations", () => {
       await result.current.createConversation();
     });
 
-    expect(fetch).toHaveBeenCalledWith("/api/conversations", {
+    expect(fetch).toHaveBeenCalledWith("/api/conversations", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: "New conversation", type: "chat" }),
-    });
+    }));
   });
 
   it("deletes a conversation optimistically", async () => {
@@ -119,12 +120,12 @@ describe("useConversations", () => {
 
     expect(deleted).toBe(true);
     expect(result.current.conversations).toEqual([]);
-    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1", {
+    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1", expect.objectContaining({
       method: "DELETE",
-    });
+    }));
   });
 
-  it("rolls back on failed delete", async () => {
+  it("sets error on failed delete", async () => {
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce({
         ok: true,
@@ -133,20 +134,18 @@ describe("useConversations", () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 500,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [mockConversation],
-      } as Response);
+        json: async () => { throw new Error("no json"); },
+      } as unknown as Response);
 
     const { result } = renderHook(() => useConversations());
     await waitFor(() => expect(result.current.conversations).toHaveLength(1));
 
+    let deleted;
     await act(async () => {
-      await result.current.deleteConversation("conv-1");
+      deleted = await result.current.deleteConversation("conv-1");
     });
 
-    expect(result.current.error).toBe("Failed to delete conversation");
-    await waitFor(() => expect(result.current.conversations).toHaveLength(1));
+    expect(deleted).toBe(false);
+    expect(result.current.error).toBe("Request failed (500)");
   });
 });

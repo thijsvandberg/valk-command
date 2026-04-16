@@ -1,8 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
+import { swrFetcher } from "@/lib/api-client";
 
 export interface VelocityPoint {
   sprintId: number;
@@ -23,7 +22,7 @@ export function useVelocityData(
     ? `/api/velocity?teamPrefix=${encodeURIComponent(teamPrefix)}&limit=${limit}`
     : null;
 
-  const { data, isLoading } = useSWR<VelocityPoint[]>(key, fetcher, {
+  const { data, isLoading } = useSWR<VelocityPoint[]>(key, swrFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });

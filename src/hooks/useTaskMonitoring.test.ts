@@ -223,7 +223,10 @@ describe("useTaskMonitoring", () => {
         vi.advanceTimersByTime(1_000);
       });
 
-      expect(fetchSpy).toHaveBeenCalledWith("/api/workspace-tasks/task-1");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/workspace-tasks/task-1",
+        expect.objectContaining({}),
+      );
 
       vi.useRealTimers();
     });
@@ -251,7 +254,10 @@ describe("useTaskMonitoring", () => {
         vi.advanceTimersByTime(2_000);
       });
 
-      expect(fetch).toHaveBeenCalledWith("/api/workspace-tasks/task-1");
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/workspace-tasks/task-1",
+        expect.objectContaining({}),
+      );
 
       vi.useRealTimers();
     });

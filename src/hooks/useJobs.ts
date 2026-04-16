@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { ScheduledJob } from "@/db/schema";
+import { jobs as jobsApi, ApiError } from "@/lib/api-client";
 
 interface CreateJobPayload {
   name: string;
@@ -28,9 +29,8 @@ export function useJobs(): UseJobsReturn {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/jobs");
-      if (!res.ok) throw new Error("Failed to load jobs");
-      setJobs(await res.json());
+      const data = await jobsApi.list() as ScheduledJob[];
+      setJobs(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -45,16 +45,7 @@ export function useJobs(): UseJobsReturn {
   const createJob = useCallback(async (payload: CreateJobPayload): Promise<ScheduledJob | null> => {
     setError(null);
     try {
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Failed to create job");
-      }
-      const job: ScheduledJob = await res.json();
+      const job = await jobsApi.create(payload as unknown as Record<string, unknown>) as ScheduledJob;
       setJobs((prev) => [...prev, job]);
       return job;
     } catch (err) {
@@ -69,16 +60,7 @@ export function useJobs(): UseJobsReturn {
       // Optimistic update
       setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, ...updates } : j)));
       try {
-        const res = await fetch(`/api/jobs/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updates),
-        });
-        if (!res.ok) {
-          await fetchJobs();
-          throw new Error("Failed to update job");
-        }
-        const updated: ScheduledJob = await res.json();
+        const updated = await jobsApi.update(id, updates) as ScheduledJob;
         setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
         return updated;
       } catch (err) {
@@ -95,11 +77,7 @@ export function useJobs(): UseJobsReturn {
       // Optimistic removal
       setJobs((prev) => prev.filter((j) => j.id !== id));
       try {
-        const res = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
-        if (!res.ok) {
-          await fetchJobs();
-          throw new Error("Failed to delete job");
-        }
+        await jobsApi.delete(id);
         return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");

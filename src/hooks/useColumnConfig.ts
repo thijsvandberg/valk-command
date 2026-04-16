@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 import { DEFAULT_VISIBLE, COLUMNS } from "@/components/sprint-board/FilterBar";
+import { settings as settingsApi } from "@/lib/api-client";
 
 const DEBOUNCE_MS = 500;
 
@@ -15,9 +16,9 @@ export function useColumnConfig() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch("/api/settings/column-config")
-      .then((r) => (r.ok ? r.json() : { order: null, visible: null }))
-      .then((data: { order: string[] | null; visible: string[] | null }) => {
+    settingsApi.getColumnConfig()
+      .then((raw) => raw as { order: string[] | null; visible: string[] | null })
+      .then((data) => {
         if (data.order && data.order.length > 0) {
           // Merge: keep saved order, append any new columns not yet in the saved order
           const savedSet = new Set(data.order);
@@ -39,13 +40,9 @@ export function useColumnConfig() {
     (nextOrder: ColumnId[], nextVisible: Set<ColumnId>) => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
-        fetch("/api/settings/column-config", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            order: nextOrder,
-            visible: [...nextVisible],
-          }),
+        settingsApi.saveColumnConfig({
+          order: nextOrder,
+          visible: [...nextVisible],
         }).catch((err) => console.warn("[column-config] persist failed", err));
       }, DEBOUNCE_MS);
     },

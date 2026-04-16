@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { JiraStatus } from "@/types/ticket";
+import { tickets as ticketsApi, ApiError } from "@/lib/api-client";
 
 interface TicketExistsResult {
   exists: boolean | null;
@@ -28,19 +29,12 @@ export function useTicketExists(key: string | null): TicketExistsResult {
 
     let cancelled = false;
 
-    fetch(`/api/tickets/${encodeURIComponent(key)}`)
-      .then(async (res) => {
+    ticketsApi.get(key)
+      .then((data) => {
         if (cancelled) return;
-        if (res.ok) {
-          const data = await res.json();
-          const entry = { exists: true, status: (data.jiraStatus ?? null) as JiraStatus | null };
-          ticketCache.set(key, entry);
-          setResult({ ...entry, loading: false });
-        } else {
-          const entry = { exists: false, status: null };
-          ticketCache.set(key, entry);
-          setResult({ ...entry, loading: false });
-        }
+        const entry = { exists: true, status: (data.jiraStatus ?? null) as JiraStatus | null };
+        ticketCache.set(key, entry);
+        setResult({ ...entry, loading: false });
       })
       .catch(() => {
         if (cancelled) return;

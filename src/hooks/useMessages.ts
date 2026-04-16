@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Message } from "@/types/chat";
+import type { Message, Conversation } from "@/types/chat";
+import { conversations as conversationsApi } from "@/lib/api-client";
 
 interface UseMessagesReturn {
   messages: Message[];
@@ -24,9 +25,7 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/conversations/${conversationId}`);
-      if (!res.ok) throw new Error("Failed to load messages");
-      const data = await res.json();
+      const data = await conversationsApi.get(conversationId) as Conversation & { messages?: Message[] };
       setMessages(data.messages ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -56,13 +55,7 @@ export function useMessages(conversationId: string | null): UseMessagesReturn {
       setMessages((prev) => [...prev, optimisticMessage]);
 
       try {
-        const res = await fetch(`/api/conversations/${conversationId}/messages`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "user", content }),
-        });
-        if (!res.ok) throw new Error("Failed to send message");
-        const savedMessage: Message = await res.json();
+        const savedMessage = await conversationsApi.sendMessage(conversationId, { role: "user", content });
 
         setMessages((prev) =>
           prev.map((m) => (m.id === optimisticId ? savedMessage : m))

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Conversation, ConversationType } from "@/types/chat";
+import { conversations as conversationsApi, ApiError } from "@/lib/api-client";
 
 interface UseConversationsReturn {
   conversations: Conversation[];
@@ -21,9 +22,7 @@ export function useConversations(): UseConversationsReturn {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/conversations");
-      if (!res.ok) throw new Error("Failed to load conversations");
-      const data = await res.json();
+      const data = await conversationsApi.list();
       setConversations(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -51,13 +50,7 @@ export function useConversations(): UseConversationsReturn {
       setConversations((prev) => [optimistic, ...prev]);
 
       try {
-        const res = await fetch("/api/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: title || defaultTitle, type }),
-        });
-        if (!res.ok) throw new Error("Failed to create conversation");
-        const conversation: Conversation = await res.json();
+        const conversation = await conversationsApi.create({ title: title || defaultTitle, type });
         setConversations((prev) =>
           prev.map((c) => (c.id === optimisticId ? conversation : c))
         );
@@ -77,11 +70,7 @@ export function useConversations(): UseConversationsReturn {
       // Optimistic removal
       setConversations((prev) => prev.filter((c) => c.id !== id));
       try {
-        const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
-        if (!res.ok) {
-          await fetchConversations();
-          throw new Error("Failed to delete conversation");
-        }
+        await conversationsApi.delete(id);
         return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");

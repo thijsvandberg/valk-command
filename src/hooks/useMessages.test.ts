@@ -55,20 +55,21 @@ describe("useMessages", () => {
 
     expect(result.current.messages).toEqual(mockMessages);
     expect(result.current.error).toBeNull();
-    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1");
+    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1", expect.objectContaining({}));
   });
 
   it("sets error when fetch fails", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 500,
-    } as Response);
+      json: async () => { throw new Error("no json"); },
+    } as unknown as Response);
 
     const { result } = renderHook(() => useMessages("conv-1"));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.error).toBe("Failed to load messages");
+    expect(result.current.error).toBe("Request failed (500)");
   });
 
   it("sends a message with role and replaces optimistic message", async () => {
@@ -101,11 +102,11 @@ describe("useMessages", () => {
 
     expect(success).toBe(true);
     expect(result.current.messages).toEqual([savedMsg]);
-    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1/messages", {
+    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-1/messages", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: "user", content: "New message" }),
-    });
+    }));
   });
 
   it("rolls back optimistic message on send failure", async () => {
@@ -117,7 +118,8 @@ describe("useMessages", () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 500,
-      } as Response);
+        json: async () => { throw new Error("no json"); },
+      } as unknown as Response);
 
     const { result } = renderHook(() => useMessages("conv-1"));
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -129,7 +131,7 @@ describe("useMessages", () => {
 
     expect(success).toBe(false);
     expect(result.current.messages).toEqual([]);
-    expect(result.current.error).toBe("Failed to send message");
+    expect(result.current.error).toBe("Request failed (500)");
   });
 
   it("refetches when conversationId changes", async () => {
@@ -156,6 +158,6 @@ describe("useMessages", () => {
     rerender({ id: "conv-2" });
 
     await waitFor(() => expect(result.current.messages).toEqual(msgs2));
-    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-2");
+    expect(fetch).toHaveBeenCalledWith("/api/conversations/conv-2", expect.objectContaining({}));
   });
 });

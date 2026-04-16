@@ -3,6 +3,7 @@
 import { useCallback, useRef, useEffect } from "react";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
+import { apiFetch, ApiError } from "@/lib/api-client";
 
 export interface WorkspaceUsage {
   inputTokens: number;
@@ -33,15 +34,14 @@ function extractUsage(data: Record<string, unknown>): WorkspaceUsage {
 
 function notifyStoryWriterFailure(ticketKey: string | undefined, message: string) {
   if (!ticketKey) return;
-  fetch("/api/notifications", {
+  apiFetch("/api/notifications", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    body: {
       type: "story-writer",
       message,
       category: "story-writer",
       jiraKey: ticketKey,
-    }),
+    },
   }).catch(() => { /* fire-and-forget, non-critical */ });
 }
 
@@ -86,12 +86,11 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       let applied = false;
       for (let attempt = 0; attempt < 2 && !applied; attempt++) {
         try {
-          const applyRes = await fetch(`${apiBase}/apply-draft`, {
+          await apiFetch(`${apiBase}/apply-draft`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ output, taskId, assistantContent: output }),
+            body: { output, taskId, assistantContent: output },
           });
-          applied = applyRes.ok;
+          applied = true;
         } catch { /* retry */ }
       }
 
@@ -100,16 +99,12 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       }
 
       try {
-        const relatedRes = await fetch(`${apiBase}/apply-related`, {
+        const relatedData = await apiFetch<{ candidates?: RelatedStoryCandidateRow[] }>(`${apiBase}/apply-related`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ output, taskId }),
+          body: { output, taskId },
         });
-        if (relatedRes.ok) {
-          const relatedData = await relatedRes.json();
-          if (!unmountedRef.current && relatedData.candidates?.length > 0) {
-            onRelatedCandidates(relatedData.candidates);
-          }
+        if (!unmountedRef.current && relatedData.candidates?.length) {
+          onRelatedCandidates(relatedData.candidates);
         }
       } catch { /* non-critical */ }
 
@@ -144,29 +139,15 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       }
 
       try {
-        const pollRes = await fetch(`/api/workspace-tasks/${taskId}`);
-        if (pollRes.status === 404) {
-          if (!resultHandled.current && !unmountedRef.current) {
-            resultHandled.current = true;
-            onStatus("ready");
-            onProgress("");
-          }
-          return;
-        }
-        if (!pollRes.ok) {
-          if (!unmountedRef.current) onProgress("Waiting for workspace...");
-          pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
-          return;
-        }
-        const task = await pollRes.json();
+        const task = await apiFetch<Record<string, unknown>>(`/api/workspace-tasks/${taskId}`);
         if (task.status === "completed" && task.output) {
-          const usage = extractUsage(task as Record<string, unknown>);
+          const usage = extractUsage(task);
           if (!unmountedRef.current) onUsage(usage);
-          await applyResult(task.output);
+          await applyResult(task.output as string);
         } else if (task.status === "failed") {
           if (!resultHandled.current && !unmountedRef.current) {
             resultHandled.current = true;
-            onError(task.error ?? "Task failed on workspace");
+            onError((task.error as string) ?? "Task failed on workspace");
             onStatus("ready");
             onProgress("");
             notifyStoryWriterFailure(ticketKey, `Story writer failed for ${ticketKey}`);
@@ -178,7 +159,20 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
           }
           pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          if (!resultHandled.current && !unmountedRef.current) {
+            resultHandled.current = true;
+            onStatus("ready");
+            onProgress("");
+          }
+          return;
+        }
+        if (err instanceof ApiError) {
+          if (!unmountedRef.current) onProgress("Waiting for workspace...");
+          pollTimerRef.current = setTimeout(pollTask, POLL_INTERVAL_MS);
+          return;
+        }
         if (!unmountedRef.current) {
           const elapsed = Math.round((Date.now() - pollStart) / 1000);
           onProgress(`Reconnecting... (${elapsed}s)`);

@@ -36,13 +36,13 @@ function DiffPreviewContent() {
   const { data: apiVersions } = useTicketVersions(ticketKey);
 
   const versions: StoryVersion[] = apiVersions && apiVersions.length > 0
-    ? apiVersions.map((v: Record<string, unknown>, idx: number) => ({
+    ? apiVersions.map((v, idx) => ({
         versionNumber: idx + 1,
-        date: (v.createdAt as string) || new Date().toISOString(),
-        contentHash: (v.contentHash as string) || "",
-        content: (v.description as string) || "",
-        updatedBy: (v.updatedBy as string) ?? null,
-        updatedByAvatar: (v.updatedByAvatar as string) ?? null,
+        date: v.date || new Date().toISOString(),
+        contentHash: v.contentHash || "",
+        content: v.content || "",
+        updatedBy: v.updatedBy ?? null,
+        updatedByAvatar: v.updatedByAvatar ?? null,
       }))
     : SAMPLE_VERSIONS;
 

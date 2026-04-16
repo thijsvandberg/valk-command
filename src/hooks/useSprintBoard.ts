@@ -1,16 +1,14 @@
 import useSWR, { mutate as globalMutate } from "swr";
 import { useRef, useMemo, useEffect, useCallback } from "react";
-import type { Ticket, ActivityLogEntry, StoredReview } from "@/types/ticket";
+import type { Ticket, TicketDetail, ActivityLogEntry, StoredReview, StoryVersion } from "@/types/ticket";
 import type { DevInfoPayload } from "@/app/api/tickets/[key]/dev-info/route";
-
-// Generic JSON fetcher for SWR
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
+import { swrFetcher, tickets as ticketsApi, jira as jiraApi } from "@/lib/api-client";
 
 // Fetches saved sprint slot configuration with SWR caching
 export function useSprintSlots() {
   return useSWR<{ slotIndex: number; sprintId: string; sprintName: string }[] | null>(
     "/api/sprint-slots",
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 }
@@ -19,7 +17,7 @@ export function useSprintSlots() {
 export function useJiraSprints() {
   return useSWR<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null; hidden?: boolean }[]>(
     "/api/jira/sprints",
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 }
@@ -33,16 +31,16 @@ export function useTickets(sprintId: string | null) {
       : sprintId
       ? `/api/tickets?sprintId=${encodeURIComponent(sprintId)}`
       : null;
-  return useSWR<Ticket[]>(key, fetcher, { revalidateOnFocus: false, dedupingInterval: 30000 });
+  return useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: false, dedupingInterval: 30000 });
 }
 
 // Fetches full ticket detail with background staleness check.
 // After returning cached data, checks Jira for updates. If stale,
 // triggers a single-ticket sync and revalidates the local cache.
 export function useTicketDetail(ticketKey: string | null) {
-  const swr = useSWR(
+  const swr = useSWR<Ticket & TicketDetail>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 
@@ -56,15 +54,10 @@ export function useTicketDetail(ticketKey: string | null) {
 
     let cancelled = false;
 
-    fetch(`/api/jira/check-updated?key=${encodeURIComponent(ticketKey)}`)
-      .then((r) => r.ok ? r.json() : null)
+    jiraApi.checkUpdated(ticketKey)
       .then(async (result) => {
         if (cancelled || !result?.stale) return;
-        await fetch("/api/jira/sync-tickets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticketKeys: [ticketKey] }),
-        });
+        await jiraApi.syncTickets({ ticketKeys: [ticketKey] });
         mutate();
       })
       .catch(() => { /* background check, fail silently */ });
@@ -77,9 +70,9 @@ export function useTicketDetail(ticketKey: string | null) {
 
 // Fetches ticket versions for the side panel (lazy: only when ticketKey is provided)
 export function useTicketVersions(ticketKey: string | null) {
-  return useSWR(
+  return useSWR<StoryVersion[]>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/versions` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
@@ -88,25 +81,25 @@ export function useTicketVersions(ticketKey: string | null) {
 export function useTicketVersionCount(ticketKey: string | null) {
   return useSWR<unknown[]>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/versions?metaOnly=true` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
 
 // Fetches comments (PO + Jira) for a ticket
 export function useTicketComments(ticketKey: string | null) {
-  return useSWR(
+  return useSWR<unknown[]>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/comments` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 }
 
 // Fetches attachment metadata for a ticket
 export function useTicketAttachments(ticketKey: string | null) {
-  return useSWR(
+  return useSWR<unknown[]>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/attachments` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
@@ -115,7 +108,7 @@ export function useTicketAttachments(ticketKey: string | null) {
 export function useActivityStatus(limit = 10) {
   return useSWR<ActivityLogEntry[]>(
     `/api/activity-log?limit=${limit}`,
-    fetcher,
+    swrFetcher,
     { refreshInterval: 10000, revalidateOnFocus: true },
   );
 }
@@ -124,7 +117,7 @@ export function useActivityStatus(limit = 10) {
 export function useJiraHealth() {
   return useSWR<{ ok: boolean; live: boolean; error?: string; cachedDataAvailable?: boolean }>(
     "/api/jira/health",
-    fetcher,
+    swrFetcher,
     { refreshInterval: 60000, revalidateOnFocus: false },
   );
 }
@@ -132,7 +125,7 @@ export function useJiraHealth() {
 export function useConfluenceHealth() {
   return useSWR<{ ok: boolean; live: boolean; error?: string }>(
     "/api/confluence/health",
-    fetcher,
+    swrFetcher,
     { refreshInterval: 60000, revalidateOnFocus: false },
   );
 }
@@ -140,7 +133,7 @@ export function useConfluenceHealth() {
 export function useTicketConfluenceLinks(ticketKey: string | null) {
   return useSWR<{ links: Array<{ id: string; ticketKey: string; pageId: string; pageTitle: string; pageUrl: string; source: string; lastModifiedAt: string | null; lastModifiedBy: string | null; createdAt: string }> }>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/confluence-links` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 }
@@ -149,7 +142,7 @@ export function useTicketConfluenceLinks(ticketKey: string | null) {
 export function useConflictCheck(ticketKey: string | null) {
   return useSWR<{ stale: boolean; localUpdated: string | null; remoteUpdated: string; key: string }>(
     ticketKey ? `/api/jira/check-updated?key=${encodeURIComponent(ticketKey)}` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
@@ -158,7 +151,7 @@ export function useConflictCheck(ticketKey: string | null) {
 export function useTicketReviews(ticketKey: string | null) {
   const swr = useSWR<{ reviews: StoredReview[]; currentVersionHash: string | null }>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/reviews` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 
@@ -171,18 +164,12 @@ export function useTicketReviews(ticketKey: string | null) {
       suggestions: string[];
     }) => {
       if (!ticketKey) return null;
-      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(review),
-      });
-      if (!res.ok) return null;
-      const saved = await res.json();
+      const saved = await ticketsApi.createReview(ticketKey, review) as StoredReview;
       // Revalidate reviews list and ticket data (qualityScore updated on server)
       swr.mutate();
-      globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
+      globalMutate(ticketsApi.detailUrl(ticketKey));
       globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
-      return saved as StoredReview;
+      return saved;
     },
     [ticketKey, swr],
   );
@@ -190,13 +177,9 @@ export function useTicketReviews(ticketKey: string | null) {
   const deleteReview = useCallback(
     async (reviewId: string) => {
       if (!ticketKey) return false;
-      const res = await fetch(
-        `/api/tickets/${encodeURIComponent(ticketKey)}/reviews/${encodeURIComponent(reviewId)}`,
-        { method: "DELETE" },
-      );
-      if (!res.ok) return false;
+      await ticketsApi.deleteReview(ticketKey, reviewId);
       swr.mutate();
-      globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
+      globalMutate(ticketsApi.detailUrl(ticketKey));
       globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
       return true;
     },
@@ -210,7 +193,7 @@ export function useTicketReviews(ticketKey: string | null) {
 export function useDevInfo(ticketKey: string | null) {
   return useSWR<DevInfoPayload>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/dev-info` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 }
@@ -228,7 +211,7 @@ export interface ActiveSession {
 export function useActiveWriterSessions() {
   return useSWR<ActiveSession[]>(
     "/api/story-writer/active-sessions",
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 }

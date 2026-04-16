@@ -215,7 +215,7 @@ describe("ChatLayout", () => {
     render(<ChatLayout />);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to load conversations")).toBeInTheDocument();
+      expect(screen.getByText("Request failed (500)")).toBeInTheDocument();
     });
   });
 

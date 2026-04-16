@@ -101,7 +101,7 @@ describe("useTickets", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data).toEqual([mockTicket]);
-    expect(fetch).toHaveBeenCalledWith("/api/tickets?sprintId=sprint-1");
+    expect(fetch).toHaveBeenCalledWith("/api/tickets?sprintId=sprint-1", expect.objectContaining({}));
   });
 
   it("fetches all tickets when sprintId is __all__", async () => {
@@ -115,7 +115,7 @@ describe("useTickets", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data).toEqual([mockTicket]);
-    expect(fetch).toHaveBeenCalledWith("/api/tickets");
+    expect(fetch).toHaveBeenCalledWith("/api/tickets", expect.objectContaining({}));
   });
 
   it("does not fetch when sprintId is null", async () => {
@@ -128,7 +128,7 @@ describe("useTickets", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("returns undefined data on fetch error", async () => {
+  it("sets error when fetch fails", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -137,8 +137,9 @@ describe("useTickets", () => {
 
     const { result } = renderHook(() => useTickets("sprint-1"), { wrapper: swrWrapper });
 
-    // The fetcher returns null on !ok, so SWR will set data to null
-    await waitFor(() => expect(result.current.data).toBeNull());
+    // swrFetcher throws on !ok, SWR catches and sets error
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+    expect(result.current.data).toBeUndefined();
   });
 });
 
@@ -156,7 +157,7 @@ describe("useTicketDetail", () => {
       if (urlStr.startsWith("/api/jira/check-updated")) {
         return { ok: true, json: async () => ({ stale: false }) } as Response;
       }
-      return { ok: false } as Response;
+      return { ok: false, status: 500, json: async () => null } as Response;
     });
 
     const { result } = renderHook(() => useTicketDetail("BRDG-101"), { wrapper: swrWrapper });
@@ -164,7 +165,7 @@ describe("useTicketDetail", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data).toEqual(mockTicketDetail);
-    expect(fetch).toHaveBeenCalledWith("/api/tickets/BRDG-101");
+    expect(fetch).toHaveBeenCalledWith("/api/tickets/BRDG-101", expect.objectContaining({}));
   });
 
   it("does not fetch when ticketKey is null", async () => {
@@ -188,7 +189,7 @@ describe("useTicketDetail", () => {
       if (urlStr === "/api/jira/sync-tickets") {
         return { ok: true, json: async () => ({}) } as Response;
       }
-      return { ok: false } as Response;
+      return { ok: false, status: 500, json: async () => null } as Response;
     });
 
     renderHook(() => useTicketDetail("BRDG-101"), { wrapper: swrWrapper });
@@ -219,10 +220,10 @@ describe("useJiraSprints", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data).toEqual([mockSprint]);
-    expect(fetch).toHaveBeenCalledWith("/api/jira/sprints");
+    expect(fetch).toHaveBeenCalledWith("/api/jira/sprints", expect.objectContaining({}));
   });
 
-  it("returns null data when server responds with error", async () => {
+  it("sets error when server responds with error", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 502,
@@ -231,7 +232,9 @@ describe("useJiraSprints", () => {
 
     const { result } = renderHook(() => useJiraSprints(), { wrapper: swrWrapper });
 
-    await waitFor(() => expect(result.current.data).toBeNull());
+    // swrFetcher throws on !ok, SWR catches and sets error
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+    expect(result.current.data).toBeUndefined();
   });
 });
 
@@ -250,7 +253,7 @@ describe("useTicketReviews", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data).toEqual(mockReviewsResponse);
-    expect(fetch).toHaveBeenCalledWith("/api/tickets/BRDG-101/reviews");
+    expect(fetch).toHaveBeenCalledWith("/api/tickets/BRDG-101/reviews", expect.objectContaining({}));
   });
 
   it("does not fetch when ticketKey is null", async () => {
@@ -267,7 +270,7 @@ describe("useTicketReviews", () => {
 
     vi.spyOn(global, "fetch").mockImplementation(async (url, init) => {
       const urlStr = typeof url === "string" ? url : url.toString();
-      const method = init && typeof init === "object" && "method" in init ? init.method : "GET";
+      const method = init && typeof init === "object" && "method" in init ? (init.method ?? "GET") : "GET";
 
       if (urlStr === "/api/tickets/BRDG-101/reviews" && method === "GET") {
         return { ok: true, json: async () => mockReviewsResponse } as Response;
@@ -307,7 +310,7 @@ describe("useTicketReviews", () => {
   it("deleteReview sends DELETE and revalidates", async () => {
     vi.spyOn(global, "fetch").mockImplementation(async (url, init) => {
       const urlStr = typeof url === "string" ? url : url.toString();
-      const method = init && typeof init === "object" && "method" in init ? init.method : "GET";
+      const method = init && typeof init === "object" && "method" in init ? (init.method ?? "GET") : "GET";
 
       if (urlStr === "/api/tickets/BRDG-101/reviews" && method === "GET") {
         return { ok: true, json: async () => mockReviewsResponse } as Response;

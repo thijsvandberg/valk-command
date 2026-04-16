@@ -410,9 +410,9 @@ export const settings = {
 
   // -- Actions --
   getColumnWidths: (signal?: AbortSignal) =>
-    apiFetch<Record<string, number>>("/api/settings/column-widths", { signal }),
+    apiFetch<{ widths: Record<string, number> }>("/api/settings/column-widths", { signal }),
   saveColumnWidths: (widths: Record<string, number>, signal?: AbortSignal) =>
-    apiFetch<void>("/api/settings/column-widths", { method: "PUT", body: { widths }, signal }),
+    apiFetch<{ widths: Record<string, number> }>("/api/settings/column-widths", { method: "PUT", body: { widths }, signal }),
 
   getColumnConfig: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/settings/column-config", { signal }),

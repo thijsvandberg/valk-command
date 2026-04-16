@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { mutate as globalMutate } from "swr";
+import { jira as jiraApi } from "@/lib/api-client";
 
 const INTERVAL_MS = 150_000;
 
@@ -39,13 +40,7 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
     runningRef.current = true;
     abortRef.current = new AbortController();
     try {
-      const res = await fetch("/api/jira/sync-incremental", {
-        method: "POST",
-        signal: abortRef.current.signal,
-      });
-      if (!res.ok || !mountedRef.current) return;
-
-      const data: IncrementalSyncResult = await res.json();
+      const data = await jiraApi.syncIncremental(abortRef.current.signal) as IncrementalSyncResult;
       if (!mountedRef.current) return;
 
       if (data.skipped) {

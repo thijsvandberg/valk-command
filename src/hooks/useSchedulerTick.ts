@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { mutate as globalMutate } from "swr";
+import { scheduler as schedulerApi } from "@/lib/api-client";
 
 const TICK_INTERVAL_MS = 30_000;
 
@@ -38,13 +39,7 @@ export function useSchedulerTick(onSyncComplete?: () => void) {
     runningRef.current = true;
     abortRef.current = new AbortController();
     try {
-      const res = await fetch("/api/scheduler/tick", {
-        method: "POST",
-        signal: abortRef.current.signal,
-      });
-      if (!res.ok || !mountedRef.current) return;
-
-      const data: TickResponse = await res.json();
+      const data = await schedulerApi.tick(abortRef.current.signal) as TickResponse;
       if (!mountedRef.current) return;
 
       // Extract incremental sync results if it ran

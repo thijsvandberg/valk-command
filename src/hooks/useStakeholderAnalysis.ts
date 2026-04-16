@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import useSWR from "swr";
 import type { StakeholderAnalysisRow } from "@/db/schema";
+import { swrFetcher, stakeholder as stakeholderApi, workspaceTasks as workspaceTasksApi, apiFetch } from "@/lib/api-client";
 
 export type AnalysisType = "brief" | "deep-dive";
 
@@ -14,11 +15,9 @@ export interface LiveStreamState {
 
 const initialLive: LiveStreamState = { status: "idle", progressText: "", error: null };
 
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
-
 export function useStakeholderAnalysis(sprintId: number | null) {
   const swrKey = sprintId ? `/api/stakeholder/analysis?sprintId=${sprintId}` : null;
-  const { data: rows, mutate } = useSWR<StakeholderAnalysisRow[]>(swrKey, fetcher, {
+  const { data: rows, mutate } = useSWR<StakeholderAnalysisRow[]>(swrKey, swrFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
   });
@@ -69,12 +68,10 @@ export function useStakeholderAnalysis(sprintId: number | null) {
     // Also poll as fallback in case SSE is already closed
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/workspace-tasks/${taskId}`);
-        if (!res.ok) return;
-        const task = await res.json();
+        const task = await workspaceTasksApi.get(taskId) as Record<string, unknown>;
         if (task.status === "completed" && task.output) {
           if (pollRef.current) clearInterval(pollRef.current);
-          await completeAnalysis(runningRow.id, task.output, type);
+          await completeAnalysis(runningRow.id, task.output as string, type);
         } else if (task.status === "failed") {
           if (pollRef.current) clearInterval(pollRef.current);
           await failAnalysis(runningRow.id, type);
@@ -92,10 +89,9 @@ export function useStakeholderAnalysis(sprintId: number | null) {
   }
 
   async function completeAnalysis(analysisId: string, output: string, type: AnalysisType) {
-    await fetch(`/api/stakeholder/analysis/${analysisId}`, {
+    await apiFetch(`/api/stakeholder/analysis/${analysisId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "completed", output }),
+      body: { status: "completed", output },
     });
     if (!unmountedRef.current) {
       setLive(type, { status: "completed", progressText: "", error: null });
@@ -104,10 +100,9 @@ export function useStakeholderAnalysis(sprintId: number | null) {
   }
 
   async function failAnalysis(analysisId: string, type: AnalysisType) {
-    await fetch(`/api/stakeholder/analysis/${analysisId}`, {
+    await apiFetch(`/api/stakeholder/analysis/${analysisId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "failed" }),
+      body: { status: "failed" },
     });
     if (!unmountedRef.current) {
       setLive(type, { status: "failed", progressText: "", error: "Task failed" });
@@ -186,31 +181,20 @@ export function useStakeholderAnalysis(sprintId: number | null) {
     setLive(type, { status: "submitting", progressText: "Submitting...", error: null });
 
     try {
-      const res = await fetch("/api/stakeholder/analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sprintId, sprintName, type, sprintData, snapshotDonePoints, snapshotTodoCount }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        setLive(type, { status: "failed", progressText: "", error: err?.error ?? "Failed to start" });
-        return;
-      }
-
-      const { id: analysisId, taskId } = await res.json();
+      const result = await stakeholderApi.createAnalysis({
+        sprintId, sprintName, type, sprintData, snapshotDonePoints, snapshotTodoCount,
+      }) as { id: string; taskId: string };
+      const { id: analysisId, taskId } = result;
       mutate();
       attachStream(analysisId, taskId, type);
 
       // Background polling as safety net
       pollRef.current = setInterval(async () => {
         try {
-          const r = await fetch(`/api/workspace-tasks/${taskId}`);
-          if (!r.ok) return;
-          const task = await r.json();
+          const task = await workspaceTasksApi.get(taskId) as Record<string, unknown>;
           if (task.status === "completed" && task.output && liveState[type].status !== "completed") {
             if (pollRef.current) clearInterval(pollRef.current);
-            await completeAnalysis(analysisId, task.output, type);
+            await completeAnalysis(analysisId, task.output as string, type);
           } else if (task.status === "failed" && liveState[type].status !== "failed") {
             if (pollRef.current) clearInterval(pollRef.current);
             await failAnalysis(analysisId, type);
