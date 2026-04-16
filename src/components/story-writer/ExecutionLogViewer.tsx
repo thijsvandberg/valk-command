@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { apiFetch, storyWriter } from "@/lib/api-client";
 import { ChevronDown, ChevronRight, Loader2, RefreshCw, Terminal, Wrench, FileText, AlertCircle, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -186,9 +187,8 @@ function TaskLogDetail({ taskId, ticketKey }: { taskId: string; ticketKey: strin
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/story-writer/logs/${encodeURIComponent(taskId)}`)
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((data) => { if (!cancelled) setEntries(data.log ?? []); })
+    storyWriter.getLogs(ticketKey, taskId)
+      .then((data: unknown) => { if (!cancelled) setEntries((data as { log?: LogEntry[] }).log ?? []); })
       .catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
   }, [taskId, ticketKey]);
@@ -249,11 +249,8 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/story-writer/logs`);
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data.logs ?? []);
-      }
+      const data = await apiFetch<{ logs?: LogMeta[] }>(`/api/tickets/${encodeURIComponent(ticketKey)}/story-writer/logs`);
+      setLogs(data.logs ?? []);
     } catch { /* ignore */ } finally {
       setLoading(false);
     }

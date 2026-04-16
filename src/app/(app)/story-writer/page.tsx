@@ -9,6 +9,7 @@ import { Card } from "@/components/shared/Card";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLauncherModal";
+import { apiFetch } from "@/lib/api-client";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 
 interface ActiveSession {
@@ -160,9 +161,8 @@ export default function StoryWriterLandingPage() {
   }, [sprints]);
 
   const fetchSessions = useCallback(() => {
-    fetch("/api/story-writer/active-sessions")
-      .then((r) => r.json())
-      .then((data: ActiveSession[]) => {
+    apiFetch<ActiveSession[]>("/api/story-writer/active-sessions")
+      .then((data) => {
         setSessions(data);
         setLoading(false);
       })
@@ -177,7 +177,7 @@ export default function StoryWriterLandingPage() {
   }, [fetchSessions]);
 
   async function handleDiscard(sessionId: string) {
-    await fetch(`/api/story-writer/active-sessions?sessionId=${sessionId}`, {
+    await apiFetch(`/api/story-writer/active-sessions?sessionId=${sessionId}`, {
       method: "DELETE",
     });
     fetchSessions();

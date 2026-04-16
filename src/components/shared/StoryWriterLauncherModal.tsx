@@ -7,6 +7,7 @@ import {
   Search, ArrowRight, History, Check, Trash2, IterationCw, Zap, Scissors,
 } from "lucide-react";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
+import { apiFetch, jira, sprintSlots, config as configApi, storyWriter } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import type { IssueType } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
@@ -362,9 +363,9 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     setShowDropdown(false); setSelectedSessionKey(""); setFocusedSearch(-1); setConfirmDeleteSessionId(null);
 
     Promise.all([
-      fetch("/api/jira/sprints").then((r) => r.json() as Promise<JiraSprint[]>),
-      fetch("/api/sprint-slots").then((r) => r.json() as Promise<SprintSlot[]>),
-      fetch("/api/config").then((r) => r.json() as Promise<{ nextSprintId: string }>),
+      jira.getSprints() as unknown as Promise<JiraSprint[]>,
+      sprintSlots.list() as Promise<SprintSlot[]>,
+      configApi.get() as Promise<{ nextSprintId: string }>,
     ]).then(([all, slots, cfg]) => {
       const nextId   = cfg.nextSprintId?.trim() ?? "";
       const slotIds  = new Set(slots.map((s) => s.sprintId));
@@ -393,9 +394,8 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     }).catch((err) => console.warn("[launcher-modal] fetch sprints failed", err));
 
     setSessionsLoading(true);
-    fetch("/api/story-writer/active-sessions")
-      .then((r) => r.json())
-      .then((data: ActiveSession[]) => { setSessions(data); setSelectedSessionKey(data[0]?.ticketKey ?? ""); })
+    apiFetch<ActiveSession[]>("/api/story-writer/active-sessions")
+      .then((data) => { setSessions(data); setSelectedSessionKey(data[0]?.ticketKey ?? ""); })
       .catch(() => setSessions([]))
       .finally(() => setSessionsLoading(false));
   }, [open]);
@@ -407,8 +407,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     searchDebounceRef.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const r = await fetch(`/api/search/local?q=${encodeURIComponent(q)}`);
-        const d = await r.json();
+        const d = await apiFetch<{ results?: Array<{ key: string; summary: string; status: string; sprintName: string | null }> }>(`/api/search/local?q=${encodeURIComponent(q)}`);
         const results: TicketSearchResult[] = (d.results ?? []).slice(0, 8).map(
           (x: { key: string; summary: string; status: string; sprintName: string | null }) =>
             ({ key: x.key, summary: x.summary, status: x.status, sprintName: x.sprintName }),
@@ -453,15 +452,12 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     if (!title) { setCreateError("Enter a story title"); return; }
     setCreateError(null); setCreating(true);
     try {
-      const res = await fetch("/api/story-writer/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, sprintId: selectedSprintId || undefined, issueType }),
-      });
-      if (!res.ok) { setCreateError((await res.json()).error ?? "Failed"); return; }
-      const { key } = await res.json();
+      const { key } = await storyWriter.createViaGlobal({ title, sprintId: selectedSprintId || undefined, issueType }) as { key: string };
       onClose(); router.push(`/tickets/${key}/write`);
-    } catch { setCreateError("Something went wrong"); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      setCreateError(msg);
+    }
     finally { setCreating(false); }
   };
 
@@ -471,7 +467,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     if (!remaining.find((s) => s.ticketKey === selectedSessionKey)) {
       setSelectedSessionKey(remaining[0]?.ticketKey ?? "");
     }
-    await fetch(`/api/story-writer/active-sessions?sessionId=${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+    await apiFetch(`/api/story-writer/active-sessions?sessionId=${encodeURIComponent(sessionId)}`, { method: "DELETE" });
   };
 
   // Auto-focus first card when switching to session tab or when sessions finish loading on that tab
@@ -532,7 +528,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {(["new","session","existing"] as LauncherMode[]).map((m) => (
             <div key={m} className="relative flex-1">
               <button type="button" onClick={() => setMode(m)}
-                className={`flex w-full items-center justify-center gap-1.5 rounded-[7px] py-[7px] text-[12px] font-medium cursor-pointer transition-all duration-150 ${
+                className={`flex w-full items-center justify-center gap-1.5 rounded-[7px] py-[7px] text-[12px] font-medium cursor-pointer transition-colors duration-150 ${
                   mode === m
                     ? "bg-white/[0.07] text-white/85 shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
                     : "text-white/35 hover:text-white/55"
@@ -578,7 +574,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                     const color  = ISSUE_TYPE_COLORS[value];
                     return (
                       <button key={value} type="button" onClick={() => setIssueType(value)}
-                        className="flex flex-1 items-center justify-center gap-1 rounded-md border py-1.5 cursor-pointer transition-all duration-120"
+                        className="flex flex-1 items-center justify-center gap-1 rounded-md border py-1.5 cursor-pointer transition-colors duration-120"
                         style={{
                           borderColor: active ? `${color}45` : "rgba(255,255,255,0.06)",
                           backgroundColor: active ? `${color}12` : "transparent",

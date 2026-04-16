@@ -11,6 +11,7 @@ import {
   Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { activityLog } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import type {
   ActivityLogEntry,
@@ -79,17 +80,17 @@ export default function ActivityLogPage() {
   }, [mutate, mutateActivityLog]);
 
   const cancelSync = useCallback(async (id: string) => {
-    await fetch(`/api/activity-log/${id}/cancel`, { method: "POST" });
+    await activityLog.cancel(id);
     mutate();
   }, [mutate]);
 
   const cancelAllSyncs = useCallback(async () => {
-    await fetch("/api/activity-log/cancel-all", { method: "POST" });
+    await activityLog.cancelAll();
     mutate();
   }, [mutate]);
 
   const acknowledgeEntry = useCallback(async (id: string) => {
-    await fetch(`/api/activity-log/${id}/acknowledge`, { method: "POST" });
+    await activityLog.acknowledge(id);
     mutate();
     mutateActivityLog();
   }, [mutate, mutateActivityLog]);

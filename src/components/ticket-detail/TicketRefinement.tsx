@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { Check } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { tickets } from "@/lib/api-client";
 
 interface TeamEstimate {
   member: string;
@@ -47,11 +48,8 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
         const next = { ...prev, [key]: checked };
         const allDone = Object.values(next).every(Boolean);
         if (allDone) {
-          fetch(`/api/tickets/${ticketKey}/metadata`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ poStatus: "Ready for Refinement" }),
-          }).catch((err) => console.error("Failed to update PO status:", err));
+          tickets.updateMetadata(ticketKey, { poStatus: "Ready for Refinement" })
+            .catch((err) => console.error("Failed to update PO status:", err));
         }
         return next;
       });

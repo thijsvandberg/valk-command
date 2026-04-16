@@ -5,6 +5,7 @@ import { CheckCircle2, AlertTriangle, RefreshCw, Sparkles, X } from "lucide-reac
 import { Button } from "@/components/ui/Button";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import type { StoredReview } from "@/types/ticket";
+import { tickets as ticketsApi } from "@/lib/api-client";
 
 function getScoreColor(score: number): string {
   if (score < 60) return "#e5534b";
@@ -142,12 +143,8 @@ export function ReviewPopover({
   async function handleRunReview() {
     setReviewing(true);
     try {
-      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "ticket-detail" }),
-      });
-      if (res.ok) mutateReviews();
+      await ticketsApi.generateReview(ticketKey, { source: "ticket-detail" });
+      mutateReviews();
     } catch {
       // Silently fail in popover context
     } finally {

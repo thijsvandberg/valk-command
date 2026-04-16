@@ -14,6 +14,7 @@ import { useVelocityData } from "@/hooks/useVelocityData";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { AiInsightsPanel } from "@/components/stakeholder/AiInsightsPanel";
 import { useStakeholderAnalysis, type AnalysisType } from "@/hooks/useStakeholderAnalysis";
+import { swrFetcher, apiFetch } from "@/lib/api-client";
 import {
   ViewHeader,
   ViewHeaderTitle,
@@ -45,7 +46,7 @@ function useCarryOver(
   }, [currentTickets, prevTickets]);
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
+const fetcher = <T,>(url: string) => swrFetcher<T>(url).catch(() => null as T);
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 const SESSION_KEY_TEAM = "stakeholder_team";
 const SESSION_KEY_SPRINT = "stakeholder_sprintId";
@@ -446,7 +447,7 @@ function StakeholderView() {
     if (!currentSprint || isSyncing) return;
     setIsSyncing(true);
     try {
-      await fetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" });
+      await apiFetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" });
       await globalMutate(ticketKey);
       if (selectedTeamPrefix) {
         await globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
@@ -467,7 +468,7 @@ function StakeholderView() {
     setIsSyncingHistory(true);
     try {
       for (const sprint of closedSprints) {
-        await fetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
+        await apiFetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
       }
       await globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
     } finally {

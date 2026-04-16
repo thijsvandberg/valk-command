@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Scissors, X, Plus, Link, ChevronDown } from "lucide-react";
+import { sprintSlots as sprintSlotsApi } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 
 interface SprintSlot {
@@ -33,9 +34,8 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
 
   useEffect(() => {
     if (!open) return;
-    fetch("/api/sprint-slots")
-      .then((r) => r.json())
-      .then((data: SprintSlot[]) => {
+    (sprintSlotsApi.list() as Promise<SprintSlot[]>)
+      .then((data) => {
         setSprints(data);
         // Pre-select the sprint matching originalSprintName, or first available
         const match = data.find((s) => s.sprintId === originalSprintId);

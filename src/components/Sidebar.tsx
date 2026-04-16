@@ -21,6 +21,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 
 const navItems = [
@@ -209,7 +210,7 @@ export default function Sidebar() {
             type="button"
             onClick={async () => {
               // Clear dev bypass cookie if active (no-op in production)
-              await fetch("/api/dev/bypass", { method: "DELETE" });
+              await apiFetch("/api/dev/bypass", { method: "DELETE" }).catch(() => {});
               // Sign out of Clerk if a session exists, then hard-redirect to login
               await signOut();
               window.location.href = "/login";

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Tag } from "@/components/shared/Tag";
+import { tickets } from "@/lib/api-client";
 
 export function EditableTitle({
   ticketKey,
@@ -93,11 +94,7 @@ export function EditableTitle({
         onLocalEdit(false);
         return;
       }
-      await fetch(`/api/tickets/${ticketKey}/local-edits`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: "title", localValue: draft }),
-      });
+      await tickets.saveLocalEdit(ticketKey, { field: "title", localValue: draft });
       setLocalValue(draft);
       onLocalEdit(true);
     } catch (err) {

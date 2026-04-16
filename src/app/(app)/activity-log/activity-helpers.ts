@@ -1,8 +1,8 @@
+import { swrFetcher } from "@/lib/api-client";
 import type { ActivityLogEntry } from "@/types/ticket";
 
-export const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
-export const statsFetcher = (url: string) =>
-  fetch(url).then((r) => (r.ok ? r.json() : null));
+export const fetcher = <T,>(url: string) => swrFetcher<T>(url).catch(() => [] as unknown as T);
+export const statsFetcher = <T,>(url: string) => swrFetcher<T>(url).catch(() => null as unknown as T);
 
 export const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "All types" },

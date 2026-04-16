@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import useSWR from "swr";
+import { swrFetcher, apiFetch, activityLog } from "@/lib/api-client";
 import { useJiraHealth } from "@/hooks/useSprintBoard";
 import { useSchedulerTick } from "@/hooks/useSchedulerTick";
 import { usePipelineTick } from "@/hooks/usePipelineTick";
@@ -52,7 +53,7 @@ export function useActivityContext() {
   return ctx;
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
+const fetcher = (url: string) => swrFetcher<ActivityLogEntry[]>(url).catch(() => [] as ActivityLogEntry[]);
 
 const SYNC_ENDPOINTS: Record<string, string> = {
   sprint: "/api/jira/sync-sprints",
@@ -162,19 +163,15 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     async (type: "sprint" | "tickets" | "comments", scope?: string) => {
       const endpoint = SYNC_ENDPOINTS[type];
       const params = scope ? `?sprintId=${encodeURIComponent(scope)}` : "";
-      const res = await fetch(`${endpoint}${params}`, { method: "POST" });
+      await apiFetch(`${endpoint}${params}`, { method: "POST" });
       mutateActivityLog();
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? `Sync failed (${res.status})`);
-      }
     },
     [mutateActivityLog],
   );
 
   const cancelEntry = useCallback(
     async (id: string) => {
-      await fetch(`/api/activity-log/${id}/cancel`, { method: "POST" });
+      await activityLog.cancel(id);
       mutateActivityLog();
     },
     [mutateActivityLog],
@@ -182,7 +179,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const cancelAllEntries = useCallback(
     async () => {
-      await fetch("/api/activity-log/cancel-all", { method: "POST" });
+      await activityLog.cancelAll();
       mutateActivityLog();
     },
     [mutateActivityLog],
@@ -190,7 +187,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const acknowledgeError = useCallback(
     async (id: string) => {
-      await fetch(`/api/activity-log/${id}/acknowledge`, { method: "POST" });
+      await activityLog.acknowledge(id);
       mutateActivityLog();
       setDismissedIds((prev) => new Set([...prev, id]));
     },
@@ -199,7 +196,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const acknowledgeAllErrors = useCallback(
     async () => {
-      await fetch("/api/activity-log/acknowledge-all", { method: "POST" });
+      await activityLog.acknowledgeAll();
       mutateActivityLog();
     },
     [mutateActivityLog],

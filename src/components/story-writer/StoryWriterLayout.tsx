@@ -28,6 +28,7 @@ import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { POStatusCell } from "@/components/sprint-board/TicketTableCells";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { getJiraUrl } from "@/lib/jira-url";
+import { apiFetch, tickets } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { Button } from "@/components/ui/Button";
@@ -126,8 +127,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       return;
     }
     let cancelled = false;
-    fetch(`/api/tickets/${encodeURIComponent(targetTicketKey)}`)
-      .then((r) => r.ok ? r.json() : null)
+    tickets.get(targetTicketKey)
       .then((data) => {
         if (!cancelled && data?.title) setTargetTicketTitle(data.title);
       })
@@ -157,10 +157,9 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   }, [writer.session, ticketData]);
 
   const handleTypeChange = useCallback(async (newType: import("@/types/ticket").IssueType) => {
-    await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}`, {
+    await apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: newType }),
+      body: { type: newType },
     });
     mutateTicket();
   }, [ticketKey, mutateTicket]);
@@ -251,11 +250,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
   const handlePoStatusChange = useCallback(async (v: import("@/types/ticket").POStatus) => {
     setLocalPoStatus(v);
-    await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/metadata`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ poStatus: v }),
-    });
+    await tickets.updateMetadata(ticketKey, { poStatus: v });
     mutateTicket();
   }, [ticketKey, mutateTicket]);
 
@@ -263,22 +258,22 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     setPulling(true);
     try {
       const pulls: Promise<void>[] = [
-        fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/pull-from-jira`, { method: "POST" })
-          .then((res) => res.ok ? res.json() : null)
-          .then((data) => {
-            if (!data) return;
-            if (typeof data.description === "string") handleDraftChange(data.description);
-            if (typeof data.title === "string" && data.title) handleTitleChange(data.title);
+        tickets.pullFromJira(ticketKey)
+          .then((data: unknown) => {
+            const d = data as Record<string, unknown> | null;
+            if (!d) return;
+            if (typeof d.description === "string") handleDraftChange(d.description);
+            if (typeof d.title === "string" && d.title) handleTitleChange(d.title as string);
           }),
       ];
       if (targetTicketKey) {
         pulls.push(
-          fetch(`/api/tickets/${encodeURIComponent(targetTicketKey)}/pull-from-jira`, { method: "POST" })
-            .then((res) => res.ok ? res.json() : null)
-            .then((data) => {
-              if (!data) return;
-              if (typeof data.description === "string") handleTargetDraftChange(data.description);
-              if (typeof data.title === "string" && data.title) handleTargetTitleChange(data.title);
+          tickets.pullFromJira(targetTicketKey)
+            .then((data: unknown) => {
+              const d = data as Record<string, unknown> | null;
+              if (!d) return;
+              if (typeof d.description === "string") handleTargetDraftChange(d.description);
+              if (typeof d.title === "string" && d.title) handleTargetTitleChange(d.title as string);
             }),
         );
       }

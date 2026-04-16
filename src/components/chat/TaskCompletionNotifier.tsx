@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch, notifications } from "@/lib/api-client";
 import { CheckCircle2, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -37,9 +38,8 @@ export function TaskCompletionNotifier() {
 
     async function poll() {
       try {
-        const res = await fetch("/api/notifications?unread=true&limit=20");
-        if (!res.ok || cancelled) return;
-        const data = await res.json() as { notifications: AgentAlert[] };
+        const data = await apiFetch<{ notifications: AgentAlert[] }>("/api/notifications?unread=true&limit=20");
+        if (cancelled) return;
         const agentAlerts = data.notifications.filter((n) => n.type === "task-complete");
 
         if (!initializedRef.current) {
@@ -61,11 +61,7 @@ export function TaskCompletionNotifier() {
           ]);
 
           // Mark as read so it doesn't appear on next poll
-          fetch("/api/notifications", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: alert.id }),
-          }).catch(() => {});
+          notifications.markRead(alert.id).catch(() => {});
         }
       } catch {
         // Silently ignore poll errors

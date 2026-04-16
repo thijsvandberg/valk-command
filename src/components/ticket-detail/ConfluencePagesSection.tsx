@@ -18,8 +18,7 @@ import {
 import { useTicketConfluenceLinks } from "@/hooks/useSprintBoard";
 import useSWR from "swr";
 import type { ConfluenceSearchResult } from "@/lib/confluence-client";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { swrFetcher, tickets } from "@/lib/api-client";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -60,7 +59,7 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
     truncated: boolean;
   }>(
     `/api/confluence/pages/${encodeURIComponent(pageId)}`,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 120000 },
   );
 
@@ -143,7 +142,7 @@ function SearchPopover({
 
   const { data, isLoading } = useSWR<{ results: ConfluenceSearchResult[] }>(
     debouncedQuery.length >= 2 ? `/api/confluence/search?q=${encodeURIComponent(debouncedQuery)}` : null,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false },
   );
 
@@ -230,7 +229,7 @@ function MentionedPagesSection({
 }) {
   const { data, isLoading } = useSWR<{ mentions: MentionedPage[] }>(
     `/api/tickets/${encodeURIComponent(ticketKey)}/confluence-mentions`,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 
@@ -281,16 +280,12 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
   const handleSelect = useCallback(async (result: ConfluenceSearchResult) => {
     setShowSearch(false);
     try {
-      await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/confluence-links`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pageId: result.pageId,
-          pageTitle: result.title,
-          pageUrl: result.url,
-          lastModifiedAt: result.lastModified,
-          source: "manual",
-        }),
+      await tickets.addConfluenceLink(ticketKey, {
+        pageId: result.pageId,
+        pageTitle: result.title,
+        pageUrl: result.url,
+        lastModifiedAt: result.lastModified,
+        source: "manual",
       });
       await mutate();
     } catch (err) {
@@ -300,15 +295,11 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
 
   const handleLinkMention = useCallback(async (page: MentionedPage) => {
     try {
-      await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/confluence-links`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pageId: page.pageId,
-          pageTitle: page.title,
-          pageUrl: page.url,
-          source: "auto-detected",
-        }),
+      await tickets.addConfluenceLink(ticketKey, {
+        pageId: page.pageId,
+        pageTitle: page.title,
+        pageUrl: page.url,
+        source: "auto-detected",
       });
       await mutate();
     } catch (err) {
@@ -318,11 +309,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
 
   const handleUnlink = useCallback(async (linkId: string) => {
     try {
-      await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/confluence-links`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkId }),
-      });
+      await tickets.removeConfluenceLink(ticketKey, { linkId });
       await mutate();
     } catch (err) {
       console.error("Operation failed:", err);

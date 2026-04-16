@@ -19,6 +19,7 @@ import TaskProgress from "./TaskProgress";
 import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { prefetchConversation, cancelAllPrefetches } from "@/lib/prefetch";
+import { apiFetch } from "@/lib/api-client";
 import { MessageCircle, X, PenLine, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -119,10 +120,9 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         // Auto-detect Jira key from message text and set relatedTicket
         const jiraMatch = content.match(/[A-Z]{2,10}-\d+/);
         if (jiraMatch && activeConv && !activeConv.relatedTicket) {
-          fetch(`/api/conversations/${activeId}`, {
+          apiFetch(`/api/conversations/${activeId}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ relatedTicket: jiraMatch[0] }),
+            body: { relatedTicket: jiraMatch[0] },
           }).catch((err) => console.warn("[chat] set relatedTicket failed", err));
         }
 
@@ -156,9 +156,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
     async function poll() {
       try {
-        const res = await fetch("/api/workspace-tasks?status=running");
-        if (!res.ok || cancelled) return;
-        const rows = await res.json() as Array<{ conversationId: string | null }>;
+        const rows = await apiFetch<Array<{ conversationId: string | null }>>("/api/workspace-tasks?status=running");
         if (cancelled) return;
         const ids = new Set(rows.map((r) => r.conversationId).filter(Boolean) as string[]);
         setRunningTaskConversationIds(ids);
@@ -204,10 +202,9 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     if (workspaceTask.output && isInvestigation && activeConv?.title === "New investigation") {
       const title = extractInvestigationTitle(workspaceTask.output);
       if (title) {
-        fetch(`/api/conversations/${activeId}`, {
+        apiFetch(`/api/conversations/${activeId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title }),
+          body: { title },
         })
           .then(() => refreshConversations())
           .catch((err) => console.warn("[chat] set investigation title failed", err));
@@ -225,16 +222,15 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       const agentData = parseReviewOutput(workspaceTask.output);
       if (agentData) {
         const result = mapAgentReviewToResult(agentData);
-        fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews`, {
+        apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: {
             source: "chat",
             overallScore: result.overallScore,
             dimensions: result.dimensions,
             summary: result.summary,
             suggestions: result.suggestions,
-          }),
+          },
         }).catch((err) => console.warn("[chat] persist review failed", err));
       }
     }
@@ -339,7 +335,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           <div className="border-b border-white/[0.06] px-6 py-2">
             <Link
               href={`/tickets/${activeConv.relatedTicket}/write`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-all duration-150"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-colors duration-150"
             >
               <PenLine size={13} strokeWidth={1.5} />
               Open Story Writer for {activeConv.relatedTicket}

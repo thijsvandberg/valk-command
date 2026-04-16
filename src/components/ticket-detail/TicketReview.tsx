@@ -6,6 +6,7 @@ import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, Ch
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
+import { tickets, ApiError } from "@/lib/api-client";
 import type { StoredReview } from "@/types/ticket";
 
 function getScoreColor(score: number): string {
@@ -318,22 +319,17 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
     setAgentReviewing(true);
     setReviewError(null);
     try {
-      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/reviews/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "ticket-detail" }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setReviewError(err.error ?? `Review failed (${res.status})`);
+      await tickets.generateReview(ticketKey, { source: "ticket-detail" });
+      mutateReviews();
+      // Revalidate ticket data so sidebar quality score updates
+      globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
+      globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setReviewError(err.body?.error ?? `Review failed (${err.status})`);
       } else {
-        mutateReviews();
-        // Revalidate ticket data so sidebar quality score updates
-        globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
-        globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
+        setReviewError("Failed to connect to agent");
       }
-    } catch {
-      setReviewError("Failed to connect to agent");
     } finally {
       setAgentReviewing(false);
     }

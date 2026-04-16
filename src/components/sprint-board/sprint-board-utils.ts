@@ -1,5 +1,6 @@
 import type { POStatus, Sprint, Ticket } from "@/types/ticket";
 import { mutate as globalMutate } from "swr";
+import { apiFetch, tickets as ticketsApi, workspaceTasks } from "@/lib/api-client";
 
 export function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
   if (!raw) return [];
@@ -29,11 +30,7 @@ export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) 
   globalMutate("/api/sprint-slots", slots, false);
 
   try {
-    await fetch("/api/sprint-slots", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(slots),
-    });
+    await apiFetch("/api/sprint-slots", { method: "PUT", body: slots });
   } catch (err) {
     console.error("Failed to save sprint slots:", err);
   }
@@ -66,12 +63,7 @@ export async function saveTicketMetadata(
   );
 
   try {
-    const res = await fetch(`/api/tickets/${encodeURIComponent(jiraKey)}/metadata`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await ticketsApi.updateMetadata(jiraKey, updates);
     return true;
   } catch (err) {
     console.error("Failed to save ticket metadata:", err);
@@ -84,35 +76,22 @@ export async function saveTicketMetadata(
 export async function bulkReviewStories(keys: string[]): Promise<void> {
   for (const key of keys) {
     try {
-      const taskRes = await fetch("/api/workspace-tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skill: "review-story-json", args: { args: key } }),
-      });
-      if (!taskRes.ok) continue;
-
-      const task = await taskRes.json();
+      const task = await workspaceTasks.create({ skill: "review-story-json", args: { args: key } });
       let attempts = 0;
       while (attempts < 60) {
         await new Promise((r) => setTimeout(r, 2000));
-        const statusRes = await fetch(`/api/workspace-tasks/${task.id}`);
-        if (!statusRes.ok) break;
-        const statusData = await statusRes.json();
+        const statusData = await workspaceTasks.get(task.id) as { status: string; output?: string };
         if (statusData.status === "completed" && statusData.output) {
           const { parseReviewOutput, mapAgentReviewToResult } = await import("@/lib/agent-client");
           const agentData = parseReviewOutput(statusData.output);
           if (agentData) {
             const result = mapAgentReviewToResult(agentData);
-            await fetch(`/api/tickets/${encodeURIComponent(key)}/reviews`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                source: "bulk-action",
-                overallScore: result.overallScore,
-                dimensions: result.dimensions,
-                summary: result.summary,
-                suggestions: result.suggestions,
-              }),
+            await ticketsApi.createReview(key, {
+              source: "bulk-action",
+              overallScore: result.overallScore,
+              dimensions: result.dimensions,
+              summary: result.summary,
+              suggestions: result.suggestions,
             });
           }
           break;

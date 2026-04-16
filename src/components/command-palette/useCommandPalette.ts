@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Fuse from "fuse.js";
 import { useRouter, usePathname } from "next/navigation";
 
+import { apiFetch, jira, conversations as conversationsApi, storyWriter, sprintSlots as sprintSlotsApi } from "@/lib/api-client";
 import type { LocalSearchResult } from "@/app/api/search/local/route";
 import type { Conversation } from "@/types/chat";
 import type { ActiveSession } from "@/app/api/story-writer/active-sessions/route";
@@ -16,6 +17,7 @@ import type {
   DirectTicketResult,
   PaletteResult,
   SubFlowState,
+  SprintSlot,
 } from "./types";
 import {
   PAGES,
@@ -102,7 +104,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       label: "Sync Jira",
       aliases: ["refresh", "pull", "update"],
       execute: async () => {
-        await fetch("/api/jira/sync-tickets", { method: "POST" });
+        await jira.syncTickets({});
       },
     },
     {
@@ -111,15 +113,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       label: "New Conversation",
       aliases: ["chat", "message"],
       execute: async () => {
-        const res = await fetch("/api/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "New conversation" }),
-        });
-        if (res.ok) {
-          const conv = await res.json();
-          router.push(`/chat?id=${conv.id}`);
-        }
+        const conv = await conversationsApi.create({ title: "New conversation" });
+        router.push(`/chat?id=${conv.id}`);
       },
     },
     {
@@ -156,15 +151,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       label: "New Investigation",
       aliases: ["investigate", "search code", "code search", "codebase"],
       execute: async () => {
-        const res = await fetch("/api/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "New investigation", type: "investigation" }),
-        });
-        if (res.ok) {
-          const conv = await res.json();
-          router.push(`/chat/${conv.id}`);
-        }
+        const conv = await conversationsApi.create({ title: "New investigation", type: "investigation" });
+        router.push(`/chat/${conv.id}`);
       },
     },
   ], [router, toggleSidebar, currentWriterKey]);
@@ -231,9 +219,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   /* ---- Fetch active story writer sessions once on palette open ---- */
   useEffect(() => {
     if (!open) return;
-    fetch("/api/story-writer/active-sessions")
-      .then((r) => r.json())
-      .then((data: ActiveSession[]) => {
+    apiFetch<ActiveSession[]>("/api/story-writer/active-sessions")
+      .then((data) => {
         setStoryWriterSessions(
           data.map((s) => ({
             category: "story-writer" as const,
@@ -254,8 +241,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   useEffect(() => {
     if (!isSubFlowLoadingSprints) return;
     let cancelled = false;
-    fetch("/api/sprint-slots")
-      .then((r) => r.json())
+    (sprintSlotsApi.list() as Promise<SprintSlot[]>)
       .then((data) => {
         if (cancelled) return;
         setSubFlow((prev) => {
@@ -298,23 +284,20 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
       try {
-        const res = await fetch(
+        const data = await apiFetch<{ results?: LocalSearchResult[] }>(
           `/api/search/local?q=${encodeURIComponent(query.trim())}`,
           { signal: abortRef.current.signal },
         );
-        if (res.ok) {
-          const data = await res.json();
-          const results: TicketResult[] = ((data.results ?? []) as LocalSearchResult[])
-            .slice(0, MAX_PER_CATEGORY)
-            .map((r) => ({
-              category: "ticket" as const,
-              id: `ticket-${r.key}`,
-              key: r.key,
-              summary: r.summary,
-              status: r.status,
-            }));
-          setTicketResults(results);
-        }
+        const results: TicketResult[] = ((data.results ?? []) as LocalSearchResult[])
+          .slice(0, MAX_PER_CATEGORY)
+          .map((r) => ({
+            category: "ticket" as const,
+            id: `ticket-${r.key}`,
+            key: r.key,
+            summary: r.summary,
+            status: r.status,
+          }));
+        setTicketResults(results);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
       } finally {
@@ -340,29 +323,24 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       if (convAbortRef.current) convAbortRef.current.abort();
       convAbortRef.current = new AbortController();
       try {
-        const res = await fetch("/api/conversations", {
-          signal: convAbortRef.current.signal,
+        const all = await conversationsApi.list(convAbortRef.current.signal);
+        // Only surface plain chat conversations here; story writer sessions
+        // are handled separately via the active-sessions endpoint
+        const plainConversations = all.filter((c) => !c.relatedTicket);
+        const fuse = new Fuse(plainConversations, {
+          keys: ["title"],
+          threshold: 0.4,
+          includeScore: true,
         });
-        if (res.ok) {
-          const all: Conversation[] = await res.json();
-          // Only surface plain chat conversations here; story writer sessions
-          // are handled separately via the active-sessions endpoint
-          const plainConversations = all.filter((c) => !c.relatedTicket);
-          const fuse = new Fuse(plainConversations, {
-            keys: ["title"],
-            threshold: 0.4,
-            includeScore: true,
-          });
-          const matched = fuse.search(query.trim(), { limit: MAX_PER_CATEGORY });
-          setConversationResults(
-            matched.map((m) => ({
-              category: "conversation" as const,
-              id: `conv-${m.item.id}`,
-              title: m.item.title,
-              conversationId: m.item.id,
-            })),
-          );
-        }
+        const matched = fuse.search(query.trim(), { limit: MAX_PER_CATEGORY });
+        setConversationResults(
+          matched.map((m) => ({
+            category: "conversation" as const,
+            id: `conv-${m.item.id}`,
+            title: m.item.title,
+            conversationId: m.item.id,
+          })),
+        );
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
       } finally {
@@ -507,21 +485,12 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       }
       setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: true, error: null } : prev);
       try {
-        const res = await fetch("/api/story-writer/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, sprintId: subFlow.sprintId || undefined }),
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: false, error: err.error ?? "Failed to create story" } : prev);
-          return;
-        }
-        const { key } = await res.json();
-        router.push(`/tickets/${key}/write`);
+        const result = await storyWriter.createViaGlobal({ title, sprintId: subFlow.sprintId || undefined }) as { key: string };
+        router.push(`/tickets/${result.key}/write`);
         handleClose();
-      } catch {
-        setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: false, error: "Something went wrong" } : prev);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Something went wrong";
+        setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: false, error: msg } : prev);
       }
     } else {
       const key = subFlow.existingKey.trim().toUpperCase();
@@ -531,15 +500,11 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       }
       setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: true, error: null } : prev);
       try {
-        const res = await fetch(`/api/tickets/${key}`);
-        if (!res.ok) {
-          setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: false, error: `Ticket ${key} not found locally` } : prev);
-          return;
-        }
+        await apiFetch(`/api/tickets/${key}`);
         router.push(`/tickets/${key}/write`);
         handleClose();
       } catch {
-        setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: false, error: "Something went wrong" } : prev);
+        setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: false, error: `Ticket ${key} not found locally` } : prev);
       }
     }
   }, [subFlow, router, handleClose]);

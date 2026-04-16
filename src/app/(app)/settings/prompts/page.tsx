@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { settings } from "@/lib/api-client";
 import { Plus, Trash2, Code2, Save, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -111,9 +112,8 @@ export default function PromptsPage() {
   const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
-    fetch("/api/settings/quick-prompts")
-      .then((r) => r.json())
-      .then((data: { prompts: QuickPromptsConfig }) => {
+    (settings.getQuickPrompts() as Promise<{ prompts: QuickPromptsConfig }>)
+      .then((data) => {
         setConfig(data.prompts ?? {});
         setLoading(false);
       })
@@ -173,11 +173,7 @@ export default function PromptsPage() {
   const save = useCallback(async () => {
     setSaving(true);
     try {
-      await fetch("/api/settings/quick-prompts", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompts: config }),
-      });
+      await settings.saveQuickPrompts({ prompts: config });
       setSaved(true);
     } finally {
       setSaving(false);

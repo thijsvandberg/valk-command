@@ -5,6 +5,7 @@ import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { X, Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
+import { apiFetch, ApiError } from "@/lib/api-client";
 
 type Tab = "sprints" | "history" | "hidden";
 
@@ -110,19 +111,18 @@ export function SprintListModal({
     setSyncError(null);
     const scope = tab === "history" ? "history" : "sprints";
     try {
-      const [res] = await Promise.all([
-        fetch(`/api/jira/sync-sprints?scope=${scope}`, { method: "POST" }),
+      const [data] = await Promise.all([
+        apiFetch<{ count?: number }>(`/api/jira/sync-sprints?scope=${scope}`, { method: "POST" }),
         new Promise((r) => setTimeout(r, 600)),
       ]);
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        setSyncError(data?.error || `Sync failed (${res.status})`);
-      } else {
-        await mutate();
-        setSyncCount(data?.count ?? 0);
-      }
+      await mutate();
+      setSyncCount(data?.count ?? 0);
     } catch (err) {
-      setSyncError(err instanceof Error ? err.message : "Network error");
+      if (err instanceof ApiError) {
+        setSyncError(err.body?.error || `Sync failed (${err.status})`);
+      } else {
+        setSyncError(err instanceof Error ? err.message : "Network error");
+      }
     } finally {
       setSyncing(false);
     }
@@ -148,11 +148,7 @@ export function SprintListModal({
       }
     }
 
-    await fetch("/api/jira/sprints", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hiddenIds: newHiddenIds }),
-    });
+    await apiFetch("/api/jira/sprints", { method: "PUT", body: { hiddenIds: newHiddenIds } });
     await mutate();
   }, [sprints, pinnedIds, onPin, mutate]);
 

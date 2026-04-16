@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { apiFetch, ApiError } from "@/lib/api-client";
 
 export interface WorkspaceHealth {
   workspace: "connected" | "unreachable" | "checking";
@@ -10,19 +11,21 @@ export interface WorkspaceHealth {
 
 async function fetchHealth(): Promise<WorkspaceHealth> {
   try {
-    const res = await fetch("/api/workspace-tasks/health");
-    const data = await res.json();
+    const data = await apiFetch<{ status?: string; auth?: { status?: string; tokenExpiresAt?: string } }>("/api/workspace-tasks/health");
 
-    if (res.status === 502 || data.status === "unreachable") {
+    if (data.status === "unreachable") {
       return { workspace: "unreachable", claude: "unknown", tokenExpiresAt: null };
     }
 
     return {
       workspace: "connected",
-      claude: data.auth?.status ?? "unknown",
+      claude: (data.auth?.status as WorkspaceHealth["claude"]) ?? "unknown",
       tokenExpiresAt: data.auth?.tokenExpiresAt ?? null,
     };
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 502) {
+      return { workspace: "unreachable", claude: "unknown", tokenExpiresAt: null };
+    }
     return { workspace: "unreachable", claude: "unknown", tokenExpiresAt: null };
   }
 }

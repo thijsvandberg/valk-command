@@ -18,6 +18,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
+import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff } from "lucide-react";
 import {
@@ -206,8 +207,7 @@ export default function SprintBoard() {
 
   useEffect(() => {
     if (!activeSprintName) { setIsSprintFollowed(false); return; }
-    fetch("/api/followed-sprints")
-      .then((r) => r.ok ? r.json() : [])
+    followedSprints.list()
       .then((names: string[]) => setIsSprintFollowed(names.includes(activeSprintName)))
       .catch(() => {});
   }, [activeSprintName]);
@@ -215,10 +215,10 @@ export default function SprintBoard() {
   const handleToggleFollowSprint = useCallback(async () => {
     if (!activeSprintName) return;
     if (isSprintFollowed) {
-      await fetch(`/api/followed-sprints?sprintName=${encodeURIComponent(activeSprintName)}`, { method: "DELETE" });
+      await followedSprints.unfollow(activeSprintName);
       setIsSprintFollowed(false);
     } else {
-      await fetch("/api/followed-sprints", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sprintName: activeSprintName }) });
+      await followedSprints.follow(activeSprintName);
       setIsSprintFollowed(true);
     }
   }, [activeSprintName, isSprintFollowed]);
@@ -349,7 +349,7 @@ export default function SprintBoard() {
   const handleBulkRefresh = useCallback(async () => {
     setBulkRefreshing(true);
     try {
-      await fetch(`/api/jira/sync-tickets?sprintId=${encodeURIComponent(slotSprints[activeSlot])}`, { method: "POST" });
+      await jira.syncTickets({ sprintId: slotSprints[activeSlot] });
       showToast(`Refreshed ${checkedTickets.size} ticket${checkedTickets.size === 1 ? "" : "s"} from Jira`);
     } finally { setBulkRefreshing(false); }
   }, [slotSprints, activeSlot, checkedTickets.size, showToast]);
@@ -483,12 +483,7 @@ export default function SprintBoard() {
       });
 
       try {
-        const res = await fetch("/api/jira/move-sprint", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ issueKeys: keysToMove, targetSprintId }),
-        });
-        if (!res.ok) throw new Error("Move failed");
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Moved ${label} to ${targetName}`);
         mutateTickets();
@@ -534,27 +529,19 @@ export default function SprintBoard() {
       const rankAfterKey = oldIndex <= overIndex ? overId : undefined;
 
       try {
-        const res = await fetch("/api/jira/rank", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            issueKeys: keysToMove,
-            rankBeforeKey,
-            rankAfterKey,
-            sprintId: activeSprintId,
-          }),
+        await jira.rank({
+          issueKeys: keysToMove,
+          rankBeforeKey,
+          rankAfterKey,
+          sprintId: activeSprintId,
         });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error ?? "Rank update failed");
-        }
         // Clear any local PO priority override so rank order is now authoritative
         setPoPriorityOrder(null);
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Rank updated for ${label}`);
       } catch (err) {
         mutateTickets();
-        const msg = err instanceof Error ? err.message : "Failed to update rank in Jira";
+        const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to update rank in Jira";
         showToast(`${msg}. Reverted.`);
       }
     }
@@ -563,12 +550,12 @@ export default function SprintBoard() {
   const handleRefresh = useCallback(async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`/api/jira/sync-tickets?sprintId=${encodeURIComponent(slotSprints[activeSlot])}`, { method: "POST" });
-      if (!res.ok) { console.error("Refresh failed:", res.status); showToast("Failed to refresh tickets"); return; }
-      const data = await res.json().catch(() => null);
+      const data = await jira.syncTickets({ sprintId: slotSprints[activeSlot] }) as { count?: number } | null;
       const count = data?.count ?? 0;
       showToast(`Refreshed ${count} ticket${count === 1 ? "" : "s"}`);
       mutateTickets();
+    } catch {
+      showToast("Failed to refresh tickets");
     } finally { setSyncing(false); }
   }, [slotSprints, activeSlot, showToast, mutateTickets]);
 
@@ -595,9 +582,8 @@ export default function SprintBoard() {
   useEffect(() => {
     if (slotsInitialized.current || sprints.length === 0) return;
     slotsInitialized.current = true;
-    fetch("/api/sprint-slots")
-      .then((r) => r.ok ? r.json() : [])
-      .then((savedSlots: { slotIndex: number; sprintId: string }[]) => {
+    apiFetch<{ slotIndex: number; sprintId: string }[]>("/api/sprint-slots")
+      .then((savedSlots) => {
         const sprintIds = new Set(sprints.map((s) => s.id));
         if (Array.isArray(savedSlots) && savedSlots.length > 0) {
           const loaded = savedSlots.sort((a, b) => a.slotIndex - b.slotIndex).map((s) => s.sprintId).filter((id) => sprintIds.has(id));

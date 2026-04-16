@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { Attachment } from "@/types/ticket";
 import { CloudUpload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { apiFetch, tickets } from "@/lib/api-client";
 import { renderMarkdown } from "./renderMarkdown";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 
@@ -102,11 +103,7 @@ export function EditableDescription({
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(async () => {
       try {
-        await fetch(`/api/tickets/${ticketKey}/local-edits`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field: "description", localValue: content.trim(), isDraft: true }),
-        });
+        await tickets.saveLocalEdit(ticketKey, { field: "description", localValue: content.trim(), isDraft: true });
       } catch { /* ignore */ }
     }, 800);
   }, [ticketKey]);
@@ -147,15 +144,11 @@ export function EditableDescription({
       setEditIsDraft(false);
       onLocalEdit(false);
       // Clean up any draft
-      await fetch(`/api/tickets/${ticketKey}/local-edits?draftsOnly=true`, { method: "DELETE" });
+      await apiFetch<void>(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits?draftsOnly=true`, { method: "DELETE" });
       return;
     }
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    await fetch(`/api/tickets/${ticketKey}/local-edits`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ field: "description", localValue: value.trim() }),
-    });
+    await tickets.saveLocalEdit(ticketKey, { field: "description", localValue: value.trim() });
     setLocalValue(value.trim());
     setEditIsDraft(false);
     onLocalEdit(true);

@@ -6,6 +6,7 @@ import type { Sprint } from "@/types/ticket";
 import type { SavedView, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { saveSprintSlots } from "@/components/sprint-board/sprint-board-utils";
 import type { StoredFilters, StoredSort } from "@/components/sprint-board/useSprintBoardFilters";
+import { apiFetch } from "@/lib/api-client";
 
 interface NavigationDeps {
   sprints: Sprint[];
@@ -164,9 +165,8 @@ export function useSprintBoardNavigation(deps: NavigationDeps) {
     if (sprints.length === 0) return;
     slotsInitialized.current = true;
 
-    fetch("/api/sprint-slots")
-      .then((r) => r.ok ? r.json() : [])
-      .then((savedSlots: { slotIndex: number; sprintId: string }[]) => {
+    apiFetch<{ slotIndex: number; sprintId: string }[]>("/api/sprint-slots")
+      .then((savedSlots) => {
         const sprintIds = new Set(sprints.map((s) => s.id));
         if (Array.isArray(savedSlots) && savedSlots.length > 0) {
           const loaded = savedSlots

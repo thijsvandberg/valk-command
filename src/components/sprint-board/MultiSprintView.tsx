@@ -10,6 +10,7 @@ import { SidePanel } from "./SidePanel";
 import { CalendarRange, RefreshCw, X, Columns2, GripVertical, ChevronDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
+import { jira } from "@/lib/api-client";
 import {
   DndContext,
   DragOverlay,
@@ -451,7 +452,7 @@ export function MultiSprintView({
   const handleRefreshLeft = useCallback(async () => {
     setLeftSyncing(true);
     try {
-      await fetch(`/api/jira/sync-tickets?sprintId=${encodeURIComponent(leftSprint)}`, { method: "POST" });
+      await jira.syncTickets({ sprintId: leftSprint });
       setLeftOverride(null);
       await mutateLeft();
       showToast("Left sprint refreshed");
@@ -463,7 +464,7 @@ export function MultiSprintView({
   const handleRefreshRight = useCallback(async () => {
     setRightSyncing(true);
     try {
-      await fetch(`/api/jira/sync-tickets?sprintId=${encodeURIComponent(rightSprint)}`, { method: "POST" });
+      await jira.syncTickets({ sprintId: rightSprint });
       setRightOverride(null);
       await mutateRight();
       showToast("Right sprint refreshed");

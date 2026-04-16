@@ -3,9 +3,8 @@
 import { useNotification } from "@/hooks/useNotification";
 import { Bell, BellOff, ShieldCheck, ShieldX, GitBranch, Rocket, GitPullRequest, RefreshCw, BookOpen, Info, Zap, Bot, Timer } from "lucide-react";
 import useSWR from "swr";
+import { swrFetcher, settings } from "@/lib/api-client";
 import type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type CategoryMeta = {
   label: string;
@@ -100,7 +99,7 @@ export default function NotificationsPage() {
 
   const { data, mutate } = useSWR<{ preferences: NotificationPreferences }>(
     "/api/settings/notification-preferences",
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false },
   );
 
@@ -126,12 +125,8 @@ export default function NotificationsPage() {
     const updated = { ...preferences, [category]: value };
     await mutate(
       async () => {
-        const res = await fetch("/api/settings/notification-preferences", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ preferences: updated }),
-        });
-        return res.json();
+        await settings.saveNotificationPrefs({ preferences: updated });
+        return { preferences: updated };
       },
       { optimisticData: { preferences: updated }, rollbackOnError: true },
     );

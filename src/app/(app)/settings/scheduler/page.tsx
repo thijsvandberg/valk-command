@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { scheduler } from "@/lib/api-client";
 import { Clock, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 
 interface TaskStatus {
@@ -93,9 +94,8 @@ export default function SchedulerPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = useCallback(() => {
-    fetch("/api/scheduler/tick")
-      .then((r) => r.json())
-      .then((data: { tasks: TaskStatus[] }) => {
+    (scheduler.status() as Promise<{ tasks: TaskStatus[] }>)
+      .then((data) => {
         setTasks(data.tasks ?? []);
         setLoading(false);
       })

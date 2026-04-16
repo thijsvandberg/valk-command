@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Link2, Link2Off, ExternalLink, ChevronLeft, Loader2 } from "lucide-react";
+import { apiFetch, tickets, jira } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -151,22 +152,22 @@ function TicketDetail({
 
     const fetchTicket = async () => {
       // First try local DB
-      const r = await fetch(`/api/tickets/${encodeURIComponent(jiraKey)}`);
-      if (r.ok) {
-        const d = await r.json();
+      try {
+        const d = await tickets.get(jiraKey);
         if (d?.title) {
           return d;
         }
+      } catch {
+        // Not found locally
       }
       // Not in local DB — trigger a Jira sync, then re-fetch
-      await fetch("/api/jira/sync-tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketKeys: [jiraKey] }),
-      }).catch((err) => console.warn("[related-stories] background sync failed", err));
-      const r2 = await fetch(`/api/tickets/${encodeURIComponent(jiraKey)}`);
-      if (r2.ok) return r2.json();
-      return null;
+      await jira.syncTickets({ ticketKeys: [jiraKey] })
+        .catch((err) => console.warn("[related-stories] background sync failed", err));
+      try {
+        return await tickets.get(jiraKey);
+      } catch {
+        return null;
+      }
     };
 
     fetchTicket()
@@ -177,7 +178,7 @@ function TicketDetail({
             title: d.title ?? jiraKey,
             description: d.description ?? null,
             type: d.type ?? null,
-            status: d.status ?? "",
+            status: d.jiraStatus ?? "",
           });
         }
         setLoading(false);

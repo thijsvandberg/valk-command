@@ -5,6 +5,7 @@ import type { TicketDetail } from "@/types/ticket";
 import { Trash2 } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
+import { tickets } from "@/lib/api-client";
 import { renderMarkdown } from "./renderMarkdown";
 
 export function CommentsSection({
@@ -21,11 +22,8 @@ export function CommentsSection({
   useEffect(() => {
     async function loadComments() {
       try {
-        const res = await fetch(`/api/tickets/${ticketKey}/comments`);
-        if (res.ok) {
-          const data = await res.json();
-          setPoComments(data.poComments ?? []);
-        }
+        const data = await tickets.getComments(ticketKey) as { poComments?: Array<{ id: string; author: string; content: string; createdAt: string }> };
+        setPoComments(data.poComments ?? []);
       } catch (err) {
         console.error("Failed to load comments:", err);
       } finally {
@@ -49,13 +47,7 @@ export function CommentsSection({
     setNewComment("");
 
     try {
-      const res = await fetch(`/api/tickets/${ticketKey}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-      if (!res.ok) throw new Error("Failed to post comment");
-      const created = await res.json();
+      const created = await tickets.addComment(ticketKey, { content }) as { id: string; author: string; content: string; createdAt: string };
       setPoComments((prev) =>
         prev.map((c) => (c.id === optimisticId ? created : c))
       );
@@ -66,10 +58,8 @@ export function CommentsSection({
 
   const handleDeleteComment = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`/api/tickets/${ticketKey}/comments/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setPoComments((prev) => prev.filter((c) => c.id !== id));
-      }
+      await tickets.deleteComment(ticketKey, id);
+      setPoComments((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       console.error("Operation failed:", err);
     }

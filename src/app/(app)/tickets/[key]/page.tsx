@@ -47,6 +47,7 @@ import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
+import { apiFetch, jira, tickets } from "@/lib/api-client";
 
 
 export default function TicketDetailPage({
@@ -106,16 +107,10 @@ export default function TicketDetailPage({
       const abortCtrl = new AbortController();
       const timer = setTimeout(() => abortCtrl.abort(), 10_000);
       try {
-        const res = await fetch("/api/jira/sync-tickets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticketKeys: [key] }),
-          signal: abortCtrl.signal,
-        });
+        const data = await jira.syncTickets({ ticketKeys: [key] }, abortCtrl.signal) as { ok?: boolean; count?: number };
         clearTimeout(timer);
         if (cancelled) return;
-        const data = await res.json();
-        if (data.ok && data.count > 0) {
+        if (data.ok && (data.count ?? 0) > 0) {
           await mutateTicket();
           return;
         }
@@ -145,10 +140,9 @@ export default function TicketDetailPage({
   const linkCopyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleTypeChange = useCallback(async (newType: import("@/types/ticket").IssueType) => {
-    await fetch(`/api/tickets/${encodeURIComponent(key)}`, {
+    await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: newType }),
+      body: { type: newType },
     });
     mutateTicket();
   }, [key, mutateTicket]);
@@ -188,7 +182,7 @@ export default function TicketDetailPage({
         (current) => current?.filter((s) => s.ticketKey !== key) ?? [],
         { revalidate: false },
       );
-      await fetch(`/api/tickets/${key}/story-writer?deleteConversation=true`, { method: "DELETE" });
+      await apiFetch(`/api/tickets/${key}/story-writer?deleteConversation=true`, { method: "DELETE" });
       await mutateActiveSessions();
     } catch (err) {
       console.error("Failed to delete session:", err);
@@ -221,7 +215,7 @@ export default function TicketDetailPage({
 
   const handleDiscardDraft = useCallback(async () => {
     try {
-      await fetch(`/api/tickets/${key}/local-edits`, { method: "DELETE" });
+      await apiFetch(`/api/tickets/${key}/local-edits`, { method: "DELETE" });
       setHasLocalTitleEdit(false);
       setHasLocalDescEdit(false);
       setPushError(null);
@@ -238,8 +232,7 @@ export default function TicketDetailPage({
     setIsPushing(true);
     setPushError(null);
     try {
-      const res = await fetch(`/api/tickets/${key}/push-to-jira`, { method: "POST" });
-      const data = await res.json();
+      const data = await tickets.pushToJira(key) as { conflict?: boolean; contentChanged?: boolean; success?: boolean; error?: string };
       if (data.conflict) {
         handleRemoteChanged(data.contentChanged ?? true);
       } else if (data.success) {
@@ -262,11 +255,7 @@ export default function TicketDetailPage({
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await fetch("/api/jira/sync-tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketKeys: [key] }),
-      });
+      await jira.syncTickets({ ticketKeys: [key] });
       await mutateTicket();
     } catch (err) {
       console.error("Failed to refresh from Jira:", err);

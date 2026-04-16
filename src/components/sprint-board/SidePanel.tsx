@@ -12,6 +12,7 @@ import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
 import { prefetchTicketDetail } from "@/lib/prefetch";
 import { CloudSync, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { jira } from "@/lib/api-client";
 
 // -- Simple markdown renderer for panel description --
 
@@ -110,17 +111,13 @@ export function SidePanel({
   const handleSyncTicket = useCallback(async () => {
     setSyncingTicket(true);
     try {
-      const [res] = await Promise.all([
-        fetch("/api/jira/sync-tickets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticketKeys: [ticket.key] }),
-        }),
+      await Promise.all([
+        jira.syncTickets({ ticketKeys: [ticket.key] }),
         new Promise((r) => setTimeout(r, 400)),
       ]);
-      if (res.ok) {
-        onShowToast(`Synced ${ticket.key} from Jira`);
-      }
+      onShowToast(`Synced ${ticket.key} from Jira`);
+    } catch {
+      // Sync failure is non-critical in panel context
     } finally {
       setSyncingTicket(false);
     }

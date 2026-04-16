@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Ticket, StoryVersion } from "@/types/ticket";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { apiFetch, tickets } from "@/lib/api-client";
 import { parseVersionDate, parseRawVersionData, storyVersionToOption } from "./version-utils";
 import { VersionList } from "./VersionList";
 import { DiffViewer, type DiffStats } from "./DiffViewer";
@@ -53,9 +54,9 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     let cancelled = false;
 
     Promise.all([
-      fetch(`/api/tickets/${ticket.key}/versions?metaOnly=true`).then((r) => r.ok ? r.json() : []),
-      fetch(`/api/tickets/${ticket.key}/local-edits`).then((r) => r.ok ? r.json() : []),
-      fetch(`/api/tickets/${ticket.key}/story-writer?draftsOnly=true`).then((r) => r.ok ? r.json() : { aiDrafts: [] }),
+      apiFetch<Record<string, unknown>[]>(`/api/tickets/${encodeURIComponent(ticket.key)}/versions?metaOnly=true`).catch(() => []),
+      tickets.getLocalEdits(ticket.key).catch(() => []),
+      apiFetch<{ aiDrafts: unknown[] }>(`/api/tickets/${encodeURIComponent(ticket.key)}/story-writer?draftsOnly=true`).catch(() => ({ aiDrafts: [] })),
     ])
       .then(([versionData, editData, writerData]) => {
         if (cancelled) return;
@@ -81,7 +82,8 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
         // Add AI drafts from story writer session
         const aiDrafts = writerData?.aiDrafts;
         if (Array.isArray(aiDrafts)) {
-          for (const draft of aiDrafts) {
+          for (const raw of aiDrafts) {
+            const draft = raw as { id?: string; createdAt?: string; content?: string; draftIndex?: number };
             versions.push({
               versionNumber: 0,
               date: draft.createdAt || new Date().toISOString(),
@@ -134,11 +136,11 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
 
     Promise.all(
       needed.map((v) =>
-        fetch(`/api/tickets/${ticket.key}/versions/${v.id}`).then((r) => r.ok ? r.json() : null),
+        apiFetch<Record<string, unknown>>(`/api/tickets/${encodeURIComponent(ticket.key)}/versions/${encodeURIComponent(v.id!)}`).catch(() => null),
       ),
     ).then((results) => {
       if (cancelled) return;
-      const byId = new Map(results.filter(Boolean).map((r: Record<string, unknown>) => [r.id, r]));
+      const byId = new Map(results.filter(Boolean).map((r) => [r!.id, r!]));
       setTicketVersions((prev) =>
         prev.map((v) => {
           const loaded = v.id ? byId.get(v.id) : undefined;
@@ -201,9 +203,8 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const handleKeepAndPush = useCallback(async () => {
     setResolving(true);
     try {
-      await fetch(`/api/tickets/${ticket.key}/local-edits`, { method: "PATCH" });
-      const res = await fetch(`/api/tickets/${ticket.key}/push-to-jira`, { method: "POST" });
-      const data = await res.json();
+      await apiFetch<unknown>(`/api/tickets/${encodeURIComponent(ticket.key)}/local-edits`, { method: "PATCH" });
+      const data = await tickets.pushToJira(ticket.key) as Record<string, unknown>;
       if (data.success) {
         onConflictResolved?.("keep");
       } else {
@@ -219,12 +220,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const handleForcePush = useCallback(async () => {
     setResolving(true);
     try {
-      const res = await fetch(`/api/tickets/${ticket.key}/push-to-jira`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: true }),
-      });
-      const data = await res.json();
+      const data = await tickets.pushToJira(ticket.key, { force: true }) as Record<string, unknown>;
       if (data.success) {
         onConflictResolved?.("keep");
       } else {
@@ -240,7 +236,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const handleDiscardLocal = useCallback(async () => {
     setResolving(true);
     try {
-      await fetch(`/api/tickets/${ticket.key}/local-edits`, { method: "DELETE" });
+      await apiFetch<void>(`/api/tickets/${encodeURIComponent(ticket.key)}/local-edits`, { method: "DELETE" });
       onConflictResolved?.("discard");
     } catch (err) {
       console.error("Failed to discard local edits:", err);
@@ -253,11 +249,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     if (!mergeResult) return;
     setSavingMerge(true);
     try {
-      await fetch(`/api/tickets/${ticket.key}/local-edits`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: "description", localValue: mergeResult }),
-      });
+      await tickets.saveLocalEdit(ticket.key, { field: "description", localValue: mergeResult });
       onConflictResolved?.("keep");
     } catch (err) {
       console.error("Failed to save merge result:", err);
@@ -269,11 +261,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const handleRevertTo = useCallback(async (version: StoryVersion) => {
     setResolving(true);
     try {
-      await fetch(`/api/tickets/${ticket.key}/local-edits`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: "description", localValue: version.content }),
-      });
+      await tickets.saveLocalEdit(ticket.key, { field: "description", localValue: version.content });
       onConflictResolved?.("keep");
     } catch (err) {
       console.error("Failed to create revert edit:", err);
@@ -286,23 +274,15 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     setImporting(true);
     setImportResult(null);
     try {
-      const res = await fetch(`/api/tickets/${ticket.key}/versions/import`, { method: "POST" });
-      if (!res.ok) {
-        console.error("Import failed:", res.status);
-        return;
-      }
-      const data = await res.json();
+      const data = await tickets.importVersion(ticket.key, {}) as unknown as { imported: number; skipped: number; total: number };
       setImportResult(data);
       if (data.imported > 0) {
         // Refresh the version list
-        const versionsRes = await fetch(`/api/tickets/${ticket.key}/versions?metaOnly=true`);
-        if (versionsRes.ok) {
-          const versionData = await versionsRes.json();
-          if (Array.isArray(versionData)) {
-            const versions = parseRawVersionData(versionData as Record<string, unknown>[]);
-            setTicketVersions(versions);
-            onVersionsLoadedRef.current?.(versions.length);
-          }
+        const versionData = await apiFetch<Record<string, unknown>[]>(`/api/tickets/${encodeURIComponent(ticket.key)}/versions?metaOnly=true`);
+        if (Array.isArray(versionData)) {
+          const versions = parseRawVersionData(versionData);
+          setTicketVersions(versions);
+          onVersionsLoadedRef.current?.(versions.length);
         }
       }
     } catch (err) {

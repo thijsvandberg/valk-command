@@ -6,6 +6,7 @@ import { Search, X, PanelRight, PanelRightClose, ListFilter, Clock, Bookmark, Bo
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useSavedSearches } from "@/hooks/useSavedSearches";
 import { Button } from "@/components/ui/Button";
+import { apiFetch, search, jira, ApiError } from "@/lib/api-client";
 
 import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
@@ -181,23 +182,20 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     try {
       const params = new URLSearchParams({ q });
       for (const [k, v] of filtersToParams(activeFilters).entries()) params.set(k, v);
-      const res = await fetch(`/api/search/local?${params.toString()}`, { signal });
-      if (res.ok) {
-        const data = await res.json();
-        // Support both grouped response (new) and flat results (legacy/backward compat)
-        if (data.groups) {
-          setGroupedResults({
-            tickets: data.groups.tickets ?? [],
-            conversations: data.groups.conversations ?? [],
-            comments: data.groups.comments ?? [],
-          });
-        } else {
-          setGroupedResults({ tickets: data.results ?? [], conversations: [], comments: [] });
-        }
-        setActiveIdx(-1);
-        // Reset section expansion when results change
-        setExpandedSections(new Set());
+      const data = await apiFetch<{ groups?: { tickets?: LocalSearchResult[]; conversations?: ConversationSearchResult[]; comments?: CommentSearchResult[] }; results?: LocalSearchResult[] }>(`/api/search/local?${params.toString()}`, { signal });
+      // Support both grouped response (new) and flat results (legacy/backward compat)
+      if (data.groups) {
+        setGroupedResults({
+          tickets: data.groups.tickets ?? [],
+          conversations: data.groups.conversations ?? [],
+          comments: data.groups.comments ?? [],
+        });
+      } else {
+        setGroupedResults({ tickets: data.results ?? [], conversations: [], comments: [] });
       }
+      setActiveIdx(-1);
+      // Reset section expansion when results change
+      setExpandedSections(new Set());
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
     } finally {
@@ -223,17 +221,15 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (jqlOverride) params.set("jql", jqlOverride);
-      const res = await fetch(`/api/search/jira?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setJiraResults(data.issues ?? []);
-        setActiveIdx(-1);
+      const data = await apiFetch<{ issues?: JiraSearchResult[] }>(`/api/search/jira?${params.toString()}`);
+      setJiraResults(data.issues ?? []);
+      setActiveIdx(-1);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setJiraError(err.body?.error ?? "Search failed");
       } else {
-        const data = await res.json().catch(() => ({}));
-        setJiraError(data.error ?? "Search failed");
+        setJiraError("Network error -- check Jira connectivity");
       }
-    } catch {
-      setJiraError("Network error — check Jira connectivity");
     } finally {
       setLoadingJira(false);
     }
@@ -244,11 +240,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     if (!filterOptionsFetchedRef.current) {
       filterOptionsFetchedRef.current = true;
       try {
-        const res = await fetch("/api/search/local/filter-options");
-        if (res.ok) {
-          const data = await res.json();
-          setFilterOptions(data);
-        }
+        const data = await search.filterOptions() as FilterOptionsData;
+        setFilterOptions(data);
       } catch {
         // Non-critical: dropdowns will show empty options
       }
@@ -260,11 +253,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     if (!existsLocally) {
       setFetchingKey(true);
       try {
-        await fetch("/api/jira/sync-tickets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticketKeys: [key] }),
-        });
+        await jira.syncTickets({ ticketKeys: [key] });
       } catch {
         // Navigate anyway even if the fetch failed
       } finally {

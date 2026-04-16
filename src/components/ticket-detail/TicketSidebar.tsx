@@ -6,6 +6,7 @@ import { PO_STATUS_OPTIONS } from "@/types/ticket";
 import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/Button";
+import { tickets } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
@@ -68,11 +69,7 @@ export function TicketSidebar({
     setPoStatus(v);
     setStatusOpen(false);
     try {
-      await fetch(`/api/tickets/${ticket.key}/metadata`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poStatus: v }),
-      });
+      await tickets.updateMetadata(ticket.key, { poStatus: v });
     } catch (err) {
       console.error("Operation failed:", err);
     }
@@ -81,11 +78,7 @@ export function TicketSidebar({
   const handleNotesChange = useCallback(async (notes: string) => {
     setPoNotes(notes);
     try {
-      await fetch(`/api/tickets/${ticket.key}/metadata`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poNotes: notes }),
-      });
+      await tickets.updateMetadata(ticket.key, { poNotes: notes });
     } catch (err) {
       console.error("Operation failed:", err);
     }
