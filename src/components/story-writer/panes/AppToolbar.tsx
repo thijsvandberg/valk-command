@@ -94,15 +94,12 @@ export function AppToolbar() {
                     )}
                   </div>
 
-                  {/* App-specific actions */}
-                  {toolbar.actions && (
-                    <div className="flex items-center gap-1">
-                      {toolbar.actions}
-                    </div>
-                  )}
+                  {/* Spacer */}
+                  <div className="flex-1" />
 
-                  {/* Spacer + close button */}
-                  <div className="ml-auto flex items-center">
+                  {/* App-specific actions + close button */}
+                  <div className="flex items-center gap-1">
+                    {toolbar.actions}
                     <button
                       type="button"
                       onClick={() => pane.closeApp(activeApp)}

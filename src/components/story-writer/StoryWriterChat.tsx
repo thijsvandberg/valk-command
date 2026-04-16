@@ -17,7 +17,6 @@ import {
   GripHorizontal,
   AlertCircle,
   RotateCcw,
-  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -451,7 +450,7 @@ export function StoryWriterChat({
                   className="flex items-center justify-center border-l border-white/[0.08] px-1.5 py-1.5 text-white/30 cursor-pointer hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Submit immediately"
                 >
-                  <ChevronRight size={10} strokeWidth={2} />
+                  <SendHorizontal size={10} strokeWidth={2} />
                 </button>
               </div>
             ))}
