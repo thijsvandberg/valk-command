@@ -189,8 +189,8 @@ describe("SearchModal", () => {
     expect(screen.getByText("Auth flow")).toBeInTheDocument();
   });
 
-  it("show more button appears when section has more than 5 results", async () => {
-    const tickets = Array.from({ length: 8 }, (_, i) => makeLocalResult(`VPL-${i}`, `Auth ticket ${i}`));
+  it("show more button appears when section has more than 10 results", async () => {
+    const tickets = Array.from({ length: 13 }, (_, i) => makeLocalResult(`VPL-${i}`, `Auth ticket ${i}`));
     mockFetch.mockResolvedValueOnce(makeGroupedResponse(tickets));
 
     render(
@@ -203,7 +203,7 @@ describe("SearchModal", () => {
   });
 
   it("clicking show more reveals all results in the section", async () => {
-    const tickets = Array.from({ length: 7 }, (_, i) => makeLocalResult(`VPL-${i}`, `Auth ticket ${i}`));
+    const tickets = Array.from({ length: 12 }, (_, i) => makeLocalResult(`VPL-${i}`, `Auth ticket ${i}`));
     mockFetch.mockResolvedValueOnce(makeGroupedResponse(tickets));
 
     render(
@@ -212,15 +212,15 @@ describe("SearchModal", () => {
 
     await waitFor(() => expect(screen.getByText(/Show \d+ more/)).toBeInTheDocument());
 
-    // Only first 5 visible initially
-    expect(screen.queryByText("Auth ticket 5")).not.toBeInTheDocument();
+    // Only first 10 visible initially
+    expect(screen.queryByText("Auth ticket 10")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText(/Show \d+ more/));
 
-    // All 7 now visible
+    // All 12 now visible
     await waitFor(() => {
-      expect(screen.getByText("Auth ticket 5")).toBeInTheDocument();
-      expect(screen.getByText("Auth ticket 6")).toBeInTheDocument();
+      expect(screen.getByText("Auth ticket 10")).toBeInTheDocument();
+      expect(screen.getByText("Auth ticket 11")).toBeInTheDocument();
     });
   });
 

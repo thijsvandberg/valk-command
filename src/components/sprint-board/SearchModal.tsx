@@ -27,6 +27,7 @@ import {
   type FilterOptionsData,
 } from "@/components/sprint-board/SearchFilterPanel";
 
+const TICKET_SECTION_LIMIT = 10;
 const SECTION_LIMIT = 5;
 
 interface GroupedResults {
@@ -279,7 +280,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       items: T[],
     ) => {
       if (collapsedSections.has(groupKey) || items.length === 0) return;
-      const limit = expandedSections.has(groupKey) ? items.length : SECTION_LIMIT;
+      const defaultLimit = groupKey === "tickets" ? TICKET_SECTION_LIMIT : SECTION_LIMIT;
+      const limit = expandedSections.has(groupKey) ? items.length : defaultLimit;
       for (const item of items.slice(0, limit)) {
         rows.push({ group: groupKey, item } as VisibleRow);
       }
@@ -605,7 +607,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             ref={listRef}
             className="overflow-y-auto flex-1"
             style={{
-              maxHeight: 500,
+              maxHeight: "min(700px, calc(100vh - 260px))",
               scrollbarWidth: "thin",
               scrollbarColor: "rgba(255,255,255,0.08) transparent",
               borderTop: showPreview ? (focusedPanel === "list" ? "2px solid rgba(74, 170, 96, 0.3)" : "2px solid transparent") : undefined,
@@ -631,10 +633,11 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     onToggle={() => toggleSection("tickets")}
                     showAll={expandedSections.has("tickets")}
                     onShowMore={() => showMoreSection("tickets")}
+                    initialLimit={TICKET_SECTION_LIMIT}
                   >
                     {(expandedSections.has("tickets")
                       ? groupedResults.tickets
-                      : groupedResults.tickets.slice(0, SECTION_LIMIT)
+                      : groupedResults.tickets.slice(0, TICKET_SECTION_LIMIT)
                     ).map((r) => {
                       const flatIdx = visibleRows.findIndex((row) => row.group === "tickets" && (row.item as LocalSearchResult).key === r.key);
                       return (
@@ -781,7 +784,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 className="overflow-y-auto p-5 shrink-0"
                 style={{
                   width: previewWidth,
-                  maxHeight: 500,
+                  maxHeight: "min(700px, calc(100vh - 260px))",
                   scrollbarWidth: "thin",
                   scrollbarColor: "rgba(255,255,255,0.08) transparent",
                   borderTop: focusedPanel === "preview" ? "2px solid rgba(74, 170, 96, 0.3)" : "2px solid transparent",

@@ -363,6 +363,7 @@ export function GroupedResultSection({
   onToggle,
   showAll,
   onShowMore,
+  initialLimit = INITIAL_SECTION_LIMIT,
   children,
 }: {
   label: string;
@@ -371,9 +372,10 @@ export function GroupedResultSection({
   onToggle: () => void;
   showAll: boolean;
   onShowMore: () => void;
+  initialLimit?: number;
   children: React.ReactNode;
 }) {
-  const hasMore = !showAll && count > INITIAL_SECTION_LIMIT;
+  const hasMore = !showAll && count > initialLimit;
 
   return (
     <div>
@@ -419,7 +421,7 @@ export function GroupedResultSection({
               onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
             >
-              Show {count - INITIAL_SECTION_LIMIT} more
+              Show {count - initialLimit} more
             </button>
           )}
         </>
