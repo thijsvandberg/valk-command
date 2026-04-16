@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { storedReview, ticketMetadata, storyVersion, activityLog } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -11,11 +11,13 @@ export async function GET(
 ) {
   const { key } = await params;
 
-  const rows = await db
-    .select()
-    .from(storedReview)
-    .where(eq(storedReview.ticketKey, key))
-    .orderBy(desc(storedReview.createdAt));
+  const [rows, latestVersion] = await Promise.all([
+    db.select().from(storedReview).where(eq(storedReview.ticketKey, key)).orderBy(desc(storedReview.createdAt)),
+    db.query.storyVersion.findFirst({
+      where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
+      orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
+    }),
+  ]);
 
   const reviews = rows.map((r) => ({
     id: r.id,
@@ -29,12 +31,6 @@ export async function GET(
     summary: r.summary,
     suggestions: JSON.parse(r.suggestions),
   }));
-
-  // Include the current version hash so clients can determine freshness
-  const latestVersion = await db.query.storyVersion.findFirst({
-    where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
-    orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
-  });
 
   return NextResponse.json({
     reviews,
@@ -89,51 +85,40 @@ export async function POST(
     );
   }
 
-  // Get current story version for hash + version number
-  const versions = await db
-    .select()
-    .from(storyVersion)
-    .where(eq(storyVersion.jiraKey, key))
-    .orderBy(desc(storyVersion.createdAt));
+  // Fetch latest version hash and total count in parallel — no need to load all version rows
+  const [latestVersion, versionCountRows] = await Promise.all([
+    db.query.storyVersion.findFirst({
+      where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
+      orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
+      columns: { contentHash: true },
+    }),
+    db.select({ count: sql<number>`count(*)` }).from(storyVersion).where(eq(storyVersion.jiraKey, key)),
+  ]);
 
-  const latestVersion = versions[0];
   const versionHash = latestVersion?.contentHash ?? "no-version";
-  const versionNumber = versions.length;
+  const versionNumber = versionCountRows[0]?.count ?? 0;
 
   const id = randomUUID();
+  const createdAt = new Date().toISOString();
 
-  await db.insert(storedReview).values({
-    id,
-    ticketKey: key,
-    source: body.source,
-    storyVersionHash: versionHash,
-    storyVersionNumber: versionNumber,
-    overallScore: body.overallScore,
-    dimensions: JSON.stringify(body.dimensions),
-    summary: body.summary,
-    suggestions: JSON.stringify(body.suggestions),
-  });
-
-  // Update qualityScore on ticketMetadata
-  const existingMeta = await db.query.ticketMetadata.findFirst({
-    where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
-  });
-
-  if (existingMeta) {
-    await db
-      .update(ticketMetadata)
-      .set({ qualityScore: body.overallScore })
-      .where(eq(ticketMetadata.jiraKey, key));
-  } else {
-    await db.insert(ticketMetadata).values({
-      jiraKey: key,
-      qualityScore: body.overallScore,
-    } as typeof ticketMetadata.$inferInsert);
-  }
-
-  const saved = await db.query.storedReview.findFirst({
-    where: (r, { eq: eqFn }) => eqFn(r.id, id),
-  });
+  // Upsert qualityScore and insert review in parallel — ticketMetadata.jiraKey is the PK
+  await Promise.all([
+    db.insert(ticketMetadata)
+      .values({ jiraKey: key, qualityScore: body.overallScore } as typeof ticketMetadata.$inferInsert)
+      .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: { qualityScore: body.overallScore } }),
+    db.insert(storedReview).values({
+      id,
+      ticketKey: key,
+      source: body.source,
+      storyVersionHash: versionHash,
+      storyVersionNumber: versionNumber,
+      overallScore: body.overallScore,
+      dimensions: JSON.stringify(body.dimensions),
+      summary: body.summary,
+      suggestions: JSON.stringify(body.suggestions),
+      createdAt,
+    }),
+  ]);
 
   await logActivity({
     type: body.source === "bulk-action" ? "bulk-action" : "review",
@@ -142,8 +127,15 @@ export async function POST(
   });
 
   return NextResponse.json({
-    ...saved,
-    dimensions: JSON.parse(saved!.dimensions),
-    suggestions: JSON.parse(saved!.suggestions),
+    id,
+    ticketKey: key,
+    createdAt,
+    source: body.source,
+    storyVersionHash: versionHash,
+    storyVersionNumber: versionNumber,
+    overallScore: body.overallScore,
+    dimensions: body.dimensions,
+    summary: body.summary,
+    suggestions: body.suggestions,
   }, { status: 201 });
 }

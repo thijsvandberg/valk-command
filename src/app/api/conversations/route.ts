@@ -50,9 +50,5 @@ export async function POST(request: Request) {
 
   await db.insert(conversation).values(conv);
 
-  const created = await db.query.conversation.findFirst({
-    where: (c, { eq }) => eq(c.id, id),
-  });
-
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json(conv, { status: 201 });
 }

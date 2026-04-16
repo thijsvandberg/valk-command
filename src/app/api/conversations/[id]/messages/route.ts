@@ -56,14 +56,11 @@ export async function POST(
     conversationId: id,
     role: body.role as (typeof VALID_ROLES)[number],
     content: body.content.trim(),
+    timestamp: new Date().toISOString(),
     workspaceTaskId: (body.workspaceTaskId as string | undefined) ?? null,
   };
 
   await db.insert(message).values(msg);
 
-  const created = await db.query.message.findFirst({
-    where: (m, { eq }) => eq(m.id, messageId),
-  });
-
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json(msg, { status: 201 });
 }

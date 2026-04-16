@@ -32,22 +32,18 @@ export async function GET(request: Request) {
   const statusFilter = searchParams.get("status") ?? "";
   const statusParam = VALID_STATUSES.has(statusFilter) ? statusFilter : null;
 
-  // Stale cleanup: mark running syncs older than 5 min as failed
   const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
-  await db.update(activityLog).set({
-    status: "failed",
-    errorDetail: "Sync timed out (no response after 5 minutes)",
-    completedAt: new Date().toISOString(),
-  }).where(
-    and(
-      eq(activityLog.status, "running"),
-      lt(activityLog.startedAt, cutoff),
-    ),
-  );
-
-  // Retention cleanup: delete entries older than 7 days
   const retentionCutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  await db.delete(activityLog).where(lt(activityLog.startedAt, retentionCutoff));
+
+  // Run stale cleanup and date retention in parallel — they touch independent row sets
+  await Promise.all([
+    db.update(activityLog).set({
+      status: "failed",
+      errorDetail: "Sync timed out (no response after 5 minutes)",
+      completedAt: new Date().toISOString(),
+    }).where(and(eq(activityLog.status, "running"), lt(activityLog.startedAt, cutoff))),
+    db.delete(activityLog).where(lt(activityLog.startedAt, retentionCutoff)),
+  ]);
 
   // Retention cleanup: keep max 200 entries (delete oldest beyond that)
   const recentIds = await db
