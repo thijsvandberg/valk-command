@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
@@ -158,10 +158,49 @@ function notificationIcon(type: string) {
   }
 }
 
+// Returns the Tailwind bg class for the active state of a type filter button.
+// Full class strings required so Tailwind's JIT can detect them at build time.
+function typeActiveBg(type: string): string {
+  switch (type) {
+    case "pr":           return "bg-amber-400/[0.12]";
+    case "pipeline":     return "bg-[var(--color-brand-400)]/[0.10]";
+    case "deployment":   return "bg-violet-400/[0.12]";
+    case "story-writer": return "bg-sky-400/[0.12]";
+    case "sync":         return "bg-emerald-400/[0.12]";
+    case "agent":        return "bg-purple-400/[0.12]";
+    case "scheduler":    return "bg-orange-400/[0.12]";
+    case "system":       return "bg-white/[0.06]";
+    default:             return "bg-white/[0.06]";
+  }
+}
+
+function typeLabel(type: string): string {
+  switch (type) {
+    case "pr":           return "Pull requests";
+    case "pipeline":     return "Pipelines";
+    case "deployment":   return "Deployments";
+    case "story-writer": return "Story writer";
+    case "sync":         return "Sync";
+    case "agent":        return "Agent";
+    case "scheduler":    return "Scheduler";
+    case "system":       return "System";
+    default:             return type;
+  }
+}
+
+// Extracts team prefix from a sprint display name (e.g. "BM: 135" → "BM").
+function extractTeamPrefix(sprintName: string | null): string | null {
+  if (!sprintName) return null;
+  const idx = sprintName.indexOf(": ");
+  return idx > 0 ? sprintName.slice(0, idx) : null;
+}
+
 export function NotificationBell() {
-  const { notifications, unreadCount, totalCount, markRead, markAllRead, clearRead, dismissOne } = useNotifications(50);
+  const { notifications, unreadCount, totalCount, markRead, markAllRead, clearRead, dismissOne, markFilteredRead, clearFiltered } = useNotifications(50);
   const [open, setOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -176,6 +215,10 @@ export function NotificationBell() {
 
   function handleToggle() {
     if (!open) computePos();
+    if (open) {
+      setActiveType(null);
+      setActiveTeam(null);
+    }
     setOpen((v) => !v);
   }
 
@@ -188,6 +231,8 @@ export function NotificationBell() {
         dropdownRef.current && !dropdownRef.current.contains(target)
       ) {
         setOpen(false);
+        setActiveType(null);
+        setActiveTeam(null);
       }
     }
     function handleResize() { computePos(); }
@@ -199,7 +244,58 @@ export function NotificationBell() {
     };
   }, [open, computePos]);
 
-  const hasReadNotifications = notifications.some((n) => n.read);
+  // Derive per-type counts, per-team counts, and the filtered list from loaded notifications.
+  // effectiveType/Team auto-clears when the active filter type or team has no more notifications.
+  const { typeCounts, teamCounts, filteredNotifications, filteredUnreadIds, filteredReadIds, effectiveType, effectiveTeam } = useMemo(() => {
+    const typeCounts = new Map<string, { total: number; unread: number }>();
+    const teamCounts = new Map<string, number>();
+
+    for (const n of notifications) {
+      const tc = typeCounts.get(n.type) ?? { total: 0, unread: 0 };
+      tc.total++;
+      if (!n.read) tc.unread++;
+      typeCounts.set(n.type, tc);
+
+      const team = extractTeamPrefix(n.sprintName);
+      if (team) teamCounts.set(team, (teamCounts.get(team) ?? 0) + 1);
+    }
+
+    // If the active filter type/team has been fully cleared, treat it as inactive
+    const effectiveType = activeType && typeCounts.has(activeType) ? activeType : null;
+    const effectiveTeam = activeTeam && teamCounts.has(activeTeam) ? activeTeam : null;
+
+    const filtered = notifications.filter((n) => {
+      if (effectiveType && n.type !== effectiveType) return false;
+      if (effectiveTeam) {
+        const team = extractTeamPrefix(n.sprintName);
+        if (team !== effectiveTeam) return false;
+      }
+      return true;
+    });
+
+    return {
+      typeCounts,
+      teamCounts,
+      filteredNotifications: filtered,
+      filteredUnreadIds: filtered.filter((n) => !n.read).map((n) => n.id),
+      filteredReadIds: filtered.filter((n) => n.read).map((n) => n.id),
+      effectiveType,
+      effectiveTeam,
+    };
+  }, [notifications, activeType, activeTeam]);
+
+  const hasFilter = effectiveType !== null || effectiveTeam !== null;
+
+  function handleMarkAllRead() {
+    if (hasFilter) markFilteredRead(filteredUnreadIds);
+    else markAllRead();
+  }
+
+  function handleClearRead() {
+    if (hasFilter) clearFiltered(filteredReadIds);
+    else clearRead();
+  }
+
   const hiddenCount = totalCount > 50 ? totalCount - 50 : 0;
 
   return (
@@ -233,22 +329,22 @@ export function NotificationBell() {
               Notifications
             </span>
             <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
+              {filteredUnreadIds.length > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   icon={<CheckCheck size={12} strokeWidth={1.5} />}
-                  onClick={() => markAllRead()}
+                  onClick={handleMarkAllRead}
                 >
                   Mark all read
                 </Button>
               )}
-              {hasReadNotifications && (
+              {filteredReadIds.length > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   icon={<Trash2 size={12} strokeWidth={1.5} />}
-                  onClick={() => clearRead()}
+                  onClick={handleClearRead}
                 >
                   Clear read
                 </Button>
@@ -256,15 +352,94 @@ export function NotificationBell() {
             </div>
           </div>
 
+          {/* Type filter bar — shown when there are multiple types */}
+          {typeCounts.size > 1 && (
+            <div
+              className="flex items-center gap-0.5 px-3 py-2 border-b border-white/[0.06]"
+              role="toolbar"
+              aria-label="Filter by notification type"
+            >
+              {[...typeCounts.entries()].map(([type, { total, unread }]) => {
+                const isActive = effectiveType === type;
+                const count = unread > 0 ? unread : total;
+                const isUnreadBadge = unread > 0;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setActiveType(isActive ? null : type)}
+                    aria-label={`${typeLabel(type)}: ${count} ${isUnreadBadge ? "unread" : "total"}`}
+                    aria-pressed={isActive}
+                    className={`relative flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                      isActive
+                        ? `${typeActiveBg(type)} ring-1 ring-inset ring-white/[0.10]`
+                        : "hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    {notificationIcon(type)}
+                    <span
+                      className={`absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-bold tabular-nums leading-none pointer-events-none ${
+                        isUnreadBadge
+                          ? "bg-red-500 text-white shadow-[0_1px_4px_rgba(239,68,68,0.4)]"
+                          : "bg-white/[0.10] text-white/35"
+                      }`}
+                    >
+                      {count > 99 ? "99" : count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Team filter chips — only shown when notifications span multiple teams */}
+          {teamCounts.size > 1 && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/[0.06]"
+              role="toolbar"
+              aria-label="Filter by team"
+            >
+              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-widest text-white/20 mr-0.5 select-none">
+                Team
+              </span>
+              {[...teamCounts.entries()].map(([team, count]) => {
+                const isActive = effectiveTeam === team;
+                return (
+                  <button
+                    key={team}
+                    type="button"
+                    onClick={() => setActiveTeam(isActive ? null : team)}
+                    aria-pressed={isActive}
+                    aria-label={`Team ${team}: ${count} notifications`}
+                    className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                      isActive
+                        ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)] ring-1 ring-inset ring-[var(--color-brand-500)]/25"
+                        : "bg-white/[0.04] text-white/35 hover:bg-white/[0.07] hover:text-white/55"
+                    }`}
+                  >
+                    {team}
+                    <span className={`tabular-nums ${isActive ? "text-[var(--color-brand-300)]/60" : "text-white/20"}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Notification list */}
           <div className="max-h-[400px] overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-[13px] text-white/25">
                 No notifications yet
               </div>
+            ) : filteredNotifications.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[13px] text-white/25">
+                No notifications for this filter
+              </div>
             ) : (
               <>
-                {notifications.map((n) => (
+                {filteredNotifications.map((n) => (
                   <div
                     key={n.id}
                     className={`group flex items-start gap-3 px-4 py-3 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
@@ -341,7 +516,8 @@ export function NotificationBell() {
                     </div>
                   </div>
                 ))}
-                {hiddenCount > 0 && (
+                {/* Only show the overflow count when no filter is active — when filtered, all shown results are from the loaded set */}
+                {!hasFilter && hiddenCount > 0 && (
                   <div className="border-t border-white/[0.04] px-4 py-2.5 text-center text-[11px] text-white/25">
                     {hiddenCount} more notification{hiddenCount === 1 ? "" : "s"} not shown
                   </div>
