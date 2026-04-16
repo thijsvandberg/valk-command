@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, PanelRight, PanelRightClose } from "lucide-react";
+import { Search, X, PanelRight, PanelRightClose, ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 import type { LocalSearchResult } from "@/app/api/search/local/route";
@@ -15,6 +15,14 @@ import {
   JiraResultRow,
   EmptyState,
 } from "@/components/sprint-board/SearchResultParts";
+import {
+  SearchFilterPanel,
+  EMPTY_FILTERS,
+  hasActiveFilters,
+  filtersToParams,
+  type SearchFilters,
+  type FilterOptionsData,
+} from "@/components/sprint-board/SearchFilterPanel";
 
 function parseJiraKeyFromInput(input: string): string | null {
   const trimmed = input.trim();
@@ -56,6 +64,10 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const [previewWidth, setPreviewWidth] = useState(520);
   const [focusedPanel, setFocusedPanel] = useState<FocusedPanel>("list");
   const [fetchingKey, setFetchingKey] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsData | null>(null);
+  const filterOptionsFetchedRef = useRef(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -103,6 +115,10 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         setFocusedPanel("list");
       }
       requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      // Reset filter state when modal closes (no persistence)
+      setShowFilters(false);
+      setFilters(EMPTY_FILTERS);
     }
   }, [open, initialQuery]);
 
@@ -121,14 +137,16 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   // When a URL is pasted, search by just the key so the local index can match it
   const effectiveLocalQuery = detectedKey ?? query;
 
-  const runLocalSearch = useCallback(async (q: string) => {
+  const runLocalSearch = useCallback(async (q: string, activeFilters: SearchFilters) => {
     if (q.trim().length < 2) { setLocalResults([]); return; }
     if (localAbortRef.current) localAbortRef.current.abort();
     localAbortRef.current = new AbortController();
     const { signal } = localAbortRef.current;
     setLoadingLocal(true);
     try {
-      const res = await fetch(`/api/search/local?q=${encodeURIComponent(q)}`, { signal });
+      const params = new URLSearchParams({ q });
+      for (const [k, v] of filtersToParams(activeFilters).entries()) params.set(k, v);
+      const res = await fetch(`/api/search/local?${params.toString()}`, { signal });
       if (res.ok) {
         const data = await res.json();
         setLocalResults(data.results ?? []);
@@ -144,9 +162,9 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   useEffect(() => {
     if (!open || mode !== "local") return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => runLocalSearch(effectiveLocalQuery), 150);
+    debounceRef.current = setTimeout(() => runLocalSearch(effectiveLocalQuery, filters), 150);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [effectiveLocalQuery, mode, open, runLocalSearch]);
+  }, [effectiveLocalQuery, filters, mode, open, runLocalSearch]);
 
   const runJiraSearch = useCallback(async () => {
     const q = jiraQuery.trim() || query.trim();
@@ -174,6 +192,22 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
       setLoadingJira(false);
     }
   }, [query, jiraQuery, jiraJql]);
+
+  const openFilters = useCallback(async () => {
+    setShowFilters((v) => !v);
+    if (!filterOptionsFetchedRef.current) {
+      filterOptionsFetchedRef.current = true;
+      try {
+        const res = await fetch("/api/search/local/filter-options");
+        if (res.ok) {
+          const data = await res.json();
+          setFilterOptions(data);
+        }
+      } catch {
+        // Non-critical: dropdowns will show empty options
+      }
+    }
+  }, []);
 
   const navigateToKey = useCallback(async (key: string, newTab: boolean) => {
     const existsLocally = localResults.some((r) => r.key === key);
@@ -346,6 +380,35 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               Jira
             </button>
           </div>
+
+          {/* Filter toggle — local mode only */}
+          {mode === "local" && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={openFilters}
+                aria-label="Toggle filters"
+                className="flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                style={{
+                  backgroundColor: showFilters
+                    ? "rgba(74, 170, 96, 0.12)"
+                    : "rgba(255,255,255,0.04)",
+                  color: showFilters ? "var(--color-brand-400)" : "rgba(255,255,255,0.4)",
+                  transition: "background-color 120ms, color 120ms",
+                }}
+              >
+                <ListFilter className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+              {/* Active-filter indicator dot */}
+              {hasActiveFilters(filters) && (
+                <span
+                  className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full"
+                  style={{ backgroundColor: "var(--color-brand-500)" }}
+                />
+              )}
+            </div>
+          )}
+
           <Button
             variant="ghost"
             size="md"
@@ -404,6 +467,15 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               {fetchingKey ? "Downloading from Jira..." : "Press Enter to open directly"}
             </span>
           </button>
+        )}
+
+        {/* Filter panel — only in local mode, hidden by default */}
+        {mode === "local" && showFilters && (
+          <SearchFilterPanel
+            filters={filters}
+            onChange={setFilters}
+            filterOptions={filterOptions}
+          />
         )}
 
         <div className="flex" style={{ minHeight: showPreview ? 340 : undefined }}>

@@ -207,6 +207,100 @@ describe("SearchModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  describe("filter panel", () => {
+    const filterOptionsResponse = {
+      assignees: ["Alice", "Bob"],
+      sprints: [{ id: "100", name: "Sprint 10" }],
+    };
+
+    function setupFetchWithFilterOptions() {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes("filter-options")) {
+          return Promise.resolve({ ok: true, json: async () => filterOptionsResponse });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ results: [] }) });
+      });
+    }
+
+    it("shows filter toggle button in local mode", () => {
+      render(<SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />);
+      expect(screen.getByLabelText("Toggle filters")).toBeInTheDocument();
+    });
+
+    it("hides filter toggle button in jira mode", () => {
+      render(<SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByText("Jira"));
+      expect(screen.queryByLabelText("Toggle filters")).not.toBeInTheDocument();
+    });
+
+    it("shows filter panel when toggle is clicked", async () => {
+      setupFetchWithFilterOptions();
+      render(<SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByLabelText("Toggle filters"));
+      await waitFor(() => {
+        expect(screen.getByText("Status")).toBeInTheDocument();
+      });
+    });
+
+    it("hides filter panel again on second click", async () => {
+      setupFetchWithFilterOptions();
+      render(<SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByLabelText("Toggle filters"));
+      await waitFor(() => expect(screen.getByText("Status")).toBeInTheDocument());
+      fireEvent.click(screen.getByLabelText("Toggle filters"));
+      await waitFor(() => expect(screen.queryByText("Status")).not.toBeInTheDocument());
+    });
+
+    it("re-runs search with dateRange param when a date range is selected", async () => {
+      setupFetchWithFilterOptions();
+      // initialQuery so the search fires (requires >=2 chars)
+      render(<SearchModal open={true} initialQuery="auth" onClose={onClose} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByLabelText("Toggle filters"));
+      await waitFor(() => expect(screen.getByText("Last 7 days")).toBeInTheDocument());
+      fireEvent.click(screen.getByText("Last 7 days"));
+      await waitFor(() => {
+        const searchCalls = mockFetch.mock.calls
+          .map(([url]: string[]) => url as string)
+          .filter((url) => url.includes("/api/search/local?"));
+        expect(searchCalls.some((url) => url.includes("dateRange=7d"))).toBe(true);
+      });
+    });
+
+    it("resets filters and hides panel when modal closes", async () => {
+      setupFetchWithFilterOptions();
+      const { rerender } = render(
+        <SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />
+      );
+      fireEvent.click(screen.getByLabelText("Toggle filters"));
+      await waitFor(() => expect(screen.getByText("Status")).toBeInTheDocument());
+
+      // Close the modal
+      rerender(<SearchModal open={false} onClose={onClose} onSelectTicket={onSelectTicket} />);
+
+      // Reopen — filter panel should be collapsed again
+      rerender(<SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />);
+      expect(screen.queryByText("Status")).not.toBeInTheDocument();
+    });
+
+    it("shows Clear all button only when filters are active", async () => {
+      setupFetchWithFilterOptions();
+      render(<SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByLabelText("Toggle filters"));
+      await waitFor(() => expect(screen.getByText("Last 7 days")).toBeInTheDocument());
+
+      // No filters active yet — no Clear all
+      expect(screen.queryByText("Clear all")).not.toBeInTheDocument();
+
+      // Activate a date range
+      fireEvent.click(screen.getByText("Last 7 days"));
+      expect(screen.getByText("Clear all")).toBeInTheDocument();
+
+      // Click Clear all — it should disappear
+      fireEvent.click(screen.getByText("Clear all"));
+      expect(screen.queryByText("Clear all")).not.toBeInTheDocument();
+    });
+  });
+
   it("closes on backdrop click", () => {
     render(
       <SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />,

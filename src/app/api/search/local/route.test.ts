@@ -47,8 +47,9 @@ function setupDbMock(
   }));
 }
 
-function makeRequest(q: string) {
-  return new Request(`http://localhost/api/search/local?q=${encodeURIComponent(q)}`);
+function makeRequest(q: string, filters: Record<string, string> = {}) {
+  const params = new URLSearchParams({ q, ...filters });
+  return new Request(`http://localhost/api/search/local?${params.toString()}`);
 }
 
 describe("GET /api/search/local", () => {
@@ -180,6 +181,44 @@ describe("GET /api/search/local", () => {
     const res = await GET(makeRequest("authentication"));
     const body = await res.json();
     expect(body.results.length).toBeLessThanOrEqual(25);
+  });
+
+  it("status filter excludes non-matching tickets", async () => {
+    const tickets = [
+      { jiraKey: "VPL-1", title: "Authentication flow", status: "TO DO", priority: null, assignee: null, reporter: null, sprintName: null, labels: "", description: null },
+      { jiraKey: "VPL-2", title: "Authentication service", status: "IN PROGRESS", priority: null, assignee: null, reporter: null, sprintName: null, labels: "", description: null },
+    ];
+    setupDbMock(tickets, [], [], [], []);
+    const res = await GET(makeRequest("authentication", { status: "IN PROGRESS" }));
+    const body = await res.json();
+    expect(body.results.every((r: { status: string }) => r.status.toUpperCase() === "IN PROGRESS")).toBe(true);
+    expect(body.results.some((r: { key: string }) => r.key === "VPL-1")).toBe(false);
+  });
+
+  it("assignee filter excludes non-matching tickets", async () => {
+    const tickets = [
+      { jiraKey: "VPL-10", title: "Authentication flow", status: "TO DO", priority: null, assignee: "Alice", reporter: null, sprintName: null, labels: "", description: null },
+      { jiraKey: "VPL-11", title: "Authentication service", status: "TO DO", priority: null, assignee: "Bob", reporter: null, sprintName: null, labels: "", description: null },
+    ];
+    setupDbMock(tickets, [], [], [], []);
+    const res = await GET(makeRequest("authentication", { assignee: "Alice" }));
+    const body = await res.json();
+    expect(body.results.every((r: { assignee: string | null }) => r.assignee?.toLowerCase() === "alice")).toBe(true);
+    expect(body.results.some((r: { key: string }) => r.key === "VPL-11")).toBe(false);
+  });
+
+  it("date range filter 7d excludes old tickets", async () => {
+    const recentDate = new Date(Date.now() - 2 * 86400000).toISOString(); // 2 days ago
+    const oldDate = new Date(Date.now() - 30 * 86400000).toISOString(); // 30 days ago
+    const tickets = [
+      { jiraKey: "VPL-20", title: "Auth recent", status: "TO DO", priority: null, assignee: null, reporter: null, sprintName: null, labels: "", description: null, jiraUpdatedAt: recentDate },
+      { jiraKey: "VPL-21", title: "Auth old", status: "TO DO", priority: null, assignee: null, reporter: null, sprintName: null, labels: "", description: null, jiraUpdatedAt: oldDate },
+    ];
+    setupDbMock(tickets, [], [], [], []);
+    const res = await GET(makeRequest("auth", { dateRange: "7d" }));
+    const body = await res.json();
+    expect(body.results.some((r: { key: string }) => r.key === "VPL-20")).toBe(true);
+    expect(body.results.some((r: { key: string }) => r.key === "VPL-21")).toBe(false);
   });
 
   it("each result has required fields", async () => {

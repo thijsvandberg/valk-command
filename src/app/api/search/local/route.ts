@@ -132,6 +132,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
 
+  // Parse filter params
+  const statusFilter = (searchParams.get("status") ?? "").split(",").map((s) => s.toUpperCase()).filter(Boolean);
+  const typeFilter = (searchParams.get("type") ?? "").split(",").map((s) => s.toLowerCase()).filter(Boolean);
+  const assigneeFilter = (searchParams.get("assignee") ?? "").split(",").filter(Boolean);
+  const sprintFilter = (searchParams.get("sprint") ?? "").split(",").filter(Boolean);
+  const dateRange = searchParams.get("dateRange");
+
+  const hasFilters = statusFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
+
   if (q.trim().length < 2) {
     return NextResponse.json({ results: [] });
   }
@@ -141,7 +150,9 @@ export async function GET(request: Request) {
     const { fuse, ticketDetails, sprintIdToName, jiraBaseUrl } = entry;
 
     const tokens = q.trim().split(/\s+/).filter((t) => t.length >= 2);
-    const fuseResults = fuse.search(tokens[0] ?? q, { limit: 200 });
+    // Bump candidate pool when filters are active so filtering doesn't under-sample
+    const fuseLimit = hasFilters ? 500 : 200;
+    const fuseResults = fuse.search(tokens[0] ?? q, { limit: fuseLimit });
 
     if (tokens.length > 1) {
       // Reuse the same fuse instance for additional tokens — no extra construction cost
@@ -170,50 +181,79 @@ export async function GET(request: Request) {
 
     const now = Date.now();
 
-    const results: LocalSearchResult[] = fuseResults
-      .map((r) => {
-        const detail = ticketDetails.get(r.item.key);
-        let score = r.score ?? 1;
+    const mapped: LocalSearchResult[] = fuseResults.map((r) => {
+      const detail = ticketDetails.get(r.item.key);
+      let score = r.score ?? 1;
 
-        if (detail?.jiraUpdatedAt) {
-          const daysSince = (now - new Date(detail.jiraUpdatedAt).getTime()) / 86400000;
-          if (daysSince < 7) score *= 0.82;
-          else if (daysSince < 30) score *= 0.90;
-          else if (daysSince > 180) score *= 1.06;
+      if (detail?.jiraUpdatedAt) {
+        const daysSince = (now - new Date(detail.jiraUpdatedAt).getTime()) / 86400000;
+        if (daysSince < 7) score *= 0.82;
+        else if (daysSince < 30) score *= 0.90;
+        else if (daysSince > 180) score *= 1.06;
+      }
+
+      if (r.item.sprintName && activeSprintIds.has(r.item.sprintName)) {
+        score *= 0.70;
+      }
+
+      const status = r.item.status?.toUpperCase();
+      if (status === "DEPRECATED") {
+        score *= 1.5;
+      } else if (status === "DONE") {
+        score *= 1.15;
+      }
+
+      return {
+        key: r.item.key,
+        summary: r.item.localEditTitle || r.item.summary,
+        status: r.item.status,
+        issueType: detail?.type ?? null,
+        assignee: r.item.assignee,
+        sprintId: r.item.sprintName ?? null,
+        sprintName: r.item.sprintName
+          ? (sprintIdToName.get(r.item.sprintName) ?? r.item.sprintName)
+          : null,
+        labels: r.item.labels || null,
+        epic: detail?.epic ?? null,
+        epicKey: detail?.epicKey ?? null,
+        description: r.item.description || null,
+        jiraUrl: jiraBaseUrl ? `${jiraBaseUrl}/browse/${r.item.key}` : null,
+        storyPoints: detail?.storyPoints ?? null,
+        reporter: r.item.reporter,
+        updatedAt: detail?.jiraUpdatedAt ?? null,
+        score,
+        matches: r.matches,
+      };
+    });
+
+    // Apply post-Fuse filters (AND across categories, OR within each)
+    const results: LocalSearchResult[] = mapped
+      .filter((r) => {
+        if (statusFilter.length > 0 && !statusFilter.includes(r.status.toUpperCase())) return false;
+        if (typeFilter.length > 0 && !(r.issueType && typeFilter.includes(r.issueType.toLowerCase()))) return false;
+        if (assigneeFilter.length > 0 && !(r.assignee && assigneeFilter.some((a) => a.toLowerCase() === r.assignee!.toLowerCase()))) return false;
+        if (sprintFilter.length > 0 && !(r.sprintId && sprintFilter.includes(r.sprintId))) return false;
+
+        if (dateRange) {
+          if (dateRange === "this-sprint") {
+            // Treat as sprint membership: must belong to an active sprint
+            if (!r.sprintId || !activeSprintIds.has(r.sprintId)) return false;
+          } else {
+            const updatedMs = r.updatedAt ? new Date(r.updatedAt).getTime() : null;
+            if (dateRange === "7d") {
+              if (!updatedMs || now - updatedMs > 7 * 86400000) return false;
+            } else if (dateRange === "30d") {
+              if (!updatedMs || now - updatedMs > 30 * 86400000) return false;
+            } else if (dateRange.startsWith("custom:")) {
+              const range = dateRange.slice(7);
+              const [from, to] = range.split("..");
+              if (from && updatedMs && updatedMs < new Date(from).getTime()) return false;
+              if (to && updatedMs && updatedMs > new Date(to).getTime() + 86400000) return false;
+            }
+          }
         }
 
-        if (r.item.sprintName && activeSprintIds.has(r.item.sprintName)) {
-          score *= 0.70;
-        }
-
-        const status = r.item.status?.toUpperCase();
-        if (status === "DEPRECATED") {
-          score *= 1.5;
-        } else if (status === "DONE") {
-          score *= 1.15;
-        }
-
-        return {
-          key: r.item.key,
-          summary: r.item.localEditTitle || r.item.summary,
-          status: r.item.status,
-          issueType: detail?.type ?? null,
-          assignee: r.item.assignee,
-          sprintId: r.item.sprintName ?? null,
-          sprintName: r.item.sprintName
-            ? (sprintIdToName.get(r.item.sprintName) ?? r.item.sprintName)
-            : null,
-          labels: r.item.labels || null,
-          epic: detail?.epic ?? null,
-          epicKey: detail?.epicKey ?? null,
-          description: r.item.description || null,
-          jiraUrl: jiraBaseUrl ? `${jiraBaseUrl}/browse/${r.item.key}` : null,
-          storyPoints: detail?.storyPoints ?? null,
-          reporter: r.item.reporter,
-          updatedAt: detail?.jiraUpdatedAt ?? null,
-          score,
-          matches: r.matches,
-        };
+        return true;
       })
       .sort((a, b) => a.score - b.score)
       .slice(0, 25);

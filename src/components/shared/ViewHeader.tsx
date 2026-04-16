@@ -19,6 +19,9 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
   // is no visible flash. It is not called server-side, which means both server
   // and client start with null and there is no hydration mismatch.
   useLayoutEffect(() => {
+    // Reading a DOM element after mount and syncing to state is the correct portal
+    // pattern to avoid SSR hydration mismatches. The linter rule is overly broad here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTarget(document.getElementById("view-header-portal"));
   }, []);
 
