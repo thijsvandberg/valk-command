@@ -219,18 +219,20 @@ export function TicketTable({
 
   // Proportionally scale column widths when total exceeds the container.
   // The title column is excluded and acts as the flex filler.
+  // FIXED_OVERHEAD (checkbox + drag handle) uses Tailwind classes and cannot be scaled,
+  // so it is subtracted from available space rather than included in the scale calculation.
   const columnScale = useMemo(() => {
     if (!containerWidth) return 1;
     const FIXED_OVERHEAD = 60; // checkbox column (w-5=20px) + select column (w-10=40px)
     const MIN_TITLE_WIDTH = 80;
-    let fixedSum = FIXED_OVERHEAD;
+    let columnSum = 0;
     for (const id of effectiveOrder) {
       if (!visibleColumns.has(id) || id === "title") continue;
-      fixedSum += columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? 0;
+      columnSum += columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? 0;
     }
-    const available = containerWidth - MIN_TITLE_WIDTH;
-    if (fixedSum <= available) return 1;
-    return available / fixedSum;
+    const available = containerWidth - FIXED_OVERHEAD - MIN_TITLE_WIDTH;
+    if (columnSum <= available) return 1;
+    return available / columnSum;
   }, [containerWidth, effectiveOrder, visibleColumns, columnWidths]);
 
   const scaledColW = useCallback((id: string): number | undefined => {

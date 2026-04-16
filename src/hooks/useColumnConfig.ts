@@ -73,8 +73,10 @@ export function useColumnConfig() {
         if (show) next.add(id);
         else next.delete(id);
         setOrder((o) => {
-          persist(o, next);
-          return o;
+          // If enabling a column not yet in order, append it so it becomes visible in the table
+          const nextOrder = show && !o.includes(id) ? [...o, id] : o;
+          persist(nextOrder, next);
+          return nextOrder;
         });
         return next;
       });
@@ -84,10 +86,16 @@ export function useColumnConfig() {
 
   const resetTo = useCallback(
     (nextOrder: ColumnId[], nextVisible: ColumnId[]) => {
+      // Always merge: keep provided order, append any DEFAULT_ORDER columns not yet present
+      const nextOrderSet = new Set(nextOrder);
+      const mergedOrder = [
+        ...nextOrder.filter((id) => DEFAULT_ORDER.includes(id)),
+        ...DEFAULT_ORDER.filter((id) => !nextOrderSet.has(id)),
+      ] as ColumnId[];
       const visibleSet = new Set(nextVisible);
-      setOrder(nextOrder);
+      setOrder(mergedOrder);
       setVisible(visibleSet);
-      persist(nextOrder, visibleSet);
+      persist(mergedOrder, visibleSet);
     },
     [persist],
   );

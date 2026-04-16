@@ -284,11 +284,16 @@ export default function SprintBoard() {
 
   const navigateToSprint = useCallback((sprintId: string) => {
     f.resetFilters();
+    if (f.activeViewId) {
+      // Leaving a saved view — restore default column config so the sprint view
+      // doesn't inherit the view's custom column selection.
+      resetToDefaults();
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.set("sprint", sprintId);
     params.delete("view");
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [f, searchParams, router]);
+  }, [f, searchParams, router, resetToDefaults]);
 
   const setActiveSlot = useCallback((slot: number) => {
     const sprintId = slotSprints[slot];

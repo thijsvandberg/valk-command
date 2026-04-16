@@ -335,26 +335,58 @@ export function ColumnToggle({
         className="border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={order} strategy={verticalListSortingStrategy}>
-              {order.map((id) => (
-                <SortableColumnItem
-                  key={id}
-                  colDef={{ id, label: COLUMN_LABEL_MAP[id] }}
-                  checked={visible.has(id)}
-                  onToggle={onChange}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden flex flex-col">
+          <div className="overflow-y-auto max-h-[70vh] py-1.5">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={order} strategy={verticalListSortingStrategy}>
+                {order.map((id) => (
+                  <SortableColumnItem
+                    key={id}
+                    colDef={{ id, label: COLUMN_LABEL_MAP[id] }}
+                    checked={visible.has(id)}
+                    onToggle={onChange}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+            {/* Columns absent from the current order (e.g. when a saved view has fewer columns).
+                Enabling one appends it to order via toggleColumn. */}
+            {COLUMNS.filter((c) => !order.includes(c.id)).length > 0 && (
+              <>
+                <div className="my-1 h-px bg-white/[0.06]" />
+                {COLUMNS.filter((c) => !order.includes(c.id)).map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-[13px] text-white/40 hover:bg-white/[0.04] hover:text-white/65"
+                  >
+                    <div className="flex shrink-0 items-center justify-center w-7 h-7 text-white/10">
+                      <GripVertical size={12} strokeWidth={1.5} />
+                    </div>
+                    <label className="flex flex-1 items-center gap-3 cursor-pointer select-none">
+                      <span
+                        className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
+                        style={{ backgroundColor: "transparent", borderColor: "rgba(255,255,255,0.12)" }}
+                      />
+                      <input
+                        type="checkbox"
+                        checked={false}
+                        onChange={() => onChange(c.id, true)}
+                        className="sr-only"
+                      />
+                      {c.label}
+                    </label>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
           {onReset && (
             <>
-              <div className="my-1 h-px bg-white/[0.06]" />
+              <div className="h-px bg-white/[0.06]" />
               <button
                 type="button"
                 onClick={() => { onReset(); setOpen(false); }}
