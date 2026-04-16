@@ -184,10 +184,13 @@ export function POStatusCell({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 rounded cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08] ${
-          showLabel ? "h-7 px-2.5 py-0.5" : "h-6 w-6 justify-center"
+        className={`flex items-center gap-2 rounded-md cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-70 ${
+          showLabel ? "h-7 px-2.5 py-0.5 hover:opacity-80" : "h-6 w-6 justify-center hover:opacity-80"
         }`}
-        style={{ color: colors?.text || "rgba(255,255,255,0.2)" }}
+        style={{
+          color: colors?.text || "rgba(255,255,255,0.2)",
+          backgroundColor: colors?.bg || "rgba(255,255,255,0.04)",
+        }}
         title={value || "No status"}
       >
         <POStatusIcon status={value} />
