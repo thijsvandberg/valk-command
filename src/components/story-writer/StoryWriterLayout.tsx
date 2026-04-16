@@ -32,6 +32,7 @@ import { apiFetch, tickets } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PaneProvider, usePaneContext } from "./panes/PaneContext";
 import { WriterProvider, useWriterContext, type WriterContextValue } from "./panes/WriterContext";
 import { ApplicationListBar } from "./panes/ApplicationListBar";
@@ -638,63 +639,35 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           <PaneArea />
 
           {/* Delete confirmation */}
-          {showDeleteConfirm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-              <div className="w-full max-w-sm rounded-xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl border border-white/[0.08]">
-                <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/90">
-                  Delete session?
-                </h3>
-                <p className="mt-2 text-xs leading-[1.7] text-white/50">
-                  This will discard the current drafts and AI suggestions. You can optionally keep the conversation history.
-                </p>
-                <div className="mt-5 flex items-center justify-end gap-2">
-                  <Button variant="ghost" size="md" onClick={() => setShowDeleteConfirm(false)} className="border-0">
-                    Cancel
-                  </Button>
-                  <Button variant="ghost" size="md" onClick={() => handleDelete(false)}>
-                    Discard, keep chat
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="md"
-                    onClick={() => handleDelete(true)}
-                    className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
-                  >
-                    Delete everything
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+          <ConfirmDialog
+            open={showDeleteConfirm}
+            onClose={() => setShowDeleteConfirm(false)}
+            title="Delete session?"
+            description="This will discard the current drafts and AI suggestions. You can optionally keep the conversation history."
+            confirmLabel="Delete everything"
+            confirmClassName="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
+            onConfirm={() => handleDelete(true)}
+            extraActions={
+              <Button variant="ghost" size="md" onClick={() => handleDelete(false)}>
+                Discard, keep chat
+              </Button>
+            }
+          />
 
           {/* Post-delete refine prompt */}
-          {showRefinePrompt && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-              <div className="w-full max-w-sm rounded-xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl border border-white/[0.08]">
-                <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/90">
-                  Set PO status to Ready for Refinement?
-                </h3>
-                <p className="mt-2 text-xs leading-[1.7] text-white/50">
-                  The session has been cleared. Would you like to mark this ticket as ready for refinement?
-                </p>
-                <div className="mt-5 flex items-center justify-end gap-2">
-                  <Button variant="ghost" size="md" onClick={() => window.history.back()} className="border-0">
-                    Skip
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    onClick={async () => {
-                      await handlePoStatusChange("Ready for Refinement");
-                      window.history.back();
-                    }}
-                  >
-                    Yes, set to Refine
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+          <ConfirmDialog
+            open={showRefinePrompt}
+            onClose={() => window.history.back()}
+            title="Set PO status to Ready for Refinement?"
+            description="The session has been cleared. Would you like to mark this ticket as ready for refinement?"
+            cancelLabel="Skip"
+            confirmLabel="Yes, set to Refine"
+            confirmVariant="primary"
+            onConfirm={async () => {
+              await handlePoStatusChange("Ready for Refinement");
+              window.history.back();
+            }}
+          />
 
           {/* Split story picker modal */}
           <SplitStoryPicker

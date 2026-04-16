@@ -9,8 +9,11 @@ import {
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { apiFetch, jira, sprintSlots, config as configApi, storyWriter } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/shared/TextInput";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { IssueType } from "@/types/ticket";
-import { JIRA_STATUS_COLORS } from "@/types/ticket";
+import type { JiraStatus } from "@/types/ticket";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -304,23 +307,6 @@ function SessionSelectDropdown({
 }
 
 // ---------------------------------------------------------------------------
-// Status badge
-// ---------------------------------------------------------------------------
-
-function StatusBadge({ status }: { status: string }) {
-  const upper = status.toUpperCase();
-  const color = JIRA_STATUS_COLORS[upper as keyof typeof JIRA_STATUS_COLORS] ?? { bg: "rgba(255,255,255,0.06)", text: "rgba(255,255,255,0.35)" };
-  return (
-    <span
-      className="shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium tracking-wide"
-      style={{ backgroundColor: color.bg, color: color.text }}
-    >
-      {status}
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main modal
 // ---------------------------------------------------------------------------
 
@@ -556,12 +542,11 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
             <div className="space-y-3.5">
               <div>
                 <label className="mb-1 block text-[11px] font-medium text-white/35 uppercase tracking-wide">Title</label>
-                <input
-                  type="text" autoFocus value={newTitle}
+                <TextInput
+                  autoFocus
+                  value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleCreateNew(); }}
-                  className="w-full rounded-md border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-[13px] text-white/80 placeholder-white/20 focus:outline-none focus:border-[var(--color-brand-500)]/35 focus:bg-white/[0.05]"
-                  style={{ transition: "border-color 120ms, background-color 120ms" }}
                   placeholder="Build cool stuff"
                 />
               </div>
@@ -678,7 +663,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <StatusBadge status={s.status} />
+                          <StatusBadge status={s.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-[10px] tracking-wide" />
                           <Button
                             variant="destructive"
                             size="sm"
@@ -745,7 +730,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <StatusBadge status={selectedSession.status} />
+                          <StatusBadge status={selectedSession.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-[10px] tracking-wide" />
                           <Button
                             variant="destructive"
                             size="sm"
@@ -768,16 +753,17 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
             <div>
               <label className="mb-1 block text-[11px] font-medium text-white/35 uppercase tracking-wide">Search story</label>
               <div className="relative">
-                <Search size={12} strokeWidth={1.5} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25" />
                 {searchLoading && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full border-2 border-white/15 border-t-white/40 animate-spin" />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full border-2 border-white/15 border-t-white/40 animate-spin" />
                 )}
-                <input ref={searchRef} type="text" autoFocus value={searchQuery}
+                <TextInput
+                  ref={searchRef}
+                  autoFocus
+                  value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
                   onKeyDown={handleSearchKeyDown}
-                  className="w-full rounded-md border border-white/[0.07] bg-white/[0.03] py-1.5 pl-8 pr-7 text-[13px] text-white/80 placeholder-white/20 focus:outline-none focus:border-[var(--color-brand-500)]/35 focus:bg-white/[0.05]"
-                  style={{ transition: "border-color 120ms, background-color 120ms" }}
+                  icon={<Search size={12} strokeWidth={1.5} />}
                   placeholder="Search by key or title…"
                 />
 
@@ -803,7 +789,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             <p className="truncate text-[13px] text-white/60">{r.summary}</p>
                             {r.sprintName && <p className="mt-0.5 text-[10px] text-white/25">{r.sprintName}</p>}
                           </div>
-                          <StatusBadge status={r.status} />
+                          <StatusBadge status={r.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-[10px] tracking-wide" />
                         </button>
                       );
                     })}
@@ -855,34 +841,17 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
       </div>
 
       {/* ── Discard confirmation ── */}
-      {confirmDeleteSessionId && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
-          onClick={(e) => { if (e.target === e.currentTarget) setConfirmDeleteSessionId(null); }}
-        >
-          <div className="w-full max-w-sm rounded-xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl border border-white/[0.08]">
-            <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/90">
-              Discard session?
-            </h3>
-            <p className="mt-2 text-xs leading-[1.7] text-white/50">
-              This will permanently discard the session. You will not be able to resume it later.
-            </p>
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <Button variant="ghost" size="md" onClick={() => setConfirmDeleteSessionId(null)} className="border-0">
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                size="md"
-                onClick={() => { deleteSession(confirmDeleteSessionId); setConfirmDeleteSessionId(null); }}
-                className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
-              >
-                Discard
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmDeleteSessionId}
+        onClose={() => setConfirmDeleteSessionId(null)}
+        title="Discard session?"
+        description="This will permanently discard the session. You will not be able to resume it later."
+        confirmLabel="Discard"
+        confirmClassName="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
+        onConfirm={() => {
+          if (confirmDeleteSessionId) deleteSession(confirmDeleteSessionId);
+        }}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, Ch
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { tickets, ApiError } from "@/lib/api-client";
 import type { StoredReview } from "@/types/ticket";
 
@@ -268,41 +269,6 @@ function ReviewHistoryItem({
   );
 }
 
-function DeleteConfirmModal({
-  onConfirm,
-  onCancel,
-}: {
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-80 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.5)]">
-        <h3 className="text-sm font-medium text-white/80">Delete review?</h3>
-        <p className="mt-2 text-xs text-white/40">
-          This will permanently remove this review from the history. The quality score will update to reflect the most recent remaining review.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            size="md"
-            onClick={onConfirm}
-            className="!bg-[#e5534b] !text-white hover:!bg-[#d04840]"
-          >
-            Delete
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function TicketReview({ ticketKey }: { ticketKey: string }) {
   const { data, saveReview, deleteReview, mutate: mutateReviews } = useTicketReviews(ticketKey);
@@ -418,12 +384,15 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
       )}
 
       {/* Delete confirmation modal */}
-      {deleteTarget && (
-        <DeleteConfirmModal
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete review?"
+        description="This will permanently remove this review from the history. The quality score will update to reflect the most recent remaining review."
+        confirmLabel="Delete"
+        confirmClassName="!bg-[#e5534b] !text-white hover:!bg-[#d04840]"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { NotebookPen, Plus, ArrowRight, AlertTriangle, Scissors } from "lucide-r
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLauncherModal";
@@ -248,34 +249,17 @@ export default function StoryWriterLandingPage() {
       </div>
 
       {/* Discard confirmation dialog */}
-      {confirmDiscardId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={(e) => { if (e.target === e.currentTarget) setConfirmDiscardId(null); }}
-        >
-          <div className="w-full max-w-sm rounded-xl bg-[var(--color-surface-elevated)] p-6 shadow-2xl border border-white/[0.08]">
-            <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/90">
-              Discard session?
-            </h3>
-            <p className="mt-2 text-xs leading-[1.7] text-white/50">
-              This will permanently discard the session. You will not be able to resume it later.
-            </p>
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <Button variant="ghost" size="md" onClick={() => setConfirmDiscardId(null)} className="border-0">
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                size="md"
-                onClick={() => { handleDiscard(confirmDiscardId); setConfirmDiscardId(null); }}
-                className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
-              >
-                Discard
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmDiscardId}
+        onClose={() => setConfirmDiscardId(null)}
+        title="Discard session?"
+        description="This will permanently discard the session. You will not be able to resume it later."
+        confirmLabel="Discard"
+        confirmClassName="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
+        onConfirm={() => {
+          if (confirmDiscardId) handleDiscard(confirmDiscardId);
+        }}
+      />
 
       <StoryWriterLauncherModal
         open={showLauncher}

@@ -533,18 +533,17 @@ function ExpandableSearch({
 
   return (
     <div ref={containerRef} className="relative flex items-center shrink-0">
-      <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-white/25" strokeWidth={1.5} />
-      <input
+      <TextInput
         ref={inputRef}
         autoFocus
-        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => {
           if (!value) setExpanded(false);
         }}
         placeholder="Search tickets..."
-        className="h-8 w-52 rounded-lg border border-white/[0.08] bg-white/[0.03] pl-8 pr-8 text-sm text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/50 focus:bg-white/[0.05]"
+        icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        className="h-8 w-52 pr-8"
         style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" }}
       />
       {value.length > 0 && (

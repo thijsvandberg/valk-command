@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useNotifications } from "@/hooks/usePipelines";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/shared/Card";
 
 function formatTimeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -291,28 +292,33 @@ export function NotificationBell() {
   return (
     <div className="relative">
       {/* Bell button */}
-      <button
+      <Button
         ref={buttonRef}
-        type="button"
+        variant="ghost"
+        size="md"
+        iconOnly
         onClick={handleToggle}
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
-      >
-        <Bell size={16} strokeWidth={1.5} />
-        {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white tabular-nums shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+        className="relative border-0 bg-transparent"
+        icon={
+          <>
+            <Bell size={16} strokeWidth={1.5} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white tabular-nums shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </>
+        }
+      />
 
       {/* Dropdown portal — rendered on document.body to escape any stacking context */}
       {open && dropdownPos && createPortal(
         <div
           ref={dropdownRef}
           style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
-          className="w-[360px] rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
         >
+          <Card variant="floating" className="w-[360px] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
             <span className="font-[var(--font-display)] text-[13px] font-semibold text-white/70">
@@ -506,6 +512,7 @@ export function NotificationBell() {
               </>
             )}
           </div>
+          </Card>
         </div>,
         document.body,
       )}
