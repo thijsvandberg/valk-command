@@ -178,44 +178,6 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
       className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-2.5"
       style={{ backgroundColor: "rgba(255,255,255,0.015)" }}
     >
-      {/* Section filter chips */}
-      {SECTION_DEFS.map((s) => {
-        const active = filters.sections.has(s.key);
-        const count = sectionCounts?.[s.key] ?? 0;
-        return (
-          <button
-            key={s.key}
-            type="button"
-            onClick={() => toggleSection(s.key)}
-            aria-label={`Filter by ${s.label}`}
-            aria-pressed={active}
-            className="flex min-w-[64px] flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-            style={{
-              backgroundColor: active ? "rgba(74, 170, 96, 0.12)" : "rgba(255,255,255,0.04)",
-              border: `1px solid ${active ? "rgba(74, 170, 96, 0.35)" : "rgba(255,255,255,0.07)"}`,
-              transition: "background-color 120ms, border-color 120ms",
-            }}
-          >
-            <span
-              className="text-[13px] font-semibold leading-none tabular-nums"
-              style={{ color: active ? "var(--color-brand-400)" : "rgba(255,255,255,0.55)" }}
-            >
-              {count > 0 ? count : <span style={{ color: "rgba(255,255,255,0.2)" }}>–</span>}
-            </span>
-            <span
-              className="flex items-center gap-1 text-[10px] font-medium leading-none"
-              style={{ color: active ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}
-            >
-              {s.icon}
-              {s.label}
-            </span>
-          </button>
-        );
-      })}
-
-      {/* Separator between section chips and dropdown filters */}
-      <div className="h-5 w-px shrink-0 bg-white/[0.10]" />
-
       <FilterDropdown
         label="Status"
         options={STATUS_OPTIONS}
@@ -285,7 +247,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
         widthClass="w-56"
       />
 
-      {/* Visual separator between dropdown group and date group */}
+      {/* Separator between dropdowns and date range */}
       <div className="h-5 w-px shrink-0 bg-white/[0.10]" />
 
       {/* Date range single-select pills */}
@@ -341,6 +303,40 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
           />
         </div>
       )}
+
+      {/* Separator between date group and section chips */}
+      <div className="h-5 w-px shrink-0 bg-white/[0.10]" />
+
+      {/* Section filter chips — single-row, same height as date pills */}
+      {SECTION_DEFS.map((s) => {
+        const isActive = filters.sections.has(s.key);
+        const count = sectionCounts?.[s.key] ?? 0;
+        return (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => toggleSection(s.key)}
+            aria-label={`Filter by ${s.label}`}
+            aria-pressed={isActive}
+            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap shrink-0"
+            style={{
+              backgroundColor: isActive ? "rgba(74, 170, 96, 0.12)" : "rgba(255,255,255,0.03)",
+              borderColor: isActive ? "rgba(74, 170, 96, 0.35)" : "rgba(255,255,255,0.07)",
+              color: isActive ? "var(--color-brand-400)" : "rgba(255,255,255,0.5)",
+              transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms",
+            }}
+          >
+            {s.icon}
+            {s.label}
+            {count > 0 && (
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: isActive ? "var(--color-brand-400)" : "rgba(255,255,255,0.3)" }}
+              />
+            )}
+          </button>
+        );
+      })}
 
       {/* Clear all */}
       {active && (
