@@ -430,7 +430,7 @@ export function StoryWriterChat({
           </p>
           <div className="flex flex-wrap items-center gap-1">
             {quickPrompts.map((s) => (
-              <div key={s.id} className="flex items-center rounded border border-white/[0.08] bg-white/[0.03] overflow-hidden">
+              <div key={s.id} className="group flex items-stretch rounded-md border border-white/[0.07] bg-white/[0.02] overflow-hidden hover:border-white/[0.11] transition-colors duration-150">
                 <button
                   type="button"
                   onClick={() => {
@@ -439,7 +439,7 @@ export function StoryWriterChat({
                     fillInput(s.text);
                   }}
                   disabled={isBusy}
-                  className="px-3 py-1.5 text-xs text-white/65 cursor-pointer hover:bg-white/[0.07] hover:text-white/85 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 text-[11px] font-medium text-white/50 cursor-pointer hover:text-white/80 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {s.label}
                 </button>
@@ -447,10 +447,10 @@ export function StoryWriterChat({
                   type="button"
                   onClick={() => handleDirectSend(s.text, s.enableCodebase === true)}
                   disabled={isBusy || !!inputValue.trim()}
-                  className="flex items-center justify-center border-l border-white/[0.08] px-1.5 py-1.5 text-white/30 cursor-pointer hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center border-l border-white/[0.07] px-2 text-white/20 cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Submit immediately"
                 >
-                  <SendHorizontal size={10} strokeWidth={2} />
+                  <SendHorizontal size={9} strokeWidth={2} />
                 </button>
               </div>
             ))}
