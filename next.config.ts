@@ -43,6 +43,19 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    optimizePackageImports: [
+      "@tiptap/react",
+      "@tiptap/core",
+      "@tiptap/pm",
+      "@tiptap/starter-kit",
+      "@tiptap/extension-color",
+      "@tiptap/extension-image",
+      "@tiptap/extension-link",
+      "@tiptap/extension-table",
+      "@tiptap/extension-text-style",
+    ],
+  },
   async headers() {
     return [
       {
