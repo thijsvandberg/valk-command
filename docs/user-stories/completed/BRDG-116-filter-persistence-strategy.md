@@ -48,7 +48,7 @@ Each view handles filter state persistence differently. This is confusing for us
 - [x] Add filter persistence to activity log
 - [x] Align stakeholder view with the strategy
 - [x] Create shared usePersistedFilter hook if a common pattern emerges <!-- skipped: useLocalStorage already covers all cases; a wrapper hook would be indirection without value. Documented in docs/architecture/filter-persistence.md -->
-- [ ] Verify filters survive page navigation as expected
+- [x] Verify filters survive page navigation as expected
 
 ## Impact
 
