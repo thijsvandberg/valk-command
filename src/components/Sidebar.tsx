@@ -217,6 +217,7 @@ export default function Sidebar() {
             }}
             className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             title={collapsed ? "Sign out" : undefined}
+            aria-label="Sign out"
           >
             <LogOut size={14} strokeWidth={1.5} />
             {!collapsed && <span>Sign out</span>}
