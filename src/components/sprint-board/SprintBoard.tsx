@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { POStatus, Sprint } from "@/types/ticket";
+import type { POStatus, TicketReadiness, Sprint } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import { FilterBar } from "@/components/sprint-board/FilterBar";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
@@ -22,7 +22,7 @@ import { StatPill, StatusPill } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, FileText } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -173,6 +173,7 @@ export default function SprintBoard() {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [focusedTicketIdx, setFocusedTicketIdx] = useState<number>(-1);
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
+  const [readinessMap, setReadinessMap] = useState<Record<string, TicketReadiness | null>>({});
   const [poPriorityOrder, setPoPriorityOrder] = useLocalStorage<string[] | null>("sprint-board-po-priority", null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [barsCollapsed, setBarsCollapsed] = useLocalStorage("sprint-bars-collapsed", false);
@@ -250,6 +251,12 @@ export default function SprintBoard() {
         let changed = false;
         const next = { ...prev };
         apiTickets.forEach((t) => { if (!(t.key in next)) { next[t.key] = t.poStatus; changed = true; } });
+        return changed ? next : prev;
+      });
+      setReadinessMap((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        apiTickets.forEach((t) => { if (!(t.key in next)) { next[t.key] = t.readiness; changed = true; } });
         return changed ? next : prev;
       });
     }
@@ -454,6 +461,21 @@ export default function SprintBoard() {
       }
     });
   }, [poStatuses]);
+
+  const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
+    const prev = readinessMap[key];
+    setReadinessMap((m) => ({ ...m, [key]: readiness }));
+    setInflightKeys((s) => new Set(s).add(key));
+    saveTicketMetadata(key, { readiness }).then((ok) => {
+      setInflightKeys((s) => { const next = new Set(s); next.delete(key); return next; });
+      if (!ok) {
+        setReadinessMap((m) => ({ ...m, [key]: prev }));
+        setToast(`Failed to update ${key}. Change reverted.`);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = setTimeout(() => setToast(null), 5000);
+      }
+    });
+  }, [readinessMap]);
 
   const handleBoardDragStart = useCallback((event: DragStartEvent) => {
     setBoardActiveDragId(event.active.id as string);
@@ -788,6 +810,16 @@ export default function SprintBoard() {
                       <List size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>Sprints</span>
                     </button>
+                    {!isAllView && !f.activeView && activeSprint?.state === "closed" && (
+                      <button
+                        type="button"
+                        onClick={() => { router.push(`/reports/changelog/${activeSprint.id}`); setHeaderMenuOpen(false); }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
+                      >
+                        <FileText size={13} strokeWidth={1.5} className="shrink-0" />
+                        <span>Release Notes</span>
+                      </button>
+                    )}
                   </div>
                 )}
                 {sprintsModalOpen && (
@@ -878,7 +910,7 @@ export default function SprintBoard() {
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
             {!ticketsLoading && (
-              <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} />
+              <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} />
             )}
 
             {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
@@ -920,7 +952,7 @@ export default function SprintBoard() {
 
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
-            {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} />}
+            {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onTableKeyDown={handleTableKeyDown} onReorder={handleReorder} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} />}
 
             {someChecked && <BulkActionBar count={checkedTickets.size} onClear={() => setCheckedTickets(new Set())} onSetPoStatus={handleBulkSetPoStatus} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
           </>
@@ -930,7 +962,7 @@ export default function SprintBoard() {
       {selected && (() => {
         const idx = tickets.findIndex((t) => t.key === selected.key);
         const adjacentKeys = { prev: idx > 0 ? tickets[idx - 1].key : null, next: idx < tickets.length - 1 ? tickets[idx + 1].key : null };
-        return <SidePanel ticket={selected} poStatus={poStatuses[selected.key] ?? null} onPoStatusChange={(v) => handlePoStatusChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} adjacentKeys={adjacentKeys} />;
+        return <SidePanel ticket={selected} poStatus={poStatuses[selected.key] ?? null} readiness={readinessMap[selected.key] ?? null} onPoStatusChange={(v) => handlePoStatusChange(selected.key, v)} onReadinessChange={(v) => handleReadinessChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} adjacentKeys={adjacentKeys} />;
       })()}
 
       {toast && (

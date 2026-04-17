@@ -7,6 +7,20 @@
 
 As the PO, I want an auto-generated changelog view per sprint that groups completed stories by epic, includes PR links, and can be exported as release notes for stakeholders.
 
+## Implementation Plan
+
+1. **API route** (`src/app/api/reports/changelog/route.ts`): `GET /api/reports/changelog?sprint=SPRINT_ID`. Loads sprint metadata from `appSetting` key `"jira_sprints"`, queries DONE tickets in that sprint, strips ADF description to 200-char plain text, cleans Jira key prefix from titles, joins `pipeline_run` for PR links (deduped by `prUrl`), groups by epic, returns `ChangelogResponse`.
+
+2. **Export utilities** (`src/lib/changelog-export.ts`): Pure functions `buildChangelogMarkdown()` and `buildChangelogPlainText()`. Markdown includes PR links; plain text omits them. Both accept optional `excludeKeys` set for selective export.
+
+3. **Changelog page** (`src/app/(app)/reports/changelog/[sprintId]/page.tsx` + `src/components/changelog/ChangelogView.tsx`): Client component consuming the API via SWR. Sprint metadata header, epic sections with ticket entries, per-ticket checkboxes, Copy Markdown / Copy as Text export buttons.
+
+4. **SprintBoard integration** (`src/components/sprint-board/SprintBoard.tsx`): Add "Release Notes" item to header menu dropdown, visible only for closed sprints. Navigate to `/reports/changelog/{sprintId}`.
+
+5. **SprintListModal integration** (`src/components/sprint-board/SprintListModal.tsx`): Add a Release Notes icon button in the History tab sprint rows (closed sprints only).
+
+6. **Documentation** (`docs/architecture/api-routes.md`): Add Reports section with the new route.
+
 ## Acceptance Criteria
 
 ### Phase 1: Changelog generation

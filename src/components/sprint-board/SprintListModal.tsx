@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { X, Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { X, Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
 import { apiFetch, ApiError } from "@/lib/api-client";
@@ -87,6 +88,7 @@ export function SprintListModal({
   const [syncCount, setSyncCount] = useState<number | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const { data: sprints, mutate } = useJiraSprints();
 
   useEffect(() => {
@@ -275,6 +277,20 @@ export function SprintListModal({
                       <Eye className="h-3 w-3" strokeWidth={1.5} />
                     )}
                   </button>
+                  {sprint.state === "closed" && tab !== "hidden" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/reports/changelog/${sprint.id}`);
+                        onClose();
+                      }}
+                      className="flex h-5 w-5 items-center justify-center rounded cursor-pointer text-white/15 hover:text-white/40 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      title="View release notes"
+                    >
+                      <FileText className="h-3 w-3" strokeWidth={1.5} />
+                    </button>
+                  )}
                   {tab !== "hidden" && (
                     <button
                       type="button"

@@ -184,6 +184,12 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 |-------|--------|---------|
 | `/api/attachments/[id]` | GET | Proxy attachment download from Jira |
 
+## Reports
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/reports/changelog` | GET | Changelog/release notes for a sprint. `?sprint=SPRINT_ID` — returns completed tickets grouped by epic with PR links and velocity stats |
+
 ## Common Patterns
 
 ### Error Responses
