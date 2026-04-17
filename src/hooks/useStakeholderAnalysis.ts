@@ -31,61 +31,18 @@ export function useStakeholderAnalysis(sprintId: number | null) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unmountedRef = useRef(false);
   const runningRowRef = useRef<StakeholderAnalysisRow | null>(null);
-
-  useEffect(() => {
-    unmountedRef.current = false;
-    return () => {
-      unmountedRef.current = true;
-      esRef.current?.close();
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
-  // Reset live state when sprint changes
-  useEffect(() => {
-    esRef.current?.close();
-    esRef.current = null;
-    if (pollRef.current) clearInterval(pollRef.current);
-    setLiveState({ brief: initialLive, "deep-dive": initialLive });
-    runningRowRef.current = null;
-  }, [sprintId]);
-
-  // Recover running analyses on mount / data load
-  useEffect(() => {
-    if (!rows) return;
-    const runningRow = rows.find((r) => r.status === "running");
-    if (!runningRow || !runningRow.workspaceTaskId) return;
-
-    const type = runningRow.type;
-    if (liveState[type].status !== "idle") return; // already tracking
-
-    runningRowRef.current = runningRow;
-    const taskId = runningRow.workspaceTaskId;
-
-    // Try to re-attach to the SSE stream
-    attachStream(runningRow.id, taskId, type);
-
-    // Also poll as fallback in case SSE is already closed
-    pollRef.current = setInterval(async () => {
-      try {
-        const task = await workspaceTasksApi.get(taskId) as Record<string, unknown>;
-        if (task.status === "completed" && task.output) {
-          if (pollRef.current) clearInterval(pollRef.current);
-          await completeAnalysis(runningRow.id, task.output as string, type);
-        } else if (task.status === "failed") {
-          if (pollRef.current) clearInterval(pollRef.current);
-          await failAnalysis(runningRow.id, type);
-        }
-      } catch {
-        // ignore transient errors
-      }
-    }, 4000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows]);
+  // Tracks current liveState so effects and callbacks can read the latest value
+  // without capturing a stale closure. Updated within setLive and the sprint-reset
+  // effect so it always reflects the committed state.
+  const liveStateRef = useRef(liveState);
 
   function setLive(type: AnalysisType, update: Partial<LiveStreamState>) {
     if (unmountedRef.current) return;
-    setLiveState((prev) => ({ ...prev, [type]: { ...prev[type], ...update } }));
+    setLiveState((prev) => {
+      const next = { ...prev, [type]: { ...prev[type], ...update } };
+      liveStateRef.current = next;
+      return next;
+    });
   }
 
   async function completeAnalysis(analysisId: string, output: string, type: AnalysisType) {
@@ -94,7 +51,7 @@ export function useStakeholderAnalysis(sprintId: number | null) {
       body: { status: "completed", output },
     });
     if (!unmountedRef.current) {
-      setLive(type, { status: "completed", progressText: "", error: null });
+      setLiveRef.current(type, { status: "completed", progressText: "", error: null });
       mutate();
     }
   }
@@ -105,7 +62,7 @@ export function useStakeholderAnalysis(sprintId: number | null) {
       body: { status: "failed" },
     });
     if (!unmountedRef.current) {
-      setLive(type, { status: "failed", progressText: "", error: "Task failed" });
+      setLiveRef.current(type, { status: "failed", progressText: "", error: "Task failed" });
       mutate();
     }
   }
@@ -115,17 +72,17 @@ export function useStakeholderAnalysis(sprintId: number | null) {
     const es = new EventSource(`/api/workspace-tasks/${taskId}/stream`);
     esRef.current = es;
 
-    setLive(type, { status: "streaming", progressText: "Generating...", error: null });
+    setLiveRef.current(type, { status: "streaming", progressText: "Generating...", error: null });
 
     const timeout = setTimeout(() => {
       es.close();
-      failAnalysis(analysisId, type);
+      failAnalysisRef.current(analysisId, type);
     }, 5 * 60 * 1000);
 
     es.addEventListener("progress", (e) => {
       try {
         const data = JSON.parse((e as MessageEvent).data);
-        setLive(type, { progressText: data.message ?? "" });
+        setLiveRef.current(type, { progressText: data.message ?? "" });
       } catch { /* ignore */ }
     });
 
@@ -133,7 +90,7 @@ export function useStakeholderAnalysis(sprintId: number | null) {
       try {
         const data = JSON.parse((e as MessageEvent).data);
         const toolName = (data.tool ?? "").replace("mcp__jira__", "").replace("mcp__", "");
-        setLive(type, { progressText: `Using ${toolName}...` });
+        setLiveRef.current(type, { progressText: `Using ${toolName}...` });
       } catch { /* ignore */ }
     });
 
@@ -144,9 +101,9 @@ export function useStakeholderAnalysis(sprintId: number | null) {
       if (pollRef.current) clearInterval(pollRef.current);
       try {
         const data = JSON.parse((e as MessageEvent).data);
-        await completeAnalysis(analysisId, data.output ?? "", type);
+        await completeAnalysisRef.current(analysisId, data.output ?? "", type);
       } catch {
-        await failAnalysis(analysisId, type);
+        await failAnalysisRef.current(analysisId, type);
       }
     });
 
@@ -164,6 +121,68 @@ export function useStakeholderAnalysis(sprintId: number | null) {
     });
   }
 
+  // Function refs initialized once — these functions only close over refs and
+  // stable state setters so the first-render version never goes stale.
+  const setLiveRef = useRef(setLive);
+  const completeAnalysisRef = useRef(completeAnalysis);
+  const failAnalysisRef = useRef(failAnalysis);
+  const attachStreamRef = useRef(attachStream);
+
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      esRef.current?.close();
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  // Reset live state when sprint changes
+  useEffect(() => {
+    esRef.current?.close();
+    esRef.current = null;
+    if (pollRef.current) clearInterval(pollRef.current);
+    const resetState = { brief: initialLive, "deep-dive": initialLive };
+    liveStateRef.current = resetState;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLiveState(resetState);
+    runningRowRef.current = null;
+  }, [sprintId]);
+
+  // Recover running analyses on mount / data load
+  useEffect(() => {
+    if (!rows) return;
+    const runningRow = rows.find((r) => r.status === "running");
+    if (!runningRow || !runningRow.workspaceTaskId) return;
+
+    const type = runningRow.type;
+    // Read current liveState via ref to avoid adding liveState as a dep, which
+    // would cause the effect to re-run on every state update and bypass the guard.
+    if (liveStateRef.current[type].status !== "idle") return;
+
+    runningRowRef.current = runningRow;
+    const taskId = runningRow.workspaceTaskId;
+
+    // Try to re-attach to the SSE stream
+    attachStreamRef.current(runningRow.id, taskId, type);
+
+    // Also poll as fallback in case SSE is already closed
+    pollRef.current = setInterval(async () => {
+      try {
+        const task = await workspaceTasksApi.get(taskId) as Record<string, unknown>;
+        if (task.status === "completed" && task.output) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          await completeAnalysisRef.current(runningRow.id, task.output as string, type);
+        } else if (task.status === "failed") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          await failAnalysisRef.current(runningRow.id, type);
+        }
+      } catch {
+        // ignore transient errors
+      }
+    }, 4000);
+  }, [rows]);
+
   const generate = useCallback(async (
     type: AnalysisType,
     sprintName: string,
@@ -178,7 +197,7 @@ export function useStakeholderAnalysis(sprintId: number | null) {
     esRef.current = null;
     if (pollRef.current) clearInterval(pollRef.current);
 
-    setLive(type, { status: "submitting", progressText: "Submitting...", error: null });
+    setLiveRef.current(type, { status: "submitting", progressText: "Submitting...", error: null });
 
     try {
       const result = await stakeholderApi.createAnalysis({
@@ -186,26 +205,25 @@ export function useStakeholderAnalysis(sprintId: number | null) {
       }) as { id: string; taskId: string };
       const { id: analysisId, taskId } = result;
       mutate();
-      attachStream(analysisId, taskId, type);
+      attachStreamRef.current(analysisId, taskId, type);
 
       // Background polling as safety net
       pollRef.current = setInterval(async () => {
         try {
           const task = await workspaceTasksApi.get(taskId) as Record<string, unknown>;
-          if (task.status === "completed" && task.output && liveState[type].status !== "completed") {
+          if (task.status === "completed" && task.output && liveStateRef.current[type].status !== "completed") {
             if (pollRef.current) clearInterval(pollRef.current);
-            await completeAnalysis(analysisId, task.output as string, type);
-          } else if (task.status === "failed" && liveState[type].status !== "failed") {
+            await completeAnalysisRef.current(analysisId, task.output as string, type);
+          } else if (task.status === "failed" && liveStateRef.current[type].status !== "failed") {
             if (pollRef.current) clearInterval(pollRef.current);
-            await failAnalysis(analysisId, type);
+            await failAnalysisRef.current(analysisId, type);
           }
         } catch { /* ignore */ }
       }, 4000);
     } catch (err) {
-      setLive(type, { status: "failed", progressText: "", error: err instanceof Error ? err.message : "Unknown error" });
+      setLiveRef.current(type, { status: "failed", progressText: "", error: err instanceof Error ? err.message : "Unknown error" });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sprintId]);
+  }, [sprintId, mutate]);
 
   // Derive latest of each type from stored rows
   const latestByType = (type: AnalysisType) =>
