@@ -45,7 +45,7 @@ Each view handles filter state persistence differently. This is confusing for us
 
 - [x] Document the persistence strategy (which mechanism for which type of state)
 - [x] Migrate pipelines filters to follow the strategy
-- [ ] Add filter persistence to activity log
+- [x] Add filter persistence to activity log
 - [ ] Align stakeholder view with the strategy
 - [ ] Create shared usePersistedFilter hook if a common pattern emerges
 - [ ] Verify filters survive page navigation as expected

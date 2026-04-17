@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useActivityContext } from "@/contexts/ActivityContext";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import useSWR from "swr";
 import {
   RefreshCw,
@@ -32,8 +33,9 @@ export default function ActivityLogPage() {
     acknowledgeAllErrors();
   }, [acknowledgeAllErrors]);
 
-  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = useState("");
+  const [storedTypes, setStoredTypes] = useLocalStorage<string[]>("bridge:activity-types", []);
+  const selectedTypes = useMemo(() => new Set(storedTypes), [storedTypes]);
+  const [statusFilter, setStatusFilter] = useLocalStorage<string>("bridge:activity-status", "");
   const [offset, setOffset] = useState(0);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);
@@ -108,31 +110,25 @@ export default function ActivityLogPage() {
   }, []);
 
   const toggleType = useCallback((type: string) => {
-    setSelectedTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) {
-        next.delete(type);
-      } else {
-        next.add(type);
-      }
-      return next;
-    });
+    setStoredTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
     setOffset(0);
-  }, []);
+  }, [setStoredTypes]);
 
   const handleStatusChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setStatusFilter(e.target.value);
     setOffset(0);
-  }, []);
+  }, [setStatusFilter]);
 
   // Jump to a specific entry: clear filters, reset pagination, expand the target row
   const jumpToEntry = useCallback((id: string) => {
-    setSelectedTypes(new Set());
+    setStoredTypes([]);
     setStatusFilter("");
     setOffset(0);
     setExpandedIds(new Set([id]));
     setJumpTarget(id);
-  }, []);
+  }, [setStoredTypes, setStatusFilter]);
 
   // Scroll to row after data loads
   useEffect(() => {
@@ -230,7 +226,7 @@ export default function ActivityLogPage() {
             {selectedTypes.size > 0 && (
               <button
                 type="button"
-                onClick={() => { setSelectedTypes(new Set()); setOffset(0); }}
+                onClick={() => { setStoredTypes([]); setOffset(0); }}
                 className="px-2.5 py-1 rounded-md text-label font-[var(--font-body)] text-white/25 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
               >
                 Clear
