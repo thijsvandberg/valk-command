@@ -6,11 +6,12 @@ import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { usePipelines } from "@/hooks/usePipelines";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
   PAGE_SIZE,
-  loadFilters,
-  saveFilters,
+  STORAGE_KEY,
   getDateCutoff,
+  type PersistedFilters,
   type StatusFilterValue,
   type DateRangeValue,
 } from "./pipeline-helpers";
@@ -20,36 +21,70 @@ import { PipelineTable, RunningSection, GroupedByTicketView } from "./PipelineLi
 import { DeploySettingsPanel, DeploymentTimeline } from "./DeploySettings";
 import { PipelineSkeleton, SyncStatusBanner } from "./PipelineSkeleton";
 
-export default function PipelinesPage() {
-  // Load persisted filters from localStorage
-  const initialFilters = useRef(loadFilters());
+const EMPTY_FILTERS: PersistedFilters = {};
 
-  const [repoFilter, setRepoFilter] = useState<string | null>(initialFilters.current.repo ?? null);
-  const [sprintFilters, setSprintFilters] = useState<string[]>(initialFilters.current.sprints ?? []);
+// Read the initial persisted sprint selection synchronously so we can guard
+// against overwriting it with an auto-selection before hydration completes.
+function readInitialSprints(): string[] | undefined {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    if (raw) return (JSON.parse(raw) as PersistedFilters).sprints;
+  } catch { /* noop */ }
+  return undefined;
+}
+
+export default function PipelinesPage() {
+  const [persisted, setPersisted] = useLocalStorage<PersistedFilters>(STORAGE_KEY, EMPTY_FILTERS);
+  // Captured once so auto-selection doesn't overwrite a stored sprint list that
+  // is still being hydrated from localStorage by useLocalStorage.
+  const initialPersistedSprints = useRef<string[] | undefined>(readInitialSprints());
+
+  const repoFilter = persisted.repo ?? null;
+  const sprintFilters = useMemo(() => persisted.sprints ?? [], [persisted.sprints]);
+  const statusFilter: StatusFilterValue = persisted.status ?? "all";
+  const dateRange: DateRangeValue = persisted.dateRange ?? "all";
+  const creatorFilters = useMemo(() => persisted.creators ?? [], [persisted.creators]);
+  const showUnlinked = persisted.unlinked ?? false;
+
+  const setRepoFilter = useCallback((v: string | null) => setPersisted((p) => ({ ...p, repo: v })), [setPersisted]);
+  const setSprintFilters = useCallback((v: string[] | ((prev: string[]) => string[])) => {
+    setPersisted((p) => {
+      const prev = p.sprints ?? [];
+      const next = typeof v === "function" ? v(prev) : v;
+      return { ...p, sprints: next };
+    });
+  }, [setPersisted]);
+  const setStatusFilter = useCallback((v: StatusFilterValue | ((prev: StatusFilterValue) => StatusFilterValue)) => {
+    setPersisted((p) => {
+      const prev = p.status ?? "all";
+      const next = typeof v === "function" ? v(prev) : v;
+      return { ...p, status: next };
+    });
+  }, [setPersisted]);
+  const setDateRange = useCallback((v: DateRangeValue) => setPersisted((p) => ({ ...p, dateRange: v })), [setPersisted]);
+  const setCreatorFilters = useCallback((v: string[] | ((prev: string[]) => string[])) => {
+    setPersisted((p) => {
+      const prev = p.creators ?? [];
+      const next = typeof v === "function" ? v(prev) : v;
+      return { ...p, creators: next };
+    });
+  }, [setPersisted]);
+  const setShowUnlinked = useCallback((v: boolean | ((prev: boolean) => boolean)) => {
+    setPersisted((p) => {
+      const prev = p.unlinked ?? false;
+      const next = typeof v === "function" ? v(prev) : v;
+      return { ...p, unlinked: next };
+    });
+  }, [setPersisted]);
+
   const [sprintAutoSelected, setSprintAutoSelected] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(initialFilters.current.status ?? "all");
-  const [dateRange, setDateRange] = useState<DateRangeValue>(initialFilters.current.dateRange ?? "all");
-  const [creatorFilters, setCreatorFilters] = useState<string[]>(initialFilters.current.creators ?? []);
-  const [showUnlinked, setShowUnlinked] = useState(initialFilters.current.unlinked ?? false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Persist filters to localStorage
-  useEffect(() => {
-    saveFilters({
-      sprints: sprintFilters,
-      creators: creatorFilters,
-      status: statusFilter,
-      dateRange,
-      repo: repoFilter,
-      unlinked: showUnlinked,
-    });
-  }, [sprintFilters, creatorFilters, statusFilter, dateRange, repoFilter, showUnlinked]);
 
   const { data: sprints } = useJiraSprints();
 
   // Default to active sprint on first load (only if no persisted filters)
-  if (sprints && sprintFilters.length === 0 && !sprintAutoSelected && !initialFilters.current.sprints?.length) {
+  if (sprints && sprintFilters.length === 0 && !sprintAutoSelected && !initialPersistedSprints.current?.length) {
     const active = sprints.find((s) => s.state === "active");
     if (active) {
       setSprintFilters([String(active.id)]);
@@ -60,11 +95,11 @@ export default function PipelinesPage() {
   // Toggle helpers
   const toggleSprint = useCallback((id: string) => {
     setSprintFilters((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
-  }, []);
+  }, [setSprintFilters]);
 
   const toggleCreator = useCallback((name: string) => {
     setCreatorFilters((prev) => prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]);
-  }, []);
+  }, [setCreatorFilters]);
 
   // For ticket fetching: use first selected sprint (useTickets takes single ID)
   // When multiple sprints: fetch __all__ and filter client-side
@@ -185,7 +220,7 @@ export default function PipelinesPage() {
         }
       }
     }
-  }, [refresh, sprints, sprintFilters]);
+  }, [refresh, sprints, sprintFilters, setSprintFilters, setStatusFilter]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyboard);

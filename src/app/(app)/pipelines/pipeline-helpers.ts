@@ -21,17 +21,6 @@ export interface PersistedFilters {
   unlinked?: boolean;
 }
 
-export function loadFilters(): PersistedFilters {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-export function saveFilters(filters: PersistedFilters) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filters)); } catch { /* noop */ }
-}
-
 // -- Helpers --
 
 export function formatTimeAgo(iso: string): string {

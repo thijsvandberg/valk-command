@@ -1,7 +1,21 @@
 # BRDG-116: Filter Persistence Strategy
 
-**Status:** Open
+**Status:** In Progress
 **Priority:** Low
+
+## Implementation Plan
+
+1. **Document the strategy** - Create `docs/architecture/filter-persistence.md` covering the three-tier model (URL params, localStorage, no persistence), key naming convention (`bridge:<view>:<purpose>`), and hook usage guidance. Document that `usePersistedFilter` is not needed since `useLocalStorage` already covers all cases.
+
+2. **Migrate pipelines page** - Replace the manual `useRef(loadFilters())` + `useEffect(saveFilters(...))` pattern in `pipelines/page.tsx` with `useLocalStorage`. Remove dead `loadFilters`/`saveFilters` functions from `pipeline-helpers.ts`. Keep `STORAGE_KEY` and type definitions.
+
+3. **Add activity log persistence** - Replace bare `useState` for `selectedTypes` and `statusFilter` in `activity-log/page.tsx` with `useLocalStorage`. Store array form of types (convert to/from `Set` at usage boundary). `offset` and `expandedIds` remain ephemeral state.
+
+4. **Align stakeholder view** - Replace inline `sessionGet`/`sessionSet` helpers (which already call `localStorage`, despite the misleading name) with `useLocalStorage`. Remove the `SESSION_KEY_TEAM`/`SESSION_KEY_SPRINT` constants and helper functions.
+
+5. **No shared hook needed** - The existing `useLocalStorage` hook already provides everything needed. A wrapper would be indirection without value.
+
+6. **Verify** - Manual navigation and cross-tab tests to confirm filters survive page navigation as expected.
 
 ## Description
 
@@ -29,8 +43,8 @@ Each view handles filter state persistence differently. This is confusing for us
 
 ## Acceptance Criteria
 
-- [ ] Document the persistence strategy (which mechanism for which type of state)
-- [ ] Migrate pipelines filters to follow the strategy
+- [x] Document the persistence strategy (which mechanism for which type of state)
+- [x] Migrate pipelines filters to follow the strategy
 - [ ] Add filter persistence to activity log
 - [ ] Align stakeholder view with the strategy
 - [ ] Create shared usePersistedFilter hook if a common pattern emerges
