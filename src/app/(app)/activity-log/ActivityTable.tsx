@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { LoadingState } from "@/components/shared/LoadingState";
 import type { ActivityLogEntry } from "@/types/ticket";
 import {
   entryTypeLabel,
@@ -164,9 +165,7 @@ export function ActivityTable({
 
         {/* Loading state */}
         {isLoading && !entries && (
-          <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-4 w-4 text-white/20 animate-spin" strokeWidth={2} />
-          </div>
+          <LoadingState variant="spinner" label="Loading activity..." className="py-12" />
         )}
 
         {/* Empty state */}

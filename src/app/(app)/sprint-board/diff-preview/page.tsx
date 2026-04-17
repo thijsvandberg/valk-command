@@ -7,6 +7,7 @@ import { StoryDiffPanel } from "@/components/story-diff/StoryDiffPanel";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import type { StoryVersion } from "@/types/ticket";
 import { useTicketVersions } from "@/hooks/useSprintBoard";
+import { LoadingState } from "@/components/shared/LoadingState";
 
 // Fallback sample data for when no ticket key is provided
 const SAMPLE_VERSIONS: StoryVersion[] = [
@@ -124,7 +125,7 @@ export default function DiffPreviewPage() {
   return (
     <>
       {pageTitle}
-      <Suspense fallback={<div className="flex h-full items-center justify-center"><span className="text-sm text-white/30">Loading...</span></div>}>
+      <Suspense fallback={<LoadingState variant="spinner" label="Loading diff preview..." />}>
         <DiffPreviewContent />
       </Suspense>
     </>
