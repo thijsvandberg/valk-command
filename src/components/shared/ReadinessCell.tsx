@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { PenLine, MessageCircleQuestion, Sparkles, PauseCircle } from "lucide-react";
+import { PenLine, MessageCircleQuestion, Sparkles, Pause, Minus } from "lucide-react";
 import type { TicketReadiness } from "@/types/ticket";
 import { READINESS_CONFIG, READINESS_OPTIONS } from "@/types/ticket";
 
@@ -11,7 +11,7 @@ export function ReadinessIcon({ value, size = 13 }: { value: TicketReadiness; si
     case "drafting":             return <PenLine {...props} />;
     case "waiting_for_feedback": return <MessageCircleQuestion {...props} />;
     case "ready_to_refine":      return <Sparkles {...props} />;
-    case "on_hold":              return <PauseCircle {...props} />;
+    case "on_hold":              return <Pause {...props} />;
   }
 }
 
@@ -74,7 +74,7 @@ export function ReadinessCell({
 
       {open && (
         <div
-          className={`absolute top-full z-50 mt-1 min-w-[188px] rounded-lg border border-white/[0.07] py-1 ${align === "left" ? "left-0" : "right-0"}`}
+          className={`absolute top-full z-50 mt-1 min-w-[210px] rounded-lg border border-white/[0.07] py-1 ${align === "left" ? "left-0" : "right-0"}`}
           style={{
             backgroundColor: "var(--color-surface-floating)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -88,18 +88,15 @@ export function ReadinessCell({
                 key={opt.label}
                 type="button"
                 onClick={() => { onChange(opt.value); setOpen(false); }}
-                className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
+                className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
               >
                 <span
-                  className="shrink-0 flex h-4 w-4 items-center justify-center rounded-full"
-                  style={{
-                    color: optCfg?.color ?? "rgba(255,255,255,0.25)",
-                    backgroundColor: optCfg?.bg ?? "rgba(255,255,255,0.05)",
-                  }}
+                  className="shrink-0 w-4 flex items-center justify-center"
+                  style={{ color: optCfg?.color ?? "rgba(255,255,255,0.2)" }}
                 >
-                  {opt.value ? <ReadinessIcon value={opt.value} size={10} /> : null}
+                  {opt.value ? <ReadinessIcon value={opt.value} size={13} /> : <Minus style={{ width: 11, height: 11 }} strokeWidth={1.5} />}
                 </span>
-                <span className={isActive ? "text-white/90" : "text-white/50"}>{opt.label}</span>
+                <span className={isActive ? "text-white/85 font-medium" : "text-white/50"}>{opt.label}</span>
               </button>
             );
           })}

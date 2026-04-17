@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ExternalLink, PenLine, MessageCircleQuestion, Sparkles, PauseCircle } from "lucide-react";
+import { ExternalLink, PenLine, MessageCircleQuestion, Sparkles, Pause, Minus } from "lucide-react";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
@@ -21,7 +21,7 @@ function ReadinessIcon({ value, size = 12 }: { value: TicketReadiness; size?: nu
     case "drafting":             return <PenLine {...props} />;
     case "waiting_for_feedback": return <MessageCircleQuestion {...props} />;
     case "ready_to_refine":      return <Sparkles {...props} />;
-    case "on_hold":              return <PauseCircle {...props} />;
+    case "on_hold":              return <Pause {...props} />;
   }
 }
 
@@ -115,7 +115,7 @@ function ReadinessDropdown({ currentValue, onChange, onClose }: ReadinessDropdow
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 z-50 mt-1 min-w-[188px] rounded-lg border border-white/[0.07] py-1"
+      className="absolute top-full right-0 z-50 mt-1 min-w-[210px] rounded-lg border border-white/[0.07] py-1"
       style={{
         backgroundColor: "var(--color-surface-floating)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -129,18 +129,15 @@ function ReadinessDropdown({ currentValue, onChange, onClose }: ReadinessDropdow
             key={opt.label}
             type="button"
             onClick={() => { onChange(opt.value); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
+            className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
           >
             <span
-              className="shrink-0 flex h-4 w-4 items-center justify-center rounded-full"
-              style={{
-                color: cfg?.color ?? "rgba(255,255,255,0.25)",
-                backgroundColor: cfg?.bg ?? "rgba(255,255,255,0.05)",
-              }}
+              className="shrink-0 w-4 flex items-center justify-center"
+              style={{ color: cfg?.color ?? "rgba(255,255,255,0.2)" }}
             >
-              {opt.value ? <ReadinessIcon value={opt.value} size={10} /> : null}
+              {opt.value ? <ReadinessIcon value={opt.value} size={13} /> : <Minus style={{ width: 11, height: 11 }} strokeWidth={1.5} />}
             </span>
-            <span className={isActive ? "text-white/90" : "text-white/50"}>{opt.label}</span>
+            <span className={isActive ? "text-white/85 font-medium" : "text-white/50"}>{opt.label}</span>
           </button>
         );
       })}
@@ -289,15 +286,15 @@ export function TicketStatusPill({
 
       {/* External link — slides in from behind on hover */}
       {showExternalLink && (
-        <span className="overflow-hidden w-0 group-hover:w-[20px] transition-[width] duration-150 ease-out flex items-center">
+        <span className="overflow-hidden w-0 group-hover:w-[26px] transition-[width] duration-150 ease-out flex items-center">
           <a
             href={jiraUrl}
             target="_blank"
             rel="noopener noreferrer"
             title="Open in Jira"
-            className="flex shrink-0 items-center text-white/20 hover:text-white/55 transition-colors duration-100 focus-visible:outline-none"
+            className="flex shrink-0 items-center pl-1.5 text-white/25 hover:text-white/60 transition-colors duration-100 focus-visible:outline-none"
           >
-            <ExternalLink size={13} strokeWidth={1.5} />
+            <ExternalLink size={15} strokeWidth={1.5} />
           </a>
         </span>
       )}
