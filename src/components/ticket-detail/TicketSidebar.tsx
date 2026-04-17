@@ -274,7 +274,7 @@ export function TicketSidebar({
               {/* Readiness */}
               <div>
                 <label className="mb-1.5 block text-xs text-white/30">Readiness</label>
-                <ReadinessCell value={readiness} onChange={handleReadinessChange} />
+                <ReadinessCell value={readiness} onChange={handleReadinessChange} align="left" />
               </div>
 
               {/* PO Notes */}

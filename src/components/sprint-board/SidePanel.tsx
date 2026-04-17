@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { Ticket, POStatus } from "@/types/ticket";
+import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
 import { getEpicColor } from "@/types/ticket";
 import Link from "next/link";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { POStatusCell, QualityBadge, getJiraUrl } from "./TicketTableCells";
+import { QualityBadge, getJiraUrl } from "./TicketTableCells";
+import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
 import { prefetchTicketDetail } from "@/lib/prefetch";
@@ -84,7 +85,9 @@ const MIN_PANEL_WIDTH = 320;
 export function SidePanel({
   ticket,
   poStatus,
+  readiness,
   onPoStatusChange,
+  onReadinessChange,
   onNotesChange,
   onClose,
   onShowToast,
@@ -92,7 +95,9 @@ export function SidePanel({
 }: {
   ticket: Ticket;
   poStatus: POStatus;
+  readiness?: TicketReadiness | null;
   onPoStatusChange: (v: POStatus) => void;
+  onReadinessChange?: (v: TicketReadiness | null) => void;
   onNotesChange: (notes: string) => void;
   onClose: () => void;
   onShowToast: (message: string) => void;
@@ -372,11 +377,13 @@ export function SidePanel({
             </h3>
 
             <div className="mt-4 space-y-4">
-              {/* PO Status */}
-              <div>
-                <label className="mb-1.5 block text-xs text-white/40">PO Status</label>
-                <POStatusCell value={poStatus} onChange={onPoStatusChange} showLabel />
-              </div>
+              {/* Readiness */}
+              {onReadinessChange && (
+                <div>
+                  <label className="mb-1.5 block text-xs text-white/40">Readiness</label>
+                  <ReadinessCell value={readiness ?? null} onChange={onReadinessChange} align="left" />
+                </div>
+              )}
 
               {/* Quality Score */}
               <div>

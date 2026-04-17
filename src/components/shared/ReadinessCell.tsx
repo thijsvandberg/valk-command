@@ -15,13 +15,16 @@ export function ReadinessIcon({ value, size = 13 }: { value: TicketReadiness; si
   }
 }
 
-// Compact icon-only readiness picker for use in table cells.
+// Compact icon-only readiness picker for use in table cells and sidebars.
+// align="right" (default) positions the dropdown leftward from the button; "left" positions it rightward.
 export function ReadinessCell({
   value,
   onChange,
+  align = "right",
 }: {
   value: TicketReadiness | null;
   onChange: (v: TicketReadiness | null) => void;
+  align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -61,7 +64,7 @@ export function ReadinessCell({
 
       {open && (
         <div
-          className="absolute top-full right-0 z-50 mt-1 min-w-[188px] rounded-lg border border-white/[0.07] py-1"
+          className={`absolute top-full z-50 mt-1 min-w-[188px] rounded-lg border border-white/[0.07] py-1 ${align === "left" ? "left-0" : "right-0"}`}
           style={{
             backgroundColor: "var(--color-surface-floating)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",

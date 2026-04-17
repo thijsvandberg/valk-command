@@ -152,7 +152,7 @@ function defaultSortDir(field: SortField): SortDir {
 const HEADER_LABELS: Record<ColumnId, string> = {
   type: "", key: "Key", title: "Title", epic: "Epic",
   jiraStatus: "Status", sprint: "Sprint", points: "Pts", assignee: "",
-  flagged: "", poStatus: "PO", quality: "QS", notes: "", pipeline: "",
+  flagged: "", poStatus: "RDY", quality: "QS", notes: "", pipeline: "",
 };
 
 const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality"]);
