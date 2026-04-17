@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect, useRef } from "react";
+import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History } from "lucide-react";
@@ -338,7 +338,7 @@ function StakeholderView() {
     prevSprintIdRef.current = currentSprint.id;
   }, [currentSprint?.id]);
 
-  function updateUrl(team: string, sprintId: number) {
+  const updateUrl = useCallback((team: string, sprintId: number) => {
     sessionSet(SESSION_KEY_TEAM, team);
     sessionSet(SESSION_KEY_SPRINT, String(sprintId));
     const params = new URLSearchParams();
@@ -346,7 +346,7 @@ function StakeholderView() {
     params.set("sprintId", String(sprintId));
     if (isCompareMode) params.set("compare", "1");
     router.replace(`/stakeholder?${params.toString()}`);
-  }
+  }, [isCompareMode, router]);
 
   function toggleCompareMode() {
     const params = new URLSearchParams(searchParams.toString());
@@ -376,8 +376,7 @@ function StakeholderView() {
   useEffect(() => {
     if (!currentSprint || !selectedTeamPrefix) return;
     updateUrl(selectedTeamPrefix, currentSprint.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSprint?.id, selectedTeamPrefix]);
+  }, [currentSprint, selectedTeamPrefix, updateUrl]);
 
   // Fetch current sprint tickets
   const ticketKey = currentSprint

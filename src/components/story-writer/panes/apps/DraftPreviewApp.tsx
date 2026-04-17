@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { Check, GitCompare } from "lucide-react";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { Button } from "@/components/ui/Button";
@@ -12,16 +12,16 @@ export function DraftPreviewApp() {
   const writer = useWriterContext();
   const { draftPreviewContent, openApp } = pane;
 
-  const handleOpenDiff = () => {
+  const handleOpenDiff = useCallback(() => {
     openApp("diff");
-  };
+  }, [openApp]);
 
-  const handleAcceptDraft = async () => {
+  const handleAcceptDraft = useCallback(async () => {
     if (!draftPreviewContent?.draftId) return;
     await writer.onAcceptDraft(draftPreviewContent.draftId);
     pane.openApp("editor");
     pane.closeApp("draft-preview");
-  };
+  }, [draftPreviewContent, writer, pane]);
 
   useEffect(() => {
     pane.registerToolbar("draft-preview", {
@@ -55,8 +55,7 @@ export function DraftPreviewApp() {
       ),
     });
     return () => pane.unregisterToolbar("draft-preview");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pane, draftPreviewContent?.label, draftPreviewContent?.draftId]);
+  }, [pane, draftPreviewContent, handleOpenDiff, handleAcceptDraft]);
 
   if (!draftPreviewContent) {
     return (
