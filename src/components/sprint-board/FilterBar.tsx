@@ -584,6 +584,9 @@ export function FilterBar({
   epicOptions,
   assigneeOptions,
   issueTypeOptions,
+  teamFilter,
+  onTeamFilterChange,
+  teamOptions,
   sprintFilter,
   onSprintFilterChange,
   sprintOptions,
@@ -611,6 +614,9 @@ export function FilterBar({
   epicOptions: string[];
   assigneeOptions: string[];
   issueTypeOptions: string[];
+  teamFilter?: Set<string>;
+  onTeamFilterChange?: (next: Set<string>) => void;
+  teamOptions?: string[];
   sprintFilter?: Set<string>;
   onSprintFilterChange?: (next: Set<string>) => void;
   sprintOptions?: string[];
@@ -635,6 +641,7 @@ export function FilterBar({
     poStatusFilter.size > 0 ||
     editStateFilter.size > 0 ||
     issueTypeFilter.size > 0 ||
+    (teamFilter?.size ?? 0) > 0 ||
     (sprintFilter?.size ?? 0) > 0;
 
   function handleClearAll() {
@@ -644,6 +651,7 @@ export function FilterBar({
     onPoStatusFilterChange(new Set());
     onEditStateFilterChange(new Set());
     onIssueTypeFilterChange(new Set());
+    if (onTeamFilterChange) onTeamFilterChange(new Set());
     if (onSprintFilterChange) onSprintFilterChange(new Set());
   }
 
@@ -749,6 +757,14 @@ export function FilterBar({
           );
         }}
       />
+      {teamFilter && onTeamFilterChange && teamOptions && teamOptions.length > 0 && (
+        <FilterDropdown
+          label="Team"
+          options={teamOptions}
+          selected={teamFilter}
+          onChange={onTeamFilterChange}
+        />
+      )}
       {sprintFilter && onSprintFilterChange && sprintOptions && sprintNameMap && (
         <FilterDropdown
           label="Sprint"

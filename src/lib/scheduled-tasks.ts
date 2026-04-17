@@ -11,6 +11,7 @@ import {
   ticket, activityLog, appSetting,
   ticketMetadata, ticketSubtask, ticketLink, ticketAttachment,
   ticketLocalEdit, poComment, jiraComment, storyVersion, storedReview,
+  storyWriterSession,
 } from "@/db/schema";
 import { eq, inArray, and, isNotNull, lt } from "drizzle-orm";
 import { jiraClient, extractSprint } from "@/lib/jira-client";
@@ -172,6 +173,7 @@ async function cleanupRemovedTickets(): Promise<TaskResult> {
       tx.delete(jiraComment).where(eq(jiraComment.ticketKey, key)).run();
       tx.delete(storyVersion).where(eq(storyVersion.jiraKey, key)).run();
       tx.delete(storedReview).where(eq(storedReview.ticketKey, key)).run();
+      tx.delete(storyWriterSession).where(eq(storyWriterSession.ticketKey, key)).run();
       tx.delete(ticket).where(eq(ticket.jiraKey, key)).run();
     });
   }

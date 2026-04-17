@@ -550,6 +550,10 @@ export function TicketTable({
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
         const groupTicketIds = group.tickets.map((t) => t.key);
 
+        const totalPoints = group.tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+        const inProgressCount = group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS" || t.jiraStatus === "TEST").length;
+        const doneCount = group.tickets.filter((t) => t.jiraStatus === "DONE").length;
+
         const ticketRows = !isCollapsed && group.tickets.map((ticket) => {
           const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
           let insertLine: "above" | "below" | undefined;
@@ -609,6 +613,23 @@ export function TicketTable({
                   <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-white/[0.06] text-white/30 shrink-0">
                     {group.tickets.length}
                   </span>
+                  {totalPoints > 0 && (
+                    <span className="rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-white/[0.04] text-white/25 shrink-0">
+                      {totalPoints} pts
+                    </span>
+                  )}
+                  {inProgressCount > 0 && (
+                    <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-[rgba(56,152,210,0.08)] text-[#58b4e6]/60 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#58b4e6]/50 shrink-0" />
+                      {inProgressCount}
+                    </span>
+                  )}
+                  {doneCount > 0 && (
+                    <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-[rgba(34,197,94,0.08)] text-[#4ade80]/60 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80]/50 shrink-0" />
+                      {doneCount}
+                    </span>
+                  )}
                 </div>
               </td>
             </tr>

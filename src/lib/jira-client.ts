@@ -497,8 +497,13 @@ export class JiraClient {
     const seen = new Set<number>();
     const sprints: JiraSprint[] = [];
 
+    // Scanning issues to extract sprints is expensive for large projects.
+    // Cap at 20 pages (2000 issues) to prevent runaway loops.
+    const MAX_SPRINT_PAGES = 20;
     let pageToken: string | undefined;
-    while (true) {
+    let pageCount = 0;
+    while (pageCount < MAX_SPRINT_PAGES) {
+      pageCount++;
       const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
       const result = await jiraFetch<JiraSearchResponse>(
         `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${SPRINT_FIELD}&maxResults=100${tokenParam}`,

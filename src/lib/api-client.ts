@@ -394,6 +394,8 @@ export const scheduler = {
     apiFetch<unknown>("/api/scheduler/tick", { method: "POST", signal }),
   status: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/scheduler/tick", { signal }),
+  run: (name: string, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/scheduler/run/${enc(name)}`, { method: "POST", signal }),
 };
 
 // ---------------------------------------------------------------------------

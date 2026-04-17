@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { scheduler } from "@/lib/api-client";
-import { Clock, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Clock, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Play } from "lucide-react";
 
 interface TaskStatus {
   name: string;
@@ -92,6 +92,7 @@ function formatResult(task: TaskStatus): { text: string; isError: boolean } | nu
 export default function SchedulerPage() {
   const [tasks, setTasks] = useState<TaskStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState<Record<string, boolean>>({});
 
   const fetchTasks = useCallback(() => {
     (scheduler.status() as Promise<{ tasks: TaskStatus[] }>)
@@ -106,6 +107,16 @@ export default function SchedulerPage() {
     fetchTasks();
     const id = setInterval(fetchTasks, 10_000);
     return () => clearInterval(id);
+  }, [fetchTasks]);
+
+  const handleRunNow = useCallback(async (name: string) => {
+    setRunning((prev) => ({ ...prev, [name]: true }));
+    try {
+      await scheduler.run(name);
+      await fetchTasks();
+    } finally {
+      setRunning((prev) => ({ ...prev, [name]: false }));
+    }
   }, [fetchTasks]);
 
   return (
@@ -151,6 +162,14 @@ export default function SchedulerPage() {
                         Disabled
                       </span>
                     )}
+                    <button
+                      onClick={() => handleRunNow(task.name)}
+                      disabled={running[task.name]}
+                      className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/50 transition-colors hover:border-white/[0.15] hover:bg-white/[0.08] hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Play size={8} strokeWidth={2} className={running[task.name] ? "animate-pulse" : ""} />
+                      {running[task.name] ? "Running..." : "Run now"}
+                    </button>
                   </div>
                 </div>
 

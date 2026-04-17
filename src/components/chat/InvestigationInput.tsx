@@ -73,7 +73,7 @@ export default function InvestigationInput({
                 <button
                   type="button"
                   onClick={() => setExplainMode(false)}
-                  className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-all duration-150 ${
+                  className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
                     !explainMode
                       ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
                       : "text-white/40 hover:text-white/60"
@@ -84,7 +84,7 @@ export default function InvestigationInput({
                 <button
                   type="button"
                   onClick={() => setExplainMode(true)}
-                  className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-all duration-150 ${
+                  className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
                     explainMode
                       ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
                       : "text-white/40 hover:text-white/60"

@@ -54,6 +54,14 @@ export async function POST(request: NextRequest) {
 
   const controller = registerSync(logId);
 
+  // Abort after 3 minutes so the route itself marks the entry as failed,
+  // rather than relying on the 5-minute stale cleanup in GET /api/activity-log.
+  let timedOut = false;
+  const routeTimeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 3 * 60 * 1000);
+
   try {
     const maxSprints = scope === "history" ? 30 : undefined;
     const sprints = await jiraClient.getSprints(states, controller.signal, maxSprints);
@@ -100,6 +108,16 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
+      if (timedOut) {
+        const durationMs = Date.now() - new Date(startedAt).getTime();
+        await db.update(activityLog).set({
+          status: "failed",
+          errorDetail: "Sync timed out (no response after 3 minutes)",
+          durationMs,
+          completedAt: new Date().toISOString(),
+        }).where(eq(activityLog.id, logId));
+        return NextResponse.json({ ok: false, error: "Sync timed out" }, { status: 504 });
+      }
       return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
     }
 
@@ -114,6 +132,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   } finally {
+    clearTimeout(routeTimeout);
     unregisterSync(logId);
   }
 }

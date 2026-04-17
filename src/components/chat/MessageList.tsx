@@ -42,7 +42,7 @@ function ScoreBar({ score, max }: { score: number; max: number }) {
   return (
     <div className="h-1.5 w-full rounded-full bg-white/[0.08]">
       <div
-        className="h-full rounded-full transition-all"
+        className="h-full rounded-full transition-[width] duration-150"
         style={{ width: `${pct}%`, backgroundColor: verdictColor(pct >= 90 ? "Ready for sprint" : pct >= 75 ? "Minor issues" : pct >= 60 ? "Needs work" : "Not ready") }}
       />
     </div>

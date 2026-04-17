@@ -26,6 +26,7 @@ interface TaskRegistration {
   intervalMs: number;
   lastRunKey: string;
   lastResultKey: string;
+  runNow?: () => Promise<Record<string, unknown>>;
 }
 
 const registry: TaskRegistration[] = [];
@@ -37,6 +38,16 @@ const registry: TaskRegistration[] = [];
 export function registerIndependentTask(task: TaskRegistration) {
   if (registry.some((t) => t.name === task.name)) return;
   registry.push(task);
+}
+
+/**
+ * Run an independent task immediately, bypassing the interval check.
+ * Returns null if the task is not found or has no runNow handler.
+ */
+export async function runIndependentTaskNow(name: string): Promise<Record<string, unknown> | null> {
+  const task = registry.find((t) => t.name === name);
+  if (!task?.runNow) return null;
+  return task.runNow();
 }
 
 /**

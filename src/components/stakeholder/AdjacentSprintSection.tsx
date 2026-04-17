@@ -41,7 +41,7 @@ export function AdjacentSprintSection({
           <ChevronDown
             size={12}
             strokeWidth={1.5}
-            className={`text-white/20 group-hover:text-white/40 transition-all duration-150 ${expanded ? "rotate-180" : ""}`}
+            className={`text-white/20 group-hover:text-white/40 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
           />
           <span className={`text-[10px] tabular-nums ${labelColor}`}>
             {tickets.length} ticket{tickets.length === 1 ? "" : "s"}

@@ -171,6 +171,23 @@ export async function tick(): Promise<TickResult> {
 // Status: get status of all tasks (for settings UI)
 // ---------------------------------------------------------------------------
 
+export async function runTaskNow(name: string): Promise<TaskResult | null> {
+  const task = tasks.find((t) => t.name === name);
+  if (!task) return null;
+
+  await setLastRun(task.name);
+  try {
+    const result = await task.handler();
+    await setLastResult(task.name, result);
+    return result;
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : "Unknown error";
+    const errResult = { error: errMsg };
+    await setLastResult(task.name, errResult);
+    return errResult;
+  }
+}
+
 export async function getTaskStatuses(): Promise<TaskStatus[]> {
   const statuses: TaskStatus[] = [];
 

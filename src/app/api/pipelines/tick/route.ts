@@ -9,6 +9,60 @@ const LAST_RUN_KEY = "pipeline_sync:last_run";
 const LAST_RESULT_KEY = "pipeline_sync:last_result";
 const INTERVAL_MS = 5 * 60 * 1000;
 
+// Prevent concurrent execution
+let running = false;
+
+async function runPipelineSync(): Promise<Record<string, unknown>> {
+  if (running) {
+    return { skipped: true, reason: "already running" };
+  }
+
+  running = true;
+  const now = new Date().toISOString();
+
+  try {
+    const lastRunRow = db.select().from(appSetting).where(eq(appSetting.key, LAST_RUN_KEY)).get();
+    if (lastRunRow) {
+      db.update(appSetting).set({ value: now }).where(eq(appSetting.key, LAST_RUN_KEY)).run();
+    } else {
+      db.insert(appSetting).values({ key: LAST_RUN_KEY, value: now }).run();
+    }
+
+    const { syncPipelines, syncPullRequests } = await import("@/lib/pipeline-sync");
+    let result = await syncPipelines();
+    let rounds = 1;
+
+    while ((result.remaining > 0 || result.backfilled > 0) && rounds < 5) {
+      const more = await syncPipelines();
+      result = {
+        newRuns: result.newRuns + more.newRuns,
+        updatedRuns: result.updatedRuns + more.updatedRuns,
+        stateChanges: result.stateChanges + more.stateChanges,
+        remaining: more.remaining,
+        backfilled: result.backfilled + more.backfilled,
+      };
+      rounds++;
+    }
+
+    const prSync = await syncPullRequests();
+
+    const resultValue = JSON.stringify(result);
+    const existingResult = db.select().from(appSetting).where(eq(appSetting.key, LAST_RESULT_KEY)).get();
+    if (existingResult) {
+      db.update(appSetting).set({ value: resultValue }).where(eq(appSetting.key, LAST_RESULT_KEY)).run();
+    } else {
+      db.insert(appSetting).values({ key: LAST_RESULT_KEY, value: resultValue }).run();
+    }
+
+    return { ran: true, ...result, prSync };
+  } catch (err) {
+    logger.error("pipeline-tick", "sync failed:", err);
+    return { error: err instanceof Error ? err.message : "Unknown error" };
+  } finally {
+    running = false;
+  }
+}
+
 // Auto-register so System Tasks admin discovers this task
 registerIndependentTask({
   name: "pipeline-sync",
@@ -16,10 +70,8 @@ registerIndependentTask({
   intervalMs: INTERVAL_MS,
   lastRunKey: LAST_RUN_KEY,
   lastResultKey: LAST_RESULT_KEY,
+  runNow: runPipelineSync,
 });
-
-// Prevent concurrent execution
-let running = false;
 
 /**
  * POST /api/pipelines/tick
@@ -29,10 +81,6 @@ let running = false;
  * app load and periodically.
  */
 export async function POST() {
-  if (running) {
-    return NextResponse.json({ skipped: true, reason: "already running" });
-  }
-
   // Check if interval has elapsed
   const lastRunRow = db
     .select()
@@ -51,52 +99,7 @@ export async function POST() {
     });
   }
 
-  running = true;
-  const now = new Date().toISOString();
-
-  try {
-    // Update last_run timestamp before running (prevents duplicate runs)
-    if (lastRunRow) {
-      db.update(appSetting).set({ value: now }).where(eq(appSetting.key, LAST_RUN_KEY)).run();
-    } else {
-      db.insert(appSetting).values({ key: LAST_RUN_KEY, value: now }).run();
-    }
-
-    // Import and run sync directly (no HTTP self-call)
-    // Same pattern as Jira: sync one batch, if remaining > 0, repeat (max 5 rounds)
-    const { syncPipelines } = await import("@/lib/pipeline-sync");
-    let result = await syncPipelines();
-    let rounds = 1;
-
-    while ((result.remaining > 0 || result.backfilled > 0) && rounds < 5) {
-      const more = await syncPipelines();
-      result = {
-        newRuns: result.newRuns + more.newRuns,
-        updatedRuns: result.updatedRuns + more.updatedRuns,
-        stateChanges: result.stateChanges + more.stateChanges,
-        remaining: more.remaining,
-        backfilled: result.backfilled + more.backfilled,
-      };
-      rounds++;
-    }
-
-    // Store result
-    const resultValue = JSON.stringify(result);
-    const existingResult = db.select().from(appSetting).where(eq(appSetting.key, LAST_RESULT_KEY)).get();
-    if (existingResult) {
-      db.update(appSetting).set({ value: resultValue }).where(eq(appSetting.key, LAST_RESULT_KEY)).run();
-    } else {
-      db.insert(appSetting).values({ key: LAST_RESULT_KEY, value: resultValue }).run();
-    }
-
-    return NextResponse.json({ ran: true, ...result });
-  } catch (err) {
-    logger.error("pipeline-tick", "sync failed:", err);
-    return NextResponse.json({
-      error: err instanceof Error ? err.message : "Unknown error",
-    });
-  } finally {
-    running = false;
-  }
+  const result = await runPipelineSync();
+  return NextResponse.json(result);
 }
 

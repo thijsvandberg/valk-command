@@ -6,6 +6,7 @@ import type { SortField, SortDir, ColumnId, SavedView } from "@/components/sprin
 import { DEFAULT_VISIBLE } from "@/components/sprint-board/FilterBar";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSearchParams, useRouter } from "next/navigation";
+import { extractTeamPrefix } from "@/lib/sprint-utils";
 
 export interface StoredFilters {
   status: string[];
@@ -31,6 +32,7 @@ export function useSprintBoardFilters(
   externalVisible?: Set<ColumnId>,
   externalOrder?: ColumnId[],
   onApplyColumnConfig?: (visible: ColumnId[], order: ColumnId[]) => void,
+  sprintNameMap?: Record<string, string>,
 ) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -40,6 +42,7 @@ export function useSprintBoardFilters(
   const [storedColumns, setStoredColumns] = useLocalStorage<ColumnId[]>("sprint-board-columns", [...DEFAULT_VISIBLE]);
   const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>("sprint-board-saved-views", []);
   const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
+  const [teamFilter, setTeamFilter] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
 
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
@@ -94,6 +97,19 @@ export function useSprintBoardFilters(
   );
   const issueTypeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.type))], [allTickets]);
 
+  const teamOptions = useMemo(() => {
+    if (!sprintNameMap) return [];
+    const prefixes = new Set<string>();
+    for (const t of allTickets) {
+      if (!t.sprintId) continue;
+      const name = sprintNameMap[t.sprintId];
+      if (!name) continue;
+      const prefix = extractTeamPrefix(name);
+      if (prefix) prefixes.add(prefix);
+    }
+    return [...prefixes].sort();
+  }, [allTickets, sprintNameMap]);
+
   const filteredTickets = useMemo(() => {
     const showRemoved = editStateFilter.has("removed");
     return allTickets.filter((t) => {
@@ -120,6 +136,11 @@ export function useSprintBoardFilters(
       }
       if (issueTypeFilter.size > 0 && !issueTypeFilter.has(t.type)) return false;
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
+      if (isAllView && teamFilter.size > 0) {
+        const sprintName = t.sprintId ? sprintNameMap?.[t.sprintId] : undefined;
+        const prefix = sprintName ? extractTeamPrefix(sprintName) : null;
+        if (!prefix || !teamFilter.has(prefix)) return false;
+      }
       if (searchQuery.trim().length >= 2) {
         const q = searchQuery.toLowerCase();
         const matchesKey = t.key.toLowerCase().includes(q);
@@ -129,7 +150,7 @@ export function useSprintBoardFilters(
       }
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, issueTypeFilter, poStatuses, isAllView, sprintFilter, searchQuery]);
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, issueTypeFilter, poStatuses, isAllView, sprintFilter, teamFilter, sprintNameMap, searchQuery]);
 
   const sortedTickets = useMemo(() => {
     if (sortField === "rank") {
@@ -189,7 +210,7 @@ export function useSprintBoardFilters(
     return sorted;
   }, [filteredTickets, sortField, sortDir, poPriorityOrder, poStatuses]);
 
-  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0;
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0;
 
   const handleColumnToggle = useCallback((id: ColumnId, show: boolean) => {
     setVisibleColumns((prev) => {
@@ -279,6 +300,9 @@ export function useSprintBoardFilters(
     setIssueTypeFilter,
     sprintFilter,
     setSprintFilter,
+    teamFilter,
+    setTeamFilter,
+    teamOptions,
     searchQuery,
     setSearchQuery,
     savedViews,

@@ -77,7 +77,7 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
               r={3}
               fill="var(--color-brand-400)"
               fillOpacity={tooltip?.index === i ? 0.9 : 0.45}
-              className="cursor-pointer transition-all duration-100"
+              className="cursor-pointer transition-opacity duration-100"
               onMouseEnter={() => setTooltip({ index: i, x: p.x, y: p.y })}
               onMouseLeave={() => setTooltip(null)}
             />

@@ -634,21 +634,8 @@ export function processPRNotifications(candidates: PrCandidate[]) {
   if (candidates.length === 0) return;
 
   for (const { prUrl, prTitle, ticketKey, isMerge, eventAt } of candidates) {
-    // "PR opened": dedup by checking for any existing pr alert with this linkUrl
-    const openedExists = db.select({ id: alert.id })
-      .from(alert)
-      .where(and(eq(alert.linkUrl, prUrl), eq(alert.category, "pr")))
-      .get();
-    if (!openedExists) {
-      createNotification("pr", `PR opened: ${prTitle}`, {
-        category: "pr",
-        jiraKey: ticketKey ?? undefined,
-        linkUrl: prUrl,
-        eventAt,
-      });
-    }
-
-    // "PR merged": dedup by appending "#merged" to distinguish from "opened"
+    // "PR opened" is handled by syncPullRequests() which polls the PR API directly,
+    // so we only create "PR merged" here (detected via merge commit pipelines).
     if (isMerge) {
       const mergedLinkUrl = `${prUrl}#merged`;
       const mergedExists = db.select({ id: alert.id })
@@ -665,4 +652,95 @@ export function processPRNotifications(candidates: PrCandidate[]) {
       }
     }
   }
+}
+
+// -- Direct PR sync (polls Bitbucket PR API for open + recently merged PRs) --
+
+interface BbPullRequest {
+  id: number;
+  title: string;
+  state: string;
+  created_on: string;
+  updated_on: string;
+  author?: { display_name?: string };
+  source?: { branch?: { name: string } };
+  destination?: { branch?: { name: string } };
+  links?: { html?: { href: string } };
+}
+
+export interface PrSyncResult {
+  newOpened: number;
+  newMerged: number;
+}
+
+/**
+ * Poll Bitbucket PR API to detect PRs when they are opened (not only when merged).
+ * Creates "PR opened" notifications for newly seen open PRs and "PR merged"
+ * notifications for recently merged PRs. Deduplicates against existing alerts.
+ */
+export async function syncPullRequests(): Promise<PrSyncResult> {
+  if (!isPipelineConfigured()) {
+    return { newOpened: 0, newMerged: 0 };
+  }
+
+  const cfg = getBitbucketConfig();
+  let newOpened = 0;
+  let newMerged = 0;
+
+  const repoResults = await Promise.all(
+    cfg.repoSlugs.map(async (repoSlug) => {
+      const [openPrs, mergedPrs] = await Promise.all([
+        bbFetch<BbPaginatedResponse<BbPullRequest>>(repoSlug, `/pullrequests?state=OPEN&pagelen=50`),
+        bbFetch<BbPaginatedResponse<BbPullRequest>>(repoSlug, `/pullrequests?state=MERGED&sort=-updated_on&pagelen=10`),
+      ]);
+      return { repoSlug, openPrs: openPrs?.values ?? [], mergedPrs: mergedPrs?.values ?? [] };
+    }),
+  );
+
+  for (const { openPrs, mergedPrs } of repoResults) {
+    for (const pr of openPrs) {
+      const prUrl = pr.links?.html?.href;
+      if (!prUrl || !pr.title) continue;
+
+      const exists = db.select({ id: alert.id })
+        .from(alert)
+        .where(and(eq(alert.linkUrl, prUrl), eq(alert.category, "pr")))
+        .get();
+
+      if (!exists) {
+        const ticketKey = extractTicketKey(pr.source?.branch?.name ?? "") ?? extractTicketKey(pr.title);
+        createNotification("pr", `PR opened: ${pr.title}`, {
+          category: "pr",
+          jiraKey: ticketKey ?? undefined,
+          linkUrl: prUrl,
+          eventAt: pr.created_on,
+        });
+        newOpened++;
+      }
+    }
+
+    for (const pr of mergedPrs) {
+      const prUrl = pr.links?.html?.href;
+      if (!prUrl || !pr.title) continue;
+
+      const mergedLinkUrl = `${prUrl}#merged`;
+      const exists = db.select({ id: alert.id })
+        .from(alert)
+        .where(and(eq(alert.linkUrl, mergedLinkUrl), eq(alert.category, "pr")))
+        .get();
+
+      if (!exists) {
+        const ticketKey = extractTicketKey(pr.source?.branch?.name ?? "") ?? extractTicketKey(pr.title);
+        createNotification("pr", `PR merged: ${pr.title}`, {
+          category: "pr",
+          jiraKey: ticketKey ?? undefined,
+          linkUrl: mergedLinkUrl,
+          eventAt: pr.updated_on,
+        });
+        newMerged++;
+      }
+    }
+  }
+
+  return { newOpened, newMerged };
 }
