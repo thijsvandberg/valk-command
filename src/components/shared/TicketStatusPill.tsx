@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ExternalLink, PenLine, MessageCircleQuestion, Sparkles, Pause, Minus } from "lucide-react";
+import { ExternalLink, PenLine, MessageCircleQuestion, Target, Pause, Minus } from "lucide-react";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
@@ -20,7 +20,7 @@ function ReadinessIcon({ value, size = 12 }: { value: TicketReadiness; size?: nu
   switch (value) {
     case "drafting":             return <PenLine {...props} />;
     case "waiting_for_feedback": return <MessageCircleQuestion {...props} />;
-    case "ready_to_refine":      return <Sparkles {...props} />;
+    case "ready_to_refine":      return <Target {...props} />;
     case "on_hold":              return <Pause {...props} />;
   }
 }

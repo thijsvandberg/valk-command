@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { PenLine, MessageCircleQuestion, Sparkles, Pause, Minus } from "lucide-react";
+import { PenLine, MessageCircleQuestion, Target, Pause, Minus } from "lucide-react";
 import type { TicketReadiness } from "@/types/ticket";
 import { READINESS_CONFIG, READINESS_OPTIONS } from "@/types/ticket";
 
@@ -10,7 +10,7 @@ export function ReadinessIcon({ value, size = 13 }: { value: TicketReadiness; si
   switch (value) {
     case "drafting":             return <PenLine {...props} />;
     case "waiting_for_feedback": return <MessageCircleQuestion {...props} />;
-    case "ready_to_refine":      return <Sparkles {...props} />;
+    case "ready_to_refine":      return <Target {...props} />;
     case "on_hold":              return <Pause {...props} />;
   }
 }
