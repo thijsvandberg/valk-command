@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useRef, useCallback } from "react";
-import type { Ticket, POStatus } from "@/types/ticket";
+import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
@@ -12,6 +12,7 @@ import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
+import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { prefetchTicketDetail } from "@/lib/prefetch";
 
 const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
@@ -30,12 +31,14 @@ export interface TicketRowBaseProps {
   col: (id: ColumnId) => boolean;
   sprintNameMap: Record<string, string>;
   poStatuses: Record<string, POStatus>;
+  readinessMap: Record<string, TicketReadiness | null>;
   selectedTicket: string | null;
   onHoverRow: (key: string | null) => void;
   onLeaveRow: () => void;
   onSelectTicket: (key: string | null) => void;
   onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
+  onReadinessChange: (key: string, readiness: TicketReadiness | null) => void;
   reviewPopoverKey: string | null;
   onToggleReviewPopover: (key: string) => void;
   columnOrder?: ColumnId[];
@@ -61,12 +64,14 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     col,
     sprintNameMap,
     poStatuses,
+    readinessMap,
     selectedTicket,
     onHoverRow,
     onLeaveRow,
     onSelectTicket,
     onCheckboxClick,
     onPoStatusChange,
+    onReadinessChange,
     reviewPopoverKey,
     onToggleReviewPopover,
     columnOrder,
@@ -248,9 +253,10 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <POStatusCell
-              value={poStatuses[ticket.key] ?? null}
-              onChange={(v) => onPoStatusChange(ticket.key, v)}
+            <ReadinessCell
+              value={readinessMap[ticket.key] ?? null}
+              onChange={(v) => onReadinessChange(ticket.key, v)}
+              subtle
             />
           </td>
         );

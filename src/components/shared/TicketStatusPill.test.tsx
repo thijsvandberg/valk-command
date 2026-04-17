@@ -30,9 +30,9 @@ describe("TicketStatusPill", () => {
     expect(screen.getByText("VPL-123")).toBeTruthy();
   });
 
-  it("renders abbreviated Jira status", () => {
+  it("renders full Jira status text", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="IN PROGRESS" />);
-    expect(screen.getByText("PROG")).toBeTruthy();
+    expect(screen.getByText("IN PROGRESS")).toBeTruthy();
   });
 
   it("hides readiness segment when readiness is null and no callback", () => {
@@ -132,8 +132,8 @@ describe("TicketStatusPill", () => {
         onJiraStatusChange={onChange}
       />,
     );
-    // Jira status button is clickable
-    fireEvent.click(screen.getByTitle("TO DO"));
+    // Jira status button shows "Change status" title when editable
+    fireEvent.click(screen.getByTitle("Change status"));
     // Dropdown shows full status names
     expect(screen.getByText("IN PROGRESS")).toBeTruthy();
     fireEvent.click(screen.getByText("IN PROGRESS"));

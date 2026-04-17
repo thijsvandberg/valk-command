@@ -698,6 +698,36 @@ export class JiraClient {
   }
 
   /**
+   * Transition an issue to a different status in Jira.
+   * Fetches available transitions and matches by normalizing the target status name.
+   */
+  async transitionIssue(key: string, targetStatus: string): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    const data = await jiraFetch<{ transitions: { id: string; to: { name: string } }[] }>(
+      `/rest/api/3/issue/${key}/transitions`,
+    );
+
+    const upper = targetStatus.toUpperCase();
+    const transition = data.transitions.find((t) => {
+      const n = t.to.name.toUpperCase();
+      if (upper === "TO DO") return n === "TO DO" || n === "BACKLOG" || n === "OPEN";
+      if (upper === "IN PROGRESS") return n.includes("PROGRESS");
+      if (upper === "TEST") return n === "TEST" || n === "IN REVIEW" || n === "REVIEW";
+      if (upper === "DONE") return n === "DONE" || n === "CLOSED" || n === "RESOLVED";
+      return n === upper;
+    });
+
+    if (!transition) {
+      throw new Error(`No available transition to "${targetStatus}" for issue ${key}`);
+    }
+
+    await jiraPost<void>(`/rest/api/3/issue/${key}/transitions`, { transition: { id: transition.id } });
+  }
+
+  /**
    * Update an issue's fields in Jira.
    * Uses REST API v3 PUT /rest/api/3/issue/{key}.
    */

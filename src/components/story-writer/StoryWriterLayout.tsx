@@ -24,13 +24,11 @@ import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSp
 import { Tooltip } from "@/components/shared/Tooltip";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
-import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
-import { POStatusCell } from "@/components/sprint-board/TicketTableCells";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { apiFetch, tickets } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
-import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PaneProvider, usePaneContext } from "./panes/PaneContext";
@@ -85,12 +83,12 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
-  // Local PO status state for optimistic updates
-  const ticketPoStatus = (ticketData?.poStatus ?? null) as import("@/types/ticket").POStatus;
-  const [localPoStatus, setLocalPoStatus] = useState<import("@/types/ticket").POStatus>(ticketPoStatus);
+  // Local readiness state for optimistic updates
+  const ticketReadiness = (ticketData?.readiness ?? null) as import("@/types/ticket").TicketReadiness | null;
+  const [localReadiness, setLocalReadiness] = useState<import("@/types/ticket").TicketReadiness | null>(ticketReadiness);
   useEffect(() => {
-    setLocalPoStatus(ticketPoStatus);
-  }, [ticketPoStatus]);
+    setLocalReadiness(ticketReadiness);
+  }, [ticketReadiness]);
 
   // Split mode state
   const [splitModeVisible, setSplitModeVisible] = useState(false);
@@ -247,9 +245,14 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     writer.updateTargetLocalTitle(title);
   }, [writer, showSaved]);
 
-  const handlePoStatusChange = useCallback(async (v: import("@/types/ticket").POStatus) => {
-    setLocalPoStatus(v);
-    await tickets.updateMetadata(ticketKey, { poStatus: v });
+  const handleReadinessChange = useCallback(async (v: import("@/types/ticket").TicketReadiness | null) => {
+    setLocalReadiness(v);
+    await tickets.updateMetadata(ticketKey, { readiness: v });
+    mutateTicket();
+  }, [ticketKey, mutateTicket]);
+
+  const handleJiraStatusChange = useCallback(async (status: import("@/types/ticket").JiraStatus) => {
+    await apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}/status`, { method: "PUT", body: JSON.stringify({ status }) });
     mutateTicket();
   }, [ticketKey, mutateTicket]);
 
@@ -606,16 +609,20 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           >
             {ticketData && (() => {
               const status = (ticketData.jiraStatus ?? "TO DO") as import("@/types/ticket").JiraStatus;
-              const sc = JIRA_STATUS_COLORS[status] ?? JIRA_STATUS_COLORS["TO DO"];
               return (
                 <>
-                  <TicketKeyPill ticketKey={ticketKey} statusLabel={status} statusBg={sc.bg} statusColor={sc.text} />
+                  <TicketStatusPill
+                    ticketKey={ticketKey}
+                    jiraStatus={status}
+                    readiness={localReadiness}
+                    onJiraStatusChange={handleJiraStatusChange}
+                    onReadinessChange={handleReadinessChange}
+                    size="sm"
+                  />
                   <ViewHeaderDivider />
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">
                     {writer.session?.localTitle ?? ticketData.title}
                   </span>
-                  <ViewHeaderDivider />
-                  <POStatusCell value={localPoStatus} onChange={handlePoStatusChange} showLabel={!localPoStatus} />
                 </>
               );
             })()}
@@ -657,13 +664,13 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           <ConfirmDialog
             open={showRefinePrompt}
             onClose={() => window.history.back()}
-            title="Set PO status to Ready for Refinement?"
+            title="Mark as Ready to Refine?"
             description="The session has been cleared. Would you like to mark this ticket as ready for refinement?"
             cancelLabel="Skip"
-            confirmLabel="Yes, set to Refine"
+            confirmLabel="Yes, mark as Ready to Refine"
             confirmVariant="primary"
             onConfirm={async () => {
-              await handlePoStatusChange("Ready for Refinement");
+              await handleReadinessChange("ready_to_refine");
               window.history.back();
             }}
           />

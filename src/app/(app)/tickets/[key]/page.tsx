@@ -25,12 +25,11 @@ import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessi
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
-import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Avatar } from "@/components/shared/Avatar";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
-import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EditableTitle } from "@/components/ticket-detail/EditableTitle";
 import { EditableDescription } from "@/components/ticket-detail/EditableDescription";
 import { AttachmentsSection } from "@/components/ticket-detail/AttachmentsSection";
@@ -204,6 +203,16 @@ export default function TicketDetailPage({
 
   const handleTitleLocalEdit = useCallback((has: boolean) => setHasLocalTitleEdit(has), []);
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
+
+  const handleReadinessChange = useCallback(async (v: import("@/types/ticket").TicketReadiness | null) => {
+    await apiFetch(`/api/tickets/${key}/metadata`, { method: "PUT", body: JSON.stringify({ readiness: v }) });
+    mutateTicket();
+  }, [key, mutateTicket]);
+
+  const handleJiraStatusChange = useCallback(async (status: import("@/types/ticket").JiraStatus) => {
+    await apiFetch(`/api/tickets/${key}/status`, { method: "PUT", body: JSON.stringify({ status }) });
+    mutateTicket();
+  }, [key, mutateTicket]);
 
   const showConflictWarning = ticket?.editState === "conflict";
 
@@ -456,13 +465,13 @@ export default function TicketDetailPage({
           </div>
         }
       >
-        {/* Combined key + status pill */}
-        {(() => {
-          const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-          return (
-            <TicketKeyPill ticketKey={key} statusLabel={ticket.jiraStatus} statusBg={sc.bg} statusColor={sc.text} />
-          );
-        })()}
+        <TicketStatusPill
+          ticketKey={key}
+          jiraStatus={ticket.jiraStatus}
+          readiness={ticket.readiness}
+          onJiraStatusChange={handleJiraStatusChange}
+          onReadinessChange={handleReadinessChange}
+        />
         <ViewHeaderDivider />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">
           {ticket.title}

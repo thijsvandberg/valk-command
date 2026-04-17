@@ -58,7 +58,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose }: JiraDropdownPro
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[140px] rounded-lg border border-white/[0.07] py-1"
+      className="absolute top-full left-0 z-50 mt-1 min-w-[172px] rounded-lg border border-white/[0.07] py-1"
       style={{
         backgroundColor: "var(--color-surface-floating)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -193,49 +193,55 @@ export function TicketStatusPill({
   }
 
   const jiraColors = JIRA_STATUS_COLORS[jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-  const jiraAbbr = JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus;
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
-  const px = size === "sm" ? "px-1.5 py-0.5" : "px-2 py-0.5";
+  const iconSize = size === "sm" ? 10 : 12;
+  const px = size === "sm" ? "px-1.5 py-[3px]" : "px-2 py-[3px]";
   const textSize = size === "sm" ? "text-[10px]" : "text-label";
 
   return (
-    <div className="group flex shrink-0 items-center gap-0.5">
+    <div className="group flex shrink-0 items-center gap-1">
       {/* Wrapper keeping all three segments visually grouped */}
-      <div className="flex shrink-0 items-center overflow-visible rounded-md bg-white/[0.07]">
+      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-white/[0.06] ring-1 ring-inset ring-white/[0.06]">
 
         {/* Key segment */}
         <button
           type="button"
           onClick={handleCopy}
           title="Copy Jira URL"
-          className={`${px} font-mono ${textSize} font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] rounded-l-md ${
+          className={`${px} font-mono ${textSize} font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] rounded-l-md flex items-center ${
             copied
               ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
-              : "text-white/60 hover:bg-hover-list-item hover:text-white/80"
+              : "text-white/50 hover:bg-white/[0.05] hover:text-white/75"
           }`}
         >
           {ticketKey}
         </button>
 
         {/* Divider */}
-        <span className="h-3.5 w-px bg-white/[0.07] shrink-0" />
+        <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
 
         {/* Jira status segment */}
-        <div className="relative">
+        <div className="relative flex">
           <button
             type="button"
             onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-            title={jiraStatus}
+            title={onJiraStatusChange ? "Change status" : jiraStatus}
             disabled={!onJiraStatusChange}
-            className={`${px} font-mono ${textSize} font-semibold tracking-wide transition-colors duration-150 ${
+            className={`${px} ${textSize} font-medium transition-colors duration-150 flex items-center gap-1.5 ${
               onJiraStatusChange
-                ? "cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                ? "cursor-pointer hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 : "cursor-default"
-            } ${readinessCfg ? "" : "rounded-r-md"}`}
-            style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, minWidth: "3.2rem", textAlign: "center" }}
+            } ${(readinessCfg || onReadinessChange) ? "" : "rounded-r-md"}`}
+            style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
           >
-            {jiraAbbr}
+            {onJiraStatusChange && (
+              <span
+                className="shrink-0 h-1.5 w-1.5 rounded-full opacity-60"
+                style={{ backgroundColor: jiraColors.text }}
+              />
+            )}
+            {jiraStatus}
           </button>
           {jiraDropdownOpen && onJiraStatusChange && (
             <JiraStatusDropdown
@@ -249,8 +255,8 @@ export function TicketStatusPill({
         {/* Readiness segment — only shown when readiness is non-null or a callback is wired */}
         {(readinessCfg || onReadinessChange) && (
           <>
-            <span className="h-3.5 w-px bg-white/[0.07] shrink-0" />
-            <div className="relative">
+            <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
+            <div className="relative flex">
               <button
                 type="button"
                 onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
@@ -258,18 +264,14 @@ export function TicketStatusPill({
                 disabled={!onReadinessChange}
                 className={`${px} flex items-center justify-center rounded-r-md transition-colors duration-150 ${
                   onReadinessChange
-                    ? "cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    ? "cursor-pointer hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     : "cursor-default"
                 }`}
-                style={{
-                  backgroundColor: readinessCfg?.bg ?? "transparent",
-                  color: readinessCfg?.color ?? "rgba(255,255,255,0.2)",
-                }}
+                style={{ color: readinessCfg?.color ?? "rgba(255,255,255,0.2)" }}
               >
                 {readiness ? (
-                  <ReadinessIcon value={readiness} size={size === "sm" ? 10 : 12} />
+                  <ReadinessIcon value={readiness} size={iconSize} />
                 ) : (
-                  // Null state — small muted circle to indicate "no readiness set" when callback exists
                   <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
                 )}
               </button>
@@ -293,9 +295,9 @@ export function TicketStatusPill({
             target="_blank"
             rel="noopener noreferrer"
             title="Open in Jira"
-            className="flex shrink-0 items-center pl-1.5 text-white/25 hover:text-white/60 transition-colors duration-100 focus-visible:outline-none"
+            className="flex shrink-0 items-center text-white/20 hover:text-white/55 transition-colors duration-100 focus-visible:outline-none"
           >
-            <ExternalLink size={14} strokeWidth={1.5} />
+            <ExternalLink size={13} strokeWidth={1.5} />
           </a>
         </span>
       )}

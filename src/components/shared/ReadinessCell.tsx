@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { PenLine, MessageCircleQuestion, Sparkles, PauseCircle } from "lucide-react";
 import type { TicketReadiness } from "@/types/ticket";
 import { READINESS_CONFIG, READINESS_OPTIONS } from "@/types/ticket";
@@ -17,17 +17,23 @@ export function ReadinessIcon({ value, size = 13 }: { value: TicketReadiness; si
 
 // Compact icon-only readiness picker for use in table cells and sidebars.
 // align="right" (default) positions the dropdown leftward from the button; "left" positions it rightward.
+// subtle=true hides the background until hover — used in table rows to avoid visual clutter.
 export function ReadinessCell({
   value,
   onChange,
   align = "right",
+  subtle = false,
 }: {
   value: TicketReadiness | null;
   onChange: (v: TicketReadiness | null) => void;
   align?: "left" | "right";
+  subtle?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const handleMouseEnter = useCallback(() => setHovered(true), []);
+  const handleMouseLeave = useCallback(() => setHovered(false), []);
 
   useEffect(() => {
     if (!open) return;
@@ -46,17 +52,21 @@ export function ReadinessCell({
   }, [open]);
 
   const cfg = value ? READINESS_CONFIG[value] : null;
+  const showBg = !subtle || hovered || open;
 
   return (
     <div ref={ref} className="relative inline-flex justify-center">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         title={value ? READINESS_CONFIG[value].label : "Ready for Development"}
-        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer transition-colors duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
         style={{
           color: cfg?.color ?? "rgba(255,255,255,0.2)",
-          backgroundColor: cfg?.bg ?? "rgba(255,255,255,0.04)",
+          backgroundColor: showBg ? (cfg?.bg ?? "rgba(255,255,255,0.04)") : "transparent",
+          opacity: hovered && showBg ? 0.8 : 1,
         }}
       >
         {value ? <ReadinessIcon value={value} /> : <span className="h-1.5 w-1.5 rounded-full bg-white/20" />}
