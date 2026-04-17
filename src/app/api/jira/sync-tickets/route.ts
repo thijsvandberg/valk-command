@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { ticket, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
@@ -12,11 +13,15 @@ import { cache } from "@/lib/cache";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 
+const ticketKeysBodySchema = z.object({
+  ticketKeys: z.array(z.string().min(1)).min(1).max(100),
+});
+
 /**
  * POST /api/jira/sync-tickets
  *
  * Two modes:
- *   1. Body { ticketKeys: ["VPL-123"] } - syncs only the listed tickets
+ *   1. Body { ticketKeys: ["VPL-123"] } - syncs only the listed tickets (max 100)
  *   2. Query ?sprintId=xxx&strategy=bulk|timestamp-first - syncs all sprint tickets
  */
 export async function POST(request: Request) {
@@ -31,8 +36,15 @@ export async function POST(request: Request) {
   if (!sprintId) {
     try {
       const body = await request.json();
-      if (Array.isArray(body?.ticketKeys) && body.ticketKeys.length > 0) {
-        ticketKeys = body.ticketKeys;
+      if (body?.ticketKeys !== undefined) {
+        const parsed = ticketKeysBodySchema.safeParse(body);
+        if (!parsed.success) {
+          return NextResponse.json(
+            { error: parsed.error.issues[0]?.message ?? "Invalid ticketKeys" },
+            { status: 400 },
+          );
+        }
+        ticketKeys = parsed.data.ticketKeys;
       }
     } catch {
       // No valid JSON body
@@ -110,7 +122,6 @@ async function syncIndividualTickets(ticketKeys: string[], requestSignal?: Abort
     cache.invalidate("/api/tickets");
 
     return NextResponse.json({
-      ok: true,
       count: results.length,
       live: jiraClient.isLive,
       strategy: "individual",
@@ -118,7 +129,7 @@ async function syncIndividualTickets(ticketKeys: string[], requestSignal?: Abort
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+      return NextResponse.json({ error: "Sync cancelled" }, { status: 499 });
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
@@ -129,7 +140,7 @@ async function syncIndividualTickets(ticketKeys: string[], requestSignal?: Abort
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   } finally {
     unregisterSync(logId);
   }
@@ -250,7 +261,6 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     }
 
     return NextResponse.json({
-      ok: true,
       count: results.length,
       live: jiraClient.isLive,
       strategy,
@@ -258,7 +268,7 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+      return NextResponse.json({ error: "Sync cancelled" }, { status: 499 });
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
@@ -269,7 +279,7 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   } finally {
     unregisterSync(logId);
   }

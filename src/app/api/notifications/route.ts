@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { alert, ticket, sprintNameCache } from "@/db/schema";
-import { desc, eq, lt, sql, and, inArray } from "drizzle-orm";
+import { desc, eq, sql, and, inArray } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
+
+const createNotificationSchema = z.object({
+  type: z.string().min(1).max(100),
+  message: z.string().min(1).max(1000),
+  category: z.string().max(100).optional(),
+  jiraKey: z.string().max(100).optional(),
+  linkUrl: z.string().max(500).optional(),
+});
+
+const patchNotificationSchema = z.union([
+  z.object({ markAll: z.literal(true) }),
+  z.object({ ids: z.array(z.string()).min(1).max(200) }),
+  z.object({ id: z.string().min(1) }),
+]);
 
 // GET /api/notifications - list notifications (alerts) with optional unread filter
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const unreadOnly = url.searchParams.get("unread") === "true";
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50", 10), 200);
-
-  // Auto-cleanup: delete notifications older than 30 days
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  db.delete(alert).where(lt(alert.createdAt, cutoff)).run();
 
   const conditions = unreadOnly ? eq(alert.read, false) : undefined;
 
@@ -58,25 +69,24 @@ export async function GET(request: Request) {
 
 // POST /api/notifications - create a notification
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const type = typeof body.type === "string" ? body.type : "";
-  const message = typeof body.message === "string" ? body.message.trim() : "";
-  if (!type || !message) {
-    return NextResponse.json({ error: "type and message are required" }, { status: 400 });
+  const parsed = createNotificationSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
+      { status: 400 },
+    );
   }
 
-  const category = typeof body.category === "string" ? body.category : undefined;
-  const jiraKey = typeof body.jiraKey === "string" ? body.jiraKey : undefined;
-  const linkUrl = typeof body.linkUrl === "string" ? body.linkUrl : undefined;
-
+  const { type, message, category, jiraKey, linkUrl } = parsed.data;
   createNotification(type, message, { category: category as never, jiraKey, linkUrl });
-  return NextResponse.json({ status: "created" }, { status: 201 });
+  return NextResponse.json({ type, message }, { status: 201 });
 }
 
 // PATCH /api/notifications - mark notification(s) as read
@@ -84,34 +94,41 @@ export async function POST(request: Request) {
 // { ids: string[] }     → mark specific IDs as read (filtered bulk action)
 // { id: string }        → mark single notification as read
 export async function PATCH(request: Request) {
-  const body = await request.json();
-  const { id, markAll, ids } = body as { id?: string; markAll?: boolean; ids?: string[] };
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  if (markAll) {
+  const parsed = patchNotificationSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "id, ids, or markAll required" }, { status: 400 });
+  }
+
+  const body = parsed.data;
+
+  if ("markAll" in body) {
     db.update(alert)
       .set({ read: true })
       .where(eq(alert.read, false))
       .run();
-    return NextResponse.json({ status: "all_read" });
+    return NextResponse.json({ marked: "all" });
   }
 
-  if (Array.isArray(ids) && ids.length > 0) {
+  if ("ids" in body) {
     db.update(alert)
       .set({ read: true })
-      .where(and(inArray(alert.id, ids), eq(alert.read, false)))
+      .where(and(inArray(alert.id, body.ids), eq(alert.read, false)))
       .run();
-    return NextResponse.json({ status: "batch_read" });
+    return NextResponse.json({ marked: body.ids.length });
   }
 
-  if (id) {
-    db.update(alert)
-      .set({ read: true })
-      .where(eq(alert.id, id))
-      .run();
-    return NextResponse.json({ status: "read" });
-  }
-
-  return NextResponse.json({ error: "id, ids, or markAll required" }, { status: 400 });
+  db.update(alert)
+    .set({ read: true })
+    .where(eq(alert.id, body.id))
+    .run();
+  return NextResponse.json({ marked: body.id });
 }
 
 // DELETE /api/notifications - delete a single notification or clear read notifications

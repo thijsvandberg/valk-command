@@ -44,6 +44,7 @@
 
   --color-surface-base: #070b12;
   --color-surface-elevated: #0c1219;
+  --color-surface-elevated-hover: #11171e; /* surface-elevated blended with white/[0.02] row hover */
   --color-surface-floating: #131c28;
 }
 

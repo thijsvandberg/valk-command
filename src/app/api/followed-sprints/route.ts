@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { followedSprint } from "@/db/schema";
 import { eq } from "drizzle-orm";
+
+const followSprintSchema = z.object({
+  sprintName: z.string().min(1).max(200),
+});
 
 // GET /api/followed-sprints - list all followed sprint names
 export async function GET() {
@@ -9,26 +14,28 @@ export async function GET() {
   return NextResponse.json(rows.map((r) => r.sprintName));
 }
 
-// POST /api/followed-sprints - follow a sprint
+// POST /api/followed-sprints - follow a sprint (idempotent)
 export async function POST(request: Request) {
-  const body = await request.json();
-  const sprintName = body.sprintName as string;
-  if (!sprintName) {
-    return NextResponse.json({ error: "sprintName required" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const existing = db
-    .select()
-    .from(followedSprint)
-    .where(eq(followedSprint.sprintName, sprintName))
-    .get();
-
-  if (existing) {
-    return NextResponse.json({ status: "already_followed" });
+  const parsed = followSprintSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
+      { status: 400 },
+    );
   }
 
-  db.insert(followedSprint).values({ sprintName }).run();
-  return NextResponse.json({ status: "followed" });
+  const { sprintName } = parsed.data;
+
+  // Atomic insert: sprintName is primary key, so concurrent inserts are safe
+  db.insert(followedSprint).values({ sprintName }).onConflictDoNothing().run();
+  return NextResponse.json({ sprintName });
 }
 
 // DELETE /api/followed-sprints - unfollow a sprint
@@ -40,5 +47,5 @@ export async function DELETE(request: Request) {
   }
 
   db.delete(followedSprint).where(eq(followedSprint.sprintName, sprintName)).run();
-  return NextResponse.json({ status: "unfollowed" });
+  return NextResponse.json({ sprintName });
 }

@@ -18,6 +18,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
+import { StatusPill } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
@@ -810,28 +811,27 @@ export default function SprintBoard() {
                 {!isAllView && !f.activeView && (
                   <>
                     <ViewHeaderDivider />
-                    <div className="flex items-center gap-1.5 text-label font-medium">
-                      {([
-                        { status: "TO DO", count: todoCount, bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8" },
-                        { status: "IN PROGRESS", count: inProgressCount, bg: "rgba(56, 152, 210, 0.15)", text: "#58b4e6" },
-                        ...(testCount > 0 ? [{ status: "TEST", count: testCount, bg: "rgba(120, 90, 220, 0.15)", text: "#9b7ee8" }] : []),
-                        { status: "DONE", count: doneCount, bg: "rgba(34, 197, 94, 0.15)", text: "#4ade80" },
-                      ] as const).map(({ status, count, bg, text }) => {
+                    <div className="flex items-center gap-1.5">
+                      {(["TO DO", "IN PROGRESS", "TEST", "DONE"] as const).map((status) => {
+                        const count = status === "TO DO" ? todoCount : status === "IN PROGRESS" ? inProgressCount : status === "TEST" ? testCount : doneCount;
+                        if (count === 0 && status === "TEST") return null;
                         const active = f.statusFilter.has(status);
+                        const dimmed = f.statusFilter.size > 0 && !active;
                         return (
-                          <button
+                          <StatusPill
                             key={status}
-                            type="button"
+                            size="md"
+                            colorKey={status}
+                            label={status}
+                            count={count}
+                            active={active}
+                            dimmed={dimmed}
                             onClick={() => {
                               const next = new Set(f.statusFilter);
                               if (active) next.delete(status); else next.add(status);
                               f.setStatusFilter(next);
                             }}
-                            className="inline-flex items-center rounded px-1.5 py-0.5 cursor-pointer transition-opacity duration-150 hover:opacity-80 active:opacity-60"
-                            style={{ backgroundColor: bg, color: text, opacity: f.statusFilter.size > 0 && !active ? 0.4 : 1 }}
-                          >
-                            {status}: {count}
-                          </button>
+                          />
                         );
                       })}
                     </div>

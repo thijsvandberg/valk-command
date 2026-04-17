@@ -107,10 +107,10 @@ export default function TicketDetailPage({
       const abortCtrl = new AbortController();
       const timer = setTimeout(() => abortCtrl.abort(), 10_000);
       try {
-        const data = await jira.syncTickets({ ticketKeys: [key] }, abortCtrl.signal) as { ok?: boolean; count?: number };
+        const data = await jira.syncTickets({ ticketKeys: [key] }, abortCtrl.signal) as { count?: number };
         clearTimeout(timer);
         if (cancelled) return;
-        if (data.ok && (data.count ?? 0) > 0) {
+        if ((data.count ?? 0) > 0) {
           await mutateTicket();
           return;
         }

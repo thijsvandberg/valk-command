@@ -157,7 +157,7 @@ export const tickets = {
   createReview: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<StoredReview>(`/api/tickets/${enc(key)}/reviews`, { method: "POST", body: data, signal }),
   generateReview: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
-    apiFetch<unknown>(`/api/tickets/${enc(key)}/reviews/generate`, { method: "POST", body: data, signal }),
+    apiFetch<{ taskId: string }>(`/api/tickets/${enc(key)}/reviews/generate`, { method: "POST", body: data, signal }),
   patchReview: (key: string, reviewId: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<StoredReview>(`/api/tickets/${enc(key)}/reviews/${enc(reviewId)}`, { method: "PATCH", body: data, signal }),
   deleteReview: (key: string, reviewId: string, signal?: AbortSignal) =>

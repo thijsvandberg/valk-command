@@ -7,7 +7,7 @@ import type { ColumnId } from "@/components/sprint-board/FilterBar";
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { GripVertical, Flag, MessageSquare, Star, Rocket, GitBranch } from "lucide-react";
+import { Flag, MessageSquare, Star, Rocket, GitBranch } from "lucide-react";
 import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -16,38 +16,6 @@ import { prefetchTicketDetail } from "@/lib/prefetch";
 
 const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
 
-// Visual-only drag affordance icon — event listeners are now on the <tr> itself (Phase 4).
-function DragHandle({ showIcon, isDragActive, stickyLeft, disabledTooltip }: {
-  showIcon?: boolean;
-  isDragActive?: boolean;
-  stickyLeft?: number;
-  disabledTooltip?: string;
-}) {
-  const stickyStyle = stickyLeft !== undefined ? { position: "sticky" as const, left: stickyLeft, zIndex: 2 } : undefined;
-  const bgClass = stickyLeft !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : "";
-  if (!showIcon && !disabledTooltip) {
-    return <td className={`w-5 py-1.5 pl-1 pr-0${bgClass}`} style={stickyStyle} />;
-  }
-  if (!showIcon && disabledTooltip) {
-    return (
-      <td
-        className={`w-5 py-1.5 pl-1 pr-0 opacity-0 group-hover/row:opacity-100 transition-opacity duration-100${bgClass}`}
-        style={stickyStyle}
-        title={disabledTooltip}
-      >
-        <GripVertical className="h-3.5 w-3.5 text-white/15 cursor-not-allowed" strokeWidth={1.5} />
-      </td>
-    );
-  }
-  return (
-    <td
-      className={`w-5 py-1.5 pl-1 pr-0 opacity-0 transition-opacity duration-100 ${isDragActive ? "" : "group-hover/row:opacity-100"}${bgClass}`}
-      style={stickyStyle}
-    >
-      <GripVertical className="h-3.5 w-3.5 text-white/25 hover:text-white/50" strokeWidth={1.5} />
-    </td>
-  );
-}
 
 export interface TicketRowBaseProps {
   ticket: Ticket;
@@ -76,8 +44,6 @@ export interface TicketRowBaseProps {
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
   stickyOffsets?: Record<string, number>;
-  // When set, the grip icon renders with cursor:not-allowed + this tooltip (epic grouping case).
-  disabledDragTooltip?: string;
   "data-index"?: number;
 }
 
@@ -109,7 +75,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     dragListeners,
     dragAttributes,
     stickyOffsets,
-    disabledDragTooltip,
     "data-index": dataIndex,
   },
   ref
@@ -165,7 +130,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`overflow-hidden py-1.5 pr-2${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
+            className={`overflow-hidden py-1.5 pr-2${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-[var(--color-surface-elevated-hover)]" : ""}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             <IssueTypeIcon type={ticket.type} />
@@ -177,7 +142,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`overflow-hidden py-1.5 pr-3 font-mono text-xs text-white/50 leading-none${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
+            className={`overflow-hidden py-1.5 pr-3 font-mono text-xs text-white/50 leading-none${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-[var(--color-surface-elevated-hover)]" : ""}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             <span className="flex items-center gap-1.5">
@@ -212,7 +177,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`max-w-0 truncate py-1.5 pr-3 text-white/80${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
+            className={`max-w-0 truncate py-1.5 pr-3 text-white/80${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-[var(--color-surface-elevated-hover)]" : ""}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             {ticket.title}
@@ -224,7 +189,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           <td key={id} className="py-1.5 pr-3 overflow-hidden">
             {epicColor && (
               <span
-                className="inline-block max-w-full truncate whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium"
+                className="inline-flex items-center max-w-full truncate whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium"
                 style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
               >
                 {ticket.epic}
@@ -317,36 +282,36 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "pipeline":
         return (
-          <td key={id} className="overflow-hidden py-1.5 px-2">
-            <div className="flex items-center gap-1.5">
+          <td key={id} className="overflow-hidden py-1 px-2">
+            <div className="flex flex-wrap items-center gap-1">
               {health && health.status !== "gray" && (
                 <span
-                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium ${
+                  className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-label font-medium leading-none tabular-nums ${
                     health.status === "green"
-                      ? "bg-emerald-500/10 text-emerald-400/70"
+                      ? "bg-emerald-500/10 text-emerald-400/60"
                       : health.status === "red"
-                      ? "bg-red-500/10 text-red-400/70"
-                      : "bg-amber-500/10 text-amber-400/70"
+                      ? "bg-red-500/10 text-red-400/60"
+                      : "bg-amber-500/10 text-amber-400/60"
                   }`}
-                  title={`Pipeline health: ${health.recentFails} failures in last ${health.recentTotal} runs`}
+                  title={`Pipeline: ${health.recentFails} failure${health.recentFails !== 1 ? "s" : ""} in last ${health.recentTotal} runs`}
                 >
-                  <GitBranch size={9} strokeWidth={1.5} />
-                  {health.recentFails > 0 && health.recentFails}
+                  <GitBranch size={9} strokeWidth={1.5} className="shrink-0" />
+                  {health.recentFails > 0 && <span>{health.recentFails}</span>}
                 </span>
               )}
               {lastDeploy && (
                 <span
-                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium ${
+                  className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-label font-medium leading-none ${
                     lastDeploy.state === "SUCCESSFUL"
-                      ? "bg-emerald-500/10 text-emerald-400/70"
+                      ? "bg-emerald-500/10 text-emerald-400/60"
                       : lastDeploy.state === "FAILED"
-                      ? "bg-red-500/10 text-red-400/70"
-                      : "bg-white/[0.04] text-white/30"
+                      ? "bg-red-500/10 text-red-400/60"
+                      : "bg-white/[0.04] text-white/25"
                   }`}
-                  title={`Last deployed: ${lastDeploy.environment ?? "unknown"} (${lastDeploy.completedAt ? new Date(lastDeploy.completedAt).toLocaleString("en-GB") : ""})`}
+                  title={`Deploy: ${lastDeploy.environment ?? "unknown"} — ${lastDeploy.state}${lastDeploy.completedAt ? ` (${new Date(lastDeploy.completedAt).toLocaleString("en-GB")})` : ""}`}
                 >
-                  <Rocket size={9} strokeWidth={1.5} />
-                  {lastDeploy.environment?.slice(0, 4)}
+                  <Rocket size={9} strokeWidth={1.5} className="shrink-0" />
+                  <span className="uppercase tracking-wide">{lastDeploy.environment?.slice(0, 3)}</span>
                 </span>
               )}
             </div>
@@ -388,11 +353,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       {...dragListeners}
       {...dragAttributes}
     >
-      <DragHandle showIcon={!!dragListeners} isDragActive={isDragActive} stickyLeft={stickyOffsets?._drag} disabledTooltip={disabledDragTooltip} />
-
       {/* Checkbox — stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
-        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
+        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-[var(--color-surface-elevated-hover)]" : ""}`}
         style={stickyOffsets?._check !== undefined ? { position: "sticky", left: stickyOffsets._check, zIndex: 2 } : undefined}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {

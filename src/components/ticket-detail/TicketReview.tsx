@@ -285,7 +285,41 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
     setAgentReviewing(true);
     setReviewError(null);
     try {
-      await tickets.generateReview(ticketKey, { source: "ticket-detail" });
+      const result = await tickets.generateReview(ticketKey, { source: "ticket-detail" }) as { taskId?: string };
+      const taskId = result?.taskId;
+
+      if (!taskId) {
+        throw new Error("No task ID returned from review generation");
+      }
+
+      // Stream progress via SSE; resolve when the task completes or fails
+      await new Promise<void>((resolve, reject) => {
+        const es = new EventSource(`/api/workspace-tasks/${taskId}/stream`);
+        const timeout = setTimeout(() => {
+          es.close();
+          reject(new Error("Review timed out after 5 minutes"));
+        }, 5 * 60 * 1000);
+
+        es.addEventListener("result", () => {
+          clearTimeout(timeout);
+          es.close();
+          resolve();
+        });
+        es.addEventListener("error", (e) => {
+          clearTimeout(timeout);
+          es.close();
+          const msg = e instanceof MessageEvent
+            ? (JSON.parse(e.data) as { message?: string }).message ?? "Review failed"
+            : "Review failed";
+          reject(new Error(msg));
+        });
+        es.addEventListener("done", () => {
+          clearTimeout(timeout);
+          es.close();
+          resolve();
+        });
+      });
+
       mutateReviews();
       // Revalidate ticket data so sidebar quality score updates
       globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
@@ -294,7 +328,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
       if (err instanceof ApiError) {
         setReviewError(err.body?.error ?? `Review failed (${err.status})`);
       } else {
-        setReviewError("Failed to connect to agent");
+        setReviewError(err instanceof Error ? err.message : "Failed to connect to agent");
       }
     } finally {
       setAgentReviewing(false);

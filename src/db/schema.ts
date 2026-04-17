@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const conversation = sqliteTable("conversation", {
@@ -388,7 +388,7 @@ export const followedTicket = sqliteTable("followed_ticket", {
     .notNull()
     .default(sql`(datetime('now'))`),
 }, (table) => [
-  index("followed_ticket_key_idx").on(table.ticketKey),
+  uniqueIndex("followed_ticket_key_unique_idx").on(table.ticketKey),
 ]);
 
 // Followed sprints: user preference for which sprints to receive UAT deploy notifications about

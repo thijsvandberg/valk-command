@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit, relatedStoryCandidate } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
+
+const patchSessionSchema = z.object({
+  localDraft: z.string().optional(),
+  localTitle: z.string().optional(),
+  targetLocalDraft: z.string().optional(),
+  targetLocalTitle: z.string().optional(),
+  clearSplit: z.boolean().optional(),
+  status: z.enum(["active", "completed", "discarded"]).optional(),
+  acceptDraftId: z.string().optional(),
+});
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -81,24 +92,6 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const { key } = await params;
 
   try {
-    const existing = await db
-      .select()
-      .from(storyWriterSession)
-      .where(
-        and(
-          eq(storyWriterSession.ticketKey, key),
-          eq(storyWriterSession.status, "active"),
-        ),
-      )
-      .get();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "An active story writer session already exists for this ticket" },
-        { status: 409 },
-      );
-    }
-
     const ticketRow = await db
       .select()
       .from(ticket)
@@ -147,15 +140,41 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
     const sessionId = randomUUID();
 
-    await db.insert(storyWriterSession).values({
-      id: sessionId,
-      ticketKey: key,
-      conversationId,
-      status: "active",
-      localDraft: initialDraft,
-      localTitle: initialTitle,
-      baseVersionHash: latestVersion?.contentHash ?? null,
+    // Use a transaction to atomically check for an existing active session and insert.
+    // This prevents two concurrent requests from both passing the existence check.
+    const conflictError = db.transaction((tx) => {
+      const existing = tx
+        .select()
+        .from(storyWriterSession)
+        .where(
+          and(
+            eq(storyWriterSession.ticketKey, key),
+            eq(storyWriterSession.status, "active"),
+          ),
+        )
+        .get();
+
+      if (existing) return "conflict";
+
+      tx.insert(storyWriterSession).values({
+        id: sessionId,
+        ticketKey: key,
+        conversationId,
+        status: "active",
+        localDraft: initialDraft,
+        localTitle: initialTitle,
+        baseVersionHash: latestVersion?.contentHash ?? null,
+      }).run();
+
+      return null;
     });
+
+    if (conflictError === "conflict") {
+      return NextResponse.json(
+        { error: "An active story writer session already exists for this ticket" },
+        { status: 409 },
+      );
+    }
 
     const session = await db
       .select()
@@ -179,12 +198,22 @@ export async function POST(_request: Request, { params }: RouteContext) {
 export async function PATCH(request: Request, { params }: RouteContext) {
   const { key } = await params;
 
-  let body: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  const parsed = patchSessionSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
+      { status: 400 },
+    );
+  }
+
+  const body = parsed.data;
 
   const session = await db
     .select()
@@ -205,32 +234,32 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     updatedAt: new Date().toISOString(),
   };
 
-  if (typeof body.localDraft === "string") {
+  if (body.localDraft !== undefined) {
     updates.localDraft = body.localDraft;
   }
-  if (typeof body.localTitle === "string") {
+  if (body.localTitle !== undefined) {
     updates.localTitle = body.localTitle;
   }
-  if (typeof body.targetLocalDraft === "string") {
+  if (body.targetLocalDraft !== undefined) {
     updates.targetLocalDraft = body.targetLocalDraft;
   }
-  if (typeof body.targetLocalTitle === "string") {
+  if (body.targetLocalTitle !== undefined) {
     updates.targetLocalTitle = body.targetLocalTitle;
   }
   if (body.clearSplit === true) {
     updates.targetTicketKey = null;
     updates.targetLocalDraft = null;
   }
-  if (typeof body.status === "string" && ["active", "completed", "discarded"].includes(body.status as string)) {
+  if (body.status !== undefined) {
     updates.status = body.status;
   }
 
   // Accept a specific AI draft: copy its content to localDraft or targetLocalDraft
-  if (typeof body.acceptDraftId === "string") {
+  if (body.acceptDraftId !== undefined) {
     const draft = await db
       .select()
       .from(storyWriterDraft)
-      .where(eq(storyWriterDraft.id, body.acceptDraftId as string))
+      .where(eq(storyWriterDraft.id, body.acceptDraftId))
       .get();
     if (draft) {
       if (draft.storySlot === "target") {
@@ -303,5 +332,5 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     summary: "Discarded story writer session",
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({});
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -6,6 +7,13 @@ import { eq } from "drizzle-orm";
 const SETTING_KEY = "sprint_board_column_widths";
 
 type ColumnWidths = Record<string, number>;
+
+const columnWidthsBodySchema = z.object({
+  widths: z.record(z.string(), z.number().positive()).refine(
+    (v) => Object.keys(v).length <= 100,
+    { message: "Too many column width entries (max 100)" },
+  ),
+});
 
 export async function GET() {
   try {
@@ -23,22 +31,27 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const body = await request.json();
-    const widths = body.widths as ColumnWidths;
-    if (typeof widths !== "object" || widths === null) {
-      return NextResponse.json({ error: "Invalid widths" }, { status: 400 });
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
+
+    const parsed = columnWidthsBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
+        { status: 400 },
+      );
+    }
+
+    const { widths } = parsed.data;
     const payload = JSON.stringify(widths);
 
-    const existing = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-
-    if (existing) {
-      await db.update(appSetting).set({ value: payload }).where(eq(appSetting.key, SETTING_KEY));
-    } else {
-      await db.insert(appSetting).values({ key: SETTING_KEY, value: payload });
-    }
+    await db.insert(appSetting)
+      .values({ key: SETTING_KEY, value: payload })
+      .onConflictDoUpdate({ target: appSetting.key, set: { value: payload } });
 
     return NextResponse.json({ widths });
   } catch (err) {

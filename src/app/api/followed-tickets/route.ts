@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { followedTicket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+
+const followTicketSchema = z.object({
+  ticketKey: z.string().min(1).max(100),
+});
 
 // GET /api/followed-tickets - list all followed ticket keys
 export async function GET() {
@@ -10,29 +15,32 @@ export async function GET() {
   return NextResponse.json(rows.map((r) => r.ticketKey));
 }
 
-// POST /api/followed-tickets - follow a ticket
+// POST /api/followed-tickets - follow a ticket (idempotent)
 export async function POST(request: Request) {
-  const body = await request.json();
-  const ticketKey = body.ticketKey as string;
-  if (!ticketKey) {
-    return NextResponse.json({ error: "ticketKey required" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const existing = db
-    .select()
-    .from(followedTicket)
-    .where(eq(followedTicket.ticketKey, ticketKey))
-    .get();
-
-  if (existing) {
-    return NextResponse.json({ status: "already_followed" });
+  const parsed = followTicketSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
+      { status: 400 },
+    );
   }
 
+  const { ticketKey } = parsed.data;
+
+  // Atomic insert: unique constraint on ticketKey prevents duplicates
   db.insert(followedTicket)
     .values({ id: randomUUID(), ticketKey })
+    .onConflictDoNothing()
     .run();
 
-  return NextResponse.json({ status: "followed" });
+  return NextResponse.json({ ticketKey });
 }
 
 // DELETE /api/followed-tickets - unfollow a ticket
@@ -47,5 +55,5 @@ export async function DELETE(request: Request) {
     .where(eq(followedTicket.ticketKey, ticketKey))
     .run();
 
-  return NextResponse.json({ status: "unfollowed" });
+  return NextResponse.json({ ticketKey });
 }

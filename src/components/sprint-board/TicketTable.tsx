@@ -7,6 +7,7 @@ import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ArrowUp, ArrowDown, ArrowUpDown, Sheet, ChevronDown, ChevronRight } from "lucide-react";
+import { StatPill, StatusPill } from "@/components/sprint-board/SprintStatPill";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import {
   DndContext,
@@ -266,7 +267,7 @@ export function TicketTable({
 
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
-  const [groupFilter, setGroupFilter] = useState<{ groupKey: string; criterion: "in-progress" | "done" | "unpointed" } | null>(null);
+  const [groupFilter, setGroupFilter] = useState<{ groupKey: string; criterion: "todo" | "in-progress" | "test" | "done" | "unpointed" } | null>(null);
 
   const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
   const activeDragId = externalDnd ? externalActiveDragId ?? null : internalActiveDragId;
@@ -546,20 +547,26 @@ export function TicketTable({
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
 
         const totalPoints = group.tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
-        const inProgressCount = group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS" || t.jiraStatus === "TEST").length;
+        const todoCount = group.tickets.filter((t) => t.jiraStatus === "TO DO").length;
+        const inProgressCount = group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
+        const testCount = group.tickets.filter((t) => t.jiraStatus === "TEST").length;
         const doneCount = group.tickets.filter((t) => t.jiraStatus === "DONE").length;
         const noPointsCount = group.tickets.filter((t) => !t.storyPoints).length;
 
         const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
-        const visibleGroupTickets = activeCriterion === "in-progress"
-          ? group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS" || t.jiraStatus === "TEST")
-          : activeCriterion === "done"
-            ? group.tickets.filter((t) => t.jiraStatus === "DONE")
-            : activeCriterion === "unpointed"
-              ? group.tickets.filter((t) => !t.storyPoints)
-              : group.tickets;
+        const visibleGroupTickets = activeCriterion === "todo"
+          ? group.tickets.filter((t) => t.jiraStatus === "TO DO")
+          : activeCriterion === "in-progress"
+            ? group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS")
+            : activeCriterion === "test"
+              ? group.tickets.filter((t) => t.jiraStatus === "TEST")
+              : activeCriterion === "done"
+                ? group.tickets.filter((t) => t.jiraStatus === "DONE")
+                : activeCriterion === "unpointed"
+                  ? group.tickets.filter((t) => !t.storyPoints)
+                  : group.tickets;
 
-        function toggleGroupFilter(criterion: "in-progress" | "done" | "unpointed") {
+        function toggleGroupFilter(criterion: "todo" | "in-progress" | "test" | "done" | "unpointed") {
           setGroupFilter((prev) =>
             prev?.groupKey === group.key && prev.criterion === criterion
               ? null
@@ -622,48 +629,60 @@ export function TicketTable({
                     : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
                   }
                   <span className="text-xs font-medium text-white/60 truncate">{group.label}</span>
-                  <span className="ml-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums bg-white/[0.06] text-white/30 shrink-0">
+                  <StatPill size="sm" className="ml-1">
                     {group.tickets.length} items
-                  </span>
+                  </StatPill>
                   {totalPoints > 0 && (
-                    <span className="rounded px-1.5 py-0.5 text-caption font-medium tabular-nums bg-white/[0.04] text-white/25 shrink-0">
-                      {totalPoints} pts
-                    </span>
+                    <StatPill size="sm">{totalPoints} pts</StatPill>
                   )}
                   {noPointsCount > 0 && (
-                    <button
-                      type="button"
+                    <StatPill
+                      size="sm"
+                      active={activeCriterion === "unpointed"}
                       onClick={(e) => { e.stopPropagation(); toggleGroupFilter("unpointed"); }}
-                      aria-pressed={activeCriterion === "unpointed"}
-                      className={`rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${activeCriterion === "unpointed" ? "bg-white/[0.10] text-white/50 ring-1 ring-white/20" : "bg-white/[0.04] text-white/20 hover:bg-white/[0.07] hover:text-white/35"}`}
-                      aria-label="Filter: no story points"
                     >
                       {noPointsCount} no pts
-                    </button>
+                    </StatPill>
+                  )}
+                  {todoCount > 0 && (
+                    <StatusPill
+                      size="sm"
+                      colorKey="TO DO"
+                      label="TO DO"
+                      count={todoCount}
+                      active={activeCriterion === "todo"}
+                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("todo"); }}
+                    />
                   )}
                   {inProgressCount > 0 && (
-                    <button
-                      type="button"
+                    <StatusPill
+                      size="sm"
+                      colorKey="IN PROGRESS"
+                      label="IN PROGRESS"
+                      count={inProgressCount}
+                      active={activeCriterion === "in-progress"}
                       onClick={(e) => { e.stopPropagation(); toggleGroupFilter("in-progress"); }}
-                      aria-pressed={activeCriterion === "in-progress"}
-                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${activeCriterion === "in-progress" ? "bg-[rgba(56,152,210,0.18)] text-[#58b4e6]/90 ring-1 ring-[#58b4e6]/30" : "bg-[rgba(56,152,210,0.08)] text-[#58b4e6]/60 hover:bg-[rgba(56,152,210,0.14)] hover:text-[#58b4e6]/80"}`}
-                      aria-label="Filter: in progress"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#58b4e6]/50 shrink-0" />
-                      {inProgressCount}
-                    </button>
+                    />
+                  )}
+                  {testCount > 0 && (
+                    <StatusPill
+                      size="sm"
+                      colorKey="TEST"
+                      label="TEST"
+                      count={testCount}
+                      active={activeCriterion === "test"}
+                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("test"); }}
+                    />
                   )}
                   {doneCount > 0 && (
-                    <button
-                      type="button"
+                    <StatusPill
+                      size="sm"
+                      colorKey="DONE"
+                      label="DONE"
+                      count={doneCount}
+                      active={activeCriterion === "done"}
                       onClick={(e) => { e.stopPropagation(); toggleGroupFilter("done"); }}
-                      aria-pressed={activeCriterion === "done"}
-                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${activeCriterion === "done" ? "bg-[rgba(34,197,94,0.18)] text-[#4ade80]/90 ring-1 ring-[#4ade80]/30" : "bg-[rgba(34,197,94,0.08)] text-[#4ade80]/60 hover:bg-[rgba(34,197,94,0.14)] hover:text-[#4ade80]/80"}`}
-                      aria-label="Filter: done"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80]/50 shrink-0" />
-                      {doneCount}
-                    </button>
+                    />
                   )}
                 </div>
               </td>

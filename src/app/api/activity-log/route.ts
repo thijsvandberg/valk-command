@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { activityLog } from "@/db/schema";
-import { desc, eq, and, lt, gte, notInArray, inArray, sql } from "drizzle-orm";
+import { desc, eq, and, lt, gte, inArray, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { ActivityLogType } from "@/types/ticket";
 import { computeStats } from "./compute-stats";
-
-const STALE_THRESHOLD_MS = 5 * 60 * 1000;
-const RETENTION_DAYS = 7;
-const RETENTION_MAX_ENTRIES = 200;
 
 /**
  * GET /api/activity-log?limit=20&offset=0&unacknowledged=true&type=review,metadata-update&status=failed
@@ -17,8 +13,7 @@ const RETENTION_MAX_ENTRIES = 200;
  * Supports comma-separated type filter via the `type` query param.
  * Supports `status` filter (running|success|failed|cancelled).
  * Supports `offset` for pagination.
- * Also marks running entries older than 5 minutes as failed (stale cleanup).
- * Prunes entries older than 7 days or beyond the 200 most recent.
+ * Cleanup (stale entries, retention pruning) is handled by the scheduler task "cleanup-activity-log".
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -31,30 +26,6 @@ export async function GET(request: Request) {
   const VALID_STATUSES = new Set(["running", "success", "failed", "cancelled"]);
   const statusFilter = searchParams.get("status") ?? "";
   const statusParam = VALID_STATUSES.has(statusFilter) ? statusFilter : null;
-
-  const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
-  const retentionCutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-
-  // Run stale cleanup and date retention in parallel — they touch independent row sets
-  await Promise.all([
-    db.update(activityLog).set({
-      status: "failed",
-      errorDetail: "Sync timed out (no response after 5 minutes)",
-      completedAt: new Date().toISOString(),
-    }).where(and(eq(activityLog.status, "running"), lt(activityLog.startedAt, cutoff))),
-    db.delete(activityLog).where(lt(activityLog.startedAt, retentionCutoff)),
-  ]);
-
-  // Retention cleanup: keep max 200 entries (delete oldest beyond that)
-  const recentIds = await db
-    .select({ id: activityLog.id })
-    .from(activityLog)
-    .orderBy(desc(activityLog.startedAt))
-    .limit(RETENTION_MAX_ENTRIES);
-  const keepSet = recentIds.map((r) => r.id);
-  if (keepSet.length === RETENTION_MAX_ENTRIES) {
-    await db.delete(activityLog).where(notInArray(activityLog.id, keepSet));
-  }
 
   const conditions: SQL[] = [];
   if (onlyUnacked) {

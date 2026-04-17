@@ -101,9 +101,9 @@ describe("POST /api/jira/sync-tickets", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.ok).toBe(true);
     expect(data.count).toBeGreaterThan(0);
     expect(data.live).toBe(false);
+    expect(data).not.toHaveProperty("ok");
   });
 
   it("creates ticket rows in the database", async () => {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -9,6 +10,11 @@ interface ColumnConfig {
   order: string[];
   visible: string[];
 }
+
+const columnConfigBodySchema = z.object({
+  order: z.array(z.string()).max(50).optional(),
+  visible: z.array(z.string()).max(50).optional(),
+});
 
 export async function GET() {
   try {
@@ -30,15 +36,22 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const body = await request.json();
-    const { order, visible } = body as Partial<ColumnConfig>;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-    if (order !== undefined && !Array.isArray(order)) {
-      return NextResponse.json({ error: "Invalid order" }, { status: 400 });
+    const parsed = columnConfigBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
+        { status: 400 },
+      );
     }
-    if (visible !== undefined && !Array.isArray(visible)) {
-      return NextResponse.json({ error: "Invalid visible" }, { status: 400 });
-    }
+
+    const { order, visible } = parsed.data;
 
     const existing = await db.query.appSetting.findFirst({
       where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
@@ -53,11 +66,9 @@ export async function PUT(request: Request) {
 
     const payload = JSON.stringify(current);
 
-    if (existing) {
-      await db.update(appSetting).set({ value: payload }).where(eq(appSetting.key, SETTING_KEY));
-    } else {
-      await db.insert(appSetting).values({ key: SETTING_KEY, value: payload });
-    }
+    await db.insert(appSetting)
+      .values({ key: SETTING_KEY, value: payload })
+      .onConflictDoUpdate({ target: appSetting.key, set: { value: payload } });
 
     return NextResponse.json({ order: current.order, visible: current.visible });
   } catch (err) {

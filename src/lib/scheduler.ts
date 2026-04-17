@@ -12,7 +12,6 @@
 
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
 
@@ -95,27 +94,17 @@ async function getLastRun(taskName: string): Promise<number> {
 async function setLastRun(taskName: string): Promise<void> {
   const key = settingKey(taskName, "last_run");
   const value = new Date().toISOString();
-  const existing = await db.query.appSetting.findFirst({
-    where: (r, { eq: eqFn }) => eqFn(r.key, key),
-  });
-  if (existing) {
-    await db.update(appSetting).set({ value }).where(eq(appSetting.key, key));
-  } else {
-    await db.insert(appSetting).values({ key, value });
-  }
+  await db.insert(appSetting)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: appSetting.key, set: { value } });
 }
 
 async function setLastResult(taskName: string, result: TaskResult): Promise<void> {
   const key = settingKey(taskName, "last_result");
   const value = JSON.stringify(result);
-  const existing = await db.query.appSetting.findFirst({
-    where: (r, { eq: eqFn }) => eqFn(r.key, key),
-  });
-  if (existing) {
-    await db.update(appSetting).set({ value }).where(eq(appSetting.key, key));
-  } else {
-    await db.insert(appSetting).values({ key, value });
-  }
+  await db.insert(appSetting)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: appSetting.key, set: { value } });
 }
 
 // ---------------------------------------------------------------------------
