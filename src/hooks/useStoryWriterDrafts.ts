@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { mutate as globalMutate } from "swr";
 import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
 import { storyWriter as storyWriterApi, tickets as ticketsApi, apiFetch, ApiError } from "@/lib/api-client";
@@ -39,6 +39,16 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
     if (targetSaveTimerRef.current) clearTimeout(targetSaveTimerRef.current);
     if (targetTitleSaveTimerRef.current) clearTimeout(targetTitleSaveTimerRef.current);
+  }, []);
+
+  // Self-cleanup on unmount so callers don't have to call clearTimers() manually.
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
+      if (targetSaveTimerRef.current) clearTimeout(targetSaveTimerRef.current);
+      if (targetTitleSaveTimerRef.current) clearTimeout(targetTitleSaveTimerRef.current);
+    };
   }, []);
 
   const updateLocalDraft = useCallback((content: string) => {

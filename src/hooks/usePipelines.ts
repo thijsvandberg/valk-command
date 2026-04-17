@@ -49,24 +49,27 @@ export function usePipelines(filters?: {
   // Adaptive polling: speed up when pipelines are running
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const swrMutate = swr.mutate;
+  const hasRunning = swr.data?.hasRunning;
+
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    const interval = swr.data?.hasRunning ? ACTIVE_INTERVAL : IDLE_INTERVAL;
+    const interval = hasRunning ? ACTIVE_INTERVAL : IDLE_INTERVAL;
     intervalRef.current = setInterval(() => {
-      swr.mutate();
+      swrMutate();
     }, interval);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [swr.data?.hasRunning, swr.mutate, swr]);
+  }, [hasRunning, swrMutate]);
 
   const refresh = useCallback(() => {
     return pipelinesApi.refresh().then(() => {
-      swr.mutate();
+      swrMutate();
     });
-  }, [swr]);
+  }, [swrMutate]);
 
   return {
     ...swr,
