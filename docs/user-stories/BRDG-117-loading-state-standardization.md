@@ -39,14 +39,30 @@ These pages render only decorative gradients and have no functional content:
 - Create shared Skeleton primitives (SkeletonLine, SkeletonCard, SkeletonTable) for content-aware loading
 - Placeholder pages should show a proper "coming soon" empty state with a description of what will be there
 
+## Implementation Plan
+
+1. **Create shared Skeleton primitives** (`src/components/shared/Skeleton.tsx`): `SkeletonLine` (single pulsing bar), `SkeletonCard` (Card wrapper with SkeletonLines), `SkeletonTable` (header + N pulsing rows). Use Tailwind `animate-pulse` and existing color tokens (`bg-white/[0.06]`). Include unit tests in `Skeleton.test.tsx`.
+
+2. **Add EmptyState "coming soon" content to placeholder pages**: Dashboard (`src/app/(app)/page.tsx`), Refinement, and Test Center each get an `EmptyState` component with icon + title + description of what will be there. Keep the decorative gradient background.
+
+3. **Standardize page-level Suspense fallbacks**: Add `fallback={<LoadingState variant="spinner" />}` to sprint-board's bare `<Suspense>`. Standardize diff-preview/page.tsx's ad-hoc inline fallback with `LoadingState`.
+
+4. **Replace inline spinner in ActivityTable**: Replace the raw `<RefreshCw className="animate-spin" />` in `ActivityTable.tsx` with `<LoadingState variant="spinner" />`.
+
+5. **Migrate PipelineSkeleton to shared Skeleton primitives**: Extract `SyncStatusBanner` to its own file (`SyncStatusBanner.tsx`). Rewrite `PipelineSkeleton` to compose from `SkeletonCard` + `SkeletonTable`. Update imports in `pipelines/page.tsx`.
+
+6. **Final verification**: Confirm all views show loading indication; run lint + typecheck + tests + build.
+
+**Implementation order**: Steps 1 and 2-4 are independent; Step 5 depends on Step 1.
+
 ## Acceptance Criteria
 
-- [ ] Create shared Skeleton components (SkeletonLine, SkeletonCard, SkeletonTable)
-- [ ] Standardize all page-level loading to use Suspense + LoadingState
-- [ ] Replace inline spinner patterns with LoadingState or Skeleton
-- [ ] Add proper empty states to placeholder pages (Dashboard, Refinement, Test Center)
-- [ ] Remove PipelineSkeleton one-off and replace with shared Skeleton
-- [ ] Ensure all views show loading indication during data fetches
+- [x] Create shared Skeleton components (SkeletonLine, SkeletonCard, SkeletonTable)
+- [x] Standardize all page-level loading to use Suspense + LoadingState
+- [x] Replace inline spinner patterns with LoadingState or Skeleton
+- [x] Add proper empty states to placeholder pages (Dashboard, Refinement, Test Center)
+- [x] Remove PipelineSkeleton one-off and replace with shared Skeleton
+- [x] Ensure all views show loading indication during data fetches
 
 ## Impact
 
