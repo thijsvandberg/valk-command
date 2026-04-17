@@ -32,7 +32,7 @@ export function HealthScoreBadge({ healthScore }: { healthScore: HealthScore }) 
         <span className={`text-sm font-bold tabular-nums font-[var(--font-display)] tracking-tight ${bandColor.text}`}>
           {score}
         </span>
-        <span className="text-[10px] text-white/20 font-[var(--font-body)]">/100</span>
+        <span className="text-caption text-white/20 font-[var(--font-body)]">/100</span>
         <TrendIcon className={`h-3 w-3 ${trendColor}`} strokeWidth={2} />
       </div>
     </Tooltip>
@@ -53,7 +53,7 @@ function DeltaChip({
   const diff = current - previous;
   if (diff === 0) {
     return (
-      <span className="flex items-center gap-0.5 text-[10px] text-white/20 font-[var(--font-body)]">
+      <span className="flex items-center gap-0.5 text-caption text-white/20 font-[var(--font-body)]">
         <Minus className="h-2.5 w-2.5" strokeWidth={2.5} />
         <span>same</span>
       </span>
@@ -64,7 +64,7 @@ function DeltaChip({
   const color = isGood ? "text-green-400/70" : "text-red-400/70";
   const sign = diff > 0 ? "+" : "";
   return (
-    <span className={`flex items-center gap-0.5 text-[10px] font-[var(--font-body)] ${color}`}>
+    <span className={`flex items-center gap-0.5 text-caption font-[var(--font-body)] ${color}`}>
       <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
       <span>{sign}{format(diff)}</span>
     </span>
@@ -130,7 +130,7 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
           key={m.label}
           className="flex flex-col gap-1 rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
         >
-          <span className="text-[10px] uppercase tracking-widest text-white/20 font-semibold font-[var(--font-body)]">
+          <span className="text-caption uppercase tracking-widest text-white/20 font-semibold font-[var(--font-body)]">
             {m.label}
           </span>
           <span className="text-xl font-bold tabular-nums font-[var(--font-display)] tracking-tight text-white/85">

@@ -26,7 +26,7 @@ export function UpcomingSection({ sprintName, tickets }: UpcomingSectionProps) {
         <button
           type="button"
           onClick={() => setShowKeys((v) => !v)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-label text-white/25 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           <ChevronDown
             size={12}

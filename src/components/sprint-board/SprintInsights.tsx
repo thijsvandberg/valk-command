@@ -71,7 +71,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-white/30" strokeWidth={1.5} />
           <span className="text-xs font-semibold text-white/60">Sprint Insights</span>
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/[0.06] px-1 text-[10px] tabular-nums text-white/30">
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/[0.06] px-1 text-caption tabular-nums text-white/30">
             {insights.totalTickets}
           </span>
         </div>
@@ -87,7 +87,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {/* Stale stories */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
                 Stale Stories
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -97,13 +97,13 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 >
                   {insights.staleStories}
                 </span>
-                <span className="text-[10px] text-white/20">outdated scores</span>
+                <span className="text-caption text-white/20">outdated scores</span>
               </div>
             </Card>
 
             {/* Unreviewed */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
                 Unreviewed
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -113,13 +113,13 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 >
                   {insights.unreviewedTickets}
                 </span>
-                <span className="text-[10px] text-white/20">no score</span>
+                <span className="text-caption text-white/20">no score</span>
               </div>
             </Card>
 
             {/* Blocked */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
                 Blocked
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -129,13 +129,13 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 >
                   {insights.blockedItems}
                 </span>
-                <span className="text-[10px] text-white/20">flagged</span>
+                <span className="text-caption text-white/20">flagged</span>
               </div>
             </Card>
 
             {/* Average quality */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
                 Avg Quality
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -147,7 +147,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                     >
                       {insights.avgQualityScore}
                     </span>
-                    <span className="text-[10px] text-white/20">/100</span>
+                    <span className="text-caption text-white/20">/100</span>
                   </>
                 ) : (
                   <span className="text-sm text-white/15">--</span>

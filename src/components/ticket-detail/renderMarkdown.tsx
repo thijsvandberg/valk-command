@@ -251,7 +251,7 @@ function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode 
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
         </div>
         {lang && (
-          <span className="ml-1 font-mono text-[10px] font-medium uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.28)" }}>{lang}</span>
+          <span className="ml-1 font-mono text-caption font-medium uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.28)" }}>{lang}</span>
         )}
       </div>
       {/* Code table */}
@@ -266,7 +266,7 @@ function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode 
             {lines.map((codeLine, li) => (
               <tr key={li} className="group">
                 <td
-                  className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-[11px] leading-[1.6rem]"
+                  className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-label leading-[1.6rem]"
                   style={{ color: "rgba(255,255,255,0.2)", borderColor: "rgba(255,255,255,0.05)", whiteSpace: "nowrap" }}
                 >
                   {li + 1}
@@ -434,7 +434,7 @@ export function renderMarkdown(text: string): ReactNode[] {
             >
               <div className="mb-1 flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">{style.label}</span>
+                <span className="text-label font-semibold uppercase tracking-wider text-white/40">{style.label}</span>
               </div>
               <div>{inner}</div>
             </div>
@@ -657,7 +657,7 @@ export function renderMarkdown(text: string): ReactNode[] {
             style={{ maxHeight: "600px", objectFit: "contain" }}
           />
           {standaloneImg[1] && (
-            <figcaption className="mt-1.5 text-[11px] text-white/25">{standaloneImg[1]}</figcaption>
+            <figcaption className="mt-1.5 text-label text-white/25">{standaloneImg[1]}</figcaption>
           )}
         </figure>,
       );

@@ -330,14 +330,14 @@ export function StoryWriterChat({
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-red-500/[0.06] border border-red-500/10">
                     <AlertCircle size={11} className="shrink-0 text-red-400/60" strokeWidth={1.5} />
-                    <span className="text-[10px] text-red-300/60">Message could not be sent.</span>
+                    <span className="text-caption text-red-300/60">Message could not be sent.</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       icon={<RotateCcw size={9} strokeWidth={2} />}
                       onClick={() => onRetry?.(msg.id)}
                       disabled={isBusy}
-                      className="text-[10px] text-red-300/70 hover:text-red-200/90 cursor-pointer"
+                      className="text-caption text-red-300/70 hover:text-red-200/90 cursor-pointer"
                     >
                       Tap to retry
                     </Button>
@@ -348,13 +348,13 @@ export function StoryWriterChat({
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-1.5 px-2 py-1">
                     <AlertCircle size={10} className="shrink-0 text-amber-500/40" strokeWidth={1.5} />
-                    <span className="text-[10px] text-white/30">Not sent</span>
+                    <span className="text-caption text-white/30">Not sent</span>
                   </div>
                 </div>
               )}
               {idx === lastAssistantIdx && lastResponseDurationMs != null && (
                 <div className="mt-1 pl-1">
-                  <span className="text-[10px] text-white/25 select-none">
+                  <span className="text-caption text-white/25 select-none">
                     ✻ Responded in {formatDuration(lastResponseDurationMs)}
                   </span>
                 </div>
@@ -370,13 +370,13 @@ export function StoryWriterChat({
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-2 px-2 py-1">
                     <AlertCircle size={11} className="shrink-0 text-amber-500/50" strokeWidth={1.5} />
-                    <span className="text-[10px] text-white/35">No response received</span>
+                    <span className="text-caption text-white/35">No response received</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       icon={<RotateCcw size={9} strokeWidth={2} />}
                       onClick={() => onSend(msg.content)}
-                      className="text-[10px] text-white/45 hover:text-white/70"
+                      className="text-caption text-white/45 hover:text-white/70"
                     >
                       Retry
                     </Button>
@@ -416,7 +416,7 @@ export function StoryWriterChat({
           <button
             type="button"
             onClick={onClearFailed}
-            className="text-[10px] text-white/35 hover:text-white/55 cursor-pointer"
+            className="text-caption text-white/35 hover:text-white/55 cursor-pointer"
           >
             Clear failed messages
           </button>
@@ -425,7 +425,7 @@ export function StoryWriterChat({
 
       <div className="shrink-0 border-t border-white/[0.06]">
         <div className="px-3 pt-2.5 pb-1.5">
-          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.06em] text-white/35">
+          <p className="mb-1.5 text-caption font-medium uppercase tracking-[0.06em] text-white/35">
             Quick prompts
           </p>
           <div className="flex flex-wrap items-center gap-1">
@@ -439,7 +439,7 @@ export function StoryWriterChat({
                     fillInput(s.text);
                   }}
                   disabled={isBusy}
-                  className="px-2.5 py-1 text-[11px] font-medium text-white/50 cursor-pointer hover:text-white/80 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 text-label font-medium text-white/50 cursor-pointer hover:text-white/80 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {s.label}
                 </button>
@@ -500,7 +500,7 @@ export function StoryWriterChat({
                   disabled={isBusy}
                 />
                 {usage && (usage.inputTokens > 0 || usage.outputTokens > 0) && (
-                  <span className="text-[10px] text-white/40 tabular-nums">
+                  <span className="text-caption text-white/40 tabular-nums">
                     {(usage.inputTokens / 1000).toFixed(1)}k&nbsp;in&nbsp;·&nbsp;{(usage.outputTokens / 1000).toFixed(1)}k&nbsp;out
                     {usage.cost > 0 && <>&nbsp;·&nbsp;${usage.cost.toFixed(4)}</>}
                   </span>
@@ -516,7 +516,7 @@ export function StoryWriterChat({
                     onModelChange(MODEL_OPTIONS[next].value);
                   }}
                   disabled={isBusy}
-                  className="border-white/[0.10] bg-white/[0.04] font-mono text-[10px] tracking-[0.04em] text-white/55 hover:text-white/75 hover:border-white/[0.15] hover:bg-white/[0.07]"
+                  className="border-white/[0.10] bg-white/[0.04] font-mono text-caption tracking-[0.04em] text-white/55 hover:text-white/75 hover:border-white/[0.15] hover:bg-white/[0.07]"
                   title="Switch model"
                 >
                   {MODEL_OPTIONS.find((o) => o.value === model)?.label ?? "Sonnet"}
@@ -528,7 +528,7 @@ export function StoryWriterChat({
                   onClick={() => onCodebaseResearchChange(!codebaseResearch)}
                   disabled={isBusy}
                   title={codebaseResearch ? "Codebase research on" : "Codebase research off"}
-                  className={`text-[10px] ${
+                  className={`text-caption ${
                     codebaseResearch
                       ? ""
                       : "border-white/[0.10] bg-white/[0.04] text-white/40 hover:text-white/65 hover:border-white/[0.15] hover:bg-white/[0.07]"

@@ -118,7 +118,7 @@ export default function IntegrationsPage() {
 
       <p className="mb-6 text-xs leading-relaxed text-white/30">
         Credentials are configured via environment variables in{" "}
-        <code className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[11px] text-white/50">.env.local</code>.
+        <code className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-label text-white/50">.env.local</code>.
         Use the test buttons to verify connectivity.
       </p>
 
@@ -146,7 +146,7 @@ export default function IntegrationsPage() {
       </div>
 
       <div className="mt-6 rounded-lg border border-white/[0.05] bg-white/[0.01] px-4 py-3">
-        <p className="text-[11px] leading-relaxed text-white/25">
+        <p className="text-label leading-relaxed text-white/25">
           To update credentials, edit{" "}
           <code className="font-mono text-white/40">.env.local</code> and restart the dev server.
           All tokens are server-side only and are never exposed to the browser.

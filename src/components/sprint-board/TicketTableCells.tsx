@@ -60,7 +60,7 @@ export function EditStateDot({ state }: { state: EditState }) {
           {/* Accent top bar */}
           <span className="h-[2px] w-full shrink-0" style={{ backgroundColor: cfg.accent, opacity: 0.6 }} />
           <span className="flex flex-col gap-1 px-3 py-2.5">
-            <span className="text-[11px] font-semibold tracking-wide text-white/90">{cfg.label}</span>
+            <span className="text-label font-semibold tracking-wide text-white/90">{cfg.label}</span>
             <span className="text-[10.5px] leading-relaxed text-white/40">{cfg.description}</span>
           </span>
         </span>

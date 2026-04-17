@@ -532,13 +532,13 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               else setJiraQuery(e.target.value);
             }}
             placeholder={mode === "local" ? "Search tickets..." : "Search Jira..."}
-            className="flex-1 bg-transparent text-[15px] text-white/90 placeholder-white/25 focus:outline-none"
+            className="flex-1 bg-transparent text-heading-sm text-white/90 placeholder-white/25 focus:outline-none"
           />
           <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
             <button
               type="button"
               onClick={() => { setMode("local"); setActiveIdx(-1); }}
-              className="rounded-full px-3 py-1 text-[12px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+              className="rounded-full px-3 py-1 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
               style={{
                 backgroundColor: mode === "local" ? "var(--color-brand-500)" : "transparent",
                 color: mode === "local" ? "#fff" : "rgba(255,255,255,0.4)",
@@ -550,7 +550,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             <button
               type="button"
               onClick={() => { setMode("jira"); setActiveIdx(-1); }}
-              className="rounded-full px-3 py-1 text-[12px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+              className="rounded-full px-3 py-1 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
               style={{
                 backgroundColor: mode === "jira" ? "var(--color-brand-500)" : "transparent",
                 color: mode === "jira" ? "#fff" : "rgba(255,255,255,0.4)",
@@ -638,12 +638,12 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             style={{ backgroundColor: "rgba(74, 170, 96, 0.07)" }}
           >
             <span
-              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold"
+              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-label font-semibold"
               style={{ backgroundColor: "rgba(74, 170, 96, 0.18)", color: "var(--color-brand-400)" }}
             >
               {detectedKey}
             </span>
-            <span className="text-[11px] text-white/40">
+            <span className="text-label text-white/40">
               {fetchingKey ? "Downloading from Jira..." : "Press Enter to open directly"}
             </span>
           </button>
@@ -829,7 +829,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             {!showLocalSkeleton && showSavedSearches && (
               <div className="py-2">
                 <div className="flex items-center px-5 pb-1 pt-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Saved searches</span>
+                  <span className="text-caption font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Saved searches</span>
                 </div>
                 {savedSearches.map((s) => (
                   <div
@@ -849,10 +849,10 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                       className="flex flex-1 items-center gap-3 cursor-pointer focus-visible:outline-none min-w-0"
                     >
                       <Bookmark className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-brand-400)", opacity: 0.7 }} strokeWidth={1.5} />
-                      <span className="text-[13px] truncate" style={{ color: "rgba(255,255,255,0.65)" }}>{s.label}</span>
+                      <span className="text-body truncate" style={{ color: "rgba(255,255,255,0.65)" }}>{s.label}</span>
                       {hasActiveFilters(s.filters) && (
                         <span
-                          className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                          className="shrink-0 rounded-full px-1.5 py-0.5 text-caption font-medium"
                           style={{ backgroundColor: "rgba(74, 170, 96, 0.1)", color: "var(--color-brand-400)" }}
                         >
                           filtered
@@ -880,11 +880,11 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             {!showLocalSkeleton && showHistory && (
               <div className="py-2">
                 <div className="flex items-center justify-between px-5 pb-1 pt-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Recent searches</span>
+                  <span className="text-caption font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Recent searches</span>
                   <button
                     type="button"
                     onClick={clearHistory}
-                    className="text-[10px] cursor-pointer"
+                    className="text-caption cursor-pointer"
                     style={{ color: "rgba(255,255,255,0.25)", transition: "color 100ms" }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
                     onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
@@ -903,7 +903,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
                   >
                     <Clock className="h-3.5 w-3.5 shrink-0 text-white/20" strokeWidth={1.5} />
-                    <span className="text-[13px]" style={{ color: "rgba(255,255,255,0.55)" }}>{q}</span>
+                    <span className="text-body" style={{ color: "rgba(255,255,255,0.55)" }}>{q}</span>
                   </button>
                 ))}
               </div>
@@ -946,7 +946,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           )}
         </div>
 
-        <div className="flex items-center gap-4 border-t border-white/[0.06] px-6 py-3 text-[10px] text-white/20">
+        <div className="flex items-center gap-4 border-t border-white/[0.06] px-6 py-3 text-caption text-white/20">
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u2191\u2193"}</kbd> navigate</span>
           <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u21b5"}</kbd> open</span>
           {mode === "local" && previewEnabled && activeIdx >= 0 && visibleRows[activeIdx]?.group === "tickets" && (
@@ -985,7 +985,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     onChange={(e) => setSaveLabel(e.target.value)}
                     placeholder="Name this search..."
                     maxLength={200}
-                    className="bg-transparent text-[12px] text-white/80 placeholder-white/20 focus:outline-none"
+                    className="bg-transparent text-body-sm text-white/80 placeholder-white/20 focus:outline-none"
                     style={{ width: 160 }}
                   />
                   <button

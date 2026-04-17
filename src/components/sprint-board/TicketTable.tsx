@@ -237,10 +237,9 @@ export function TicketTable({
   const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Column width lookup. Title is always the flex filler (no explicit width).
-  // All other cells clip overflow so the table fits by design.
+  // Column width lookup. Title is the flex filler by default but can be pinned by the user.
   const colW = useCallback((id: string): number | undefined => {
-    if (id === "title") return undefined;
+    if (id === "title") return columnWidths?.["title"] ?? undefined;
     return columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
   }, [columnWidths]);
 
@@ -267,6 +266,8 @@ export function TicketTable({
   const totalColSpan = useMemo(() => 2 + effectiveOrder.filter((id) => col(id)).length, [effectiveOrder, col]);
 
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
+
+  const [groupFilter, setGroupFilter] = useState<{ groupKey: string; criterion: "in-progress" | "done" | "unpointed" } | null>(null);
 
   const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
   const activeDragId = externalDnd ? externalActiveDragId ?? null : internalActiveDragId;
@@ -387,14 +388,15 @@ export function TicketTable({
     const label = HEADER_LABELS[id];
     const isSortable = SORTABLE_COLUMNS.has(id);
     const isCenter = CENTER_COLUMNS.has(id);
-    // Title is always the flex filler column: no explicit width, it takes remaining space.
-    const widthStyle = id === "title" ? undefined : { width: colW(id) };
+    // Title is the flex filler when no width is pinned; explicit width when user has resized it.
+    const titleW = colW("title");
+    const widthStyle = id === "title" ? (titleW ? { width: titleW } : undefined) : { width: colW(id) };
     const stickyLeft = stickyOffsets[id];
     const isStickyCol = stickyLeft !== undefined;
     const fullStyle = isStickyCol
       ? { ...widthStyle, position: "sticky" as const, left: stickyLeft, zIndex: 12 }
       : widthStyle;
-    const bgClass = isStickyCol ? " bg-[var(--color-surface-base)]" : "";
+    const bgClass = isStickyCol ? " bg-[var(--color-surface-elevated)]" : "";
 
     if (!label) {
       return <th key={id} className={`overflow-hidden py-2 pr-2${bgClass}`} style={fullStyle} />;
@@ -413,10 +415,10 @@ export function TicketTable({
   }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh, stickyOffsets]);
 
   const theadContent = (
-    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
+    <thead className="sticky top-0 z-10 bg-[var(--color-surface-elevated)]">
       <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
-        <th className="w-5 py-2 pl-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._drag, zIndex: 12 }} />
-        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
+        <th className="w-5 py-2 pl-1 bg-[var(--color-surface-elevated)]" style={{ position: "sticky", left: stickyOffsets._drag, zIndex: 12 }} />
+        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-elevated)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
           <div
             className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
               someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
@@ -548,13 +550,32 @@ export function TicketTable({
       {theadContent}
       {groups.map((group, groupIdx) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
-        const groupTicketIds = group.tickets.map((t) => t.key);
 
         const totalPoints = group.tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
         const inProgressCount = group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS" || t.jiraStatus === "TEST").length;
         const doneCount = group.tickets.filter((t) => t.jiraStatus === "DONE").length;
+        const noPointsCount = group.tickets.filter((t) => !t.storyPoints).length;
 
-        const ticketRows = !isCollapsed && group.tickets.map((ticket) => {
+        const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
+        const visibleGroupTickets = activeCriterion === "in-progress"
+          ? group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS" || t.jiraStatus === "TEST")
+          : activeCriterion === "done"
+            ? group.tickets.filter((t) => t.jiraStatus === "DONE")
+            : activeCriterion === "unpointed"
+              ? group.tickets.filter((t) => !t.storyPoints)
+              : group.tickets;
+
+        function toggleGroupFilter(criterion: "in-progress" | "done" | "unpointed") {
+          setGroupFilter((prev) =>
+            prev?.groupKey === group.key && prev.criterion === criterion
+              ? null
+              : { groupKey: group.key, criterion },
+          );
+        }
+
+        const groupTicketIds = visibleGroupTickets.map((t) => t.key);
+
+        const ticketRows = !isCollapsed && visibleGroupTickets.map((ticket) => {
           const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
           let insertLine: "above" | "below" | undefined;
           if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
@@ -610,22 +631,42 @@ export function TicketTable({
                     : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
                   }
                   <span className="text-xs font-medium text-white/60 truncate">{group.label}</span>
-                  <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-white/[0.06] text-white/30 shrink-0">
-                    {group.tickets.length}
+                  <span className="ml-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums bg-white/[0.06] text-white/30 shrink-0">
+                    {group.tickets.length} items
                   </span>
                   {totalPoints > 0 && (
-                    <span className="rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-white/[0.04] text-white/25 shrink-0">
+                    <span className="rounded px-1.5 py-0.5 text-caption font-medium tabular-nums bg-white/[0.04] text-white/25 shrink-0">
                       {totalPoints} pts
                     </span>
                   )}
+                  {noPointsCount > 0 && (
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("unpointed"); }}
+                      className={`rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer ${activeCriterion === "unpointed" ? "bg-white/[0.10] text-white/50 ring-1 ring-white/20" : "bg-white/[0.04] text-white/20 hover:bg-white/[0.07] hover:text-white/35"}`}
+                      title="Filter: unpointed"
+                    >
+                      {noPointsCount} unpointed
+                    </span>
+                  )}
                   {inProgressCount > 0 && (
-                    <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-[rgba(56,152,210,0.08)] text-[#58b4e6]/60 shrink-0">
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("in-progress"); }}
+                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer ${activeCriterion === "in-progress" ? "bg-[rgba(56,152,210,0.18)] text-[#58b4e6]/90 ring-1 ring-[#58b4e6]/30" : "bg-[rgba(56,152,210,0.08)] text-[#58b4e6]/60 hover:bg-[rgba(56,152,210,0.14)] hover:text-[#58b4e6]/80"}`}
+                      title="Filter: in progress"
+                    >
                       <span className="h-1.5 w-1.5 rounded-full bg-[#58b4e6]/50 shrink-0" />
                       {inProgressCount}
                     </span>
                   )}
                   {doneCount > 0 && (
-                    <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums bg-[rgba(34,197,94,0.08)] text-[#4ade80]/60 shrink-0">
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("done"); }}
+                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer ${activeCriterion === "done" ? "bg-[rgba(34,197,94,0.18)] text-[#4ade80]/90 ring-1 ring-[#4ade80]/30" : "bg-[rgba(34,197,94,0.08)] text-[#4ade80]/60 hover:bg-[rgba(34,197,94,0.14)] hover:text-[#4ade80]/80"}`}
+                      title="Filter: done"
+                    >
                       <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80]/50 shrink-0" />
                       {doneCount}
                     </span>

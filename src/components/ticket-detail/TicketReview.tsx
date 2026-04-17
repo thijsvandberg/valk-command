@@ -97,7 +97,7 @@ function VersionFreshnessLabel({
 
   if (isCurrent) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-[#4aaa60]">
+      <span className="inline-flex items-center gap-1 text-caption text-[#4aaa60]">
         <CheckCircle2 size={10} strokeWidth={1.5} />
         Based on v{review.storyVersionNumber} (current)
       </span>
@@ -105,7 +105,7 @@ function VersionFreshnessLabel({
   }
 
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-[#ea8744]">
+    <span className="inline-flex items-center gap-1 text-caption text-[#ea8744]">
       <AlertTriangle size={10} strokeWidth={1.5} />
       Based on v{review.storyVersionNumber} (outdated)
     </span>
@@ -139,7 +139,7 @@ function ReviewDetail({
           </span>
           <div>
             <span
-              className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
+              className="inline-block rounded-full px-2 py-0.5 text-caption font-medium"
               style={{ backgroundColor: `${verdict.color}15`, color: verdict.color }}
             >
               {verdict.text}
@@ -148,7 +148,7 @@ function ReviewDetail({
         </div>
         <div className="text-right">
           <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
-          <div className="mt-0.5 text-[10px] text-white/20">
+          <div className="mt-0.5 text-caption text-white/20">
             {new Date(review.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           </div>
         </div>
@@ -171,7 +171,7 @@ function ReviewDetail({
       {/* Issues / Suggestions */}
       {review.suggestions.length > 0 && (
         <div>
-          <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-white/25">
+          <p className="mb-3 text-label font-medium uppercase tracking-wider text-white/25">
             Issues ({review.suggestions.length})
           </p>
           <div className="space-y-3">
@@ -182,13 +182,13 @@ function ReviewDetail({
                   {/* Issue header: criterion, score, location */}
                   <div className="flex items-center gap-2 mb-2">
                     {parsed.criterion && (
-                      <span className="text-[11px] font-medium uppercase tracking-wider text-white/25">{parsed.criterion}</span>
+                      <span className="text-label font-medium uppercase tracking-wider text-white/25">{parsed.criterion}</span>
                     )}
                     {parsed.score && (
-                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-white/30">{parsed.score}</span>
+                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-caption tabular-nums text-white/30">{parsed.score}</span>
                     )}
                     {parsed.location && (
-                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/30">{parsed.location}</span>
+                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-caption text-white/30">{parsed.location}</span>
                     )}
                   </div>
 

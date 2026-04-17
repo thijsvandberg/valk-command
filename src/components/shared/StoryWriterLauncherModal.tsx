@@ -127,7 +127,7 @@ function SprintSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? setOpen(false) : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-[13px] text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/50"
+        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/50"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
         <span className="flex-1 min-w-0 truncate text-white/75">
@@ -158,7 +158,7 @@ function SprintSelectDropdown({
               : sections.map((sec, si) => (
                 <div key={sec.key}>
                   {sec.label && (
-                    <p className={`px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/20 ${si > 0 ? "mt-1 border-t border-white/[0.04]" : ""}`}>
+                    <p className={`px-3 pt-2 pb-0.5 text-caption font-semibold uppercase tracking-widest text-white/20 ${si > 0 ? "mt-1 border-t border-white/[0.04]" : ""}`}>
                       {sec.label}
                     </p>
                   )}
@@ -183,7 +183,7 @@ function SprintSelectDropdown({
                         >
                           {isSel && <Check size={8} strokeWidth={2.5} className="text-white" />}
                         </span>
-                        <span className="flex-1 min-w-0 truncate text-[13px] text-white/70">{opt.label}</span>
+                        <span className="flex-1 min-w-0 truncate text-body text-white/70">{opt.label}</span>
                       </button>
                     );
                   })}
@@ -249,13 +249,13 @@ function SessionSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? closePanel() : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-[13px] text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/50"
+        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/50"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
         <span className="flex-1 min-w-0">
           {selected ? (
             <span className="block truncate text-white/75">{selected.label}
-              {selected.sublabel && <span className="ml-2 text-[11px] text-white/35">{selected.sublabel}</span>}
+              {selected.sublabel && <span className="ml-2 text-label text-white/35">{selected.sublabel}</span>}
             </span>
           ) : (
             <span className="text-white/25">{placeholder}</span>
@@ -292,7 +292,7 @@ function SessionSelectDropdown({
                       {isSel && <Check size={8} strokeWidth={2.5} className="text-white" />}
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block font-mono text-[11px] font-medium text-[var(--color-brand-400)]/80">{opt.label}</span>
+                      <span className="block font-mono text-label font-medium text-[var(--color-brand-400)]/80">{opt.label}</span>
                       {opt.sublabel && <span className="block truncate text-xs text-white/50 mt-0.5">{opt.sublabel}</span>}
                     </span>
                   </button>
@@ -495,8 +495,8 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               <NotebookPen size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-white/85 leading-none">Story writer</p>
-              <p className="text-[11px] text-white/30 mt-0.5">Create, resume, or open a story</p>
+              <p className="text-body font-semibold text-white/85 leading-none">Story writer</p>
+              <p className="text-label text-white/30 mt-0.5">Create, resume, or open a story</p>
             </div>
           </div>
           <Button
@@ -514,7 +514,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {(["new","session","existing"] as LauncherMode[]).map((m) => (
             <div key={m} className="relative flex-1">
               <button type="button" onClick={() => setMode(m)}
-                className={`flex w-full items-center justify-center gap-1.5 rounded-[7px] py-[7px] text-[12px] font-medium cursor-pointer transition-colors duration-150 ${
+                className={`flex w-full items-center justify-center gap-1.5 rounded-[7px] py-[7px] text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
                   mode === m
                     ? "bg-white/[0.07] text-white/85 shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
                     : "text-white/35 hover:text-white/55"
@@ -526,7 +526,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                 {m === "new" ? "New story" : m === "session" ? "Open session" : "Existing"}
               </button>
               {m === "session" && sessions.length > 0 && (
-                <span className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-[9px] font-bold text-white leading-none z-10">
+                <span className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-caption font-bold text-white leading-none z-10">
                   {sessions.length > 9 ? "9+" : sessions.length}
                 </span>
               )}
@@ -541,7 +541,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {mode === "new" && (
             <div className="space-y-3.5">
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-white/35 uppercase tracking-wide">Title</label>
+                <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Title</label>
                 <TextInput
                   autoFocus
                   value={newTitle}
@@ -552,7 +552,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               </div>
 
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-white/35 uppercase tracking-wide">Issue type</label>
+                <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Issue type</label>
                 <div className="flex gap-1">
                   {ISSUE_TYPES.map(({ value, label }) => {
                     const active = issueType === value;
@@ -566,7 +566,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                         }}
                       >
                         <IssueTypeIcon type={value} size={12} />
-                        <span className="text-[11px] font-medium" style={{ color: active ? color : "rgba(255,255,255,0.35)" }}>
+                        <span className="text-label font-medium" style={{ color: active ? color : "rgba(255,255,255,0.35)" }}>
                           {label}
                         </span>
                       </button>
@@ -576,11 +576,11 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               </div>
 
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-white/35 uppercase tracking-wide">Sprint</label>
+                <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Sprint</label>
                 <SprintSelectDropdown value={selectedSprintId} options={sprintOptions} onChange={setSelectedSprintId} />
               </div>
 
-              <p className="text-[11px] text-white/25">Creates in Jira and opens in story writer.</p>
+              <p className="text-label text-white/25">Creates in Jira and opens in story writer.</p>
             </div>
           )}
 
@@ -596,7 +596,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                 <div className="rounded-lg border border-dashed border-white/[0.07] py-8 text-center">
                   <History size={18} strokeWidth={1} className="mx-auto mb-2 text-white/15" />
                   <p className="text-xs text-white/25">No open sessions</p>
-                  <p className="mt-1 text-[11px] text-white/15">Start a new story to begin</p>
+                  <p className="mt-1 text-label text-white/15">Start a new story to begin</p>
                 </div>
               ) : sessions.length <= 3 ? (
                 <div className="space-y-2">
@@ -624,7 +624,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                       >
                         <div className="min-w-0 flex-1">
                           {/* Breadcrumb: sprint / epic / key */}
-                          <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-white/40 mb-1">
+                          <div className="flex items-center gap-1.5 flex-wrap text-label text-white/40 mb-1">
                             {sprintName && (
                               <>
                                 <span className="flex items-center gap-1">
@@ -651,19 +651,19 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                               <>
                                 <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
                                 <span className="font-mono font-medium text-white/55">{s.targetTicketKey}</span>
-                                <span className="rounded px-1 py-px text-[9px] font-medium bg-violet-500/10 text-violet-400/80">Split</span>
+                                <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>
                             )}
                           </div>
-                          <p className="text-[13px] text-white/55 leading-snug truncate">{s.title}</p>
+                          <p className="text-body text-white/55 leading-snug truncate">{s.title}</p>
                           {s.targetTicketKey && (
-                            <p className="text-[12px] text-white/30 leading-snug truncate mt-0.5">
+                            <p className="text-body-sm text-white/30 leading-snug truncate mt-0.5">
                               {s.targetTitle ?? s.targetTicketKey}
                             </p>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <StatusBadge status={s.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-[10px] tracking-wide" />
+                          <StatusBadge status={s.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-caption tracking-wide" />
                           <Button
                             variant="destructive"
                             size="sm"
@@ -680,7 +680,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               ) : (
                 <div className="space-y-2.5">
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-white/35 uppercase tracking-wide">Active session</label>
+                    <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Active session</label>
                     <SessionSelectDropdown value={selectedSessionKey} options={sessionOptions} onChange={setSelectedSessionKey} />
                   </div>
 
@@ -688,7 +688,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                     <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
                       <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-white/40 mb-1">
+                          <div className="flex items-center gap-1.5 flex-wrap text-label text-white/40 mb-1">
                             {(() => {
                               const name = resolveSprintName(selectedSession.sprintName, sprintOptions);
                               return name ? (
@@ -718,19 +718,19 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                               <>
                                 <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
                                 <span className="font-mono font-medium text-white/55">{selectedSession.targetTicketKey}</span>
-                                <span className="rounded px-1 py-px text-[9px] font-medium bg-violet-500/10 text-violet-400/80">Split</span>
+                                <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>
                             )}
                           </div>
-                          <p className="text-[13px] text-white/55 leading-snug">{selectedSession.title}</p>
+                          <p className="text-body text-white/55 leading-snug">{selectedSession.title}</p>
                           {selectedSession.targetTicketKey && (
-                            <p className="text-[12px] text-white/30 leading-snug mt-0.5">
+                            <p className="text-body-sm text-white/30 leading-snug mt-0.5">
                               {selectedSession.targetTitle ?? selectedSession.targetTicketKey}
                             </p>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <StatusBadge status={selectedSession.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-[10px] tracking-wide" />
+                          <StatusBadge status={selectedSession.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-caption tracking-wide" />
                           <Button
                             variant="destructive"
                             size="sm"
@@ -751,7 +751,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {/* ── EXISTING STORY ── */}
           {mode === "existing" && (
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-white/35 uppercase tracking-wide">Search story</label>
+              <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Search story</label>
               <div className="relative">
                 {searchLoading && (
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full border-2 border-white/15 border-t-white/40 animate-spin" />
@@ -782,14 +782,14 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                           className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left cursor-pointer"
                           style={{ backgroundColor: isFoc ? "rgba(255,255,255,0.05)" : "transparent", transition: "background-color 60ms" }}
                         >
-                          <span className="mt-px shrink-0 font-mono text-[11px] font-medium text-[var(--color-brand-400)]/75" style={{ color: isFoc ? undefined : undefined }}>
+                          <span className="mt-px shrink-0 font-mono text-label font-medium text-[var(--color-brand-400)]/75" style={{ color: isFoc ? undefined : undefined }}>
                             {r.key}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13px] text-white/60">{r.summary}</p>
-                            {r.sprintName && <p className="mt-0.5 text-[10px] text-white/25">{r.sprintName}</p>}
+                            <p className="truncate text-body text-white/60">{r.summary}</p>
+                            {r.sprintName && <p className="mt-0.5 text-caption text-white/25">{r.sprintName}</p>}
                           </div>
-                          <StatusBadge status={r.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-[10px] tracking-wide" />
+                          <StatusBadge status={r.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-caption tracking-wide" />
                         </button>
                       );
                     })}
@@ -799,12 +799,12 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
               {selectedTicket && (
                 <div className="mt-2 flex items-center gap-2.5 rounded-md border border-[var(--color-brand-500)]/18 bg-[var(--color-brand-500)]/[0.05] px-3 py-2">
-                  <span className="shrink-0 font-mono text-[11px] font-medium text-[var(--color-brand-400)]">{selectedTicket.key}</span>
+                  <span className="shrink-0 font-mono text-label font-medium text-[var(--color-brand-400)]">{selectedTicket.key}</span>
                   <span className="truncate text-xs text-white/55">{selectedTicket.summary}</span>
                 </div>
               )}
               {!selectedTicket && searchQuery.length >= 2 && !searchLoading && searchResults.length === 0 && (
-                <p className="mt-2 text-[11px] text-white/25">No stories found.</p>
+                <p className="mt-2 text-label text-white/25">No stories found.</p>
               )}
             </div>
           )}

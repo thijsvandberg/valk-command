@@ -80,7 +80,7 @@ function BranchItem({ branch }: { branch: DevBranch }) {
           />
         </div>
         {branch.lastCommit && (
-          <p className="mt-0.5 truncate text-[11px] text-white/25">
+          <p className="mt-0.5 truncate text-label text-white/25">
             {truncate(branch.lastCommit.message, 60)}
             <span className="ml-1.5 text-white/15">{relativeDate(branch.lastCommit.date)}</span>
           </p>
@@ -112,14 +112,14 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
               {pr.title}
             </a>
             <span
-              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              className="shrink-0 rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider"
               style={{ backgroundColor: style.bg, color: style.text }}
             >
               {pr.status}
             </span>
           </div>
           {/* Meta line: author, repo, age */}
-          <p className="mt-1 text-[11px] text-white/25">
+          <p className="mt-1 text-label text-white/25">
             {pr.author}
             <span className="text-white/12"> in </span>
             <span className="text-white/20">{pr.repo}</span>
@@ -134,7 +134,7 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
       </div>
 
       {/* Stats row */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/25">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-label text-white/25">
         {/* Reviewers / approvals */}
         {totalReviewers > 0 && (
           <span className="flex items-center gap-1" title={pr.reviewers.map((r) => `${r.name}${r.approved ? " (approved)" : ""}`).join(", ")}>
@@ -184,7 +184,7 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
               href={b.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] text-white/25 cursor-pointer hover:text-white/40"
+              className="flex items-center gap-1 text-label text-white/25 cursor-pointer hover:text-white/40"
               style={{ transition: "color 0.15s ease" }}
               title={`${b.name}: ${b.state}`}
             >
@@ -197,7 +197,7 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
 
       {/* Branch flow */}
       {pr.sourceBranch && pr.destBranch && (
-        <p className="mt-2 truncate text-[10px] font-mono text-white/12">
+        <p className="mt-2 truncate text-caption font-mono text-white/12">
           {pr.sourceBranch} <span className="text-white/08">-&gt;</span> {pr.destBranch}
         </p>
       )}
@@ -227,7 +227,7 @@ function CommitSummary({ commits }: { commits: DevCommit[] }) {
             <span className="truncate text-xs text-white/55">{truncate(latest.message, 80)}</span>
           )}
         </div>
-        <p className="mt-0.5 text-[11px] text-white/25">
+        <p className="mt-0.5 text-label text-white/25">
           {latest.author}
           <span className="ml-1.5 text-white/15">{relativeDate(latest.date)}</span>
           {commits.length > 1 && (
@@ -255,7 +255,7 @@ function BuildItem({ build }: { build: DevBuild }) {
         {build.name}
       </a>
       {build.completedAt && (
-        <span className="shrink-0 text-[11px] text-white/15">{relativeDate(build.completedAt)}</span>
+        <span className="shrink-0 text-label text-white/15">{relativeDate(build.completedAt)}</span>
       )}
     </div>
   );
@@ -316,11 +316,11 @@ export function DevPanel({
         className="flex w-full items-center justify-between cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <div className="flex items-center gap-1.5">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">
+          <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">
             Development
           </h3>
           {counts.length > 0 && (
-            <span className="text-[10px] text-white/15">
+            <span className="text-caption text-white/15">
               {counts.join(" \u00B7 ")}
             </span>
           )}

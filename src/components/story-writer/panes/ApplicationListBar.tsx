@@ -82,7 +82,7 @@ export function ApplicationListBar() {
               <button
                 type="button"
                 onClick={() => handleAppClick(app.id)}
-                className={`flex h-6 items-center gap-1.5 rounded px-1.5 text-[11px] font-medium cursor-pointer select-none transition-colors duration-100 ${
+                className={`flex h-6 items-center gap-1.5 rounded px-1.5 text-label font-medium cursor-pointer select-none transition-colors duration-100 ${
                   isActive
                     ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
                     : "text-white/35 hover:text-white/60 hover:bg-white/[0.04]"
@@ -93,7 +93,7 @@ export function ApplicationListBar() {
                 </span>
                 {app.label}
                 {isActive && (
-                  <span className="ml-0.5 text-[9px] text-[var(--color-brand-400)]/60 tabular-nums">
+                  <span className="ml-0.5 text-caption text-[var(--color-brand-400)]/60 tabular-nums">
                     {paneIndex! + 1}
                   </span>
                 )}

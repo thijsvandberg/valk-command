@@ -81,13 +81,13 @@ export function AppToolbar() {
                     className="flex shrink-0 select-none cursor-grab items-center gap-1.5 active:cursor-grabbing"
                     title="Drag to move to another pane"
                   >
-                    <span className="text-[11px] font-semibold text-white/70">
+                    <span className="text-label font-semibold text-white/70">
                       {toolbar.label}
                     </span>
                     {toolbar.contextLabel && (
                       <>
-                        <span className="text-white/20 text-[10px]">·</span>
-                        <span className="min-w-0 truncate text-[11px] text-white/35">
+                        <span className="text-white/20 text-caption">·</span>
+                        <span className="min-w-0 truncate text-label text-white/35">
                           {toolbar.contextLabel}
                         </span>
                       </>
@@ -120,7 +120,7 @@ export function AppToolbar() {
                   </div>
                 </>
               ) : (
-                <span className="text-[10px] text-white/15">
+                <span className="text-caption text-white/15">
                   {isDragTarget ? "Drop here" : `Pane ${paneIdx + 1}`}
                 </span>
               )}
@@ -138,7 +138,7 @@ export function AppToolbar() {
             onDrop={(e) => handleDrop(e, slotIdx)}
             onDragOver={handleDragOver}
           >
-            <span className="text-[10px] text-[var(--color-brand-400)]/70 whitespace-nowrap">
+            <span className="text-caption text-[var(--color-brand-400)]/70 whitespace-nowrap">
               + Pane {slotIdx + 1}
             </span>
           </div>

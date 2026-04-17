@@ -71,7 +71,7 @@ export function IssueTypePicker({ type, size = 16, onTypeChange }: IssueTypePick
                     onTypeChange(t);
                     setOpen(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                   style={{
                     background: active ? `${color}14` : "transparent",
                     color: active ? color : "rgba(255,255,255,0.55)",

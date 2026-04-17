@@ -81,7 +81,7 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
         <div className="px-5 pb-3 pt-1">
           {/* Story points distribution bar */}
           <div className="mb-3">
-            <div className="mb-1.5 text-[10px] uppercase tracking-wider text-white/25">Points by status</div>
+            <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Points by status</div>
             <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
               {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
                 const pts = pointsByStatus[status];
@@ -106,7 +106,7 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
                 const pts = pointsByStatus[status];
                 if (pts === 0) return null;
                 return (
-                  <span key={status} className="flex items-center gap-1 text-[10px] text-white/40">
+                  <span key={status} className="flex items-center gap-1 text-caption text-white/40">
                     <span
                       className="h-1.5 w-1.5 rounded-full"
                       style={{ backgroundColor: STATUS_COLORS[status] }}
@@ -121,11 +121,11 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
           {/* Points by assignee */}
           {pointsByAssignee.length > 0 && (
             <div>
-              <div className="mb-1.5 text-[10px] uppercase tracking-wider text-white/25">Points by assignee</div>
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Points by assignee</div>
               <div className="space-y-1">
                 {pointsByAssignee.map((a) => (
                   <div key={a.name} className="flex items-center gap-2">
-                    <span className="w-20 truncate text-[11px] text-white/40">{a.name.split(" ")[0]}</span>
+                    <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
                     <div className="flex-1">
                       <div
                         className="h-2 rounded-full"
@@ -137,7 +137,7 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
                         }}
                       />
                     </div>
-                    <span className="w-6 text-right text-[10px] tabular-nums text-white/30">{a.points}</span>
+                    <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.points}</span>
                   </div>
                 ))}
               </div>

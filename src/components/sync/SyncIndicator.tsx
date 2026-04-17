@@ -115,7 +115,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
         <span className="relative shrink-0">
           {stateIcon(activityState, errorCount, incrementalSyncRemaining, hasChecked)}
           {errorCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black leading-none">
+            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-caption font-bold text-black leading-none">
               {errorCount > 9 ? "9+" : errorCount}
             </span>
           )}
@@ -143,7 +143,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
           style={{ width: collapsed ? "240px" : "100%", minWidth: "220px" }}
         >
           <div className="px-3 py-2.5 border-b border-white/[0.06] flex items-center justify-between">
-            <span className="text-[11px] font-semibold tracking-wide uppercase text-white/30 font-[var(--font-body)]">
+            <span className="text-label font-semibold tracking-wide uppercase text-white/30 font-[var(--font-body)]">
               Recent activity
             </span>
             {runningEntries.length > 0 && (
@@ -162,7 +162,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
             {!incrementalSyncLastAt ? (
               <>
                 <RefreshCw className="h-3.5 w-3.5 text-white/20 animate-spin shrink-0" strokeWidth={2} />
-                <span className="text-[11px] text-white/30 font-[var(--font-body)]">
+                <span className="text-label text-white/30 font-[var(--font-body)]">
                   Checking Jira...
                 </span>
               </>
@@ -170,10 +170,10 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
               <>
                 <CloudDownload className="h-3.5 w-3.5 text-[var(--color-brand-400)] shrink-0" strokeWidth={2} />
                 <div className="flex-1 min-w-0">
-                  <span className="text-[11px] text-[var(--color-brand-300)] font-[var(--font-body)]">
+                  <span className="text-label text-[var(--color-brand-300)] font-[var(--font-body)]">
                     {incrementalSyncRemaining} ticket{incrementalSyncRemaining === 1 ? "" : "s"} still catching up
                   </span>
-                  <div className="text-[10px] text-white/20 font-[var(--font-body)] mt-0.5">
+                  <div className="text-caption text-white/20 font-[var(--font-body)] mt-0.5">
                     Last sync {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
                   </div>
                 </div>
@@ -182,10 +182,10 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
               <>
                 <CheckCheck className="h-3.5 w-3.5 text-[var(--color-brand-500)]/60 shrink-0" strokeWidth={2} />
                 <div className="flex-1 min-w-0">
-                  <span className="text-[11px] text-white/30 font-[var(--font-body)]">
+                  <span className="text-label text-white/30 font-[var(--font-body)]">
                     Jira sync up to date
                   </span>
-                  <div className="text-[10px] text-white/20 font-[var(--font-body)] mt-0.5">
+                  <div className="text-caption text-white/20 font-[var(--font-body)] mt-0.5">
                     Last check {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
                   </div>
                 </div>
@@ -209,17 +209,17 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
                     <span className="text-xs text-white/60 font-[var(--font-body)] truncate">
                       {entryTypeLabel(entry.type)}
                     </span>
-                    <span className="text-[10px] text-white/20 shrink-0 font-[var(--font-body)]">
+                    <span className="text-caption text-white/20 shrink-0 font-[var(--font-body)]">
                       {timeAgo(entry.completedAt ?? entry.startedAt)}
                     </span>
                   </div>
                   {entry.summary && (
-                    <div className="text-[11px] text-white/30 truncate font-[var(--font-body)] mt-0.5">
+                    <div className="text-label text-white/30 truncate font-[var(--font-body)] mt-0.5">
                       {entry.summary}
                     </div>
                   )}
                   {entry.status === "failed" && entry.errorDetail && (
-                    <div className="text-[11px] text-amber-400/70 truncate font-[var(--font-body)] mt-0.5">
+                    <div className="text-label text-amber-400/70 truncate font-[var(--font-body)] mt-0.5">
                       {entry.errorDetail}
                     </div>
                   )}
@@ -240,7 +240,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
           </ul>
           <a
             href="/activity-log"
-            className="block px-3 py-2 text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] font-[var(--font-body)] border-t border-white/[0.06] transition-colors duration-150 cursor-pointer"
+            className="block px-3 py-2 text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] font-[var(--font-body)] border-t border-white/[0.06] transition-colors duration-150 cursor-pointer"
           >
             View full activity log
           </a>

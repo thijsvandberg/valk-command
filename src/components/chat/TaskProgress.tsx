@@ -58,7 +58,7 @@ export default function TaskProgress({
         {toolCalls.length > 0 && status === "streaming" && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {toolCalls.slice(-5).map((tc) => (
-              <Tag key={tc.id} className="border border-white/[0.04] text-[11px] text-white/30">
+              <Tag key={tc.id} className="border border-white/[0.04] text-label text-white/30">
                 {formatToolName(tc.tool)}
               </Tag>
             ))}

@@ -35,7 +35,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
               {att.cleaned ? (
                 <div className="flex flex-col items-center gap-1 text-white/15">
                   <FileMinus className="h-6 w-6" strokeWidth={1.5} />
-                  <span className="text-[10px]">Cleaned</span>
+                  <span className="text-caption">Cleaned</span>
                 </div>
               ) : att.mimeType.startsWith("image/") ? (
                 <Image
@@ -49,7 +49,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
               ) : (
                 <div className="flex flex-col items-center gap-1" style={{ color: att.color }}>
                   <File className="h-8 w-8 opacity-40" strokeWidth={1.5} />
-                  <span className="text-[10px] font-medium opacity-60">
+                  <span className="text-caption font-medium opacity-60">
                     {att.mimeType.split("/")[1].toUpperCase()}
                   </span>
                 </div>
@@ -57,7 +57,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
             </div>
             <div className="border-t border-white/[0.04] px-2.5 py-2">
               <div className="truncate text-xs text-white/50">{att.filename}</div>
-              <div className="mt-0.5 text-[10px] text-white/25">
+              <div className="mt-0.5 text-caption text-white/25">
                 {att.cleaned && att.cleanedAt
                   ? `Cleaned ${new Date(att.cleanedAt).toLocaleDateString()}`
                   : `${(att.size / 1000).toFixed(0)} KB`}

@@ -50,7 +50,7 @@ export function SyncStatusBanner({ syncStatus, syncing }: {
         : "border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]"
     }`}>
       <Loader2 size={13} strokeWidth={2} className={`animate-spin ${isCatchingUp ? "text-amber-400" : "text-[var(--color-brand-400)]"}`} />
-      <span className={`text-[12px] ${isCatchingUp ? "text-amber-400/80" : "text-[var(--color-brand-400)]/80"}`}>
+      <span className={`text-body-sm ${isCatchingUp ? "text-amber-400/80" : "text-[var(--color-brand-400)]/80"}`}>
         {isCatchingUp
           ? `Catching up on historical pipeline data... (synced up to ${watermarkAge})`
           : "Syncing latest pipeline data from Bitbucket..."

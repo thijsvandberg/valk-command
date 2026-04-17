@@ -82,7 +82,7 @@ function SprintDropZoneBar({
   const targets = slotSprints.filter((id) => id !== activeSprintId);
   return (
     <div className="absolute inset-0 z-10 flex items-center gap-2 bg-[var(--color-surface-elevated)] px-5">
-      <span className="shrink-0 text-[10px] font-medium uppercase tracking-widest text-white/20">
+      <span className="shrink-0 text-caption font-medium uppercase tracking-widest text-white/20">
         Move to
       </span>
       <span className="h-3 w-px shrink-0 bg-white/[0.07]" />
@@ -808,7 +808,7 @@ export default function SprintBoard() {
                 {!isAllView && !f.activeView && (
                   <>
                     <ViewHeaderDivider />
-                    <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                    <div className="flex items-center gap-1.5 text-label font-medium">
                       {([
                         { status: "TO DO", count: todoCount, bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8" },
                         { status: "IN PROGRESS", count: inProgressCount, bg: "rgba(56, 152, 210, 0.15)", text: "#58b4e6" },
@@ -879,13 +879,13 @@ export default function SprintBoard() {
                     <span className="font-mono text-xs text-white/40">{boardActiveDragTicket.key}</span>
                     <span className="max-w-48 truncate text-white/75">{boardActiveDragTicket.title}</span>
                     {boardDraggedKeys.length > 1 && (
-                      <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-[10px] text-[var(--color-brand-300)]">
+                      <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-caption text-[var(--color-brand-300)]">
                         +{boardDraggedKeys.length - 1}
                       </span>
                     )}
                   </div>
                   {boardDragTargetSprintId && (
-                    <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-[11px] text-[var(--color-brand-300)]">
+                    <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-label text-[var(--color-brand-300)]">
                       Move to {sprintNameMap[boardDragTargetSprintId] ?? boardDragTargetSprintId}
                     </div>
                   )}

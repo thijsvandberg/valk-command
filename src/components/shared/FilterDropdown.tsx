@@ -109,7 +109,7 @@ export function FilterDropdown({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={searchPlaceholder}
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-body text-white/80 placeholder:text-white/25 focus:outline-none"
           />
           {search && (
             <button
@@ -128,7 +128,7 @@ export function FilterDropdown({
         <button
           type="button"
           onClick={() => onChange(new Set())}
-          className="flex w-full items-center gap-2 border-b border-white/[0.06] px-3 py-1.5 text-[11px] font-medium text-white/30 cursor-pointer hover:bg-white/[0.03] hover:text-white/50"
+          className="flex w-full items-center gap-2 border-b border-white/[0.06] px-3 py-1.5 text-label font-medium text-white/30 cursor-pointer hover:bg-white/[0.03] hover:text-white/50"
           style={{ transition: "background-color 80ms, color 80ms" }}
         >
           <X className="h-2.5 w-2.5" strokeWidth={2} />
@@ -148,7 +148,7 @@ export function FilterDropdown({
           return (
             <label
               key={opt}
-              className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-[13px] cursor-pointer hover:bg-white/[0.04] ${
+              className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-body cursor-pointer hover:bg-white/[0.04] ${
                 checked ? "text-white/80" : "text-white/55 hover:text-white/75"
               }`}
               style={{ transition: "background-color 80ms, color 80ms" }}
@@ -191,7 +191,7 @@ export function FilterDropdown({
       <button
         type="button"
         onClick={toggleOpen}
-        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
+        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
           isActive
             ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
             : "border-white/[0.07] bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/75 hover:border-white/[0.12]"
@@ -201,7 +201,7 @@ export function FilterDropdown({
         {label}
         {isActive && (
           <span
-            className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-0.5 text-[10px] font-semibold"
+            className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-0.5 text-caption font-semibold"
             style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
           >
             {selected.size}

@@ -131,8 +131,8 @@ export function TicketSidebar({
           {/* Completeness indicator */}
           <div>
             <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">Readiness</h3>
-              <span className="text-[11px] tabular-nums text-white/30">{completenessCount}/{completenessChecks.length}</span>
+              <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">Readiness</h3>
+              <span className="text-label tabular-nums text-white/30">{completenessCount}/{completenessChecks.length}</span>
             </div>
             <div className="mt-2 flex gap-1">
               {completenessChecks.map((check) => (
@@ -155,7 +155,7 @@ export function TicketSidebar({
               {completenessChecks.map((check) => (
                 <span
                   key={check.label}
-                  className={`flex-1 truncate text-center text-[10px] ${check.done ? "text-white/30" : "text-white/15"}`}
+                  className={`flex-1 truncate text-center text-caption ${check.done ? "text-white/30" : "text-white/15"}`}
                 >
                   {check.label}
                 </span>
@@ -165,7 +165,7 @@ export function TicketSidebar({
 
           {/* Jira details */}
           <div>
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">Details</h3>
+            <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">Details</h3>
             <div className="mt-2 divide-y divide-white/[0.04]">
               <DetailRow label="Status">
                 {(() => {
@@ -277,7 +277,7 @@ export function TicketSidebar({
 
           {/* PO Metadata */}
           <div className="rounded-lg border border-[var(--color-brand-500)]/10 bg-[var(--color-brand-500)]/[0.03] p-4">
-            <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-white/25">
+            <h3 className="flex items-center gap-2 text-label font-semibold uppercase tracking-wider text-white/25">
               PO Metadata
               {poNotes.trim() && (
                 <span

@@ -24,20 +24,20 @@ function formatDate(iso: string | null): string {
 function SprintStateBadge({ state }: { state: string }) {
   if (state === "active") {
     return (
-      <span className="inline-flex items-center rounded-full bg-[var(--color-brand-500)]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-brand-400)]/80">
+      <span className="inline-flex items-center rounded-full bg-[var(--color-brand-500)]/15 px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-[var(--color-brand-400)]/80">
         Active
       </span>
     );
   }
   if (state === "closed") {
     return (
-      <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-400/60">
+      <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-emerald-400/60">
         History
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-white/30">
+    <span className="inline-flex items-center rounded-full bg-white/[0.06] px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-white/30">
       Planned
     </span>
   );
@@ -76,11 +76,11 @@ function SectionHeader({
     <h3 className={`mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] ${styles.heading}`}>
       <span className={`h-px flex-1 ${styles.line}`} />
       {label}
-      <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${styles.badge}`}>
+      <span className={`rounded-full px-1.5 py-0.5 text-caption tabular-nums ${styles.badge}`}>
         {count}
       </span>
       {pts > 0 && (
-        <span className="text-[10px] tabular-nums opacity-60">{pts}pt</span>
+        <span className="text-caption tabular-nums opacity-60">{pts}pt</span>
       )}
     </h3>
   );

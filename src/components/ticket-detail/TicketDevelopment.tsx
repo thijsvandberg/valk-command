@@ -65,7 +65,7 @@ function SectionHeader({ icon, title, count }: { icon: React.ReactNode; title: s
       <span className="text-white/20">{icon}</span>
       <h3 className="text-sm font-semibold text-white/50">{title}</h3>
       {count !== undefined && count > 0 && (
-        <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[11px] tabular-nums text-white/30">{count}</span>
+        <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-label tabular-nums text-white/30">{count}</span>
       )}
     </div>
   );
@@ -92,7 +92,7 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               {pr.title}
             </a>
             <span
-              className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              className="shrink-0 rounded px-2 py-0.5 text-caption font-semibold uppercase tracking-wider"
               style={{ backgroundColor: style.bg, color: style.text }}
             >
               {pr.status}
@@ -166,7 +166,7 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               href={b.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-md bg-white/[0.03] px-2 py-1 text-[11px] text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/40"
+              className="flex items-center gap-1.5 rounded-md bg-white/[0.03] px-2 py-1 text-label text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/40"
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
             >
               <BuildStateIcon state={b.state} size={12} />
@@ -258,7 +258,7 @@ function BranchRow({ branch }: { branch: DevBranch }) {
         </a>
       </div>
       {branch.lastCommit && (
-        <span className="shrink-0 pl-3 text-[11px] text-white/20">
+        <span className="shrink-0 pl-3 text-label text-white/20">
           {branch.lastCommit.author} · {relativeDate(branch.lastCommit.date)}
         </span>
       )}
@@ -304,14 +304,14 @@ function PipelineRunsSection({ ticketKey, deploymentUrls }: { ticketKey: string;
         {filteredRuns.map((run) => (
           <div key={run.id} className="flex items-center gap-3 px-3 py-2.5">
             <BuildStateIcon state={run.state} size={13} />
-            <span className="text-[12px] font-mono text-white/60">#{run.buildNumber}</span>
-            <span className="text-[11px] text-white/30 truncate flex-1">{run.branchName}</span>
+            <span className="text-body-sm font-mono text-white/60">#{run.buildNumber}</span>
+            <span className="text-label text-white/30 truncate flex-1">{run.branchName}</span>
             {run.environment && (
-              <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+              <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/80">
                 {run.environment}
               </span>
             )}
-            <span className="text-[11px] text-white/25 tabular-nums">{run.completedAt ? relativeDate(run.completedAt) : "running"}</span>
+            <span className="text-label text-white/25 tabular-nums">{run.completedAt ? relativeDate(run.completedAt) : "running"}</span>
             {run.pipelineUrl && (
               <a
                 href={run.pipelineUrl}

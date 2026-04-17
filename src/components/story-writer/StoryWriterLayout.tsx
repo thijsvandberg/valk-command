@@ -392,7 +392,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     <Tooltip content={ticketSprintLabel || "Sprint"}>
                       <Link
                         href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                        className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                        className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                       >
                         <IterationCw size={12} strokeWidth={1.5} />
                         <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
@@ -404,13 +404,13 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                       {ticketAsTicket.epicKey ? (
                         <Link
                           href={`/tickets/${ticketAsTicket.epicKey}`}
-                          className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                          className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                         >
                           <Zap size={12} strokeWidth={1.5} />
                           <span className="max-w-[120px] truncate">{ticketAsTicket.epic}</span>
                         </Link>
                       ) : (
-                        <span className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35">
+                        <span className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35">
                           <Zap size={12} strokeWidth={1.5} />
                           <span className="max-w-[120px] truncate">{ticketAsTicket.epic}</span>
                         </span>
@@ -424,7 +424,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               )}
 
               {latestReview && (
-                <div className="flex h-7 items-center gap-1 rounded-md bg-white/[0.04] px-2 text-[11px] text-white/40 border border-white/[0.04]">
+                <div className="flex h-7 items-center gap-1 rounded-md bg-white/[0.04] px-2 text-label text-white/40 border border-white/[0.04]">
                   <Star size={11} strokeWidth={1.5} />
                   {Math.round(latestReview.overallScore)}
                 </div>
@@ -515,7 +515,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     <div className="mx-2 my-1 h-px bg-white/[0.06]" />
 
                     {targetTicketKey && splitModeVisible && (
-                      <p className="px-3 pt-1 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-white/25">
+                      <p className="px-3 pt-1 pb-0.5 text-caption font-medium uppercase tracking-wider text-white/25">
                         Source: {ticketKey}
                       </p>
                     )}
@@ -543,7 +543,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     {targetTicketKey && splitModeVisible && (
                       <>
                         <div className="mx-2 my-1 h-px bg-white/[0.06]" />
-                        <p className="px-3 pt-1 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-white/25">
+                        <p className="px-3 pt-1 pb-0.5 text-caption font-medium uppercase tracking-wider text-white/25">
                           Target: {targetTicketKey}
                         </p>
                         <a
@@ -612,7 +612,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 <>
                   <TicketKeyPill ticketKey={ticketKey} statusLabel={status} statusBg={sc.bg} statusColor={sc.text} />
                   <ViewHeaderDivider />
-                  <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+                  <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">
                     {writer.session?.localTitle ?? ticketData.title}
                   </span>
                   <ViewHeaderDivider />

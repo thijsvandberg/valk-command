@@ -29,7 +29,7 @@ export function LinkedIssuesSection({ issues }: { issues: TicketDetail["linkedIs
       <div className="mt-3 space-y-4">
         {Object.entries(grouped).map(([relation, items]) => (
           <div key={relation}>
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-white/25">
+            <div className="mb-2 text-label font-medium uppercase tracking-wider text-white/25">
               {relation}
             </div>
             <div className="overflow-hidden rounded-lg border border-white/[0.06]">

@@ -41,7 +41,7 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_rgba(26,111,194,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]">
           <BridgeMark size={22} />
         </div>
-        <span className="font-[var(--font-display)] text-[16px] font-extrabold tracking-[-0.04em] text-white/90">
+        <span className="font-[var(--font-display)] text-heading-sm font-extrabold tracking-[-0.04em] text-white/90">
           Bridge
         </span>
       </div>
@@ -68,7 +68,7 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
 
 export function ViewHeaderTitle({ children }: { children: ReactNode }) {
   return (
-    <span className="font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+    <span className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">
       {children}
     </span>
   );

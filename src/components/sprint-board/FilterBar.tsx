@@ -240,7 +240,7 @@ function SortableColumnItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-[13px] text-white/65 hover:bg-white/[0.04] hover:text-white/85"
+      className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/65 hover:bg-white/[0.04] hover:text-white/85"
     >
       <div
         className="flex shrink-0 items-center justify-center w-7 h-7 cursor-grab active:cursor-grabbing text-white/20 hover:text-white/40"
@@ -361,7 +361,7 @@ export function ColumnToggle({
                 {COLUMNS.filter((c) => !order.includes(c.id)).map((c) => (
                   <div
                     key={c.id}
-                    className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-[13px] text-white/40 hover:bg-white/[0.04] hover:text-white/65"
+                    className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/40 hover:bg-white/[0.04] hover:text-white/65"
                   >
                     <div className="flex shrink-0 items-center justify-center w-7 h-7 text-white/10">
                       <GripVertical size={12} strokeWidth={1.5} />
@@ -446,7 +446,7 @@ function SaveViewPopover({
       ref={ref}
       className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3)]"
     >
-      <p className="mb-2 text-[11px] font-medium text-white/40">
+      <p className="mb-2 text-label font-medium text-white/40">
         {isUpdate ? "Update saved view" : "Save current filter view"}
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">

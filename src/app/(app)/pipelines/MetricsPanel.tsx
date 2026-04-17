@@ -31,9 +31,9 @@ export function MetricCard({
       />
       <div className="relative flex items-center gap-2 mb-1.5">
         {icon}
-        <span className="text-[11px] font-medium text-white/35 uppercase tracking-wider">{label}</span>
+        <span className="text-label font-medium text-white/35 uppercase tracking-wider">{label}</span>
       </div>
-      <span className="relative font-[var(--font-display)] text-[22px] font-bold tracking-tight text-white/90">
+      <span className="relative font-[var(--font-display)] text-heading-lg font-bold tracking-tight text-white/90">
         {value}
       </span>
     </Card>

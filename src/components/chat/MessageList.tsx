@@ -60,7 +60,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
           </a>
           <span className="text-white/30 text-xs ml-2">{data.issue.type}</span>
           <h3 className="text-white/90 text-sm font-medium mt-0.5 leading-snug">{data.issue.summary}</h3>
-          <div className="flex gap-3 mt-1 text-[11px] text-white/40">
+          <div className="flex gap-3 mt-1 text-label text-white/40">
             {data.issue.sprint && <span>{data.issue.sprint}</span>}
             {data.issue.assignee && <span>{data.issue.assignee}</span>}
             <span>{data.issue.status}</span>
@@ -98,12 +98,12 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
               <div className="ml-6 space-y-0.5">
                 {c.subItems.map((s, i) => (
                   <div key={i} className="flex items-start gap-2 py-0.5">
-                    <span className="text-[10px] w-3 text-center mt-0.5" style={{ color: statusColor(s.status) }}>{statusIcon(s.status)}</span>
+                    <span className="text-caption w-3 text-center mt-0.5" style={{ color: statusColor(s.status) }}>{statusIcon(s.status)}</span>
                     <div className="flex-1">
-                      <span className="text-[11px] text-white/50">{s.name}</span>
-                      {s.issue && <p className="text-[11px] text-white/30 mt-0.5">{s.issue}</p>}
+                      <span className="text-label text-white/50">{s.name}</span>
+                      {s.issue && <p className="text-label text-white/30 mt-0.5">{s.issue}</p>}
                     </div>
-                    <span className="text-[10px] font-mono text-white/30">{s.score}/{s.maxScore}</span>
+                    <span className="text-caption font-mono text-white/30">{s.score}/{s.maxScore}</span>
                   </div>
                 ))}
               </div>
@@ -115,7 +115,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       {/* Issues & suggestions */}
       {data.issues.length > 0 && (
         <div className="border-t border-white/[0.06] pt-3 space-y-2">
-          <p className="text-[11px] text-white/40 font-medium uppercase tracking-wider">Suggestions</p>
+          <p className="text-label text-white/40 font-medium uppercase tracking-wider">Suggestions</p>
           {data.issues.map((issue, i) => (
             <div key={i} className="text-xs">
               <span className="text-white/50 font-medium">{issue.criterion}</span>
@@ -267,7 +267,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
               >
                 <MessageContent content={message.content} />
                 {isSending && (
-                  <p className="mt-1 text-[10px] text-white/30">Sending...</p>
+                  <p className="mt-1 text-caption text-white/30">Sending...</p>
                 )}
                 {message.role === "assistant" && !isSending && (
                   <CopyActions content={message.content} />

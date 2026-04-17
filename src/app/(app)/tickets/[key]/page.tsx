@@ -327,7 +327,7 @@ export default function TicketDetailPage({
                   <Tooltip content={ticketSprintLabel || "Sprint"}>
                     <Link
                       href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                      className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <IterationCw size={12} strokeWidth={1.5} />
                       <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
@@ -339,13 +339,13 @@ export default function TicketDetailPage({
                     {ticket.epicKey ? (
                       <Link
                         href={`/tickets/${ticket.epicKey}`}
-                        className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                        className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                       >
                         <Zap size={12} strokeWidth={1.5} />
                         <span className="max-w-[120px] truncate">{ticket.epic}</span>
                       </Link>
                     ) : (
-                      <span className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/35">
+                      <span className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35">
                         <Zap size={12} strokeWidth={1.5} />
                         <span className="max-w-[120px] truncate">{ticket.epic}</span>
                       </span>
@@ -459,7 +459,7 @@ export default function TicketDetailPage({
           );
         })()}
         <ViewHeaderDivider />
-        <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-[15px] font-semibold tracking-tight text-white/90">
+        <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">
           {ticket.title}
         </span>
       </ViewHeader>

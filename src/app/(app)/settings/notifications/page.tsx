@@ -200,7 +200,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* Info */}
-        <p className="text-[11px] leading-relaxed text-white/25">
+        <p className="text-label leading-relaxed text-white/25">
           Notifications are only sent when the Bridge tab is not in focus.
           Chat responses and story writer completions will trigger a desktop notification
           so you can multitask without watching the tab.
@@ -236,7 +236,7 @@ export default function NotificationsPage() {
         })}
       </div>
 
-      <p className="mt-4 text-[11px] leading-relaxed text-white/25">
+      <p className="mt-4 text-label leading-relaxed text-white/25">
         Disabled categories are silently ignored. They will not appear in the notification bell even if triggered.
       </p>
     </>

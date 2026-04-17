@@ -291,7 +291,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             key={opt.value}
             type="button"
             onClick={() => setDateRange(selectedDateOption === opt.value ? null : opt.value)}
-            className="rounded-md border px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap"
+            className="rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap"
             style={{
               backgroundColor:
                 selectedDateOption === opt.value
@@ -321,10 +321,10 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
               setCustomFrom(e.target.value);
               updateCustomDate(e.target.value, customTo);
             }}
-            className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 text-[11px] text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
+            className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
             style={{ colorScheme: "dark" }}
           />
-          <span className="text-[10px] text-white/20">to</span>
+          <span className="text-caption text-white/20">to</span>
           <input
             type="date"
             value={customTo}
@@ -332,7 +332,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
               setCustomTo(e.target.value);
               updateCustomDate(customFrom, e.target.value);
             }}
-            className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 text-[11px] text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
+            className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
             style={{ colorScheme: "dark" }}
           />
         </div>
@@ -352,7 +352,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             onClick={() => toggleSection(s.key)}
             aria-label={`Filter by ${s.label}`}
             aria-pressed={isActive}
-            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap shrink-0"
             style={{
               backgroundColor: isActive ? "rgba(74, 170, 96, 0.12)" : "rgba(255,255,255,0.03)",
               borderColor: isActive ? "rgba(74, 170, 96, 0.35)" : "rgba(255,255,255,0.07)",
@@ -381,7 +381,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             setCustomTo("");
             onChange({ ...EMPTY_FILTERS });
           }}
-          className="ml-auto flex items-center gap-1 text-[11px] text-white/30 cursor-pointer hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] shrink-0"
+          className="ml-auto flex items-center gap-1 text-label text-white/30 cursor-pointer hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] shrink-0"
           style={{ transition: "color 100ms" }}
         >
           <X className="h-3 w-3" strokeWidth={2} />

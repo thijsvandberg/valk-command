@@ -51,7 +51,7 @@ export const markdownComponents: Components = {
     </div>
   ),
   th: ({ children }) => (
-    <th className="border-b border-white/[0.1] px-3 py-1.5 text-left text-[11px] font-semibold text-white/60 uppercase tracking-wider">
+    <th className="border-b border-white/[0.1] px-3 py-1.5 text-left text-label font-semibold text-white/60 uppercase tracking-wider">
       {children}
     </th>
   ),

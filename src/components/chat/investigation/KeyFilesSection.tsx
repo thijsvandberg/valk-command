@@ -32,7 +32,7 @@ function FileRow({ file }: { file: InvestigationKeyFile }) {
       <div className="flex items-center gap-2">
         <FileCode size={13} strokeWidth={1.5} className="text-white/20 shrink-0" />
         {repo && (
-          <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-white/[0.06] text-white/35">
+          <span className="shrink-0 rounded px-1.5 py-0.5 text-caption font-medium bg-white/[0.06] text-white/35">
             {repo}
           </span>
         )}
@@ -42,7 +42,7 @@ function FileRow({ file }: { file: InvestigationKeyFile }) {
         </span>
       </div>
       {file.purpose && (
-        <p className="text-[11px] text-white/35 mt-0.5 ml-[29px]">
+        <p className="text-label text-white/35 mt-0.5 ml-[29px]">
           {file.purpose}
         </p>
       )}

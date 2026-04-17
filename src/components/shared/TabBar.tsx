@@ -75,7 +75,7 @@ function TabBadge({ active, badge, highlight }: { active: boolean; badge: number
       : "bg-white/[0.06] text-white/30";
 
   return (
-    <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${cls}`}>
+    <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${cls}`}>
       {badge}
     </span>
   );

@@ -34,7 +34,7 @@ function ScoreBadge({ score }: { score: number }) {
         : "bg-white/[0.06] text-white/40 border-white/[0.08]";
 
   return (
-    <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-[10px] font-bold tabular-nums border shrink-0 ${color}`}>
+    <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-caption font-bold tabular-nums border shrink-0 ${color}`}>
       {score}
     </span>
   );
@@ -93,7 +93,7 @@ function CandidateCard({
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleKeyClick}
-          className="font-mono text-[11px] font-semibold text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-100 shrink-0"
+          className="font-mono text-label font-semibold text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-100 shrink-0"
         >
           {candidate.jiraKey}
         </a>
@@ -104,7 +104,7 @@ function CandidateCard({
             onClick={handleLinkToggle}
             disabled={linking}
             title={candidate.isLinked ? "Unlink from story" : "Link as related story"}
-            className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors duration-150 cursor-pointer disabled:opacity-50 ${
+            className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-caption font-medium transition-colors duration-150 cursor-pointer disabled:opacity-50 ${
               candidate.isLinked
                 ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
                 : "border-white/[0.10] bg-white/[0.03] text-white/45 hover:border-[var(--color-brand-500)]/25 hover:bg-[var(--color-brand-500)]/08 hover:text-[var(--color-brand-400)]"
@@ -123,11 +123,11 @@ function CandidateCard({
       </div>
       {/* Title + match reason */}
       <div className="px-3 pt-0.5 pb-2.5">
-        <p className="text-[13px] leading-[1.45] text-white/70 line-clamp-2">
+        <p className="text-body leading-[1.45] text-white/70 line-clamp-2">
           {candidate.title}
         </p>
         {candidate.matchReason && (
-          <p className="mt-1 text-[11px] italic text-white/30 line-clamp-1">
+          <p className="mt-1 text-label italic text-white/30 line-clamp-1">
             {candidate.matchReason}
           </p>
         )}
@@ -205,13 +205,13 @@ function TicketDetail({
         >
           Back
         </Button>
-        <span className="font-mono text-[11px] font-semibold text-white/60">{jiraKey}</span>
+        <span className="font-mono text-label font-semibold text-white/60">{jiraKey}</span>
         <a
           href={`/tickets/${jiraKey}/write`}
           target="_blank"
           rel="noopener noreferrer"
           title="Open story writer in new tab"
-          className="ml-auto flex items-center gap-1 text-[10px] text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
+          className="ml-auto flex items-center gap-1 text-caption text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
         >
           <ExternalLink size={11} strokeWidth={1.5} />
           Story writer
@@ -221,7 +221,7 @@ function TicketDetail({
           target="_blank"
           rel="noopener noreferrer"
           title="Open in Jira"
-          className="flex items-center gap-1 text-[10px] text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
+          className="flex items-center gap-1 text-caption text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
         >
           <ExternalLink size={11} strokeWidth={1.5} />
           Jira
@@ -239,27 +239,27 @@ function TicketDetail({
               {data.type && <IssueTypeIcon type={data.type.toLowerCase()} size={14} />}
               <MiniStatusBadge status={data.status} />
             </div>
-            <h3 className="text-[13px] font-semibold leading-[1.4] text-white/85">
+            <h3 className="text-body font-semibold leading-[1.4] text-white/85">
               {data.title}
             </h3>
             {data.description ? (
-              <div className="description-content text-[12px] leading-[1.7] text-white/60">
+              <div className="description-content text-body-sm leading-[1.7] text-white/60">
                 {renderMarkdown(data.description)}
               </div>
             ) : (
-              <p className="text-[12px] text-white/25 italic">No description</p>
+              <p className="text-body-sm text-white/25 italic">No description</p>
             )}
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-[12px] text-white/35">
+            <p className="text-body-sm text-white/35">
               Story not in local database.
             </p>
             <a
               href={jiraUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
+              className="inline-flex items-center gap-1.5 text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
             >
               <ExternalLink size={11} strokeWidth={1.5} />
               Open in Jira
@@ -285,10 +285,10 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
         <div className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2.5">
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
-              <p className="text-[12px] text-white/25">
+              <p className="text-body-sm text-white/25">
                 No related stories found yet.
               </p>
-              <p className="mt-1 text-[11px] text-white/15">
+              <p className="mt-1 text-label text-white/15">
                 Use the Find Related quick action in the chat.
               </p>
             </div>

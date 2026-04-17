@@ -128,7 +128,7 @@ export function AiInsightsPanel({
               AI {label}
             </span>
             {generatedAt && (hasSavedResult || hasLiveResult) && (
-              <span className="flex items-center gap-1 text-[10px] text-white/25">
+              <span className="flex items-center gap-1 text-caption text-white/25">
                 <Clock size={9} strokeWidth={1.5} />
                 {formatRelative(generatedAt)}
                 {isStale && (

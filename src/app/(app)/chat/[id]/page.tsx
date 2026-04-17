@@ -34,7 +34,7 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
 
   return (
     <div className="border-l border-white/[0.06] bg-[var(--color-surface-elevated)] p-4 w-72 shrink-0 overflow-y-auto">
-      <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/25">
+      <div className="mb-3 text-label font-semibold uppercase tracking-wider text-white/25">
         Ticket Context
       </div>
 
@@ -48,13 +48,13 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
 
         <div className="flex flex-wrap items-center gap-1.5">
           <span
-            className="rounded px-2 py-0.5 text-[10px] font-medium"
+            className="rounded px-2 py-0.5 text-caption font-medium"
             style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
           >
             {ticketData.jiraStatus}
           </span>
           {ticketData.poStatus && poColor && (
-            <span className="flex items-center gap-1.5 text-[10px] text-white/40">
+            <span className="flex items-center gap-1.5 text-caption text-white/40">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: poColor.dot }} />
               {ticketData.poStatus}
             </span>

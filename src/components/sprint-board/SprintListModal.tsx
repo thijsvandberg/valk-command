@@ -200,7 +200,7 @@ export function SprintListModal({
             >
               {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span className="ml-1 text-[10px] text-white/20">{t.count}</span>
+                <span className="ml-1 text-caption text-white/20">{t.count}</span>
               )}
             </button>
           ))}
@@ -262,7 +262,7 @@ export function SprintListModal({
                     style={{ backgroundColor: stateColor(sprint.state) }}
                   />
                   <span className="truncate">{sprint.name}</span>
-                  <span className="shrink-0 text-[10px] tabular-nums text-white/15">#{sprint.id}</span>
+                  <span className="shrink-0 text-caption tabular-nums text-white/15">#{sprint.id}</span>
                 </span>
                 <span className="ml-2 flex shrink-0 items-center gap-1">
                   <span className="text-xs text-white/20">

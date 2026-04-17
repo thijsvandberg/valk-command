@@ -73,7 +73,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
             {result.label}
           </span>
           {result.description && (
-            <span className="text-[11px] text-white/25 truncate mt-0.5">{result.description}</span>
+            <span className="text-label text-white/25 truncate mt-0.5">{result.description}</span>
           )}
         </div>
       );
@@ -81,12 +81,12 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
       const sc = statusColor(result.status);
       return (
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <span className="shrink-0 font-mono text-[11px] text-white/30 font-medium">{result.key}</span>
+          <span className="shrink-0 font-mono text-label text-white/30 font-medium">{result.key}</span>
           <span className={`text-sm truncate ${isActive ? "text-white/90" : "text-white/60"}`}>
             {result.summary}
           </span>
           <span
-            className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium capitalize"
+            className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-caption font-medium capitalize"
             style={{ backgroundColor: sc.bg, color: sc.text }}
           >
             {result.status.toLowerCase()}
@@ -97,7 +97,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "direct-ticket":
       return (
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-mono font-semibold bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]">
+          <span className="shrink-0 rounded px-1.5 py-0.5 text-label font-mono font-semibold bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]">
             {result.key}
           </span>
           <span className={`text-sm ${isActive ? "text-white/60" : "text-white/35"}`}>
@@ -119,22 +119,22 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "story-writer":
       return (
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="shrink-0 font-mono text-[11px] text-white/30 font-medium">{result.ticketKey}</span>
+          <span className="shrink-0 font-mono text-label text-white/30 font-medium">{result.ticketKey}</span>
           {result.targetTicketKey && (
             <>
               <Scissors size={9} strokeWidth={2} className="shrink-0 text-violet-400/50" />
-              <span className="shrink-0 font-mono text-[11px] text-white/30 font-medium">{result.targetTicketKey}</span>
+              <span className="shrink-0 font-mono text-label text-white/30 font-medium">{result.targetTicketKey}</span>
             </>
           )}
           <span className={`text-sm truncate ${isActive ? "text-white/90" : "text-white/60"}`}>
             {result.title}
           </span>
           {result.targetTicketKey && (
-            <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/[0.10] text-violet-400/70">
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-caption font-medium bg-violet-500/[0.10] text-violet-400/70">
               Split
             </span>
           )}
-          <span className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-500/[0.10] text-emerald-400/70">
+          <span className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-caption font-medium bg-emerald-500/[0.10] text-emerald-400/70">
             Story Writer
           </span>
         </div>

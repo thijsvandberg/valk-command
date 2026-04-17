@@ -55,7 +55,7 @@ function CollapsibleText({ label, text, mono = true, defaultOpen = false }: { la
         {!open && <span className="text-xs text-white/65 truncate">{preview}{text.length > 140 ? "…" : ""}</span>}
       </button>
       {open && (
-        <pre className={`mt-2 ml-4 whitespace-pre-wrap break-words rounded-md bg-black/30 border border-white/[0.12] px-3 py-2.5 text-[13px] leading-[1.75] text-white/90 ${mono ? "font-mono" : ""}`}>
+        <pre className={`mt-2 ml-4 whitespace-pre-wrap break-words rounded-md bg-black/30 border border-white/[0.12] px-3 py-2.5 text-body leading-[1.75] text-white/90 ${mono ? "font-mono" : ""}`}>
           {text}
         </pre>
       )}

@@ -59,7 +59,7 @@ export function VersionList({
       <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
         <div className="flex items-center gap-2">
           <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">History</h3>
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/[0.06] px-1.5 text-[10px] font-medium tabular-nums text-white/40">
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/[0.06] px-1.5 text-caption font-medium tabular-nums text-white/40">
             {sorted.length}
           </span>
         </div>
@@ -115,7 +115,7 @@ export function VersionList({
                   className="h-7 w-7 shrink-0 rounded-full"
                 />
               ) : (
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-[10px] font-semibold tabular-nums text-white/40">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-caption font-semibold tabular-nums text-white/40">
                   v{version.versionNumber}
                 </div>
               )}

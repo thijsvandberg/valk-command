@@ -115,8 +115,8 @@ export function MessageInfoButton({
         >
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-white/35">Sent</span>
-              <span className="text-[11px] tabular-nums text-white/65">{formatTimestamp(message.timestamp)}</span>
+              <span className="text-caption font-medium uppercase tracking-[0.06em] text-white/35">Sent</span>
+              <span className="text-label tabular-nums text-white/65">{formatTimestamp(message.timestamp)}</span>
             </div>
 
             {logsTaskId && onOpenLogs && (
@@ -125,7 +125,7 @@ export function MessageInfoButton({
                 <button
                   type="button"
                   onClick={() => { onOpenLogs(logsTaskId); setOpen(false); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-white/50 hover:text-white/80 hover:bg-white/[0.06] cursor-pointer transition-colors duration-150"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-label text-white/50 hover:text-white/80 hover:bg-white/[0.06] cursor-pointer transition-colors duration-150"
                 >
                   <ExternalLink size={11} strokeWidth={1.5} className="shrink-0" />
                   View execution logs
@@ -269,7 +269,7 @@ export function ChatMessage({
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className={`flex items-center gap-1 text-[11px] cursor-pointer transition-colors duration-150 ${
+                className={`flex items-center gap-1 text-label cursor-pointer transition-colors duration-150 ${
                   expanded
                     ? "mt-1 text-white/35 hover:text-white/55"
                     : "mt-1 text-white/45 hover:text-white/65"
@@ -307,7 +307,7 @@ export function ChatMessage({
               <button
                 type="button"
                 onClick={() => onViewDraft?.(draftId)}
-                className="px-2.5 py-1.5 text-[10px] text-[var(--color-brand-400)]/60 cursor-pointer hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                className="px-2.5 py-1.5 text-caption text-[var(--color-brand-400)]/60 cursor-pointer hover:text-[var(--color-brand-400)] transition-colors duration-150"
                 title="Open in editor"
               >
                 Open
@@ -372,7 +372,7 @@ export function DraftCard({ content }: { content: string }) {
         className="flex w-full items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
       >
         <FileText size={12} strokeWidth={1.5} className="text-white/30 shrink-0" />
-        <span className="text-[11px] font-medium text-white/45">Current draft</span>
+        <span className="text-label font-medium text-white/45">Current draft</span>
         <span className="ml-auto">
           {expanded ? (
             <ChevronUp size={12} className="text-white/25" />
@@ -424,14 +424,14 @@ export function RelatedStoriesInline({
   return (
     <div className="mt-2 rounded-lg border border-[var(--color-brand-500)]/12 bg-[var(--color-brand-500)]/[0.03] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.05]">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-white/35">
+        <span className="text-caption font-semibold uppercase tracking-[0.06em] text-white/35">
           Related Stories
         </span>
         {onOpenPanel && (
           <button
             type="button"
             onClick={onOpenPanel}
-            className="text-[10px] text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
+            className="text-caption text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
           >
             Open panel
           </button>
@@ -440,25 +440,25 @@ export function RelatedStoriesInline({
       <div className="divide-y divide-white/[0.04]">
         {candidates.map((c) => (
           <div key={c.id} className="flex items-center gap-2 px-3 py-2">
-            <span className={`shrink-0 text-[10px] font-bold tabular-nums w-6 text-right ${c.score >= 80 ? "text-emerald-400" : c.score >= 60 ? "text-amber-400" : "text-white/35"}`}>
+            <span className={`shrink-0 text-caption font-bold tabular-nums w-6 text-right ${c.score >= 80 ? "text-emerald-400" : c.score >= 60 ? "text-amber-400" : "text-white/35"}`}>
               {c.score}
             </span>
             <a
               href={c.jiraUrl ?? `${jiraBase}${c.jiraKey}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] shrink-0 transition-colors duration-100"
+              className="font-mono text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] shrink-0 transition-colors duration-100"
             >
               {c.jiraKey}
             </a>
-            <span className="min-w-0 flex-1 truncate text-[11px] text-white/60">
+            <span className="min-w-0 flex-1 truncate text-label text-white/60">
               {c.title}
             </span>
             <button
               type="button"
               onClick={() => handleLink(c.id, !c.isLinked)}
               disabled={linkingId === c.id}
-              className={`shrink-0 flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium cursor-pointer transition-colors duration-150 disabled:opacity-50 ${
+              className={`shrink-0 flex items-center gap-1 rounded border px-1.5 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-150 disabled:opacity-50 ${
                 c.isLinked
                   ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
                   : "border-white/[0.10] text-white/35 hover:border-[var(--color-brand-500)]/20 hover:text-[var(--color-brand-400)]"
@@ -540,7 +540,7 @@ export function QuickActionsPopover({
                 <Icon size={14} strokeWidth={1.5} className="shrink-0" />
                 <span>{action.label}</span>
                 {!action.enabled && (
-                  <span className="ml-auto text-[10px] text-white/15">soon</span>
+                  <span className="ml-auto text-caption text-white/15">soon</span>
                 )}
               </button>
             );

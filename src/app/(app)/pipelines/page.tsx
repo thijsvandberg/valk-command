@@ -207,7 +207,7 @@ export default function PipelinesPage() {
         actions={
           <div className="flex items-center gap-2">
             {hasRunning && (
-              <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-brand-400)]">
+              <span className="flex items-center gap-1.5 text-label text-[var(--color-brand-400)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
                 Live
               </span>
@@ -242,7 +242,7 @@ export default function PipelinesPage() {
       >
         <ViewHeaderTitle>Pipelines</ViewHeaderTitle>
         {hasRunning && (
-          <span className="ml-2 rounded-md bg-[var(--color-brand-500)]/15 px-2 py-0.5 text-[10px] font-medium text-[var(--color-brand-400)]">
+          <span className="ml-2 rounded-md bg-[var(--color-brand-500)]/15 px-2 py-0.5 text-caption font-medium text-[var(--color-brand-400)]">
             Polling every 30s
           </span>
         )}
@@ -256,7 +256,7 @@ export default function PipelinesPage() {
               setRepoFilter(null);
               setShowUnlinked(false);
             }}
-            className="ml-2 rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/35 cursor-pointer hover:bg-white/[0.1] hover:text-white/50 transition-colors duration-150"
+            className="ml-2 rounded-md bg-white/[0.06] px-2 py-0.5 text-caption font-medium text-white/35 cursor-pointer hover:bg-white/[0.1] hover:text-white/50 transition-colors duration-150"
             title="Clear all filters"
           >
             {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active &times;
@@ -278,10 +278,10 @@ export default function PipelinesPage() {
                     <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
                       Unlinked runs
                     </span>
-                    <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400/60 tabular-nums">
+                    <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/60 tabular-nums">
                       {filteredRuns.length}
                     </span>
-                    <span className="text-[11px] text-white/25">
+                    <span className="text-label text-white/25">
                       Runs without a ticket key
                     </span>
                   </div>
@@ -317,7 +317,7 @@ export default function PipelinesPage() {
               )}
 
               {/* Keyboard shortcuts hint */}
-              <div className="mt-6 flex items-center justify-center gap-4 text-[10px] text-white/15">
+              <div className="mt-6 flex items-center justify-center gap-4 text-caption text-white/15">
                 <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">R</kbd> Refresh</span>
                 <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">F</kbd> Cycle status filter</span>
                 <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">S</kbd> Toggle sprint</span>

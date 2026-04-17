@@ -229,7 +229,7 @@ export function EditableDescription({
           actions={
             <div className="flex items-center gap-1">
               {pushError && (
-                <span className="text-[11px] text-[#e5534b]">{pushError}</span>
+                <span className="text-label text-[#e5534b]">{pushError}</span>
               )}
               {showConflictWarning && (
                 <label className="flex items-center gap-1.5 cursor-pointer">
@@ -239,14 +239,14 @@ export function EditableDescription({
                     onChange={(e) => onOverrideChange?.(e.target.checked)}
                     className="h-3 w-3 rounded border-white/20 bg-white/[0.03] accent-[var(--color-brand-500)] cursor-pointer"
                   />
-                  <span className="text-[10px] text-white/40">Override remote</span>
+                  <span className="text-caption text-white/40">Override remote</span>
                 </label>
               )}
               <Button
                 variant="ghost"
                 size="md"
                 onClick={handleDiscard}
-                className="!text-white/35 hover:!text-white/60 !text-[12px]"
+                className="!text-white/35 hover:!text-white/60 !text-body-sm"
               >
                 Discard
               </Button>
@@ -254,7 +254,7 @@ export function EditableDescription({
                 variant="ghost"
                 size="md"
                 onClick={save}
-                className="!bg-white/[0.08] !text-white/70 hover:!bg-white/[0.12] hover:!text-white !text-[12px]"
+                className="!bg-white/[0.08] !text-white/70 hover:!bg-white/[0.12] hover:!text-white !text-body-sm"
               >
                 Save
               </Button>
@@ -266,7 +266,7 @@ export function EditableDescription({
                   title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
                   onClick={handlePushToJira}
                   icon={isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
-                  className="!text-[12px]"
+                  className="!text-body-sm"
                 >
                   {isPushing ? "Pushing..." : "Push to Jira"}
                 </Button>

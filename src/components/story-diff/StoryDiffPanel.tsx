@@ -109,7 +109,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
               type="button"
               onClick={() => setDiffMode("unified")}
               title="Unified diff view"
-              className={`px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
+              className={`px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
                 diffMode === "unified"
                   ? "bg-white/[0.08] text-white/70"
                   : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
@@ -122,7 +122,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
               type="button"
               onClick={() => setDiffMode("side-by-side")}
               title="Side-by-side diff view"
-              className={`border-l border-white/[0.08] px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
+              className={`border-l border-white/[0.08] px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
                 diffMode === "side-by-side"
                   ? "bg-white/[0.08] text-white/70"
                   : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
@@ -191,7 +191,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
 
       {/* Keyboard hint */}
       <div className="border-t border-white/[0.06] px-4 py-2">
-        <p className="text-[10px] text-white/20">
+        <p className="text-caption text-white/20">
           Use arrow keys or j/k to navigate, Esc to go back
         </p>
       </div>

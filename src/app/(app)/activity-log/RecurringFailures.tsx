@@ -18,7 +18,7 @@ export function RecurringFailures({
       <div className="mb-5 rounded-xl border border-white/[0.04] bg-[var(--color-surface-elevated)] px-4 py-4">
         <div className="flex items-center gap-2 mb-3">
           <RepeatIcon className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
+          <span className="text-label font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
             Recurring Failures
           </span>
         </div>
@@ -36,10 +36,10 @@ export function RecurringFailures({
     <div className="mb-5 rounded-xl border border-amber-400/[0.12] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.04] bg-amber-400/[0.03]">
         <RepeatIcon className="h-3.5 w-3.5 text-amber-400/60" strokeWidth={1.5} />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-400/60 font-[var(--font-body)]">
+        <span className="text-label font-semibold uppercase tracking-wider text-amber-400/60 font-[var(--font-body)]">
           Recurring Failures
         </span>
-        <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400/15 px-1.5 text-[10px] font-bold text-amber-400 font-[var(--font-body)]">
+        <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400/15 px-1.5 text-caption font-bold text-amber-400 font-[var(--font-body)]">
           {failures.length}
         </span>
       </div>
@@ -52,10 +52,10 @@ export function RecurringFailures({
             className="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/[0.015] transition-colors duration-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] text-left"
           >
             <div className="flex flex-col items-start gap-0.5 min-w-[110px] shrink-0">
-              <span className="text-[11px] text-white/50 font-[var(--font-body)]">
+              <span className="text-label text-white/50 font-[var(--font-body)]">
                 {entryTypeLabel(f.type)}
               </span>
-              <span className="text-[10px] text-white/20 font-[var(--font-body)]">
+              <span className="text-caption text-white/20 font-[var(--font-body)]">
                 {formatRelativeTime(f.lastOccurrence)}
               </span>
             </div>
@@ -70,14 +70,14 @@ export function RecurringFailures({
                     return (
                       <span
                         key={scope}
-                        className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] bg-white/[0.04] text-white/30 font-[var(--font-body)]"
+                        className="inline-flex items-center rounded px-1.5 py-0.5 text-caption bg-white/[0.04] text-white/30 font-[var(--font-body)]"
                       >
                         {sprintName ?? scope}
                       </span>
                     );
                   })}
                   {f.affectedScopes.length > 5 && (
-                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] text-white/20 font-[var(--font-body)]">
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-caption text-white/20 font-[var(--font-body)]">
                       +{f.affectedScopes.length - 5} more
                     </span>
                   )}
@@ -88,7 +88,7 @@ export function RecurringFailures({
               <span className="text-sm font-bold tabular-nums font-[var(--font-display)] text-amber-400/80">
                 {f.count}
               </span>
-              <span className="text-[10px] text-white/20 font-[var(--font-body)]">occurrences</span>
+              <span className="text-caption text-white/20 font-[var(--font-body)]">occurrences</span>
             </div>
           </button>
         ))}

@@ -51,7 +51,7 @@ function FreshnessIndicator({
 
   if (isCurrent) {
     return (
-      <div className="flex items-center gap-1.5 text-[11px] text-[#4aaa60]/80">
+      <div className="flex items-center gap-1.5 text-label text-[#4aaa60]/80">
         <CheckCircle2 size={12} strokeWidth={1.5} />
         <span>Based on v{review.storyVersionNumber} (current)</span>
       </div>
@@ -60,7 +60,7 @@ function FreshnessIndicator({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-1.5 text-[11px] text-[#ea8744]/80">
+      <div className="flex items-center gap-1.5 text-label text-[#ea8744]/80">
         <AlertTriangle size={12} strokeWidth={1.5} />
         <span>Based on v{review.storyVersionNumber} (outdated)</span>
       </div>
@@ -188,7 +188,7 @@ export function ReviewPopover({
                 <span className="text-base font-semibold tabular-nums" style={{ color }}>
                   {latestReview.overallScore}
                 </span>
-                <span className="text-[10px] text-white/20">/100</span>
+                <span className="text-caption text-white/20">/100</span>
               </div>
             </div>
 
@@ -201,7 +201,7 @@ export function ReviewPopover({
 
             {/* Summary */}
             {latestReview.summary && (
-              <p className="mb-3 text-[11px] leading-relaxed text-white/35 line-clamp-3">
+              <p className="mb-3 text-label leading-relaxed text-white/35 line-clamp-3">
                 {latestReview.summary}
               </p>
             )}
@@ -209,10 +209,10 @@ export function ReviewPopover({
             {/* Suggestions */}
             {latestReview.suggestions.length > 0 && (
               <div className="mb-3">
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-white/20">Suggestions</p>
+                <p className="mb-1 text-caption font-medium uppercase tracking-wider text-white/20">Suggestions</p>
                 <ul className="space-y-0.5">
                   {latestReview.suggestions.slice(0, 3).map((s, i) => (
-                    <li key={i} className="flex items-start gap-1.5 text-[11px] text-white/35">
+                    <li key={i} className="flex items-start gap-1.5 text-label text-white/35">
                       <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-white/20" />
                       <span className="line-clamp-1">{s}</span>
                     </li>
@@ -223,7 +223,7 @@ export function ReviewPopover({
 
             {/* Timestamp + freshness */}
             <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
-              <div className="text-[10px] text-white/25">
+              <div className="text-caption text-white/25">
                 {new Date(latestReview.createdAt).toLocaleString()} via {latestReview.source.replace("-", " ")}
               </div>
               <FreshnessIndicator
@@ -236,7 +236,7 @@ export function ReviewPopover({
 
             {/* History count */}
             {reviews.length > 1 && (
-              <div className="mt-2 text-[10px] text-white/20">
+              <div className="mt-2 text-caption text-white/20">
                 {reviews.length} reviews total
               </div>
             )}

@@ -48,7 +48,7 @@ export function SplitPaneHeader({
             {ticketKey}
           </Link>
           <span
-            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+            className={`rounded px-1.5 py-0.5 text-caption font-medium ${
               slot === "original"
                 ? "bg-white/[0.06] text-white/40"
                 : "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]/70"
@@ -67,7 +67,7 @@ export function SplitPaneHeader({
               type="button"
               onClick={() => onPaneViewChange("editor")}
               title="Editor"
-              className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors duration-150 ${
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer transition-colors duration-150 ${
                 paneView === "editor"
                   ? "bg-[var(--color-surface-floating)] text-white/70 shadow-sm"
                   : "text-white/35 hover:text-white/55"
@@ -80,7 +80,7 @@ export function SplitPaneHeader({
               type="button"
               onClick={() => onPaneViewChange("diff")}
               title="Diff"
-              className={`relative flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium cursor-pointer transition-colors duration-150 ${
+              className={`relative flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer transition-colors duration-150 ${
                 paneView === "diff"
                   ? "bg-[var(--color-surface-floating)] text-white/70 shadow-sm"
                   : "text-white/35 hover:text-white/55"

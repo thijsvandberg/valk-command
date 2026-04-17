@@ -25,14 +25,14 @@ function StatusDot({ status }: { status: StakeholderTicket["status"] }) {
 function TypeBadge({ type }: { type: StakeholderTicket["type"] }) {
   if (type === "bug") {
     return (
-      <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-red-500/15 text-red-400/70">
+      <span className="shrink-0 rounded px-1 py-px text-caption font-semibold uppercase tracking-wide bg-red-500/15 text-red-400/70">
         bug
       </span>
     );
   }
   if (type === "spike") {
     return (
-      <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-violet-500/15 text-violet-400/70">
+      <span className="shrink-0 rounded px-1 py-px text-caption font-semibold uppercase tracking-wide bg-violet-500/15 text-violet-400/70">
         spike
       </span>
     );
@@ -62,7 +62,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
     <div className="space-y-5">
       {groups.map(([epic, items]) => (
         <div key={epic}>
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+          <div className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-white/30">
             {epic}
           </div>
           <ul className="space-y-1.5">
@@ -85,12 +85,12 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   </a>
                 )}
                 {t.jiraKey && carriedKeys?.has(t.jiraKey) && (
-                  <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-400/70">
+                  <span className="shrink-0 rounded px-1 py-px text-caption font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-400/70">
                     carried
                   </span>
                 )}
                 {showKeys && t.jiraKey && (
-                  <span className="shrink-0 rounded bg-white/[0.06] px-1 py-0.5 text-[10px] font-mono text-white/30">
+                  <span className="shrink-0 rounded bg-white/[0.06] px-1 py-0.5 text-caption font-mono text-white/30">
                     {t.jiraKey}
                   </span>
                 )}

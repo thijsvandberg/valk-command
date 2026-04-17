@@ -24,7 +24,7 @@ function DragHandle({ showIcon, isDragActive, stickyLeft, disabledTooltip }: {
   disabledTooltip?: string;
 }) {
   const stickyStyle = stickyLeft !== undefined ? { position: "sticky" as const, left: stickyLeft, zIndex: 2 } : undefined;
-  const bgClass = stickyLeft !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : "";
+  const bgClass = stickyLeft !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : "";
   if (!showIcon && !disabledTooltip) {
     return <td className={`w-5 py-1.5 pl-1 pr-0${bgClass}`} style={stickyStyle} />;
   }
@@ -165,7 +165,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`overflow-hidden py-1.5 pr-2${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+            className={`overflow-hidden py-1.5 pr-2${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             <IssueTypeIcon type={ticket.type} />
@@ -177,7 +177,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`overflow-hidden py-1.5 pr-3 font-mono text-xs text-white/50 leading-none${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+            className={`overflow-hidden py-1.5 pr-3 font-mono text-xs text-white/50 leading-none${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             <span className="flex items-center gap-1.5">
@@ -212,7 +212,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`max-w-0 truncate py-1.5 pr-3 text-white/80${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+            className={`max-w-0 truncate py-1.5 pr-3 text-white/80${sl !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             {ticket.title}
@@ -236,12 +236,12 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td key={id} className="py-1.5 pr-3 overflow-hidden">
             {isRemoved ? (
-              <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium bg-red-500/10 text-red-400/70">
+              <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium bg-red-500/10 text-red-400/70">
                 REMOVED
               </span>
             ) : (
               <span
-                className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
+                className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium"
                 style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
               >
                 {ticket.jiraStatus}
@@ -321,7 +321,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             <div className="flex items-center gap-1.5">
               {health && health.status !== "gray" && (
                 <span
-                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium ${
                     health.status === "green"
                       ? "bg-emerald-500/10 text-emerald-400/70"
                       : health.status === "red"
@@ -336,7 +336,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
               )}
               {lastDeploy && (
                 <span
-                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium ${
                     lastDeploy.state === "SUCCESSFUL"
                       ? "bg-emerald-500/10 text-emerald-400/70"
                       : lastDeploy.state === "FAILED"
@@ -392,7 +392,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
 
       {/* Checkbox — stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
-        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-white/[0.02]" : ""}`}
+        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-elevated)] group-hover/row:bg-white/[0.02]" : ""}`}
         style={stickyOffsets?._check !== undefined ? { position: "sticky", left: stickyOffsets._check, zIndex: 2 } : undefined}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {

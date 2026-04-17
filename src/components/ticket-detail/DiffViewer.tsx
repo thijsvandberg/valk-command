@@ -128,7 +128,7 @@ export function DiffViewer({
           <Info size={16} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-white/60">No content changes detected</p>
-            <p className="mt-0.5 text-[11px] text-white/35">
+            <p className="mt-0.5 text-label text-white/35">
               Jira was updated (e.g. status transition, comment, or field change) but the description content is unchanged.
             </p>
           </div>

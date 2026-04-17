@@ -33,7 +33,7 @@ function StoryRow({ story }: { story: InvestigationRelatedStory }) {
         <span className="text-xs text-white/50">{story.summary}</span>
       </div>
       {story.relevance && (
-        <p className="text-[11px] text-white/25 mt-0.5">
+        <p className="text-label text-white/25 mt-0.5">
           {story.relevance}
         </p>
       )}

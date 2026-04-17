@@ -155,11 +155,11 @@ export function ActivityTable({
         {/* Header row */}
         <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.015]">
           <span />
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Type</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Status</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Duration</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Scope</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)] text-right">Time</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Type</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Status</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Duration</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Scope</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)] text-right">Time</span>
         </div>
 
         {/* Loading state */}
@@ -207,12 +207,12 @@ export function ActivityTable({
                     {entryTypeLabel(entry.type)}
                   </span>
                   {entry.summary && !isExpanded && (
-                    <div className="text-[11px] text-white/30 truncate font-[var(--font-body)] mt-0.5">
+                    <div className="text-label text-white/30 truncate font-[var(--font-body)] mt-0.5">
                       {entry.summary}
                     </div>
                   )}
                   {entry.status === "failed" && entry.errorDetail && !isExpanded && (
-                    <div className="text-[11px] text-amber-400/60 truncate font-[var(--font-body)] mt-0.5">
+                    <div className="text-label text-amber-400/60 truncate font-[var(--font-body)] mt-0.5">
                       {errorDisplay}
                     </div>
                   )}
@@ -274,17 +274,17 @@ export function ActivityTable({
                 <div className={`px-10 py-3 bg-white/[0.008] ${i < (entries.length - 1) ? "border-b border-white/[0.03]" : ""}`}>
                   {entry.summary && (
                     <div className="mb-2">
-                      <span className="text-[10px] uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Summary</span>
+                      <span className="text-caption uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Summary</span>
                       <p className="mt-1 text-xs text-white/50 font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
                     </div>
                   )}
                   {entry.errorDetail && (
                     <div>
-                      <span className="text-[10px] uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Error detail</span>
+                      <span className="text-caption uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Error detail</span>
                       {structured ? (
                         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
                           {Object.entries(structured).map(([k, v]) => (
-                            <span key={k} className="text-[11px] font-[var(--font-body)]">
+                            <span key={k} className="text-label font-[var(--font-body)]">
                               <span className="text-white/25">{k}: </span>
                               <span className="text-amber-400/70">{String(v)}</span>
                             </span>
@@ -312,7 +312,7 @@ export function ActivityTable({
         >
           Previous
         </Button>
-        <span className="text-[11px] text-white/20 font-[var(--font-body)]">
+        <span className="text-label text-white/20 font-[var(--font-body)]">
           Showing {offset + 1} - {offset + (entries?.length ?? 0)}
         </span>
         <Button

@@ -82,7 +82,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white/85">Split story</h2>
-              <p className="text-[11px] text-white/35 mt-0.5">Select or create the target story</p>
+              <p className="text-label text-white/35 mt-0.5">Select or create the target story</p>
             </div>
           </div>
           <Button
@@ -127,7 +127,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
         {mode === "create" && (
           <div className="mb-5 space-y-3">
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+              <label className="mb-1.5 block text-label font-medium text-white/45">
                 New story title
               </label>
               <input
@@ -140,7 +140,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
             </div>
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+                <label className="mb-1.5 block text-label font-medium text-white/45">
                   Issue type
                 </label>
                 <div className="relative">
@@ -158,7 +158,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 </div>
               </div>
               <div className="flex-1">
-                <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+                <label className="mb-1.5 block text-label font-medium text-white/45">
                   Sprint
                 </label>
                 <div className="relative">
@@ -180,7 +180,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 </div>
               </div>
             </div>
-            <p className="text-[11px] text-white/30">
+            <p className="text-label text-white/30">
               A new story will be created on Jira and linked to the original.
             </p>
           </div>
@@ -189,7 +189,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
         {/* Use existing */}
         {mode === "existing" && (
           <div className="mb-5">
-            <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+            <label className="mb-1.5 block text-label font-medium text-white/45">
               Ticket key
             </label>
             <input
@@ -199,7 +199,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="VPL-123"
             />
-            <p className="mt-1.5 text-[11px] text-white/30">
+            <p className="mt-1.5 text-label text-white/30">
               The existing story must be synced locally. It will be linked to the original.
             </p>
           </div>

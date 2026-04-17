@@ -60,7 +60,7 @@ export function SubFlowForm({
       {subFlow.mode === "create" && (
         <div className="mb-4 space-y-3">
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+            <label className="mb-1.5 block text-label font-medium text-white/45">
               Story title
             </label>
             <input
@@ -73,7 +73,7 @@ export function SubFlowForm({
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+            <label className="mb-1.5 block text-label font-medium text-white/45">
               Sprint
             </label>
             <div className="relative">
@@ -107,7 +107,7 @@ export function SubFlowForm({
       {/* Use existing form */}
       {subFlow.mode === "existing" && (
         <div className="mb-4">
-          <label className="mb-1.5 block text-[11px] font-medium text-white/45">
+          <label className="mb-1.5 block text-label font-medium text-white/45">
             Ticket key
           </label>
           <input
@@ -118,7 +118,7 @@ export function SubFlowForm({
             className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
             placeholder="VPL-123"
           />
-          <p className="mt-1.5 text-[11px] text-white/30">
+          <p className="mt-1.5 text-label text-white/30">
             The ticket must be synced locally.
           </p>
         </div>

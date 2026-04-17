@@ -208,7 +208,7 @@ export function PaneArea() {
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) setHoveredSlot(null);
                 }}
               >
-                <span className={`text-[10px] font-medium whitespace-nowrap transition-colors duration-150 ${
+                <span className={`text-caption font-medium whitespace-nowrap transition-colors duration-150 ${
                   isHovered ? "text-[var(--color-brand-400)]" : "text-[var(--color-brand-400)]/60"
                 }`}>
                   {isHovered ? "Drop here" : `+ Pane ${slotIdx + 1}`}
@@ -241,7 +241,7 @@ export function PaneArea() {
             {/* Drop overlay rendered above app content so it's visible during drag */}
             {showDropOverlay && (
               <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-surface-base)]/75 backdrop-blur-sm">
-                <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 px-4 py-2 text-[11px] font-medium text-[var(--color-brand-400)] shadow-lg shadow-black/20">
+                <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 px-4 py-2 text-label font-medium text-[var(--color-brand-400)] shadow-lg shadow-black/20">
                   Drop here
                 </span>
               </div>

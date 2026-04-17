@@ -79,8 +79,8 @@ export function CommandPalette() {
             >
               <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.5} />
             </button>
-            <span className="flex-1 text-[15px] text-white/50 font-[var(--font-body)]">New Story</span>
-            <kbd className="hidden sm:flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] font-mono text-white/20 tracking-wide">
+            <span className="flex-1 text-heading-sm text-white/50 font-[var(--font-body)]">New Story</span>
+            <kbd className="hidden sm:flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
               ESC
             </kbd>
           </div>
@@ -93,14 +93,14 @@ export function CommandPalette() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search pages, tickets, or actions..."
-              className="flex-1 bg-transparent text-[15px] text-white/90 placeholder-white/20 focus:outline-none font-[var(--font-body)]"
+              className="flex-1 bg-transparent text-heading-sm text-white/90 placeholder-white/20 focus:outline-none font-[var(--font-body)]"
               spellCheck={false}
               autoComplete="off"
             />
             {isLoading && (
               <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-white/40" />
             )}
-            <kbd className="hidden sm:flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] font-mono text-white/20 tracking-wide">
+            <kbd className="hidden sm:flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
               ESC
             </kbd>
           </div>
@@ -151,7 +151,7 @@ export function CommandPalette() {
               return (
                 <div key={`${group.category}-${sectionStartIdx}`}>
                   {/* Section header */}
-                  <div className="px-5 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/20 font-[var(--font-body)]">
+                  <div className="px-5 pt-3 pb-1.5 text-caption font-semibold uppercase tracking-[0.08em] text-white/20 font-[var(--font-body)]">
                     {CATEGORY_LABELS[group.category]}
                   </div>
 
@@ -186,7 +186,7 @@ export function CommandPalette() {
         )}
 
         {/* Footer hints */}
-        <div className="flex items-center gap-4 border-t border-white/[0.06] px-5 py-2.5 text-[10px] text-white/18">
+        <div className="flex items-center gap-4 border-t border-white/[0.06] px-5 py-2.5 text-caption text-white/18">
           {isSubFlow ? (
             <>
               <span className="flex items-center gap-1.5">

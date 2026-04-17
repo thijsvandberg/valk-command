@@ -24,7 +24,7 @@ export function Tag({
 }: TagProps) {
   return (
     <span
-      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${COLOR_CLASSES[color]}${className ? ` ${className}` : ""}`}
+      className={`rounded px-1.5 py-0.5 text-caption font-medium ${COLOR_CLASSES[color]}${className ? ` ${className}` : ""}`}
       {...rest}
     >
       {children}

@@ -43,7 +43,7 @@ export function AdjacentSprintSection({
             strokeWidth={1.5}
             className={`text-white/20 group-hover:text-white/40 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
           />
-          <span className={`text-[10px] tabular-nums ${labelColor}`}>
+          <span className={`text-caption tabular-nums ${labelColor}`}>
             {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
           </span>
         </button>
@@ -52,7 +52,7 @@ export function AdjacentSprintSection({
           <button
             type="button"
             onClick={() => setShowKeys((v) => !v)}
-            className="text-[11px] text-white/25 cursor-pointer hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="text-label text-white/25 cursor-pointer hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             {showKeys ? "Hide" : "Show"} details
           </button>

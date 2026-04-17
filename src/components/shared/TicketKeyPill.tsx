@@ -39,7 +39,7 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor }:
           type="button"
           onClick={handleCopy}
           title="Copy Jira URL"
-          className={`px-2 py-0.5 font-mono text-[11px] font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          className={`px-2 py-0.5 font-mono text-label font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
             statusLabel ? "" : "rounded-md "
           }${
             copied
@@ -53,7 +53,7 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor }:
         </button>
         {statusLabel && (
           <span
-            className="px-2 py-0.5 text-[11px] font-medium"
+            className="px-2 py-0.5 text-label font-medium"
             style={{ backgroundColor: statusBg, color: statusColor }}
           >
             {statusLabel}

@@ -64,7 +64,7 @@ export function ChatApp() {
           <button
             type="button"
             onClick={() => setShowLogs(false)}
-            className={`rounded px-2 py-1 text-[10px] font-medium cursor-pointer ${
+            className={`rounded px-2 py-1 text-caption font-medium cursor-pointer ${
               !showLogs
                 ? "text-white/70 bg-white/[0.06]"
                 : "text-white/30 hover:text-white/50 hover:bg-white/[0.04]"
@@ -75,7 +75,7 @@ export function ChatApp() {
           <button
             type="button"
             onClick={() => setShowLogs(true)}
-            className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium cursor-pointer ${
+            className={`flex items-center gap-1 rounded px-2 py-1 text-caption font-medium cursor-pointer ${
               showLogs
                 ? "text-white/70 bg-white/[0.06]"
                 : "text-white/30 hover:text-white/50 hover:bg-white/[0.04]"
@@ -85,7 +85,7 @@ export function ChatApp() {
             Logs
           </button>
           {(writer.aiDrafts.length > 0 || writer.messages.length > 0) && (
-            <span className="ml-1 text-[10px] text-white/25 tabular-nums">
+            <span className="ml-1 text-caption text-white/25 tabular-nums">
               {[
                 writer.aiDrafts.length > 0 &&
                   `${writer.aiDrafts.length} draft${writer.aiDrafts.length !== 1 ? "s" : ""}`,

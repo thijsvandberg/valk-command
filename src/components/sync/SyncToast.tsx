@@ -89,7 +89,7 @@ function ToastItem({
         <p className="text-xs font-medium text-white/80 font-[var(--font-body)]">
           {isError ? "Action failed" : isCancelled ? "Action cancelled" : "Action complete"}
         </p>
-        <p className="text-[11px] text-white/40 font-[var(--font-body)] truncate mt-0.5">
+        <p className="text-label text-white/40 font-[var(--font-body)] truncate mt-0.5">
           {isError ? (error ?? "Unknown error") : isCancelled ? "Cancelled by user" : (summary ?? "Done")}
         </p>
       </div>

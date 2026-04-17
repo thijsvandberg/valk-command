@@ -17,7 +17,7 @@ export function StatusBadge({ status }: { status: string }) {
   const color = JIRA_STATUS_COLORS[upper as keyof typeof JIRA_STATUS_COLORS] ?? { bg: "rgba(148, 163, 184, 0.12)", text: "#94a3b8" };
   return (
     <span
-      className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide"
+      className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-medium tracking-wide"
       style={{ backgroundColor: color.bg, color: color.text }}
     >
       {upper}
@@ -57,7 +57,7 @@ export function PreviewPane({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex items-center gap-2 flex-wrap text-[12px]">
+      <div className="flex items-center gap-2 flex-wrap text-body-sm">
         {displaySprintName && result.sprintId && (
           <>
             <a
@@ -112,7 +112,7 @@ export function PreviewPane({
         </a>
       </div>
 
-      <h3 className="text-[14px] font-medium leading-snug text-white/90">
+      <h3 className="text-body-lg font-medium leading-snug text-white/90">
         {result.summary}
       </h3>
 
@@ -123,7 +123,7 @@ export function PreviewPane({
             href={result.jiraUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium cursor-pointer"
+            className="flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer"
             style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "#60a5fa", transition: "background-color 120ms" }}
           >
             Jira
@@ -131,12 +131,12 @@ export function PreviewPane({
           </a>
         )}
         {updatedLabel && (
-          <span className="text-[11px] text-white/20">{updatedLabel}</span>
+          <span className="text-label text-white/20">{updatedLabel}</span>
         )}
       </div>
 
       {(result.reporter || result.assignee || result.storyPoints != null) && (
-        <div className="flex items-center gap-4 text-[11px]">
+        <div className="flex items-center gap-4 text-label">
           {result.reporter && (
             <span className="flex items-center gap-1.5">
               <span className="text-white/25 uppercase tracking-wide">By</span>
@@ -160,8 +160,8 @@ export function PreviewPane({
 
       {result.labels && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-          <span className="text-[11px] text-white/30 uppercase tracking-wide">Labels</span>
-          <span className="text-[12px] text-white/65">{result.labels}</span>
+          <span className="text-label text-white/30 uppercase tracking-wide">Labels</span>
+          <span className="text-body-sm text-white/65">{result.labels}</span>
         </div>
       )}
 
@@ -170,7 +170,7 @@ export function PreviewPane({
           {renderMarkdown(result.description)}
         </div>
       ) : (
-        <p className="text-[12px] text-white/20 italic">No description</p>
+        <p className="text-body-sm text-white/20 italic">No description</p>
       )}
     </div>
   );
@@ -284,8 +284,8 @@ export function MatchSnippet({ matches }: { matches?: readonly FuseResultMatch[]
     const label = BODY_FIELD_LABELS[fieldName] ?? fieldName;
 
     return (
-      <span className="block truncate text-[11px] leading-snug" style={{ color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
-        <span className="mr-1 uppercase tracking-wide text-[9px]" style={{ color: "rgba(255,255,255,0.2)" }}>{label}</span>
+      <span className="block truncate text-label leading-snug" style={{ color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
+        <span className="mr-1 uppercase tracking-wide text-caption" style={{ color: "rgba(255,255,255,0.2)" }}>{label}</span>
         {windowStart > 0 && <span style={{ color: "rgba(255,255,255,0.2)" }}>…</span>}
         {parts}
         {windowEnd < value.length && <span style={{ color: "rgba(255,255,255,0.2)" }}>…</span>}
@@ -354,7 +354,7 @@ export function LocalResultRow({
       {!active && (
         <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
       )}
-      <span className="min-w-0 flex-1 overflow-hidden text-[14px] text-white/75">
+      <span className="min-w-0 flex-1 overflow-hidden text-body-lg text-white/75">
         <HighlightedText text={result.summary} matches={result.matches} fieldName="summary" />
         {hasBodyFieldMatch(result.matches) && <MatchSnippet matches={result.matches} />}
       </span>
@@ -362,13 +362,13 @@ export function LocalResultRow({
         {(showKey || displaySprintName) && (
           <span className="hidden sm:flex items-center gap-1.5">
             {showKey && (
-              <span className="font-mono text-[11px] text-white/45 tracking-tight">{result.key}</span>
+              <span className="font-mono text-label text-white/45 tracking-tight">{result.key}</span>
             )}
             {showKey && displaySprintName && (
-              <span className="text-white/15 text-[11px]">·</span>
+              <span className="text-white/15 text-label">·</span>
             )}
             {displaySprintName && (
-              <span className="text-[11px] text-white/20 truncate max-w-[140px]">{displaySprintName}</span>
+              <span className="text-label text-white/20 truncate max-w-[140px]">{displaySprintName}</span>
             )}
           </span>
         )}
@@ -408,18 +408,18 @@ export function JiraResultRow({
       {!active && (
         <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
       )}
-      <span className="min-w-0 flex-1 truncate text-[14px] text-white/75">{issue.summary}</span>
+      <span className="min-w-0 flex-1 truncate text-body-lg text-white/75">{issue.summary}</span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {(showKey || issue.sprintName) && (
           <span className="hidden sm:flex items-center gap-1.5">
             {showKey && (
-              <span className="font-mono text-[11px] text-white/45 tracking-tight">{issue.key}</span>
+              <span className="font-mono text-label text-white/45 tracking-tight">{issue.key}</span>
             )}
             {showKey && issue.sprintName && (
-              <span className="text-white/15 text-[11px]">·</span>
+              <span className="text-white/15 text-label">·</span>
             )}
             {issue.sprintName && (
-              <span className="text-[11px] text-white/20 truncate max-w-[140px]">{issue.sprintName}</span>
+              <span className="text-label text-white/20 truncate max-w-[140px]">{issue.sprintName}</span>
             )}
           </span>
         )}
@@ -430,7 +430,7 @@ export function JiraResultRow({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium cursor-pointer"
+            className="flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer"
             style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "#60a5fa", transition: "background-color 120ms" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.2)")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.1)")}
@@ -460,7 +460,7 @@ export function EmptyState({ query, mode, onSwitchToJira }: { query: string; mod
         <button
           type="button"
           onClick={onSwitchToJira}
-          className="rounded-full px-3 py-1.5 text-[12px] font-medium cursor-pointer"
+          className="rounded-full px-3 py-1.5 text-body-sm font-medium cursor-pointer"
           style={{
             backgroundColor: "rgba(74, 170, 96, 0.1)",
             color: "var(--color-brand-400)",
@@ -522,11 +522,11 @@ export function GroupedResultSection({
             transition: "transform 150ms cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         />
-        <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <span className="text-label font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
           {label}
         </span>
         <span
-          className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+          className="rounded-full px-1.5 py-0.5 text-caption font-medium"
           style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}
         >
           {count}
@@ -540,7 +540,7 @@ export function GroupedResultSection({
             <button
               type="button"
               onClick={onShowMore}
-              className="flex w-full items-center justify-center px-6 py-2 text-[11px] cursor-pointer focus-visible:outline-none"
+              className="flex w-full items-center justify-center px-6 py-2 text-label cursor-pointer focus-visible:outline-none"
               style={{ color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
@@ -601,20 +601,20 @@ export function ConversationResultRow({
         <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
       )}
       <MessageSquare className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "rgba(255,255,255,0.2)" }} />
-      <span className="min-w-0 flex-1 truncate text-[13px] text-white/70">
+      <span className="min-w-0 flex-1 truncate text-body text-white/70">
         {result.title}
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {result.relatedTicket && (
-          <span className="font-mono text-[11px] text-white/30 tracking-tight">{result.relatedTicket}</span>
+          <span className="font-mono text-label text-white/30 tracking-tight">{result.relatedTicket}</span>
         )}
         <span
-          className="rounded px-1.5 py-0.5 text-[10px] font-medium capitalize"
+          className="rounded px-1.5 py-0.5 text-caption font-medium capitalize"
           style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
         >
           {result.type}
         </span>
-        <span className="text-[10px] text-white/20">{relativeCreatedAt(result.createdAt)}</span>
+        <span className="text-caption text-white/20">{relativeCreatedAt(result.createdAt)}</span>
       </span>
     </a>
   );
@@ -654,13 +654,13 @@ export function CommentResultRow({
       )}
       <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" strokeWidth={1.5} style={{ color: "rgba(255,255,255,0.2)" }} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] text-white/70">{result.content}</span>
-        <span className="text-[11px] text-white/30">{result.author}</span>
+        <span className="block truncate text-body text-white/70">{result.content}</span>
+        <span className="text-label text-white/30">{result.author}</span>
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2 pt-0.5">
-        <span className="font-mono text-[11px] text-white/35 tracking-tight">{result.ticketKey}</span>
+        <span className="font-mono text-label text-white/35 tracking-tight">{result.ticketKey}</span>
         <span
-          className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+          className="rounded px-1.5 py-0.5 text-caption font-medium"
           style={{
             backgroundColor: result.source === "jira" ? "rgba(96, 165, 250, 0.1)" : "rgba(74, 170, 96, 0.1)",
             color: result.source === "jira" ? "#60a5fa" : "var(--color-brand-400)",

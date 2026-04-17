@@ -60,28 +60,28 @@ function SessionCard({
       {/* Top row: ticket key(s) + badges */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <code className="shrink-0 text-[11px] font-mono font-medium text-[var(--color-brand-400)]">
+          <code className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)]">
             {session.ticketKey}
           </code>
           {session.issueType && (
-            <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/35">
+            <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-caption text-white/35">
               {session.issueType}
             </span>
           )}
           {isSplit && (
             <>
               <Scissors size={9} strokeWidth={2} className="shrink-0 text-violet-400/60" />
-              <code className="shrink-0 text-[11px] font-mono font-medium text-[var(--color-brand-400)]">
+              <code className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)]">
                 {session.targetTicketKey}
               </code>
-              <span className="shrink-0 flex items-center gap-1 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+              <span className="shrink-0 flex items-center gap-1 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/80">
                 Split
               </span>
             </>
           )}
         </div>
         {jiraChanged && (
-          <span className="shrink-0 flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400/80">
+          <span className="shrink-0 flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/80">
             <AlertTriangle size={10} strokeWidth={2} />
             Jira changed
           </span>
@@ -91,22 +91,22 @@ function SessionCard({
       {/* Title(s) */}
       {isSplit ? (
         <div className="space-y-1">
-          <p className="text-[12px] font-semibold leading-snug text-white/80 truncate">
+          <p className="text-body-sm font-semibold leading-snug text-white/80 truncate">
             {session.title}
           </p>
-          <p className="text-[12px] leading-snug text-white/40 truncate">
+          <p className="text-body-sm leading-snug text-white/40 truncate">
             {session.targetTitle ?? session.targetTicketKey}
           </p>
         </div>
       ) : (
-        <p className="font-[var(--font-display)] text-[13px] font-semibold leading-snug text-white/85 line-clamp-2">
+        <p className="font-[var(--font-display)] text-body font-semibold leading-snug text-white/85 line-clamp-2">
           {session.title}
         </p>
       )}
 
       {/* Bottom row: metadata + actions */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[11px] text-white/30 min-w-0 truncate">
+        <div className="flex items-center gap-2 text-label text-white/30 min-w-0 truncate">
           {sprintLabel && (
             <span className="truncate">{sprintLabel}</span>
           )}

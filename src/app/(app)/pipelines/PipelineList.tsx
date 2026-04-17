@@ -80,27 +80,27 @@ function RunningCard({ run }: { run: PipelineRunPayload }) {
               href={run.pipelineUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
+              className="text-body-sm font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer truncate"
             >
               #{run.buildNumber}
             </a>
           ) : (
-            <span className="text-[12px] font-mono font-medium text-white/70 truncate">
+            <span className="text-body-sm font-mono font-medium text-white/70 truncate">
               #{run.buildNumber}
             </span>
           )}
-          <span className="text-[11px] text-white/30 truncate">{run.repo}</span>
+          <span className="text-label text-white/30 truncate">{run.repo}</span>
         </div>
         {run.ticketKey && (
           <Link
             href={`/tickets/${run.ticketKey}`}
-            className="shrink-0 text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+            className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
           >
             {run.ticketKey}
           </Link>
         )}
       </div>
-      <p className="relative mt-1.5 text-[12px] text-white/40 truncate">
+      <p className="relative mt-1.5 text-body-sm text-white/40 truncate">
         <GitBranch size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-px" />
         {run.branchName}
       </p>
@@ -120,7 +120,7 @@ export function StatusPill({ state }: { state: PipelineRunPayload["state"] }) {
   }[state];
 
   return (
-    <span className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${config.bg} ${config.text}`}>
+    <span className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-0.5 text-label font-medium ${config.bg} ${config.text}`}>
       {stateIcon(state, 11)}
       {config.label}
     </span>
@@ -152,17 +152,17 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
           ) : (
             <GitBranch size={13} strokeWidth={1.5} className="shrink-0 text-white/15" />
           )}
-          <span className="text-[12px] font-mono font-semibold text-white/70 group-hover:text-[var(--color-brand-400)] transition-colors duration-150">
+          <span className="text-body-sm font-mono font-semibold text-white/70 group-hover:text-[var(--color-brand-400)] transition-colors duration-150">
             #{run.buildNumber}
           </span>
-          <span className="text-[11px] text-white/20">{run.repo}</span>
+          <span className="text-label text-white/20">{run.repo}</span>
           {run.environment && (
-            <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-px text-[10px] font-medium text-violet-400/70">
+            <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-px text-caption font-medium text-violet-400/70">
               {run.environment}
             </span>
           )}
           {run.creator && (
-            <span className="hidden lg:flex items-center gap-1 ml-auto shrink-0 text-[11px] text-white/20">
+            <span className="hidden lg:flex items-center gap-1 ml-auto shrink-0 text-label text-white/20">
               <User size={10} strokeWidth={1.5} className="text-white/15" />
               {run.creator}
             </span>
@@ -170,7 +170,7 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
         </div>
 
         {/* Branch */}
-        <span className="text-[12px] text-white/35 truncate">{run.branchName}</span>
+        <span className="text-body-sm text-white/35 truncate">{run.branchName}</span>
 
         {/* Ticket */}
         <div className="flex flex-col gap-0.5 min-w-0">
@@ -180,13 +180,13 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
                 key={k}
                 href={`/tickets/${k}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[11px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer truncate"
+                className="text-label font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer truncate"
               >
                 {k}
               </Link>
             ))
           ) : (
-            <span className="text-[11px] text-white/10">-</span>
+            <span className="text-label text-white/10">-</span>
           )}
         </div>
 
@@ -196,12 +196,12 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
         </div>
 
         {/* Duration */}
-        <span className="text-[11px] text-white/25 text-right tabular-nums">
+        <span className="text-label text-white/25 text-right tabular-nums">
           {formatDuration(run.durationSeconds)}
         </span>
 
         {/* When */}
-        <span className="text-[11px] text-white/20 text-right tabular-nums">
+        <span className="text-label text-white/20 text-right tabular-nums">
           {formatTimeAgo(run.createdAt)}
         </span>
       </div>
@@ -210,12 +210,12 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
       {hasDetail && (
         <div className="flex items-center gap-3 px-4 pb-2.5 -mt-1 pl-[42px]">
           {run.commitMessage && (
-            <span className="text-[11px] text-white/20 truncate">{run.commitMessage}</span>
+            <span className="text-label text-white/20 truncate">{run.commitMessage}</span>
           )}
           {run.prTitle && run.prUrl && (
             <span
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(run.prUrl!, "_blank"); }}
-              className="shrink-0 flex items-center gap-1 text-[11px] text-white/25 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer"
+              className="shrink-0 flex items-center gap-1 text-label text-white/25 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer"
             >
               <GitPullRequest size={10} strokeWidth={1.5} />
               PR
@@ -256,7 +256,7 @@ export function PipelineTable({
   return (
     <div className="rounded-xl border border-white/[0.08] overflow-hidden">
       {/* Table header */}
-      <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.5fr)_100px_80px_68px_54px] gap-x-4 px-4 py-2 bg-white/[0.02] border-b border-white/[0.06] text-[10px] font-medium text-white/25 uppercase tracking-wider">
+      <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.5fr)_100px_80px_68px_54px] gap-x-4 px-4 py-2 bg-white/[0.02] border-b border-white/[0.06] text-caption font-medium text-white/25 uppercase tracking-wider">
         <span>Pipeline</span>
         <span>Branch</span>
         <span>Ticket</span>
@@ -320,17 +320,17 @@ export function GroupedByTicketView({
               {ticketKey !== "_unlinked" ? (
                 <Link
                   href={`/tickets/${ticketKey}`}
-                  className="text-[12px] font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                  className="text-body-sm font-mono font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
                 >
                   {ticketKey}
                 </Link>
               ) : (
-                <span className="text-[12px] font-medium text-white/30">Unlinked pipelines</span>
+                <span className="text-body-sm font-medium text-white/30">Unlinked pipelines</span>
               )}
               {title && (
-                <span className="text-[12px] text-white/40 truncate">{title}</span>
+                <span className="text-body-sm text-white/40 truncate">{title}</span>
               )}
-              <div className="ml-auto flex items-center gap-3 text-[11px]">
+              <div className="ml-auto flex items-center gap-3 text-label">
                 {passCount > 0 && (
                   <span className="flex items-center gap-1 text-emerald-400/70">
                     <CheckCircle2 size={11} strokeWidth={2} /> {passCount}
@@ -358,21 +358,21 @@ export function GroupedByTicketView({
                   href={run.pipelineUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[12px] font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer"
+                  className="text-body-sm font-mono font-medium text-white/70 hover:text-[var(--color-brand-400)] transition-colors duration-150 cursor-pointer"
                 >
                   #{run.buildNumber}
                 </a>
-                <span className="text-[11px] text-white/25 truncate">{run.repo}</span>
+                <span className="text-label text-white/25 truncate">{run.repo}</span>
                 {run.environment && (
-                  <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/80">
+                  <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/80">
                     {run.environment}
                   </span>
                 )}
-                <span className="text-[12px] text-white/30 truncate flex-1">{run.branchName}</span>
+                <span className="text-body-sm text-white/30 truncate flex-1">{run.branchName}</span>
                 {run.commitMessage && (
-                  <span className="hidden lg:block text-[11px] text-white/20 truncate max-w-[200px]">{run.commitMessage}</span>
+                  <span className="hidden lg:block text-label text-white/20 truncate max-w-[200px]">{run.commitMessage}</span>
                 )}
-                <span className="text-[11px] text-white/25 tabular-nums shrink-0">
+                <span className="text-label text-white/25 tabular-nums shrink-0">
                   {formatTimeAgo(run.createdAt)}
                 </span>
               </div>

@@ -40,10 +40,10 @@ export function EventTimeline({
     <div className="mb-5 rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
       <div className="flex items-center gap-2 mb-3">
         <Activity className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
+        <span className="text-label font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
           Last 24 Hours
         </span>
-        <span className="ml-auto text-[10px] text-white/15 font-[var(--font-body)]">
+        <span className="ml-auto text-caption text-white/15 font-[var(--font-body)]">
           {entries.length} {entries.length === 1 ? "event" : "events"}
         </span>
       </div>
@@ -114,7 +114,7 @@ export function EventTimeline({
         {hourLabels.map(({ label, pct }) => (
           <span
             key={label}
-            className="absolute text-[9px] text-white/15 font-[var(--font-body)] -translate-x-1/2"
+            className="absolute text-caption text-white/15 font-[var(--font-body)] -translate-x-1/2"
             style={{ left: `${pct}%` }}
           >
             {label}
@@ -132,10 +132,10 @@ export function EventTimeline({
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="text-[11px] font-semibold text-white/80 font-[var(--font-body)]">
+          <div className="text-label font-semibold text-white/80 font-[var(--font-body)]">
             {entryTypeLabel(tooltip.entry.type)}
           </div>
-          <div className="text-[10px] text-white/40 font-[var(--font-body)] mt-0.5 space-y-0.5">
+          <div className="text-caption text-white/40 font-[var(--font-body)] mt-0.5 space-y-0.5">
             <div>{formatTimestamp(tooltip.entry.startedAt)}</div>
             {tooltip.entry.scope && <div>{tooltip.entry.scope}</div>}
             {tooltip.entry.durationMs && <div>{formatDuration(tooltip.entry.durationMs)}</div>}

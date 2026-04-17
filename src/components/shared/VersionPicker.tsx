@@ -55,7 +55,7 @@ function VersionPickerItem({
           />
         ) : (
           <div
-            className={`flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold tracking-tight ring-1 ${
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-caption font-bold tracking-tight ring-1 ${
               isDraft
                 ? "bg-blue-500/10 text-blue-400/80 ring-blue-500/15"
                 : "bg-white/[0.06] text-white/40 ring-white/[0.07]"
@@ -69,7 +69,7 @@ function VersionPickerItem({
       {/* Text content */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <span className="text-[13px] font-semibold text-white/85 leading-tight">
+          <span className="text-body font-semibold text-white/85 leading-tight">
             {option.title ?? option.label}
           </span>
           {option.tag === "current" && (
@@ -85,11 +85,11 @@ function VersionPickerItem({
             <Tag color="purple" className="font-semibold leading-none">Draft</Tag>
           )}
           {option.author && (
-            <span className="text-[12px] text-white/45 truncate">{option.author}</span>
+            <span className="text-body-sm text-white/45 truncate">{option.author}</span>
           )}
         </div>
         {option.isoDate && (
-          <p className="mt-0.5 text-[11px] leading-tight text-white/30">
+          <p className="mt-0.5 text-label leading-tight text-white/30">
             {formatRichDate(option.isoDate)}
           </p>
         )}
@@ -180,7 +180,7 @@ export function VersionPicker({
                   <div className="mx-3.5 border-t border-white/[0.06]" />
                 )}
                 <div className="px-3.5 pb-1 pt-2.5">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.07em] text-white/30">
+                  <span className="text-caption font-medium uppercase tracking-[0.07em] text-white/30">
                     {name}
                   </span>
                 </div>

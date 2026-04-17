@@ -106,7 +106,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           onClick={() => setMoreOpen(!moreOpen)}
           aria-label="More formatting options"
           aria-expanded={moreOpen}
-          className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+          className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
             moreOpen
               ? "bg-white/[0.1] text-white"
               : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
@@ -209,7 +209,7 @@ function FormatButton({
       onClick={action}
       aria-label={label}
       aria-pressed={active}
-      className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+      className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
         active
           ? "bg-white/[0.1] text-white"
           : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
@@ -316,7 +316,7 @@ function ColorButton({ editor }: { editor: Editor }) {
         onClick={() => setOpen(!open)}
         aria-label="Text color"
         aria-expanded={open}
-        className={`cursor-pointer flex items-center gap-0.5 rounded h-7 min-w-7 px-1.5 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`cursor-pointer flex items-center gap-0.5 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
           open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/80"
         }`}
       >
@@ -341,7 +341,7 @@ function ColorButton({ editor }: { editor: Editor }) {
           <button
             type="button"
             onClick={clearColor}
-            className="cursor-pointer w-full rounded px-2 py-1 text-[11px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+            className="cursor-pointer w-full rounded px-2 py-1 text-label text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70"
           >
             Remove color
           </button>
@@ -387,7 +387,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
         onClick={() => setOpen(!open)}
         aria-label="Insert callout"
         aria-expanded={open}
-        className={`cursor-pointer flex items-center gap-1 rounded h-7 min-w-7 px-1.5 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`cursor-pointer flex items-center gap-1 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
           open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
         }`}
       >
@@ -447,7 +447,7 @@ function ExpandButton({ editor }: { editor: Editor }) {
         onClick={() => setOpen(!open)}
         aria-label="Insert expandable section"
         aria-expanded={open}
-        className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
           open || editor.isActive("expand")
             ? "bg-white/[0.1] text-white"
             : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
@@ -458,7 +458,7 @@ function ExpandButton({ editor }: { editor: Editor }) {
 
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] p-3 shadow-lg shadow-black/40">
-          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-white/30">
+          <label className="mb-1.5 block text-label font-medium uppercase tracking-wider text-white/30">
             Section title
           </label>
           <input
@@ -548,7 +548,7 @@ function EmojiButton({ editor }: { editor: Editor }) {
         onClick={() => setOpen(!open)}
         aria-label="Insert emoji"
         aria-expanded={open}
-        className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
           open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
         }`}
       >

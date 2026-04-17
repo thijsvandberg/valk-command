@@ -53,7 +53,7 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
         <span className="text-xs font-medium text-white/50 uppercase tracking-wider group-hover:text-white/70 transition-colors duration-150">
           Deployment Timeline
         </span>
-        <span className="rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/60 tabular-nums">
+        <span className="rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/60 tabular-nums">
           {deployments.length}
         </span>
         {collapsed ? (
@@ -66,12 +66,12 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
         <div className="space-y-4">
           {Array.from(byDate.entries()).map(([date, deploys]) => (
             <div key={date}>
-              <span className="text-[11px] font-medium text-white/25 uppercase tracking-wider">{date}</span>
+              <span className="text-label font-medium text-white/25 uppercase tracking-wider">{date}</span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {deploys.map((d) => (
                   <div
                     key={d.id}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-body-sm ${
                       d.state === "SUCCESSFUL"
                         ? "border-emerald-500/15 bg-emerald-500/[0.04]"
                         : d.state === "FAILED"
@@ -84,12 +84,12 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
                     {d.ticketKey && (
                       <Link
                         href={`/tickets/${d.ticketKey}`}
-                        className="font-mono text-[11px] text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
+                        className="font-mono text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150 cursor-pointer"
                       >
                         {d.ticketKey}
                       </Link>
                     )}
-                    <span className="text-[10px] text-white/20">{d.repo}</span>
+                    <span className="text-caption text-white/20">{d.repo}</span>
                   </div>
                 ))}
               </div>
@@ -142,15 +142,15 @@ export function DeploySettingsPanel() {
           <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Header */}
             <div className="px-4 pt-3.5 pb-2.5">
-              <h3 className="text-[12px] font-semibold text-white/60">Deploy notifications</h3>
-              <p className="text-[11px] text-white/25 mt-0.5">
+              <h3 className="text-body-sm font-semibold text-white/60">Deploy notifications</h3>
+              <p className="text-label text-white/25 mt-0.5">
                 Browser alerts when deployments complete for followed tickets.
               </p>
             </div>
 
             {permission === "denied" && (
               <div className="mx-3 mb-2 rounded-md bg-red-500/[0.06] border border-red-500/10 px-3 py-1.5">
-                <p className="text-[11px] text-red-400/70">Notifications blocked by browser settings.</p>
+                <p className="text-label text-red-400/70">Notifications blocked by browser settings.</p>
               </div>
             )}
 
@@ -160,10 +160,10 @@ export function DeploySettingsPanel() {
               onClick={toggleEnabled}
               className="w-full flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
             >
-              <span className="text-[12px] text-white/50">
+              <span className="text-body-sm text-white/50">
                 {settings.enabled ? "Enabled" : "Disabled"}
                 {settings.enabled && (
-                  <span className="ml-1.5 text-[10px] text-white/20">{enabledEnvCount}/{totalEnvCount}</span>
+                  <span className="ml-1.5 text-caption text-white/20">{enabledEnvCount}/{totalEnvCount}</span>
                 )}
               </span>
               <span className={`relative inline-flex items-center h-5 w-8 rounded-full transition-colors duration-150 ${
@@ -185,12 +185,12 @@ export function DeploySettingsPanel() {
                     onClick={() => toggleEnvironment(env)}
                     className="w-full flex items-center gap-2.5 px-4 py-1.5 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
                   >
-                    <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-[9px] shrink-0 ${
+                    <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
                       on ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
                     }`}>
                       {on && "\u2713"}
                     </span>
-                    <span className={`text-[12px] ${on ? "text-white/50" : "text-white/25"}`}>{env}</span>
+                    <span className={`text-body-sm ${on ? "text-white/50" : "text-white/25"}`}>{env}</span>
                   </button>
                 ))}
               </div>

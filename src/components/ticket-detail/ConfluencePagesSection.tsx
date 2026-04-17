@@ -84,7 +84,7 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
   return (
     <div className="px-3 pb-3 pt-1">
       {/* Meta line */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/25">
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-label text-white/25">
         {data.lastModifiedBy && (
           <span className="flex items-center gap-1">
             <User size={10} strokeWidth={1.5} />
@@ -107,14 +107,14 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
       />
 
       {data.truncated && (
-        <p className="mt-2 text-[11px] text-white/20">Preview truncated to 500 words.</p>
+        <p className="mt-2 text-label text-white/20">Preview truncated to 500 words.</p>
       )}
 
       <a
         href={pageUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-[var(--color-brand-400)]/70 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="mt-2 inline-flex items-center gap-1.5 text-label text-[var(--color-brand-400)]/70 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "color 0.15s ease" }}
       >
         Open in Confluence
@@ -197,7 +197,7 @@ function SearchPopover({
               <FileText size={13} strokeWidth={1.5} className="mt-0.5 shrink-0 text-white/20" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-white/65">{r.title}</p>
-                <p className="mt-0.5 text-[11px] text-white/25">{r.spaceTitle}</p>
+                <p className="mt-0.5 text-label text-white/25">{r.spaceTitle}</p>
               </div>
             </button>
           ))
@@ -240,18 +240,18 @@ function MentionedPagesSection({
 
   return (
     <div className="mt-3">
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/20">
+      <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-white/20">
         Mentioned
       </p>
       <div className="space-y-1">
         {unlinkedMentions.map((m) => (
           <div key={m.pageId} className="flex items-center gap-2">
             <FileText size={11} strokeWidth={1.5} className="shrink-0 text-white/15" />
-            <span className="min-w-0 flex-1 truncate text-[11px] text-white/35">{m.title}</span>
+            <span className="min-w-0 flex-1 truncate text-label text-white/35">{m.title}</span>
             <button
               type="button"
               onClick={() => onLink(m)}
-              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="shrink-0 rounded px-1.5 py-0.5 text-caption text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
             >
               Link
@@ -333,11 +333,11 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
         className="flex w-full items-center justify-between cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <div className="flex items-center gap-1.5">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/25">
+          <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">
             Confluence
           </h3>
           {links.length > 0 && (
-            <span className="text-[10px] text-white/15">
+            <span className="text-caption text-white/15">
               {links.length} page{links.length !== 1 ? "s" : ""}
             </span>
           )}

@@ -75,12 +75,12 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setVisible(false)}
       >
-        <span className="text-[10px] text-white/20 tabular-nums cursor-default select-none">
+        <span className="text-caption text-white/20 tabular-nums cursor-default select-none">
           {formatTimeAgo(displayIso)}
         </span>
         {visible && (
           <span
-            className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-[11px] text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+            className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
               pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
             }`}
           >
@@ -95,12 +95,12 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
           onMouseEnter={() => setSyncVisible(true)}
           onMouseLeave={() => setSyncVisible(false)}
         >
-          <span className="text-[9px] text-white/15 tabular-nums cursor-default select-none">
+          <span className="text-caption text-white/15 tabular-nums cursor-default select-none">
             (synced {formatTimeAgo(createdAt)})
           </span>
           {syncVisible && (
             <span
-              className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-[11px] text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+              className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
                 pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
               }`}
             >
@@ -304,7 +304,7 @@ export function NotificationBell() {
           <>
             <Bell size={16} strokeWidth={1.5} />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white tabular-nums shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-caption font-bold text-white tabular-nums shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -321,7 +321,7 @@ export function NotificationBell() {
           <Card variant="floating" className="w-[360px] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-            <span className="font-[var(--font-display)] text-[13px] font-semibold text-white/70">
+            <span className="font-[var(--font-display)] text-body font-semibold text-white/70">
               Notifications
             </span>
             <div className="flex items-center gap-1">
@@ -373,7 +373,7 @@ export function NotificationBell() {
                       {notificationIcon(type)}
                     </div>
                     {unread > 0 && (
-                      <span className="text-[10px] tabular-nums font-medium leading-none text-white/60">
+                      <span className="text-caption tabular-nums font-medium leading-none text-white/60">
                         {unread > 99 ? "99" : unread}
                       </span>
                     )}
@@ -396,7 +396,7 @@ export function NotificationBell() {
                     onClick={() => setActiveTeam(isActive ? null : team)}
                     aria-pressed={isActive}
                     aria-label={`Team ${team}${unread > 0 ? `: ${unread} unread` : ""}`}
-                    className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                    className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
                       isActive
                         ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)] ring-1 ring-inset ring-[var(--color-brand-500)]/25"
                         : "bg-white/[0.04] text-white/35 hover:bg-white/[0.07] hover:text-white/55"
@@ -417,11 +417,11 @@ export function NotificationBell() {
           {/* Notification list */}
           <div className="max-h-[400px] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-[13px] text-white/25">
+              <div className="px-4 py-8 text-center text-body text-white/25">
                 No notifications yet
               </div>
             ) : filteredNotifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-[13px] text-white/25">
+              <div className="px-4 py-8 text-center text-body text-white/25">
                 No notifications for this filter
               </div>
             ) : (
@@ -438,7 +438,7 @@ export function NotificationBell() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] text-white/65 leading-relaxed">
+                      <p className="text-body-sm text-white/65 leading-relaxed">
                         {renderMessage(
                           n.message,
                           n.jiraKey,
@@ -451,14 +451,14 @@ export function NotificationBell() {
                         )}
                       </p>
                       {n.jiraTitle && (
-                        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/35">
+                        <p className="mt-0.5 line-clamp-2 text-label leading-snug text-white/35">
                           {n.jiraTitle}
                         </p>
                       )}
                       <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
                         <TimeAgo createdAt={n.createdAt} eventAt={n.eventAt} />
                         {n.sprintName && (
-                          <span className="inline-flex items-center rounded-md bg-white/[0.06] px-1.5 py-px text-[10px] text-white/30 leading-tight">
+                          <span className="inline-flex items-center rounded-md bg-white/[0.06] px-1.5 py-px text-caption text-white/30 leading-tight">
                             {n.sprintName}
                           </span>
                         )}
@@ -505,7 +505,7 @@ export function NotificationBell() {
                 ))}
                 {/* Only show the overflow count when no filter is active — when filtered, all shown results are from the loaded set */}
                 {!hasFilter && hiddenCount > 0 && (
-                  <div className="border-t border-white/[0.04] px-4 py-2.5 text-center text-[11px] text-white/25">
+                  <div className="border-t border-white/[0.04] px-4 py-2.5 text-center text-label text-white/25">
                     {hiddenCount} more notification{hiddenCount === 1 ? "" : "s"} not shown
                   </div>
                 )}

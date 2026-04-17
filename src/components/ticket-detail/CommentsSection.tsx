@@ -73,7 +73,7 @@ export function CommentsSection({
         <div className="mt-3 space-y-3">
           {/* Add comment */}
           <div className="flex gap-3">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-[10px] font-semibold text-white">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-caption font-semibold text-white">
               PO
             </div>
             <div className="min-w-0 flex-1">
@@ -108,13 +108,13 @@ export function CommentsSection({
             const isSending = comment.id.startsWith("optimistic-");
             return (
             <div key={comment.id} className={`group flex gap-3 ${isSending ? "opacity-50" : ""}`}>
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-[10px] font-semibold text-white">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-caption font-semibold text-white">
                 PO
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-white/60">{comment.author || "Product Owner"}</span>
-                  <span className="text-[10px] text-white/25">{isSending ? "Posting..." : new Date(comment.createdAt).toLocaleString()}</span>
+                  <span className="text-caption text-white/25">{isSending ? "Posting..." : new Date(comment.createdAt).toLocaleString()}</span>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -145,7 +145,7 @@ export function CommentsSection({
             {jiraComments.map((comment) => (
               <div key={comment.id} className="flex gap-3">
                 <div
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
                   style={{ backgroundColor: comment.authorColor }}
                 >
                   {comment.authorInitials}
@@ -153,7 +153,7 @@ export function CommentsSection({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-white/60">{comment.authorName}</span>
-                    <span className="text-[10px] text-white/25">{new Date(comment.createdAt).toLocaleString()}</span>
+                    <span className="text-caption text-white/25">{new Date(comment.createdAt).toLocaleString()}</span>
                   </div>
                   <div className="description-content mt-1 text-sm leading-[1.7] text-white/50">{renderMarkdown(comment.content)}</div>
                 </div>

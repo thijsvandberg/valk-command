@@ -118,7 +118,7 @@ function DraggableTicketRow({
 
       <td className="w-28 py-2 pr-2">
         <span
-          className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium"
+          className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-medium"
           style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
         >
           {ticket.jiraStatus}
@@ -653,7 +653,7 @@ export function MultiSprintView({
                   <span className="font-mono text-xs text-white/40">{activeDragTicket.key}</span>
                   <span className="max-w-48 truncate text-xs text-white/70">{activeDragTicket.title}</span>
                   {extraCount > 0 && (
-                    <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-[10px] text-[var(--color-brand-400)]">
+                    <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-caption text-[var(--color-brand-400)]">
                       +{extraCount} more
                     </span>
                   )}

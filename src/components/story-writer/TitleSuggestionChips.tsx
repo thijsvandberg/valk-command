@@ -33,7 +33,7 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
             <span className="flex h-4 w-4 shrink-0 items-center justify-center">
               {isSelected
                 ? <Check size={10} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
-                : <span className="font-mono text-[11px] tabular-nums text-white/25 select-none">{i + 1}</span>}
+                : <span className="font-mono text-label tabular-nums text-white/25 select-none">{i + 1}</span>}
             </span>
             <span className={[
               "flex-1 leading-[1.75]",
@@ -46,7 +46,7 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
               onClick={() => handleApply(title)}
               disabled={isSelected}
               className={[
-                "shrink-0 text-[11px] font-medium cursor-pointer transition-colors duration-150",
+                "shrink-0 text-label font-medium cursor-pointer transition-colors duration-150",
                 isSelected
                   ? "text-[var(--color-brand-400)]/60 pointer-events-none"
                   : "text-white/20 hover:text-[var(--color-brand-400)] group-hover:text-white/35",

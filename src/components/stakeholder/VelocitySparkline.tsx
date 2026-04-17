@@ -46,7 +46,7 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
 
   return (
     <div className="relative flex items-center gap-3">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/20">
+      <span className="text-caption font-semibold uppercase tracking-[0.12em] text-white/20">
         Velocity
       </span>
 
@@ -93,8 +93,8 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
               top: activePoint.y - HEIGHT - 4,
             }}
           >
-            <p className="text-[10px] font-medium text-white/70">{activePoint.d.sprintName}</p>
-            <p className="text-[10px] tabular-nums text-[var(--color-brand-400)]/80">
+            <p className="text-caption font-medium text-white/70">{activePoint.d.sprintName}</p>
+            <p className="text-caption tabular-nums text-[var(--color-brand-400)]/80">
               {activePoint.d.completedPoints} pts done
             </p>
           </div>

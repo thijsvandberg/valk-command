@@ -148,16 +148,16 @@ export default function SchedulerPage() {
                     <span className="text-sm font-medium text-white/80">{task.label}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-mono text-white/40">
+                    <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-caption font-mono text-white/40">
                       every {formatInterval(task.intervalMs)}
                     </span>
                     {task.enabled ? (
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400/70">
+                      <span className="flex items-center gap-1 text-caption font-medium text-emerald-400/70">
                         <CheckCircle2 size={10} strokeWidth={2} />
                         Active
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-white/25">
+                      <span className="flex items-center gap-1 text-caption font-medium text-white/25">
                         <XCircle size={10} strokeWidth={2} />
                         Disabled
                       </span>
@@ -165,7 +165,7 @@ export default function SchedulerPage() {
                     <button
                       onClick={() => handleRunNow(task.name)}
                       disabled={running[task.name]}
-                      className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/50 transition-colors hover:border-white/[0.15] hover:bg-white/[0.08] hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-caption font-medium text-white/50 transition-colors hover:border-white/[0.15] hover:bg-white/[0.08] hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Play size={8} strokeWidth={2} className={running[task.name] ? "animate-pulse" : ""} />
                       {running[task.name] ? "Running..." : "Run now"}

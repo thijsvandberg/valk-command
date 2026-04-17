@@ -95,7 +95,7 @@ export function TaskCompletionNotifier() {
             <p className="text-xs font-medium text-white/80 font-[var(--font-body)]">
               Task complete
             </p>
-            <p className="text-[11px] text-white/40 font-[var(--font-body)] truncate mt-0.5">
+            <p className="text-label text-white/40 font-[var(--font-body)] truncate mt-0.5">
               {toast.message}
             </p>
           </div>

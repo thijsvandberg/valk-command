@@ -390,7 +390,7 @@ function CollapsedBar({ count, onExpand }: { count: number; onExpand: () => void
     <button
       type="button"
       onClick={onExpand}
-      className="flex w-full items-center justify-center gap-1.5 border-y px-4 py-1.5 text-[11px] text-white/25 cursor-pointer hover:bg-white/[0.02] hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
+      className="flex w-full items-center justify-center gap-1.5 border-y px-4 py-1.5 text-label text-white/25 cursor-pointer hover:bg-white/[0.02] hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
       style={{
         borderColor: C.border,
         backgroundColor: "rgba(255, 255, 255, 0.01)",
@@ -426,7 +426,7 @@ function HunkActionBar({
   const st = decisionStyles[decision];
   const decided = decision !== "pending";
   const btnBase =
-    "flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed";
+    "flex items-center gap-1 rounded-md px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed";
 
   return (
     <div
@@ -437,7 +437,7 @@ function HunkActionBar({
         {decided ? (
           <>
             <span
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-label font-semibold"
               style={{ color: st.color }}
             >
               {decision === "accept" && <Check size={12} strokeWidth={2.5} />}
@@ -573,9 +573,9 @@ function UnifiedLine({ line, showLineNumbers }: { line: DiffLine; showLineNumber
         : "transparent";
 
   return (
-    <div className="flex text-[13px] leading-6" style={{ backgroundColor: bg }}>
+    <div className="flex text-body leading-6" style={{ backgroundColor: bg }}>
       <div
-        className="flex w-5 shrink-0 select-none items-center justify-center font-mono text-[11px] font-bold"
+        className="flex w-5 shrink-0 select-none items-center justify-center font-mono text-label font-bold"
         style={{ color: markerColor, backgroundColor: C.gutterBg }}
         data-marker={line.type !== "equal" ? line.type : undefined}
       >
@@ -584,13 +584,13 @@ function UnifiedLine({ line, showLineNumbers }: { line: DiffLine; showLineNumber
       {showLineNumbers && (
         <>
           <div
-            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15"
+            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-white/15"
             style={{ backgroundColor: C.gutterBg }}
           >
             {line.oldLineNum ?? ""}
           </div>
           <div
-            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15"
+            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-white/15"
             style={{ backgroundColor: C.gutterBg }}
           >
             {line.newLineNum ?? ""}
@@ -687,7 +687,7 @@ function buildSplitRows(lines: DiffLine[]): SplitRow[] {
 function SplitCell({ line, side, showLineNumbers }: { line: DiffLine | null; side: "left" | "right"; showLineNumbers: boolean }) {
   if (!line) {
     return (
-      <div className="flex h-full text-[13px] leading-6" style={{ backgroundColor: "rgba(255, 255, 255, 0.01)" }}>
+      <div className="flex h-full text-body leading-6" style={{ backgroundColor: "rgba(255, 255, 255, 0.01)" }}>
         <div className="w-5 shrink-0" style={{ backgroundColor: C.gutterBg }} />
         {showLineNumbers && <div className="w-10 shrink-0" style={{ backgroundColor: C.gutterBg }} />}
         <div className="min-w-0 flex-1 px-3 py-px">&nbsp;</div>
@@ -700,12 +700,12 @@ function SplitCell({ line, side, showLineNumbers }: { line: DiffLine | null; sid
   const num = side === "left" ? line.oldLineNum : line.newLineNum;
 
   return (
-    <div className="flex text-[13px] leading-6" style={{ backgroundColor: bg }}>
-      <div className="flex w-5 shrink-0 select-none items-center justify-center font-mono text-[11px] font-bold" style={{ color: markerColor, backgroundColor: C.gutterBg }}>
+    <div className="flex text-body leading-6" style={{ backgroundColor: bg }}>
+      <div className="flex w-5 shrink-0 select-none items-center justify-center font-mono text-label font-bold" style={{ color: markerColor, backgroundColor: C.gutterBg }}>
         {marker}
       </div>
       {showLineNumbers && (
-        <div className="w-10 shrink-0 select-none pr-2 text-right font-mono text-[11px] text-white/15" style={{ backgroundColor: C.gutterBg }}>
+        <div className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-white/15" style={{ backgroundColor: C.gutterBg }}>
           {num ?? ""}
         </div>
       )}
@@ -937,7 +937,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
           type="button"
           onClick={() => setShowLineNumbers((v) => !v)}
           title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
-          className={`ml-auto flex items-center gap-1 rounded px-2 py-1 text-[11px] font-mono cursor-pointer border transition-colors duration-150 ${
+          className={`ml-auto flex items-center gap-1 rounded px-2 py-1 text-label font-mono cursor-pointer border transition-colors duration-150 ${
             showLineNumbers
               ? "text-white/50 bg-white/[0.08] border-white/[0.18]"
               : "text-white/30 border-white/[0.08] hover:text-white/50 hover:border-white/[0.15] hover:bg-white/[0.04]"

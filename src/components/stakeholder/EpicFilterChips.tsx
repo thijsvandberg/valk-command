@@ -63,7 +63,7 @@ export function EpicFilterChips({
           >
             <span>{epic}</span>
             <span className={[
-              "rounded-full px-1 py-px text-[10px] tabular-nums",
+              "rounded-full px-1 py-px text-caption tabular-nums",
               isActive ? "bg-[var(--color-brand-400)]/20" : "bg-white/[0.06]",
             ].join(" ")}>
               {count}

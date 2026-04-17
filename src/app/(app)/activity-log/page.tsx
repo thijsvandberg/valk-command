@@ -218,7 +218,7 @@ export default function ActivityLogPage() {
                 key={opt.value}
                 type="button"
                 onClick={() => toggleType(opt.value)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-[var(--font-body)] cursor-pointer border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
+                className={`px-2.5 py-1 rounded-md text-label font-[var(--font-body)] cursor-pointer border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
                   selectedTypes.has(opt.value)
                     ? "border-[var(--color-brand-400)]/30 bg-[var(--color-brand-400)]/10 text-[var(--color-brand-400)]"
                     : "border-white/[0.06] bg-transparent text-white/35 hover:border-white/[0.1] hover:text-white/50"
@@ -231,7 +231,7 @@ export default function ActivityLogPage() {
               <button
                 type="button"
                 onClick={() => { setSelectedTypes(new Set()); setOffset(0); }}
-                className="px-2.5 py-1 rounded-md text-[11px] font-[var(--font-body)] text-white/25 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
+                className="px-2.5 py-1 rounded-md text-label font-[var(--font-body)] text-white/25 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
               >
                 Clear
               </button>
