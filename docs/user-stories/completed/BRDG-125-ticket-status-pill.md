@@ -117,15 +117,15 @@ Reuse the existing Jira status color mapping from `TicketTableCells`. Readiness 
 - [x] Apply auto-transition logic server-side:
   - Set readiness to `drafting` when a ticket is created (Jira webhook sync handler)
   - Clear readiness to `null` on story points change, unless current readiness is `waiting_for_feedback` (Jira webhook sync handler + metadata PATCH endpoint)
-- [ ] Replace all existing `TicketKeyPill` usages with `TicketStatusPill` where the full pill is desired:
+- [x] Replace all existing `TicketKeyPill` usages with `TicketStatusPill` where the full pill is desired:
   - `src/components/story-writer/StoryWriterLayout.tsx`
   - `src/components/sprint-board/MultiSprintView.tsx`
   - `src/components/command-palette/ResultItem.tsx`
   - `src/components/chat/MessageList.tsx`
   - `src/app/(app)/tickets/[key]/page.tsx`
-- [ ] Wire `onJiraStatusChange` and `onReadinessChange` on sprint board rows (`TicketTableCells`, `TicketRow`) using the existing metadata PATCH endpoint (`PATCH /api/tickets/[key]/metadata`)
-- [ ] Wire `onJiraStatusChange` and `onReadinessChange` on the ticket detail header (`src/app/(app)/tickets/[key]/page.tsx`)
-- [ ] Keep `TicketKeyPill` as-is if any usage only needs copy-to-clipboard without status; otherwise remove it when fully replaced
+- [x] Wire `onJiraStatusChange` and `onReadinessChange` on sprint board rows (`TicketTableCells`, `TicketRow`) using the existing metadata PATCH endpoint (`PATCH /api/tickets/[key]/metadata`)
+- [x] Wire `onJiraStatusChange` and `onReadinessChange` on the ticket detail header (`src/app/(app)/tickets/[key]/page.tsx`)
+- [x] Keep `TicketKeyPill` as-is if any usage only needs copy-to-clipboard without status; otherwise remove it when fully replaced
 
 ## Acceptance Criteria
 
