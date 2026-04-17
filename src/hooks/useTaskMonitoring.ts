@@ -4,6 +4,7 @@ import { useCallback, useRef, useEffect } from "react";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { attachTaskStreamListeners } from "./useStreamingTask";
 
 export interface WorkspaceUsage {
   inputTokens: number;
@@ -187,45 +188,37 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
     const es = new EventSource(streamUrl);
     eventSourceRef.current = es;
 
-    es.addEventListener("progress", (e) => {
-      let data: { message: string };
-      try { data = JSON.parse(e.data); } catch { return; }
-      if (!unmountedRef.current) onProgress(data.message);
-    });
-
-    es.addEventListener("tool_call", (e) => {
-      let data: { tool: string };
-      try { data = JSON.parse(e.data); } catch { return; }
-      const name = data.tool.replace(/^mcp__jira__/, "").replace(/^mcp__/, "").replace(/_/g, " ");
-      if (!unmountedRef.current) onProgress(`Using ${name}...`);
-    });
-
-    es.addEventListener("result", async (e) => {
-      let data: Record<string, unknown>;
-      try { data = JSON.parse(e.data); } catch { return; }
-      const usage = extractUsage(data);
-      const output = data.output as string;
-      if (!unmountedRef.current) onUsage(usage);
-      if (output) await applyResult(output);
-    });
-
-    es.addEventListener("error", (e) => {
-      es.close();
-      eventSourceRef.current = null;
-      if (e instanceof MessageEvent) {
-        try {
-          const data = JSON.parse(e.data) as { message: string };
-          if (!resultHandled.current && !unmountedRef.current) onError(data.message);
-        } catch { /* not structured, polling will handle it */ }
-      } else if (!resultHandled.current) {
-        if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
-        pollTimerRef.current = setTimeout(pollTask, 1_000);
-      }
-    });
-
-    es.addEventListener("done", () => {
-      es.close();
-      eventSourceRef.current = null;
+    attachTaskStreamListeners(es, {
+      onProgress: (message) => {
+        if (!unmountedRef.current) onProgress(message);
+      },
+      onToolCall: (tool) => {
+        const name = tool.replace(/^mcp__jira__/, "").replace(/^mcp__/, "").replace(/_/g, " ");
+        if (!unmountedRef.current) onProgress(`Using ${name}...`);
+      },
+      onResult: async (data) => {
+        const usage = extractUsage(data);
+        const output = data.output as string;
+        if (!unmountedRef.current) onUsage(usage);
+        if (output) await applyResult(output);
+      },
+      onStructuredError: (message) => {
+        es.close();
+        eventSourceRef.current = null;
+        if (!resultHandled.current && !unmountedRef.current) onError(message);
+      },
+      onNetworkError: () => {
+        es.close();
+        eventSourceRef.current = null;
+        if (!resultHandled.current) {
+          if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+          pollTimerRef.current = setTimeout(pollTask, 1_000);
+        }
+      },
+      onDone: () => {
+        es.close();
+        eventSourceRef.current = null;
+      },
     });
   }, [apiBase, ticketKey, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
 

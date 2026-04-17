@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { SSEEvent } from "@/lib/agent-client";
-import { friendlyAgentError } from "@/lib/agent-errors";
+import { attachTaskStreamListeners } from "./useStreamingTask";
 import { workspaceTasks as workspaceTasksApi, ApiError } from "@/lib/api-client";
 
 export type TaskStreamStatus = "idle" | "submitting" | "streaming" | "completed" | "failed";
@@ -42,103 +41,19 @@ const initialState: WorkspaceTaskState = {
   error: null,
 };
 
-function attachStreamListeners(
-  es: EventSource,
-  skill: string,
-  clearStreamTimeout: () => void,
-  safeSetState: (action: WorkspaceTaskState | ((s: WorkspaceTaskState) => WorkspaceTaskState)) => void,
-  eventSourceRef: React.MutableRefObject<EventSource | null>,
-) {
-  es.addEventListener("status", (e) => {
-    try {
-      JSON.parse((e as MessageEvent).data);
-    } catch { return; }
-    safeSetState((s) => ({
-      ...s,
-      status: "streaming",
-      progressText: `Running ${skill}...`,
-    }));
-  });
-
-  es.addEventListener("progress", (e) => {
-    let data: { message: string };
-    try { data = JSON.parse((e as MessageEvent).data); } catch { return; }
-    safeSetState((s) => ({
-      ...s,
-      progressText: data.message,
-    }));
-  });
-
-  es.addEventListener("tool_call", (e) => {
-    let data: ToolCallEvent;
-    try { data = JSON.parse((e as MessageEvent).data); } catch { return; }
-    safeSetState((s) => ({
-      ...s,
-      toolCalls: [...s.toolCalls, data],
-      progressText: `Using ${data.tool.replace("mcp__jira__", "").replace("mcp__", "")}...`,
-    }));
-  });
-
-  es.addEventListener("result", (e) => {
-    clearStreamTimeout();
-    let data: { output: string; status: string };
-    try { data = JSON.parse((e as MessageEvent).data); } catch { return; }
-    safeSetState((s) => ({
-      ...s,
-      status: "completed",
-      output: data.output,
-      progressText: "",
-    }));
-    es.close();
-    eventSourceRef.current = null;
-  });
-
-  es.addEventListener("error", (e) => {
-    clearStreamTimeout();
-    if (e instanceof MessageEvent) {
-      let data: { message: string };
-      try { data = JSON.parse(e.data); } catch {
-        safeSetState((s) => ({ ...s, status: "failed", error: "Unknown error", progressText: "" }));
-        es.close();
-        eventSourceRef.current = null;
-        return;
-      }
-      safeSetState((s) => ({
-        ...s,
-        status: "failed",
-        error: data.message,
-        progressText: "",
-      }));
-    } else {
-      safeSetState((s) => ({
-        ...s,
-        status: "failed",
-        error: "Connection lost",
-        progressText: "",
-      }));
-    }
-    es.close();
-    eventSourceRef.current = null;
-  });
-
-  es.addEventListener("done", () => {
-    clearStreamTimeout();
-    es.close();
-    eventSourceRef.current = null;
-  });
-}
-
 export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskReturn {
   const [state, setState] = useState<WorkspaceTaskState>(initialState);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const streamTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmountedRef = useRef(false);
 
-  // Cleanup on unmount: close EventSource and prevent further setState calls
+  // Cleanup on unmount: close EventSource, clear timeout, prevent further setState calls
   useEffect(() => {
     return () => {
       unmountedRef.current = true;
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
+      if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
     };
   }, []);
 
@@ -149,8 +64,99 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
   const reset = useCallback(() => {
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
+    if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
     safeSetState(initialState);
   }, [safeSetState]);
+
+  function openStream(taskId: string, skill: string) {
+    if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
+
+    const es = new EventSource(`/api/workspace-tasks/${taskId}/stream`);
+    eventSourceRef.current = es;
+
+    streamTimeoutRef.current = setTimeout(() => {
+      es.close();
+      eventSourceRef.current = null;
+      safeSetState((s) => ({
+        ...s,
+        status: "failed",
+        error: "Task timed out after 5 minutes",
+        progressText: "",
+      }));
+    }, 5 * 60 * 1000);
+
+    const clearStreamTimeout = () => {
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+        streamTimeoutRef.current = null;
+      }
+    };
+
+    attachTaskStreamListeners(es, {
+      onProgress: (message) => {
+        safeSetState((s) => ({ ...s, progressText: message }));
+      },
+      onToolCall: (tool, id = "", args = "") => {
+        const toolCall: ToolCallEvent = { tool, id, args };
+        safeSetState((s) => ({
+          ...s,
+          toolCalls: [...s.toolCalls, toolCall],
+          progressText: `Using ${tool.replace("mcp__jira__", "").replace("mcp__", "")}...`,
+        }));
+      },
+      onResult: (data) => {
+        clearStreamTimeout();
+        const output = (data.output as string) ?? null;
+        safeSetState((s) => ({
+          ...s,
+          status: "completed",
+          output,
+          progressText: "",
+        }));
+        es.close();
+        eventSourceRef.current = null;
+      },
+      onStructuredError: (message) => {
+        clearStreamTimeout();
+        safeSetState((s) => ({
+          ...s,
+          status: "failed",
+          error: message,
+          progressText: "",
+        }));
+        es.close();
+        eventSourceRef.current = null;
+      },
+      onNetworkError: () => {
+        clearStreamTimeout();
+        safeSetState((s) => ({
+          ...s,
+          status: "failed",
+          error: "Connection lost",
+          progressText: "",
+        }));
+        es.close();
+        eventSourceRef.current = null;
+      },
+      onDone: () => {
+        clearStreamTimeout();
+        es.close();
+        eventSourceRef.current = null;
+      },
+    });
+
+    // Handle the "status" event (not in the shared helper since it is workspace-task-specific)
+    es.addEventListener("status", (e) => {
+      try {
+        JSON.parse((e as MessageEvent).data);
+      } catch { return; }
+      safeSetState((s) => ({
+        ...s,
+        status: "streaming",
+        progressText: `Running ${skill}...`,
+      }));
+    });
+  }
 
   // On mount (or when conversationId changes), check for active tasks so the
   // UI can reconnect to a stream that was running when the user navigated away.
@@ -169,8 +175,6 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
       }>;
       if (cancelled) return;
 
-      if (cancelled) return;
-
       // Find the most recent non-idle task
       const running = rows.find((r) => r.status === "running");
       const recentCompleted = rows.find((r) => r.status === "completed");
@@ -185,28 +189,7 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
           progressText: `Running ${running.skillName}...`,
         });
 
-        // Reconnect to the SSE stream for live progress
-        const es = new EventSource(`/api/workspace-tasks/${running.id}/stream`);
-        eventSourceRef.current = es;
-
-        const streamTimeout = setTimeout(() => {
-          es.close();
-          eventSourceRef.current = null;
-          safeSetState((s) => ({
-            ...s,
-            status: "failed",
-            error: "Task timed out after 5 minutes",
-            progressText: "",
-          }));
-        }, 5 * 60 * 1000);
-
-        attachStreamListeners(
-          es,
-          running.skillName,
-          () => clearTimeout(streamTimeout),
-          safeSetState,
-          eventSourceRef,
-        );
+        openStream(running.id, running.skillName);
         return;
       }
 
@@ -239,7 +222,11 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
     });
 
     return () => { cancelled = true; };
-  }, [conversationId, safeSetState, eventSourceRef]);
+  // openStream is defined inline in the component scope; including it in deps
+  // would require useCallback wrapping. Since it only closes over stable refs
+  // and safeSetState, the first-render version never goes stale.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, safeSetState]);
 
   const submitAndStream = useCallback(
     async (skill: string, args: Record<string, string>, convId?: string) => {
@@ -267,28 +254,7 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
           taskId,
         }));
 
-        // Open SSE stream with a 5-minute timeout to detect hung tasks
-        const es = new EventSource(`/api/workspace-tasks/${taskId}/stream`);
-        eventSourceRef.current = es;
-
-        const streamTimeout = setTimeout(() => {
-          es.close();
-          eventSourceRef.current = null;
-          safeSetState((s) => ({
-            ...s,
-            status: "failed",
-            error: "Task timed out after 5 minutes",
-            progressText: "",
-          }));
-        }, 5 * 60 * 1000);
-
-        attachStreamListeners(
-          es,
-          skill,
-          () => clearTimeout(streamTimeout),
-          safeSetState,
-          eventSourceRef,
-        );
+        openStream(taskId, skill);
       } catch (err) {
         safeSetState((s) => ({
           ...s,
@@ -297,6 +263,8 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
         }));
       }
     },
+    // openStream only closes over stable refs/callbacks; see note above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [safeSetState]
   );
 
