@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
   await db.insert(ticketMetadata).values({
     jiraKey: newKey,
-    poStatus: "Draft",
+    readiness: "drafting",
   });
 
   await logActivity({
