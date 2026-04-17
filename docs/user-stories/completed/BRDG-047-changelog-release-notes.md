@@ -1,6 +1,6 @@
 # BRDG-047: Changelog / Release Notes View
 
-**Status:** Open
+**Status:** Completed
 **Priority:** Low
 
 ## Description
@@ -24,21 +24,21 @@ As the PO, I want an auto-generated changelog view per sprint that groups comple
 ## Acceptance Criteria
 
 ### Phase 1: Changelog generation
-- [ ] API route `GET /api/reports/changelog?sprint=SPRINT_ID`
-- [ ] Returns completed tickets grouped by epic
-- [ ] Each entry: ticket title (cleaned, no Jira key prefix), description summary (first 200 chars), PR links
+- [x] API route `GET /api/reports/changelog?sprint=SPRINT_ID`
+- [x] Returns completed tickets grouped by epic
+- [x] Each entry: ticket title (cleaned, no Jira key prefix), description summary (first 200 chars), PR links
 
 ### Phase 2: Changelog page
-- [ ] Accessible from Sprint Board as "Release Notes" action on completed sprints
-- [ ] Clean, readable layout with epic sections
-- [ ] Each ticket entry with title, short description, and linked PRs (from Bitbucket data)
-- [ ] Sprint metadata header: name, dates, velocity stats
+- [x] Accessible from Sprint Board as "Release Notes" action on completed sprints
+- [x] Clean, readable layout with epic sections
+- [x] Each ticket entry with title, short description, and linked PRs (from Bitbucket data)
+- [x] Sprint metadata header: name, dates, velocity stats
 
 ### Phase 3: Export
-- [ ] "Copy as Markdown" button
-- [ ] "Copy as plain text" button (stakeholder-friendly, no technical details)
-- [ ] Markdown version includes PR links; plain text version omits them
-- [ ] Optional: include/exclude specific tickets via checkboxes before export
+- [x] "Copy as Markdown" button
+- [x] "Copy as plain text" button (stakeholder-friendly, no technical details)
+- [x] Markdown version includes PR links; plain text version omits them
+- [x] Optional: include/exclude specific tickets via checkboxes before export
 
 ## Technical Notes
 
