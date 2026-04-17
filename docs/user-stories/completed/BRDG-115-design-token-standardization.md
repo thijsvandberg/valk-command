@@ -1,6 +1,6 @@
 # BRDG-115: Design Token Standardization
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -87,7 +87,7 @@ Define CSS custom properties in `globals.css`:
 - [x] Migrate all z-index values to use scale
 - [x] Migrate all hover bg values to use tokens
 - [x] Migrate all focus ring styles to consistent pattern <!-- no focus-visible:ring-2 found in codebase -->
-- [ ] Visual review: no regressions
+- [x] Visual review: no regressions
 
 ## Impact
 
