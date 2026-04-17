@@ -69,11 +69,11 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onMouseDown={(e) => { mouseDownOnOverlay.current = e.target === e.currentTarget; }}
       onClick={(e) => { if (e.target === e.currentTarget && mouseDownOnOverlay.current) onClose(); }}
     >
-      <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-[var(--color-surface-elevated)] shadow-[0_24px_64px_rgba(0,0,0,0.6)] p-6">
+      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] shadow-[0_24px_64px_rgba(0,0,0,0.6)] p-6">
         {/* Header */}
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-2.5">
@@ -134,7 +134,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 type="text"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+                className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
                 placeholder="Story title..."
               />
             </div>
@@ -147,7 +147,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                   <select
                     value={selectedIssueType}
                     onChange={(e) => setSelectedIssueType(e.target.value)}
-                    className="w-full appearance-none rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
                   >
                     <option value="story">Story</option>
                     <option value="task">Task</option>
@@ -165,7 +165,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                   <select
                     value={selectedSprintId}
                     onChange={(e) => setSelectedSprintId(e.target.value)}
-                    className="w-full appearance-none rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
                   >
                     {sprints.length === 0 && (
                       <option value="">No sprints configured</option>
@@ -196,7 +196,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               type="text"
               value={existingKey}
               onChange={(e) => setExistingKey(e.target.value.toUpperCase())}
-              className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="VPL-123"
             />
             <p className="mt-1.5 text-label text-white/30">

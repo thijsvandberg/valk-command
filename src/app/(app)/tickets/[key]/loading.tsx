@@ -31,7 +31,7 @@ export default function TicketDetailLoading() {
       </div>
 
       {/* Details rail skeleton */}
-      <div className="w-72 shrink-0 border-l border-white/[0.06] bg-[var(--color-surface-elevated)] p-5 xl:w-80">
+      <div className="w-72 shrink-0 border-l border-border-default bg-[var(--color-surface-elevated)] p-5 xl:w-80">
         <div className="space-y-4">
           <div className="h-3 w-16 animate-pulse rounded bg-white/[0.06]" />
           {[1, 2, 3, 4, 5].map((i) => (

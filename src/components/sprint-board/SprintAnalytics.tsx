@@ -62,7 +62,7 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
   if (totalPoints === 0) return null;
 
   return (
-    <div className="border-b border-white/[0.06]">
+    <div className="border-b border-border-default">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}

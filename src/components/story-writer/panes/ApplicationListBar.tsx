@@ -64,7 +64,7 @@ export function ApplicationListBar() {
   };
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-1 border-b border-white/[0.06] bg-[var(--color-surface-base)] px-3">
+    <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-default bg-[var(--color-surface-base)] px-3">
       {/* App list */}
       <div className="flex min-w-0 flex-1 items-center gap-0.5">
         {visibleApps.map((app) => {
@@ -85,7 +85,7 @@ export function ApplicationListBar() {
                 className={`flex h-6 items-center gap-1.5 rounded px-1.5 text-label font-medium cursor-pointer select-none transition-colors duration-100 ${
                   isActive
                     ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                    : "text-white/35 hover:text-white/60 hover:bg-white/[0.04]"
+                    : "text-white/35 hover:text-white/60 hover:bg-hover-list-item"
                 }`}
               >
                 <span className={isActive ? "text-[var(--color-brand-400)]" : "text-white/25"}>

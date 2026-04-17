@@ -31,7 +31,7 @@ function ScoreBadge({ score }: { score: number }) {
       ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
       : score >= 60
         ? "bg-amber-500/15 text-amber-400 border-amber-500/20"
-        : "bg-white/[0.06] text-white/40 border-white/[0.08]";
+        : "bg-white/[0.06] text-white/40 border-border-strong";
 
   return (
     <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-caption font-bold tabular-nums border shrink-0 ${color}`}>
@@ -78,7 +78,7 @@ function CandidateCard({
       className={`group rounded-lg border cursor-pointer transition-colors duration-150 ${
         isSelected
           ? "border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/[0.06]"
-          : "border-white/[0.07] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]"
+          : "border-border-default bg-white/[0.02] hover:border-white/[0.12] hover:bg-hover-list-item"
       }`}
       onClick={onSelect}
     >
@@ -194,7 +194,7 @@ function TicketDetail({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border-default px-3 py-2">
         <Button
           variant="ghost"
           size="sm"

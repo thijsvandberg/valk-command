@@ -301,7 +301,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         {/* Conversation sidebar */}
         <aside
           data-testid="chat-sidebar"
-          className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-white/[0.06] bg-[var(--color-surface-elevated)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
+          className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-border-default bg-[var(--color-surface-elevated)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
@@ -332,7 +332,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         <WorkspaceStatus />
         {/* Story Writer link when conversation is linked to a ticket */}
         {activeConv?.relatedTicket && (
-          <div className="border-b border-white/[0.06] px-6 py-2">
+          <div className="border-b border-border-default px-6 py-2">
             <Link
               href={`/tickets/${activeConv.relatedTicket}/write`}
               className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-colors duration-150"

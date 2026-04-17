@@ -67,7 +67,7 @@ export function ChatApp() {
             className={`rounded px-2 py-1 text-caption font-medium cursor-pointer ${
               !showLogs
                 ? "text-white/70 bg-white/[0.06]"
-                : "text-white/30 hover:text-white/50 hover:bg-white/[0.04]"
+                : "text-white/30 hover:text-white/50 hover:bg-hover-list-item"
             }`}
           >
             Chat
@@ -78,7 +78,7 @@ export function ChatApp() {
             className={`flex items-center gap-1 rounded px-2 py-1 text-caption font-medium cursor-pointer ${
               showLogs
                 ? "text-white/70 bg-white/[0.06]"
-                : "text-white/30 hover:text-white/50 hover:bg-white/[0.04]"
+                : "text-white/30 hover:text-white/50 hover:bg-hover-list-item"
             }`}
           >
             <ScrollText size={10} strokeWidth={1.5} />

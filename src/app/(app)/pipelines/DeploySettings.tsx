@@ -76,7 +76,7 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
                         ? "border-emerald-500/15 bg-emerald-500/[0.04]"
                         : d.state === "FAILED"
                         ? "border-red-500/15 bg-red-500/[0.04]"
-                        : "border-white/[0.06] bg-white/[0.02]"
+                        : "border-border-default bg-white/[0.02]"
                     }`}
                   >
                     {stateIcon(d.state, 12)}
@@ -140,7 +140,7 @@ export function DeploySettingsPanel() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Header */}
             <div className="px-4 pt-3.5 pb-2.5">
               <h3 className="text-body-sm font-semibold text-white/60">Deploy notifications</h3>
@@ -178,7 +178,7 @@ export function DeploySettingsPanel() {
 
             {/* Environment checkboxes */}
             {settings.enabled && (
-              <div className="border-t border-white/[0.06] py-1">
+              <div className="border-t border-border-default py-1">
                 {Object.entries(settings.environments).map(([env, on]) => (
                   <button
                     key={env}

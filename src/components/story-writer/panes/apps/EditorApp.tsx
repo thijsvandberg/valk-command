@@ -113,7 +113,7 @@ export function EditorApp() {
             icon={<GitCompare size={11} strokeWidth={1.5} />}
             onClick={() => setViewMode("diff")}
             title="Show diff"
-            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
           >
             Diff
           </Button>
@@ -124,7 +124,7 @@ export function EditorApp() {
             icon={<Eye size={11} strokeWidth={1.5} />}
             onClick={() => setViewMode("editor")}
             title="Show editor"
-            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
           >
             Editor
           </Button>
@@ -137,7 +137,7 @@ export function EditorApp() {
           icon={<Type size={11} strokeWidth={1.5} />}
           onClick={() => setToolbarVisible((v) => !v)}
           title={toolbarVisible ? "Hide formatting toolbar" : "Show formatting toolbar"}
-          className={`border-0 bg-transparent ${toolbarVisible ? "text-[var(--color-brand-400)]" : "text-white/35 hover:text-white/55 hover:bg-white/[0.04]"}`}
+          className={`border-0 bg-transparent ${toolbarVisible ? "text-[var(--color-brand-400)]" : "text-white/35 hover:text-white/55 hover:bg-hover-list-item"}`}
         />
       ),
     });

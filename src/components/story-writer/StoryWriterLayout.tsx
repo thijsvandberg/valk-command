@@ -422,7 +422,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               )}
 
               {latestReview && (
-                <div className="flex h-7 items-center gap-1 rounded-md bg-white/[0.04] px-2 text-label text-white/40 border border-white/[0.04]">
+                <div className="flex h-7 items-center gap-1 rounded-md bg-white/[0.04] px-2 text-label text-white/40 border border-border-subtle">
                   <Star size={11} strokeWidth={1.5} />
                   {Math.round(latestReview.overallScore)}
                 </div>
@@ -435,7 +435,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                   className={`flex h-7 items-center gap-1.5 rounded-md border px-3 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
                     showSaved
                       ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                      : "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70"
+                      : "border-border-default bg-white/[0.02] text-white/50 hover:bg-hover-list-item hover:text-white/70"
                   }`}
                 >
                   {saving
@@ -490,7 +490,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                         className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
                           splitModeVisible && targetTicketKey
                             ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
-                            : "text-white/65 hover:bg-white/[0.06] hover:text-white/85"
+                            : "text-white/65 hover:bg-hover-interactive hover:text-white/85"
                         }`}
                       >
                         <Scissors size={13} strokeWidth={1.5} className="shrink-0" />
@@ -504,7 +504,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                       type="button"
                       onClick={() => { handlePullFromJira().finally(() => setShowMoreMenu(false)); }}
                       disabled={pulling}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {pulling ? <Loader2 size={13} className="animate-spin shrink-0" /> : <CloudDownload size={13} strokeWidth={1.5} className="shrink-0" />}
                       <span>{targetTicketKey && splitModeVisible ? "Pull both from Jira" : "Pull from Jira"}</span>
@@ -523,7 +523,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => setShowMoreMenu(false)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                     >
                       <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>Open in Jira</span>
@@ -532,7 +532,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     <Link
                       href={`/tickets/${ticketKey}`}
                       onClick={() => setShowMoreMenu(false)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                     >
                       <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>View in Bridge</span>
@@ -549,7 +549,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setShowMoreMenu(false)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                         >
                           <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>Open in Jira</span>
@@ -557,7 +557,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                         <Link
                           href={`/tickets/${targetTicketKey}`}
                           onClick={() => setShowMoreMenu(false)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                         >
                           <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>View in Bridge</span>
@@ -565,7 +565,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                         <Link
                           href={`/tickets/${targetTicketKey}/write`}
                           onClick={() => setShowMoreMenu(false)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                         >
                           <NotebookPen size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>Open in Story Writer</span>

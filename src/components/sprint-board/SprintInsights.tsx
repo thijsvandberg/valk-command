@@ -61,7 +61,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
   const insights = computeInsights(tickets);
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+    <div className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)]">
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
@@ -83,7 +83,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
       </button>
 
       {!collapsed && (
-        <div className="border-t border-white/[0.04] px-4 py-3">
+        <div className="border-t border-border-subtle px-4 py-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {/* Stale stories */}
             <Card variant="subtle" className="px-3 py-2.5">

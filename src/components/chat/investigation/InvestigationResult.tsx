@@ -22,7 +22,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
   return (
     <div className="space-y-4">
       {/* Question header */}
-      <div className="border-b border-white/[0.06] pb-3">
+      <div className="border-b border-border-default pb-3">
         <p className="font-[var(--font-display)] text-base font-semibold tracking-[-0.02em] text-white/90 leading-snug">
           {data.question}
         </p>
@@ -98,7 +98,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
       )}
 
       {/* Full result copy actions */}
-      <CopyActions content={rawContent} className="pt-3 border-t border-white/[0.06]" label="Copy full result" />
+      <CopyActions content={rawContent} className="pt-3 border-t border-border-default" label="Copy full result" />
     </div>
   );
 }

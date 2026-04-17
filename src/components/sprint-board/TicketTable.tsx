@@ -96,7 +96,7 @@ function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; tota
         <div className={`mx-3 my-2 flex h-8 items-center justify-center rounded border border-dashed text-xs transition-colors duration-150 ${
           isOver
             ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-300)]"
-            : "border-white/[0.07] text-white/20"
+            : "border-border-default text-white/20"
         }`}>
           Drop to move to this sprint
         </div>
@@ -412,7 +412,7 @@ export function TicketTable({
 
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-elevated)]">
-      <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
+      <tr className="group/thead border-b border-border-default text-left text-xs font-medium text-white/30">
         <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-elevated)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
           <div
             className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
@@ -508,7 +508,7 @@ export function TicketTable({
         {activeTicket && (
           <table className="w-full border-collapse text-sm">
             <tbody>
-              <tr className="bg-[var(--color-surface-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-lg border border-white/[0.08]">
+              <tr className="bg-[var(--color-surface-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-lg border border-border-strong">
                 <td className="w-5 py-2 pl-1" />
                 <td className="py-2 pl-1 pr-1">
                   <div className="flex h-6 w-6 items-center justify-center" />
@@ -618,7 +618,7 @@ export function TicketTable({
             )}
             {/* Group header row */}
             <tr
-              className="border-b border-white/[0.08] cursor-pointer select-none"
+              className="border-b border-border-strong cursor-pointer select-none"
               style={{ background: "rgba(255,255,255,0.025)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
@@ -629,15 +629,16 @@ export function TicketTable({
                     : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
                   }
                   <span className="text-xs font-medium text-white/60 truncate">{group.label}</span>
-                  <StatPill size="sm" className="ml-1">
+                  <StatPill size="sm" variant="default" className="ml-1">
                     {group.tickets.length} items
                   </StatPill>
                   {totalPoints > 0 && (
-                    <StatPill size="sm">{totalPoints} pts</StatPill>
+                    <StatPill size="sm" variant="dim">{totalPoints} pts</StatPill>
                   )}
                   {noPointsCount > 0 && (
                     <StatPill
                       size="sm"
+                      variant="warning"
                       active={activeCriterion === "unpointed"}
                       onClick={(e) => { e.stopPropagation(); toggleGroupFilter("unpointed"); }}
                     >

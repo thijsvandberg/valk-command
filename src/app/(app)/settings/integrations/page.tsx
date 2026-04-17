@@ -74,7 +74,7 @@ function IntegrationRow({
           type="button"
           onClick={onRetest}
           disabled={state === "unconfigured" || state === "loading"}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-xs text-white/40 cursor-pointer hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-lg border border-border-strong bg-white/[0.03] px-2.5 py-1 text-xs text-white/40 cursor-pointer hover:bg-hover-interactive hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30"
           style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
         >
           Test
@@ -122,7 +122,7 @@ export default function IntegrationsPage() {
         Use the test buttons to verify connectivity.
       </p>
 
-      <div className="flex flex-col divide-y divide-white/[0.04] rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+      <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-white/[0.02] overflow-hidden">
         <IntegrationRow
           name="Jira"
           description="Ticket sync, sprint data, and issue management."
@@ -145,7 +145,7 @@ export default function IntegrationsPage() {
         />
       </div>
 
-      <div className="mt-6 rounded-lg border border-white/[0.05] bg-white/[0.01] px-4 py-3">
+      <div className="mt-6 rounded-lg border border-border-subtle bg-white/[0.01] px-4 py-3">
         <p className="text-label leading-relaxed text-white/25">
           To update credentials, edit{" "}
           <code className="font-mono text-white/40">.env.local</code> and restart the dev server.

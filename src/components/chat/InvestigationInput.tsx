@@ -62,14 +62,14 @@ export default function InvestigationInput({
   };
 
   return (
-    <div className="border-t border-white/[0.06] px-6 py-4" data-testid="investigation-input">
+    <div className="border-t border-border-default px-6 py-4" data-testid="investigation-input">
       <div className="mx-auto max-w-3xl space-y-3">
         {/* Input row with toggle inline */}
         <div className="flex items-end gap-3">
           <div className="flex flex-1 flex-col gap-2">
             {/* Tech / Explain toggle */}
             <div className="flex items-center">
-              <div className="flex items-center rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] p-0.5">
+              <div className="flex items-center rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-0.5">
                 <button
                   type="button"
                   onClick={() => setExplainMode(false)}
@@ -103,7 +103,7 @@ export default function InvestigationInput({
               placeholder="Ask a question about the codebase... (include a Jira key like VPL-20661 for extra context)"
               disabled={disabled || sending}
               rows={1}
-              className="flex-1 resize-none rounded-xl bg-[var(--color-surface-floating)] px-4 py-3 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/30 border border-white/[0.06] focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 disabled:opacity-50"
+              className="flex-1 resize-none rounded-xl bg-[var(--color-surface-floating)] px-4 py-3 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/30 border border-border-default focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 disabled:opacity-50"
               aria-label="Investigation question"
             />
           </div>

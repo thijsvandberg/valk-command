@@ -77,7 +77,7 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
   const totalReviewers = pr.reviewers.length;
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="rounded-lg border border-border-default bg-white/[0.02] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
@@ -166,7 +166,7 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               href={b.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-md bg-white/[0.03] px-2 py-1 text-label text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/40"
+              className="flex items-center gap-1.5 rounded-md bg-white/[0.03] px-2 py-1 text-label text-white/30 cursor-pointer hover:bg-hover-interactive hover:text-white/40"
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
             >
               <BuildStateIcon state={b.state} size={12} />
@@ -199,10 +199,10 @@ function DeploymentsTable({ deployments }: { deployments: DevDeployment[] }) {
       {sortedTypes.map((type) => (
         <div key={type}>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/30">{type}</h4>
-          <div className="overflow-hidden rounded-lg border border-white/[0.06]">
+          <div className="overflow-hidden rounded-lg border border-border-default">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/[0.04] bg-white/[0.02]">
+                <tr className="border-b border-border-subtle bg-white/[0.02]">
                   <th className="px-3 py-2 text-left font-medium text-white/25">Pipeline</th>
                   <th className="px-3 py-2 text-left font-medium text-white/25">Environment</th>
                   <th className="px-3 py-2 text-left font-medium text-white/25">Status</th>
@@ -300,7 +300,7 @@ function PipelineRunsSection({ ticketKey, deploymentUrls }: { ticketKey: string;
         title="Pipeline History"
         count={filteredRuns.length}
       />
-      <div className="divide-y divide-white/[0.04] rounded-lg border border-white/[0.06] bg-white/[0.02]">
+      <div className="divide-y divide-border-subtle rounded-lg border border-border-default bg-white/[0.02]">
         {filteredRuns.map((run) => (
           <div key={run.id} className="flex items-center gap-3 px-3 py-2.5">
             <BuildStateIcon state={run.state} size={13} />
@@ -387,7 +387,7 @@ export function TicketDevelopment({ ticketKey }: { ticketKey: string }) {
             title="Branches"
             count={data.branches.length}
           />
-          <div className="divide-y divide-white/[0.04] rounded-lg border border-white/[0.06] bg-white/[0.02] px-3">
+          <div className="divide-y divide-border-subtle rounded-lg border border-border-default bg-white/[0.02] px-3">
             {data.branches.map((b) => (
               <BranchRow key={b.name} branch={b} />
             ))}

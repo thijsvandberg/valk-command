@@ -198,7 +198,7 @@ export function SidePanel({
   return (
     <div
       ref={panelRef}
-      className="relative flex h-full shrink-0 flex-col border-l border-white/[0.06] bg-[var(--color-surface-elevated)]"
+      className="relative flex h-full shrink-0 flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
       style={{ width: effectiveWidth, minWidth: isFullWidth ? "100%" : MIN_PANEL_WIDTH }}
     >
       {/* Resize drag handle */}
@@ -214,7 +214,7 @@ export function SidePanel({
         <>
 
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+          <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
             <div className="group/key flex items-center gap-2.5">
               <IssueTypeIcon type={ticket.type} />
               <span className="font-mono text-sm font-medium text-white/70">
@@ -253,7 +253,7 @@ export function SidePanel({
               {/* Write Story */}
               <a
                 href={`/tickets/${ticket.key}/write`}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/50 cursor-pointer bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/50 cursor-pointer bg-white/[0.02] border border-border-default hover:bg-hover-interactive hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
                 title="Write story"
               >
                 <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -394,7 +394,7 @@ export function SidePanel({
                   placeholder="Add PO notes..."
                   rows={3}
                   onBlur={(e) => onNotesChange(e.target.value)}
-                  className="w-full rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none resize-none"
+                  className="w-full rounded-md border border-border-default bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none resize-none"
                 />
               </div>
             </div>
@@ -433,7 +433,7 @@ export function SidePanel({
               </Button>
               <a
                 href={`/chat?ticket=${ticket.key}`}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-white/[0.04] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-hover-list-item hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               >
                 <MessageSquare className="h-4 w-4 shrink-0 text-white/40" strokeWidth={1.5} />

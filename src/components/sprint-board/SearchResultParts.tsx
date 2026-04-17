@@ -166,7 +166,7 @@ export function PreviewPane({
       )}
 
       {result.description ? (
-        <div className="description-content border-t border-white/[0.06] pt-3" style={{ zoom: 0.8 }}>
+        <div className="description-content border-t border-border-default pt-3" style={{ zoom: 0.8 }}>
           {renderMarkdown(result.description)}
         </div>
       ) : (

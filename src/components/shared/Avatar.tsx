@@ -7,7 +7,7 @@ export function Avatar({ assignee, size = 24 }: { assignee: Assignee | null; siz
   if (!assignee) {
     return (
       <div
-        className="flex items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.03]"
+        className="flex items-center justify-center rounded-full border border-border-default bg-white/[0.03]"
         style={{ width: size, height: size }}
       >
         <User className="text-white/15" style={{ width: iconSize, height: iconSize }} strokeWidth={1.5} />

@@ -18,7 +18,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
-import { StatusPill } from "@/components/sprint-board/SprintStatPill";
+import { StatPill, StatusPill } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
@@ -61,7 +61,7 @@ function SprintDropTile({
       className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-100 ${
         isOver
           ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/12 text-[var(--color-brand-300)]"
-          : "border-white/[0.06] bg-white/[0.025] text-white/35 hover:border-white/10 hover:text-white/55"
+          : "border-border-default bg-white/[0.025] text-white/35 hover:border-white/10 hover:text-white/55"
       }`}
     >
       <ArrowRight size={10} strokeWidth={1.5} className="shrink-0 opacity-50" />
@@ -240,6 +240,7 @@ export default function SprintBoard() {
   const testCount = allTickets.filter((t) => t.jiraStatus === "TEST").length;
   const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
   const totalPoints = allTickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0);
+  const noPointsCount = allTickets.filter((t) => !t.storyPoints).length;
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
 
@@ -763,7 +764,7 @@ export default function SprintBoard() {
                       className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
                         analyticsVisible
                           ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
-                          : "text-white/65 hover:bg-white/[0.06] hover:text-white/85"
+                          : "text-white/65 hover:bg-hover-interactive hover:text-white/85"
                       }`}
                     >
                       <BarChart2 size={13} strokeWidth={1.5} className="shrink-0" />
@@ -773,7 +774,7 @@ export default function SprintBoard() {
                       <button
                         type="button"
                         onClick={() => { setCompareMode(true); setHeaderMenuOpen(false); }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                       >
                         <Columns2 size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Compare</span>
@@ -782,7 +783,7 @@ export default function SprintBoard() {
                     <button
                       type="button"
                       onClick={() => { setSprintsModalOpen(true); setHeaderMenuOpen(false); }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-white/[0.06] hover:text-white/85 transition-colors duration-150"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                     >
                       <List size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>Sprints</span>
@@ -806,8 +807,17 @@ export default function SprintBoard() {
             {!ticketsLoading && (
               <>
                 <ViewHeaderDivider />
-                <span className="text-xs tabular-nums text-white/30 shrink-0"><span className="text-white/20">Items</span> {f.hasActiveFilters ? `${tickets.length}/${allTickets.length}` : allTickets.length}</span>
-                {!isAllView && !f.activeView && totalPoints > 0 && <span className="text-xs tabular-nums text-white/30 shrink-0"><span className="text-white/20">Pts</span> {totalPoints}</span>}
+                <div className="flex items-center gap-1.5">
+                  <StatPill size="md" variant="default">
+                    {f.hasActiveFilters ? `${tickets.length}/${allTickets.length}` : allTickets.length} items
+                  </StatPill>
+                  {!isAllView && !f.activeView && totalPoints > 0 && (
+                    <StatPill size="md" variant="dim">{totalPoints} pts</StatPill>
+                  )}
+                  {!isAllView && !f.activeView && noPointsCount > 0 && (
+                    <StatPill size="md" variant="warning">{noPointsCount} no pts</StatPill>
+                  )}
+                </div>
                 {!isAllView && !f.activeView && (
                   <>
                     <ViewHeaderDivider />
@@ -858,7 +868,7 @@ export default function SprintBoard() {
 
             {!barsCollapsed && (
               <>
-                <div className="border-b border-white/[0.06]">
+                <div className="border-b border-border-default">
                   <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { ...(groupBy !== "epic" ? { teamFilter: f.teamFilter, onTeamFilterChange: f.setTeamFilter, teamOptions: f.teamOptions } : {}), sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
                 </div>
                 {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
@@ -901,7 +911,7 @@ export default function SprintBoard() {
 
             {!barsCollapsed && (
               <>
-                <div className="border-b border-white/[0.06]">
+                <div className="border-b border-border-default">
                   <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} poStatusFilter={f.poStatusFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onPoStatusFilterChange={f.setPoStatusFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} {... (isAllView ? { ...(groupBy !== "epic" ? { teamFilter: f.teamFilter, onTeamFilterChange: f.setTeamFilter, teamOptions: f.teamOptions } : {}), sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
                 </div>
                 {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
@@ -924,7 +934,7 @@ export default function SprintBoard() {
       })()}
 
       {toast && (
-        <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
+        <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
           <span className="text-sm text-white/70">{toast}</span>
         </div>

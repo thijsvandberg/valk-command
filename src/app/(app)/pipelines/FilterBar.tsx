@@ -42,14 +42,14 @@ export function StatusFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
             {options.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => { onSelect(opt.value); setOpen(false); }}
                 className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
                 }`}
               >
                 {opt.label}
@@ -98,14 +98,14 @@ export function DateRangeFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
             {options.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => { onSelect(opt.value); setOpen(false); }}
                 className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
                 }`}
               >
                 {opt.label}
@@ -162,9 +162,9 @@ export function CreatorFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Search */}
-            <div className="px-2 py-2 border-b border-white/[0.06]">
+            <div className="px-2 py-2 border-b border-border-default">
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
                 <Search size={11} strokeWidth={1.5} className="text-white/20 shrink-0" />
                 <input
@@ -183,7 +183,7 @@ export function CreatorFilter({
                 <button
                   type="button"
                   onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-white/40 hover:bg-white/[0.04]"
+                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-white/40 hover:bg-hover-list-item"
                 >
                   Clear selection
                 </button>
@@ -196,7 +196,7 @@ export function CreatorFilter({
                     type="button"
                     onClick={() => onToggle(name)}
                     className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                      isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                      isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
                     }`}
                   >
                     <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
@@ -247,12 +247,12 @@ export function RepoFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
             <button
               type="button"
               onClick={() => { onSelect(null); setOpen(false); }}
               className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
               }`}
             >
               All repos
@@ -263,7 +263,7 @@ export function RepoFilter({
                 type="button"
                 onClick={() => { onSelect(repo); setOpen(false); }}
                 className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                  selected === repo ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-white/[0.04]"
+                  selected === repo ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
                 }`}
               >
                 {repo}
@@ -326,7 +326,7 @@ export function SprintFilter({
         type="button"
         onClick={() => onToggle(id)}
         className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-          isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : dimmed ? "text-white/35 hover:bg-white/[0.04]" : "text-white/50 hover:bg-white/[0.04]"
+          isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : dimmed ? "text-white/35 hover:bg-hover-list-item" : "text-white/50 hover:bg-hover-list-item"
         }`}
       >
         <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
@@ -355,9 +355,9 @@ export function SprintFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Search */}
-            <div className="px-2 py-2 border-b border-white/[0.06]">
+            <div className="px-2 py-2 border-b border-border-default">
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
                 <Search size={11} strokeWidth={1.5} className="text-white/20 shrink-0" />
                 <input
@@ -377,7 +377,7 @@ export function SprintFilter({
                 <button
                   type="button"
                   onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-white/40 hover:bg-white/[0.04]"
+                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-white/40 hover:bg-hover-list-item"
                 >
                   Clear selection
                 </button>
@@ -386,7 +386,7 @@ export function SprintFilter({
               {/* Selected sprints not in the standard list */}
               {filtered(selectedNotVisible).map((s) => renderItem(s))}
               {filtered(selectedNotVisible).length > 0 && (filtered(current).length > 0 || filtered(closed).length > 0) && (
-                <div className="mx-3 my-1 border-t border-white/[0.06]" />
+                <div className="mx-3 my-1 border-t border-border-default" />
               )}
 
               {/* Active / future */}
@@ -395,7 +395,7 @@ export function SprintFilter({
               {/* Closed */}
               {filtered(closed).length > 0 && (
                 <>
-                  <div className="mx-3 my-1 border-t border-white/[0.06]" />
+                  <div className="mx-3 my-1 border-t border-border-default" />
                   <span className="block px-3 py-1 text-caption font-medium text-white/20 uppercase tracking-wider">Recent</span>
                   {filtered(closed).map((s) => renderItem(s, true))}
                 </>

@@ -49,7 +49,7 @@ export function Tooltip({ content, children, delay = 400 }: TooltipProps) {
       {visible && position && (
         <div
           ref={tooltipRef}
-          className="pointer-events-none fixed z-[100] max-w-xs rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-xs text-white/80 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+          className="pointer-events-none fixed z-tooltip max-w-xs rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-xs text-white/80 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
           style={{
             top: position.top,
             left: position.left,

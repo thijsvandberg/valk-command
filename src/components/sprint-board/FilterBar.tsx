@@ -153,11 +153,11 @@ export function SortDropdown({
         }
         title={isActive ? `Sorted: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
         aria-label={isActive ? `Sort: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
-        className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"}
+        className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-hover-list-item hover:text-white/60"}
       />
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.field}
@@ -170,7 +170,7 @@ export function SortDropdown({
                 }
                 setOpen(false);
               }}
-              className={`flex w-full items-center justify-between px-3 py-1.5 text-xs cursor-pointer hover:bg-white/[0.04] ${
+              className={`flex w-full items-center justify-between px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item ${
                 opt.field === field ? "text-white bg-white/[0.03]" : "text-white/50"
               }`}
             >
@@ -196,7 +196,7 @@ export function SortDropdown({
                   onChange("rank", "asc");
                   setOpen(false);
                 }}
-                className="flex w-full items-center px-3 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50"
+                className="flex w-full items-center px-3 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-hover-list-item hover:text-white/50"
               >
                 Reset to default
               </button>
@@ -241,7 +241,7 @@ function SortableColumnItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/65 hover:bg-white/[0.04] hover:text-white/85"
+      className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/65 hover:bg-hover-list-item hover:text-white/85"
     >
       <div
         className="flex shrink-0 items-center justify-center w-7 h-7 cursor-grab active:cursor-grabbing text-white/20 hover:text-white/40"
@@ -334,10 +334,10 @@ export function ColumnToggle({
         icon={<Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
         title="Toggle columns"
         aria-label="Toggle columns"
-        className="border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+        className="border-0 bg-transparent text-white/40 hover:bg-hover-list-item hover:text-white/60"
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden flex flex-col">
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden flex flex-col">
           <div className="overflow-y-auto max-h-[70vh] py-1.5">
             <DndContext
               sensors={sensors}
@@ -363,7 +363,7 @@ export function ColumnToggle({
                 {COLUMNS.filter((c) => !order.includes(c.id)).map((c) => (
                   <div
                     key={c.id}
-                    className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/40 hover:bg-white/[0.04] hover:text-white/65"
+                    className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/40 hover:bg-hover-list-item hover:text-white/65"
                   >
                     <div className="flex shrink-0 items-center justify-center w-7 h-7 text-white/10">
                       <GripVertical size={12} strokeWidth={1.5} />
@@ -392,7 +392,7 @@ export function ColumnToggle({
               <button
                 type="button"
                 onClick={() => { onReset(); setOpen(false); }}
-                className="flex w-full items-center px-3.5 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50"
+                className="flex w-full items-center px-3.5 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-hover-list-item hover:text-white/50"
               >
                 Reset to default
               </button>
@@ -446,7 +446,7 @@ function SaveViewPopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3)]"
+      className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3)]"
     >
       <p className="mb-2 text-label font-medium text-white/40">
         {isUpdate ? "Update saved view" : "Save current filter view"}
@@ -524,7 +524,7 @@ function ExpandableSearch({
           setExpanded(true);
           requestAnimationFrame(() => inputRef.current?.focus());
         }}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 hover:text-white/50 hover:bg-white/[0.04] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 hover:text-white/50 hover:bg-hover-list-item cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "color 120ms, background-color 120ms" }}
         title="Search tickets"
       >
@@ -658,7 +658,7 @@ export function FilterBar({
   }
 
   return (
-    <div className={`flex h-[50px] items-center gap-2 px-5${noBorder ? "" : " border-b border-white/[0.06]"}`}>
+    <div className={`flex h-[50px] items-center gap-2 px-5${noBorder ? "" : " border-b border-border-default"}`}>
       {/* Expandable search */}
       {onSearchChange && (
         <ExpandableSearch value={searchQuery ?? ""} onChange={onSearchChange} />
@@ -809,7 +809,7 @@ export function FilterBar({
             icon={<Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} fill={activeView ? "currentColor" : "none"} />}
             title={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
             aria-label={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
-            className={`border-0 bg-transparent ${activeView ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10" : "text-white/35 hover:bg-white/[0.04] hover:text-white/60"}`}
+            className={`border-0 bg-transparent ${activeView ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10" : "text-white/35 hover:bg-hover-list-item hover:text-white/60"}`}
           />
           {saveViewOpen && (
             <SaveViewPopover

@@ -92,7 +92,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
         <Button
           variant="ghost"
           size="sm"
@@ -104,7 +104,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
 
         <div className="flex items-center gap-1">
           {/* Diff mode toggle */}
-          <div className="mr-2 flex items-center overflow-hidden rounded-md border border-white/[0.08]">
+          <div className="mr-2 flex items-center overflow-hidden rounded-md border border-border-strong">
             <button
               type="button"
               onClick={() => setDiffMode("unified")}
@@ -122,7 +122,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
               type="button"
               onClick={() => setDiffMode("side-by-side")}
               title="Side-by-side diff view"
-              className={`border-l border-white/[0.08] px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
+              className={`border-l border-border-strong px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
                 diffMode === "side-by-side"
                   ? "bg-white/[0.08] text-white/70"
                   : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
@@ -155,7 +155,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
       </div>
 
       {/* Version info */}
-      <div className="border-b border-white/[0.06] px-4 py-3">
+      <div className="border-b border-border-default px-4 py-3">
         <p className="font-[var(--font-body)] text-sm text-white/70">
           {isFirstVersion
             ? `Version ${current.versionNumber} (initial)`
@@ -174,7 +174,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
         {isFirstVersion ? (
           <div>
             <p className="mb-2 text-xs font-medium text-white/40">Initial version</p>
-            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-sm leading-[1.7] text-white/80 whitespace-pre-wrap">
+            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-sm leading-[1.7] text-white/80 whitespace-pre-wrap">
               {current.content || <span className="text-white/30">No content</span>}
             </div>
           </div>
@@ -190,7 +190,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
       </div>
 
       {/* Keyboard hint */}
-      <div className="border-t border-white/[0.06] px-4 py-2">
+      <div className="border-t border-border-default px-4 py-2">
         <p className="text-caption text-white/20">
           Use arrow keys or j/k to navigate, Esc to go back
         </p>

@@ -45,7 +45,7 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor }:
             copied
               ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
               : statusLabel
-                ? "text-white/60 hover:bg-white/[0.04]"
+                ? "text-white/60 hover:bg-hover-list-item"
                 : "bg-white/[0.07] text-white/60 hover:bg-white/[0.10] hover:text-white/75"
           }`}
         >

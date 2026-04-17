@@ -49,7 +49,7 @@ function DiffPreviewContent() {
   return (
     <div className="flex h-full flex-col">
       {/* View toggle */}
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-6 py-3">
+      <div className="flex items-center gap-2 border-b border-border-default px-6 py-3">
         <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] text-white mr-4">
           Diff Preview
         </h1>
@@ -62,7 +62,7 @@ function DiffPreviewContent() {
           className={`rounded-md px-3 py-1.5 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
             view === "panel"
               ? "bg-white/[0.08] text-white"
-              : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+              : "text-white/40 hover:text-white/60 hover:bg-hover-list-item"
           }`}
           style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
         >
@@ -74,7 +74,7 @@ function DiffPreviewContent() {
           className={`rounded-md px-3 py-1.5 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
             view === "raw"
               ? "bg-white/[0.08] text-white"
-              : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+              : "text-white/40 hover:text-white/60 hover:bg-hover-list-item"
           }`}
           style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
         >

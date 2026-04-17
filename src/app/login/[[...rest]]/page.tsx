@@ -48,7 +48,7 @@ export default function LoginPage() {
   if (accessDenied) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)] px-4">
-        <div className="w-full max-w-sm rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+        <div className="w-full max-w-sm rounded-xl border border-border-default bg-[var(--color-surface-elevated)] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <div className="mb-6 text-center">
             <h1 className="font-[var(--font-display)] text-xl font-semibold tracking-[-0.03em] text-white/90">
               Access denied
@@ -61,7 +61,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => signOut({ redirectUrl: "/login" })}
-            className="h-10 w-full cursor-pointer rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm text-white/60 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white/90"
+            className="h-10 w-full cursor-pointer rounded-lg border border-border-strong bg-white/[0.03] text-sm text-white/60 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white/90"
           >
             Sign out
           </button>
@@ -93,7 +93,7 @@ export default function LoginPage() {
             borderRadius: "0.75rem",
           },
           elements: {
-            card: "shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-white/[0.06]",
+            card: "shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-border-default",
             headerTitle: "font-[var(--font-display)] tracking-[-0.03em]",
           },
         }}

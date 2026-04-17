@@ -109,7 +109,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
             moreOpen
               ? "bg-white/[0.1] text-white"
-              : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
+              : "text-white/50 hover:bg-hover-interactive hover:text-white/80 active:scale-95"
           }`}
         >
           <MoreHorizontal size={14} strokeWidth={1.5} />
@@ -118,7 +118,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
       </div>
 
       {moreOpen && (
-        <div className="flex h-[42.5px] items-center gap-0.5 border-t border-white/[0.06] px-2">
+        <div className="flex h-[42.5px] items-center gap-0.5 border-t border-border-default px-2">
           <FormatButton
             editor={editor}
             action={() => editor.chain().focus().toggleBold().run()}
@@ -212,7 +212,7 @@ function FormatButton({
       className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
         active
           ? "bg-white/[0.1] text-white"
-          : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
+          : "text-white/50 hover:bg-hover-interactive hover:text-white/80 active:scale-95"
       }`}
     >
       {children}
@@ -317,7 +317,7 @@ function ColorButton({ editor }: { editor: Editor }) {
         aria-label="Text color"
         aria-expanded={open}
         className={`cursor-pointer flex items-center gap-0.5 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-          open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/80"
+          open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-hover-interactive hover:text-white/80"
         }`}
       >
         <span className="font-bold text-sm" style={{ color: currentColor ?? "currentColor" }}>A</span>
@@ -325,7 +325,7 @@ function ColorButton({ editor }: { editor: Editor }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-36 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] p-2 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-lg shadow-black/40">
           <div className="mb-2 grid grid-cols-4 gap-1">
             {TEXT_COLORS.map((c) => (
               <button
@@ -341,7 +341,7 @@ function ColorButton({ editor }: { editor: Editor }) {
           <button
             type="button"
             onClick={clearColor}
-            className="cursor-pointer w-full rounded px-2 py-1 text-label text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+            className="cursor-pointer w-full rounded px-2 py-1 text-label text-white/40 transition-colors hover:bg-hover-interactive hover:text-white/70"
           >
             Remove color
           </button>
@@ -388,7 +388,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
         aria-label="Insert callout"
         aria-expanded={open}
         className={`cursor-pointer flex items-center gap-1 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-          open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
+          open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-hover-interactive hover:text-white/80 active:scale-95"
         }`}
       >
         <Info size={14} strokeWidth={1.5} />
@@ -396,13 +396,13 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-lg shadow-black/40">
           {CALLOUT_OPTIONS.map((opt) => (
             <button
               key={opt.type}
               type="button"
               onClick={() => insertCallout(opt.type)}
-              className="cursor-pointer flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white"
+              className="cursor-pointer flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/70 transition-colors duration-150 hover:bg-hover-interactive hover:text-white"
             >
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: opt.color }} />
               {opt.label}
@@ -450,14 +450,14 @@ function ExpandButton({ editor }: { editor: Editor }) {
         className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
           open || editor.isActive("expand")
             ? "bg-white/[0.1] text-white"
-            : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
+            : "text-white/50 hover:bg-hover-interactive hover:text-white/80 active:scale-95"
         }`}
       >
         <ChevronRight size={14} strokeWidth={1.5} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] p-3 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-3 shadow-lg shadow-black/40">
           <label className="mb-1.5 block text-label font-medium uppercase tracking-wider text-white/30">
             Section title
           </label>
@@ -470,7 +470,7 @@ function ExpandButton({ editor }: { editor: Editor }) {
               if (e.key === "Enter") insert();
               if (e.key === "Escape") setOpen(false);
             }}
-            className="mb-2.5 w-full rounded border border-white/[0.08] bg-white/[0.05] px-2.5 py-1.5 text-sm text-white/80 outline-none placeholder:text-white/20 focus:border-[var(--color-brand-500)]/50 focus:bg-white/[0.07]"
+            className="mb-2.5 w-full rounded border border-border-strong bg-white/[0.05] px-2.5 py-1.5 text-sm text-white/80 outline-none placeholder:text-white/20 focus:border-[var(--color-brand-500)]/50 focus:bg-white/[0.07]"
             placeholder="Details"
           />
           <button
@@ -549,14 +549,14 @@ function EmojiButton({ editor }: { editor: Editor }) {
         aria-label="Insert emoji"
         aria-expanded={open}
         className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-          open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 active:scale-95"
+          open ? "bg-white/[0.1] text-white" : "text-white/50 hover:bg-hover-interactive hover:text-white/80 active:scale-95"
         }`}
       >
         <Smile size={14} strokeWidth={1.5} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] p-2 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-lg shadow-black/40">
           <div className="grid grid-cols-9 gap-0.5">
             {COMMON_EMOJIS.map(({ emoji, shortname }) => (
               <button

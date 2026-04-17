@@ -209,7 +209,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-5 py-2.5"
+      className="flex flex-wrap items-center gap-2 border-b border-border-default px-5 py-2.5"
       style={{ backgroundColor: "rgba(255,255,255,0.015)" }}
     >
       <FilterDropdown
@@ -321,7 +321,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
               setCustomFrom(e.target.value);
               updateCustomDate(e.target.value, customTo);
             }}
-            className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
+            className="rounded-md border border-border-default bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
             style={{ colorScheme: "dark" }}
           />
           <span className="text-caption text-white/20">to</span>
@@ -332,7 +332,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
               setCustomTo(e.target.value);
               updateCustomDate(customFrom, e.target.value);
             }}
-            className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
+            className="rounded-md border border-border-default bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
             style={{ colorScheme: "dark" }}
           />
         </div>

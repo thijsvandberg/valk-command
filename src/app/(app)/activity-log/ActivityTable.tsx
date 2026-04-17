@@ -111,7 +111,7 @@ export function SelectFilter({
       <select
         value={value}
         onChange={onChange}
-        className="appearance-none rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] px-3 py-1.5 pr-7 text-xs text-white/60 font-[var(--font-body)] cursor-pointer hover:border-white/[0.1] focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+        className="appearance-none rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-1.5 pr-7 text-xs text-white/60 font-[var(--font-body)] cursor-pointer hover:border-white/[0.1] focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -151,9 +151,9 @@ export function ActivityTable({
 }) {
   return (
     <>
-      <div className="rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
+      <div className="rounded-xl border border-border-default bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
         {/* Header row */}
-        <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.015]">
+        <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-border-default bg-white/[0.015]">
           <span />
           <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Type</span>
           <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Status</span>
@@ -246,7 +246,7 @@ export function ActivityTable({
                       type="button"
                       title="Dismiss"
                       onClick={() => onAcknowledgeEntry(entry.id)}
-                      className="ml-1 flex items-center justify-center h-4 w-4 rounded text-white/20 hover:text-white/50 hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                      className="ml-1 flex items-center justify-center h-4 w-4 rounded text-white/20 hover:text-white/50 hover:bg-hover-interactive transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <X className="h-2.5 w-2.5" strokeWidth={2.5} />
                     </button>

@@ -56,7 +56,7 @@ function SortablePromptRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 flex flex-col gap-3"
+      className="rounded-xl border border-border-default bg-white/[0.02] p-4 flex flex-col gap-3"
     >
       <div className="flex items-center gap-2">
         <button

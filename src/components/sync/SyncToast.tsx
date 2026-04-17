@@ -13,7 +13,7 @@ export function ActivityToast() {
   if (visibleToasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none">
+    <div className="fixed bottom-4 right-4 z-modal flex flex-col gap-2 pointer-events-none">
       {visibleToasts.map((toast) => (
         <ToastItem
           key={toast.id}

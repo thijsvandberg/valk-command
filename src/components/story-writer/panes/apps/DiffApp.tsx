@@ -154,7 +154,7 @@ export function DiffApp() {
               icon={<GitCompare size={11} strokeWidth={1.5} />}
               onClick={() => setDiffViewMode("diff")}
               title="Show diff"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
             >
               Diff
             </Button>
@@ -165,7 +165,7 @@ export function DiffApp() {
               icon={<Eye size={11} strokeWidth={1.5} />}
               onClick={() => setDiffViewMode("plain")}
               title="Preview the selected version"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
             >
               Preview
             </Button>

@@ -46,6 +46,21 @@
   --color-surface-elevated: #0c1219;
   --color-surface-elevated-hover: #11171e; /* surface-elevated blended with white/[0.02] row hover */
   --color-surface-floating: #131c28;
+
+  /* Border opacity tokens */
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+  --color-border-default: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.08);
+
+  /* Hover state tokens */
+  --color-hover-list-item: rgba(255, 255, 255, 0.04);
+  --color-hover-interactive: rgba(255, 255, 255, 0.06);
+
+  /* Z-index scale */
+  --z-dropdown: 50;
+  --z-modal: 60;
+  --z-tooltip: 70;
+  --z-notification: 80;
 }
 
 @layer base {

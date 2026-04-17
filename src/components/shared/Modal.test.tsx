@@ -41,7 +41,7 @@ describe("Modal", () => {
     );
     // The backdrop is the portal div rendered in document.body
     const backdrop = container.ownerDocument.querySelector(
-      ".fixed.inset-0.z-50",
+      ".fixed.inset-0.z-modal",
     ) as HTMLElement;
     if (backdrop) {
       fireEvent.mouseDown(backdrop);
@@ -66,7 +66,7 @@ describe("Modal", () => {
         <div>Content</div>
       </Modal>,
     );
-    const backdrop = document.querySelector(".fixed.inset-0.z-50") as HTMLElement;
+    const backdrop = document.querySelector(".fixed.inset-0.z-modal") as HTMLElement;
     expect(backdrop.className).toContain("items-center");
   });
 
@@ -76,7 +76,7 @@ describe("Modal", () => {
         <div>Content</div>
       </Modal>,
     );
-    const backdrop = document.querySelector(".fixed.inset-0.z-50") as HTMLElement;
+    const backdrop = document.querySelector(".fixed.inset-0.z-modal") as HTMLElement;
     expect(backdrop.className).toContain("items-start");
   });
 

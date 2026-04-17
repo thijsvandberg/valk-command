@@ -40,7 +40,7 @@ function VersionPickerItem({
     <button
       type="button"
       onClick={onSelect}
-      className={`flex w-full items-start gap-3 border-b border-white/[0.04] px-3.5 py-2.5 text-left cursor-pointer transition-colors duration-150 last:border-0 ${
+      className={`flex w-full items-start gap-3 border-b border-border-subtle px-3.5 py-2.5 text-left cursor-pointer transition-colors duration-150 last:border-0 ${
         selected ? "bg-white/[0.05]" : "hover:bg-white/[0.035]"
       }`}
     >
@@ -161,7 +161,7 @@ export function VersionPicker({
       {/* Dropdown panel */}
       {open && (
         <div
-          className={`absolute top-full z-[60] mt-1.5 w-72 overflow-hidden rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.6),0_4px_12px_rgba(0,0,0,0.3)] ${
+          className={`absolute top-full z-modal mt-1.5 w-72 overflow-hidden rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.6),0_4px_12px_rgba(0,0,0,0.3)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -177,7 +177,7 @@ export function VersionPicker({
             {groupNames.map((name, gi) => (
               <div key={name}>
                 {(gi > 0 || ungrouped.length > 0) && (
-                  <div className="mx-3.5 border-t border-white/[0.06]" />
+                  <div className="mx-3.5 border-t border-border-default" />
                 )}
                 <div className="px-3.5 pb-1 pt-2.5">
                   <span className="text-caption font-medium uppercase tracking-[0.07em] text-white/30">

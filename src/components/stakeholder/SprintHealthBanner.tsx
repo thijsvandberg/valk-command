@@ -105,7 +105,7 @@ const levelStyles: Record<HealthLevel, { dot: string; text: string; border: stri
   "in-progress": {
     dot: "bg-white/20",
     text: "text-white/35",
-    border: "border-white/[0.06]",
+    border: "border-border-default",
     bg: "bg-white/[0.02]",
   },
 };

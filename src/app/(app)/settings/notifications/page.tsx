@@ -140,7 +140,7 @@ export default function NotificationsPage() {
 
       <div className="flex flex-col gap-4">
         {/* Main toggle */}
-        <div className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+        <div className="flex items-center justify-between rounded-xl border border-border-default bg-white/[0.02] p-4">
           <div className="flex items-center gap-3">
             {enabled ? (
               <Bell size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
@@ -176,7 +176,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* Permission status */}
-        <div className="flex items-center gap-2.5 rounded-lg border border-white/[0.05] bg-white/[0.01] px-4 py-3">
+        <div className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-white/[0.01] px-4 py-3">
           {permissionGranted ? (
             <>
               <ShieldCheck size={14} strokeWidth={1.5} className="text-emerald-400/70" />
@@ -211,7 +211,7 @@ export default function NotificationsPage() {
         Notification Categories
       </h2>
 
-      <div className="flex flex-col divide-y divide-white/[0.04] rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+      <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-white/[0.02] overflow-hidden">
         {CATEGORY_ORDER.map((category) => {
           const meta = CATEGORY_META[category];
           const isEnabled = preferences ? (preferences[category] ?? true) : true;

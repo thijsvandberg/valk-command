@@ -54,7 +54,7 @@ function SprintSelector({
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1.5 w-72 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+      className="absolute top-full left-0 z-50 mt-1.5 w-72 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
     >
       <div className="p-2">
         <input
@@ -63,7 +63,7 @@ function SprintSelector({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search sprints..."
           autoFocus
-          className="w-full rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-white/25 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+          className="w-full rounded-md border border-border-default bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-white/25 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
         />
       </div>
       <div className="max-h-64 overflow-y-auto px-1 pb-1">
@@ -75,7 +75,7 @@ function SprintSelector({
               onSelect(s.id);
               onClose();
             }}
-            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/70 cursor-pointer hover:bg-white/[0.04] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/70 cursor-pointer hover:bg-hover-list-item hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
           >
             <span className="flex items-center gap-2">
               <span
@@ -110,7 +110,7 @@ function SprintSelector({
                     onSelect(s.id);
                     onClose();
                   }}
-                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/40 cursor-pointer hover:bg-hover-list-item hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
                 >
                   <span className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
@@ -221,16 +221,16 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
         }
         title={isActive ? `Group by: ${value}` : "Group by"}
         aria-label={isActive ? `Group by: ${value}` : "Group by"}
-        className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"}
+        className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-hover-list-item hover:text-white/60"}
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
           {GROUP_BY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-white/[0.04] ${
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item ${
                 opt.value === value ? "text-white bg-white/[0.03]" : "text-white/50"
               }`}
             >
@@ -322,7 +322,7 @@ export function SprintSlots({
   }
 
   return (
-    <div className="flex h-[50px] items-stretch border-b border-white/[0.06] px-5">
+    <div className="flex h-[50px] items-stretch border-b border-border-default px-5">
       {/* Scrollable tab area */}
       <div className="flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {/* All tab -- always first, visually distinct with icon */}

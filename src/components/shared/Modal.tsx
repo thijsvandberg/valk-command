@@ -104,7 +104,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex justify-center px-4 ${alignClass} bg-black/55 backdrop-blur-[3px]${backdropClassName ? ` ${backdropClassName}` : ""}`}
+      className={`fixed inset-0 z-modal flex justify-center px-4 ${alignClass} bg-black/55 backdrop-blur-[3px]${backdropClassName ? ` ${backdropClassName}` : ""}`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

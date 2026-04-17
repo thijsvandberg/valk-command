@@ -56,7 +56,7 @@ export function VersionList({
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+      <div className="flex items-center justify-between border-b border-border-default pb-2">
         <div className="flex items-center gap-2">
           <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">History</h3>
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/[0.06] px-1.5 text-caption font-medium tabular-nums text-white/40">
@@ -77,7 +77,7 @@ export function VersionList({
 
       {/* Import result feedback */}
       {importResult && (
-        <div className="mt-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-xs text-white/50">
+        <div className="mt-2 rounded-lg border border-border-default bg-white/[0.02] px-4 py-2.5 text-xs text-white/50">
           {importResult.imported > 0
             ? `Imported ${importResult.imported} version${importResult.imported !== 1 ? "s" : ""} from Jira${importResult.skipped > 0 ? ` (${importResult.skipped} already existed)` : ""}.`
             : "History is up to date. No new versions found in Jira."}
@@ -86,13 +86,13 @@ export function VersionList({
 
       {/* Compare dropdowns */}
       {sorted.length > 1 && (
-        <div className="mt-3 mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+        <div className="mt-3 mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border-default bg-white/[0.02] px-4 py-3">
           {compareBar}
         </div>
       )}
 
       {/* Version list */}
-      <div className="mt-3 overflow-hidden rounded-lg border border-white/[0.06]">
+      <div className="mt-3 overflow-hidden rounded-lg border border-border-default">
         {sorted.map((version, idx) => {
           const isFirst = idx === sorted.length - 1;
           const isOutdated = version.label === "draft" && isDraftOutdated;
@@ -101,7 +101,7 @@ export function VersionList({
               key={version.versionNumber}
               onClick={() => onVersionClick(version.versionNumber)}
               className={`flex w-full items-center gap-3 px-4 py-3 text-left cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.04] ${
-                idx < sorted.length - 1 ? "border-b border-white/[0.04]" : ""
+                idx < sorted.length - 1 ? "border-b border-border-subtle" : ""
               }`}
               style={{ transition: "background-color 0.15s ease" }}
             >
@@ -115,7 +115,7 @@ export function VersionList({
                   className="h-7 w-7 shrink-0 rounded-full"
                 />
               ) : (
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-caption font-semibold tabular-nums text-white/40">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-strong bg-white/[0.03] text-caption font-semibold tabular-nums text-white/40">
                   v{version.versionNumber}
                 </div>
               )}

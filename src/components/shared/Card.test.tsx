@@ -11,14 +11,14 @@ describe("Card", () => {
   it("applies default variant classes", () => {
     const { container } = render(<Card>Content</Card>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("border-white/[0.08]");
+    expect(el.className).toContain("border-border-strong");
     expect(el.className).toContain("bg-white/[0.03]");
   });
 
   it("applies subtle variant classes", () => {
     const { container } = render(<Card variant="subtle">Content</Card>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("border-white/[0.04]");
+    expect(el.className).toContain("border-border-subtle");
     expect(el.className).toContain("bg-white/[0.02]");
   });
 

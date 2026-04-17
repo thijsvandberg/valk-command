@@ -20,12 +20,12 @@ export function SubtasksSection({ subtasks }: { subtasks: TicketDetail["subtasks
   return (
     <div className="mt-8">
       <SectionHeader title="Subtasks" count={subtasks.length} />
-      <div className="mt-3 overflow-hidden rounded-lg border border-white/[0.06]">
+      <div className="mt-3 overflow-hidden rounded-lg border border-border-default">
         {subtasks.map((sub, idx) => (
           <div
             key={sub.key}
             className={`flex items-center gap-3 px-3 py-2.5 ${
-              idx < subtasks.length - 1 ? "border-b border-white/[0.04]" : ""
+              idx < subtasks.length - 1 ? "border-b border-border-subtle" : ""
             }`}
           >
             <IssueTypeIcon type={sub.type} size={14} />

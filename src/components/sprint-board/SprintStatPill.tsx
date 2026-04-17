@@ -76,16 +76,47 @@ interface BaseProps {
 
 // ── Stat pill ──────────────────────────────────────────────────────────────
 // Neutral info chip: "15 items", "41 pts", "4 no pts".
-// Pass onClick to make it interactive (adds hover/active/ring on active).
+// variant="default" → primary stat (items)
+// variant="dim"     → secondary stat (pts) — slightly muted
+// variant="warning" → attention item (no pts) — amber tint
+// Pass onClick to make it interactive.
+
+export type StatPillVariant = "default" | "dim" | "warning";
+
+const STAT_VARIANT_STYLE: Record<StatPillVariant, { bg: string; text: string; activeBg: string; activeText: string; activeRing: string }> = {
+  default: {
+    bg: "rgba(255,255,255,0.07)",
+    text: "rgba(255,255,255,0.38)",
+    activeBg: "rgba(255,255,255,0.12)",
+    activeText: "rgba(255,255,255,0.55)",
+    activeRing: "rgba(255,255,255,0.22)",
+  },
+  dim: {
+    bg: "rgba(255,255,255,0.04)",
+    text: "rgba(255,255,255,0.22)",
+    activeBg: "rgba(255,255,255,0.09)",
+    activeText: "rgba(255,255,255,0.42)",
+    activeRing: "rgba(255,255,255,0.18)",
+  },
+  warning: {
+    bg: "rgba(234,179,8,0.06)",
+    text: "rgba(210,155,20,0.55)",
+    activeBg: "rgba(234,179,8,0.13)",
+    activeText: "rgba(234,179,8,0.80)",
+    activeRing: "rgba(234,179,8,0.25)",
+  },
+};
 
 interface StatPillProps extends BaseProps {
   children: React.ReactNode;
+  variant?: StatPillVariant;
   active?: boolean;
   onClick?: (e: React.MouseEvent) => void;
 }
 
-export function StatPill({ size = "md", active, onClick, className = "", children }: StatPillProps) {
+export function StatPill({ size = "md", variant = "default", active, onClick, className = "", children }: StatPillProps) {
   const s = SIZE[size];
+  const v = STAT_VARIANT_STYLE[variant];
   const isInteractive = !!onClick;
 
   const base = [
@@ -95,8 +126,8 @@ export function StatPill({ size = "md", active, onClick, className = "", childre
   ].join(" ");
 
   const style: React.CSSProperties = active
-    ? { backgroundColor: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.50)", boxShadow: "0 0 0 1px rgba(255,255,255,0.20)" }
-    : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.28)" };
+    ? { backgroundColor: v.activeBg, color: v.activeText, boxShadow: `0 0 0 1px ${v.activeRing}` }
+    : { backgroundColor: v.bg, color: v.text };
 
   if (!isInteractive) {
     return (

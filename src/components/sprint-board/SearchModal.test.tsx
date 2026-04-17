@@ -620,7 +620,7 @@ describe("SearchModal", () => {
       <SearchModal open={true} onClose={onClose} onSelectTicket={onSelectTicket} />,
     );
     // The backdrop is the outermost div
-    const backdrop = document.querySelector(".fixed.inset-0.z-50")!;
+    const backdrop = document.querySelector(".fixed.inset-0.z-modal")!;
     fireEvent.mouseDown(backdrop);
     expect(onClose).toHaveBeenCalled();
   });

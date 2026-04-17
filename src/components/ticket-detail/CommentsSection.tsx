@@ -82,7 +82,7 @@ export function CommentsSection({
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a PO comment..."
                 rows={2}
-                className="w-full resize-none rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-border-default bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handleAddComment();

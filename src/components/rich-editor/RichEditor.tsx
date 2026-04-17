@@ -234,11 +234,11 @@ export function RichEditor({
     ? `rich-editor-root flex h-full flex-col overflow-hidden ${className}`
     : fullWidthToolbar
       ? `rich-editor-root ${className}`
-      : `rich-editor-root rounded-lg border border-white/[0.08] bg-[var(--color-surface-elevated)] ${stickyToolbar ? "" : "overflow-hidden"} ${className}`;
+      : `rich-editor-root rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] ${stickyToolbar ? "" : "overflow-hidden"} ${className}`;
 
   const toolbarWrapperClasses = stickyToolbar
-    ? `sticky top-0 z-10 border-b border-white/[0.06] bg-[var(--color-surface-elevated)]${fullWidthToolbar ? "" : " rounded-t-lg"}`
-    : `border-b border-white/[0.06] bg-[var(--color-surface-elevated)]${borderless ? " px-2" : ""}`;
+    ? `sticky top-0 z-10 border-b border-border-default bg-[var(--color-surface-elevated)]${fullWidthToolbar ? "" : " rounded-t-lg"}`
+    : `border-b border-border-default bg-[var(--color-surface-elevated)]${borderless ? " px-2" : ""}`;
 
   const toolbarContent = (
     <Toolbar
@@ -254,7 +254,7 @@ export function RichEditor({
   const isPortaled = fullWidthToolbar && stickyToolbar && !!portalTarget;
 
   const toolbarEl = (
-    <div className={isPortaled ? "border-b border-white/[0.06] bg-[var(--color-surface-elevated)]" : toolbarWrapperClasses}>
+    <div className={isPortaled ? "border-b border-border-default bg-[var(--color-surface-elevated)]" : toolbarWrapperClasses}>
       {fullWidthToolbar ? (
         <div className="mx-auto max-w-4xl px-8">{toolbarContent}</div>
       ) : toolbarContent}
@@ -307,7 +307,7 @@ function ModeToggle({
     <button
       type="button"
       onClick={() => onToggle(isRich ? "markdown" : "rich")}
-      className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-xs font-medium text-white/30 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white/60 active:scale-95"
+      className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-xs font-medium text-white/30 transition-colors duration-150 hover:bg-hover-interactive hover:text-white/60 active:scale-95"
     >
       {isRich ? "Markdown" : "Rich Text"}
     </button>

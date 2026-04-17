@@ -68,7 +68,7 @@ export function SubFlowForm({
               type="text"
               value={subFlow.title}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="Story title..."
             />
           </div>
@@ -80,7 +80,7 @@ export function SubFlowForm({
               <select
                 value={subFlow.sprintId}
                 onChange={(e) => onSprintChange(e.target.value)}
-                className="w-full appearance-none rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
               >
                 {subFlow.loadingSprints ? (
                   <option value="">Loading sprints...</option>
@@ -115,7 +115,7 @@ export function SubFlowForm({
             type="text"
             value={subFlow.existingKey}
             onChange={(e) => onExistingKeyChange(e.target.value.toUpperCase())}
-            className="w-full rounded-md border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+            className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
             placeholder="VPL-123"
           />
           <p className="mt-1.5 text-label text-white/30">

@@ -42,7 +42,7 @@ export const markdownComponents: Components = {
       {children}
     </pre>
   ),
-  hr: () => <hr className="my-3 border-white/[0.08]" />,
+  hr: () => <hr className="my-3 border-border-strong" />,
   table: ({ children }) => (
     <div className="overflow-x-auto mb-2 last:mb-0">
       <table className="min-w-full text-xs border-collapse">
@@ -56,7 +56,7 @@ export const markdownComponents: Components = {
     </th>
   ),
   td: ({ children }) => (
-    <td className="border-b border-white/[0.04] px-3 py-1.5 text-white/70">
+    <td className="border-b border-border-subtle px-3 py-1.5 text-white/70">
       {children}
     </td>
   ),

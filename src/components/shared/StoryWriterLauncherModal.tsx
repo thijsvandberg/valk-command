@@ -91,7 +91,7 @@ function SprintSelectDropdown({
   const openPanel = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setPanelStyle({ position: "fixed", top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 });
+    setPanelStyle({ position: "fixed", top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: "var(--z-notification)" });
     setSearch(""); setFocused(0); setOpen(true);
   };
 
@@ -127,7 +127,7 @@ function SprintSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? setOpen(false) : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex w-full items-center gap-2 rounded-md border border-border-default bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
         <span className="flex-1 min-w-0 truncate text-white/75">
@@ -138,9 +138,9 @@ function SprintSelectDropdown({
 
       {open && (
         <div ref={panelRef} style={panelStyle} onKeyDown={nav}
-          className="overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]"
+          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]"
         >
-          <div className="border-b border-white/[0.05] px-2 py-1.5">
+          <div className="border-b border-border-subtle px-2 py-1.5">
             <div className="relative">
               <Search size={11} strokeWidth={1.5} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-white/25" />
               <input ref={searchRef} type="text" value={search}
@@ -158,7 +158,7 @@ function SprintSelectDropdown({
               : sections.map((sec, si) => (
                 <div key={sec.key}>
                   {sec.label && (
-                    <p className={`px-3 pt-2 pb-0.5 text-caption font-semibold uppercase tracking-widest text-white/20 ${si > 0 ? "mt-1 border-t border-white/[0.04]" : ""}`}>
+                    <p className={`px-3 pt-2 pb-0.5 text-caption font-semibold uppercase tracking-widest text-white/20 ${si > 0 ? "mt-1 border-t border-border-subtle" : ""}`}>
                       {sec.label}
                     </p>
                   )}
@@ -217,7 +217,7 @@ function SessionSelectDropdown({
   const openPanel = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setPanelStyle({ position: "fixed", top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 });
+    setPanelStyle({ position: "fixed", top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: "var(--z-notification)" });
     setFocused(options.findIndex((o) => o.value === value) || 0);
     setOpen(true);
   };
@@ -249,7 +249,7 @@ function SessionSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? closePanel() : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex w-full items-center gap-2 rounded-md border border-border-default bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
         <span className="flex-1 min-w-0">
@@ -266,7 +266,7 @@ function SessionSelectDropdown({
 
       {open && (
         <div ref={panelRef} style={panelStyle} onKeyDown={nav}
-          className="overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] py-1.5"
+          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] py-1.5"
         >
           <div className="max-h-52 overflow-y-auto">
             {options.length === 0
@@ -483,10 +483,10 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-[3px]"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-black/55 backdrop-blur-[3px]"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-[560px] rounded-2xl border border-white/[0.07] bg-[var(--color-surface-elevated)] shadow-[0_32px_80px_rgba(0,0,0,0.65),0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(46,145,73,0.22),inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+      <div className="w-full max-w-[560px] rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_32px_80px_rgba(0,0,0,0.65),0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(46,145,73,0.22),inset_0_0_0_1px_rgba(255,255,255,0.03)]">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
@@ -593,7 +593,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                   Loading…
                 </div>
               ) : sessions.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-white/[0.07] py-8 text-center">
+                <div className="rounded-lg border border-dashed border-border-default py-8 text-center">
                   <History size={18} strokeWidth={1} className="mx-auto mb-2 text-white/15" />
                   <p className="text-xs text-white/25">No open sessions</p>
                   <p className="mt-1 text-label text-white/15">Start a new story to begin</p>
@@ -616,7 +616,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                         className={`group relative flex w-full items-center gap-3 rounded-lg border px-3.5 py-3 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                           isSelected
                             ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.06]"
-                            : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.10] hover:bg-white/[0.035]"
+                            : "border-border-default bg-white/[0.02] hover:border-white/[0.10] hover:bg-white/[0.035]"
                         }`}
                         style={{ transition: "background-color 80ms, border-color 80ms" }}
                       >
@@ -684,7 +684,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                   </div>
 
                   {selectedSession && (
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
+                    <div className="rounded-lg border border-border-default bg-white/[0.02] px-3.5 py-3">
                       <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap text-label text-white/40 mb-1">
@@ -768,7 +768,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
                 {showDropdown && searchResults.length > 0 && (
                   <div ref={dropdownRef}
-                    className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3)]"
+                    className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3)]"
                   >
                     {searchResults.map((r, i) => {
                       const isFoc = i === focusedSearch;

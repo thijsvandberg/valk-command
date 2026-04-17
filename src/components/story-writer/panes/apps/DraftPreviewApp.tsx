@@ -35,7 +35,7 @@ export function DraftPreviewApp() {
             icon={<GitCompare size={11} strokeWidth={1.5} />}
             onClick={handleOpenDiff}
             title="Open in Diff view"
-            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-white/[0.04]"
+            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
           >
             Open in Diff
           </Button>

@@ -102,7 +102,7 @@ function inlineFormat(text: string): ReactNode {
             key={i++}
             src={src}
             alt={alt}
-            className="my-1 max-w-full rounded-lg border border-white/[0.06]"
+            className="my-1 max-w-full rounded-lg border border-border-default"
             style={{ maxHeight: "480px", objectFit: "contain" }}
           />,
         );
@@ -216,7 +216,7 @@ function renderTable(tableLines: string[], key: string): ReactNode {
             {headers.map((h, hi) => (
               <th
                 key={hi}
-                className="border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-white/50"
+                className="border border-border-strong bg-white/[0.04] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-white/50"
               >
                 {inlineFormat(h)}
               </th>
@@ -225,9 +225,9 @@ function renderTable(tableLines: string[], key: string): ReactNode {
         </thead>
         <tbody>
           {dataRows.map((row, ri) => (
-            <tr key={ri} className="border-b border-white/[0.06] transition-colors hover:bg-white/[0.02]">
+            <tr key={ri} className="border-b border-border-default transition-colors hover:bg-white/[0.02]">
               {row.map((cell, ci) => (
-                <td key={ci} className="border border-white/[0.06] px-3 py-2 text-white/60">
+                <td key={ci} className="border border-border-default px-3 py-2 text-white/60">
                   {inlineFormat(cell)}
                 </td>
               ))}
@@ -379,9 +379,9 @@ export function renderMarkdown(text: string): ReactNode[] {
           elements.push(
             <details
               key={`expand-${elements.length}`}
-              className="expand-block my-2 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.02]"
+              className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-white/[0.02]"
             >
-              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90">
+              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-hover-list-item hover:text-white/90">
                 <span className="flex items-center gap-2">
                   <svg
                     className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
@@ -393,7 +393,7 @@ export function renderMarkdown(text: string): ReactNode[] {
                   {title || "Details"}
                 </span>
               </summary>
-              <div className="border-t border-white/[0.06] px-4 py-3">{inner}</div>
+              <div className="border-t border-border-default px-4 py-3">{inner}</div>
             </details>
           );
           expandTitle = null;
@@ -507,9 +507,9 @@ export function renderMarkdown(text: string): ReactNode[] {
       elements.push(
         <details
           key={`expand-${elements.length}`}
-          className="expand-block my-2 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.02]"
+          className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-white/[0.02]"
         >
-          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90">
+          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-hover-list-item hover:text-white/90">
             <span className="flex items-center gap-2">
               <svg
                 className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
@@ -521,7 +521,7 @@ export function renderMarkdown(text: string): ReactNode[] {
               {title || "Details"}
             </span>
           </summary>
-          <div className="border-t border-white/[0.06] px-4 py-3">{inner}</div>
+          <div className="border-t border-border-default px-4 py-3">{inner}</div>
         </details>
       );
       continue;
@@ -653,7 +653,7 @@ export function renderMarkdown(text: string): ReactNode[] {
           <img
             src={standaloneImg[2]}
             alt={standaloneImg[1]}
-            className="max-w-full rounded-lg border border-white/[0.06]"
+            className="max-w-full rounded-lg border border-border-default"
             style={{ maxHeight: "600px", objectFit: "contain" }}
           />
           {standaloneImg[1] && (

@@ -167,7 +167,7 @@ export function ReviewPopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-50 w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
+      className="fixed z-50 w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
       style={{ top: pos.top, left: pos.left }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -232,7 +232,7 @@ export function ReviewPopover({
             )}
 
             {/* Timestamp + freshness */}
-            <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+            <div className="space-y-1.5 border-t border-border-default pt-3">
               <div className="text-caption text-white/25">
                 {new Date(latestReview.createdAt).toLocaleString()} via {latestReview.source.replace("-", " ")}
               </div>

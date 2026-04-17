@@ -32,12 +32,12 @@ export function LinkedIssuesSection({ issues }: { issues: TicketDetail["linkedIs
             <div className="mb-2 text-label font-medium uppercase tracking-wider text-white/25">
               {relation}
             </div>
-            <div className="overflow-hidden rounded-lg border border-white/[0.06]">
+            <div className="overflow-hidden rounded-lg border border-border-default">
               {items.map((item, idx) => (
                 <div
                   key={item.key}
                   className={`flex items-center gap-3 px-3 py-2.5 ${
-                    idx < items.length - 1 ? "border-b border-white/[0.04]" : ""
+                    idx < items.length - 1 ? "border-b border-border-subtle" : ""
                   }`}
                 >
                   <IssueTypeIcon type={item.type} size={14} />

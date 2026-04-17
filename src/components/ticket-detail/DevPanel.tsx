@@ -96,7 +96,7 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
   const totalReviewers = pr.reviewers.length;
 
   return (
-    <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] p-3">
+    <div className="rounded-lg border border-border-subtle bg-white/[0.02] p-3">
       {/* Header: title + status */}
       <div className="flex items-start gap-2">
         <GitPullRequest size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-white/20" />
@@ -329,7 +329,7 @@ export function DevPanel({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onExpand(); }}
-              className="rounded p-0.5 text-white/15 cursor-pointer hover:text-white/40 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="rounded p-0.5 text-white/15 cursor-pointer hover:text-white/40 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
               title="Open in full view"
             >
@@ -359,7 +359,7 @@ export function DevPanel({
             <div className="space-y-2">
               {/* Branches */}
               {data.branches.length > 0 && (
-                <div className="divide-y divide-white/[0.04]">
+                <div className="divide-y divide-border-subtle">
                   {data.branches.map((b) => (
                     <BranchItem key={b.name} branch={b} />
                   ))}
@@ -377,14 +377,14 @@ export function DevPanel({
 
               {/* Commits */}
               {data.commits.length > 0 && (
-                <div className="divide-y divide-white/[0.04]">
+                <div className="divide-y divide-border-subtle">
                   <CommitSummary commits={data.commits} />
                 </div>
               )}
 
               {/* Standalone builds (from pipelines) */}
               {data.builds.length > 0 && (
-                <div className="divide-y divide-white/[0.04]">
+                <div className="divide-y divide-border-subtle">
                   {data.builds.map((b, i) => (
                     <BuildItem key={`${b.name}-${i}`} build={b} />
                   ))}

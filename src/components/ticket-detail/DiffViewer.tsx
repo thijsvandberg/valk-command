@@ -165,7 +165,7 @@ export function DiffViewer({
       {/* Sticky combined action footer */}
       {showFooter && (
         <div
-          className="sticky bottom-0 mt-4 flex items-center gap-4 border-t border-white/[0.06] bg-[var(--color-surface-base)]/95 px-0 py-4 backdrop-blur-sm"
+          className="sticky bottom-0 mt-4 flex items-center gap-4 border-t border-border-default bg-[var(--color-surface-base)]/95 px-0 py-4 backdrop-blur-sm"
           style={{ boxShadow: "0 -8px 24px rgba(0,0,0,0.20)" }}
         >
           {showConflictActions && (

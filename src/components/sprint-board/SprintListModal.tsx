@@ -182,10 +182,10 @@ export function SprintListModal({
   return (
     <div
       ref={ref}
-      className={`absolute top-full z-50 mt-1.5 w-80 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] ${alignLeft ? "left-0" : "right-0"}`}
+      className={`absolute top-full z-50 mt-1.5 w-80 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] ${alignLeft ? "left-0" : "right-0"}`}
       style={{ animation: "sprintListIn 0.15s ease-out" }}
     >
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 pt-3 pb-0">
+      <div className="flex items-center justify-between border-b border-border-default px-4 pt-3 pb-0">
         <div className="flex items-center gap-0.5">
           {tabs.map((t) => (
             <button
@@ -266,7 +266,7 @@ export function SprintListModal({
                       e.stopPropagation();
                       handleToggleHidden(sprint.id, isHidden);
                     }}
-                    className="flex h-5 w-5 items-center justify-center rounded cursor-pointer text-white/15 hover:text-white/40 hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="flex h-5 w-5 items-center justify-center rounded cursor-pointer text-white/15 hover:text-white/40 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     title={isHidden ? "Restore sprint" : "Hide sprint"}
                   >
                     {isHidden ? (
@@ -285,7 +285,7 @@ export function SprintListModal({
                       className={`flex h-5 w-5 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                         isPinned
                           ? "text-[var(--color-brand-400)]"
-                          : "text-white/15 hover:text-white/40 hover:bg-white/[0.04]"
+                          : "text-white/15 hover:text-white/40 hover:bg-hover-list-item"
                       }`}
                       title={isPinned ? "Unpin from tabs" : "Pin to tab"}
                     >
@@ -304,7 +304,7 @@ export function SprintListModal({
       </div>
 
       {showSync && (
-        <div className="border-t border-white/[0.06] px-3 py-2.5">
+        <div className="border-t border-border-default px-3 py-2.5">
           {syncError && (
             <div className="mb-2 flex items-start gap-2 rounded-md border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">
               <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />

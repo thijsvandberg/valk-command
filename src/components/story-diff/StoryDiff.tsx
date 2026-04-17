@@ -448,7 +448,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onReset(hunkIndex)}
-              className={`${btnBase} text-white/30 hover:bg-white/[0.06] hover:text-white/50`}
+              className={`${btnBase} text-white/30 hover:bg-hover-interactive hover:text-white/50`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Clear decision"
             >
@@ -481,7 +481,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onEdit(hunkIndex)}
-              className={`${btnBase} text-white/50 hover:bg-white/[0.06] hover:text-white/70`}
+              className={`${btnBase} text-white/50 hover:bg-hover-interactive hover:text-white/70`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Edit this section"
             >
@@ -529,7 +529,7 @@ function HunkEditor({
           e.target.style.height = "auto";
           e.target.style.height = `${e.target.scrollHeight}px`;
         }}
-        className="w-full resize-none rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 font-mono text-sm leading-6 text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+        className="w-full resize-none rounded-md border border-border-strong bg-white/[0.03] px-3 py-2 font-mono text-sm leading-6 text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
         rows={3}
       />
       <div className="mt-2 flex items-center gap-2">
@@ -900,7 +900,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
 
   if (oldText === "" && newText === "") {
     return (
-      <div data-testid="story-diff-empty" className="rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] p-5">
+      <div data-testid="story-diff-empty" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
         <p className="font-[var(--font-body)] text-sm text-white/40">No content in either version.</p>
       </div>
     );
@@ -908,7 +908,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
 
   if (oldText === newText) {
     return (
-      <div data-testid="story-diff-identical" className="rounded-lg border border-white/[0.06] bg-[var(--color-surface-elevated)] p-5">
+      <div data-testid="story-diff-identical" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
         <p className="font-[var(--font-body)] text-sm text-white/40">No changes between versions.</p>
       </div>
     );
@@ -940,7 +940,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
           className={`ml-auto flex items-center gap-1 rounded px-2 py-1 text-label font-mono cursor-pointer border transition-colors duration-150 ${
             showLineNumbers
               ? "text-white/50 bg-white/[0.08] border-white/[0.18]"
-              : "text-white/30 border-white/[0.08] hover:text-white/50 hover:border-white/[0.15] hover:bg-white/[0.04]"
+              : "text-white/30 border-border-strong hover:text-white/50 hover:border-white/[0.15] hover:bg-hover-list-item"
           }`}
         >
           #

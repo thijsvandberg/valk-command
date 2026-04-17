@@ -34,7 +34,7 @@ export default function WorkspaceStatus() {
     claude === "checking" ? "Checking..." : "Claude status unknown";
 
   return (
-    <div className="flex items-center gap-4 px-4 py-2 border-b border-white/[0.06] text-label text-white/40">
+    <div className="flex items-center gap-4 px-4 py-2 border-b border-border-default text-label text-white/40">
       <span className="inline-flex items-center gap-1.5">
         <Dot color={wsColor} />
         {wsLabel}

@@ -140,7 +140,7 @@ export default function SchedulerPage() {
             return (
               <div
                 key={task.name}
-                className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
+                className="rounded-xl border border-border-default bg-white/[0.02] p-4"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2.5">
@@ -165,7 +165,7 @@ export default function SchedulerPage() {
                     <button
                       onClick={() => handleRunNow(task.name)}
                       disabled={running[task.name]}
-                      className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-caption font-medium text-white/50 transition-colors hover:border-white/[0.15] hover:bg-white/[0.08] hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center gap-1 rounded-md border border-border-strong bg-white/[0.04] px-2 py-0.5 text-caption font-medium text-white/50 transition-colors hover:border-white/[0.15] hover:bg-white/[0.08] hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Play size={8} strokeWidth={2} className={running[task.name] ? "animate-pulse" : ""} />
                       {running[task.name] ? "Running..." : "Run now"}

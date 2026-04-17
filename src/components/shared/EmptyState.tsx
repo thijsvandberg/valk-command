@@ -20,7 +20,7 @@ export function EmptyState({
       className={`flex flex-col items-center justify-center text-center${className ? ` ${className}` : ""}`}
     >
       {icon && (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-surface-floating)] border border-white/[0.06] shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-surface-floating)] border border-border-default shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
           {icon}
         </div>
       )}

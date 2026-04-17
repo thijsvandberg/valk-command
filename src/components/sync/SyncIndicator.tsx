@@ -108,7 +108,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2.5 px-3 py-2 w-full"} rounded-lg text-white/40 cursor-pointer hover:bg-white/[0.04] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] transition-colors duration-150`}
+        className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2.5 px-3 py-2 w-full"} rounded-lg text-white/40 cursor-pointer hover:bg-hover-list-item hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] transition-colors duration-150`}
         aria-label="Activity status"
         title={collapsed ? stateLabel(activityState, incrementalSyncRemaining, hasChecked) : undefined}
       >
@@ -139,10 +139,10 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
       {/* Expanded panel */}
       {expanded && (
         <div
-          className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg border border-white/[0.06] bg-[var(--color-surface-floating)] shadow-[0_4px_24px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] overflow-hidden"
+          className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[0_4px_24px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] overflow-hidden"
           style={{ width: collapsed ? "240px" : "100%", minWidth: "220px" }}
         >
-          <div className="px-3 py-2.5 border-b border-white/[0.06] flex items-center justify-between">
+          <div className="px-3 py-2.5 border-b border-border-default flex items-center justify-between">
             <span className="text-label font-semibold tracking-wide uppercase text-white/30 font-[var(--font-body)]">
               Recent activity
             </span>
@@ -158,7 +158,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
               </Button>
             )}
           </div>
-          <div className="px-3 py-2 flex items-center gap-2 border-b border-white/[0.06]">
+          <div className="px-3 py-2 flex items-center gap-2 border-b border-border-default">
             {!incrementalSyncLastAt ? (
               <>
                 <RefreshCw className="h-3.5 w-3.5 text-white/20 animate-spin shrink-0" strokeWidth={2} />
@@ -240,7 +240,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
           </ul>
           <a
             href="/activity-log"
-            className="block px-3 py-2 text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] font-[var(--font-body)] border-t border-white/[0.06] transition-colors duration-150 cursor-pointer"
+            className="block px-3 py-2 text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] font-[var(--font-body)] border-t border-border-default transition-colors duration-150 cursor-pointer"
           >
             View full activity log
           </a>

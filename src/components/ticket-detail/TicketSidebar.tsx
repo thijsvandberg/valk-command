@@ -110,7 +110,7 @@ export function TicketSidebar({
         size="md"
         iconOnly
         onClick={() => setCollapsed((v) => !v)}
-        className={`absolute top-1/2 -translate-y-1/2 z-20 !rounded-full bg-[var(--color-surface-elevated)] !border-white/[0.08] !text-white/30 hover:!text-white/70 hover:!border-[var(--color-brand-500)]/50 ${
+        className={`absolute top-1/2 -translate-y-1/2 z-20 !rounded-full bg-[var(--color-surface-elevated)] !border-border-strong !text-white/30 hover:!text-white/70 hover:!border-[var(--color-brand-500)]/50 ${
           collapsed ? "-left-5" : "left-0 -translate-x-1/2"
         }`}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -166,7 +166,7 @@ export function TicketSidebar({
           {/* Jira details */}
           <div>
             <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">Details</h3>
-            <div className="mt-2 divide-y divide-white/[0.04]">
+            <div className="mt-2 divide-y divide-border-subtle">
               <DetailRow label="Status">
                 {(() => {
                   const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
@@ -294,7 +294,7 @@ export function TicketSidebar({
                   <button
                     type="button"
                     onClick={() => setStatusOpen(!statusOpen)}
-                    className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm cursor-pointer hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="flex w-full items-center justify-between rounded-lg border border-border-strong bg-white/[0.04] px-3 py-2 text-sm cursor-pointer hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "background-color 0.15s ease" }}
                   >
                     <span className="flex items-center gap-2">
@@ -309,7 +309,7 @@ export function TicketSidebar({
                     <ChevronDown size={12} strokeWidth={1.2} className="text-white/25" />
                   </button>
                   {statusOpen && (
-                    <div className="absolute top-full right-0 left-0 z-50 mt-1 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                    <div className="absolute top-full right-0 left-0 z-50 mt-1 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
                       {PO_STATUS_OPTIONS.map((opt) => {
                         const optColors = opt.value ? PO_STATUS_COLORS[opt.value] : null;
                         return (
@@ -317,7 +317,7 @@ export function TicketSidebar({
                             key={opt.label}
                             type="button"
                             onClick={() => handlePoStatusChange(opt.value)}
-                            className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm cursor-pointer hover:bg-white/[0.04] ${
+                            className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm cursor-pointer hover:bg-hover-list-item ${
                               opt.value === poStatus ? "text-white" : "text-white/50"
                             }`}
                           >
@@ -341,7 +341,7 @@ export function TicketSidebar({
                   placeholder="Add PO notes..."
                   rows={3}
                   onBlur={(e) => handleNotesChange(e.target.value)}
-                  className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-border-strong bg-white/[0.04] px-3 py-2 text-sm text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                   style={{ transition: "border-color 0.15s ease" }}
                 />
               </div>

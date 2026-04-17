@@ -305,7 +305,7 @@ export function StoryWriterChat({
 
           {messages.length === 0 && status === "ready" && (
             <div className="flex flex-col items-center gap-3 py-16">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] border border-white/[0.06]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] border border-border-default">
                 <FileText size={18} className="text-white/20" strokeWidth={1.5} />
               </div>
               <p className="text-xs text-white/25 text-center max-w-[200px]">
@@ -389,7 +389,7 @@ export function StoryWriterChat({
       </div>
 
       {isStreaming && streamProgress && (
-        <div className="border-t border-white/[0.06] px-4 py-2">
+        <div className="border-t border-border-default px-4 py-2">
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
             <span className="text-xs text-white/40 truncate">
@@ -412,7 +412,7 @@ export function StoryWriterChat({
       )}
 
       {hasFailedMessages && !isStreaming && onClearFailed && (
-        <div className="border-t border-white/[0.06] px-4 py-1.5">
+        <div className="border-t border-border-default px-4 py-1.5">
           <button
             type="button"
             onClick={onClearFailed}
@@ -423,14 +423,14 @@ export function StoryWriterChat({
         </div>
       )}
 
-      <div className="shrink-0 border-t border-white/[0.06]">
+      <div className="shrink-0 border-t border-border-default">
         <div className="px-3 pt-2.5 pb-1.5">
           <p className="mb-1.5 text-caption font-medium uppercase tracking-[0.06em] text-white/35">
             Quick prompts
           </p>
           <div className="flex flex-wrap items-center gap-1">
             {quickPrompts.map((s) => (
-              <div key={s.id} className="group flex items-stretch rounded-md border border-white/[0.07] bg-white/[0.02] overflow-hidden hover:border-white/[0.11] transition-colors duration-150">
+              <div key={s.id} className="group flex items-stretch rounded-md border border-border-default bg-white/[0.02] overflow-hidden hover:border-white/[0.11] transition-colors duration-150">
                 <button
                   type="button"
                   onClick={() => {
@@ -447,7 +447,7 @@ export function StoryWriterChat({
                   type="button"
                   onClick={() => handleDirectSend(s.text, s.enableCodebase === true)}
                   disabled={isBusy || !!inputValue.trim()}
-                  className="flex items-center justify-center border-l border-white/[0.07] px-2 text-white/20 cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center border-l border-border-default px-2 text-white/20 cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Submit immediately"
                 >
                   <SendHorizontal size={9} strokeWidth={2} />

@@ -24,8 +24,8 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
             key={att.id}
             className={`group relative overflow-hidden rounded-lg border ${
               att.cleaned
-                ? "border-white/[0.04] bg-white/[0.01]"
-                : "border-white/[0.06] bg-white/[0.03] cursor-pointer hover:border-white/[0.10] hover:bg-white/[0.04]"
+                ? "border-border-subtle bg-white/[0.01]"
+                : "border-border-default bg-white/[0.03] cursor-pointer hover:border-white/[0.10] hover:bg-hover-list-item"
             }`}
           >
             <div
@@ -55,7 +55,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
                 </div>
               )}
             </div>
-            <div className="border-t border-white/[0.04] px-2.5 py-2">
+            <div className="border-t border-border-subtle px-2.5 py-2">
               <div className="truncate text-xs text-white/50">{att.filename}</div>
               <div className="mt-0.5 text-caption text-white/25">
                 {att.cleaned && att.cleanedAt

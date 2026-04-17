@@ -21,7 +21,7 @@ export default function MessageDisplay({ messages, conversationTitle }: MessageD
   return (
     <div className="flex h-full flex-col" data-testid="message-display">
       {/* Conversation header */}
-      <div className="flex items-center border-b border-white/[0.06] px-6 py-4">
+      <div className="flex items-center border-b border-border-default px-6 py-4">
         <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-[-0.02em] text-white">
           {conversationTitle}
         </h2>

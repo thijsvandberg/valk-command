@@ -242,7 +242,7 @@ export function SprintOverviewCard({
 
       {/* Deprecated tickets — always at the bottom, separate from main columns */}
       {filteredDeprecated.length > 0 && (
-        <div className="border-t border-white/[0.04] pt-6">
+        <div className="border-t border-border-subtle pt-6">
           <SectionHeader label="Deprecated" count={filteredDeprecated.length} pts={pts(filteredDeprecated)} color="muted" />
           <TicketGroup tickets={filteredDeprecated} carriedKeys={carriedKeys} />
         </div>

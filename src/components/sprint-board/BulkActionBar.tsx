@@ -40,7 +40,7 @@ export function BulkActionBar({
   }, [showStatusDropdown]);
 
   return (
-    <div className="flex items-center gap-3 border-t border-white/[0.06] bg-[var(--color-brand-600)]/8 px-5 py-2.5">
+    <div className="flex items-center gap-3 border-t border-border-default bg-[var(--color-brand-600)]/8 px-5 py-2.5">
       <span className="text-xs font-medium text-white/60">
         {count} selected
       </span>
@@ -66,7 +66,7 @@ export function BulkActionBar({
                     onSetPoStatus(opt.value);
                     setShowStatusDropdown(false);
                   }}
-                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/60 cursor-pointer hover:bg-white/[0.04] active:bg-white/[0.06]"
+                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/60 cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
                 >
                   <span style={{ color: optColors?.text || "rgba(255,255,255,0.25)" }}>
                     <POStatusIcon status={opt.value} size={13} />

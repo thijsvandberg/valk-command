@@ -42,7 +42,7 @@ export function AppToolbar() {
   const totalExtraW = expandSlots.length * EXPAND_SLOT_W;
 
   return (
-    <div className="relative z-10 flex h-[42px] shrink-0 border-b border-white/[0.06] bg-[var(--color-surface-base)]">
+    <div className="relative z-10 flex h-[42px] shrink-0 border-b border-border-default bg-[var(--color-surface-base)]">
       {visiblePaneIndices.map((paneIdx, visPos) => {
         const activeApp = pane.paneApps[paneIdx] ?? null;
         const toolbar = activeApp ? pane.toolbars[activeApp] : null;
@@ -110,7 +110,7 @@ export function AppToolbar() {
                     <button
                       type="button"
                       onClick={() => pane.closeApp(activeApp)}
-                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-white/30 transition-colors duration-100 hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:text-white/40"
+                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-white/30 transition-colors duration-100 hover:bg-hover-interactive hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:text-white/40"
                       title={`Close ${toolbar.label}`}
                       aria-label={`Close ${toolbar.label}`}
                     >

@@ -58,7 +58,7 @@ export function SyncDropdown({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-lg shadow-black/40">
+        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-lg shadow-black/40">
           <button
             type="button"
             onClick={() => { onSyncSprint(); setOpen(false); }}

@@ -56,7 +56,7 @@ function SessionCard({
 }) {
   const isSplit = !!session.targetTicketKey;
   return (
-    <Card className="group relative flex flex-col justify-between p-4 transition-colors hover:bg-white/[0.04]" style={{ minHeight: isSplit ? 140 : 120 }}>
+    <Card className="group relative flex flex-col justify-between p-4 transition-colors hover:bg-hover-list-item" style={{ minHeight: isSplit ? 140 : 120 }}>
       {/* Top row: ticket key(s) + badges */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">

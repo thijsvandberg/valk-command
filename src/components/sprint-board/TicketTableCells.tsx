@@ -125,7 +125,7 @@ export function QualityBadge({
           e.stopPropagation();
           onTogglePopover();
         }}
-        className="cursor-pointer rounded px-1 py-0.5 leading-none hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
+        className="cursor-pointer rounded px-1 py-0.5 leading-none hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
         title={score !== null ? `Quality: ${score}/100` : "No review"}
       >
         {content}
@@ -202,7 +202,7 @@ export function POStatusCell({
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
           {PO_STATUS_OPTIONS.map((opt) => {
             const optColors = opt.value ? PO_STATUS_COLORS[opt.value] : null;
             return (
@@ -213,7 +213,7 @@ export function POStatusCell({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-white/[0.04] active:bg-white/[0.06] ${
+                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06] ${
                   opt.value === value ? "text-white" : "text-white/60"
                 }`}
               >

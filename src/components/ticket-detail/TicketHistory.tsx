@@ -307,7 +307,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
         <SectionHeader title="History" />
         <div className="mt-3 space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border border-white/[0.06] px-4 py-3">
+            <div key={i} className="flex items-center gap-3 rounded-lg border border-border-default px-4 py-3">
               <div className="h-7 w-7 animate-pulse rounded-full bg-white/[0.06]" />
               <div className="flex-1 space-y-2">
                 <div className="h-3 w-32 animate-pulse rounded bg-white/[0.06]" />

@@ -13,7 +13,7 @@ const inactiveClass =
 
 export function TabBar({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`flex items-center gap-0 border-b border-white/[0.06] ${className ?? ""}`}>
+    <div className={`flex items-center gap-0 border-b border-border-default ${className ?? ""}`}>
       {children}
     </div>
   );

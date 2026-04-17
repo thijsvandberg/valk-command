@@ -52,7 +52,7 @@ export function CommandPalette() {
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[15vh] ${closing ? "cmd-palette-backdrop-out" : "cmd-palette-backdrop-in"}`}
+      className={`fixed inset-0 z-tooltip flex items-start justify-center px-4 pt-[15vh] ${closing ? "cmd-palette-backdrop-out" : "cmd-palette-backdrop-in"}`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       {/* Backdrop blur layer */}
@@ -60,7 +60,7 @@ export function CommandPalette() {
 
       {/* Palette container */}
       <div
-        className={`relative z-10 w-full max-w-[560px] overflow-hidden rounded-2xl border border-white/[0.08] ${closing ? "cmd-palette-out" : "cmd-palette-in"}`}
+        className={`relative z-10 w-full max-w-[560px] overflow-hidden rounded-2xl border border-border-strong ${closing ? "cmd-palette-out" : "cmd-palette-in"}`}
         style={{
           backgroundColor: "var(--color-surface-floating)",
           boxShadow:
@@ -80,7 +80,7 @@ export function CommandPalette() {
               <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.5} />
             </button>
             <span className="flex-1 text-heading-sm text-white/50 font-[var(--font-body)]">New Story</span>
-            <kbd className="hidden sm:flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
+            <kbd className="hidden sm:flex items-center rounded-md border border-border-strong bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
               ESC
             </kbd>
           </div>
@@ -100,7 +100,7 @@ export function CommandPalette() {
             {isLoading && (
               <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-white/40" />
             )}
-            <kbd className="hidden sm:flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
+            <kbd className="hidden sm:flex items-center rounded-md border border-border-strong bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
               ESC
             </kbd>
           </div>
@@ -186,30 +186,30 @@ export function CommandPalette() {
         )}
 
         {/* Footer hints */}
-        <div className="flex items-center gap-4 border-t border-white/[0.06] px-5 py-2.5 text-caption text-white/18">
+        <div className="flex items-center gap-4 border-t border-border-default px-5 py-2.5 text-caption text-white/18">
           {isSubFlow ? (
             <>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u21b5"}</kbd>
+                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u21b5"}</kbd>
                 <span className="text-white/20">confirm</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">esc</kbd>
+                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">esc</kbd>
                 <span className="text-white/20">back</span>
               </span>
             </>
           ) : (
             <>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u2191\u2193"}</kbd>
+                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u2191\u2193"}</kbd>
                 <span className="text-white/20">navigate</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u21b5"}</kbd>
+                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u21b5"}</kbd>
                 <span className="text-white/20">open</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">esc</kbd>
+                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">esc</kbd>
                 <span className="text-white/20">close</span>
               </span>
             </>

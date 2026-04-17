@@ -215,11 +215,11 @@ function TaskLogRow({ log, ticketKey }: { log: LogMeta; ticketKey: string }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] overflow-hidden">
+    <div className="rounded-lg border border-border-strong bg-white/[0.025] overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2.5 px-3 py-3 text-left cursor-pointer hover:bg-white/[0.06] transition-colors duration-100"
+        className="flex w-full items-center gap-2.5 px-3 py-3 text-left cursor-pointer hover:bg-hover-interactive transition-colors duration-100"
       >
         {expanded
           ? <ChevronDown size={13} className="shrink-0 text-white/70" />
@@ -229,7 +229,7 @@ function TaskLogRow({ log, ticketKey }: { log: LogMeta; ticketKey: string }) {
         <span className="ml-auto text-xs text-white/55 tabular-nums">{formatTs(log.createdAt)}</span>
       </button>
       {expanded && (
-        <div className="border-t border-white/[0.06] px-3">
+        <div className="border-t border-border-default px-3">
           <TaskLogDetail taskId={log.taskId} ticketKey={ticketKey} />
         </div>
       )}
@@ -278,7 +278,7 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
+      <div className="flex items-center justify-between border-b border-border-default px-4 py-2.5">
         <span className="text-xs font-medium text-white/45">Execution logs</span>
         <Button
           variant="ghost"

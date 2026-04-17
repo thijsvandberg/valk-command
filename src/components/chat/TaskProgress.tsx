@@ -35,7 +35,7 @@ export default function TaskProgress({
   if (status === "idle" || status === "completed") return null;
 
   return (
-    <div className="border-t border-white/[0.06] px-6 py-3">
+    <div className="border-t border-border-default px-6 py-3">
       <div className="mx-auto max-w-3xl">
         {/* Status bar */}
         <div className="flex items-center gap-3">
@@ -58,7 +58,7 @@ export default function TaskProgress({
         {toolCalls.length > 0 && status === "streaming" && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {toolCalls.slice(-5).map((tc) => (
-              <Tag key={tc.id} className="border border-white/[0.04] text-label text-white/30">
+              <Tag key={tc.id} className="border border-border-subtle text-label text-white/30">
                 {formatToolName(tc.tool)}
               </Tag>
             ))}

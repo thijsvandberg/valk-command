@@ -36,7 +36,7 @@ export function SplitPaneHeader({
   hasDrafts,
 }: SplitPaneHeaderProps) {
   return (
-    <div className="flex items-center gap-2 border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/60 px-3 py-2">
+    <div className="flex items-center gap-2 border-b border-border-default bg-[var(--color-surface-elevated)]/60 px-3 py-2">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Link
@@ -101,7 +101,7 @@ export function SplitPaneHeader({
             size="sm"
             onClick={onShowOriginal}
             title="Show original story"
-            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-hover-list-item"
           >
             Show original
           </Button>
@@ -112,7 +112,7 @@ export function SplitPaneHeader({
             size="sm"
             onClick={onShowTarget}
             title="Show split target story"
-            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-hover-list-item"
           >
             Show target
           </Button>

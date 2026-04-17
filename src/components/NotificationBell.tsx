@@ -80,7 +80,7 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
         </span>
         {visible && (
           <span
-            className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+            className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
               pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
             }`}
           >
@@ -100,7 +100,7 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
           </span>
           {syncVisible && (
             <span
-              className={`pointer-events-none absolute left-0 z-50 whitespace-nowrap rounded-md border border-white/[0.08] bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+              className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
                 pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
               }`}
             >
@@ -316,11 +316,11 @@ export function NotificationBell() {
       {open && dropdownPos && createPortal(
         <div
           ref={dropdownRef}
-          style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+          style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: "var(--z-notification)" }}
         >
           <Card variant="floating" className="w-[360px] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
             <span className="font-[var(--font-display)] text-body font-semibold text-white/70">
               Notifications
             </span>
@@ -351,7 +351,7 @@ export function NotificationBell() {
           {/* Filter bar — type pills and team chips on one row */}
           {(typeCounts.size > 1 || teamCounts.size > 1) && (
             <div
-              className="flex items-center gap-1 px-3 py-1.5 border-b border-white/[0.06]"
+              className="flex items-center gap-1 px-3 py-1.5 border-b border-border-default"
               role="toolbar"
               aria-label="Filter notifications"
             >
@@ -366,7 +366,7 @@ export function NotificationBell() {
                     aria-label={`${typeLabel(type)}${unread > 0 ? `: ${unread} unread` : ""}`}
                     aria-pressed={isActive}
                     className={`flex items-center gap-1 h-6 rounded-md px-1.5 cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                      isActive ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
+                      isActive ? "bg-white/[0.08]" : "hover:bg-hover-list-item"
                     }`}
                   >
                     <div className={isActive ? "" : "opacity-35"}>
@@ -429,7 +429,7 @@ export function NotificationBell() {
                 {filteredNotifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`group flex items-start gap-3 px-4 py-3 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
+                    className={`group flex items-start gap-3 px-4 py-3 border-b border-border-subtle last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
                       !n.read ? "bg-[var(--color-brand-500)]/[0.04]" : ""
                     }`}
                   >
@@ -483,7 +483,7 @@ export function NotificationBell() {
                         <button
                           type="button"
                           onClick={() => markRead(n.id)}
-                          className="group/dot flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-white/[0.06] transition-colors duration-150"
+                          className="group/dot flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-hover-interactive transition-colors duration-150"
                           title="Mark as read"
                         >
                           {/* Dot at rest, check on hover */}
@@ -495,7 +495,7 @@ export function NotificationBell() {
                       <button
                         type="button"
                         onClick={() => dismissOne(n.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-white/0 group-hover:text-white/30 hover:!text-white/60 hover:bg-white/[0.06] transition-colors duration-150"
+                        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-white/0 group-hover:text-white/30 hover:!text-white/60 hover:bg-hover-interactive transition-colors duration-150"
                         title="Dismiss"
                       >
                         <X size={11} strokeWidth={2} />
@@ -505,7 +505,7 @@ export function NotificationBell() {
                 ))}
                 {/* Only show the overflow count when no filter is active — when filtered, all shown results are from the loaded set */}
                 {!hasFilter && hiddenCount > 0 && (
-                  <div className="border-t border-white/[0.04] px-4 py-2.5 text-center text-label text-white/25">
+                  <div className="border-t border-border-subtle px-4 py-2.5 text-center text-label text-white/25">
                     {hiddenCount} more notification{hiddenCount === 1 ? "" : "s"} not shown
                   </div>
                 )}

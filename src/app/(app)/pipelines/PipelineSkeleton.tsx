@@ -18,12 +18,12 @@ export function PipelineSkeleton() {
       </div>
 
       {/* Table skeleton */}
-      <div className="rounded-xl border border-white/[0.08] overflow-hidden">
-        <div className="px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+      <div className="rounded-xl border border-border-strong overflow-hidden">
+        <div className="px-4 py-2.5 bg-white/[0.02] border-b border-border-default">
           <div className="h-3 w-64 rounded bg-white/[0.04]" />
         </div>
         {[0.9, 0.7, 0.85, 0.6, 0.75, 0.8, 0.65].map((w, i) => (
-          <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.04] last:border-b-0">
+          <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border-subtle last:border-b-0">
             <div className="h-3 rounded bg-white/[0.04]" style={{ width: `${w * 100}%`, animation: "pulse 1.8s ease-in-out infinite", animationDelay: `${i * 80}ms` }} />
           </div>
         ))}

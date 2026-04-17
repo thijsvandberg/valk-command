@@ -33,7 +33,7 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
     : "No description available.";
 
   return (
-    <div className="border-l border-white/[0.06] bg-[var(--color-surface-elevated)] p-4 w-72 shrink-0 overflow-y-auto">
+    <div className="border-l border-border-default bg-[var(--color-surface-elevated)] p-4 w-72 shrink-0 overflow-y-auto">
       <div className="mb-3 text-label font-semibold uppercase tracking-wider text-white/25">
         Ticket Context
       </div>
@@ -61,11 +61,11 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
           )}
         </div>
 
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 text-xs leading-[1.6] text-white/40">
+        <div className="rounded-lg border border-border-default bg-white/[0.02] p-3 text-xs leading-[1.6] text-white/40">
           {descSnippet}
         </div>
 
-        <div className="rounded-lg border border-dashed border-white/[0.08] bg-white/[0.01] px-3 py-4 text-center">
+        <div className="rounded-lg border border-dashed border-border-strong bg-white/[0.01] px-3 py-4 text-center">
           <MessageCircle className="mx-auto mb-2 h-5 w-5 text-white/15" strokeWidth={1.5} />
           <p className="text-xs text-white/25">Chat with agent about this ticket</p>
         </div>

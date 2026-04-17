@@ -50,7 +50,7 @@ function DraggableTicketRow({
   return (
     <tr
       ref={setNodeRef}
-      className={`group border-b border-white/[0.04] ${
+      className={`group border-b border-border-subtle ${
         isDragging
           ? "opacity-40"
           : isSelected
@@ -198,7 +198,7 @@ function DroppableSprintColumn({
       style={{ transition: "background-color 0.15s ease" }}
     >
       {/* Column header */}
-      <div className="relative flex items-center gap-3 border-b border-white/[0.06] bg-[var(--color-surface-elevated)]/40 px-4 py-3">
+      <div className="relative flex items-center gap-3 border-b border-border-default bg-[var(--color-surface-elevated)]/40 px-4 py-3">
         <div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_left,rgba(46,145,73,0.06)_0%,transparent_70%)]" />
 
         <div className="relative flex items-center gap-2 shrink-0">
@@ -267,7 +267,7 @@ function DroppableSprintColumn({
       <div className="flex-1 overflow-auto">
         <table className="w-full table-fixed border-collapse">
           <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-            <tr className="border-b border-white/[0.05] text-left">
+            <tr className="border-b border-border-subtle text-left">
               <th className="w-6 py-2 pl-2 pr-0" />
               <th className="w-7 py-2 pr-1">
                 <label className="flex cursor-pointer items-center justify-center">
@@ -525,7 +525,7 @@ export function MultiSprintView({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search tickets..."
-                className="h-7 w-44 rounded-md border border-white/[0.06] bg-white/[0.03] py-1 pl-7 pr-3 text-xs text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                className="h-7 w-44 rounded-md border border-border-default bg-white/[0.03] py-1 pl-7 pr-3 text-xs text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
               />
               {searchQuery && (
                 <button
@@ -612,7 +612,7 @@ export function MultiSprintView({
           </div>
 
           {selectedTicket && (
-            <div className="sticky top-0 min-h-full shrink-0 self-stretch overflow-y-auto border-l border-white/[0.06]">
+            <div className="sticky top-0 min-h-full shrink-0 self-stretch overflow-y-auto border-l border-border-default">
               <SidePanel
                 ticket={selectedTicket}
                 poStatus={poStatuses[selectedTicket.key] ?? selectedTicket.poStatus}
@@ -627,8 +627,8 @@ export function MultiSprintView({
 
         {toast && (
           <div
-            className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/[0.08] bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-white/70 shadow-[0_4px_24px_rgba(0,0,0,0.3)]"
-            style={{ zIndex: 50 }}
+            className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-white/70 shadow-[0_4px_24px_rgba(0,0,0,0.3)]"
+            style={{ zIndex: "var(--z-dropdown)" }}
           >
             {toast}
           </div>

@@ -41,7 +41,7 @@ export function EpicFilterChips({
           "rounded-full px-2.5 py-1 text-xs transition-colors duration-100 cursor-pointer",
           isAllActive
             ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
-            : "bg-white/[0.04] text-white/30 hover:bg-white/[0.06] hover:text-white/50",
+            : "bg-white/[0.04] text-white/30 hover:bg-hover-interactive hover:text-white/50",
         ].join(" ")}
       >
         All
@@ -58,7 +58,7 @@ export function EpicFilterChips({
               "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors duration-100 cursor-pointer",
               isActive
                 ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
-                : "bg-white/[0.04] text-white/30 hover:bg-white/[0.06] hover:text-white/50",
+                : "bg-white/[0.04] text-white/30 hover:bg-hover-interactive hover:text-white/50",
             ].join(" ")}
           >
             <span>{epic}</span>

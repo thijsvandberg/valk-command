@@ -155,7 +155,7 @@ function ReviewDetail({
       </div>
 
       {/* Criteria breakdown */}
-      <div className="rounded-md border border-white/[0.04] divide-y divide-white/[0.04]">
+      <div className="rounded-md border border-border-subtle divide-y divide-border-subtle">
         {review.dimensions.map((dim) => (
           <DimensionRow key={dim.key} dim={dim} />
         ))}
@@ -178,7 +178,7 @@ function ReviewDetail({
             {review.suggestions.map((s, i) => {
               const parsed = parseSuggestion(s);
               return (
-                <div key={i} className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-4 py-3">
+                <div key={i} className="rounded-lg border border-border-subtle bg-white/[0.02] px-4 py-3">
                   {/* Issue header: criterion, score, location */}
                   <div className="flex items-center gap-2 mb-2">
                     {parsed.criterion && (
@@ -224,7 +224,7 @@ function ReviewHistoryItem({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02]">
+    <div className="rounded-lg border border-border-default bg-white/[0.02]">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -248,7 +248,7 @@ function ReviewHistoryItem({
       </button>
 
       {expanded && (
-        <div className="border-t border-white/[0.04] px-4 py-3 space-y-4">
+        <div className="border-t border-border-subtle px-4 py-3 space-y-4">
           <ReviewDetail review={review} currentVersionHash={currentVersionHash} />
           <div className="flex justify-end">
             <Button
@@ -347,7 +347,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
       {latestReview ? (
         <div>
           <SectionHeader title="Latest Review" />
-          <div className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+          <div className="mt-3 rounded-lg border border-border-default bg-white/[0.02] p-4">
             <ReviewDetail review={latestReview} currentVersionHash={currentVersionHash} />
           </div>
           <div className="mt-3 flex items-center gap-3">

@@ -67,7 +67,7 @@ export default function ConversationTypePicker({ onCreate }: ConversationTypePic
 
       {open && (
         <div
-          className="absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_4px_24px_rgba(0,0,0,0.5),0_1px_4px_rgba(0,0,0,0.3)]"
+          className="absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_4px_24px_rgba(0,0,0,0.5),0_1px_4px_rgba(0,0,0,0.3)]"
           role="menu"
         >
           <div className="p-1">
@@ -77,7 +77,7 @@ export default function ConversationTypePicker({ onCreate }: ConversationTypePic
                 type="button"
                 role="menuitem"
                 onClick={() => handleSelect(opt.type)}
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-[var(--font-body)] text-white/70 cursor-pointer hover:bg-white/[0.06] hover:text-white/90 active:bg-white/[0.08] transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-[var(--font-body)] text-white/70 cursor-pointer hover:bg-hover-interactive hover:text-white/90 active:bg-white/[0.08] transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
               >
                 <span className="text-white/40">{opt.icon}</span>
                 {opt.label}

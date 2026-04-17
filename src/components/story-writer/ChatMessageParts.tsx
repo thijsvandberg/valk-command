@@ -101,7 +101,7 @@ export function MessageInfoButton({
         className={`flex size-[22px] items-center justify-center rounded-full border cursor-pointer transition-colors duration-150 ${
           open
             ? "border-white/[0.15] bg-white/[0.10] text-white/70"
-            : "border-white/[0.08] bg-white/[0.04] text-white/35 hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white/60"
+            : "border-border-strong bg-white/[0.04] text-white/35 hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white/60"
         }`}
       >
         <Info size={11} strokeWidth={1.5} />
@@ -125,7 +125,7 @@ export function MessageInfoButton({
                 <button
                   type="button"
                   onClick={() => { onOpenLogs(logsTaskId); setOpen(false); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-label text-white/50 hover:text-white/80 hover:bg-white/[0.06] cursor-pointer transition-colors duration-150"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-label text-white/50 hover:text-white/80 hover:bg-hover-interactive cursor-pointer transition-colors duration-150"
                 >
                   <ExternalLink size={11} strokeWidth={1.5} className="shrink-0" />
                   View execution logs
@@ -254,7 +254,7 @@ export function ChatMessage({
             ? ""
             : isUser
               ? "px-4 py-3 bg-[var(--color-brand-600)]/15 text-white/90 border border-[var(--color-brand-500)]/15"
-              : "px-4 py-3 bg-white/[0.05] text-white/85 border border-white/[0.07]"
+              : "px-4 py-3 bg-white/[0.05] text-white/85 border border-border-default"
         }`}
       >
         {displayContent && (
@@ -365,7 +365,7 @@ export function DraftCard({ content }: { content: string }) {
   if (!content) return null;
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02]">
+    <div className="rounded-lg border border-border-strong bg-white/[0.02]">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -382,7 +382,7 @@ export function DraftCard({ content }: { content: string }) {
         </span>
       </button>
       {expanded && (
-        <div className="border-t border-white/[0.06] px-3 py-2.5">
+        <div className="border-t border-border-default px-3 py-2.5">
           <div className="relative">
             <div
               ref={contentRef}
@@ -423,7 +423,7 @@ export function RelatedStoriesInline({
 
   return (
     <div className="mt-2 rounded-lg border border-[var(--color-brand-500)]/12 bg-[var(--color-brand-500)]/[0.03] overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.05]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
         <span className="text-caption font-semibold uppercase tracking-[0.06em] text-white/35">
           Related Stories
         </span>
@@ -437,7 +437,7 @@ export function RelatedStoriesInline({
           </button>
         )}
       </div>
-      <div className="divide-y divide-white/[0.04]">
+      <div className="divide-y divide-border-subtle">
         {candidates.map((c) => (
           <div key={c.id} className="flex items-center gap-2 px-3 py-2">
             <span className={`shrink-0 text-caption font-bold tabular-nums w-6 text-right ${c.score >= 80 ? "text-emerald-400" : c.score >= 60 ? "text-amber-400" : "text-white/35"}`}>
@@ -534,7 +534,7 @@ export function QuickActionsPopover({
                 disabled={!action.enabled}
                 className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
                   action.enabled
-                    ? "text-white/70 hover:bg-white/[0.06] hover:text-white/90"
+                    ? "text-white/70 hover:bg-hover-interactive hover:text-white/90"
                     : "text-white/25 cursor-not-allowed"
                 }`}
               >

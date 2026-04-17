@@ -37,7 +37,7 @@ export function EventTimeline({
   }).filter(Boolean) as { label: string; pct: number }[];
 
   return (
-    <div className="mb-5 rounded-xl border border-white/[0.06] bg-[var(--color-surface-elevated)] px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+    <div className="mb-5 rounded-xl border border-border-default bg-[var(--color-surface-elevated)] px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
       <div className="flex items-center gap-2 mb-3">
         <Activity className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
         <span className="text-label font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
@@ -51,7 +51,7 @@ export function EventTimeline({
       {/* Timeline track */}
       <div
         ref={containerRef}
-        className="relative h-6 rounded-full bg-white/[0.03] border border-white/[0.04] overflow-visible"
+        className="relative h-6 rounded-full bg-white/[0.03] border border-border-subtle overflow-visible"
         style={{ marginBottom: "20px" }}
       >
         {/* Track fill */}
@@ -125,7 +125,7 @@ export function EventTimeline({
       {/* Floating tooltip */}
       {tooltip && (
         <div
-          className="pointer-events-none fixed z-[100] rounded-lg border border-white/[0.08] bg-[var(--color-surface-floating)] px-3 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+          className="pointer-events-none fixed z-tooltip rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
           style={{
             top: tooltip.y - 8,
             left: tooltip.x,

@@ -114,7 +114,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
 
       {/* Issues & suggestions */}
       {data.issues.length > 0 && (
-        <div className="border-t border-white/[0.06] pt-3 space-y-2">
+        <div className="border-t border-border-default pt-3 space-y-2">
           <p className="text-label text-white/40 font-medium uppercase tracking-wider">Suggestions</p>
           {data.issues.map((issue, i) => (
             <div key={i} className="text-xs">
@@ -128,7 +128,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       )}
 
       {/* Summary */}
-      <p className="text-xs text-white/30 border-t border-white/[0.06] pt-3">{data.summary}</p>
+      <p className="text-xs text-white/30 border-t border-border-default pt-3">{data.summary}</p>
     </div>
   );
 }
@@ -173,7 +173,7 @@ function MessageContent({ content }: { content: string }) {
         {summary && <p className="text-white/60 text-xs">{summary}</p>}
         <iframe
           srcDoc={html}
-          className="w-full rounded-lg border border-white/[0.06]"
+          className="w-full rounded-lg border border-border-default"
           style={{ minHeight: 400, maxHeight: 800, background: "white" }}
           sandbox="allow-same-origin"
           onLoad={(e) => {
@@ -243,7 +243,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
             return (
               <div key={message.id} className="flex justify-start">
                 <div
-                  className={`w-full rounded-xl border border-white/[0.06] bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-white/80 ${isSending ? "opacity-60" : ""}`}
+                  className={`w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-white/80 ${isSending ? "opacity-60" : ""}`}
                   data-testid="message-investigation"
                 >
                   <MessageContent content={message.content} />
@@ -261,7 +261,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
                 className={`max-w-[80%] overflow-x-auto rounded-xl px-4 py-3 text-sm leading-[1.7] font-[var(--font-body)] ${
                   message.role === "user"
                     ? "bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.18)]"
-                    : "bg-[var(--color-surface-floating)] text-white/80 border border-white/[0.06]"
+                    : "bg-[var(--color-surface-floating)] text-white/80 border border-border-default"
                 } ${isSending ? "opacity-60" : ""}`}
                 data-testid={`message-${message.role}`}
               >

@@ -20,12 +20,12 @@ export function EpicChildrenSection({ items }: { items: TicketDetail["epicChildr
   return (
     <div className="mt-8">
       <SectionHeader title="Child Issues" count={items.length} />
-      <div className="mt-3 overflow-hidden rounded-lg border border-white/[0.06]">
+      <div className="mt-3 overflow-hidden rounded-lg border border-border-default">
         {items.map((child, idx) => (
           <div
             key={child.key}
             className={`flex items-center gap-3 px-3 py-2.5 ${
-              idx < items.length - 1 ? "border-b border-white/[0.04]" : ""
+              idx < items.length - 1 ? "border-b border-border-subtle" : ""
             }`}
           >
             <IssueTypeIcon type={child.type} size={14} />

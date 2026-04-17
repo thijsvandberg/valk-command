@@ -139,7 +139,7 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
       href={run.pipelineUrl || undefined}
       target="_blank"
       rel="noopener noreferrer"
-      className={`group block border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.025] ${
+      className={`group block border-b border-border-subtle last:border-b-0 transition-colors duration-150 hover:bg-white/[0.025] ${
         isFailed ? "bg-red-500/[0.02]" : ""
       }`}
     >
@@ -254,9 +254,9 @@ export function PipelineTable({
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+    <div className="rounded-xl border border-border-strong overflow-hidden">
       {/* Table header */}
-      <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.5fr)_100px_80px_68px_54px] gap-x-4 px-4 py-2 bg-white/[0.02] border-b border-white/[0.06] text-caption font-medium text-white/25 uppercase tracking-wider">
+      <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.5fr)_100px_80px_68px_54px] gap-x-4 px-4 py-2 bg-white/[0.02] border-b border-border-default text-caption font-medium text-white/25 uppercase tracking-wider">
         <span>Pipeline</span>
         <span>Branch</span>
         <span>Ticket</span>
@@ -314,9 +314,9 @@ export function GroupedByTicketView({
         const failCount = ticketRuns.filter((r) => r.state === "FAILED").length;
 
         return (
-          <div key={ticketKey} className="rounded-xl border border-white/[0.08] overflow-hidden">
+          <div key={ticketKey} className="rounded-xl border border-border-strong overflow-hidden">
             {/* Group header */}
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.02] border-b border-border-default">
               {ticketKey !== "_unlinked" ? (
                 <Link
                   href={`/tickets/${ticketKey}`}
@@ -349,7 +349,7 @@ export function GroupedByTicketView({
             {ticketRuns.map((run) => (
               <div
                 key={run.id}
-                className={`flex items-center gap-3 px-4 py-2 border-b border-white/[0.04] last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
+                className={`flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
                   run.state === "FAILED" ? "bg-red-500/[0.03]" : ""
                 }`}
               >

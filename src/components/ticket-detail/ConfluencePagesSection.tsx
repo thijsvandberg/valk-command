@@ -161,11 +161,11 @@ function SearchPopover({
   return (
     <div
       ref={containerRef}
-      className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-white/[0.08] bg-[var(--color-surface-floating)] shadow-[0_8px_40px_rgba(0,0,0,0.6)]"
+      className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_40px_rgba(0,0,0,0.6)]"
       style={{ minWidth: 240 }}
     >
       {/* Search input */}
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2.5">
+      <div className="flex items-center gap-2 border-b border-border-default px-3 py-2.5">
         <Search size={13} strokeWidth={1.5} className="shrink-0 text-white/25" />
         <input
           ref={inputRef}
@@ -192,7 +192,7 @@ function SearchPopover({
               key={r.pageId}
               type="button"
               onClick={() => onSelect(r)}
-              className="flex w-full items-start gap-2.5 px-3 py-2 text-left cursor-pointer hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex w-full items-start gap-2.5 px-3 py-2 text-left cursor-pointer hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <FileText size={13} strokeWidth={1.5} className="mt-0.5 shrink-0 text-white/20" />
               <div className="min-w-0 flex-1">
@@ -251,7 +251,7 @@ function MentionedPagesSection({
             <button
               type="button"
               onClick={() => onLink(m)}
-              className="shrink-0 rounded px-1.5 py-0.5 text-caption text-white/30 cursor-pointer hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="shrink-0 rounded px-1.5 py-0.5 text-caption text-white/30 cursor-pointer hover:bg-hover-interactive hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
             >
               Link
@@ -355,7 +355,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
           )}
 
           {links.map((link) => (
-            <div key={link.id} className="group/link rounded-lg border border-white/[0.04] bg-white/[0.01]">
+            <div key={link.id} className="group/link rounded-lg border border-border-subtle bg-white/[0.01]">
               {/* Page row */}
               <div className="flex items-center gap-2 px-2.5 py-2">
                 <button
@@ -401,7 +401,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
 
               {/* Inline preview */}
               {expandedPageId === link.pageId && (
-                <div className="border-t border-white/[0.05]">
+                <div className="border-t border-border-subtle">
                   <PagePreview pageId={link.pageId} pageUrl={link.pageUrl} />
                 </div>
               )}
@@ -413,7 +413,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
             <button
               type="button"
               onClick={() => setShowSearch((v) => !v)}
-              className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/[0.08] px-2.5 py-1.5 text-xs text-white/30 w-full cursor-pointer hover:border-[var(--color-brand-500)]/40 hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-2.5 py-1.5 text-xs text-white/30 w-full cursor-pointer hover:border-[var(--color-brand-500)]/40 hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "border-color 0.15s ease, color 0.15s ease" }}
             >
               <Plus size={12} strokeWidth={1.5} />

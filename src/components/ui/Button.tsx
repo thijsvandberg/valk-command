@@ -25,7 +25,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   soft:
     "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/25 hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-[var(--color-brand-400)]",
   ghost:
-    "bg-white/[0.02] text-white/50 border border-white/[0.06] hover:bg-white/[0.06] hover:text-white/70 focus-visible:outline-[var(--color-brand-400)]",
+    "bg-white/[0.02] text-white/50 border border-border-default hover:bg-hover-interactive hover:text-white/70 focus-visible:outline-[var(--color-brand-400)]",
   destructive:
     "text-red-400/80 hover:bg-red-500/10 hover:text-red-400 focus-visible:outline-red-400",
   dashed:

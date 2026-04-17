@@ -126,7 +126,7 @@ export default function Sidebar() {
         iconOnly
         icon={<Menu className="h-5 w-5 text-white/70" strokeWidth={1.5} />}
         onClick={() => setMobileOpen(true)}
-        className="fixed top-4 left-4 z-50 h-10 w-10 rounded-lg bg-[var(--color-surface-elevated)] border-white/[0.06] lg:hidden hover:bg-[var(--color-surface-floating)]"
+        className="fixed top-4 left-4 z-50 h-10 w-10 rounded-lg bg-[var(--color-surface-elevated)] border-border-default lg:hidden hover:bg-[var(--color-surface-floating)]"
         aria-label="Open sidebar"
       />
 
@@ -142,7 +142,7 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         data-testid="sidebar"
-        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-white/[0.06] lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-border-default lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 ${
           collapsed ? "w-[52px]" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
@@ -153,7 +153,7 @@ export default function Sidebar() {
             iconOnly
             icon={<X className="h-4 w-4 text-white/50" strokeWidth={1.5} />}
             onClick={() => setMobileOpen(false)}
-            className="h-8 w-8 rounded-lg border-transparent hover:bg-white/[0.06]"
+            className="h-8 w-8 rounded-lg border-transparent hover:bg-hover-interactive"
             aria-label="Close sidebar"
           />
         </div>
@@ -172,7 +172,7 @@ export default function Sidebar() {
                     className={`group flex items-center ${collapsed ? "justify-center" : "gap-3"} rounded-lg ${collapsed ? "px-0 py-2.5" : "px-3 py-2.5"} text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       active
                         ? "bg-[var(--color-brand-600)]/12 text-[var(--color-brand-300)]"
-                        : "text-white/50 hover:bg-white/[0.04] hover:text-white/80 active:bg-white/[0.06]"
+                        : "text-white/50 hover:bg-hover-list-item hover:text-white/80 active:bg-white/[0.06]"
                     }`}
                     aria-current={active ? "page" : undefined}
                     title={collapsed ? item.label : undefined}
@@ -191,13 +191,13 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom: sync + logout + collapse toggle */}
-        <div className={`flex flex-col border-t border-white/[0.04] pt-2 pb-3 gap-2 ${collapsed ? "px-1.5" : "px-3"}`}>
+        <div className={`flex flex-col border-t border-border-subtle pt-2 pb-3 gap-2 ${collapsed ? "px-1.5" : "px-3"}`}>
           <div className={`flex items-center ${collapsed ? "flex-col gap-2" : "justify-between"}`}>
             <SyncIndicator collapsed={collapsed} />
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-hover-list-item hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {collapsed
@@ -215,7 +215,7 @@ export default function Sidebar() {
               await signOut();
               window.location.href = "/login";
             }}
-            className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-white/[0.04] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+            className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-hover-list-item hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             title={collapsed ? "Sign out" : undefined}
             aria-label="Sign out"
           >

@@ -50,7 +50,7 @@ export function IssueTypePicker({ type, size = 16, onTypeChange }: IssueTypePick
 
       {open && (
         <div
-          className="absolute left-0 top-full z-50 mt-1.5 w-[118px] overflow-hidden rounded-lg border border-white/[0.07] bg-[#141822] shadow-[0_12px_32px_rgba(0,0,0,0.55),0_2px_8px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]"
+          className="absolute left-0 top-full z-50 mt-1.5 w-[118px] overflow-hidden rounded-lg border border-border-default bg-[#141822] shadow-[0_12px_32px_rgba(0,0,0,0.55),0_2px_8px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]"
           style={{ animation: "issue-picker-in 0.12s cubic-bezier(0.16,1,0.3,1)" }}
         >
           <style>{`
