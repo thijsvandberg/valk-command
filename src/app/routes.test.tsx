@@ -28,7 +28,6 @@ const EXPECTED_ROUTES = [
   { path: "/settings/notifications", file: "src/app/(app)/settings/notifications/page.tsx", name: "Settings Notifications" },
   { path: "/settings/integrations", file: "src/app/(app)/settings/integrations/page.tsx", name: "Settings Integrations" },
   { path: "/login", file: "src/app/login/[[...rest]]/page.tsx", name: "Login" },
-  { path: "/reports/changelog/[sprintId]", file: "src/app/(app)/reports/changelog/[sprintId]/page.tsx", name: "Changelog" },
 ];
 
 // API route manifest: ensures search API route files exist

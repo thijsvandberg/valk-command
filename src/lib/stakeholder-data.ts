@@ -352,3 +352,43 @@ export function buildMarkdownSummary(
 
   return lines.join("\n");
 }
+
+// Plain-text export for pasting into Slack, email, etc.
+// Focuses on completed tickets grouped by epic — no markdown syntax.
+export function buildPlainTextSummary(
+  sprint: StakeholderSprint,
+  doneTickets: StakeholderTicket[],
+): string {
+  const lines: string[] = [];
+
+  const header = `Sprint: ${sprint.name}`;
+  lines.push(header);
+  lines.push("=".repeat(header.length));
+  lines.push("");
+
+  if (sprint.startDate && sprint.endDate) {
+    lines.push(`${formatDate(sprint.startDate)} – ${formatDate(sprint.endDate)}`);
+    lines.push("");
+  }
+
+  const totalPoints = doneTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+  lines.push(
+    `Completed: ${doneTickets.length} ticket${doneTickets.length !== 1 ? "s" : ""}${totalPoints > 0 ? `, ${totalPoints} story points` : ""}`,
+  );
+  lines.push("");
+
+  if (doneTickets.length > 0) {
+    for (const [epic, tickets] of groupByEpic(doneTickets)) {
+      lines.push(epic.toUpperCase());
+      for (const t of tickets) {
+        lines.push(`* ${t.title}`);
+      }
+      lines.push("");
+    }
+  } else {
+    lines.push("No completed tickets in this sprint.");
+    lines.push("");
+  }
+
+  return lines.join("\n").trimEnd() + "\n";
+}

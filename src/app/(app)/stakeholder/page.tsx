@@ -6,7 +6,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload, buildDeepDivePayload, buildMarkdownSummary } from "@/lib/stakeholder-data";
+import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload, buildDeepDivePayload, buildMarkdownSummary, buildPlainTextSummary } from "@/lib/stakeholder-data";
 import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
 import { SprintOverviewCard } from "@/components/stakeholder/SprintOverviewCard";
 import { VelocitySparkline } from "@/components/stakeholder/VelocitySparkline";
@@ -156,6 +156,7 @@ function OverflowMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedPlain, setCopiedPlain] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -176,6 +177,16 @@ function OverflowMenu({
       await navigator.clipboard.writeText(md);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  async function handleCopyPlain() {
+    if (!sprint) return;
+    const text = buildPlainTextSummary(sprint, doneTickets);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPlain(true);
+      setTimeout(() => setCopiedPlain(false), 2000);
     } catch {}
   }
 
@@ -250,6 +261,23 @@ function OverflowMenu({
                   <>
                     <Copy size={12} strokeWidth={1.5} />
                     Copy as Markdown
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyPlain}
+                className={itemClass}
+              >
+                {copiedPlain ? (
+                  <>
+                    <Check size={12} strokeWidth={2} className="text-emerald-400" />
+                    <span className="text-emerald-400">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} strokeWidth={1.5} />
+                    Copy as plain text
                   </>
                 )}
               </button>

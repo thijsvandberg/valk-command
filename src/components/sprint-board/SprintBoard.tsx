@@ -22,7 +22,7 @@ import { StatPill, StatusPill } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, FileText } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -810,14 +810,18 @@ export default function SprintBoard() {
                       <List size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>Sprints</span>
                     </button>
-                    {!isAllView && !f.activeView && activeSprint?.state === "closed" && (
+                    {!isAllView && !f.activeView && activeSprint && (
                       <button
                         type="button"
-                        onClick={() => { router.push(`/reports/changelog/${activeSprint.id}`); setHeaderMenuOpen(false); }}
+                        onClick={() => {
+                          const team = activeSprint.name.match(/^([A-Z]+)[: ]/)?.[1] ?? "";
+                          router.push(`/stakeholder?team=${team}&sprintId=${activeSprint.id}`);
+                          setHeaderMenuOpen(false);
+                        }}
                         className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                       >
-                        <FileText size={13} strokeWidth={1.5} className="shrink-0" />
-                        <span>Release Notes</span>
+                        <Users size={13} strokeWidth={1.5} className="shrink-0" />
+                        <span>Stakeholder View</span>
                       </button>
                     )}
                   </div>
