@@ -15,6 +15,7 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { AiInsightsPanel } from "@/components/stakeholder/AiInsightsPanel";
 import { useStakeholderAnalysis, type AnalysisType } from "@/hooks/useStakeholderAnalysis";
 import { swrFetcher, apiFetch } from "@/lib/api-client";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
   ViewHeader,
   ViewHeaderTitle,
@@ -48,8 +49,8 @@ function useCarryOver(
 
 const fetcher = <T,>(url: string) => swrFetcher<T>(url).catch(() => null as T);
 const REFRESH_INTERVAL = 5 * 60 * 1000;
-const SESSION_KEY_TEAM = "stakeholder_team";
-const SESSION_KEY_SPRINT = "stakeholder_sprintId";
+const LS_KEY_TEAM = "bridge:stakeholder-team";
+const LS_KEY_SPRINT = "bridge:stakeholder-sprint";
 
 function formatRelativeTime(date: Date | null): string {
   if (!date) return "Never";
@@ -68,13 +69,6 @@ function extractTeamPrefix(sprintName: string): string | null {
 function extractSprintNumber(sprintName: string): number {
   const match = sprintName.match(/[: ]\s*(\d+)/);
   return match ? parseInt(match[1], 10) : Infinity;
-}
-
-function sessionGet(key: string): string | null {
-  try { return localStorage.getItem(key); } catch { return null; }
-}
-function sessionSet(key: string, value: string): void {
-  try { localStorage.setItem(key, value); } catch {}
 }
 
 const navBtnClass =
@@ -273,9 +267,12 @@ function StakeholderView() {
   const router = useRouter();
   const { mutate: globalMutate } = useSWRConfig();
 
-  const urlTeam = searchParams.get("team") ?? sessionGet(SESSION_KEY_TEAM);
+  const [storedTeam, setStoredTeam] = useLocalStorage<string | null>(LS_KEY_TEAM, null);
+  const [storedSprint, setStoredSprint] = useLocalStorage<string | null>(LS_KEY_SPRINT, null);
+
+  const urlTeam = searchParams.get("team") ?? storedTeam;
   const urlSprintId = (() => {
-    const raw = searchParams.get("sprintId") ?? sessionGet(SESSION_KEY_SPRINT);
+    const raw = searchParams.get("sprintId") ?? storedSprint;
     return raw ? Number(raw) : null;
   })();
 
@@ -339,14 +336,14 @@ function StakeholderView() {
   }, [currentSprint?.id]);
 
   const updateUrl = useCallback((team: string, sprintId: number) => {
-    sessionSet(SESSION_KEY_TEAM, team);
-    sessionSet(SESSION_KEY_SPRINT, String(sprintId));
+    setStoredTeam(team);
+    setStoredSprint(String(sprintId));
     const params = new URLSearchParams();
     params.set("team", team);
     params.set("sprintId", String(sprintId));
     if (isCompareMode) params.set("compare", "1");
     router.replace(`/stakeholder?${params.toString()}`);
-  }, [isCompareMode, router]);
+  }, [isCompareMode, router, setStoredTeam, setStoredSprint]);
 
   function toggleCompareMode() {
     const params = new URLSearchParams(searchParams.toString());
