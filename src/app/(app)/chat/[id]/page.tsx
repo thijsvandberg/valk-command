@@ -8,16 +8,7 @@ import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { MessageCircle } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
-import { JIRA_STATUS_COLORS } from "@/types/ticket";
-
-const PO_STATUS_COLORS: Record<string, { dot: string }> = {
-  New: { dot: "#94a3b8" },
-  Draft: { dot: "#eab308" },
-  "Awaiting Feedback": { dot: "#ea8744" },
-  "Ready for Refinement": { dot: "#60a5fa" },
-  Ready: { dot: "#4aaa60" },
-  "On Hold": { dot: "#64648a" },
-};
+import { JIRA_STATUS_COLORS, READINESS_CONFIG } from "@/types/ticket";
 
 function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
   const { data: ticketData } = useTicketDetail(ticketKey);
@@ -25,7 +16,7 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
   if (!ticketData) return null;
 
   const jiraColor = JIRA_STATUS_COLORS[ticketData.jiraStatus as keyof typeof JIRA_STATUS_COLORS] ?? JIRA_STATUS_COLORS["TO DO"];
-  const poColor = ticketData.poStatus ? PO_STATUS_COLORS[ticketData.poStatus] : null;
+  const readinessCfg = ticketData.readiness ? READINESS_CONFIG[ticketData.readiness] : null;
 
   const description = ticketData.description ?? "";
   const descSnippet = description
@@ -53,10 +44,10 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
           >
             {ticketData.jiraStatus}
           </span>
-          {ticketData.poStatus && poColor && (
+          {ticketData.readiness && readinessCfg && (
             <span className="flex items-center gap-1.5 text-caption text-white/40">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: poColor.dot }} />
-              {ticketData.poStatus}
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: readinessCfg.color }} />
+              {readinessCfg.label}
             </span>
           )}
         </div>

@@ -1,18 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { POStatus } from "@/types/ticket";
-import { PO_STATUS_OPTIONS } from "@/types/ticket";
-import { PO_STATUS_COLORS } from "./FilterBar";
-import { POStatusIcon } from "./TicketTable";
+import type { TicketReadiness } from "@/types/ticket";
+import { READINESS_OPTIONS, READINESS_CONFIG } from "@/types/ticket";
+import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
-import { Copy, Check } from "lucide-react";
+import { Copy } from "lucide-react";
 
 export function BulkActionBar({
   count,
   onClear,
-  onSetPoStatus,
+  onSetReadiness,
   onRefreshFromJira,
   onReviewStory,
   onCopyToClipboard,
@@ -20,7 +19,7 @@ export function BulkActionBar({
 }: {
   count: number;
   onClear: () => void;
-  onSetPoStatus: (status: POStatus) => void;
+  onSetReadiness: (readiness: TicketReadiness | null) => void;
   onRefreshFromJira: () => void;
   onReviewStory: () => void;
   onCopyToClipboard: () => void;
@@ -52,24 +51,30 @@ export function BulkActionBar({
           onClick={() => setShowStatusDropdown(!showStatusDropdown)}
           className="border-0 text-white/60 hover:text-white"
         >
-          Set PO Status
+          Set Readiness
         </Button>
         {showStatusDropdown && (
           <Card variant="floating" className="absolute bottom-full left-0 z-50 mb-1 w-52 py-1">
-            {PO_STATUS_OPTIONS.map((opt) => {
-              const optColors = opt.value ? PO_STATUS_COLORS[opt.value] : null;
+            {READINESS_OPTIONS.map((opt) => {
+              const cfg = opt.value ? READINESS_CONFIG[opt.value] : null;
               return (
                 <button
                   key={opt.label}
                   type="button"
                   onClick={() => {
-                    onSetPoStatus(opt.value);
+                    onSetReadiness(opt.value);
                     setShowStatusDropdown(false);
                   }}
                   className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/60 cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
                 >
-                  <span style={{ color: optColors?.text || "rgba(255,255,255,0.25)" }}>
-                    <POStatusIcon status={opt.value} size={13} />
+                  <span
+                    className="shrink-0 flex h-4 w-4 items-center justify-center rounded-full"
+                    style={{
+                      color: cfg?.color ?? "rgba(255,255,255,0.25)",
+                      backgroundColor: cfg?.bg ?? "rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    {opt.value && <ReadinessIcon value={opt.value} size={10} />}
                   </span>
                   {opt.label}
                 </button>

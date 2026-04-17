@@ -15,12 +15,12 @@ interface NavigationDeps {
   setSavedViews: (v: SavedView[] | ((prev: SavedView[]) => SavedView[])) => void;
   savedViews: SavedView[];
   activeViewId: string | null;
-  currentFiltersSnapshot: () => { status: string[]; epic: string[]; assignee: string[]; poStatus: string[]; editState: string[] };
+  currentFiltersSnapshot: () => { status: string[]; epic: string[]; assignee: string[]; readiness: string[]; editState: string[] };
   sortField: SortField;
   sortDir: SortDir;
 }
 
-const emptyFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [], editState: [], issueType: [] };
+const emptyFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [] };
 
 export function useSprintBoardNavigation(deps: NavigationDeps) {
   const { sprints, setStoredFilters, setStoredSort, setSavedViews, savedViews, activeViewId, currentFiltersSnapshot, sortField, sortDir } = deps;
@@ -145,7 +145,7 @@ export function useSprintBoardNavigation(deps: NavigationDeps) {
       status: view.filters.status,
       epic: view.filters.epic,
       assignee: view.filters.assignee,
-      poStatus: view.filters.poStatus,
+      readiness: view.filters.readiness ?? view.filters.poStatus ?? [],
       editState: view.filters.editState ?? [],
       issueType: view.filters.issueType ?? [],
     });

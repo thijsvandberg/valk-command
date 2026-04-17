@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { Ticket, POStatus, TicketDetail } from "@/types/ticket";
-import { PO_STATUS_OPTIONS } from "@/types/ticket";
-import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { useState, useCallback } from "react";
+import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
+import { ChevronRight, AlertTriangle } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
-import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
+import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
@@ -38,10 +37,8 @@ export function TicketSidebar({
   onNavigateToReview?: () => void;
   onNavigateToDev?: () => void;
 }) {
-  const [poStatus, setPoStatus] = useState<POStatus>(ticket.poStatus);
+  const [readiness, setReadiness] = useState<TicketReadiness | null>(ticket.readiness);
   const [poNotes, setPoNotes] = useState(ticket.notes);
-  const [statusOpen, setStatusOpen] = useState(false);
-  const statusRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useLocalStorage("ticket-sidebar-collapsed", false);
 
   const { data: sprints } = useJiraSprints();
@@ -55,21 +52,10 @@ export function TicketSidebar({
     ? latestReview.storyVersionHash !== currentVersionHash
     : false;
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
-    }
-    if (statusOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [statusOpen]);
-
-  const handlePoStatusChange = useCallback(async (v: POStatus) => {
-    setPoStatus(v);
-    setStatusOpen(false);
+  const handleReadinessChange = useCallback(async (v: TicketReadiness | null) => {
+    setReadiness(v);
     try {
-      await tickets.updateMetadata(ticket.key, { poStatus: v });
+      await tickets.updateMetadata(ticket.key, { readiness: v });
     } catch (err) {
       console.error("Operation failed:", err);
     }
@@ -88,13 +74,11 @@ export function TicketSidebar({
   const hasDescription = description.trim().length > 20;
   const hasAcceptanceCriteria = /acceptance\s*criteria/i.test(description);
   const hasPoints = ticket.storyPoints !== null;
-  const hasPoStatus = poStatus !== null;
   const hasReview = ticket.qualityScore !== null;
   const completenessChecks = [
     { label: "Description", done: hasDescription },
     { label: "AC", done: hasAcceptanceCriteria },
     { label: "Points", done: hasPoints },
-    { label: "PO Status", done: hasPoStatus },
     { label: "Review", done: hasReview },
   ];
   const completenessCount = completenessChecks.filter((c) => c.done).length;
@@ -287,50 +271,10 @@ export function TicketSidebar({
               )}
             </h3>
             <div className="mt-3 space-y-4">
-              {/* PO Status */}
+              {/* Readiness */}
               <div>
-                <label className="mb-1.5 block text-xs text-white/30">PO Status</label>
-                <div ref={statusRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setStatusOpen(!statusOpen)}
-                    className="flex w-full items-center justify-between rounded-lg border border-border-strong bg-white/[0.04] px-3 py-2 text-sm cursor-pointer hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    style={{ transition: "background-color 0.15s ease" }}
-                  >
-                    <span className="flex items-center gap-2">
-                      {poStatus && (
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: PO_STATUS_COLORS[poStatus]?.dot ?? "#94a3b8" }}
-                        />
-                      )}
-                      <span className="text-white/70">{poStatus ?? "--"}</span>
-                    </span>
-                    <ChevronDown size={12} strokeWidth={1.2} className="text-white/25" />
-                  </button>
-                  {statusOpen && (
-                    <div className="absolute top-full right-0 left-0 z-50 mt-1 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-                      {PO_STATUS_OPTIONS.map((opt) => {
-                        const optColors = opt.value ? PO_STATUS_COLORS[opt.value] : null;
-                        return (
-                          <button
-                            key={opt.label}
-                            type="button"
-                            onClick={() => handlePoStatusChange(opt.value)}
-                            className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm cursor-pointer hover:bg-hover-list-item ${
-                              opt.value === poStatus ? "text-white" : "text-white/50"
-                            }`}
-                          >
-                            {optColors && (
-                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: optColors.dot }} />
-                            )}
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <label className="mb-1.5 block text-xs text-white/30">Readiness</label>
+                <ReadinessCell value={readiness} onChange={handleReadinessChange} />
               </div>
 
               {/* PO Notes */}

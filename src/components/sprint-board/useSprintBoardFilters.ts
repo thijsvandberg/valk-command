@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import type { Ticket, POStatus } from "@/types/ticket";
+import type { Ticket, TicketReadiness } from "@/types/ticket";
 import type { SortField, SortDir, ColumnId, SavedView } from "@/components/sprint-board/FilterBar";
 import { DEFAULT_VISIBLE } from "@/components/sprint-board/FilterBar";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -12,7 +12,7 @@ export interface StoredFilters {
   status: string[];
   epic: string[];
   assignee: string[];
-  poStatus: string[];
+  readiness: string[];
   editState: string[];
   issueType: string[];
 }
@@ -22,11 +22,11 @@ export interface StoredSort {
   direction: SortDir;
 }
 
-const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], poStatus: [], editState: [], issueType: [] };
+const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [] };
 
 export function useSprintBoardFilters(
   allTickets: Ticket[],
-  poStatuses: Record<string, POStatus>,
+  readinessMap: Record<string, TicketReadiness | null>,
   isAllView: boolean,
   poPriorityOrder: string[] | null,
   externalVisible?: Set<ColumnId>,
@@ -48,7 +48,7 @@ export function useSprintBoardFilters(
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
   const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
-  const poStatusFilter = useMemo(() => new Set(storedFilters.poStatus), [storedFilters.poStatus]);
+  const readinessFilter = useMemo(() => new Set(storedFilters.readiness ?? []), [storedFilters.readiness]);
   const editStateFilter = useMemo(() => new Set(storedFilters.editState ?? []), [storedFilters.editState]);
   const issueTypeFilter = useMemo(() => new Set(storedFilters.issueType ?? []), [storedFilters.issueType]);
 
@@ -61,8 +61,8 @@ export function useSprintBoardFilters(
   const setAssigneeFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, assignee: [...v] }));
   }, [setStoredFilters]);
-  const setPoStatusFilter = useCallback((v: Set<string>) => {
-    setStoredFilters((prev) => ({ ...prev, poStatus: [...v] }));
+  const setReadinessFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, readiness: [...v] }));
   }, [setStoredFilters]);
   const setEditStateFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, editState: [...v] }));
@@ -126,9 +126,9 @@ export function useSprintBoardFilters(
         const name = t.assignee?.name;
         if (!name || !assigneeFilter.has(name)) return false;
       }
-      if (poStatusFilter.size > 0) {
-        const current = poStatuses[t.key] ?? null;
-        if (current === null || !poStatusFilter.has(current)) return false;
+      if (readinessFilter.size > 0) {
+        const current = readinessMap[t.key] ?? null;
+        if (current === null || !readinessFilter.has(current)) return false;
       }
       if (editStateFilter.size > 0) {
         const effectiveState = isRemoved ? "removed" : t.editState;
@@ -150,7 +150,7 @@ export function useSprintBoardFilters(
       }
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, issueTypeFilter, poStatuses, isAllView, sprintFilter, teamFilter, sprintNameMap, searchQuery]);
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter, readinessMap, isAllView, sprintFilter, teamFilter, sprintNameMap, searchQuery]);
 
   const sortedTickets = useMemo(() => {
     if (sortField === "rank") {
@@ -193,10 +193,10 @@ export function useSprintBoardFilters(
           return a.jiraStatus.localeCompare(b.jiraStatus) * dir;
         case "assignee":
           return (a.assignee?.name ?? "").localeCompare(b.assignee?.name ?? "") * dir;
-        case "poStatus": {
-          const aPo = poStatuses[a.key] ?? "";
-          const bPo = poStatuses[b.key] ?? "";
-          return aPo.localeCompare(bPo) * dir;
+        case "readiness": {
+          const aR = readinessMap[a.key] ?? "";
+          const bR = readinessMap[b.key] ?? "";
+          return aR.localeCompare(bR) * dir;
         }
         case "lastChanged": {
           const aDate = a.jiraUpdatedAt ?? "";
@@ -208,9 +208,9 @@ export function useSprintBoardFilters(
       }
     });
     return sorted;
-  }, [filteredTickets, sortField, sortDir, poPriorityOrder, poStatuses]);
+  }, [filteredTickets, sortField, sortDir, poPriorityOrder, readinessMap]);
 
-  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || poStatusFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0;
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0;
 
   const handleColumnToggle = useCallback((id: ColumnId, show: boolean) => {
     setVisibleColumns((prev) => {
@@ -225,13 +225,13 @@ export function useSprintBoardFilters(
     status: [...statusFilter],
     epic: [...epicFilter],
     assignee: [...assigneeFilter],
-    poStatus: [...poStatusFilter],
+    readiness: [...readinessFilter],
     editState: [...editStateFilter],
     issueType: [...issueTypeFilter],
-  }), [statusFilter, epicFilter, assigneeFilter, poStatusFilter, editStateFilter, issueTypeFilter]);
+  }), [statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter]);
 
   const resetFilters = useCallback(() => {
-    setStoredFilters({ status: [], epic: [], assignee: [], poStatus: [], editState: [], issueType: [] });
+    setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [] });
   }, [setStoredFilters]);
 
   const handleSaveView = useCallback((title: string) => {
@@ -258,7 +258,8 @@ export function useSprintBoardFilters(
       status: view.filters.status,
       epic: view.filters.epic,
       assignee: view.filters.assignee,
-      poStatus: view.filters.poStatus,
+      // Support legacy saved views that stored poStatus before the rename.
+      readiness: view.filters.readiness ?? view.filters.poStatus ?? [],
       editState: view.filters.editState ?? [],
       issueType: view.filters.issueType ?? [],
     });
@@ -289,13 +290,13 @@ export function useSprintBoardFilters(
     statusFilter,
     epicFilter,
     assigneeFilter,
-    poStatusFilter,
+    readinessFilter,
     editStateFilter,
     issueTypeFilter,
     setStatusFilter,
     setEpicFilter,
     setAssigneeFilter,
-    setPoStatusFilter,
+    setReadinessFilter,
     setEditStateFilter,
     setIssueTypeFilter,
     sprintFilter,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { getEpicColor, PO_STATUS_OPTIONS, JIRA_STATUS_COLORS } from "@/types/ticket";
+import { getEpicColor, READINESS_OPTIONS, READINESS_CONFIG, JIRA_STATUS_COLORS } from "@/types/ticket";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check, GripVertical } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
@@ -23,8 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// -- PO Status colors (needed for filter rendering) --
-
+// Legacy PO Status colors -- kept for TicketSidebar migration; remove after all consumers updated.
 export const PO_STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   New: { bg: "rgba(148, 163, 184, 0.1)", text: "#94a3b8", dot: "#94a3b8" },
   Draft: { bg: "rgba(234, 179, 8, 0.1)", text: "#eab308", dot: "#eab308" },
@@ -46,7 +45,7 @@ export const EDIT_STATE_OPTIONS: { value: string; label: string; dotClass: strin
 // Sort types (exported for reuse)
 // ---------------------------------------------------------------------------
 
-export type SortField = "rank" | "quality" | "points" | "key" | "title" | "epic" | "jiraStatus" | "assignee" | "poStatus" | "lastChanged";
+export type SortField = "rank" | "quality" | "points" | "key" | "title" | "epic" | "jiraStatus" | "assignee" | "readiness" | "lastChanged";
 export type SortDir = "asc" | "desc";
 
 // ---------------------------------------------------------------------------
@@ -60,7 +59,9 @@ export interface SavedView {
     status: string[];
     epic: string[];
     assignee: string[];
-    poStatus: string[];
+    readiness: string[];
+    /** @deprecated Use readiness instead */
+    poStatus?: string[];
     editState: string[];
     issueType?: string[];
   };
@@ -87,7 +88,7 @@ export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[]
   { id: "points", label: "Points" },
   { id: "assignee", label: "Assignee" },
   { id: "flagged", label: "Flagged" },
-  { id: "poStatus", label: "PO Status" },
+  { id: "poStatus", label: "Readiness" },
   { id: "quality", label: "Quality Score (QS)" },
   { id: "notes", label: "Notes" },
   { id: "pipeline", label: "Pipeline" },
@@ -108,7 +109,7 @@ const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDir }[] =
   { field: "title", label: "Title", defaultDir: "asc" },
   { field: "jiraStatus", label: "Jira status", defaultDir: "asc" },
   { field: "assignee", label: "Assignee", defaultDir: "asc" },
-  { field: "poStatus", label: "PO status", defaultDir: "asc" },
+  { field: "readiness", label: "Readiness", defaultDir: "asc" },
 ];
 
 export function SortDropdown({
@@ -573,13 +574,13 @@ export function FilterBar({
   statusFilter,
   epicFilter,
   assigneeFilter,
-  poStatusFilter,
+  readinessFilter,
   editStateFilter,
   issueTypeFilter,
   onStatusFilterChange,
   onEpicFilterChange,
   onAssigneeFilterChange,
-  onPoStatusFilterChange,
+  onReadinessFilterChange,
   onEditStateFilterChange,
   onIssueTypeFilterChange,
   statusOptions,
@@ -603,13 +604,13 @@ export function FilterBar({
   statusFilter: Set<string>;
   epicFilter: Set<string>;
   assigneeFilter: Set<string>;
-  poStatusFilter: Set<string>;
+  readinessFilter: Set<string>;
   editStateFilter: Set<string>;
   issueTypeFilter: Set<string>;
   onStatusFilterChange: (next: Set<string>) => void;
   onEpicFilterChange: (next: Set<string>) => void;
   onAssigneeFilterChange: (next: Set<string>) => void;
-  onPoStatusFilterChange: (next: Set<string>) => void;
+  onReadinessFilterChange: (next: Set<string>) => void;
   onEditStateFilterChange: (next: Set<string>) => void;
   onIssueTypeFilterChange: (next: Set<string>) => void;
   statusOptions: string[];
@@ -633,14 +634,14 @@ export function FilterBar({
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const saveViewRef = useRef<HTMLDivElement>(null);
 
-  const poStatusOptions = PO_STATUS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string);
+  const readinessOptions = READINESS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string);
   const editStateValues = EDIT_STATE_OPTIONS.map((o) => o.value);
 
   const hasActiveFilters =
     statusFilter.size > 0 ||
     epicFilter.size > 0 ||
     assigneeFilter.size > 0 ||
-    poStatusFilter.size > 0 ||
+    readinessFilter.size > 0 ||
     editStateFilter.size > 0 ||
     issueTypeFilter.size > 0 ||
     (teamFilter?.size ?? 0) > 0 ||
@@ -650,7 +651,7 @@ export function FilterBar({
     onStatusFilterChange(new Set());
     onEpicFilterChange(new Set());
     onAssigneeFilterChange(new Set());
-    onPoStatusFilterChange(new Set());
+    onReadinessFilterChange(new Set());
     onEditStateFilterChange(new Set());
     onIssueTypeFilterChange(new Set());
     if (onTeamFilterChange) onTeamFilterChange(new Set());
@@ -712,19 +713,19 @@ export function FilterBar({
         searchPlaceholder="Search assignees..."
       />
       <FilterDropdown
-        label="PO Status"
-        options={poStatusOptions}
-        selected={poStatusFilter}
-        onChange={onPoStatusFilterChange}
+        label="Readiness"
+        options={readinessOptions}
+        selected={readinessFilter}
+        onChange={onReadinessFilterChange}
         renderOption={(v) => {
-          const color = PO_STATUS_COLORS[v];
+          const cfg = READINESS_CONFIG[v as keyof typeof READINESS_CONFIG];
           return (
             <span className="flex items-center gap-2">
               <span
                 className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: color?.dot ?? "#94a3b8" }}
+                style={{ backgroundColor: cfg?.color ?? "#94a3b8" }}
               />
-              {v}
+              {cfg?.label ?? v}
             </span>
           );
         }}

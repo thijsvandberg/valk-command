@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
-import type { Ticket, POStatus } from "@/types/ticket";
+import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -141,7 +141,7 @@ const COLUMN_SORT_FIELDS: Partial<Record<ColumnId, SortField>> = {
   jiraStatus: "jiraStatus",
   points: "points",
   assignee: "assignee",
-  poStatus: "poStatus",
+  poStatus: "readiness",
   quality: "quality",
 };
 
@@ -169,6 +169,7 @@ export function TicketTable({
   visibleColumns,
   sprintNameMap,
   poStatuses,
+  readinessMap,
   inflightKeys,
   onToggleCheck,
   onRangeCheck,
@@ -177,6 +178,7 @@ export function TicketTable({
   onHoverRow,
   onLeaveRow,
   onPoStatusChange,
+  onReadinessChange,
   onTableKeyDown,
   onReorder,
   sortField,
@@ -204,6 +206,7 @@ export function TicketTable({
   visibleColumns: Set<ColumnId>;
   sprintNameMap?: Record<string, string>;
   poStatuses: Record<string, POStatus>;
+  readinessMap?: Record<string, TicketReadiness | null>;
   inflightKeys?: Set<string>;
   onToggleCheck: (key: string) => void;
   onRangeCheck: (keys: string[], checked: boolean) => void;
@@ -212,6 +215,7 @@ export function TicketTable({
   onHoverRow: (key: string | null) => void;
   onLeaveRow: () => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
+  onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
   sortField?: SortField;
@@ -360,17 +364,19 @@ export function TicketTable({
     col,
     sprintNameMap: sprintNameMap ?? {},
     poStatuses,
+    readinessMap: readinessMap ?? {},
     selectedTicket,
     onHoverRow,
     onLeaveRow,
     onSelectTicket,
     onCheckboxClick: handleCheckboxClick,
     onPoStatusChange,
+    onReadinessChange: onReadinessChange ?? (() => {}),
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
     stickyOffsets,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth

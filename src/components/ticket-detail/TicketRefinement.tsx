@@ -48,8 +48,8 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
         const next = { ...prev, [key]: checked };
         const allDone = Object.values(next).every(Boolean);
         if (allDone) {
-          tickets.updateMetadata(ticketKey, { poStatus: "Ready for Refinement" })
-            .catch((err) => console.error("Failed to update PO status:", err));
+          tickets.updateMetadata(ticketKey, { readiness: "ready_to_refine" })
+            .catch((err) => console.error("Failed to update readiness:", err));
         }
         return next;
       });
@@ -96,7 +96,7 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
 
       <div>
         <div className="flex items-center justify-between border-b border-border-default pb-2">
-          <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">Ready for Refinement</h3>
+          <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">Ready to Refine</h3>
           {allChecked && (
             <span className="rounded-full bg-[rgba(46,145,73,0.12)] px-2.5 py-0.5 text-caption font-medium text-[#4aaa60]">
               All complete
@@ -136,7 +136,7 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
         </div>
         {allChecked && (
           <p className="mt-3 text-xs text-[#4aaa60]/70">
-            PO status automatically set to &quot;Ready for Refinement&quot;
+            Readiness automatically set to &quot;Ready to Refine&quot;
           </p>
         )}
       </div>
