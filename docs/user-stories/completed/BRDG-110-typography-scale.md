@@ -1,6 +1,6 @@
 # BRDG-110: Typography Scale Standardization
 
-**Status:** Open
+**Status:** Completed
 **Priority:** High
 
 ## Description
@@ -37,15 +37,31 @@ Font sizes are scattered across dozens of arbitrary pixel values with no consist
 --text-heading-lg: 24px (page titles)
 ```
 
+## Implementation Plan
+
+1. **Tokens** — Add `--text-*` custom properties to `@theme` block in `globals.css`. In Tailwind v4, these auto-generate utility classes (`text-caption`, `text-label`, etc.).
+2. **Shared primitives** — Migrate `Badge`, `Button`, `Tag`, `TabBar`, `SectionHeader`, `TicketKeyPill`, `ViewHeader` and update any tests asserting on the old class names.
+3. **`text-[9px]`** (16 instances) — Map to `text-caption` (10px, 1px bump). Badge containers are fixed-size so visual impact is minimal.
+4. **`text-[10px]`** (202 instances) — Map to `text-caption`.
+5. **`text-[11px]`** (225 instances) — Map to `text-label`.
+6. **`text-[12px]`** (50 instances, incl. `!text-[12px]`) — Map to `text-body-sm`.
+7. **`text-[13px]`** (32 instances) — Map to `text-body`.
+8. **`text-[14px]`** (3 instances) — Map to `text-body-lg`.
+9. **`text-[15px]`** (8 instances) — Map to `text-heading-sm`.
+10. **Outliers** — `text-[16px]` (ViewHeader wordmark) -> `text-heading-sm`; `text-[22px]` (MetricsPanel stat) -> `text-heading-lg`.
+11. **Verify** — Run tests, lint, typecheck, visual review of all major views.
+
+**Notes:** `text-[18px]` and `text-[24px]` have zero current usages; tokens are forward-looking. Tailwind built-in classes (`text-xs`, `text-sm`) are out of scope for this story.
+
 ## Acceptance Criteria
 
-- [ ] Define typography scale as CSS custom properties in globals.css
-- [ ] Create Tailwind utility classes or extend theme for the scale
-- [ ] Migrate all `text-[Npx]` instances to use the scale
-- [ ] Ensure section headers use consistent size across all views
-- [ ] Ensure meta/caption text uses consistent size across all views
-- [ ] Ensure body text uses consistent size across all views
-- [ ] Visual review: no regressions after migration
+- [x] Define typography scale as CSS custom properties in globals.css
+- [x] Create Tailwind utility classes or extend theme for the scale
+- [x] Migrate all `text-[Npx]` instances to use the scale
+- [x] Ensure section headers use consistent size across all views
+- [x] Ensure meta/caption text uses consistent size across all views
+- [x] Ensure body text uses consistent size across all views
+- [x] Visual review: no regressions after migration
 
 ## Impact
 
