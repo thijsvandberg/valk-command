@@ -43,7 +43,7 @@ describe("Badge", () => {
     const { container } = render(<Badge size="sm">1</Badge>);
     const el = container.firstChild as HTMLElement;
     expect(el.className).toContain("h-4");
-    expect(el.className).toContain("text-[9px]");
+    expect(el.className).toContain("text-caption");
   });
 
   it("applies md size classes by default", () => {

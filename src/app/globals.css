@@ -9,6 +9,15 @@
   --font-display: "Bricolage Grotesque", "Georgia", sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 
+  --text-caption: 10px;
+  --text-label: 11px;
+  --text-body-sm: 12px;
+  --text-body: 13px;
+  --text-body-lg: 14px;
+  --text-heading-sm: 15px;
+  --text-heading: 18px;
+  --text-heading-lg: 24px;
+
   --color-brand-50: #e8f1fb;
   --color-brand-100: #c4dcf5;
   --color-brand-200: #96c2ed;

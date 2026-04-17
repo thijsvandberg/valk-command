@@ -9,8 +9,8 @@ const VARIANT_CLASSES = {
 } as const;
 
 const SIZE_CLASSES = {
-  sm: "h-4 min-w-4 px-1 text-[9px]",
-  md: "h-5 min-w-5 px-1.5 text-[10px]",
+  sm: "h-4 min-w-4 px-1 text-caption",
+  md: "h-5 min-w-5 px-1.5 text-caption",
 } as const;
 
 type BadgeVariant = keyof typeof VARIANT_CLASSES;

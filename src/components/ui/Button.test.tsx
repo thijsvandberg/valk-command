@@ -53,7 +53,7 @@ describe("Button", () => {
     const { container } = render(<Button size="sm">Small</Button>);
     const el = container.firstChild as HTMLElement;
     expect(el.className).toContain("h-6");
-    expect(el.className).toContain("text-[11px]");
+    expect(el.className).toContain("text-label");
   });
 
   it("applies md size classes by default", () => {
