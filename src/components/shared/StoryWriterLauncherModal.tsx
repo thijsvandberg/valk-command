@@ -462,7 +462,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
       setSelectedSessionKey(sessions[0].ticketKey);
       setTimeout(() => cardRefs.current[0]?.focus(), 30);
     }
-  }, [mode, sessions.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, sessions]);
 
   const canConfirm =
     mode === "new"     ? newTitle.trim().length > 0 :

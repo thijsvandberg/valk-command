@@ -51,9 +51,7 @@ function SplitModeSync() {
     } else {
       pane.closeApp("split-target");
     }
-    // pane functions are stable between renders that don't change pane state
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldOpen]);
+  }, [shouldOpen, pane]);
 
   return null;
 }

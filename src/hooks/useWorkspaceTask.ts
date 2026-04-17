@@ -239,8 +239,7 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
     });
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId]);
+  }, [conversationId, safeSetState, eventSourceRef]);
 
   const submitAndStream = useCallback(
     async (skill: string, args: Record<string, string>, convId?: string) => {

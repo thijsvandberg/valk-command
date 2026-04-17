@@ -188,8 +188,7 @@ function TicketDetail({
       });
 
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [jiraKey]);
 
   const jiraUrl = `https://new-story.atlassian.net/browse/${jiraKey}`;
 

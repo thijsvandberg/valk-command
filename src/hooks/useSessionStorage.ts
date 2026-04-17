@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 function readValue<T>(key: string, defaultValue: T): T {
   if (typeof window === "undefined") return defaultValue;
@@ -20,10 +20,15 @@ export function useSessionStorage<T>(
   defaultValue: T,
 ): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(defaultValue);
+  // Capture defaultValue in a ref so callers can pass object literals without
+  // triggering a re-hydration on every render.
+  const defaultValueRef = useRef(defaultValue);
+  useEffect(() => {
+    defaultValueRef.current = defaultValue;
+  });
 
   useEffect(() => {
-    setStoredValue(readValue(key, defaultValue));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setStoredValue(readValue(key, defaultValueRef.current));
   }, [key]);
 
   const setValue = useCallback(
