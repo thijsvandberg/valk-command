@@ -14,6 +14,7 @@ const MOCK_TICKETS: Ticket[] = [
     epic: null,
     epicKey: null,
     flagged: false,
+    readiness: null,
     poStatus: null,
     qualityScore: 45,
     editState: "clean" as const,

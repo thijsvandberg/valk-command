@@ -69,6 +69,9 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   jiraKey: text("jira_key")
     .primaryKey()
     .references(() => ticket.jiraKey),
+  // readiness replaces poStatus — tracks PO preparation lifecycle.
+  // null = ready for development (no indicator shown).
+  readiness: text("readiness"),
   poStatus: text("po_status"),
   refinementReadiness: text("refinement_readiness", {
     enum: ["not_ready", "in_progress", "ready"],

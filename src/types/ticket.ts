@@ -3,6 +3,35 @@
 
 export type IssueType = "task" | "bug" | "story" | "subtask" | "spike" | "epic";
 export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED";
+
+// Readiness tracks the PO preparation lifecycle of a ticket.
+// null means the ticket is ready for development (no indicator shown).
+export type TicketReadiness = "drafting" | "waiting_for_feedback" | "ready_to_refine" | "on_hold";
+
+export const READINESS_CONFIG: Record<TicketReadiness, { label: string; color: string; bg: string }> = {
+  drafting:             { label: "Drafting",              color: "#d97706", bg: "rgba(217, 119, 6, 0.12)" },
+  waiting_for_feedback: { label: "Waiting for Feedback",  color: "#ea8744", bg: "rgba(234, 135, 68, 0.12)" },
+  ready_to_refine:      { label: "Ready to Refine",       color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.12)" },
+  on_hold:              { label: "On Hold",               color: "#ef4444", bg: "rgba(239, 68, 68, 0.12)" },
+};
+
+export const READINESS_OPTIONS: { value: TicketReadiness | null; label: string }[] = [
+  { value: "drafting",             label: "Drafting" },
+  { value: "waiting_for_feedback", label: "Waiting for Feedback" },
+  { value: "ready_to_refine",      label: "Ready to Refine" },
+  { value: "on_hold",              label: "On Hold" },
+  { value: null,                   label: "Ready for Development" },
+];
+
+export const JIRA_STATUS_ABBREVIATIONS: Record<JiraStatus, string> = {
+  "TO DO":      "TODO",
+  "IN PROGRESS": "PROG",
+  TEST:         "TEST",
+  DONE:         "DONE",
+  DEPRECATED:   "DEPR",
+};
+
+// Legacy type kept during migration — consumers should move to TicketReadiness.
 export type POStatus =
   | null
   | "New"
@@ -112,6 +141,7 @@ export interface Ticket {
   storyPoints: number | null;
   assignee: Assignee | null;
   flagged: boolean;
+  readiness: TicketReadiness | null;
   poStatus: POStatus;
   qualityScore: number | null;
   editState: TicketEditState;

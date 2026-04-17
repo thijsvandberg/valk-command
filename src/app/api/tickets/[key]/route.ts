@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketLocalEdit } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
+import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
@@ -138,6 +138,7 @@ export async function GET(
     storyPoints: t.storyPoints ?? null,
     assignee: buildAssignee(t.assignee),
     flagged: t.flagged ?? false,
+    readiness: (meta?.readiness ?? null) as TicketReadiness | null,
     poStatus: (meta?.poStatus ?? null) as POStatus,
     qualityScore: meta?.qualityScore ?? null,
     editState,

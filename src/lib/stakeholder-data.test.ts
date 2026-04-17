@@ -19,6 +19,7 @@ function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     storyPoints: 3,
     assignee: { name: "Alice", initials: "AL", color: "hsl(200, 55%, 50%)" },
     flagged: false,
+    readiness: null,
     poStatus: "Ready",
     qualityScore: 85,
     editState: "clean",

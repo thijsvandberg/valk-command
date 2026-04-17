@@ -70,6 +70,7 @@ export default function TicketDetailPage({
     storyPoints: apiData.storyPoints ?? null,
     assignee: apiData.assignee ?? null,
     flagged: apiData.flagged ?? false,
+    readiness: apiData.readiness ?? null,
     poStatus: apiData.poStatus ?? null,
     qualityScore: apiData.qualityScore ?? null,
     editState: apiData.editState ?? "clean",

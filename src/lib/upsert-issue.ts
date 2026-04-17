@@ -141,6 +141,9 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     lastSyncedAt: now,
   };
 
+  // Detect story points change for auto-transition (checked before the transaction)
+  const pointsChanged = !!existing && existing.storyPoints !== storyPoints;
+
   // All DB writes in a single transaction for SQLite performance
   db.transaction((tx) => {
     // Ticket upsert
@@ -152,7 +155,12 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
 
     // Metadata
     if (!meta) {
-      tx.insert(ticketMetadata).values({ jiraKey: issue.key }).run();
+      // New ticket: start in drafting state so the PO knows to prepare it
+      tx.insert(ticketMetadata).values({ jiraKey: issue.key, readiness: "drafting" }).run();
+    } else if (pointsChanged && meta.readiness !== "waiting_for_feedback") {
+      // Story points added/changed: clear readiness to signal it is ready for development.
+      // Skip if currently waiting for feedback — that state takes priority.
+      tx.update(ticketMetadata).set({ readiness: null }).where(eq(ticketMetadata.jiraKey, issue.key)).run();
     }
 
     // Story version

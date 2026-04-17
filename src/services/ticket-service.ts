@@ -394,10 +394,19 @@ export async function promoteDrafts(key: string): Promise<void> {
 export type TicketMetadataRow = TicketMetadata;
 
 export interface UpdateMetadataInput {
+  readiness?: string | null;
   poStatus?: string | null;
   qualityScore?: number | null;
   poNotes?: string | null;
 }
+
+const VALID_READINESS_VALUES = [
+  null,
+  "drafting",
+  "waiting_for_feedback",
+  "ready_to_refine",
+  "on_hold",
+];
 
 const VALID_PO_STATUSES = [
   null,
@@ -426,6 +435,13 @@ export async function updateTicketMetadata(
   });
 
   const updates: Record<string, unknown> = {};
+
+  if (input.readiness !== undefined) {
+    if (!VALID_READINESS_VALUES.includes(input.readiness)) {
+      throw new ValidationError("Invalid readiness value");
+    }
+    updates.readiness = input.readiness;
+  }
 
   if (input.poStatus !== undefined) {
     if (!VALID_PO_STATUSES.includes(input.poStatus)) {

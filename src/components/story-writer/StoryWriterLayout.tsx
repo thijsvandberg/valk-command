@@ -330,6 +330,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     storyPoints: ticketData.storyPoints ?? null,
     assignee: ticketData.assignee ?? null,
     flagged: ticketData.flagged ?? false,
+    readiness: (ticketData.readiness ?? null) as import("@/types/ticket").TicketReadiness | null,
     poStatus: (ticketData.poStatus ?? null) as import("@/types/ticket").POStatus,
     qualityScore: ticketData.qualityScore ?? null,
     editState: (ticketData.editState ?? "clean") as import("@/types/ticket").TicketEditState,
