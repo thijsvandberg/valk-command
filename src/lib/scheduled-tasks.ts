@@ -8,12 +8,12 @@
 
 import { db } from "@/db";
 import {
-  ticket, activityLog, appSetting,
+  ticket, activityLog, alert, appSetting,
   ticketMetadata, ticketSubtask, ticketLink, ticketAttachment,
   ticketLocalEdit, poComment, jiraComment, storyVersion, storedReview,
   storyWriterSession,
 } from "@/db/schema";
-import { eq, inArray, and, isNotNull, lt } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, lt, desc, notInArray } from "drizzle-orm";
 import { jiraClient, extractSprint } from "@/lib/jira-client";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
@@ -184,6 +184,55 @@ async function cleanupRemovedTickets(): Promise<TaskResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Task: Cleanup activity log (every 5 minutes)
+// ---------------------------------------------------------------------------
+
+const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+const RETENTION_DAYS = 7;
+const RETENTION_MAX_ENTRIES = 200;
+
+export async function cleanupActivityLog(): Promise<TaskResult> {
+  const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
+  const retentionCutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  // Mark stale running entries as failed and delete entries beyond retention window
+  const [staleResult] = await Promise.all([
+    db.update(activityLog).set({
+      status: "failed",
+      errorDetail: "Sync timed out (no response after 5 minutes)",
+      completedAt: new Date().toISOString(),
+    }).where(and(eq(activityLog.status, "running"), lt(activityLog.startedAt, cutoff))),
+    db.delete(activityLog).where(lt(activityLog.startedAt, retentionCutoff)),
+  ]);
+
+  // Keep at most RETENTION_MAX_ENTRIES entries by deleting the oldest
+  const recentIds = await db
+    .select({ id: activityLog.id })
+    .from(activityLog)
+    .orderBy(desc(activityLog.startedAt))
+    .limit(RETENTION_MAX_ENTRIES);
+  const keepSet = recentIds.map((r) => r.id);
+  if (keepSet.length === RETENTION_MAX_ENTRIES) {
+    await db.delete(activityLog).where(notInArray(activityLog.id, keepSet));
+  }
+
+  const markedStale = (staleResult as { changes?: number })?.changes ?? 0;
+  return { markedStale };
+}
+
+// ---------------------------------------------------------------------------
+// Task: Cleanup old notifications (every 60 minutes)
+// ---------------------------------------------------------------------------
+
+const NOTIFICATION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+export async function cleanupOldNotifications(): Promise<TaskResult> {
+  const cutoff = new Date(Date.now() - NOTIFICATION_RETENTION_MS).toISOString();
+  await db.delete(alert).where(lt(alert.createdAt, cutoff));
+  return { cutoff };
+}
+
+// ---------------------------------------------------------------------------
 // Register all tasks
 // ---------------------------------------------------------------------------
 
@@ -200,5 +249,19 @@ export function registerScheduledTasks() {
     "Cleanup Removed Tickets",
     24 * 60 * 60 * 1000,
     cleanupRemovedTickets,
+  );
+
+  defineTask(
+    "cleanup-activity-log",
+    "Activity Log Cleanup",
+    5 * 60 * 1000,
+    cleanupActivityLog,
+  );
+
+  defineTask(
+    "cleanup-notifications",
+    "Notification Cleanup",
+    60 * 60 * 1000,
+    cleanupOldNotifications,
   );
 }

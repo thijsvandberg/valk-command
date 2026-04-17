@@ -57,67 +57,6 @@ describe("GET /api/activity-log", () => {
     expect(data[1].id).toBe("sync-1");
   });
 
-  it("marks stale running syncs as failed", async () => {
-    const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    testDb.insert(activityLog).values({
-      id: "sync-stale",
-      type: "sprint-sync",
-      scope: "sprints",
-      status: "running",
-      startedAt: staleTime,
-    }).run();
-
-    const response = await GET(makeRequest());
-    const data = await response.json();
-
-    expect(data[0].status).toBe("failed");
-    expect(data[0].errorDetail).toContain("timed out");
-  });
-
-  it("deletes entries older than 7 days", async () => {
-    const oldTime = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
-    const recentTime = new Date().toISOString();
-
-    testDb.insert(activityLog).values({
-      id: "sync-old",
-      type: "sprint-sync",
-      scope: "sprints",
-      status: "success",
-      startedAt: oldTime,
-    }).run();
-    testDb.insert(activityLog).values({
-      id: "sync-recent",
-      type: "sprint-sync",
-      scope: "sprints",
-      status: "success",
-      startedAt: recentTime,
-    }).run();
-
-    const response = await GET(makeRequest());
-    const data = await response.json();
-
-    expect(data).toHaveLength(1);
-    expect(data[0].id).toBe("sync-recent");
-  });
-
-  it("keeps max 200 entries and deletes oldest", async () => {
-    for (let i = 0; i < 210; i++) {
-      const time = new Date(Date.now() - i * 1000).toISOString();
-      testDb.insert(activityLog).values({
-        id: `sync-${i.toString().padStart(3, "0")}`,
-        type: "sprint-sync",
-        scope: "sprints",
-        status: "success",
-        startedAt: time,
-      }).run();
-    }
-
-    await GET(makeRequest());
-
-    const remaining = testDb.select().from(activityLog).all();
-    expect(remaining.length).toBe(200);
-  });
-
   it("respects limit parameter", async () => {
     for (let i = 0; i < 5; i++) {
       testDb.insert(activityLog).values({
