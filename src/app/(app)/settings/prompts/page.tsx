@@ -88,6 +88,7 @@ function SortablePromptRow({
           iconOnly
           icon={<Trash2 size={14} strokeWidth={1.5} />}
           onClick={() => onRemove(prompt.id)}
+          aria-label="Remove prompt"
           className="ml-auto"
         />
       </div>

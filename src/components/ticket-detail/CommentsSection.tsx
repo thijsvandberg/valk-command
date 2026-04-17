@@ -122,6 +122,7 @@ export function CommentsSection({
                     onClick={() => handleDeleteComment(comment.id)}
                     className="ml-auto hidden group-hover:flex !text-white/20 hover:!text-[#e5534b]"
                     title="Delete comment"
+                    aria-label="Delete comment"
                     icon={<Trash2 size={14} strokeWidth={1.2} />}
                   />
                 </div>

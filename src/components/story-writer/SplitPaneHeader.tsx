@@ -124,6 +124,7 @@ export function SplitPaneHeader({
           icon={collapseIcon}
           onClick={onCollapse}
           title={collapseTitle}
+          aria-label={collapseTitle}
           className="border-0 bg-transparent text-white/30 hover:text-white/55 hover:bg-white/[0.05]"
         />
       </div>

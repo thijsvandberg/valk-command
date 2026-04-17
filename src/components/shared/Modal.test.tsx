@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Modal } from "./Modal";
 
 describe("Modal", () => {
@@ -78,5 +78,71 @@ describe("Modal", () => {
     );
     const backdrop = document.querySelector(".fixed.inset-0.z-50") as HTMLElement;
     expect(backdrop.className).toContain("items-start");
+  });
+
+  it("has role=dialog and aria-modal when open", () => {
+    render(
+      <Modal open={true} onClose={() => {}}>
+        <div>Content</div>
+      </Modal>,
+    );
+    const dialog = document.querySelector("[role='dialog']") as HTMLElement;
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+  });
+
+  it("traps Tab key within focusable elements", () => {
+    render(
+      <Modal open={true} onClose={() => {}}>
+        <div>
+          <button>First</button>
+          <button>Second</button>
+          <button>Last</button>
+        </div>
+      </Modal>,
+    );
+    const buttons = screen.getAllByRole("button");
+    const last = buttons[buttons.length - 1];
+    last.focus();
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: false });
+    expect(document.activeElement).toBe(buttons[0]);
+  });
+
+  it("traps Shift+Tab key within focusable elements", () => {
+    render(
+      <Modal open={true} onClose={() => {}}>
+        <div>
+          <button>First</button>
+          <button>Second</button>
+          <button>Last</button>
+        </div>
+      </Modal>,
+    );
+    const buttons = screen.getAllByRole("button");
+    buttons[0].focus();
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(buttons[buttons.length - 1]);
+  });
+
+  it("restores focus to previously focused element on close", () => {
+    const trigger = document.createElement("button");
+    trigger.textContent = "Trigger";
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { rerender } = render(
+      <Modal open={true} onClose={() => {}}>
+        <button>Inside</button>
+      </Modal>,
+    );
+
+    rerender(
+      <Modal open={false} onClose={() => {}}>
+        <button>Inside</button>
+      </Modal>,
+    );
+
+    expect(document.activeElement).toBe(trigger);
+    document.body.removeChild(trigger);
   });
 });

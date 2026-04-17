@@ -127,7 +127,7 @@ function SprintSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? setOpen(false) : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/50"
+        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
         <span className="flex-1 min-w-0 truncate text-white/75">
@@ -249,7 +249,7 @@ function SessionSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? closePanel() : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/50"
+        className="flex w-full items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
         <span className="flex-1 min-w-0">
@@ -340,7 +340,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
   const dropdownRef      = useRef<HTMLDivElement>(null);
   const searchResultRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cardRefs         = useRef<(HTMLDivElement | null)[]>([]);
+  const cardRefs         = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -604,18 +604,16 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                     const isSelected = selectedSessionKey === s.ticketKey;
                     const sprintName = resolveSprintName(s.sprintName, sprintOptions);
                     return (
-                      <div key={s.ticketKey}
+                      <button key={s.ticketKey}
                         ref={(el) => { cardRefs.current[i] = el; }}
-                        role="button"
-                        tabIndex={0}
+                        type="button"
                         onClick={() => { onClose(); router.push(`/tickets/${s.ticketKey}/write`); }}
                         onFocus={() => setSelectedSessionKey(s.ticketKey)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); onClose(); router.push(`/tickets/${s.ticketKey}/write`); }
                           if (e.key === "ArrowDown") { e.preventDefault(); cardRefs.current[Math.min(i + 1, sessions.length - 1)]?.focus(); }
                           if (e.key === "ArrowUp")   { e.preventDefault(); cardRefs.current[Math.max(i - 1, 0)]?.focus(); }
                         }}
-                        className={`group relative flex items-center gap-3 rounded-lg border px-3.5 py-3 cursor-pointer focus:outline-none ${
+                        className={`group relative flex w-full items-center gap-3 rounded-lg border px-3.5 py-3 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                           isSelected
                             ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.06]"
                             : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.10] hover:bg-white/[0.035]"
@@ -671,9 +669,10 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             icon={<Trash2 size={12} strokeWidth={1.5} />}
                             onClick={(e) => { e.stopPropagation(); setConfirmDeleteSessionId(s.sessionId); }}
                             title="Dismiss session"
+                            aria-label="Dismiss session"
                           />
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

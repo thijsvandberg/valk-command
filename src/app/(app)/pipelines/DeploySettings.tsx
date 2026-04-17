@@ -134,6 +134,7 @@ export function DeploySettingsPanel() {
         icon={<Bell size={13} strokeWidth={1.5} className={settings.enabled ? "text-[var(--color-brand-400)]" : ""} />}
         onClick={() => setOpen(!open)}
         title="Notification settings"
+        aria-label="Notification settings"
       />
 
       {open && (

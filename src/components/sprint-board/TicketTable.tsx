@@ -246,10 +246,9 @@ export function TicketTable({
   // Compute left-pixel offsets for sticky columns (drag handle, checkbox, type, key, title).
   // Sticky columns let key/title remain visible during horizontal scroll.
   const stickyOffsets = useMemo<Record<string, number>>(() => {
-    const DRAG_W = 20;  // w-5
     const CHECK_W = 40; // w-10
-    const offsets: Record<string, number> = { _drag: 0, _check: DRAG_W };
-    let offset = DRAG_W + CHECK_W;
+    const offsets: Record<string, number> = { _check: 0 };
+    let offset = CHECK_W;
     for (const id of effectiveOrder) {
       if (!col(id)) continue;
       if (id === "type" || id === "key" || id === "title") {
@@ -262,8 +261,8 @@ export function TicketTable({
     return offsets;
   }, [effectiveOrder, col, colW]);
 
-  // Total colspan for group header rows: drag-handle + checkbox + all visible content columns.
-  const totalColSpan = useMemo(() => 2 + effectiveOrder.filter((id) => col(id)).length, [effectiveOrder, col]);
+  // Total colspan for group header rows: checkbox + all visible content columns.
+  const totalColSpan = useMemo(() => 1 + effectiveOrder.filter((id) => col(id)).length, [effectiveOrder, col]);
 
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
@@ -370,11 +369,7 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
     stickyOffsets,
-    // Show disabled tooltip when grouped by epic: drag cannot change epic assignments
-    disabledDragTooltip: !!groups?.length && !externalDnd && groupBy === "epic"
-      ? "Drag is not available when grouped by epic"
-      : undefined,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets, groups, externalDnd, groupBy]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
@@ -417,7 +412,6 @@ export function TicketTable({
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-elevated)]">
       <tr className="group/thead border-b border-white/[0.06] text-left text-xs font-medium text-white/30">
-        <th className="w-5 py-2 pl-1 bg-[var(--color-surface-elevated)]" style={{ position: "sticky", left: stickyOffsets._drag, zIndex: 12 }} />
         <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-elevated)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
           <div
             className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
@@ -611,11 +605,8 @@ export function TicketTable({
               <tr>
                 <td
                   colSpan={totalColSpan}
-                  style={{ height: 24, padding: 0, border: "none" }}
-                  className="relative"
-                >
-                  <div className="absolute inset-x-4 top-1/2 h-px -translate-y-1/2 bg-white/[0.05]" />
-                </td>
+                  style={{ height: 8, padding: 0, border: "none" }}
+                />
               </tr>
             )}
             {/* Group header row */}
@@ -640,36 +631,39 @@ export function TicketTable({
                     </span>
                   )}
                   {noPointsCount > 0 && (
-                    <span
-                      role="button"
+                    <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); toggleGroupFilter("unpointed"); }}
-                      className={`rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer ${activeCriterion === "unpointed" ? "bg-white/[0.10] text-white/50 ring-1 ring-white/20" : "bg-white/[0.04] text-white/20 hover:bg-white/[0.07] hover:text-white/35"}`}
-                      title="Filter: unpointed"
+                      aria-pressed={activeCriterion === "unpointed"}
+                      className={`rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${activeCriterion === "unpointed" ? "bg-white/[0.10] text-white/50 ring-1 ring-white/20" : "bg-white/[0.04] text-white/20 hover:bg-white/[0.07] hover:text-white/35"}`}
+                      aria-label="Filter: no story points"
                     >
-                      {noPointsCount} unpointed
-                    </span>
+                      {noPointsCount} no pts
+                    </button>
                   )}
                   {inProgressCount > 0 && (
-                    <span
-                      role="button"
+                    <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); toggleGroupFilter("in-progress"); }}
-                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer ${activeCriterion === "in-progress" ? "bg-[rgba(56,152,210,0.18)] text-[#58b4e6]/90 ring-1 ring-[#58b4e6]/30" : "bg-[rgba(56,152,210,0.08)] text-[#58b4e6]/60 hover:bg-[rgba(56,152,210,0.14)] hover:text-[#58b4e6]/80"}`}
-                      title="Filter: in progress"
+                      aria-pressed={activeCriterion === "in-progress"}
+                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${activeCriterion === "in-progress" ? "bg-[rgba(56,152,210,0.18)] text-[#58b4e6]/90 ring-1 ring-[#58b4e6]/30" : "bg-[rgba(56,152,210,0.08)] text-[#58b4e6]/60 hover:bg-[rgba(56,152,210,0.14)] hover:text-[#58b4e6]/80"}`}
+                      aria-label="Filter: in progress"
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-[#58b4e6]/50 shrink-0" />
                       {inProgressCount}
-                    </span>
+                    </button>
                   )}
                   {doneCount > 0 && (
-                    <span
-                      role="button"
+                    <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); toggleGroupFilter("done"); }}
-                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer ${activeCriterion === "done" ? "bg-[rgba(34,197,94,0.18)] text-[#4ade80]/90 ring-1 ring-[#4ade80]/30" : "bg-[rgba(34,197,94,0.08)] text-[#4ade80]/60 hover:bg-[rgba(34,197,94,0.14)] hover:text-[#4ade80]/80"}`}
-                      title="Filter: done"
+                      aria-pressed={activeCriterion === "done"}
+                      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium tabular-nums shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${activeCriterion === "done" ? "bg-[rgba(34,197,94,0.18)] text-[#4ade80]/90 ring-1 ring-[#4ade80]/30" : "bg-[rgba(34,197,94,0.08)] text-[#4ade80]/60 hover:bg-[rgba(34,197,94,0.14)] hover:text-[#4ade80]/80"}`}
+                      aria-label="Filter: done"
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80]/50 shrink-0" />
                       {doneCount}
-                    </span>
+                    </button>
                   )}
                 </div>
               </td>
@@ -684,7 +678,7 @@ export function TicketTable({
   return (
     <div
       ref={tableContainerRef}
-      className="flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none"
+      className="flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none bg-[var(--color-surface-elevated)]"
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >

@@ -378,6 +378,7 @@ export default function TicketDetailPage({
               iconOnly
               onClick={() => isFollowed ? unfollow(key) : follow(key)}
               title={isFollowed ? "Unfollow ticket" : "Follow ticket for notifications"}
+              aria-label={isFollowed ? "Unfollow ticket" : "Follow ticket for notifications"}
               icon={
                 <Star
                   size={14}
@@ -392,6 +393,7 @@ export default function TicketDetailPage({
               iconOnly
               onClick={handleCopyLink}
               title="Copy title and Jira link"
+              aria-label="Copy title and Jira link"
               icon={
                 linkCopied
                   ? <Check size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
@@ -405,6 +407,7 @@ export default function TicketDetailPage({
               onClick={handleRefreshFromJira}
               disabled={isRefreshing}
               title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
+              aria-label={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
               icon={<CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />}
             />
             {hasActiveSession ? (
@@ -432,6 +435,7 @@ export default function TicketDetailPage({
                   disabled={isDeletingSession}
                   className="!rounded-l-none !rounded-r-md !border-0 !text-[var(--color-brand-400)]/35 hover:!text-red-400/80"
                   title="Delete session"
+                  aria-label="Delete session"
                   icon={isDeletingSession
                     ? <Loader2 size={11} strokeWidth={1.5} className="animate-spin" />
                     : <Trash2 size={11} strokeWidth={1.5} />

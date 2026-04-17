@@ -152,6 +152,7 @@ export function SortDropdown({
           </span>
         }
         title={isActive ? `Sorted: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
+        aria-label={isActive ? `Sort: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
         className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"}
       />
 
@@ -332,6 +333,7 @@ export function ColumnToggle({
         onClick={() => setOpen(!open)}
         icon={<Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
         title="Toggle columns"
+        aria-label="Toggle columns"
         className="border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"
       />
       {open && (
@@ -806,6 +808,7 @@ export function FilterBar({
             onClick={() => setSaveViewOpen((v) => !v)}
             icon={<Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} fill={activeView ? "currentColor" : "none"} />}
             title={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
+            aria-label={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
             className={`border-0 bg-transparent ${activeView ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10" : "text-white/35 hover:bg-white/[0.04] hover:text-white/60"}`}
           />
           {saveViewOpen && (

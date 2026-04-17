@@ -735,13 +735,14 @@ export default function SprintBoard() {
                     : <Bell className="h-3.5 w-3.5" strokeWidth={1.5} />}
                   onClick={handleToggleFollowSprint}
                   title={isSprintFollowed ? "Unfollow sprint (stop UAT deploy notifications)" : "Follow sprint (get UAT deploy notifications)"}
+                  aria-label={isSprintFollowed ? "Unfollow sprint" : "Follow sprint"}
                   className={isSprintFollowed ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-400)]" : ""}
                 />
               )}
               <Button variant="soft" size="md" icon={<NotebookPen className="h-3 w-3" strokeWidth={1.5} />} onClick={() => setShowStoryWriterLauncher(true)} className="shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
                 Story writer
               </Button>
-              <Button variant="secondary" size="md" iconOnly icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => setSearchModalOpen(true)} title="Search tickets (⇧⌘K)" />
+              <Button variant="secondary" size="md" iconOnly icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => setSearchModalOpen(true)} title="Search tickets (⇧⌘K)" aria-label="Search tickets" />
               <div ref={headerMenuRef} className="relative">
                 <Button
                   variant="ghost"
@@ -750,6 +751,7 @@ export default function SprintBoard() {
                   icon={<MoreHorizontal size={14} strokeWidth={1.5} />}
                   onClick={() => setHeaderMenuOpen((v) => !v)}
                   title="More options"
+                  aria-label="More options"
                   className={headerMenuOpen ? "border-white/[0.12] bg-white/[0.08] text-white/70" : ""}
                 />
                 {headerMenuOpen && (

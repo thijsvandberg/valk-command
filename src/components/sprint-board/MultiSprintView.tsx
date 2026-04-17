@@ -258,6 +258,7 @@ function DroppableSprintColumn({
           onClick={onRefresh}
           disabled={syncing}
           title="Refresh from Jira"
+          aria-label="Refresh from Jira"
           className="shrink-0"
         />
       </div>

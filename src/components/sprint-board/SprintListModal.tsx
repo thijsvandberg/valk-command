@@ -239,21 +239,13 @@ export function SprintListModal({
             const isPinned = pinnedIds.has(String(sprint.id));
             const isHidden = sprint.hidden ?? false;
             return (
-              <div
+              <button
                 key={sprint.id}
-                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/65 cursor-pointer hover:bg-white/[0.05] hover:text-white"
-                role="button"
-                tabIndex={0}
+                type="button"
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/65 cursor-pointer hover:bg-white/[0.05] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 onClick={() => {
                   onSelect(String(sprint.id), sprint.name);
                   onClose();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelect(String(sprint.id), sprint.name);
-                    onClose();
-                  }
                 }}
               >
                 <span className="flex items-center gap-2 min-w-0">
@@ -305,7 +297,7 @@ export function SprintListModal({
                     </button>
                   )}
                 </span>
-              </div>
+              </button>
             );
           }))
         }

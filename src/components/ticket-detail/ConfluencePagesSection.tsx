@@ -323,14 +323,11 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
   return (
     <div>
       {/* Section header */}
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         onClick={() => setExpanded((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded((v) => !v); }
-        }}
-        className="flex w-full items-center justify-between cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <div className="flex items-center gap-1.5">
           <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">
@@ -348,7 +345,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
           className={`shrink-0 text-white/20 ${expanded ? "" : "-rotate-90"}`}
           style={{ transition: "transform 0.2s ease" }}
         />
-      </div>
+      </button>
 
       {expanded && (
         <div className="mt-2 space-y-1">

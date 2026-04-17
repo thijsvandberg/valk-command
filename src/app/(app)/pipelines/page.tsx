@@ -236,6 +236,7 @@ export default function PipelinesPage() {
               onClick={handleRefresh}
               disabled={refreshing}
               title="Refresh pipelines (R)"
+              aria-label="Refresh pipelines"
             />
           </div>
         }

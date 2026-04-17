@@ -519,6 +519,7 @@ export function QuickActionsPopover({
             : "bg-white/[0.04] border-white/[0.10] text-white/55 hover:text-white/75 hover:bg-white/[0.08]"
         }`}
         title="AI actions"
+        aria-label="AI actions"
       />
 
       {open && (

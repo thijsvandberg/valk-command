@@ -110,8 +110,9 @@ export function AppToolbar() {
                     <button
                       type="button"
                       onClick={() => pane.closeApp(activeApp)}
-                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-white/30 transition-colors duration-100 hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 active:text-white/40"
+                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-white/30 transition-colors duration-100 hover:bg-white/[0.06] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:text-white/40"
                       title={`Close ${toolbar.label}`}
+                      aria-label={`Close ${toolbar.label}`}
                     >
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                         <path d="M2 2l6 6M8 2l-6 6" />

@@ -288,6 +288,7 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
           onClick={load}
           disabled={loading}
           title="Refresh"
+          aria-label="Refresh"
           className="border-0 bg-transparent text-white/35 hover:text-white/60"
         />
       </div>

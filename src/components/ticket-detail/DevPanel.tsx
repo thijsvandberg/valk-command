@@ -308,12 +308,11 @@ export function DevPanel({
 
   return (
     <div>
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         onClick={() => setExpanded(!isExpanded)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(!isExpanded); } }}
-        className="flex w-full items-center justify-between cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        aria-expanded={isExpanded}
+        className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <div className="flex items-center gap-1.5">
           <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">
@@ -344,7 +343,7 @@ export function DevPanel({
             style={{ transition: "transform 0.2s ease" }}
           />
         </div>
-      </div>
+      </button>
 
       {isExpanded && (
         <div className="mt-2">

@@ -220,6 +220,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
           </span>
         }
         title={isActive ? `Group by: ${value}` : "Group by"}
+        aria-label={isActive ? `Group by: ${value}` : "Group by"}
         className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-white/[0.04] hover:text-white/60"}
       />
       {open && (
@@ -459,6 +460,7 @@ export function SprintSlots({
             disabled={syncing}
             onClick={onRefresh}
             title={syncing ? "Syncing..." : "Refresh board"}
+            aria-label={syncing ? "Syncing..." : "Refresh board"}
             icon={
               <RefreshCw
                 className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
@@ -476,6 +478,7 @@ export function SprintSlots({
             iconOnly
             onClick={onToggleFilters}
             title={filtersCollapsed ? "Show filters" : "Hide filters"}
+            aria-label={filtersCollapsed ? "Show filters" : "Hide filters"}
             icon={
               filtersCollapsed
                 ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
