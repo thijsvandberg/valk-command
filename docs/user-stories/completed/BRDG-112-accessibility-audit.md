@@ -1,6 +1,6 @@
 # BRDG-112: Accessibility Audit
 
-**Status:** Open
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
@@ -48,7 +48,7 @@ Many interactive elements use `div onClick` or `span onClick` instead of semanti
 - [x] Ensure all modals trap focus (tab does not escape modal)
 - [x] Consistent `focus-visible` ring across all interactive elements
 - [x] Add skip-to-content link in app layout
-- [ ] Test keyboard navigation through main flows (sprint board, ticket detail, chat)
+- [x] Test keyboard navigation through main flows (sprint board, ticket detail, chat)
 
 ## Impact
 
