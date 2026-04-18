@@ -7,6 +7,8 @@ interface SprintHealthBannerProps {
   doneTickets: StakeholderTicket[];
   inProgressTickets: StakeholderTicket[];
   todoTickets: StakeholderTicket[];
+  /** Render as an inline pill instead of a full-width banner */
+  compact?: boolean;
 }
 
 type HealthLevel = "at-risk" | "on-track" | "behind" | "in-progress";
@@ -39,7 +41,6 @@ export function computeSprintHealth(
   }
 
   // Rule 3: below 25% done and at or past the halfway point
-  // "50% or fewer working days remain" means remaining <= half of total sprint days
   const halfwayThreshold = totalWorkingDays !== null ? totalWorkingDays / 2 : 5;
   if (totalPoints > 0 && donePercent < 0.25 && days <= halfwayThreshold) {
     const pct = Math.round(donePercent * 100);
@@ -85,22 +86,22 @@ export function computeSprintHealthFromData(
 
 const levelStyles: Record<HealthLevel, { dot: string; text: string; border: string; bg: string }> = {
   "at-risk": {
-    dot: "bg-amber-400/70",
-    text: "text-amber-400/70",
-    border: "border-amber-400/20",
-    bg: "bg-amber-400/[0.04]",
+    dot: "bg-[var(--color-warning-400)]/70",
+    text: "text-[var(--color-warning-400)]/70",
+    border: "border-[var(--color-warning-400)]/20",
+    bg: "bg-[var(--color-warning-400)]/[0.04]",
   },
   "behind": {
-    dot: "bg-amber-400/50",
-    text: "text-amber-400/50",
-    border: "border-amber-400/15",
-    bg: "bg-amber-400/[0.03]",
+    dot: "bg-[var(--color-warning-400)]/50",
+    text: "text-[var(--color-warning-400)]/50",
+    border: "border-[var(--color-warning-400)]/15",
+    bg: "bg-[var(--color-warning-400)]/[0.03]",
   },
   "on-track": {
-    dot: "bg-emerald-400/60",
-    text: "text-emerald-400/60",
-    border: "border-emerald-400/20",
-    bg: "bg-emerald-400/[0.03]",
+    dot: "bg-[var(--color-secondary-400)]/60",
+    text: "text-[var(--color-secondary-400)]/60",
+    border: "border-[var(--color-secondary-400)]/20",
+    bg: "bg-[var(--color-secondary-400)]/[0.03]",
   },
   "in-progress": {
     dot: "bg-white/20",
@@ -115,12 +116,22 @@ export function SprintHealthBanner({
   doneTickets,
   inProgressTickets,
   todoTickets,
+  compact = false,
 }: SprintHealthBannerProps) {
   if (sprint.state !== "active") return null;
 
   const allTickets = [...doneTickets, ...inProgressTickets, ...todoTickets];
   const { level, message } = computeSprintHealthFromData(doneTickets, allTickets, sprint);
   const s = levelStyles[level];
+
+  if (compact) {
+    return (
+      <span className={`inline-flex items-center gap-1.5 rounded-full border ${s.border} ${s.bg} px-2.5 py-1`}>
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`} />
+        <span className={`text-xs ${s.text}`}>{message}</span>
+      </span>
+    );
+  }
 
   return (
     <div className={`flex items-center gap-2.5 rounded-lg border ${s.border} ${s.bg} px-3.5 py-2.5`}>

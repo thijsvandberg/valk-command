@@ -13,13 +13,39 @@ interface TicketGroupProps {
 
 function StatusDot({ status }: { status: StakeholderTicket["status"] }) {
   const colors: Record<StakeholderTicket["status"], string> = {
-    Completed: "bg-emerald-400/80",
+    Completed: "bg-[var(--color-secondary-400)]/80",
     "In Progress": "bg-[var(--color-brand-400)]/80",
-    "In Review": "bg-violet-400/80",
+    "In Review": "bg-[var(--color-warning-400)]/80",
     "To Do": "bg-white/20",
     Deprecated: "bg-white/10",
   };
   return <span className={`mt-[5px] inline-block h-1.5 w-1.5 shrink-0 rounded-full ${colors[status]}`} />;
+}
+
+// Deterministic color from the first character of the name string
+function avatarColor(name: string): string {
+  const colors = [
+    "bg-[var(--color-brand-600)]/50 text-[var(--color-brand-300)]",
+    "bg-[var(--color-secondary-700)]/50 text-[var(--color-secondary-300)]",
+    "bg-[var(--color-warning-700)]/50 text-[var(--color-warning-300)]",
+    "bg-violet-900/50 text-violet-300",
+    "bg-rose-900/50 text-rose-300",
+    "bg-sky-900/50 text-sky-300",
+  ];
+  const code = name.charCodeAt(0) + (name.charCodeAt(name.length - 1) || 0);
+  return colors[code % colors.length];
+}
+
+function AssigneeAvatar({ assignee }: { assignee: { name: string; initials: string } }) {
+  const colorClass = avatarColor(assignee.name);
+  return (
+    <span
+      title={assignee.name}
+      className={`shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold uppercase tracking-wide ${colorClass}`}
+    >
+      {assignee.initials}
+    </span>
+  );
 }
 
 function TypeBadge({ type }: { type: StakeholderTicket["type"] }) {
@@ -85,7 +111,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   </a>
                 )}
                 {t.jiraKey && carriedKeys?.has(t.jiraKey) && (
-                  <span className="shrink-0 rounded px-1 py-px text-caption font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-400/70">
+                  <span className="shrink-0 rounded px-1 py-px text-caption font-semibold uppercase tracking-wide bg-[var(--color-warning-400)]/15 text-[var(--color-warning-400)]/70">
                     carried
                   </span>
                 )}
@@ -95,7 +121,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   </span>
                 )}
                 {showAssignee && t.assignee && (
-                  <span className="shrink-0 text-xs text-white/30">{t.assignee.name}</span>
+                  <AssigneeAvatar assignee={t.assignee} />
                 )}
                 {t.storyPoints !== null && (
                   <span className="shrink-0 text-xs tabular-nums text-white/20">{t.storyPoints}pt</span>

@@ -22,17 +22,17 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
         </span>
       </div>
       <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-        {/* Done: emerald */}
+        {/* Done: secondary (teal) */}
         <div
-          className="absolute inset-y-0 left-0 bg-emerald-400/70 transition-[width] duration-700 ease-out"
+          className="absolute inset-y-0 left-0 bg-[var(--color-secondary-400)]/70 transition-[width] duration-700 ease-out"
           style={{ width: `${donePct}%` }}
         />
-        {/* In Review / Testing: amber */}
+        {/* In Review / Testing: warning (amber) */}
         <div
-          className="absolute inset-y-0 bg-amber-400/60 transition-[width,left] duration-700 ease-out"
+          className="absolute inset-y-0 bg-[var(--color-warning-400)]/60 transition-[width,left] duration-700 ease-out"
           style={{ left: `${donePct}%`, width: `${reviewPct}%` }}
         />
-        {/* In Progress: brand blue */}
+        {/* In Progress: brand (blue) */}
         <div
           className="absolute inset-y-0 bg-[var(--color-brand-400)]/50 transition-[width,left] duration-700 ease-out"
           style={{ left: `${donePct + reviewPct}%`, width: `${progressPct}%` }}
@@ -42,13 +42,13 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
         <div className="flex items-center gap-3 text-caption text-white/25">
           {completed > 0 && (
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/60" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-secondary-400)]/60" />
               {completed}pt done
             </span>
           )}
           {inReview > 0 && (
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400/50" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning-400)]/50" />
               {inReview}pt testing
             </span>
           )}

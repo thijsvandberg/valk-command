@@ -3,12 +3,13 @@
 import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
-import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History, X } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload, buildDeepDivePayload, buildMarkdownSummary, buildPlainTextSummary } from "@/lib/stakeholder-data";
 import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
 import { SprintOverviewCard } from "@/components/stakeholder/SprintOverviewCard";
+import { SprintHealthBanner, computeSprintHealthFromData } from "@/components/stakeholder/SprintHealthBanner";
 import { VelocitySparkline } from "@/components/stakeholder/VelocitySparkline";
 import { useVelocityData } from "@/hooks/useVelocityData";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -315,6 +316,9 @@ function StakeholderView() {
     "deep-dive": false,
   });
 
+  // AI analysis drawer
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+
   const availableTeams = useMemo<string[]>(() => {
     if (!sprints) return [];
     const prefixes = new Set<string>();
@@ -432,9 +436,8 @@ function StakeholderView() {
     [prevRawTickets],
   );
   const prevDoneTickets = prevAllTickets.filter((t) => t.status === "Completed");
-  const prevInProgressTickets = prevAllTickets.filter(
-    (t) => t.status === "In Progress" || t.status === "In Review",
-  );
+  const prevInReviewTickets = prevAllTickets.filter((t) => t.status === "In Review");
+  const prevInProgressTickets = prevAllTickets.filter((t) => t.status === "In Progress");
   const prevTodoTickets = prevAllTickets.filter((t) => t.status === "To Do");
   const prevDeprecatedTickets = prevAllTickets.filter((t) => t.status === "Deprecated");
 
@@ -451,9 +454,8 @@ function StakeholderView() {
   );
 
   const doneTickets = allTickets.filter((t) => t.status === "Completed");
-  const inProgressTickets = allTickets.filter(
-    (t) => t.status === "In Progress" || t.status === "In Review",
-  );
+  const inReviewTickets = allTickets.filter((t) => t.status === "In Review");
+  const inProgressTickets = allTickets.filter((t) => t.status === "In Progress");
   const todoTickets = allTickets.filter((t) => t.status === "To Do");
   const deprecatedTickets = allTickets.filter((t) => t.status === "Deprecated");
 
@@ -463,6 +465,13 @@ function StakeholderView() {
     [doneTickets],
   );
   const currentTodoCount = todoTickets.length;
+
+  // Sprint health for inline header badge (active sprints only)
+  const sprintHealth = useMemo(() => {
+    if (!stakeholderSprint || stakeholderSprint.state !== "active") return null;
+    const allActive = [...doneTickets, ...inReviewTickets, ...inProgressTickets, ...todoTickets];
+    return computeSprintHealthFromData(doneTickets, allActive, stakeholderSprint);
+  }, [stakeholderSprint, doneTickets, inReviewTickets, inProgressTickets, todoTickets]);
 
   // Persistent analysis hook
   const analysis = useStakeholderAnalysis(currentSprint?.id ?? null);
@@ -503,10 +512,12 @@ function StakeholderView() {
   function handleGenerate(type: AnalysisType) {
     if (!stakeholderSprint || !currentSprint) return;
     setDismissed((d) => ({ ...d, [type]: false }));
+    setAiDrawerOpen(true);
+    const allInProgress = [...inReviewTickets, ...inProgressTickets];
     const payload =
       type === "brief"
-        ? buildBriefingPayload(stakeholderSprint, doneTickets, inProgressTickets, todoTickets)
-        : buildDeepDivePayload(stakeholderSprint, doneTickets, inProgressTickets, todoTickets);
+        ? buildBriefingPayload(stakeholderSprint, doneTickets, allInProgress, todoTickets)
+        : buildDeepDivePayload(stakeholderSprint, doneTickets, allInProgress, todoTickets);
     analysis.generate(type, currentSprint.name, payload.sprintData, currentDonePoints, currentTodoCount);
   }
 
@@ -548,7 +559,14 @@ function StakeholderView() {
                   isRunning={briefLive.status === "submitting" || briefLive.status === "streaming"}
                   hasResult={!!(analysis.brief?.status === "completed")}
                   isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
-                  onClick={() => handleGenerate("brief")}
+                  onClick={() => {
+                    if (analysis.brief?.status === "completed" && !analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)) {
+                      setDismissed((d) => ({ ...d, brief: false }));
+                      setAiDrawerOpen(true);
+                    } else {
+                      handleGenerate("brief");
+                    }
+                  }}
                   disabled={anyRunning}
                 />
                 <AnalysisButton
@@ -557,7 +575,14 @@ function StakeholderView() {
                   isRunning={deepDiveLive.status === "submitting" || deepDiveLive.status === "streaming"}
                   hasResult={!!(analysis.deepDive?.status === "completed")}
                   isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
-                  onClick={() => handleGenerate("deep-dive")}
+                  onClick={() => {
+                    if (analysis.deepDive?.status === "completed" && !analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)) {
+                      setDismissed((d) => ({ ...d, "deep-dive": false }));
+                      setAiDrawerOpen(true);
+                    } else {
+                      handleGenerate("deep-dive");
+                    }
+                  }}
                   disabled={anyRunning}
                 />
                 <span className="h-4 w-px bg-white/[0.08] mx-0.5" aria-hidden />
@@ -576,7 +601,7 @@ function StakeholderView() {
               onToggleCompare={toggleCompareMode}
               sprint={stakeholderSprint}
               doneTickets={doneTickets}
-              inProgressTickets={inProgressTickets}
+              inProgressTickets={[...inReviewTickets, ...inProgressTickets]}
               todoTickets={todoTickets}
               aiNarrative={analysis.brief?.narrative ?? null}
               aiRisks={storedBriefRisks}
@@ -660,20 +685,44 @@ function StakeholderView() {
           <LoadingState label="No sprint selected" />
         ) : (
           <div className="mx-auto max-w-7xl space-y-10">
-            {/* Sprint heading + sparkline */}
+            {/* Sprint heading + health + goal + sparkline */}
             <div className="space-y-3">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/25">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/25">
                 Sprint overview
               </p>
               {!isCompareMode && (
-                <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
-                  {stakeholderSprint.name}
-                </h1>
+                <>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
+                      {stakeholderSprint.name}
+                    </h1>
+                    {sprintHealth && (
+                      <SprintHealthBanner
+                        sprint={stakeholderSprint}
+                        doneTickets={doneTickets}
+                        inProgressTickets={[...inReviewTickets, ...inProgressTickets]}
+                        todoTickets={todoTickets}
+                        compact
+                      />
+                    )}
+                    <VelocitySparkline
+                      data={velocityData ?? []}
+                      isLoading={isVelocityLoading}
+                    />
+                  </div>
+                  {stakeholderSprint.goal && (
+                    <p className="text-sm italic text-white/40 border-l-2 border-[var(--color-brand-400)]/25 pl-3">
+                      {stakeholderSprint.goal}
+                    </p>
+                  )}
+                </>
               )}
-              <VelocitySparkline
-                data={velocityData ?? []}
-                isLoading={isVelocityLoading}
-              />
+              {isCompareMode && (
+                <VelocitySparkline
+                  data={velocityData ?? []}
+                  isLoading={isVelocityLoading}
+                />
+              )}
             </div>
 
             {isCompareMode && prevStakeholderSprint ? (
@@ -689,6 +738,7 @@ function StakeholderView() {
                     <SprintOverviewCard
                       sprint={prevStakeholderSprint}
                       doneTickets={prevDoneTickets}
+                      inReviewTickets={prevInReviewTickets}
                       inProgressTickets={prevInProgressTickets}
                       todoTickets={prevTodoTickets}
                       deprecatedTickets={prevDeprecatedTickets}
@@ -714,6 +764,7 @@ function StakeholderView() {
                   <SprintOverviewCard
                     sprint={stakeholderSprint}
                     doneTickets={doneTickets}
+                    inReviewTickets={inReviewTickets}
                     inProgressTickets={inProgressTickets}
                     todoTickets={todoTickets}
                     deprecatedTickets={deprecatedTickets}
@@ -723,36 +774,6 @@ function StakeholderView() {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Brief analysis panel */}
-                {!dismissed.brief && (
-                  <AiInsightsPanel
-                    type="brief"
-                    live={briefLive}
-                    narrative={analysis.brief?.narrative ?? null}
-                    risks={storedBriefRisks}
-                    content={analysis.brief?.content ?? null}
-                    generatedAt={analysis.brief?.completedAt ?? null}
-                    isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
-                    onDismiss={() => setDismissed((d) => ({ ...d, brief: true }))}
-                    onRetry={() => handleGenerate("brief")}
-                  />
-                )}
-
-                {/* Deep Dive analysis panel */}
-                {!dismissed["deep-dive"] && (
-                  <AiInsightsPanel
-                    type="deep-dive"
-                    live={deepDiveLive}
-                    narrative={null}
-                    risks={[]}
-                    content={analysis.deepDive?.content ?? null}
-                    generatedAt={analysis.deepDive?.completedAt ?? null}
-                    isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
-                    onDismiss={() => setDismissed((d) => ({ ...d, "deep-dive": true }))}
-                    onRetry={() => handleGenerate("deep-dive")}
-                  />
-                )}
-
                 {/* Carry-over summary */}
                 {isCarryOverLoading && previousSprint && (
                   <p className="flex items-center gap-1.5 text-xs text-white/20">
@@ -761,17 +782,20 @@ function StakeholderView() {
                   </p>
                 )}
                 {!isCarryOverLoading && carriedKeys.size > 0 && previousSprint && (
-                  <p className="text-xs text-amber-400/60">
+                  <p className="text-xs text-[var(--color-warning-400)]/60">
                     {carriedKeys.size} ticket{carriedKeys.size === 1 ? "" : "s"} carried from {previousSprint.name}
                   </p>
                 )}
                 <SprintOverviewCard
                   sprint={stakeholderSprint}
                   doneTickets={doneTickets}
+                  inReviewTickets={inReviewTickets}
                   inProgressTickets={inProgressTickets}
                   todoTickets={todoTickets}
                   deprecatedTickets={deprecatedTickets}
                   carriedKeys={carriedKeys.size > 0 ? carriedKeys : undefined}
+                  showHealthBanner={false}
+                  showGoal={false}
                 />
               </div>
             )}
@@ -780,6 +804,73 @@ function StakeholderView() {
           </div>
         )}
       </div>
+
+      {/* AI analysis drawer — right-side panel */}
+      {aiDrawerOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => setAiDrawerOpen(false)}
+            aria-hidden
+          />
+          {/* Panel */}
+          <div
+            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col w-full max-w-[520px] border-l border-white/[0.07] bg-[var(--color-surface-elevated)] shadow-2xl shadow-black/60"
+            style={{ boxShadow: "-8px 0 32px rgba(0,0,0,0.5)" }}
+          >
+            {/* Drawer header */}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-white/30">
+                AI Analysis
+              </span>
+              <button
+                type="button"
+                onClick={() => setAiDrawerOpen(false)}
+                aria-label="Close AI analysis"
+                className="rounded p-1 text-white/25 cursor-pointer hover:bg-white/[0.05] hover:text-white/60 transition-colors duration-150"
+              >
+                <X size={14} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            {/* Drawer body */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+              {!dismissed.brief && (
+                <AiInsightsPanel
+                  type="brief"
+                  live={briefLive}
+                  narrative={analysis.brief?.narrative ?? null}
+                  risks={storedBriefRisks}
+                  content={analysis.brief?.content ?? null}
+                  generatedAt={analysis.brief?.completedAt ?? null}
+                  isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
+                  onDismiss={() => setDismissed((d) => ({ ...d, brief: true }))}
+                  onRetry={() => handleGenerate("brief")}
+                  defaultCollapsed={false}
+                />
+              )}
+              {!dismissed["deep-dive"] && (
+                <AiInsightsPanel
+                  type="deep-dive"
+                  live={deepDiveLive}
+                  narrative={null}
+                  risks={[]}
+                  content={analysis.deepDive?.content ?? null}
+                  generatedAt={analysis.deepDive?.completedAt ?? null}
+                  isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
+                  onDismiss={() => setDismissed((d) => ({ ...d, "deep-dive": true }))}
+                  onRetry={() => handleGenerate("deep-dive")}
+                  defaultCollapsed={false}
+                />
+              )}
+              {dismissed.brief && dismissed["deep-dive"] && (
+                <p className="text-xs text-white/25 italic">All analyses dismissed. Use Brief or Deep Dive buttons to regenerate.</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

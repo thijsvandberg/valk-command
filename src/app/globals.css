@@ -42,6 +42,18 @@
   --color-secondary-900: #073d2f;
   --color-secondary-950: #04261d;
 
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #f59e0b;
+  --color-warning-500: #d97706;
+  --color-warning-600: #b45309;
+  --color-warning-700: #92400e;
+  --color-warning-800: #78350f;
+  --color-warning-900: #451a03;
+  --color-warning-950: #27100a;
+
   --color-surface-base: #070b12;
   --color-surface-elevated: #0c1219;
   --color-surface-elevated-hover: #11171e; /* surface-elevated blended with white/[0.02] row hover */

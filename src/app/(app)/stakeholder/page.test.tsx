@@ -216,10 +216,11 @@ describe("StakeholderPage", () => {
     expect(screen.queryByText("internal note")).toBeNull();
   });
 
-  it("shows assignee name in the in-progress section", async () => {
+  it("shows assignee initials avatar in the in-progress section", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
-      expect(screen.getByText("Bob Jones")).toBeInTheDocument();
+      // Assignee is now shown as an initials avatar; check by title attribute
+      expect(screen.getByTitle("Bob Jones")).toBeInTheDocument();
     });
   });
 

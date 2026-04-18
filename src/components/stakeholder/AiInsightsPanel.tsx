@@ -17,6 +17,8 @@ export interface AiInsightsPanelProps {
   isStale: boolean;
   onDismiss: () => void;
   onRetry: () => void;
+  /** Override the initial collapsed state (defaults to true when a saved result exists) */
+  defaultCollapsed?: boolean;
 }
 
 function formatRelative(iso: string): string {
@@ -79,6 +81,7 @@ export function AiInsightsPanel({
   isStale,
   onDismiss,
   onRetry,
+  defaultCollapsed,
 }: AiInsightsPanelProps) {
   const isRunning = live.status === "submitting" || live.status === "streaming";
   const hasSavedResult = !!(type === "brief" ? narrative : content) && live.status === "idle";
@@ -86,8 +89,8 @@ export function AiInsightsPanel({
   const hasFailed = live.status === "failed";
   const isVisible = isRunning || hasSavedResult || hasLiveResult || hasFailed;
 
-  // Default collapsed when a completed result exists; expanded while generating or on failure
-  const [collapsed, setCollapsed] = useState<boolean>(hasSavedResult);
+  // Default collapsed when a completed result exists unless explicitly overridden
+  const [collapsed, setCollapsed] = useState<boolean>(defaultCollapsed ?? hasSavedResult);
 
   if (!isVisible) return null;
 

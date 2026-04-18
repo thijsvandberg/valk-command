@@ -15,6 +15,10 @@ interface SprintOverviewCardProps {
   todoTickets: StakeholderTicket[];
   deprecatedTickets: StakeholderTicket[];
   carriedKeys?: Set<string>;
+  /** Whether to render the SprintHealthBanner inside the card (default: true) */
+  showHealthBanner?: boolean;
+  /** Whether to render the sprint goal inside the card (default: true) */
+  showGoal?: boolean;
 }
 
 function formatDate(iso: string | null): string {
@@ -32,7 +36,7 @@ function SprintStateBadge({ state }: { state: string }) {
   }
   if (state === "closed") {
     return (
-      <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-emerald-400/60">
+      <span className="inline-flex items-center rounded-full bg-[var(--color-secondary-400)]/10 px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-[var(--color-secondary-400)]/60">
         History
       </span>
     );
@@ -62,9 +66,9 @@ function SectionHeader({
       badge: "bg-emerald-400/10 text-emerald-400/60",
     },
     amber: {
-      heading: "text-amber-400/70",
-      line: "bg-amber-400/10",
-      badge: "bg-amber-400/10 text-amber-400/60",
+      heading: "text-[var(--color-warning-400)]/70",
+      line: "bg-[var(--color-warning-400)]/10",
+      badge: "bg-[var(--color-warning-400)]/10 text-[var(--color-warning-400)]/60",
     },
     brand: {
       heading: "text-[var(--color-brand-400)]/70",
@@ -104,6 +108,8 @@ export function SprintOverviewCard({
   todoTickets,
   deprecatedTickets,
   carriedKeys,
+  showHealthBanner = true,
+  showGoal = true,
 }: SprintOverviewCardProps) {
   const isClosed = sprint.state === "closed";
   const isActive = sprint.state === "active";
@@ -186,20 +192,22 @@ export function SprintOverviewCard({
               : `${sprint.workingDaysRemaining} working day${sprint.workingDaysRemaining === 1 ? "" : "s"} remaining`}
           </span>
         )}
-        {sprint.goal && (
+        {showGoal && sprint.goal && (
           <div className="w-full border-l-2 border-[var(--color-brand-400)]/25 pl-3 py-1">
             <p className="text-sm italic text-white/40">{sprint.goal}</p>
           </div>
         )}
       </div>
 
-      {/* Health banner — only for active sprints */}
-      <SprintHealthBanner
-        sprint={sprint}
-        doneTickets={doneTickets}
-        inProgressTickets={[...inReviewTickets, ...inProgressTickets]}
-        todoTickets={todoTickets}
-      />
+      {/* Health banner — only for active sprints, opt-out when shown in page header */}
+      {showHealthBanner && (
+        <SprintHealthBanner
+          sprint={sprint}
+          doneTickets={doneTickets}
+          inProgressTickets={[...inReviewTickets, ...inProgressTickets]}
+          todoTickets={todoTickets}
+        />
+      )}
 
       {/* Progress: story points bar + ticket count summary */}
       {showProgress && (
