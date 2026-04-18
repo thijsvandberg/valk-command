@@ -3,11 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { Sprint } from "@/types/ticket";
 import { ChevronRight } from "lucide-react";
-
-function teamOf(name: string): string {
-  const idx = name.indexOf(":");
-  return idx > 0 ? name.slice(0, idx).trim() : "";
-}
+import { TEAMS, extractTeamPrefix } from "@/lib/sprint-utils";
 
 function sprintSecondary(s: Sprint): string {
   if (s.dateRange) return s.dateRange;
@@ -44,22 +40,18 @@ export function SprintSelector({
     };
   }, [onClose]);
 
-  // Derive unique teams from all sprints, sorted alphabetically
-  const teams = useMemo(() => {
-    const set = new Set<string>();
-    sprints.forEach((s) => {
-      const t = teamOf(s.name);
-      if (t) set.add(t);
-    });
-    return [...set].sort();
-  }, [sprints]);
+  // Only show team chips for teams that actually appear in the sprint list
+  const teams = useMemo(
+    () => TEAMS.filter((team) => sprints.some((s) => extractTeamPrefix(s.name) === team)),
+    [sprints],
+  );
 
   const activeFuture = sprints.filter((s) => s.state !== "closed");
   const closed = sprints.filter((s) => s.state === "closed");
 
   function applyFilters(list: Sprint[]) {
     let result = list;
-    if (teamFilter) result = result.filter((s) => teamOf(s.name) === teamFilter);
+    if (teamFilter) result = result.filter((s) => extractTeamPrefix(s.name) === teamFilter);
     if (search) result = result.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
     return result;
   }

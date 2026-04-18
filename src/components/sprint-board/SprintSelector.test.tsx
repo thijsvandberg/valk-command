@@ -87,4 +87,32 @@ describe("SprintSelector", () => {
     );
     expect(screen.getAllByText("Apr 1 - Apr 14").length).toBeGreaterThan(0);
   });
+
+  it("shows team filter chips only for known teams that appear in sprint names", () => {
+    const teamSprints: Sprint[] = [
+      makeSprint({ id: "a", name: "BO: Sprint 1", state: "active" }),
+      makeSprint({ id: "b", name: "BM: Sprint 1", state: "active" }),
+      makeSprint({ id: "c", name: "OTHER: Sprint 1", state: "active" }),
+    ];
+    render(
+      <SprintSelector sprints={teamSprints} onSelect={vi.fn()} onClose={vi.fn()} />,
+    );
+    // BO and BM are in TEAMS, OTHER is not
+    expect(screen.getByText("BO")).toBeTruthy();
+    expect(screen.getByText("BM")).toBeTruthy();
+    expect(screen.queryByText("OTHER")).toBeNull();
+  });
+
+  it("filters sprints by team when a team chip is clicked", () => {
+    const teamSprints: Sprint[] = [
+      makeSprint({ id: "a", name: "BO: Sprint 1", state: "active" }),
+      makeSprint({ id: "b", name: "BM: Sprint 1", state: "active" }),
+    ];
+    render(
+      <SprintSelector sprints={teamSprints} onSelect={vi.fn()} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByText("BO"));
+    expect(screen.getByText("BO: Sprint 1")).toBeTruthy();
+    expect(screen.queryByText("BM: Sprint 1")).toBeNull();
+  });
 });
