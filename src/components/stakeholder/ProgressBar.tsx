@@ -27,9 +27,9 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
           className="absolute inset-y-0 left-0 bg-[var(--color-secondary-400)]/70 transition-[width] duration-700 ease-out"
           style={{ width: `${donePct}%` }}
         />
-        {/* In Review / Testing: warning (amber) */}
+        {/* In Review / Testing: testing (violet) */}
         <div
-          className="absolute inset-y-0 bg-[var(--color-warning-400)]/60 transition-[width,left] duration-700 ease-out"
+          className="absolute inset-y-0 bg-[var(--color-testing-400)]/60 transition-[width,left] duration-700 ease-out"
           style={{ left: `${donePct}%`, width: `${reviewPct}%` }}
         />
         {/* In Progress: brand (blue) */}
@@ -48,7 +48,7 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
           )}
           {inReview > 0 && (
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning-400)]/50" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-testing-400)]/50" />
               {inReview}pt testing
             </span>
           )}

@@ -66,9 +66,9 @@ function SectionHeader({
       badge: "bg-emerald-400/10 text-emerald-400/60",
     },
     amber: {
-      heading: "text-[var(--color-warning-400)]/70",
-      line: "bg-[var(--color-warning-400)]/10",
-      badge: "bg-[var(--color-warning-400)]/10 text-[var(--color-warning-400)]/60",
+      heading: "text-[var(--color-testing-400)]/70",
+      line: "bg-[var(--color-testing-400)]/10",
+      badge: "bg-[var(--color-testing-400)]/10 text-[var(--color-testing-400)]/60",
     },
     brand: {
       heading: "text-[var(--color-brand-400)]/70",
@@ -161,11 +161,11 @@ export function SprintOverviewCard({
       : null;
 
   const visibleColumns = [showCompleted, showInReview, showInProgress, showTodo].filter(Boolean).length;
+  // Cap at 3 columns per row so each column has enough width for readable text
   const gridClass =
     visibleColumns <= 1 ? "" :
     visibleColumns === 2 ? "grid gap-10 sm:grid-cols-2" :
-    visibleColumns === 3 ? "grid gap-10 sm:grid-cols-2 lg:grid-cols-3" :
-    "grid gap-10 sm:grid-cols-2 lg:grid-cols-4";
+    "grid gap-10 sm:grid-cols-2 lg:grid-cols-3";
 
   const itemParts: string[] = [];
   if (doneTickets.length > 0) itemParts.push(`${doneTickets.length} done`);

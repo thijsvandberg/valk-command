@@ -15,7 +15,7 @@ function StatusDot({ status }: { status: StakeholderTicket["status"] }) {
   const colors: Record<StakeholderTicket["status"], string> = {
     Completed: "bg-[var(--color-secondary-400)]/80",
     "In Progress": "bg-[var(--color-brand-400)]/80",
-    "In Review": "bg-[var(--color-warning-400)]/80",
+    "In Review": "bg-[var(--color-testing-400)]/80",
     "To Do": "bg-white/20",
     Deprecated: "bg-white/10",
   };

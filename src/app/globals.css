@@ -54,6 +54,19 @@
   --color-warning-900: #451a03;
   --color-warning-950: #27100a;
 
+  /* Testing/TEST status — matches the violet used in Jira status badge */
+  --color-testing-50: #f5f3ff;
+  --color-testing-100: #ede9fe;
+  --color-testing-200: #ddd6fe;
+  --color-testing-300: #c4b5fd;
+  --color-testing-400: #9b7ee8;
+  --color-testing-500: #7c3aed;
+  --color-testing-600: #6d28d9;
+  --color-testing-700: #5b21b6;
+  --color-testing-800: #4c1d95;
+  --color-testing-900: #2e1065;
+  --color-testing-950: #1a0738;
+
   --color-surface-base: #070b12;
   --color-surface-elevated: #0c1219;
   --color-surface-elevated-hover: #11171e; /* surface-elevated blended with white/[0.02] row hover */
