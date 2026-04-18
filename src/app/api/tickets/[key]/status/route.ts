@@ -37,14 +37,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
+  let jiraError: string | undefined;
   try {
     await jiraClient.transitionIssue(key, status);
   } catch (err) {
-    logger.error("ticket-status", `Jira transition failed for ${key}:`, err);
-    return NextResponse.json(
-      { error: "Failed to transition issue in Jira" },
-      { status: 502 },
-    );
+    // Log but don't block — Bridge updates locally even if Jira's workflow rejects the transition
+    jiraError = err instanceof Error ? err.message : String(err);
+    logger.warn("ticket-status", `Jira transition failed for ${key} (updating locally anyway): ${jiraError}`);
   }
 
   await db.update(ticket).set({ status }).where(eq(ticket.jiraKey, key));
@@ -55,8 +54,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
   await logActivity({
     type: "metadata-update",
     scope: key,
-    summary: `Changed status to ${status}`,
+    summary: `Changed status to ${status}${jiraError ? " (Bridge only — Jira transition unavailable)" : ""}`,
   });
 
-  return NextResponse.json({ status });
+  return NextResponse.json({ status, ...(jiraError ? { jiraWarning: jiraError } : {}) });
 }

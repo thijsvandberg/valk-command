@@ -717,6 +717,7 @@ export class JiraClient {
       if (upper === "IN PROGRESS") return n.includes("PROGRESS");
       if (upper === "TEST") return n === "TEST" || n === "IN REVIEW" || n === "REVIEW";
       if (upper === "DONE") return n === "DONE" || n === "CLOSED" || n === "RESOLVED";
+      if (upper === "DEPRECATED") return n === "DEPRECATED" || n === "CANCELLED" || n === "CANCELED" || n === "WON'T DO" || n === "WONT DO" || n === "REJECTED" || n.includes("DEPRECAT") || n.includes("CANCEL");
       return n === upper;
     });
 

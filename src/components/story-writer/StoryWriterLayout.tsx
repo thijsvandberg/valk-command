@@ -23,7 +23,6 @@ import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { apiFetch, tickets } from "@/lib/api-client";
@@ -252,8 +251,12 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   }, [ticketKey, mutateTicket]);
 
   const handleJiraStatusChange = useCallback(async (status: import("@/types/ticket").JiraStatus) => {
-    await apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}/status`, { method: "PUT", body: JSON.stringify({ status }) });
-    mutateTicket();
+    mutateTicket((prev) => prev ? { ...prev, jiraStatus: status } : prev, { revalidate: false });
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}/status`, { method: "PUT", body: { status } });
+    } catch {
+      mutateTicket();
+    }
   }, [ticketKey, mutateTicket]);
 
   const handlePullFromJira = useCallback(async () => {
@@ -385,7 +388,6 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
         <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
           {/* Action bar — unchanged */}
           <ViewHeader
-            icon={ticketAsTicket ? <IssueTypePicker type={ticketAsTicket.type} size={15} onTypeChange={handleTypeChange} /> : undefined}
             className="shrink-0"
             actions={<>
               {(ticketSprintId || ticketAsTicket?.epic) && (
@@ -617,7 +619,9 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     readiness={localReadiness}
                     onJiraStatusChange={handleJiraStatusChange}
                     onReadinessChange={handleReadinessChange}
-                    size="sm"
+                    issueType={ticketData.type}
+                    onIssueTypeChange={handleTypeChange}
+                    title={writer.session?.localTitle ?? ticketData.title}
                   />
                   <ViewHeaderDivider />
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">

@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ExternalLink, PenLine, MessageCircleQuestion, Target, Pause, Minus } from "lucide-react";
-import type { JiraStatus, TicketReadiness } from "@/types/ticket";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList } from "lucide-react";
+import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
   JIRA_STATUS_ABBREVIATIONS,
   READINESS_CONFIG,
   READINESS_OPTIONS,
 } from "@/types/ticket";
+import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { getJiraUrl } from "@/lib/jira-url";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { formatTicketShare } from "@/lib/ticket-share";
 
 // ---------------------------------------------------------------------------
 // Readiness icon helper
@@ -18,15 +21,169 @@ import { getJiraUrl } from "@/lib/jira-url";
 function ReadinessIcon({ value, size = 12 }: { value: TicketReadiness; size?: number }) {
   const props = { style: { width: size, height: size }, strokeWidth: 1.75 };
   switch (value) {
-    case "drafting":             return <PenLine {...props} />;
+    case "drafting":             return <FilePen {...props} />;
     case "waiting_for_feedback": return <MessageCircleQuestion {...props} />;
-    case "ready_to_refine":      return <Target {...props} />;
-    case "on_hold":              return <Pause {...props} />;
+    case "ready_to_refine":      return <CheckCircle2 {...props} />;
+    case "on_hold":              return <Ban {...props} />;
   }
 }
 
 // ---------------------------------------------------------------------------
-// StatusDropdown — reusable popover for status changes
+// IssueTypeDropdown
+// ---------------------------------------------------------------------------
+
+const SELECTABLE_TYPES: IssueType[] = ["story", "bug", "task", "spike"];
+const TYPE_LABELS: Record<IssueType, string> = {
+  story: "Story", bug: "Bug", task: "Task", subtask: "Subtask", spike: "Spike", epic: "Epic",
+};
+
+interface IssueTypeDropdownProps {
+  currentValue: string;
+  onChange: (type: IssueType) => void;
+  onClose: () => void;
+}
+
+function IssueTypeDropdown({ currentValue, onChange, onClose }: IssueTypeDropdownProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full left-0 z-50 mt-1 min-w-[130px] rounded-lg border border-white/[0.07] py-1"
+      style={{
+        backgroundColor: "var(--color-surface-floating)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
+      }}
+    >
+      {SELECTABLE_TYPES.map((type) => {
+        const isActive = type === currentValue;
+        const color = ISSUE_TYPE_COLORS[type];
+        return (
+          <button
+            key={type}
+            type="button"
+            onClick={() => { onChange(type); onClose(); }}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
+          >
+            <IssueTypeIcon type={type} size={12} />
+            <span className={isActive ? "font-medium" : ""} style={{ color: isActive ? color : "rgba(255,255,255,0.5)" }}>
+              {TYPE_LABELS[type]}
+            </span>
+            {isActive && (
+              <span className="ml-auto h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// KeyDropdown — copy/open actions for the ticket key segment
+// ---------------------------------------------------------------------------
+
+interface KeyDropdownProps {
+  jiraUrl: string;
+  ticketKey: string;
+  title?: string;
+  onClose: () => void;
+}
+
+function KeyDropdown({ jiraUrl, ticketKey, title, onClose }: KeyDropdownProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState<"url" | "titled" | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [onClose]);
+
+  async function copyToClipboard(text: string, type: "url" | "titled") {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(type);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => onClose(), 1200);
+    } catch {
+      // Clipboard write requires secure context or user gesture
+    }
+  }
+
+  const itemClass =
+    "flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06] text-white/60";
+  const iconClass = "shrink-0 text-white/30";
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full left-0 z-50 mt-1 min-w-[188px] rounded-lg border border-white/[0.07] py-1"
+      style={{
+        backgroundColor: "var(--color-surface-floating)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
+      }}
+    >
+      <a
+        href={jiraUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onClose}
+        className={itemClass}
+      >
+        <ExternalLink size={12} strokeWidth={1.5} className={iconClass} />
+        Open in Jira
+      </a>
+      <button
+        type="button"
+        onClick={() => copyToClipboard(jiraUrl, "url")}
+        className={itemClass}
+      >
+        <Copy size={12} strokeWidth={1.5} className={iconClass} />
+        {copied === "url" ? "Copied!" : "Copy Jira URL"}
+      </button>
+      {title && (
+        <button
+          type="button"
+          onClick={() => copyToClipboard(formatTicketShare(title, ticketKey), "titled")}
+          className={itemClass}
+        >
+          <ClipboardList size={12} strokeWidth={1.5} className={iconClass} />
+          {copied === "titled" ? "Copied!" : "Copy with title"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// JiraStatusDropdown
 // ---------------------------------------------------------------------------
 
 interface JiraDropdownProps {
@@ -88,6 +245,10 @@ function JiraStatusDropdown({ currentValue, onChange, onClose }: JiraDropdownPro
   );
 }
 
+// ---------------------------------------------------------------------------
+// ReadinessDropdown
+// ---------------------------------------------------------------------------
+
 interface ReadinessDropdownProps {
   currentValue: TicketReadiness | null;
   onChange: (value: TicketReadiness | null) => void;
@@ -115,7 +276,7 @@ function ReadinessDropdown({ currentValue, onChange, onClose }: ReadinessDropdow
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 z-50 mt-1 min-w-[210px] rounded-lg border border-white/[0.07] py-1"
+      className="absolute top-full left-0 z-50 mt-1 min-w-[210px] rounded-lg border border-white/[0.07] py-1"
       style={{
         backgroundColor: "var(--color-surface-floating)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -155,8 +316,10 @@ export interface TicketStatusPillProps {
   readiness?: TicketReadiness | null;
   onJiraStatusChange?: (status: JiraStatus) => void;
   onReadinessChange?: (readiness: TicketReadiness | null) => void;
+  issueType?: string;
+  onIssueTypeChange?: (type: IssueType) => void;
+  title?: string;
   size?: "sm" | "md";
-  showExternalLink?: boolean;
 }
 
 export function TicketStatusPill({
@@ -165,55 +328,82 @@ export function TicketStatusPill({
   readiness,
   onJiraStatusChange,
   onReadinessChange,
+  issueType,
+  onIssueTypeChange,
+  title,
   size = "md",
-  showExternalLink = true,
 }: TicketStatusPillProps) {
-  const [copied, setCopied] = useState(false);
+  const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
+  const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
   const [jiraDropdownOpen, setJiraDropdownOpen] = useState(false);
   const [readinessDropdownOpen, setReadinessDropdownOpen] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jiraUrl = getJiraUrl(ticketKey);
-
-  useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(jiraUrl);
-      setCopied(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard write requires secure context or user gesture
-    }
-  }
 
   const jiraColors = JIRA_STATUS_COLORS[jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
   const iconSize = size === "sm" ? 10 : 12;
   const px = size === "sm" ? "px-1.5 py-[3px]" : "px-2 py-[3px]";
+  // Issue type is icon-only; shave 1px off the right to compensate for the divider + rounded-l-md visual effect
+  const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : "pl-2 pr-1.5 py-[3px]";
   const textSize = size === "sm" ? "text-[10px]" : "text-label";
 
   return (
-    <div className="group flex shrink-0 items-center gap-1">
-      {/* Wrapper keeping all three segments visually grouped */}
+    <div className="flex shrink-0 items-center gap-1">
       <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-white/[0.06] ring-1 ring-inset ring-white/[0.06]">
 
-        {/* Key segment */}
-        <button
-          type="button"
-          onClick={handleCopy}
-          title="Copy Jira URL"
-          className={`${px} font-mono ${textSize} font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] rounded-l-md flex items-center ${
-            copied
-              ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
-              : "text-white/50 hover:bg-white/[0.05] hover:text-white/75"
-          }`}
-        >
-          {ticketKey}
-        </button>
+        {/* Issue type segment */}
+        {issueType && (
+          <>
+            <div className="relative flex">
+              <button
+                type="button"
+                onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
+                title={onIssueTypeChange ? "Change issue type" : issueType}
+                disabled={!onIssueTypeChange}
+                className={`${issueTypePx} flex items-center justify-center rounded-l-md transition-colors duration-150 ${
+                  onIssueTypeChange
+                    ? "cursor-pointer hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    : "cursor-default"
+                }`}
+              >
+                <IssueTypeIcon type={issueType} size={iconSize} />
+              </button>
+              {issueTypeDropdownOpen && onIssueTypeChange && (
+                <IssueTypeDropdown
+                  currentValue={issueType}
+                  onChange={onIssueTypeChange}
+                  onClose={() => setIssueTypeDropdownOpen(false)}
+                />
+              )}
+            </div>
+            <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
+          </>
+        )}
+
+        {/* Key segment — regular click opens dropdown, cmd+click navigates to ticket */}
+        <div className="relative flex">
+          <a
+            href={`/tickets/${ticketKey}`}
+            onClick={(e) => {
+              if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                e.preventDefault();
+                setKeyDropdownOpen((o) => !o);
+              }
+            }}
+            className={`${px} font-mono ${textSize} font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] flex items-center gap-1 text-white/50 hover:bg-white/[0.05] hover:text-white/75 ${!issueType ? "rounded-l-md" : ""}`}
+          >
+            {ticketKey}
+          </a>
+          {keyDropdownOpen && (
+            <KeyDropdown
+              jiraUrl={jiraUrl}
+              ticketKey={ticketKey}
+              title={title}
+              onClose={() => setKeyDropdownOpen(false)}
+            />
+          )}
+        </div>
 
         {/* Divider */}
         <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
@@ -238,7 +428,7 @@ export function TicketStatusPill({
                 style={{ backgroundColor: jiraColors.text }}
               />
             )}
-            {jiraStatus}
+            {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
           </button>
           {jiraDropdownOpen && onJiraStatusChange && (
             <JiraStatusDropdown
@@ -249,7 +439,7 @@ export function TicketStatusPill({
           )}
         </div>
 
-        {/* Readiness segment — only shown when readiness is non-null or a callback is wired */}
+        {/* Readiness segment */}
         {(readinessCfg || onReadinessChange) && (
           <>
             <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
@@ -283,21 +473,6 @@ export function TicketStatusPill({
           </>
         )}
       </div>
-
-      {/* External link — slides in from behind on hover */}
-      {showExternalLink && (
-        <span className="overflow-hidden w-0 group-hover:w-[26px] transition-[width] duration-150 ease-out flex items-center">
-          <a
-            href={jiraUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open in Jira"
-            className="flex shrink-0 items-center pl-1.5 text-white/25 hover:text-white/60 transition-colors duration-100 focus-visible:outline-none"
-          >
-            <ExternalLink size={15} strokeWidth={1.5} />
-          </a>
-        </span>
-      )}
     </div>
   );
 }

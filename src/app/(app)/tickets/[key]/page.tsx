@@ -24,7 +24,6 @@ import {
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { IssueTypePicker } from "@/components/shared/IssueTypePicker";
 import { Avatar } from "@/components/shared/Avatar";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -210,8 +209,12 @@ export default function TicketDetailPage({
   }, [key, mutateTicket]);
 
   const handleJiraStatusChange = useCallback(async (status: import("@/types/ticket").JiraStatus) => {
-    await apiFetch(`/api/tickets/${key}/status`, { method: "PUT", body: { status } });
-    mutateTicket();
+    mutateTicket((prev) => prev ? { ...prev, jiraStatus: status } : prev, { revalidate: false });
+    try {
+      await apiFetch(`/api/tickets/${key}/status`, { method: "PUT", body: { status } });
+    } catch {
+      mutateTicket();
+    }
   }, [key, mutateTicket]);
 
   const showConflictWarning = ticket?.editState === "conflict";
@@ -328,7 +331,6 @@ export default function TicketDetailPage({
     <div className="flex h-full flex-col">
 
       <ViewHeader
-        icon={<IssueTypePicker type={ticket.type} size={15} onTypeChange={handleTypeChange} />}
         actions={
           <div className="flex shrink-0 items-center gap-2">
             {(ticketSprintId || ticket.epic) && (
@@ -471,6 +473,9 @@ export default function TicketDetailPage({
           readiness={ticket.readiness}
           onJiraStatusChange={handleJiraStatusChange}
           onReadinessChange={handleReadinessChange}
+          issueType={ticket.type}
+          onIssueTypeChange={handleTypeChange}
+          title={ticket.title}
         />
         <ViewHeaderDivider />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">
@@ -515,23 +520,36 @@ export default function TicketDetailPage({
 
           {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("history");
-                setShowConflictDiff(true);
-              }}
-              className="mt-3 flex w-full items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3 text-left cursor-pointer hover:bg-[#ea8744]/[0.09] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50 active:scale-[0.995]"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-            >
+            <div className="mt-3 flex w-full items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3">
               <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
                 <p className="mt-0.5 text-xs text-white/40">
                   Jira was updated since your local edit. Click to review and resolve.
                 </p>
               </div>
-            </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-white/60 hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30"
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                >
+                  Accept Jira version
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("history");
+                    setShowConflictDiff(true);
+                  }}
+                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-[#ea8744]/80 hover:bg-[#ea8744]/10 hover:text-[#ea8744] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50"
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                >
+                  Review diff
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Header - content tab only */}

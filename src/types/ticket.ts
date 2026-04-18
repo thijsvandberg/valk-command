@@ -9,10 +9,10 @@ export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED
 export type TicketReadiness = "drafting" | "waiting_for_feedback" | "ready_to_refine" | "on_hold";
 
 export const READINESS_CONFIG: Record<TicketReadiness, { label: string; color: string; bg: string }> = {
-  drafting:             { label: "Drafting",              color: "#4a9edd", bg: "rgba(74, 158, 221, 0.12)" },
-  waiting_for_feedback: { label: "Waiting for Feedback",  color: "#d97706", bg: "rgba(217, 119, 6, 0.12)" },
-  ready_to_refine:      { label: "Ready to Refine",       color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.12)" },
-  on_hold:              { label: "On Hold",               color: "#8b9ab1", bg: "rgba(139, 154, 177, 0.08)" },
+  drafting:             { label: "Drafting",              color: "#60a5fa", bg: "rgba(96, 165, 250, 0.12)" },
+  waiting_for_feedback: { label: "Waiting for Feedback",  color: "#e8a45a", bg: "rgba(232, 164, 90, 0.12)" },
+  ready_to_refine:      { label: "Ready to Refine",       color: "#86efac", bg: "rgba(134, 239, 172, 0.12)" },
+  on_hold:              { label: "On Hold",               color: "#9ca3af", bg: "rgba(156, 163, 175, 0.08)" },
 };
 
 export const READINESS_OPTIONS: { value: TicketReadiness | null; label: string }[] = [
