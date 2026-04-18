@@ -105,7 +105,7 @@ function SortableTicketRow({
       }}
     >
 
-      <td className="w-7 py-2 pr-1">
+      <td className="w-9 py-2 pl-1 pr-1">
         <label className="flex cursor-pointer items-center justify-center">
           <input
             type="checkbox"
@@ -348,7 +348,7 @@ function DroppableSprintColumn({
           <table className="w-full table-fixed border-collapse">
             <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
               <tr className="border-b border-border-subtle text-left">
-                <th className="w-7 py-2 pl-2 pr-1">
+                <th className="w-9 py-2 pl-1 pr-1">
                   <label className="flex cursor-pointer items-center justify-center">
                     <input type="checkbox" checked={allChecked} onChange={onToggleAll} className="sr-only" />
                     <span

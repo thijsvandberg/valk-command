@@ -152,6 +152,7 @@ export function EditorApp() {
           onChange={writer.onDraftChange}
           placeholder="Story description..."
           borderless
+          contentMaxWidth={pane.paneCount === 1}
           hideToolbar={!toolbarVisible}
           slotBeforeContent={
             <TitleInput

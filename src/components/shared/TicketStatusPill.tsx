@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
@@ -41,13 +42,15 @@ interface IssueTypeDropdownProps {
   currentValue: string;
   onChange: (type: IssueType) => void;
   onClose: () => void;
+  skipRef?: { current: HTMLElement | null };
 }
 
-function IssueTypeDropdown({ currentValue, onChange, onClose }: IssueTypeDropdownProps) {
+function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTypeDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
+      if (skipRef?.current?.contains(e.target as Node)) return;
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     function handleKeyDown(e: KeyboardEvent) {
@@ -103,15 +106,17 @@ interface KeyDropdownProps {
   ticketKey: string;
   title?: string;
   onClose: () => void;
+  skipRef?: { current: HTMLElement | null };
 }
 
-function KeyDropdown({ jiraUrl, ticketKey, title, onClose }: KeyDropdownProps) {
+function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState<"url" | "titled" | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
+      if (skipRef?.current?.contains(e.target as Node)) return;
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     function handleKeyDown(e: KeyboardEvent) {
@@ -190,15 +195,17 @@ interface JiraDropdownProps {
   currentValue: JiraStatus;
   onChange: (value: JiraStatus) => void;
   onClose: () => void;
+  skipRef?: { current: HTMLElement | null };
 }
 
 const JIRA_STATUS_ORDER: JiraStatus[] = ["TO DO", "IN PROGRESS", "TEST", "DONE", "DEPRECATED"];
 
-function JiraStatusDropdown({ currentValue, onChange, onClose }: JiraDropdownProps) {
+function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
+      if (skipRef?.current?.contains(e.target as Node)) return;
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     function handleKeyDown(e: KeyboardEvent) {
@@ -253,13 +260,15 @@ interface ReadinessDropdownProps {
   currentValue: TicketReadiness | null;
   onChange: (value: TicketReadiness | null) => void;
   onClose: () => void;
+  skipRef?: { current: HTMLElement | null };
 }
 
-function ReadinessDropdown({ currentValue, onChange, onClose }: ReadinessDropdownProps) {
+function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: ReadinessDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
+      if (skipRef?.current?.contains(e.target as Node)) return;
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     function handleKeyDown(e: KeyboardEvent) {
@@ -307,6 +316,44 @@ function ReadinessDropdown({ currentValue, onChange, onClose }: ReadinessDropdow
 }
 
 // ---------------------------------------------------------------------------
+// DropdownPortal — renders a dropdown at a fixed position relative to a trigger,
+// escaping any overflow:hidden/auto ancestor (e.g. table scroll containers).
+// Closes automatically on any scroll event so the position never goes stale.
+// ---------------------------------------------------------------------------
+
+function DropdownPortal({
+  triggerRef,
+  onClose,
+  children,
+}: {
+  triggerRef: { current: HTMLElement | null };
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({ top: rect.bottom + 4, left: rect.left });
+
+    const close = () => onClose();
+    window.addEventListener("scroll", close, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", close, { capture: true });
+  }, [triggerRef, onClose]);
+
+  if (!pos || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}>
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // TicketStatusPill
 // ---------------------------------------------------------------------------
 
@@ -319,7 +366,9 @@ export interface TicketStatusPillProps {
   issueType?: string;
   onIssueTypeChange?: (type: IssueType) => void;
   title?: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
+  // "list" strips the outer container and renders segments inline — for use in dense table rows.
+  variant?: "list";
 }
 
 export function TicketStatusPill({
@@ -332,22 +381,163 @@ export function TicketStatusPill({
   onIssueTypeChange,
   title,
   size = "md",
+  variant,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
   const [jiraDropdownOpen, setJiraDropdownOpen] = useState(false);
   const [readinessDropdownOpen, setReadinessDropdownOpen] = useState(false);
+
+  // Refs for portal positioning (used in list variant to escape overflow:hidden table containers)
+  const issueTypeBtnRef = useRef<HTMLButtonElement>(null);
+  const keyLinkRef = useRef<HTMLAnchorElement>(null);
+  const jiraStatusBtnRef = useRef<HTMLButtonElement>(null);
+  const readinessBtnRef = useRef<HTMLButtonElement>(null);
+
   const jiraUrl = getJiraUrl(ticketKey);
 
+  const isList = variant === "list";
   const jiraColors = JIRA_STATUS_COLORS[jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
-  const iconSize = size === "sm" ? 10 : 12;
-  const px = size === "sm" ? "px-1.5 py-[3px]" : "px-2 py-[3px]";
-  // Issue type is icon-only; shave 1px off the right to compensate for the divider + rounded-l-md visual effect
-  const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : "pl-2 pr-1.5 py-[3px]";
-  const textSize = size === "sm" ? "text-[10px]" : "text-label";
+  const iconSize = size === "sm" ? 10 : size === "lg" ? 14 : 12;
+  const px = size === "sm" ? "px-1.5 py-[3px]" : size === "lg" ? "px-2.5 py-1" : "px-2 py-[3px]";
+  const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : size === "lg" ? "pl-2.5 pr-2 py-1" : "pl-2 pr-1.5 py-[3px]";
+  const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-xs" : "text-label";
 
+  const showReadiness = readinessCfg || onReadinessChange;
+
+  // ---------------------------------------------------------------------------
+  // List variant — no outer container, segments float inline with gaps
+  // ---------------------------------------------------------------------------
+  if (isList) {
+    return (
+      <div className="flex shrink-0 items-center gap-1.5">
+
+        {/* Issue type */}
+        {issueType && (
+          <div className="relative flex shrink-0">
+            <button
+              ref={issueTypeBtnRef}
+              type="button"
+              onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
+              title={onIssueTypeChange ? "Change issue type" : issueType}
+              disabled={!onIssueTypeChange}
+              className={`flex items-center justify-center rounded p-0.5 transition-colors duration-150 ${
+                onIssueTypeChange ? "cursor-pointer hover:bg-white/[0.06]" : "cursor-default"
+              }`}
+            >
+              <IssueTypeIcon type={issueType} size={iconSize} />
+            </button>
+            {issueTypeDropdownOpen && onIssueTypeChange && (
+              <DropdownPortal triggerRef={issueTypeBtnRef} onClose={() => setIssueTypeDropdownOpen(false)}>
+                <IssueTypeDropdown
+                  currentValue={issueType}
+                  onChange={onIssueTypeChange}
+                  onClose={() => setIssueTypeDropdownOpen(false)}
+                  skipRef={issueTypeBtnRef}
+                />
+              </DropdownPortal>
+            )}
+          </div>
+        )}
+
+        {/* Key */}
+        <div className="relative flex shrink-0">
+          <a
+            ref={keyLinkRef}
+            href={`/tickets/${ticketKey}`}
+            onClick={(e) => {
+              if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                e.preventDefault();
+                setKeyDropdownOpen((o) => !o);
+              }
+            }}
+            className={`font-mono ${textSize} font-medium text-white/55 transition-colors duration-150 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+            style={{ minWidth: "9ch" }}
+          >
+            {ticketKey}
+          </a>
+          {keyDropdownOpen && (
+            <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
+              <KeyDropdown
+                jiraUrl={jiraUrl}
+                ticketKey={ticketKey}
+                title={title}
+                onClose={() => setKeyDropdownOpen(false)}
+                skipRef={keyLinkRef}
+              />
+            </DropdownPortal>
+          )}
+        </div>
+
+        {/* Jira status badge */}
+        <div className="relative flex shrink-0">
+          <button
+            ref={jiraStatusBtnRef}
+            type="button"
+            onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
+            title={onJiraStatusChange ? "Change status" : jiraStatus}
+            disabled={!onJiraStatusChange}
+            className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold transition-colors duration-150 ${
+              onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
+            }`}
+            style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
+          >
+            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
+            {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
+          </button>
+          {jiraDropdownOpen && onJiraStatusChange && (
+            <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
+              <JiraStatusDropdown
+                currentValue={jiraStatus}
+                onChange={onJiraStatusChange}
+                onClose={() => setJiraDropdownOpen(false)}
+                skipRef={jiraStatusBtnRef}
+              />
+            </DropdownPortal>
+          )}
+        </div>
+
+        {/* Readiness */}
+        {showReadiness && (
+          <div className="relative flex shrink-0">
+            <button
+              ref={readinessBtnRef}
+              type="button"
+              onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
+              title={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}
+              disabled={!onReadinessChange}
+              className={`flex items-center justify-center rounded transition-colors duration-150 ${
+                onReadinessChange ? "cursor-pointer hover:bg-white/[0.06]" : "cursor-default"
+              }`}
+              style={{ color: readinessCfg?.color ?? "rgba(255,255,255,0.2)", width: iconSize + 4, height: iconSize + 4 }}
+            >
+              {readiness ? (
+                <ReadinessIcon value={readiness} size={iconSize} />
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+              )}
+            </button>
+            {readinessDropdownOpen && onReadinessChange && (
+              <DropdownPortal triggerRef={readinessBtnRef} onClose={() => setReadinessDropdownOpen(false)}>
+                <ReadinessDropdown
+                  currentValue={readiness ?? null}
+                  onChange={onReadinessChange}
+                  onClose={() => setReadinessDropdownOpen(false)}
+                  skipRef={readinessBtnRef}
+                />
+              </DropdownPortal>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Default variant — unified pill container with segments and dividers
+  // ---------------------------------------------------------------------------
   return (
     <div className="flex shrink-0 items-center gap-1">
       <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-white/[0.06] ring-1 ring-inset ring-white/[0.06]">
@@ -357,6 +547,7 @@ export function TicketStatusPill({
           <>
             <div className="relative flex">
               <button
+                ref={issueTypeBtnRef}
                 type="button"
                 onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
                 title={onIssueTypeChange ? "Change issue type" : issueType}
@@ -374,6 +565,7 @@ export function TicketStatusPill({
                   currentValue={issueType}
                   onChange={onIssueTypeChange}
                   onClose={() => setIssueTypeDropdownOpen(false)}
+                  skipRef={issueTypeBtnRef}
                 />
               )}
             </div>
@@ -384,6 +576,7 @@ export function TicketStatusPill({
         {/* Key segment — regular click opens dropdown, cmd+click navigates to ticket */}
         <div className="relative flex">
           <a
+            ref={keyLinkRef}
             href={`/tickets/${ticketKey}`}
             onClick={(e) => {
               if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
@@ -392,6 +585,7 @@ export function TicketStatusPill({
               }
             }}
             className={`${px} font-mono ${textSize} font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] flex items-center gap-1 text-white/50 hover:bg-white/[0.05] hover:text-white/75 ${!issueType ? "rounded-l-md" : ""}`}
+            style={{ minWidth: "9ch" }}
           >
             {ticketKey}
           </a>
@@ -401,6 +595,7 @@ export function TicketStatusPill({
               ticketKey={ticketKey}
               title={title}
               onClose={() => setKeyDropdownOpen(false)}
+              skipRef={keyLinkRef}
             />
           )}
         </div>
@@ -411,6 +606,7 @@ export function TicketStatusPill({
         {/* Jira status segment */}
         <div className="relative flex">
           <button
+            ref={jiraStatusBtnRef}
             type="button"
             onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
             title={onJiraStatusChange ? "Change status" : jiraStatus}
@@ -419,7 +615,7 @@ export function TicketStatusPill({
               onJiraStatusChange
                 ? "cursor-pointer hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 : "cursor-default"
-            } ${(readinessCfg || onReadinessChange) ? "" : "rounded-r-md"}`}
+            } ${showReadiness ? "" : "rounded-r-md"}`}
             style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
           >
             {onJiraStatusChange && (
@@ -435,16 +631,18 @@ export function TicketStatusPill({
               currentValue={jiraStatus}
               onChange={onJiraStatusChange}
               onClose={() => setJiraDropdownOpen(false)}
+              skipRef={jiraStatusBtnRef}
             />
           )}
         </div>
 
         {/* Readiness segment */}
-        {(readinessCfg || onReadinessChange) && (
+        {showReadiness && (
           <>
             <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
             <div className="relative flex">
               <button
+                ref={readinessBtnRef}
                 type="button"
                 onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
                 title={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}
@@ -467,6 +665,7 @@ export function TicketStatusPill({
                   currentValue={readiness ?? null}
                   onChange={onReadinessChange}
                   onClose={() => setReadinessDropdownOpen(false)}
+                  skipRef={readinessBtnRef}
                 />
               )}
             </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as ticketService from "@/services/ticket-service";
 import type { UpsertLocalEditInput } from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
+import { cache } from "@/lib/cache";
 
 export async function GET(
   _request: Request,
@@ -38,6 +39,7 @@ export async function DELETE(
   const { key } = await params;
   const draftsOnly = new URL(request.url).searchParams.get("draftsOnly") === "true";
   await ticketService.deleteLocalEdits(key, { draftsOnly });
+  cache.invalidate(`/api/tickets/${key}`);
   return NextResponse.json({ success: true });
 }
 

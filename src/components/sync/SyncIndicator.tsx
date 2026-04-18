@@ -208,6 +208,9 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-xs text-white/60 font-[var(--font-body)] truncate">
                       {entryTypeLabel(entry.type)}
+                      {entry.sprintName && (
+                        <span className="text-white/30 ml-1">&middot; {entry.sprintName}</span>
+                      )}
                     </span>
                     <span className="text-caption text-white/20 shrink-0 font-[var(--font-body)]">
                       {timeAgo(entry.completedAt ?? entry.startedAt)}

@@ -476,6 +476,7 @@ export default function TicketDetailPage({
           issueType={ticket.type}
           onIssueTypeChange={handleTypeChange}
           title={ticket.title}
+          size="lg"
         />
         <ViewHeaderDivider />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">

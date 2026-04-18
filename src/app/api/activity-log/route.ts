@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { activityLog } from "@/db/schema";
-import { desc, eq, and, lt, gte, inArray, sql } from "drizzle-orm";
+import { activityLog, sprintNameCache } from "@/db/schema";
+import { desc, eq, and, lt, gte, inArray } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { ActivityLogType } from "@/types/ticket";
 import { computeStats } from "./compute-stats";
@@ -38,13 +38,28 @@ export async function GET(request: Request) {
     conditions.push(eq(activityLog.status, statusParam as "running" | "success" | "failed" | "cancelled"));
   }
 
-  const rows = await db
-    .select()
+  const rawRows = await db
+    .select({
+      id: activityLog.id,
+      type: activityLog.type,
+      scope: activityLog.scope,
+      status: activityLog.status,
+      summary: activityLog.summary,
+      errorDetail: activityLog.errorDetail,
+      durationMs: activityLog.durationMs,
+      startedAt: activityLog.startedAt,
+      completedAt: activityLog.completedAt,
+      acknowledged: activityLog.acknowledged,
+      sprintName: sprintNameCache.displayName,
+    })
     .from(activityLog)
+    .leftJoin(sprintNameCache, eq(activityLog.scope, sprintNameCache.sprintId))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(activityLog.startedAt))
     .limit(limit)
     .offset(offset);
+
+  const rows = rawRows.map((r) => ({ ...r, sprintName: r.sprintName ?? null }));
 
   const includeStats = searchParams.get("include") === "stats";
   if (!includeStats) {

@@ -202,6 +202,7 @@ export interface ActivityLogEntry {
   startedAt: string;
   completedAt: string | null;
   acknowledged: boolean;
+  sprintName: string | null;
 }
 
 export interface ActivityLogDayStats {

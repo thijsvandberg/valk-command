@@ -622,6 +622,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     issueType={ticketData.type}
                     onIssueTypeChange={handleTypeChange}
                     title={writer.session?.localTitle ?? ticketData.title}
+                    size="lg"
                   />
                   <ViewHeaderDivider />
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">

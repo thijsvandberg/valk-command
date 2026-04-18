@@ -45,6 +45,8 @@ interface RichEditorProps {
   slotBeforeContent?: React.ReactNode;
   /** Hides the formatting toolbar entirely */
   hideToolbar?: boolean;
+  /** Constrains the scroll content to max-w-4xl, centered — matches draft preview and ticket single view */
+  contentMaxWidth?: boolean;
 }
 
 // Exported for testing only. Normalizes markdown delimiter edge cases before
@@ -121,6 +123,7 @@ export function RichEditor({
   fullWidthToolbar = false,
   slotBeforeContent,
   hideToolbar = false,
+  contentMaxWidth = false,
 }: RichEditorProps) {
   const [mode, setMode] = useState<EditorMode>(getInitialMode);
   const suppressRef = useRef(false);
@@ -267,29 +270,31 @@ export function RichEditor({
       {!hideToolbar && (isPortaled ? createPortal(toolbarEl, portalTarget!) : toolbarEl)}
 
       <div className={borderless ? "flex-1 overflow-y-auto" : ""}>
-        {slotBeforeContent}
-        {mode === "rich" ? (
-          <EditorContent
-            editor={editor}
-            className={`rich-editor-wrapper ${borderless ? "rich-editor-wrapper--borderless" : ""} ${fullWidthToolbar ? "rich-editor-wrapper--no-x-pad" : ""}`}
-          />
-        ) : (
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={handleMarkdownChange}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                onSave?.();
-              }
-            }}
-            placeholder={placeholder}
-            className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none ${borderless ? "min-h-full resize-none" : "resize-y"}`}
-            style={borderless ? undefined : { minHeight: `${minHeight}px` }}
-            spellCheck={false}
-          />
-        )}
+        <div className={contentMaxWidth ? "mx-auto w-full max-w-4xl" : ""}>
+          {slotBeforeContent}
+          {mode === "rich" ? (
+            <EditorContent
+              editor={editor}
+              className={`rich-editor-wrapper ${borderless ? "rich-editor-wrapper--borderless" : ""} ${fullWidthToolbar ? "rich-editor-wrapper--no-x-pad" : ""}`}
+            />
+          ) : (
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={handleMarkdownChange}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  onSave?.();
+                }
+              }}
+              placeholder={placeholder}
+              className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-sm text-white/90 placeholder:text-white/25 focus:outline-none ${borderless ? "min-h-full resize-none" : "resize-y"}`}
+              style={borderless ? undefined : { minHeight: `${minHeight}px` }}
+              spellCheck={false}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { POStatus, Sprint, Ticket } from "@/types/ticket";
+import type { POStatus, TicketReadiness, Sprint, Ticket } from "@/types/ticket";
 import { mutate as globalMutate } from "swr";
 import { apiFetch, tickets as ticketsApi, workspaceTasks } from "@/lib/api-client";
 
@@ -38,11 +38,12 @@ export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) 
 
 export async function saveTicketMetadata(
   jiraKey: string,
-  updates: { poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null },
+  updates: { readiness?: TicketReadiness | null; poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null },
 ): Promise<boolean> {
   // Optimistically update SWR cache for ticket lists and detail
   const updateTicket = (ticket: Ticket): Ticket => {
     const patched = { ...ticket };
+    if (updates.readiness !== undefined) patched.readiness = updates.readiness;
     if (updates.poStatus !== undefined) patched.poStatus = updates.poStatus;
     if (updates.poNotes !== undefined) patched.notes = updates.poNotes;
     if (updates.qualityScore !== undefined) patched.qualityScore = updates.qualityScore;
@@ -58,7 +59,13 @@ export async function saveTicketMetadata(
   // Optimistically update ticket detail cache
   globalMutate(
     `/api/tickets/${encodeURIComponent(jiraKey)}`,
-    (current: Record<string, unknown> | undefined) => current ? { ...current, ...updates.poStatus !== undefined ? { poStatus: updates.poStatus } : {}, ...updates.poNotes !== undefined ? { notes: updates.poNotes } : {}, ...updates.qualityScore !== undefined ? { qualityScore: updates.qualityScore } : {} } : current,
+    (current: Record<string, unknown> | undefined) => current ? {
+      ...current,
+      ...(updates.readiness !== undefined ? { readiness: updates.readiness } : {}),
+      ...(updates.poStatus !== undefined ? { poStatus: updates.poStatus } : {}),
+      ...(updates.poNotes !== undefined ? { notes: updates.poNotes } : {}),
+      ...(updates.qualityScore !== undefined ? { qualityScore: updates.qualityScore } : {}),
+    } : current,
     { revalidate: false },
   );
 
