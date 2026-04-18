@@ -5,9 +5,13 @@ import type { Ticket, Sprint, POStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { SidePanel } from "./SidePanel";
-import { CalendarRange, RefreshCw, X, Columns2, GripVertical, ChevronDown, Search } from "lucide-react";
+import { GroupStatBar } from "./GroupStatBar";
+import type { StatCriterion } from "./GroupStatBar";
+import { SprintSelector } from "./SprintSelector";
+import { CalendarRange, RefreshCw, X, Columns2, GripVertical, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
 import { jira } from "@/lib/api-client";
@@ -142,7 +146,6 @@ function DroppableSprintColumn({
   columnId,
   sprintId,
   tickets: allTickets,
-  searchQuery,
   checkedKeys,
   selectedKey,
   syncing,
@@ -158,7 +161,6 @@ function DroppableSprintColumn({
   columnId: "left" | "right";
   sprintId: string;
   tickets: Ticket[];
-  searchQuery: string;
   checkedKeys: Set<string>;
   selectedKey: string | null;
   syncing: boolean;
@@ -172,22 +174,44 @@ function DroppableSprintColumn({
   onChangeSprint: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCriterion, setActiveCriterion] = useState<StatCriterion | null>(null);
 
-  const tickets = useMemo(() => {
-    if (!searchQuery.trim()) return allTickets;
-    const q = searchQuery.toLowerCase();
-    return allTickets.filter(
-      (t) => t.key.toLowerCase().includes(q) || t.title.toLowerCase().includes(q),
-    );
-  }, [allTickets, searchQuery]);
+  const currentSprint = sprints.find((s) => s.id === sprintId);
 
-  const todoCount = allTickets.filter((t) => t.jiraStatus === "TO DO").length;
-  const inProgressCount = allTickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
-  const testCount = allTickets.filter((t) => t.jiraStatus === "TEST").length;
-  const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
-  const totalPoints = allTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+  const filteredTickets = useMemo(() => {
+    let result = allTickets;
+
+    if (activeCriterion) {
+      result = result.filter((t) => {
+        if (activeCriterion === "todo") return t.jiraStatus === "TO DO";
+        if (activeCriterion === "in-progress") return t.jiraStatus === "IN PROGRESS";
+        if (activeCriterion === "test") return t.jiraStatus === "TEST";
+        if (activeCriterion === "done") return t.jiraStatus === "DONE";
+        if (activeCriterion === "unpointed") return !t.storyPoints;
+        return true;
+      });
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.key.toLowerCase().includes(q) ||
+          t.title.toLowerCase().includes(q) ||
+          (t.assignee?.name?.toLowerCase().includes(q) ?? false),
+      );
+    }
+
+    return result;
+  }, [allTickets, activeCriterion, searchQuery]);
+
   const checkedInColumn = allTickets.filter((t) => checkedKeys.has(t.key));
+  const totalPoints = allTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
   const selectedPoints = checkedInColumn.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+
+  const isFiltered = activeCriterion !== null || searchQuery.trim() !== "";
 
   return (
     <div
@@ -197,37 +221,39 @@ function DroppableSprintColumn({
       }`}
       style={{ transition: "background-color 0.15s ease" }}
     >
-      {/* Column header */}
-      <div className="relative flex items-center gap-3 border-b border-border-default bg-[var(--color-surface-elevated)]/40 px-4 py-3">
+      {/* Column header - fully opaque bg so rows don't bleed through when scrolling */}
+      <div className="relative z-10 flex flex-col gap-2 border-b border-border-default bg-[var(--color-surface-elevated)] px-4 py-3">
         <div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_left,rgba(46,145,73,0.06)_0%,transparent_70%)]" />
 
-        <div className="relative flex items-center gap-2 shrink-0">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--color-brand-500)]/15 ring-1 ring-[var(--color-brand-500)]/20">
-            <CalendarRange size={12} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+        <div className="relative flex items-center gap-3">
+          {/* Sprint selector trigger */}
+          <div className="relative flex shrink-0 items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--color-brand-500)]/15 ring-1 ring-[var(--color-brand-500)]/20">
+              <CalendarRange size={12} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSelectorOpen((o) => !o)}
+                className="flex items-center gap-1 cursor-pointer py-0.5 text-sm font-semibold tracking-tight text-white/85 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <span className="max-w-40 truncate">{currentSprint?.name ?? sprintId}</span>
+                <ChevronDown size={12} strokeWidth={2} className="shrink-0 text-white/35" />
+              </button>
+              {selectorOpen && (
+                <SprintSelector
+                  sprints={sprints}
+                  onSelect={(id) => {
+                    onChangeSprint(id);
+                    setSelectorOpen(false);
+                  }}
+                  onClose={() => setSelectorOpen(false)}
+                />
+              )}
+            </div>
           </div>
-          <div className="relative flex items-center gap-0.5">
-            <select
-              value={sprintId}
-              onChange={(e) => onChangeSprint(e.target.value)}
-              className="cursor-pointer appearance-none border-0 bg-transparent py-0.5 pr-5 text-sm font-semibold tracking-tight text-white/85 focus:outline-none hover:text-white"
-            >
-              {sprints.map((s) => (
-                <option key={s.id} value={s.id} className="bg-[var(--color-surface-base)] text-white/80">
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={12} strokeWidth={2} className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-white/35" />
-          </div>
-        </div>
 
-        <div className="relative flex flex-1 items-center gap-2 min-w-0">
-          <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
-          <span className="shrink-0 text-xs text-white/30">
-            {searchQuery && tickets.length !== allTickets.length
-              ? `${tickets.length} / ${allTickets.length}`
-              : allTickets.length} items
-          </span>
+          {/* Points summary */}
           {totalPoints > 0 && (
             <span className="shrink-0 text-xs">
               {checkedInColumn.length > 0 ? (
@@ -240,87 +266,127 @@ function DroppableSprintColumn({
               )}
             </span>
           )}
-          <div className="flex shrink-0 items-center gap-1 text-xs">
-            <span className="status-count-badge status-count-todo">{todoCount}</span>
-            <span className="status-count-badge status-count-progress">{inProgressCount}</span>
-            {testCount > 0 && (
-              <span className="status-count-badge status-count-test">{testCount}</span>
-            )}
-            <span className="status-count-badge status-count-done">{doneCount}</span>
+
+          <div className="ml-auto shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              icon={<RefreshCw size={13} strokeWidth={1.5} className={syncing ? "animate-spin" : ""} />}
+              onClick={onRefresh}
+              disabled={syncing}
+              title="Refresh from Jira"
+              aria-label="Refresh from Jira"
+            />
           </div>
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          icon={<RefreshCw size={13} strokeWidth={1.5} className={syncing ? "animate-spin" : ""} />}
-          onClick={onRefresh}
-          disabled={syncing}
-          title="Refresh from Jira"
-          aria-label="Refresh from Jira"
-          className="shrink-0"
-        />
+        {/* Stat bar + search */}
+        <div className="relative flex items-center gap-2">
+          <GroupStatBar
+            tickets={allTickets}
+            activeCriterion={activeCriterion}
+            onFilterChange={setActiveCriterion}
+          />
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-white/25" strokeWidth={1.5} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="h-6 w-32 rounded border border-border-default bg-white/[0.03] py-0.5 pl-6 pr-2 text-xs text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/25 cursor-pointer hover:text-white/50"
+                >
+                  <X className="h-2.5 w-2.5" strokeWidth={1.5} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full table-fixed border-collapse">
-          <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-            <tr className="border-b border-border-subtle text-left">
-              <th className="w-6 py-2 pl-2 pr-0" />
-              <th className="w-7 py-2 pr-1">
-                <label className="flex cursor-pointer items-center justify-center">
-                  <input type="checkbox" checked={allChecked} onChange={onToggleAll} className="sr-only" />
-                  <span
-                    className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-                      allChecked
-                        ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                        : someChecked
-                        ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
-                        : "border-white/[0.12] bg-white/[0.02]"
-                    }`}
-                  >
-                    {allChecked && (
-                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                        <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {someChecked && !allChecked && (
-                      <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
-                    )}
-                  </span>
-                </label>
-              </th>
-              <th className="w-6 py-2 pr-1" />
-              <th className="w-24 py-2 pr-2 text-xs font-medium text-white/25">Key</th>
-              <th className="py-2 pr-3 text-xs font-medium text-white/25">Title</th>
-              <th className="w-28 py-2 pr-2 text-xs font-medium text-white/25">Status</th>
-              <th className="w-8 py-2 pr-2 text-center text-xs font-medium text-white/25">Pts</th>
-              <th className="w-8 py-2 pr-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {tickets.map((ticket) => (
-              <DraggableTicketRow
-                key={ticket.key}
-                ticket={ticket}
-                columnId={columnId}
-                isChecked={checkedKeys.has(ticket.key)}
-                isSelected={selectedKey === ticket.key}
-                onToggleCheck={onToggleCheck}
-                onSelect={onSelect}
-              />
-            ))}
-            {tickets.length === 0 && (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-xs text-white/20">
-                  {isOver ? "Drop here to move" : "No tickets"}
-                </td>
+        {allTickets.length === 0 ? (
+          <EmptyState
+            icon={<Sheet className="h-5 w-5 text-white/15" strokeWidth={1} />}
+            title="No tickets in this sprint"
+            description="Select a different sprint or add tickets in Jira"
+            className="py-16"
+          />
+        ) : (
+          <table className="w-full table-fixed border-collapse">
+            <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
+              <tr className="border-b border-border-subtle text-left">
+                <th className="w-6 py-2 pl-2 pr-0" />
+                <th className="w-7 py-2 pr-1">
+                  <label className="flex cursor-pointer items-center justify-center">
+                    <input type="checkbox" checked={allChecked} onChange={onToggleAll} className="sr-only" />
+                    <span
+                      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
+                        allChecked
+                          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
+                          : someChecked
+                          ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
+                          : "border-white/[0.12] bg-white/[0.02]"
+                      }`}
+                    >
+                      {allChecked && (
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                      {someChecked && !allChecked && (
+                        <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
+                      )}
+                    </span>
+                  </label>
+                </th>
+                <th className="w-6 py-2 pr-1" />
+                <th className="w-24 py-2 pr-2 text-xs font-medium text-white/25">Key</th>
+                <th className="py-2 pr-3 text-xs font-medium text-white/25">Title</th>
+                <th className="w-28 py-2 pr-2 text-xs font-medium text-white/25">Status</th>
+                <th className="w-8 py-2 pr-2 text-center text-xs font-medium text-white/25">Pts</th>
+                <th className="w-8 py-2 pr-3" />
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredTickets.map((ticket) => (
+                <DraggableTicketRow
+                  key={ticket.key}
+                  ticket={ticket}
+                  columnId={columnId}
+                  isChecked={checkedKeys.has(ticket.key)}
+                  isSelected={selectedKey === ticket.key}
+                  onToggleCheck={onToggleCheck}
+                  onSelect={onSelect}
+                />
+              ))}
+              {filteredTickets.length === 0 && isFiltered && (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-xs text-white/20">
+                    No matching tickets
+                  </td>
+                </tr>
+              )}
+              {/* Drop-here hint when dragging over an empty filtered list */}
+              {isOver && filteredTickets.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
+                    Drop here to move
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
@@ -333,11 +399,13 @@ export function MultiSprintView({
   initialRight,
   sprints,
   onClose,
+  onSprintChange,
 }: {
   initialLeft: string;
   initialRight: string;
   sprints: Sprint[];
   onClose: () => void;
+  onSprintChange?: (side: "left" | "right", sprintId: string) => void;
 }) {
   const [leftSprint, setLeftSprint] = useState(initialLeft);
   const [rightSprint, setRightSprint] = useState(initialRight);
@@ -358,7 +426,6 @@ export function MultiSprintView({
     [rightOverride, rightSprint, rightApiTickets],
   );
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [leftSyncing, setLeftSyncing] = useState(false);
@@ -382,7 +449,7 @@ export function MultiSprintView({
   }, []);
 
   const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+    async (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveDragId(null);
       if (!over) return;
@@ -408,6 +475,10 @@ export function MultiSprintView({
       const newSource = sourceTickets.filter((t) => !keysToMove.includes(t.key));
       const newTarget = [...targetTickets, ...ticketsToMove];
 
+      // Optimistic update
+      const prevLeftOverride = leftOverride;
+      const prevRightOverride = rightOverride;
+
       if (sourceColumnId === "left") {
         setLeftOverride({ sprintId: leftSprint, tickets: newSource });
         setRightOverride({ sprintId: rightSprint, tickets: newTarget });
@@ -422,14 +493,24 @@ export function MultiSprintView({
         return next;
       });
 
-      const targetName =
-        targetColumnId === "left"
-          ? (sprints.find((s) => s.id === leftSprint)?.name ?? "left sprint")
-          : (sprints.find((s) => s.id === rightSprint)?.name ?? "right sprint");
+      const targetSprintId = targetColumnId === "left" ? leftSprint : rightSprint;
+      const targetName = sprints.find((s) => s.id === targetSprintId)?.name ?? "target sprint";
 
-      showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);
+      try {
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
+        showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);
+        // Revalidate both columns after successful move
+        await Promise.all([mutateLeft(), mutateRight()]);
+        setLeftOverride(null);
+        setRightOverride(null);
+      } catch {
+        // Revert optimistic update
+        setLeftOverride(prevLeftOverride);
+        setRightOverride(prevRightOverride);
+        showToast("Failed to move tickets. Changes reverted.");
+      }
     },
-    [checkedKeys, leftTickets, rightTickets, leftSprint, rightSprint, sprints, showToast],
+    [checkedKeys, leftTickets, rightTickets, leftSprint, rightSprint, sprints, showToast, leftOverride, rightOverride, mutateLeft, mutateRight],
   );
 
   const selectedTicket = useMemo(
@@ -517,26 +598,7 @@ export function MultiSprintView({
       <div className="relative flex h-full flex-col">
         <ViewHeader
           icon={<Columns2 size={15} strokeWidth={1.5} className="text-white/30" />}
-          actions={<>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/25" strokeWidth={1.5} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tickets..."
-                className="h-7 w-44 rounded-md border border-border-default bg-white/[0.03] py-1 pl-7 pr-3 text-xs text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white/25 cursor-pointer hover:text-white/50"
-                >
-                  <X className="h-3 w-3" strokeWidth={1.5} />
-                </button>
-              )}
-            </div>
+          actions={
             <Button
               variant="ghost"
               size="md"
@@ -545,7 +607,7 @@ export function MultiSprintView({
               onClick={onClose}
               title="Close compare view"
             />
-          </>}
+          }
         >
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
           <ViewHeaderDivider />
@@ -570,7 +632,6 @@ export function MultiSprintView({
               columnId="left"
               sprintId={leftSprint}
               tickets={leftTickets}
-              searchQuery={searchQuery}
               checkedKeys={checkedKeys}
               selectedKey={selectedKey}
               syncing={leftSyncing}
@@ -585,6 +646,7 @@ export function MultiSprintView({
                 setLeftSprint(id);
                 setLeftOverride(null);
                 setSelectedKey(null);
+                onSprintChange?.("left", id);
               }}
             />
             <div className="w-px shrink-0 bg-white/[0.06]" />
@@ -592,7 +654,6 @@ export function MultiSprintView({
               columnId="right"
               sprintId={rightSprint}
               tickets={rightTickets}
-              searchQuery={searchQuery}
               checkedKeys={checkedKeys}
               selectedKey={selectedKey}
               syncing={rightSyncing}
@@ -607,6 +668,7 @@ export function MultiSprintView({
                 setRightSprint(id);
                 setRightOverride(null);
                 setSelectedKey(null);
+                onSprintChange?.("right", id);
               }}
             />
           </div>

@@ -9,7 +9,6 @@ import { TicketTable } from "@/components/sprint-board/TicketTable";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
-import { MultiSprintView } from "@/components/sprint-board/MultiSprintView";
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLauncherModal";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
@@ -178,7 +177,6 @@ export default function SprintBoard() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [barsCollapsed, setBarsCollapsed] = useLocalStorage("sprint-bars-collapsed", false);
   const [analyticsVisible, setAnalyticsVisible] = useLocalStorage("sprint-analytics-visible", false);
-  const [compareMode, setCompareMode] = useState(false);
   const [showStoryWriterLauncher, setShowStoryWriterLauncher] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -723,12 +721,6 @@ export default function SprintBoard() {
       .catch(() => { const fb = sprints.find((s) => s.state === "active") ?? sprints[0]; if (fb) setSlotSprints([fb.id]); });
   }, [sprints]);
 
-  if (compareMode) {
-    const leftSprint = slotSprints[activeSlot] ?? slotSprints[0] ?? "";
-    const rightSprint = slotSprints.find((_, i) => i !== activeSlot) ?? slotSprints[1] ?? "";
-    return <MultiSprintView initialLeft={leftSprint} initialRight={rightSprint} sprints={sprints} onClose={() => setCompareMode(false)} />;
-  }
-
   const sortChange = (fld: typeof f.sortField, d: typeof f.sortDir) => { f.setSortField(fld); f.setSortDir(d); };
 
   // Compute active drag ticket for the DragOverlay
@@ -795,7 +787,12 @@ export default function SprintBoard() {
                     {!isAllView && !f.activeView && (
                       <button
                         type="button"
-                        onClick={() => { setCompareMode(true); setHeaderMenuOpen(false); }}
+                        onClick={() => {
+                          const leftSprint = slotSprints[activeSlot] ?? slotSprints[0] ?? "";
+                          const rightSprint = slotSprints.find((_, i) => i !== activeSlot) ?? slotSprints[1] ?? "";
+                          router.push(`/sprint-board/compare?left=${encodeURIComponent(leftSprint)}&right=${encodeURIComponent(rightSprint)}`);
+                          setHeaderMenuOpen(false);
+                        }}
                         className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
                       >
                         <Columns2 size={13} strokeWidth={1.5} className="shrink-0" />
