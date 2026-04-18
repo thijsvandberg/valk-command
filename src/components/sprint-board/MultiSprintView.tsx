@@ -24,15 +24,34 @@ import {
   type DragEndEvent,
   type DragStartEvent,
   type DragOverEvent,
+  type CollisionDetection,
   useDroppable,
+  pointerWithin,
+  closestCenter,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  verticalListSortingStrategy,
   useSortable,
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+// Column containers only activate via pointer-within; tickets use closestCenter.
+// This mirrors the sprint board's boardCollisionDetection to avoid the large column
+// droppable rect stealing collisions from individual ticket sortable items.
+const compareCollisionDetection: CollisionDetection = (args) => {
+  const columnContainers = args.droppableContainers.filter(
+    (c) => c.id === "left" || c.id === "right",
+  );
+  if (columnContainers.length > 0) {
+    const pointerHits = pointerWithin({ ...args, droppableContainers: columnContainers });
+    if (pointerHits.length > 0) return pointerHits;
+  }
+  const ticketContainers = args.droppableContainers.filter(
+    (c) => c.id !== "left" && c.id !== "right",
+  );
+  return closestCenter({ ...args, droppableContainers: ticketContainers });
+};
 
 // --- Sortable ticket row ---
 
@@ -70,7 +89,9 @@ function SortableTicketRow({
   return (
     <tr
       ref={setNodeRef}
-      className={`group border-b border-border-subtle ${
+      {...attributes}
+      {...listeners}
+      className={`group cursor-grab active:cursor-grabbing border-b border-border-subtle ${
         isDragging
           ? "opacity-40"
           : isSelected
@@ -86,12 +107,8 @@ function SortableTicketRow({
       }}
     >
       <td className="w-6 py-2 pl-2 pr-0">
-        <div
-          {...listeners}
-          {...attributes}
-          className="flex cursor-grab items-center justify-center text-white/0 group-hover:text-white/20 hover:!text-white/40 active:cursor-grabbing"
-          style={{ transition: "color 0.15s ease" }}
-        >
+        {/* Visual grip indicator only — drag is activated by the whole row */}
+        <div className="flex items-center justify-center text-white/0 group-hover:text-white/20">
           <GripVertical size={14} strokeWidth={1.5} />
         </div>
       </td>
@@ -371,7 +388,7 @@ function DroppableSprintColumn({
                 <th className="w-8 py-2 pr-3" />
               </tr>
             </thead>
-            <SortableContext items={filteredTickets.map((t) => t.key)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={filteredTickets.map((t) => t.key)} strategy={() => null}>
             <tbody>
               {filteredTickets.map((ticket) => {
                 let insertLine: "above" | "below" | undefined;
@@ -682,7 +699,7 @@ export function MultiSprintView({
     .reduce((s, t) => s + (t.storyPoints ?? 0), 0);
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={compareCollisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
       <div className="relative flex h-full flex-col">
         <ViewHeader
           icon={<Columns2 size={15} strokeWidth={1.5} className="text-white/30" />}
