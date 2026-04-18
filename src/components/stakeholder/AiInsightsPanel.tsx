@@ -50,7 +50,7 @@ function renderDeepDiveContent(content: string, inDrawer = false) {
     const text = buffer.join("\n").trim();
     if (text) {
       elements.push(
-        <p key={key++} className={bodyClass} style={inDrawer ? { fontSize: "0.9375rem" } : undefined}>
+        <p key={key++} className={bodyClass} style={inDrawer ? { fontSize: "1rem" } : undefined}>
           {text}
         </p>,
       );
@@ -71,7 +71,7 @@ function renderDeepDiveContent(content: string, inDrawer = false) {
               ? `font-semibold text-white/85 ${level === "##" ? "mt-6 mb-2" : "mt-4 mb-1"}`
               : `font-semibold text-white/80 ${level === "##" ? "text-sm mt-3" : "text-xs mt-2"}`
           }
-          style={inDrawer ? { fontSize: level === "##" ? "1rem" : "0.9375rem" } : undefined}
+          style={inDrawer ? { fontSize: level === "##" ? "1.0625rem" : "1rem" } : undefined}
         >
           {text}
         </p>,
@@ -175,7 +175,7 @@ export function AiInsightsPanel({
 
         {!isRunning && type === "brief" && displayNarrative && (
           <div className="space-y-3">
-            <p className="leading-[1.75] text-white/70" style={{ fontSize: "0.9375rem" }}>
+            <p className="leading-[1.75] text-white/70" style={{ fontSize: "1rem" }}>
               {displayNarrative}
             </p>
             {displayRisks.length > 0 && (
@@ -183,7 +183,7 @@ export function AiInsightsPanel({
                 {displayRisks.map((risk, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <AlertTriangle size={13} strokeWidth={1.5} className="mt-[3px] shrink-0 text-amber-400/60" />
-                    <p className="text-amber-400/60" style={{ fontSize: "0.9375rem" }}>{risk}</p>
+                    <p className="text-amber-400/60" style={{ fontSize: "1rem" }}>{risk}</p>
                   </div>
                 ))}
               </div>
