@@ -789,22 +789,12 @@ function StakeholderView() {
               </p>
               {!isCompareMode && (
                 <>
-                  {/* Title row: name + sparkline */}
-                  <div className="flex items-start justify-between gap-6">
-                    <h1 className="text-3xl font-semibold tracking-tight text-white/90 leading-none sm:text-4xl">
+                  {/* Title row: name + health + sparkline — natural flow, no justify-between */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <h1 className="text-3xl font-semibold tracking-tight text-white/90 leading-none">
                       {stakeholderSprint.name}
                     </h1>
-                    <div className="shrink-0 pt-1">
-                      <VelocitySparkline
-                        data={velocityData ?? []}
-                        isLoading={isVelocityLoading}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Health badge row */}
-                  {sprintHealth && (
-                    <div>
+                    {sprintHealth && (
                       <SprintHealthBanner
                         sprint={stakeholderSprint}
                         doneTickets={doneTickets}
@@ -812,12 +802,16 @@ function StakeholderView() {
                         todoTickets={todoTickets}
                         compact
                       />
-                    </div>
-                  )}
+                    )}
+                    <VelocitySparkline
+                      data={velocityData ?? []}
+                      isLoading={isVelocityLoading}
+                    />
+                  </div>
 
                   {/* Sprint goal */}
                   {stakeholderSprint.goal && (
-                    <p className="text-sm italic text-white/40 border-l-2 border-[var(--color-brand-400)]/25 pl-3">
+                    <p className="max-w-2xl text-sm italic text-white/45 border-l-2 border-[var(--color-brand-400)]/25 pl-3">
                       {stakeholderSprint.goal}
                     </p>
                   )}
