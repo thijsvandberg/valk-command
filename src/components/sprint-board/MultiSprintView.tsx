@@ -11,7 +11,7 @@ import { SidePanel } from "./SidePanel";
 import { GroupStatBar } from "./GroupStatBar";
 import type { StatCriterion } from "./GroupStatBar";
 import { SprintSelector } from "./SprintSelector";
-import { CalendarRange, RefreshCw, X, Columns2, GripVertical, ChevronDown, Search, Sheet } from "lucide-react";
+import { CalendarRange, RefreshCw, X, Columns2, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
 import { jira } from "@/lib/api-client";
@@ -36,21 +36,19 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Column containers only activate via pointer-within; tickets use closestCenter.
-// This mirrors the sprint board's boardCollisionDetection to avoid the large column
-// droppable rect stealing collisions from individual ticket sortable items.
+// Prefer the most specific droppable (ticket row) over the large column container.
+// Ticket rows are checked first with pointerWithin; if the pointer is between rows or
+// over an empty column, we fall back to the column container.
 const compareCollisionDetection: CollisionDetection = (args) => {
-  const columnContainers = args.droppableContainers.filter(
-    (c) => c.id === "left" || c.id === "right",
-  );
-  if (columnContainers.length > 0) {
-    const pointerHits = pointerWithin({ ...args, droppableContainers: columnContainers });
-    if (pointerHits.length > 0) return pointerHits;
-  }
   const ticketContainers = args.droppableContainers.filter(
     (c) => c.id !== "left" && c.id !== "right",
   );
-  return closestCenter({ ...args, droppableContainers: ticketContainers });
+  const ticketHits = pointerWithin({ ...args, droppableContainers: ticketContainers });
+  if (ticketHits.length > 0) return ticketHits;
+  const columnContainers = args.droppableContainers.filter(
+    (c) => c.id === "left" || c.id === "right",
+  );
+  return pointerWithin({ ...args, droppableContainers: columnContainers });
 };
 
 // --- Sortable ticket row ---
@@ -106,12 +104,6 @@ function SortableTicketRow({
         ...(insertLineShadow ? { boxShadow: insertLineShadow } : {}),
       }}
     >
-      <td className="w-6 py-2 pl-2 pr-0">
-        {/* Visual grip indicator only — drag is activated by the whole row */}
-        <div className="flex items-center justify-center text-white/0 group-hover:text-white/20">
-          <GripVertical size={14} strokeWidth={1.5} />
-        </div>
-      </td>
 
       <td className="w-7 py-2 pr-1">
         <label className="flex cursor-pointer items-center justify-center">
@@ -356,8 +348,7 @@ function DroppableSprintColumn({
           <table className="w-full table-fixed border-collapse">
             <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
               <tr className="border-b border-border-subtle text-left">
-                <th className="w-6 py-2 pl-2 pr-0" />
-                <th className="w-7 py-2 pr-1">
+                <th className="w-7 py-2 pl-2 pr-1">
                   <label className="flex cursor-pointer items-center justify-center">
                     <input type="checkbox" checked={allChecked} onChange={onToggleAll} className="sr-only" />
                     <span
@@ -410,7 +401,7 @@ function DroppableSprintColumn({
               })}
               {filteredTickets.length === 0 && isFiltered && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-xs text-white/20">
+                  <td colSpan={7} className="py-12 text-center text-xs text-white/20">
                     No matching tickets
                   </td>
                 </tr>
@@ -418,7 +409,7 @@ function DroppableSprintColumn({
               {/* Drop-here hint when dragging over an empty filtered list */}
               {isOver && filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
+                  <td colSpan={7} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
                     Drop here to move
                   </td>
                 </tr>
