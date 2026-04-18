@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketLocalEdit, storyVersion } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, asc, isNull, sql } from "drizzle-orm";
 import type { Ticket, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
@@ -60,7 +60,13 @@ export async function GET(request: Request) {
         : db.select({ jiraKey: ticket.jiraKey }).from(ticket);
 
       const [rows, allLocalEdits, allVersions] = await Promise.all([
-        sprintId ? mainQuery.where(eq(ticket.sprintName, sprintId)) : mainQuery,
+        sprintId
+          ? mainQuery.where(eq(ticket.sprintName, sprintId)).orderBy(
+              // Null ranks go last; ranked tickets are shown in Jira order
+              sql`CASE WHEN ${ticket.jiraRank} IS NULL THEN 1 ELSE 0 END`,
+              asc(ticket.jiraRank),
+            )
+          : mainQuery,
         db.select({
           id: ticketLocalEdit.id,
           ticketKey: ticketLocalEdit.ticketKey,

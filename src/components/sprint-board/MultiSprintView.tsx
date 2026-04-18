@@ -599,7 +599,8 @@ export function MultiSprintView({
       try {
         await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
         if (targetOverKey) {
-          await jira.rank({ issueKeys: keysToMove, rankBeforeKey: targetOverKey, sprintId: targetSprintId });
+          // Rank is best-effort — don't let a rank failure revert a successful sprint move
+          jira.rank({ issueKeys: keysToMove, rankBeforeKey: targetOverKey, sprintId: targetSprintId }).catch(() => {});
         }
         showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);
         // Update SWR caches with the optimistic state; skip refetch to avoid racing Jira.
