@@ -536,11 +536,13 @@ export function MultiSprintView({
 
         try {
           await jira.rank({ issueKeys: [draggedKey], rankBeforeKey, rankAfterKey });
+          // Update SWR cache with the reordered list without triggering a refetch.
+          // An immediate refetch would race against Jira's processing and return the old order.
           if (sourceColumnId === "left") {
-            await mutateLeft();
+            await mutateLeft(reordered, { revalidate: false });
             setLeftOverride(null);
           } else {
-            await mutateRight();
+            await mutateRight(reordered, { revalidate: false });
             setRightOverride(null);
           }
         } catch {
@@ -600,7 +602,14 @@ export function MultiSprintView({
           await jira.rank({ issueKeys: keysToMove, rankBeforeKey: targetOverKey, sprintId: targetSprintId });
         }
         showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);
-        await Promise.all([mutateLeft(), mutateRight()]);
+        // Update SWR caches with the optimistic state; skip refetch to avoid racing Jira.
+        if (sourceColumnId === "left") {
+          await mutateLeft(newSource, { revalidate: false });
+          await mutateRight(newTarget, { revalidate: false });
+        } else {
+          await mutateRight(newSource, { revalidate: false });
+          await mutateLeft(newTarget, { revalidate: false });
+        }
         setLeftOverride(null);
         setRightOverride(null);
       } catch {
