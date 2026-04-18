@@ -290,6 +290,44 @@ function OverflowMenu({
   );
 }
 
+function GeneratePrompt({
+  type,
+  disabled,
+  onGenerate,
+}: {
+  type: AnalysisType;
+  disabled: boolean;
+  onGenerate: () => void;
+}) {
+  const label = type === "brief" ? "Sprint Brief" : "Deep Dive";
+  const description =
+    type === "brief"
+      ? "A concise narrative summarising sprint progress, key deliverables, and risks."
+      : "A detailed breakdown of all work in this sprint, grouped by theme.";
+  const Icon = type === "brief" ? Sparkles : BookOpen;
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/50 shrink-0" />
+        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/50">
+          AI {label}
+        </span>
+      </div>
+      <p className="text-xs text-white/30 leading-relaxed">{description}</p>
+      <button
+        type="button"
+        onClick={onGenerate}
+        disabled={disabled}
+        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs bg-white/[0.05] text-white/50 cursor-pointer hover:bg-white/[0.08] hover:text-white/70 transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      >
+        <Icon size={11} strokeWidth={1.5} />
+        Generate {label}
+      </button>
+    </div>
+  );
+}
+
 function StakeholderView() {
   const { data: sprints } = useJiraSprints();
   const searchParams = useSearchParams();
@@ -480,11 +518,18 @@ function StakeholderView() {
     if (!currentSprint || isSyncing) return;
     setIsSyncing(true);
     try {
-      await apiFetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" });
-      await globalMutate(ticketKey);
-      if (selectedTeamPrefix) {
-        await globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
-      }
+      // Sync sprint metadata (goal, dates, state) and tickets in parallel
+      await Promise.all([
+        apiFetch("/api/jira/sync-sprints", { method: "POST" }),
+        apiFetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" }),
+      ]);
+      await Promise.all([
+        globalMutate(ticketKey),
+        globalMutate("/api/jira/sprints"),
+        selectedTeamPrefix
+          ? globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`)
+          : Promise.resolve(),
+      ]);
       lastUpdatedRef.current = new Date();
       setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
     } finally {
@@ -509,10 +554,10 @@ function StakeholderView() {
     }
   }
 
-  function handleGenerate(type: AnalysisType) {
+  // Runs the analysis — does not open the drawer (caller decides)
+  function triggerGenerate(type: AnalysisType) {
     if (!stakeholderSprint || !currentSprint) return;
     setDismissed((d) => ({ ...d, [type]: false }));
-    setAiDrawerOpen(true);
     const allInProgress = [...inReviewTickets, ...inProgressTickets];
     const payload =
       type === "brief"
@@ -560,12 +605,8 @@ function StakeholderView() {
                   hasResult={!!(analysis.brief?.status === "completed")}
                   isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
                   onClick={() => {
-                    if (analysis.brief?.status === "completed" && !analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)) {
-                      setDismissed((d) => ({ ...d, brief: false }));
-                      setAiDrawerOpen(true);
-                    } else {
-                      handleGenerate("brief");
-                    }
+                    setDismissed((d) => ({ ...d, brief: false }));
+                    setAiDrawerOpen(true);
                   }}
                   disabled={anyRunning}
                 />
@@ -576,12 +617,8 @@ function StakeholderView() {
                   hasResult={!!(analysis.deepDive?.status === "completed")}
                   isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
                   onClick={() => {
-                    if (analysis.deepDive?.status === "completed" && !analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)) {
-                      setDismissed((d) => ({ ...d, "deep-dive": false }));
-                      setAiDrawerOpen(true);
-                    } else {
-                      handleGenerate("deep-dive");
-                    }
+                    setDismissed((d) => ({ ...d, "deep-dive": false }));
+                    setAiDrawerOpen(true);
                   }}
                   disabled={anyRunning}
                 />
@@ -836,37 +873,47 @@ function StakeholderView() {
 
             {/* Drawer body */}
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-              {!dismissed.brief && (
-                <AiInsightsPanel
-                  type="brief"
-                  live={briefLive}
-                  narrative={analysis.brief?.narrative ?? null}
-                  risks={storedBriefRisks}
-                  content={analysis.brief?.content ?? null}
-                  generatedAt={analysis.brief?.completedAt ?? null}
-                  isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
-                  onDismiss={() => setDismissed((d) => ({ ...d, brief: true }))}
-                  onRetry={() => handleGenerate("brief")}
-                  defaultCollapsed={false}
-                />
-              )}
-              {!dismissed["deep-dive"] && (
-                <AiInsightsPanel
-                  type="deep-dive"
-                  live={deepDiveLive}
-                  narrative={null}
-                  risks={[]}
-                  content={analysis.deepDive?.content ?? null}
-                  generatedAt={analysis.deepDive?.completedAt ?? null}
-                  isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
-                  onDismiss={() => setDismissed((d) => ({ ...d, "deep-dive": true }))}
-                  onRetry={() => handleGenerate("deep-dive")}
-                  defaultCollapsed={false}
-                />
-              )}
-              {dismissed.brief && dismissed["deep-dive"] && (
-                <p className="text-xs text-white/25 italic">All analyses dismissed. Use Brief or Deep Dive buttons to regenerate.</p>
-              )}
+              {/* Brief panel or generate prompt */}
+              {!dismissed.brief && (() => {
+                const briefVisible = briefLive.status !== "idle" || !!(analysis.brief?.narrative || analysis.brief?.content);
+                return briefVisible ? (
+                  <AiInsightsPanel
+                    type="brief"
+                    live={briefLive}
+                    narrative={analysis.brief?.narrative ?? null}
+                    risks={storedBriefRisks}
+                    content={analysis.brief?.content ?? null}
+                    generatedAt={analysis.brief?.completedAt ?? null}
+                    isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
+                    onDismiss={() => setDismissed((d) => ({ ...d, brief: true }))}
+                    onRetry={() => triggerGenerate("brief")}
+                    defaultCollapsed={false}
+                  />
+                ) : (
+                  <GeneratePrompt type="brief" disabled={anyRunning} onGenerate={() => triggerGenerate("brief")} />
+                );
+              })()}
+
+              {/* Deep Dive panel or generate prompt */}
+              {!dismissed["deep-dive"] && (() => {
+                const deepDiveVisible = deepDiveLive.status !== "idle" || !!analysis.deepDive?.content;
+                return deepDiveVisible ? (
+                  <AiInsightsPanel
+                    type="deep-dive"
+                    live={deepDiveLive}
+                    narrative={null}
+                    risks={[]}
+                    content={analysis.deepDive?.content ?? null}
+                    generatedAt={analysis.deepDive?.completedAt ?? null}
+                    isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}
+                    onDismiss={() => setDismissed((d) => ({ ...d, "deep-dive": true }))}
+                    onRetry={() => triggerGenerate("deep-dive")}
+                    defaultCollapsed={false}
+                  />
+                ) : (
+                  <GeneratePrompt type="deep-dive" disabled={anyRunning} onGenerate={() => triggerGenerate("deep-dive")} />
+                );
+              })()}
             </div>
           </div>
         </>
