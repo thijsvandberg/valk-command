@@ -23,6 +23,7 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
   useDroppable,
 } from "@dnd-kit/core";
 import {
@@ -42,6 +43,7 @@ function SortableTicketRow({
   isSelected,
   onToggleCheck,
   onSelect,
+  insertLine,
 }: {
   ticket: Ticket;
   columnId: "left" | "right";
@@ -49,6 +51,7 @@ function SortableTicketRow({
   isSelected: boolean;
   onToggleCheck: (key: string) => void;
   onSelect: (key: string | null) => void;
+  insertLine?: "above" | "below";
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.key,
@@ -56,6 +59,13 @@ function SortableTicketRow({
   });
 
   const statusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
+
+  const insertLineShadow =
+    insertLine === "above"
+      ? "inset 0 2px 0 var(--color-brand-500)"
+      : insertLine === "below"
+      ? "inset 0 -2px 0 var(--color-brand-500)"
+      : undefined;
 
   return (
     <tr
@@ -69,7 +79,11 @@ function SortableTicketRow({
           ? "bg-[var(--color-brand-500)]/[0.03]"
           : "hover:bg-white/[0.02]"
       }`}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        ...(insertLineShadow ? { boxShadow: insertLineShadow } : {}),
+      }}
     >
       <td className="w-6 py-2 pl-2 pr-0">
         <div
@@ -163,6 +177,8 @@ function DroppableSprintColumn({
   someChecked,
   sprints,
   onChangeSprint,
+  activeDragId,
+  dragOverId,
 }: {
   columnId: "left" | "right";
   sprintId: string;
@@ -178,6 +194,8 @@ function DroppableSprintColumn({
   someChecked: boolean;
   sprints: Sprint[];
   onChangeSprint: (id: string) => void;
+  activeDragId: string | null;
+  dragOverId: string | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -218,6 +236,10 @@ function DroppableSprintColumn({
   const selectedPoints = checkedInColumn.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
 
   const isFiltered = activeCriterion !== null || searchQuery.trim() !== "";
+
+  // Insertion line indices (based on allTickets for stable cross-filter positioning)
+  const activeInsertIdx = activeDragId ? allTickets.findIndex((t) => t.key === activeDragId) : -1;
+  const overInsertIdx = dragOverId ? allTickets.findIndex((t) => t.key === dragOverId) : -1;
 
   return (
     <div
@@ -351,17 +373,24 @@ function DroppableSprintColumn({
             </thead>
             <SortableContext items={filteredTickets.map((t) => t.key)} strategy={verticalListSortingStrategy}>
             <tbody>
-              {filteredTickets.map((ticket) => (
-                <SortableTicketRow
-                  key={ticket.key}
-                  ticket={ticket}
-                  columnId={columnId}
-                  isChecked={checkedKeys.has(ticket.key)}
-                  isSelected={selectedKey === ticket.key}
-                  onToggleCheck={onToggleCheck}
-                  onSelect={onSelect}
-                />
-              ))}
+              {filteredTickets.map((ticket) => {
+                let insertLine: "above" | "below" | undefined;
+                if (dragOverId && ticket.key === dragOverId && activeInsertIdx !== -1 && overInsertIdx !== -1) {
+                  insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
+                }
+                return (
+                  <SortableTicketRow
+                    key={ticket.key}
+                    ticket={ticket}
+                    columnId={columnId}
+                    isChecked={checkedKeys.has(ticket.key)}
+                    isSelected={selectedKey === ticket.key}
+                    onToggleCheck={onToggleCheck}
+                    onSelect={onSelect}
+                    insertLine={insertLine}
+                  />
+                );
+              })}
               {filteredTickets.length === 0 && isFiltered && (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-xs text-white/20">
@@ -425,6 +454,7 @@ export function MultiSprintView({
   const [leftSyncing, setLeftSyncing] = useState(false);
   const [rightSyncing, setRightSyncing] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
 
   const [toast, setToast] = useState<string | null>(null);
@@ -440,12 +470,20 @@ export function MultiSprintView({
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveDragId(event.active.id as string);
+    setDragOverId(null);
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const overId = event.over ? String(event.over.id) : null;
+    // Only track ticket keys; ignore container droppables ("left"/"right")
+    setDragOverId(overId && overId !== "left" && overId !== "right" ? overId : null);
   }, []);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveDragId(null);
+      setDragOverId(null);
       if (!over) return;
 
       const draggedKey = active.id as string;
@@ -644,7 +682,7 @@ export function MultiSprintView({
     .reduce((s, t) => s + (t.storyPoints ?? 0), 0);
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
       <div className="relative flex h-full flex-col">
         <ViewHeader
           icon={<Columns2 size={15} strokeWidth={1.5} className="text-white/30" />}
@@ -698,6 +736,8 @@ export function MultiSprintView({
                 setSelectedKey(null);
                 onSprintChange?.("left", id);
               }}
+              activeDragId={activeDragId}
+              dragOverId={dragOverId}
             />
             <div className="w-px shrink-0 bg-white/[0.06]" />
             <DroppableSprintColumn
@@ -720,6 +760,8 @@ export function MultiSprintView({
                 setSelectedKey(null);
                 onSprintChange?.("right", id);
               }}
+              activeDragId={activeDragId}
+              dragOverId={dragOverId}
             />
           </div>
 
