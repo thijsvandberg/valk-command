@@ -1,6 +1,6 @@
 # BRDG-126: Sprint Board Compare - UX Improvements
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -91,22 +91,49 @@ Each column currently has a search input (lines show `<input ... placeholder="Se
 
 ---
 
+## 5. Dedicated URL for compare view
+
+The compare view must be accessible via a stable, shareable URL so the user can bookmark or deep-link to a specific sprint comparison. The URL must also allow navigating back to the normal sprint board via the nav menu.
+
+**URL pattern:** `/sprint-board/compare?left=<sprintId>&right=<sprintId>`
+
+**Behaviour:**
+- When the user opens the compare view from the sprint board, the browser navigates to `/sprint-board/compare?left=...&right=...` (using `router.push`) instead of toggling local state.
+- The compare page (`src/app/(app)/sprint-board/compare/page.tsx`) renders `MultiSprintView` directly, reading `left` and `right` from `searchParams`.
+- Switching sprints inside the compare view updates the URL via `router.replace` so the back button works correctly.
+- The "Close compare" button navigates back to `/sprint-board` (or `router.back()`).
+- The sprint board nav menu item always links to `/sprint-board`. When the user is on `/sprint-board/compare`, clicking the nav item returns them to the base sprint board.
+- `SprintBoard.tsx` no longer needs `compareMode` state; the "Compare" button calls `router.push(...)` instead of `setCompareMode(true)`.
+
+---
+
 ## Implementation Plan
 
-- [ ] Extract `SprintSelector` from `SprintSlots.tsx` into `src/components/sprint-board/SprintSelector.tsx`; update `SprintSlots` to import from there
-- [ ] Replace the inline dropdown in `MultiSprintView` with `SprintSelector`
-- [ ] Extract `GroupStatBar` from `TicketTable.tsx` into `src/components/sprint-board/GroupStatBar.tsx`; update `TicketTable` to import from there
-- [ ] Use `GroupStatBar` in each `DroppableSprintColumn` header in `MultiSprintView`; wire `onFilterChange` to a per-column filter state
-- [ ] Verify `handleDragEnd` in `MultiSprintView` calls `PUT /api/jira/tickets/[key]/sprint` with the target sprint ID; implement if missing; add optimistic update + error revert
-- [ ] Add story points and assignee avatar to `DraggableTicketRow` in `MultiSprintView`
-- [ ] Add empty state to `DroppableSprintColumn` when ticket list is empty
-- [ ] Make column headers sticky in `MultiSprintView`
-- [ ] Verify per-column search is wired to key, title, and assignee; fix if not
-- [ ] Write tests: `GroupStatBar.test.tsx` (stat counts, filter callbacks), `SprintSelector.test.tsx` (search, selection)
-- [ ] Run `npm run lint && npm run typecheck && npm run test && npm run build`
+### Execution order
+
+A (extract shared components) → B (integrate into MultiSprintView + URL routing) → C (tests)
+
+- [x] Extract `SprintSelector` from `SprintSlots.tsx` into `src/components/sprint-board/SprintSelector.tsx`; update `SprintSlots` to import from there
+- [x] Extract `GroupStatBar` from `TicketTable.tsx` into `src/components/sprint-board/GroupStatBar.tsx`; update `TicketTable` to import from there
+- [x] Create `src/app/(app)/sprint-board/compare/page.tsx` that reads `left`/`right` search params and renders `MultiSprintView`
+- [x] Remove `compareMode` state from `SprintBoard.tsx`; replace the compare button with `router.push('/sprint-board/compare?left=...&right=...')`; remove the early-return that renders `MultiSprintView`
+- [x] Update `MultiSprintView` to accept optional `onSprintChange` callback (for URL sync); switching a sprint calls `router.replace` via this callback
+- [x] Replace the inline `<select>` in `MultiSprintView` with the shared `SprintSelector`
+- [x] Use `GroupStatBar` in each `DroppableSprintColumn` header in `MultiSprintView`; wire `onFilterChange` to a per-column filter state
+- [x] Verify `handleDragEnd` in `MultiSprintView` calls `POST /api/jira/move-sprint` with the target sprint ID; implement if missing; add optimistic update + error revert
+- [x] Add story points and assignee avatar to `DraggableTicketRow` in `MultiSprintView` (already present — verified)
+- [x] Add proper empty state to `DroppableSprintColumn` when ticket list is empty
+- [x] Make column headers sticky (fix semi-transparent background so scrolled rows do not bleed through)
+- [x] Per-column search: move search input into each column header; extend filter to include assignee name
+- [x] Write tests: `GroupStatBar.test.tsx` (stat counts, filter callbacks), `SprintSelector.test.tsx` (search, selection)
+- [x] Run `npm run lint && npm run typecheck && npm run test && npm run build`
 
 ## Acceptance Criteria
 
+- Compare view is reachable at `/sprint-board/compare?left=<id>&right=<id>` and can be bookmarked / deep-linked
+- Switching sprints within the compare view updates the URL via `history.replaceState` so the back button works
+- The "Close compare" button returns to `/sprint-board`
+- The sprint board nav menu item links to `/sprint-board`; navigating there from the compare view works correctly
 - Dragging a ticket from one compare column to the other moves it to the target sprint in Jira; the UI updates optimistically and reverts on error
 - Each compare column header shows the same stat bar format as the grouped view: items count, total pts, colored in-progress badge, colored done badge, unpointed badge
 - Clicking a stat badge filters the column to show only matching tickets; clicking again clears the filter
