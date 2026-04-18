@@ -19,6 +19,8 @@ export interface AiInsightsPanelProps {
   onRetry: () => void;
   /** Override the initial collapsed state (defaults to true when a saved result exists) */
   defaultCollapsed?: boolean;
+  /** Render as a flat drawer section instead of a card */
+  inDrawer?: boolean;
 }
 
 function formatRelative(iso: string): string {
@@ -33,18 +35,22 @@ function formatRelative(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-function renderDeepDiveContent(content: string) {
+function renderDeepDiveContent(content: string, inDrawer = false) {
   const lines = content.split("\n");
   const elements: React.ReactNode[] = [];
   let buffer: string[] = [];
   let key = 0;
+
+  const bodyClass = inDrawer
+    ? "leading-[1.75] text-white/70 whitespace-pre-wrap"
+    : "text-sm leading-relaxed text-white/65 whitespace-pre-wrap max-w-prose";
 
   function flushBuffer() {
     if (buffer.length === 0) return;
     const text = buffer.join("\n").trim();
     if (text) {
       elements.push(
-        <p key={key++} className="text-sm leading-relaxed text-white/65 whitespace-pre-wrap max-w-prose">
+        <p key={key++} className={bodyClass} style={inDrawer ? { fontSize: "0.9375rem" } : undefined}>
           {text}
         </p>,
       );
@@ -58,7 +64,15 @@ function renderDeepDiveContent(content: string) {
       const level = line.startsWith("### ") ? "###" : "##";
       const text = line.slice(level.length + 1).trim();
       elements.push(
-        <p key={key++} className={`font-semibold text-white/80 ${level === "##" ? "text-sm mt-3" : "text-xs mt-2"}`}>
+        <p
+          key={key++}
+          className={
+            inDrawer
+              ? `font-semibold text-white/85 ${level === "##" ? "mt-6 mb-2" : "mt-4 mb-1"}`
+              : `font-semibold text-white/80 ${level === "##" ? "text-sm mt-3" : "text-xs mt-2"}`
+          }
+          style={inDrawer ? { fontSize: level === "##" ? "1rem" : "0.9375rem" } : undefined}
+        >
           {text}
         </p>,
       );
@@ -68,7 +82,7 @@ function renderDeepDiveContent(content: string) {
   }
   flushBuffer();
 
-  return <div className="space-y-1.5">{elements}</div>;
+  return <div className={inDrawer ? "space-y-2" : "space-y-1.5"}>{elements}</div>;
 }
 
 export function AiInsightsPanel({
@@ -82,6 +96,7 @@ export function AiInsightsPanel({
   onDismiss,
   onRetry,
   defaultCollapsed,
+  inDrawer = false,
 }: AiInsightsPanelProps) {
   const isRunning = live.status === "submitting" || live.status === "streaming";
   const hasSavedResult = !!(type === "brief" ? narrative : content) && live.status === "idle";
@@ -105,6 +120,109 @@ export function AiInsightsPanel({
   // Expand automatically when generation completes
   const showBody = !collapsed || isRunning;
 
+  // Drawer variant: flat section, no card chrome, larger body text
+  if (inDrawer) {
+    return (
+      <div role="region" aria-label={`AI-generated ${label}`} aria-busy={isRunning}>
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
+              AI {label}
+            </span>
+            {generatedAt && hasResult && (
+              <span className="flex items-center gap-1 text-caption text-white/25 truncate">
+                <Clock size={9} strokeWidth={1.5} className="shrink-0" />
+                {formatRelative(generatedAt)}
+              </span>
+            )}
+            {isStale && hasResult && !isRunning && (
+              <span className="shrink-0 rounded-sm bg-amber-400/10 px-1 py-px text-caption text-amber-400/60">
+                data changed
+              </span>
+            )}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-0.5">
+            {isStale && hasResult && !isRunning && (
+              <button
+                type="button"
+                onClick={onRetry}
+                title="Re-run analysis"
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-caption text-amber-400/50 cursor-pointer hover:bg-amber-400/[0.08] hover:text-amber-400/80 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <RotateCcw size={10} strokeWidth={1.5} />
+                Re-run
+              </button>
+            )}
+            {!isRunning && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                aria-label={`Dismiss AI ${label}`}
+                className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <X size={12} strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Body */}
+        {isRunning && (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2 text-xs text-white/30">
+              <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
+              <span>{live.progressText || "Generating..."}</span>
+            </div>
+            <div className="space-y-2 pt-1">
+              <div className="h-2.5 w-full animate-pulse rounded-full bg-white/[0.05]" />
+              <div className="h-2.5 w-[88%] animate-pulse rounded-full bg-white/[0.04]" />
+              <div className="h-2.5 w-[72%] animate-pulse rounded-full bg-white/[0.03]" />
+            </div>
+          </div>
+        )}
+
+        {!isRunning && type === "brief" && displayNarrative && (
+          <div className="space-y-3">
+            <p className="leading-[1.75] text-white/70" style={{ fontSize: "0.9375rem" }}>
+              {displayNarrative}
+            </p>
+            {displayRisks.length > 0 && (
+              <div className="space-y-2 pt-1">
+                {displayRisks.map((risk, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <AlertTriangle size={13} strokeWidth={1.5} className="mt-[3px] shrink-0 text-amber-400/60" />
+                    <p className="text-amber-400/60" style={{ fontSize: "0.9375rem" }}>{risk}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isRunning && type === "deep-dive" && displayContent && (
+          <div>{renderDeepDiveContent(displayContent, true)}</div>
+        )}
+
+        {hasFailed && (
+          <div className="flex items-center justify-between gap-3 mt-2">
+            <p className="text-xs text-red-400/70">{live.error ?? "Failed to generate"}</p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="shrink-0 rounded-md px-2.5 py-1 text-xs text-white/40 bg-white/[0.04] cursor-pointer hover:bg-white/[0.07] hover:text-white/70 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Card variant (default)
   return (
     <div
       role="region"

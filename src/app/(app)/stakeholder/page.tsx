@@ -356,6 +356,44 @@ function StakeholderView() {
 
   // AI analysis drawer
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [drawerWidth, setDrawerWidth] = useLocalStorage<number>("bridge:ai-drawer-width", 520);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const resizeState = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!resizeState.current || !drawerRef.current) return;
+      const delta = resizeState.current.startX - e.clientX;
+      const newWidth = Math.max(340, Math.min(900, resizeState.current.startWidth + delta));
+      drawerRef.current.style.width = `${newWidth}px`;
+    }
+    function onMouseUp(e: MouseEvent) {
+      if (!resizeState.current) return;
+      const delta = resizeState.current.startX - e.clientX;
+      const newWidth = Math.max(340, Math.min(900, resizeState.current.startWidth + delta));
+      setDrawerWidth(newWidth);
+      resizeState.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [setDrawerWidth]);
+
+  function onResizeHandleMouseDown(e: React.MouseEvent) {
+    if (!drawerRef.current) return;
+    resizeState.current = {
+      startX: e.clientX,
+      startWidth: drawerRef.current.offsetWidth,
+    };
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  }
 
   const availableTeams = useMemo<string[]>(() => {
     if (!sprints) return [];
@@ -853,9 +891,17 @@ function StakeholderView() {
           />
           {/* Panel */}
           <div
-            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col w-full max-w-[520px] border-l border-white/[0.07] bg-[var(--color-surface-elevated)] shadow-2xl shadow-black/60"
-            style={{ boxShadow: "-8px 0 32px rgba(0,0,0,0.5)" }}
+            ref={drawerRef}
+            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col border-l border-white/[0.07] bg-[var(--color-surface-elevated)]"
+            style={{ width: drawerWidth, maxWidth: "90vw", boxShadow: "-8px 0 32px rgba(0,0,0,0.5)" }}
           >
+            {/* Resize handle — drag left edge to resize */}
+            <div
+              onMouseDown={onResizeHandleMouseDown}
+              className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-[var(--color-brand-400)]/20 transition-colors duration-150"
+              aria-hidden
+            />
+
             {/* Drawer header */}
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3.5">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-white/30">
@@ -872,7 +918,7 @@ function StakeholderView() {
             </div>
 
             {/* Drawer body */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
               {/* Brief panel or generate prompt */}
               {!dismissed.brief && (() => {
                 const briefVisible = briefLive.status !== "idle" || !!(analysis.brief?.narrative || analysis.brief?.content);
@@ -888,11 +934,17 @@ function StakeholderView() {
                     onDismiss={() => setDismissed((d) => ({ ...d, brief: true }))}
                     onRetry={() => triggerGenerate("brief")}
                     defaultCollapsed={false}
+                    inDrawer
                   />
                 ) : (
                   <GeneratePrompt type="brief" disabled={anyRunning} onGenerate={() => triggerGenerate("brief")} />
                 );
               })()}
+
+              {/* Divider between sections when both are visible */}
+              {!dismissed.brief && !dismissed["deep-dive"] && (
+                <div className="h-px bg-white/[0.06]" />
+              )}
 
               {/* Deep Dive panel or generate prompt */}
               {!dismissed["deep-dive"] && (() => {
@@ -909,6 +961,7 @@ function StakeholderView() {
                     onDismiss={() => setDismissed((d) => ({ ...d, "deep-dive": true }))}
                     onRetry={() => triggerGenerate("deep-dive")}
                     defaultCollapsed={false}
+                    inDrawer
                   />
                 ) : (
                   <GeneratePrompt type="deep-dive" disabled={anyRunning} onGenerate={() => triggerGenerate("deep-dive")} />
