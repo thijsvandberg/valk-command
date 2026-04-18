@@ -25,21 +25,66 @@ describe("READINESS_CONFIG", () => {
 });
 
 describe("TicketStatusPill", () => {
-  it("renders ticket key", () => {
+  it("renders ticket key as link to internal ticket view", () => {
     render(<TicketStatusPill ticketKey="VPL-123" jiraStatus="TO DO" />);
-    expect(screen.getByText("VPL-123")).toBeTruthy();
+    const link = screen.getByText("VPL-123").closest("a");
+    expect(link).toBeTruthy();
+    expect(link?.getAttribute("href")).toBe("/tickets/VPL-123");
   });
 
-  it("renders full Jira status text", () => {
+  it("renders abbreviated Jira status text", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="IN PROGRESS" />);
-    expect(screen.getByText("IN PROGRESS")).toBeTruthy();
+    expect(screen.getByText("PROG")).toBeTruthy();
+  });
+
+  it("opens key dropdown on regular click", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />);
+    fireEvent.click(screen.getByText("VPL-1"));
+    expect(screen.getByText("Copy Jira URL")).toBeTruthy();
+    expect(screen.getByText("Open in Jira")).toBeTruthy();
+  });
+
+  it("renders issue type icon segment when issueType provided", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="story" />);
+    expect(screen.getByTitle("story")).toBeTruthy();
+  });
+
+  it("opens issue type dropdown when onIssueTypeChange is wired", () => {
+    const onChange = vi.fn();
+    render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="story" onIssueTypeChange={onChange} />,
+    );
+    fireEvent.click(screen.getByTitle("Change issue type"));
+    expect(screen.getByText("Bug")).toBeTruthy();
+    expect(screen.getByText("Task")).toBeTruthy();
+  });
+
+  it("calls onIssueTypeChange when type selected", () => {
+    const onChange = vi.fn();
+    render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="story" onIssueTypeChange={onChange} />,
+    );
+    fireEvent.click(screen.getByTitle("Change issue type"));
+    fireEvent.click(screen.getByText("Bug"));
+    expect(onChange).toHaveBeenCalledWith("bug");
+  });
+
+  it("shows 'Copy with title' option when title prop is provided", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" title="My ticket" />);
+    fireEvent.click(screen.getByText("VPL-1"));
+    expect(screen.getByText("Copy with title")).toBeTruthy();
+  });
+
+  it("hides 'Copy with title' option when no title prop", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />);
+    fireEvent.click(screen.getByText("VPL-1"));
+    expect(screen.queryByText("Copy with title")).toBeNull();
   });
 
   it("hides readiness segment when readiness is null and no callback", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness={null} />,
     );
-    // No readiness icon rendered
     expect(container.querySelector("[title='Drafting']")).toBeNull();
   });
 
@@ -47,7 +92,6 @@ describe("TicketStatusPill", () => {
     render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness="drafting" />,
     );
-    // Readiness segment button has tooltip title
     expect(screen.getByTitle("Drafting")).toBeTruthy();
   });
 
@@ -61,7 +105,6 @@ describe("TicketStatusPill", () => {
         onReadinessChange={onChange}
       />,
     );
-    // Null-state button shows "Ready for Development" tooltip
     expect(screen.getByTitle("Ready for Development")).toBeTruthy();
   });
 
@@ -76,7 +119,6 @@ describe("TicketStatusPill", () => {
       />,
     );
     fireEvent.click(screen.getByTitle("Drafting"));
-    // Dropdown shows all options
     expect(screen.getByText("Waiting for Feedback")).toBeTruthy();
     expect(screen.getByText("Ready to Refine")).toBeTruthy();
     expect(screen.getByText("On Hold")).toBeTruthy();
@@ -119,7 +161,6 @@ describe("TicketStatusPill", () => {
     );
     const btn = screen.getByTitle("Drafting");
     fireEvent.click(btn);
-    // No dropdown options visible
     expect(screen.queryByText("On Hold")).toBeNull();
   });
 
@@ -132,9 +173,7 @@ describe("TicketStatusPill", () => {
         onJiraStatusChange={onChange}
       />,
     );
-    // Jira status button shows "Change status" title when editable
     fireEvent.click(screen.getByTitle("Change status"));
-    // Dropdown shows full status names
     expect(screen.getByText("IN PROGRESS")).toBeTruthy();
     fireEvent.click(screen.getByText("IN PROGRESS"));
     expect(onChange).toHaveBeenCalledWith("IN PROGRESS");
