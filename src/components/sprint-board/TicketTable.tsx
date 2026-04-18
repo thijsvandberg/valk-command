@@ -6,8 +6,8 @@ import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/Fil
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ArrowUp, ArrowDown, ArrowUpDown, Sheet, ChevronDown, ChevronRight } from "lucide-react";
-import { StatPill, StatusPill } from "@/components/sprint-board/SprintStatPill";
+import { ArrowUp, ArrowDown, ArrowUpDown, Sheet } from "lucide-react";
+import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import {
   DndContext,
@@ -552,13 +552,6 @@ export function TicketTable({
       {groups.map((group, groupIdx) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
 
-        const totalPoints = group.tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
-        const todoCount = group.tickets.filter((t) => t.jiraStatus === "TO DO").length;
-        const inProgressCount = group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
-        const testCount = group.tickets.filter((t) => t.jiraStatus === "TEST").length;
-        const doneCount = group.tickets.filter((t) => t.jiraStatus === "DONE").length;
-        const noPointsCount = group.tickets.filter((t) => !t.storyPoints).length;
-
         const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
         const visibleGroupTickets = activeCriterion === "todo"
           ? group.tickets.filter((t) => t.jiraStatus === "TO DO")
@@ -629,69 +622,20 @@ export function TicketTable({
               onClick={() => onToggleCollapse?.(group.key)}
             >
               <td colSpan={totalColSpan} className="py-2 pl-3 pr-4">
-                <div className="flex items-center gap-2">
-                  {isCollapsed
-                    ? <ChevronRight className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
-                    : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
-                  }
-                  <span className="text-xs font-medium text-white/60 truncate">{group.label}</span>
-                  <StatPill size="sm" variant="default" className="ml-1">
-                    {group.tickets.length} items
-                  </StatPill>
-                  {totalPoints > 0 && (
-                    <StatPill size="sm" variant="dim">{totalPoints} pts</StatPill>
-                  )}
-                  {noPointsCount > 0 && (
-                    <StatPill
-                      size="sm"
-                      variant="warning"
-                      active={activeCriterion === "unpointed"}
-                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("unpointed"); }}
-                    >
-                      {noPointsCount} no pts
-                    </StatPill>
-                  )}
-                  {todoCount > 0 && (
-                    <StatusPill
-                      size="sm"
-                      colorKey="TO DO"
-                      label="TO DO"
-                      count={todoCount}
-                      active={activeCriterion === "todo"}
-                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("todo"); }}
-                    />
-                  )}
-                  {inProgressCount > 0 && (
-                    <StatusPill
-                      size="sm"
-                      colorKey="IN PROGRESS"
-                      label="IN PROGRESS"
-                      count={inProgressCount}
-                      active={activeCriterion === "in-progress"}
-                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("in-progress"); }}
-                    />
-                  )}
-                  {testCount > 0 && (
-                    <StatusPill
-                      size="sm"
-                      colorKey="TEST"
-                      label="TEST"
-                      count={testCount}
-                      active={activeCriterion === "test"}
-                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("test"); }}
-                    />
-                  )}
-                  {doneCount > 0 && (
-                    <StatusPill
-                      size="sm"
-                      colorKey="DONE"
-                      label="DONE"
-                      count={doneCount}
-                      active={activeCriterion === "done"}
-                      onClick={(e) => { e.stopPropagation(); toggleGroupFilter("done"); }}
-                    />
-                  )}
-                </div>
+                <GroupStatBar
+                  tickets={group.tickets}
+                  label={group.label}
+                  activeCriterion={activeCriterion}
+                  onFilterChange={(criterion) => {
+                    if (criterion === null) {
+                      setGroupFilter(null);
+                    } else {
+                      toggleGroupFilter(criterion);
+                    }
+                  }}
+                  isCollapsed={isCollapsed}
+                  onToggleCollapse={() => onToggleCollapse?.(group.key)}
+                />
               </td>
             </tr>
             {groupRows}
