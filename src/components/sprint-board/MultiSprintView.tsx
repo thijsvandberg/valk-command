@@ -221,95 +221,81 @@ function DroppableSprintColumn({
       }`}
       style={{ transition: "background-color 0.15s ease" }}
     >
-      {/* Column header - fully opaque bg so rows don't bleed through when scrolling */}
-      <div className="relative z-10 flex flex-col gap-2 border-b border-border-default bg-[var(--color-surface-elevated)] px-4 py-3">
+      {/* Column header - z-20 beats the sticky thead's z-10, keeping dropdown on top */}
+      <div className="relative z-20 flex items-center gap-2 border-b border-border-default bg-[var(--color-surface-elevated)] px-3 py-2">
         <div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_left,rgba(46,145,73,0.06)_0%,transparent_70%)]" />
 
-        <div className="relative flex items-center gap-3">
-          {/* Sprint selector trigger */}
-          <div className="relative flex shrink-0 items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--color-brand-500)]/15 ring-1 ring-[var(--color-brand-500)]/20">
-              <CalendarRange size={12} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-            </div>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setSelectorOpen((o) => !o)}
-                className="flex items-center gap-1 cursor-pointer py-0.5 text-sm font-semibold tracking-tight text-white/85 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              >
-                <span className="max-w-40 truncate">{currentSprint?.name ?? sprintId}</span>
-                <ChevronDown size={12} strokeWidth={2} className="shrink-0 text-white/35" />
-              </button>
-              {selectorOpen && (
-                <SprintSelector
-                  sprints={sprints}
-                  onSelect={(id) => {
-                    onChangeSprint(id);
-                    setSelectorOpen(false);
-                  }}
-                  onClose={() => setSelectorOpen(false)}
-                />
-              )}
-            </div>
+        {/* Sprint selector trigger */}
+        <div className="relative flex shrink-0 items-center gap-1.5">
+          <div className="flex h-5 w-5 items-center justify-center rounded bg-[var(--color-brand-500)]/15 ring-1 ring-[var(--color-brand-500)]/20">
+            <CalendarRange size={11} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
           </div>
-
-          {/* Points summary */}
-          {totalPoints > 0 && (
-            <span className="shrink-0 text-xs">
-              {checkedInColumn.length > 0 ? (
-                <>
-                  <span className="tabular-nums text-[var(--color-brand-400)]">{selectedPoints}</span>
-                  <span className="text-white/20"> / {totalPoints} pts</span>
-                </>
-              ) : (
-                <span className="text-white/20">{totalPoints} pts</span>
-              )}
-            </span>
-          )}
-
-          <div className="ml-auto shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              icon={<RefreshCw size={13} strokeWidth={1.5} className={syncing ? "animate-spin" : ""} />}
-              onClick={onRefresh}
-              disabled={syncing}
-              title="Refresh from Jira"
-              aria-label="Refresh from Jira"
-            />
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSelectorOpen((o) => !o)}
+              className="flex items-center gap-1 cursor-pointer py-0.5 text-sm font-semibold tracking-tight text-white/85 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <span className="max-w-36 truncate">{currentSprint?.name ?? sprintId}</span>
+              <ChevronDown size={11} strokeWidth={2} className="shrink-0 text-white/35" />
+            </button>
+            {selectorOpen && (
+              <SprintSelector
+                sprints={sprints}
+                onSelect={(id) => {
+                  onChangeSprint(id);
+                  setSelectorOpen(false);
+                }}
+                onClose={() => setSelectorOpen(false)}
+              />
+            )}
           </div>
         </div>
 
-        {/* Stat bar + search */}
-        <div className="relative flex items-center gap-2">
+        <div className="h-3 w-px shrink-0 bg-white/[0.08]" />
+
+        {/* Stat bar — dot-only status pills to stay compact */}
+        <div className="min-w-0 flex-1 overflow-hidden">
           <GroupStatBar
             tickets={allTickets}
             activeCriterion={activeCriterion}
             onFilterChange={setActiveCriterion}
+            showDot
           />
-          <div className="ml-auto flex shrink-0 items-center gap-1">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-white/25" strokeWidth={1.5} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="h-6 w-32 rounded border border-border-default bg-white/[0.03] py-0.5 pl-6 pr-2 text-xs text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/25 cursor-pointer hover:text-white/50"
-                >
-                  <X className="h-2.5 w-2.5" strokeWidth={1.5} />
-                </button>
-              )}
-            </div>
-          </div>
         </div>
+
+        {/* Search */}
+        <div className="relative shrink-0">
+          <Search className="absolute left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/25" strokeWidth={1.5} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search..."
+            className="h-6 w-28 rounded border border-border-default bg-white/[0.03] py-0.5 pl-5 pr-2 text-xs text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/25 cursor-pointer hover:text-white/50"
+            >
+              <X className="h-2.5 w-2.5" strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={<RefreshCw size={12} strokeWidth={1.5} className={syncing ? "animate-spin" : ""} />}
+          onClick={onRefresh}
+          disabled={syncing}
+          title="Refresh from Jira"
+          aria-label="Refresh from Jira"
+          className="shrink-0"
+        />
       </div>
 
       {/* Table */}

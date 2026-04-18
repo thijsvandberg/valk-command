@@ -13,6 +13,8 @@ export interface GroupStatBarProps {
   onFilterChange?: (criterion: StatCriterion | null) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** Show only a colored dot + count for status pills, no label text */
+  showDot?: boolean;
 }
 
 export function GroupStatBar({
@@ -22,6 +24,7 @@ export function GroupStatBar({
   onFilterChange,
   isCollapsed,
   onToggleCollapse,
+  showDot = false,
 }: GroupStatBarProps) {
   const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
   const todoCount = tickets.filter((t) => t.jiraStatus === "TO DO").length;
@@ -68,6 +71,7 @@ export function GroupStatBar({
           colorKey="TO DO"
           label="TO DO"
           count={todoCount}
+          showDot={showDot}
           active={activeCriterion === "todo"}
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("todo"); } : undefined}
         />
@@ -78,6 +82,7 @@ export function GroupStatBar({
           colorKey="IN PROGRESS"
           label="IN PROGRESS"
           count={inProgressCount}
+          showDot={showDot}
           active={activeCriterion === "in-progress"}
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("in-progress"); } : undefined}
         />
@@ -88,6 +93,7 @@ export function GroupStatBar({
           colorKey="TEST"
           label="TEST"
           count={testCount}
+          showDot={showDot}
           active={activeCriterion === "test"}
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("test"); } : undefined}
         />
@@ -98,6 +104,7 @@ export function GroupStatBar({
           colorKey="DONE"
           label="DONE"
           count={doneCount}
+          showDot={showDot}
           active={activeCriterion === "done"}
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("done"); } : undefined}
         />
