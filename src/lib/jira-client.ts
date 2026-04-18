@@ -528,7 +528,23 @@ export class JiraClient {
       pageToken = result.nextPageToken;
     }
 
-    return sprints;
+    // The sprint object embedded in issue custom fields does not include `goal`.
+    // Enrich each sprint with the Agile API to pick it up.
+    const enriched = await Promise.all(
+      sprints.map(async (sp) => {
+        try {
+          const full = await jiraFetch<{ id: number; goal?: string }>(
+            `/rest/agile/1.0/sprint/${sp.id}`,
+            signal,
+          );
+          return { ...sp, goal: full.goal };
+        } catch {
+          return sp;
+        }
+      }),
+    );
+
+    return enriched;
   }
 
   /**
