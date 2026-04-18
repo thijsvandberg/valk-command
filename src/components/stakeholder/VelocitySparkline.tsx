@@ -46,10 +46,6 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
 
   return (
     <div className="relative flex items-center gap-3">
-      <span className="text-caption font-semibold uppercase tracking-[0.12em] text-white/20">
-        Velocity
-      </span>
-
       <div className="relative" style={{ width: WIDTH, height: HEIGHT }}>
         <svg
           width={WIDTH}

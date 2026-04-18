@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
-import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History, X } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History, X, CloudUpload } from "lucide-react";
 import type { Ticket } from "@/types/ticket";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { toStakeholderTickets, toStakeholderSprint, buildBriefingPayload, buildDeepDivePayload, buildMarkdownSummary, buildPlainTextSummary } from "@/lib/stakeholder-data";
@@ -347,6 +347,8 @@ function StakeholderView() {
   const [lastUpdatedDisplay, setLastUpdatedDisplay] = useState<string>("Never");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingHistory, setIsSyncingHistory] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "done">("idle");
+  const syncStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Per-type dismissed state (local UI only — resets on sprint change)
   const [dismissed, setDismissed] = useState<Record<AnalysisType, boolean>>({
@@ -555,6 +557,8 @@ function StakeholderView() {
   async function handleSyncSprint() {
     if (!currentSprint || isSyncing) return;
     setIsSyncing(true);
+    setSyncStatus("syncing");
+    if (syncStatusTimerRef.current) clearTimeout(syncStatusTimerRef.current);
     try {
       // Sync sprint metadata (goal, dates, state) and tickets in parallel
       await Promise.all([
@@ -570,6 +574,8 @@ function StakeholderView() {
       ]);
       lastUpdatedRef.current = new Date();
       setLastUpdatedDisplay(formatRelativeTime(lastUpdatedRef.current));
+      setSyncStatus("done");
+      syncStatusTimerRef.current = setTimeout(() => setSyncStatus("idle"), 3000);
     } finally {
       setIsSyncing(false);
     }
@@ -662,6 +668,22 @@ function StakeholderView() {
                 />
                 <span className="h-4 w-px bg-white/[0.08] mx-0.5" aria-hidden />
               </>
+            )}
+
+            {/* Sync status indicator */}
+            {syncStatus !== "idle" && (
+              <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-opacity duration-300 ${
+                syncStatus === "syncing"
+                  ? "text-white/35"
+                  : "text-[var(--color-secondary-400)]/60"
+              }`}>
+                {syncStatus === "syncing" ? (
+                  <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
+                ) : (
+                  <Check size={11} strokeWidth={2} className="shrink-0" />
+                )}
+                {syncStatus === "syncing" ? "Syncing..." : "Synced"}
+              </div>
             )}
 
             {/* Overflow menu: sync, compare, copy */}
@@ -767,11 +789,22 @@ function StakeholderView() {
               </p>
               {!isCompareMode && (
                 <>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <h1 className="text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">
+                  {/* Title row: name + sparkline */}
+                  <div className="flex items-start justify-between gap-6">
+                    <h1 className="text-3xl font-semibold tracking-tight text-white/90 leading-none sm:text-4xl">
                       {stakeholderSprint.name}
                     </h1>
-                    {sprintHealth && (
+                    <div className="shrink-0 pt-1">
+                      <VelocitySparkline
+                        data={velocityData ?? []}
+                        isLoading={isVelocityLoading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Health badge row */}
+                  {sprintHealth && (
+                    <div>
                       <SprintHealthBanner
                         sprint={stakeholderSprint}
                         doneTickets={doneTickets}
@@ -779,12 +812,10 @@ function StakeholderView() {
                         todoTickets={todoTickets}
                         compact
                       />
-                    )}
-                    <VelocitySparkline
-                      data={velocityData ?? []}
-                      isLoading={isVelocityLoading}
-                    />
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Sprint goal */}
                   {stakeholderSprint.goal && (
                     <p className="text-sm italic text-white/40 border-l-2 border-[var(--color-brand-400)]/25 pl-3">
                       {stakeholderSprint.goal}
