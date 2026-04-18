@@ -205,12 +205,12 @@ export default function TicketDetailPage({
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
 
   const handleReadinessChange = useCallback(async (v: import("@/types/ticket").TicketReadiness | null) => {
-    await apiFetch(`/api/tickets/${key}/metadata`, { method: "PUT", body: JSON.stringify({ readiness: v }) });
+    await apiFetch(`/api/tickets/${key}/metadata`, { method: "PUT", body: { readiness: v } });
     mutateTicket();
   }, [key, mutateTicket]);
 
   const handleJiraStatusChange = useCallback(async (status: import("@/types/ticket").JiraStatus) => {
-    await apiFetch(`/api/tickets/${key}/status`, { method: "PUT", body: JSON.stringify({ status }) });
+    await apiFetch(`/api/tickets/${key}/status`, { method: "PUT", body: { status } });
     mutateTicket();
   }, [key, mutateTicket]);
 
