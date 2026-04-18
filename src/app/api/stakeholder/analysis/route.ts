@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
   // Post user message to conversation
   const userMsgId = randomUUID();
-  const typeLabel = type === "brief" ? "Sprint Brief" : "Deep Dive";
+  const typeLabel = type === "brief" ? "Status Brief" : "Sprint Insights";
   await db.insert(message).values({
     id: userMsgId,
     conversationId,

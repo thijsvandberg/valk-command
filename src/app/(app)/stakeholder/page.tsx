@@ -299,11 +299,11 @@ function GeneratePrompt({
   disabled: boolean;
   onGenerate: () => void;
 }) {
-  const label = type === "brief" ? "Sprint Brief" : "Deep Dive";
+  const label = type === "brief" ? "Status Brief" : "Sprint Insights";
   const description =
     type === "brief"
-      ? "A concise narrative summarising sprint progress, key deliverables, and risks."
-      : "A detailed breakdown of all work in this sprint, grouped by theme.";
+      ? "A concise narrative summarising sprint progress and any risk signals worth noting."
+      : "A content-focused analysis: what the sprint is delivering, why it matters, and what to watch.";
   const Icon = type === "brief" ? Sparkles : BookOpen;
 
   return (
@@ -638,7 +638,7 @@ function StakeholderView() {
               <>
                 <AnalysisButton
                   type="brief"
-                  label="Brief"
+                  label="Status"
                   isRunning={briefLive.status === "submitting" || briefLive.status === "streaming"}
                   hasResult={!!(analysis.brief?.status === "completed")}
                   isStale={analysis.isStale(analysis.brief, currentDonePoints, currentTodoCount)}
@@ -650,7 +650,7 @@ function StakeholderView() {
                 />
                 <AnalysisButton
                   type="deep-dive"
-                  label="Deep Dive"
+                  label="Insights"
                   isRunning={deepDiveLive.status === "submitting" || deepDiveLive.status === "streaming"}
                   hasResult={!!(analysis.deepDive?.status === "completed")}
                   isStale={analysis.isStale(analysis.deepDive, currentDonePoints, currentTodoCount)}

@@ -109,7 +109,7 @@ export function AiInsightsPanel({
 
   if (!isVisible) return null;
 
-  const label = type === "brief" ? "Sprint Brief" : "Deep Dive";
+  const label = type === "brief" ? "Status Brief" : "Sprint Insights";
   const Icon = type === "brief" ? Sparkles : BookOpen;
 
   const displayNarrative = hasLiveResult || hasSavedResult ? narrative : null;
