@@ -2,11 +2,16 @@
 
 interface ProgressBarProps {
   completed: number;
+  inReview: number;
+  inProgress: number;
   total: number;
 }
 
-export function ProgressBar({ completed, total }: ProgressBarProps) {
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+export function ProgressBar({ completed, inReview, inProgress, total }: ProgressBarProps) {
+  const donePct = total > 0 ? (completed / total) * 100 : 0;
+  const reviewPct = total > 0 ? (inReview / total) * 100 : 0;
+  const progressPct = total > 0 ? (inProgress / total) * 100 : 0;
+  const overallPct = Math.round(donePct);
 
   return (
     <div className="space-y-2">
@@ -17,12 +22,45 @@ export function ProgressBar({ completed, total }: ProgressBarProps) {
         </span>
       </div>
       <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+        {/* Done: emerald */}
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-brand-400)] transition-[width] duration-700 ease-out"
-          style={{ width: `${pct}%` }}
+          className="absolute inset-y-0 left-0 bg-emerald-400/70 transition-[width] duration-700 ease-out"
+          style={{ width: `${donePct}%` }}
+        />
+        {/* In Review / Testing: amber */}
+        <div
+          className="absolute inset-y-0 bg-amber-400/60 transition-[width,left] duration-700 ease-out"
+          style={{ left: `${donePct}%`, width: `${reviewPct}%` }}
+        />
+        {/* In Progress: brand blue */}
+        <div
+          className="absolute inset-y-0 bg-[var(--color-brand-400)]/50 transition-[width,left] duration-700 ease-out"
+          style={{ left: `${donePct + reviewPct}%`, width: `${progressPct}%` }}
         />
       </div>
-      <div className="text-right text-xs text-white/30 tabular-nums">{pct}% complete</div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 text-caption text-white/25">
+          {completed > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/60" />
+              {completed}pt done
+            </span>
+          )}
+          {inReview > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400/50" />
+              {inReview}pt testing
+            </span>
+          )}
+          {inProgress > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]/50" />
+              {inProgress}pt in progress
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-white/30 tabular-nums">{overallPct}% complete</div>
+      </div>
     </div>
   );
 }

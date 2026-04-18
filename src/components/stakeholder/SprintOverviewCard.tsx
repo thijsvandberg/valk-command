@@ -10,6 +10,7 @@ import { EpicFilterChips } from "./EpicFilterChips";
 interface SprintOverviewCardProps {
   sprint: StakeholderSprint;
   doneTickets: StakeholderTicket[];
+  inReviewTickets: StakeholderTicket[];
   inProgressTickets: StakeholderTicket[];
   todoTickets: StakeholderTicket[];
   deprecatedTickets: StakeholderTicket[];
@@ -52,13 +53,18 @@ function SectionHeader({
   label: string;
   count: number;
   pts: number;
-  color: "green" | "brand" | "muted";
+  color: "green" | "amber" | "brand" | "muted";
 }) {
   const styles = {
     green: {
       heading: "text-emerald-400/70",
       line: "bg-emerald-400/10",
       badge: "bg-emerald-400/10 text-emerald-400/60",
+    },
+    amber: {
+      heading: "text-amber-400/70",
+      line: "bg-amber-400/10",
+      badge: "bg-amber-400/10 text-amber-400/60",
     },
     brand: {
       heading: "text-[var(--color-brand-400)]/70",
@@ -93,6 +99,7 @@ function pts(tickets: StakeholderTicket[]): number {
 export function SprintOverviewCard({
   sprint,
   doneTickets,
+  inReviewTickets,
   inProgressTickets,
   todoTickets,
   deprecatedTickets,
@@ -101,17 +108,13 @@ export function SprintOverviewCard({
   const isClosed = sprint.state === "closed";
   const isActive = sprint.state === "active";
 
-  // Epic filter state — local only, not persisted
   const [selectedEpics, setSelectedEpics] = useState<Set<string>>(new Set());
 
   const handleToggleEpic = useCallback((epic: string) => {
     setSelectedEpics((prev) => {
       const next = new Set(prev);
-      if (next.has(epic)) {
-        next.delete(epic);
-      } else {
-        next.add(epic);
-      }
+      if (next.has(epic)) next.delete(epic);
+      else next.add(epic);
       return next;
     });
   }, []);
@@ -124,23 +127,25 @@ export function SprintOverviewCard({
   }
 
   const allTickets = useMemo(
-    () => [...doneTickets, ...inProgressTickets, ...todoTickets, ...deprecatedTickets],
-    [doneTickets, inProgressTickets, todoTickets, deprecatedTickets],
+    () => [...doneTickets, ...inReviewTickets, ...inProgressTickets, ...todoTickets, ...deprecatedTickets],
+    [doneTickets, inReviewTickets, inProgressTickets, todoTickets, deprecatedTickets],
   );
 
   const filteredDone = filterByEpic(doneTickets);
+  const filteredInReview = filterByEpic(inReviewTickets);
   const filteredInProgress = filterByEpic(inProgressTickets);
   const filteredTodo = filterByEpic(todoTickets);
   const filteredDeprecated = filterByEpic(deprecatedTickets);
 
   const donePoints = pts(doneTickets);
+  const inReviewPoints = pts(inReviewTickets);
   const inProgressPoints = pts(inProgressTickets);
   const todoPoints = pts(todoTickets);
-  const totalPoints = donePoints + inProgressPoints + todoPoints;
+  const totalPoints = donePoints + inReviewPoints + inProgressPoints + todoPoints;
 
   const showCompleted = doneTickets.length > 0;
+  const showInReview = inReviewTickets.length > 0;
   const showInProgress = inProgressTickets.length > 0;
-  // For closed sprints, remaining work is irrelevant
   const showTodo = !isClosed && todoTickets.length > 0;
   const showProgress = totalPoints > 0;
 
@@ -149,18 +154,16 @@ export function SprintOverviewCard({
       ? `${formatDate(sprint.startDate)} – ${formatDate(sprint.endDate)}`
       : null;
 
-  // Grid grows to fill available space as columns disappear
-  const visibleColumns = [showCompleted, showInProgress, showTodo].filter(Boolean).length;
+  const visibleColumns = [showCompleted, showInReview, showInProgress, showTodo].filter(Boolean).length;
   const gridClass =
-    visibleColumns === 1
-      ? "" // single column, full container width
-      : visibleColumns === 2
-      ? "grid gap-10 sm:grid-cols-2"
-      : "grid gap-10 sm:grid-cols-2 lg:grid-cols-3";
+    visibleColumns <= 1 ? "" :
+    visibleColumns === 2 ? "grid gap-10 sm:grid-cols-2" :
+    visibleColumns === 3 ? "grid gap-10 sm:grid-cols-2 lg:grid-cols-3" :
+    "grid gap-10 sm:grid-cols-2 lg:grid-cols-4";
 
-  // Item count summary line
   const itemParts: string[] = [];
   if (doneTickets.length > 0) itemParts.push(`${doneTickets.length} done`);
+  if (inReviewTickets.length > 0) itemParts.push(`${inReviewTickets.length} testing`);
   if (inProgressTickets.length > 0) itemParts.push(`${inProgressTickets.length} in progress`);
   if (!isClosed && todoTickets.length > 0) itemParts.push(`${todoTickets.length} to do`);
 
@@ -194,14 +197,19 @@ export function SprintOverviewCard({
       <SprintHealthBanner
         sprint={sprint}
         doneTickets={doneTickets}
-        inProgressTickets={inProgressTickets}
+        inProgressTickets={[...inReviewTickets, ...inProgressTickets]}
         todoTickets={todoTickets}
       />
 
       {/* Progress: story points bar + ticket count summary */}
       {showProgress && (
-        <div className="space-y-3">
-          <ProgressBar completed={donePoints} total={totalPoints} />
+        <div className="space-y-2">
+          <ProgressBar
+            completed={donePoints}
+            inReview={inReviewPoints}
+            inProgress={inProgressPoints}
+            total={totalPoints}
+          />
           {itemParts.length > 0 && (
             <p className="text-xs text-white/30 tabular-nums">
               {itemParts.join(" · ")}
@@ -224,6 +232,12 @@ export function SprintOverviewCard({
           <section>
             <SectionHeader label="Completed" count={filteredDone.length} pts={pts(filteredDone)} color="green" />
             <TicketGroup tickets={filteredDone} carriedKeys={carriedKeys} />
+          </section>
+        )}
+        {showInReview && (
+          <section>
+            <SectionHeader label="Testing" count={filteredInReview.length} pts={pts(filteredInReview)} color="amber" />
+            <TicketGroup tickets={filteredInReview} showAssignee carriedKeys={carriedKeys} />
           </section>
         )}
         {showInProgress && (

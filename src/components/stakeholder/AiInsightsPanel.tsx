@@ -1,6 +1,7 @@
 "use client";
 
-import { X, AlertTriangle, Sparkles, RefreshCw, BookOpen, Clock } from "lucide-react";
+import { useState } from "react";
+import { X, AlertTriangle, Sparkles, RefreshCw, BookOpen, Clock, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import type { LiveStreamState, AnalysisType } from "@/hooks/useStakeholderAnalysis";
 
 // Re-export from shared lib for backward compatibility
@@ -31,7 +32,6 @@ function formatRelative(iso: string): string {
 }
 
 function renderDeepDiveContent(content: string) {
-  // Split on markdown headings (## or ###) and render as sections
   const lines = content.split("\n");
   const elements: React.ReactNode[] = [];
   let buffer: string[] = [];
@@ -42,7 +42,7 @@ function renderDeepDiveContent(content: string) {
     const text = buffer.join("\n").trim();
     if (text) {
       elements.push(
-        <p key={key++} className="text-sm leading-relaxed text-white/65 whitespace-pre-wrap">
+        <p key={key++} className="text-sm leading-relaxed text-white/65 whitespace-pre-wrap max-w-prose">
           {text}
         </p>,
       );
@@ -86,20 +86,21 @@ export function AiInsightsPanel({
   const hasFailed = live.status === "failed";
   const isVisible = isRunning || hasSavedResult || hasLiveResult || hasFailed;
 
+  // Default collapsed when a completed result exists; expanded while generating or on failure
+  const [collapsed, setCollapsed] = useState<boolean>(hasSavedResult);
+
   if (!isVisible) return null;
 
   const label = type === "brief" ? "Sprint Brief" : "Deep Dive";
   const Icon = type === "brief" ? Sparkles : BookOpen;
 
-  const displayNarrative = hasLiveResult || hasSavedResult
-    ? narrative
-    : null;
-  const displayRisks = hasLiveResult || hasSavedResult
-    ? risks
-    : [];
-  const displayContent = hasLiveResult || hasSavedResult
-    ? content
-    : null;
+  const displayNarrative = hasLiveResult || hasSavedResult ? narrative : null;
+  const displayRisks = hasLiveResult || hasSavedResult ? risks : [];
+  const displayContent = hasLiveResult || hasSavedResult ? content : null;
+  const hasResult = hasLiveResult || hasSavedResult;
+
+  // Expand automatically when generation completes
+  const showBody = !collapsed || isRunning;
 
   return (
     <div
@@ -119,88 +120,124 @@ export function AiInsightsPanel({
         }}
       />
 
-      <div className="px-4 py-4">
+      <div className="px-4 py-3.5">
         {/* Header row */}
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: icon + label + timestamp */}
+          <button
+            type="button"
+            onClick={() => hasResult && setCollapsed((c) => !c)}
+            className={`flex min-w-0 flex-1 items-center gap-2 ${hasResult && !isRunning ? "cursor-pointer" : "cursor-default"}`}
+            disabled={!hasResult || isRunning}
+          >
             <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
               AI {label}
             </span>
-            {generatedAt && (hasSavedResult || hasLiveResult) && (
-              <span className="flex items-center gap-1 text-caption text-white/25">
-                <Clock size={9} strokeWidth={1.5} />
+            {generatedAt && hasResult && (
+              <span className="flex items-center gap-1 text-caption text-white/25 truncate">
+                <Clock size={9} strokeWidth={1.5} className="shrink-0" />
                 {formatRelative(generatedAt)}
-                {isStale && (
-                  <span className="ml-1 rounded-sm bg-amber-400/10 px-1 py-px text-amber-400/60">
-                    data changed
-                  </span>
-                )}
               </span>
             )}
-          </div>
-          {!isRunning && (
-            <button
-              type="button"
-              onClick={onDismiss}
-              aria-label={`Dismiss AI ${label}`}
-              className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            >
-              <X size={12} strokeWidth={1.5} />
-            </button>
-          )}
-        </div>
+            {isStale && hasResult && !isRunning && (
+              <span className="shrink-0 rounded-sm bg-amber-400/10 px-1 py-px text-caption text-amber-400/60">
+                data changed
+              </span>
+            )}
+          </button>
 
-        {/* Loading state */}
-        {isRunning && (
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-2 text-xs text-white/30">
-              <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
-              <span>{live.progressText || "Generating..."}</span>
-            </div>
-            <div className="space-y-2 pt-1">
-              <div className="h-2.5 w-full animate-pulse rounded-full bg-white/[0.05]" />
-              <div className="h-2.5 w-[88%] animate-pulse rounded-full bg-white/[0.04]" />
-              <div className="h-2.5 w-[72%] animate-pulse rounded-full bg-white/[0.03]" />
-            </div>
-          </div>
-        )}
-
-        {/* Brief: narrative + risks */}
-        {!isRunning && type === "brief" && displayNarrative && (
-          <div className="space-y-3">
-            <p className="text-sm leading-relaxed text-white/70">{displayNarrative}</p>
-            {displayRisks.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                {displayRisks.map((risk, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <AlertTriangle size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-amber-400/60" />
-                    <p className="text-xs text-amber-400/60">{risk}</p>
-                  </div>
-                ))}
-              </div>
+          {/* Right: re-run, collapse, dismiss */}
+          <div className="flex shrink-0 items-center gap-0.5">
+            {isStale && hasResult && !isRunning && (
+              <button
+                type="button"
+                onClick={onRetry}
+                title="Re-run analysis"
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-caption text-amber-400/50 cursor-pointer hover:bg-amber-400/[0.08] hover:text-amber-400/80 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <RotateCcw size={10} strokeWidth={1.5} />
+                Re-run
+              </button>
+            )}
+            {hasResult && !isRunning && (
+              <button
+                type="button"
+                onClick={() => setCollapsed((c) => !c)}
+                aria-label={collapsed ? `Expand AI ${label}` : `Collapse AI ${label}`}
+                className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                {collapsed ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronUp size={12} strokeWidth={1.5} />}
+              </button>
+            )}
+            {!isRunning && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                aria-label={`Dismiss AI ${label}`}
+                className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <X size={12} strokeWidth={1.5} />
+              </button>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Deep Dive: structured long-form content */}
-        {!isRunning && type === "deep-dive" && displayContent && (
-          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-            {renderDeepDiveContent(displayContent)}
-          </div>
-        )}
+        {/* Body — hidden when collapsed */}
+        {showBody && (
+          <div className="mt-3">
+            {/* Loading state */}
+            {isRunning && (
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 text-xs text-white/30">
+                  <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
+                  <span>{live.progressText || "Generating..."}</span>
+                </div>
+                <div className="space-y-2 pt-1">
+                  <div className="h-2.5 w-full animate-pulse rounded-full bg-white/[0.05]" />
+                  <div className="h-2.5 w-[88%] animate-pulse rounded-full bg-white/[0.04]" />
+                  <div className="h-2.5 w-[72%] animate-pulse rounded-full bg-white/[0.03]" />
+                </div>
+              </div>
+            )}
 
-        {/* Error state */}
-        {hasFailed && (
-          <div className="flex items-center justify-between gap-3 mt-2">
-            <p className="text-xs text-red-400/70">{live.error ?? "Failed to generate"}</p>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="shrink-0 rounded-md px-2.5 py-1 text-xs text-white/40 bg-white/[0.04] cursor-pointer hover:bg-white/[0.07] hover:text-white/70 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            >
-              Retry
-            </button>
+            {/* Brief: narrative + risks */}
+            {!isRunning && type === "brief" && displayNarrative && (
+              <div className="space-y-3">
+                <p className="text-sm leading-relaxed text-white/70 max-w-prose">{displayNarrative}</p>
+                {displayRisks.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    {displayRisks.map((risk, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <AlertTriangle size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-amber-400/60" />
+                        <p className="text-xs text-amber-400/60 max-w-prose">{risk}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Deep Dive: structured long-form content */}
+            {!isRunning && type === "deep-dive" && displayContent && (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {renderDeepDiveContent(displayContent)}
+              </div>
+            )}
+
+            {/* Error state */}
+            {hasFailed && (
+              <div className="flex items-center justify-between gap-3 mt-2">
+                <p className="text-xs text-red-400/70">{live.error ?? "Failed to generate"}</p>
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="shrink-0 rounded-md px-2.5 py-1 text-xs text-white/40 bg-white/[0.04] cursor-pointer hover:bg-white/[0.07] hover:text-white/70 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
