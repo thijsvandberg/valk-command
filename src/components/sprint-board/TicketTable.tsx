@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
-import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
+import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -179,6 +179,9 @@ export function TicketTable({
   onLeaveRow,
   onPoStatusChange,
   onReadinessChange,
+  onJiraStatusChange,
+  onIssueTypeChange,
+  onTitleChange,
   onTableKeyDown,
   onReorder,
   sortField,
@@ -216,6 +219,9 @@ export function TicketTable({
   onLeaveRow: () => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
+  onJiraStatusChange?: (key: string, status: JiraStatus) => void;
+  onIssueTypeChange?: (key: string, type: IssueType) => void;
+  onTitleChange?: (key: string, title: string) => void;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
   sortField?: SortField;
@@ -276,6 +282,7 @@ export function TicketTable({
   const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
   const activeDragId = externalDnd ? externalActiveDragId ?? null : internalActiveDragId;
   const [reviewPopoverKey, setReviewPopoverKey] = useState<string | null>(null);
+  const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
 
   const handleColumnSort = useCallback((colId: ColumnId) => {
     const field = COLUMN_SORT_FIELDS[colId];
@@ -372,11 +379,16 @@ export function TicketTable({
     onCheckboxClick: handleCheckboxClick,
     onPoStatusChange,
     onReadinessChange: onReadinessChange ?? (() => {}),
+    onJiraStatusChange,
+    onIssueTypeChange,
+    onTitleChange,
+    editingTitleKey,
+    onEditingTitleKeyChange: setEditingTitleKey,
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
     stickyOffsets,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
@@ -398,7 +410,7 @@ export function TicketTable({
     const fullStyle = isStickyCol
       ? { ...widthStyle, position: "sticky" as const, left: stickyLeft, zIndex: 12 }
       : widthStyle;
-    const bgClass = isStickyCol ? " bg-[var(--color-surface-elevated)]" : "";
+    const bgClass = isStickyCol ? " bg-[var(--color-surface-base)]" : "";
 
     if (!label) {
       return <th key={id} className={`overflow-hidden py-2 pr-2${bgClass}`} style={fullStyle} />;
@@ -417,11 +429,11 @@ export function TicketTable({
   }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh, stickyOffsets]);
 
   const theadContent = (
-    <thead className="sticky top-0 z-10 bg-[var(--color-surface-elevated)]">
+    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
       <tr className="group/thead border-b border-border-default text-left text-xs font-medium text-white/30">
-        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-elevated)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
-          <div
-            className={`flex h-6 w-6 items-center justify-center transition-opacity duration-100 ${
+        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
+          <label
+            className={`flex cursor-pointer items-center justify-center transition-opacity duration-100 ${
               someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
             }`}
           >
@@ -429,12 +441,27 @@ export function TicketTable({
               type="checkbox"
               checked={allChecked}
               onChange={onToggleAll}
-              className="h-3.5 w-3.5 rounded border-white/20 bg-transparent accent-[var(--color-brand-500)] cursor-pointer"
-              ref={(el) => {
-                if (el) el.indeterminate = someChecked && !allChecked;
-              }}
+              className="sr-only"
             />
-          </div>
+            <span
+              className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
+                allChecked
+                  ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
+                  : someChecked
+                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
+                  : "border-white/[0.12] bg-white/[0.02]"
+              }`}
+            >
+              {allChecked && (
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+              {someChecked && !allChecked && (
+                <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
+              )}
+            </span>
+          </label>
         </th>
         {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>
@@ -648,7 +675,7 @@ export function TicketTable({
   return (
     <div
       ref={tableContainerRef}
-      className="flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none bg-[var(--color-surface-elevated)]"
+      className="flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none"
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
