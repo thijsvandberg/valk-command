@@ -383,8 +383,11 @@ function DroppableSprintColumn({
             <tbody>
               {filteredTickets.map((ticket) => {
                 let insertLine: "above" | "below" | undefined;
-                if (dragOverId && ticket.key === dragOverId && activeInsertIdx !== -1 && overInsertIdx !== -1) {
-                  insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
+                if (dragOverId && ticket.key === dragOverId && overInsertIdx !== -1) {
+                  // Same column: direction based on list position. Cross-column: always insert above.
+                  insertLine = activeInsertIdx !== -1
+                    ? (activeInsertIdx > overInsertIdx ? "above" : "below")
+                    : "above";
                 }
                 return (
                   <SortableTicketRow
