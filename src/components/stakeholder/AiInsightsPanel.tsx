@@ -149,21 +149,10 @@ export function AiInsightsPanel({
               <button
                 type="button"
                 onClick={onRetry}
-                title="Re-run analysis"
-                className="flex items-center gap-1 rounded px-1.5 py-1 text-caption text-amber-400/50 cursor-pointer hover:bg-amber-400/[0.08] hover:text-amber-400/80 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-amber-400/70 bg-amber-400/[0.08] border border-amber-400/20 cursor-pointer hover:bg-amber-400/[0.14] hover:text-amber-400/90 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
-                <RotateCcw size={10} strokeWidth={1.5} />
+                <RotateCcw size={11} strokeWidth={1.5} />
                 Re-run
-              </button>
-            )}
-            {!isRunning && (
-              <button
-                type="button"
-                onClick={onDismiss}
-                aria-label={`Dismiss AI ${label}`}
-                className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              >
-                <X size={12} strokeWidth={1.5} />
               </button>
             )}
           </div>
