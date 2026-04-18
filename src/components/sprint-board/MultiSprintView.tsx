@@ -24,12 +24,18 @@ import {
   type DragEndEvent,
   type DragStartEvent,
   useDroppable,
-  useDraggable,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-// --- Draggable ticket row ---
+// --- Sortable ticket row ---
 
-function DraggableTicketRow({
+function SortableTicketRow({
   ticket,
   columnId,
   isChecked,
@@ -44,9 +50,9 @@ function DraggableTicketRow({
   onToggleCheck: (key: string) => void;
   onSelect: (key: string | null) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.key,
-    data: { columnId, ticket },
+    data: { columnId },
   });
 
   const statusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
@@ -63,7 +69,7 @@ function DraggableTicketRow({
           ? "bg-[var(--color-brand-500)]/[0.03]"
           : "hover:bg-white/[0.02]"
       }`}
-      style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <td className="w-6 py-2 pl-2 pr-0">
         <div
@@ -343,9 +349,10 @@ function DroppableSprintColumn({
                 <th className="w-8 py-2 pr-3" />
               </tr>
             </thead>
+            <SortableContext items={filteredTickets.map((t) => t.key)} strategy={verticalListSortingStrategy}>
             <tbody>
               {filteredTickets.map((ticket) => (
-                <DraggableTicketRow
+                <SortableTicketRow
                   key={ticket.key}
                   ticket={ticket}
                   columnId={columnId}
@@ -371,6 +378,7 @@ function DroppableSprintColumn({
                 </tr>
               )}
             </tbody>
+            </SortableContext>
           </table>
         )}
       </div>
@@ -440,16 +448,61 @@ export function MultiSprintView({
       setActiveDragId(null);
       if (!over) return;
 
+      const draggedKey = active.id as string;
       const sourceColumnId = active.data.current?.columnId as "left" | "right";
-      const targetColumnId =
-        over.id === "left" ? "left" : over.id === "right" ? "right" : null;
+      const overId = String(over.id);
 
-      if (!targetColumnId || targetColumnId === sourceColumnId) return;
+      // Determine target column: container droppable uses "left"/"right" id, ticket uses data.columnId
+      const isContainerDrop = overId === "left" || overId === "right";
+      const targetColumnId: "left" | "right" = isContainerDrop
+        ? (overId as "left" | "right")
+        : ((over.data.current?.columnId as "left" | "right") ??
+            (leftTickets.some((t) => t.key === overId) ? "left" : "right"));
+      const targetOverKey: string | null = isContainerDrop ? null : overId;
 
       const sourceTickets = sourceColumnId === "left" ? leftTickets : rightTickets;
-      const targetTickets = sourceColumnId === "left" ? rightTickets : leftTickets;
-      const draggedKey = active.id as string;
+      const targetTickets = targetColumnId === "left" ? leftTickets : rightTickets;
 
+      if (sourceColumnId === targetColumnId) {
+        // Within-column reorder — single ticket only
+        if (!targetOverKey || targetOverKey === draggedKey) return;
+        const draggedIdx = sourceTickets.findIndex((t) => t.key === draggedKey);
+        const targetIdx = sourceTickets.findIndex((t) => t.key === targetOverKey);
+        if (draggedIdx === -1 || targetIdx === -1 || draggedIdx === targetIdx) return;
+
+        const reordered = arrayMove(sourceTickets, draggedIdx, targetIdx);
+
+        const prevLeftOverride = leftOverride;
+        const prevRightOverride = rightOverride;
+
+        if (sourceColumnId === "left") {
+          setLeftOverride({ sprintId: leftSprint, tickets: reordered });
+        } else {
+          setRightOverride({ sprintId: rightSprint, tickets: reordered });
+        }
+
+        const newDraggedIdx = reordered.findIndex((t) => t.key === draggedKey);
+        const rankBeforeKey = reordered[newDraggedIdx + 1]?.key;
+        const rankAfterKey = !rankBeforeKey ? reordered[newDraggedIdx - 1]?.key : undefined;
+
+        try {
+          await jira.rank({ issueKeys: [draggedKey], rankBeforeKey, rankAfterKey });
+          if (sourceColumnId === "left") {
+            await mutateLeft();
+            setLeftOverride(null);
+          } else {
+            await mutateRight();
+            setRightOverride(null);
+          }
+        } catch {
+          setLeftOverride(prevLeftOverride);
+          setRightOverride(prevRightOverride);
+          showToast("Failed to reorder. Changes reverted.");
+        }
+        return;
+      }
+
+      // Cross-column move
       const keysToMove = checkedKeys.has(draggedKey)
         ? [...checkedKeys].filter((k) => sourceTickets.some((t) => t.key === k))
         : [draggedKey];
@@ -459,9 +512,19 @@ export function MultiSprintView({
         .filter((t): t is Ticket => t !== undefined);
 
       const newSource = sourceTickets.filter((t) => !keysToMove.includes(t.key));
-      const newTarget = [...targetTickets, ...ticketsToMove];
+      // Insert before the target ticket if dragged onto one, otherwise append
+      let newTarget: Ticket[];
+      if (targetOverKey) {
+        const insertIdx = targetTickets.findIndex((t) => t.key === targetOverKey);
+        newTarget = [
+          ...targetTickets.slice(0, insertIdx),
+          ...ticketsToMove,
+          ...targetTickets.slice(insertIdx),
+        ];
+      } else {
+        newTarget = [...targetTickets, ...ticketsToMove];
+      }
 
-      // Optimistic update
       const prevLeftOverride = leftOverride;
       const prevRightOverride = rightOverride;
 
@@ -484,13 +547,14 @@ export function MultiSprintView({
 
       try {
         await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
+        if (targetOverKey) {
+          await jira.rank({ issueKeys: keysToMove, rankBeforeKey: targetOverKey, sprintId: targetSprintId });
+        }
         showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);
-        // Revalidate both columns after successful move
         await Promise.all([mutateLeft(), mutateRight()]);
         setLeftOverride(null);
         setRightOverride(null);
       } catch {
-        // Revert optimistic update
         setLeftOverride(prevLeftOverride);
         setRightOverride(prevRightOverride);
         showToast("Failed to move tickets. Changes reverted.");
