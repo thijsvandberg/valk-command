@@ -29,26 +29,27 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const { searchParams } = new URL(request.url);
-  const sprintId = searchParams.get("sprintId");
+  let sprintId = searchParams.get("sprintId");
 
-  // Check body for single-ticket mode
+  // Parse body: either { ticketKeys } for single-ticket mode or { sprintId } for sprint sync.
+  // sprintId is accepted from the body as a fallback because the API client sends it there.
   let ticketKeys: string[] | undefined;
-  if (!sprintId) {
-    try {
-      const body = await request.json();
-      if (body?.ticketKeys !== undefined) {
-        const parsed = ticketKeysBodySchema.safeParse(body);
-        if (!parsed.success) {
-          return NextResponse.json(
-            { error: parsed.error.issues[0]?.message ?? "Invalid ticketKeys" },
-            { status: 400 },
-          );
-        }
-        ticketKeys = parsed.data.ticketKeys;
+  try {
+    const body = await request.json();
+    if (body?.ticketKeys !== undefined) {
+      const parsed = ticketKeysBodySchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: parsed.error.issues[0]?.message ?? "Invalid ticketKeys" },
+          { status: 400 },
+        );
       }
-    } catch {
-      // No valid JSON body
+      ticketKeys = parsed.data.ticketKeys;
+    } else if (!sprintId && body?.sprintId) {
+      sprintId = String(body.sprintId);
     }
+  } catch {
+    // No valid JSON body — URL params are the only source
   }
 
   if (ticketKeys) {
