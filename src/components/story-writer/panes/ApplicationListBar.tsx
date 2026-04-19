@@ -67,7 +67,7 @@ export function ApplicationListBar() {
   return (
     <BarContainer padding="compact" className="gap-1 bg-[var(--color-surface-base)]">
       {/* App list */}
-      <div className="flex min-w-0 flex-1 items-center gap-0.5">
+      <div className="flex min-w-0 flex-1 items-center gap-1 xl:gap-2">
         {visibleApps.map((app) => {
           const { paneIndex } = getAppState(app.id);
           const isActive = paneIndex !== null;
@@ -83,21 +83,17 @@ export function ApplicationListBar() {
               <button
                 type="button"
                 onClick={() => handleAppClick(app.id)}
-                className={`flex h-6 items-center gap-1.5 rounded px-1.5 text-label font-medium cursor-pointer select-none transition-colors duration-100 ${
+                className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium cursor-pointer select-none ${
                   isActive
                     ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                    : "text-white/35 hover:text-white/60 hover:bg-hover-list-item"
+                    : "text-white/35 hover:text-white/60 hover:bg-white/[0.04]"
                 }`}
+                style={{ transition: "color 120ms, background-color 120ms" }}
               >
                 <span className={isActive ? "text-[var(--color-brand-400)]" : "text-white/25"}>
                   {app.icon}
                 </span>
                 {app.label}
-                {isActive && (
-                  <span className="ml-0.5 text-caption text-[var(--color-brand-400)]/60 tabular-nums">
-                    {paneIndex! + 1}
-                  </span>
-                )}
               </button>
             </div>
           );
