@@ -488,7 +488,7 @@ export default function TicketDetailPage({
         <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
           {/* Tab bar - scoped to content column only, not spanning sidebar */}
           <div className="border-b border-border-default">
-          <div className="mx-auto flex h-[50px] max-w-4xl items-stretch gap-1 px-8">
+          <div className="mx-auto flex h-11 max-w-4xl items-stretch gap-1 px-8">
             {([
               { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
               { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },

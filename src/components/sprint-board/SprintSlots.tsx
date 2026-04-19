@@ -8,6 +8,7 @@ import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
 import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
+import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import {
   DndContext,
   closestCenter,
@@ -61,7 +62,7 @@ function SortableTab({
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className={`relative flex items-center gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`relative flex items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
             ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
             : "text-white/35 hover:text-white/60 active:text-white/50"
@@ -220,17 +221,17 @@ export function SprintSlots({
   }
 
   return (
-    <div className="flex h-[50px] items-stretch border-b border-border-default px-5">
+    <BarContainer className="items-stretch">
       {/* Scrollable tab area */}
       <div className="flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {/* All tab -- always first, visually distinct with icon */}
       <button
         type="button"
         onClick={onAllClick}
-        className={`relative flex shrink-0 items-center gap-1.5 px-3 py-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`relative flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
-            ? "text-[var(--color-brand-400)] after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
-            : "text-white/40 hover:text-white/65"
+            ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
+            : "text-white/35 hover:text-white/60"
         }`}
         title="Show all tickets across sprints"
       >
@@ -246,10 +247,10 @@ export function SprintSlots({
             key={view.id}
             type="button"
             onClick={() => onViewClick?.(view)}
-            className={`relative flex shrink-0 items-center px-3 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            className={`relative flex shrink-0 items-center px-3 py-2 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
-                ? "text-[var(--color-brand-400)] after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
-                : "text-white/40 hover:text-white/65"
+                ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
+                : "text-white/35 hover:text-white/60"
             }`}
           >
             {view.title}
@@ -258,7 +259,7 @@ export function SprintSlots({
       })}
 
       {/* Divider between All/saved views and sprint tabs */}
-      <span className="mx-1 h-4 w-px bg-white/[0.07] self-center shrink-0" />
+      <span className="mx-1 self-center"><BarDivider /></span>
 
       <DndContext
         sensors={sensors}
@@ -307,10 +308,10 @@ export function SprintSlots({
             type="button"
             onClick={onEphemeralClick}
             title="Temporary view -- not pinned"
-            className={`relative flex shrink-0 items-center gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 ${
+            className={`relative flex shrink-0 items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-100 ${
               ephemeralIsActive
                 ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)]/60 after:rounded-full"
-                : "text-white/30 hover:text-white/55"
+                : "text-white/35 hover:text-white/60"
             }`}
           >
             {eSprint.state === "active" && (
@@ -401,6 +402,6 @@ export function SprintSlots({
           />
         )}
       </div>
-    </div>
+    </BarContainer>
   );
 }

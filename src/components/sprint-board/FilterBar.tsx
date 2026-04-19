@@ -7,6 +7,7 @@ import { ArrowUpDown, ArrowUp, ArrowDown, Columns3, Search, X, Bookmark, Check, 
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
+import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import {
   DndContext,
   closestCenter,
@@ -666,12 +667,12 @@ export function FilterBar({
   }
 
   return (
-    <div className={`flex h-[50px] items-center gap-2 px-5${noBorder ? "" : " border-b border-border-default"}`}>
+    <BarContainer border={!noBorder} className="gap-2">
       {/* Expandable search */}
       {onSearchChange && (
         <ExpandableSearch value={searchQuery ?? ""} onChange={onSearchChange} />
       )}
-      {onSearchChange && <div className="h-5 w-px bg-white/[0.08] shrink-0" />}
+      {onSearchChange && <BarDivider />}
 
       {/* Filter dropdowns */}
       <FilterDropdown
@@ -830,6 +831,6 @@ export function FilterBar({
           )}
         </div>
       )}
-    </div>
+    </BarContainer>
   );
 }

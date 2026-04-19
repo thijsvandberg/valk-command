@@ -7,6 +7,7 @@ import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
 import { Copy } from "lucide-react";
+import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 
 export function BulkActionBar({
   count,
@@ -47,7 +48,7 @@ export function BulkActionBar({
   }, [showStatusDropdown]);
 
   return (
-    <div className="flex items-center gap-3 border-t border-border-default bg-[var(--color-brand-600)]/8 px-5 py-2.5">
+    <BarContainer borderPosition="top" className="gap-3 bg-[var(--color-brand-600)]/8">
       {/* Select all / deselect all checkbox */}
       {onToggleAll && (
         <button
@@ -80,7 +81,7 @@ export function BulkActionBar({
           <span className="ml-1 text-white/35">&middot; {selectedPoints} pts</span>
         )}
       </span>
-      <div className="h-3.5 w-px bg-white/[0.08]" />
+      <BarDivider />
       {onSetReadiness && (
         <div ref={statusRef} className="relative">
           <Button
@@ -163,6 +164,6 @@ export function BulkActionBar({
       >
         Clear
       </Button>
-    </div>
+    </BarContainer>
   );
 }

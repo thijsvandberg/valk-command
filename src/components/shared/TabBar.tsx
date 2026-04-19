@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { BarContainer } from "./BarContainer";
 
 const baseClass =
-  "relative flex items-center gap-1.5 px-3.5 py-3 text-sm font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
+  "relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 const activeClass =
   "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full";
@@ -13,9 +14,9 @@ const inactiveClass =
 
 export function TabBar({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`flex items-center gap-0 border-b border-border-default ${className ?? ""}`}>
+    <BarContainer className={`gap-0 ${className ?? ""}`}>
       {children}
-    </div>
+    </BarContainer>
   );
 }
 

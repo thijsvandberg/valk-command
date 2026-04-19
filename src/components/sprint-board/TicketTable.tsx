@@ -428,7 +428,7 @@ export function TicketTable({
 
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-      <tr className="group/thead border-b border-border-default text-left text-xs font-medium text-white/30">
+      <tr className="group/thead h-11 border-b border-border-default text-left text-xs font-medium text-white/30">
         <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }} />
         {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>

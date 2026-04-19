@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { usePaneContext, type PaneAppId } from "./PaneContext";
 import { useWriterContext } from "./WriterContext";
+import { BarContainer } from "@/components/shared/BarContainer";
 
 const APP_DEFS: Array<{
   id: PaneAppId;
@@ -64,7 +65,7 @@ export function ApplicationListBar() {
   };
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-default bg-[var(--color-surface-base)] px-3">
+    <BarContainer padding="compact" className="gap-1 bg-[var(--color-surface-base)]">
       {/* App list */}
       <div className="flex min-w-0 flex-1 items-center gap-0.5">
         {visibleApps.map((app) => {
@@ -103,6 +104,6 @@ export function ApplicationListBar() {
         })}
       </div>
 
-    </div>
+    </BarContainer>
   );
 }
