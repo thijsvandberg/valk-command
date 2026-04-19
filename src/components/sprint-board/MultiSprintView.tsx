@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import type { Ticket, Sprint, POStatus } from "@/types/ticket";
+import type { Ticket, Sprint, POStatus, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -10,7 +10,10 @@ import { GroupStatBar } from "./GroupStatBar";
 import type { StatCriterion } from "./GroupStatBar";
 import { SprintSelector } from "./SprintSelector";
 import { SortableTicketRow } from "./TicketRow";
+import { BulkActionBar } from "./BulkActionBar";
 import { COLUMN_PRESETS } from "./FilterBar";
+import { saveTicketMetadata } from "./sprint-board-utils";
+import { getJiraUrl } from "./TicketTableCells";
 import { CalendarRange, RefreshCw, X, Columns2, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
@@ -75,6 +78,10 @@ function DroppableSprintColumn({
   onTitleChange,
   editingTitleKey,
   onEditingTitleKeyChange,
+  readinessMap,
+  onReadinessChange,
+  onJiraStatusChange,
+  onIssueTypeChange,
 }: {
   columnId: "left" | "right";
   sprintId: string;
@@ -95,6 +102,10 @@ function DroppableSprintColumn({
   onTitleChange: (key: string, title: string) => void;
   editingTitleKey: string | null;
   onEditingTitleKeyChange: (key: string | null) => void;
+  readinessMap: Record<string, TicketReadiness | null>;
+  onReadinessChange: (key: string, readiness: TicketReadiness | null) => void;
+  onJiraStatusChange: (key: string, status: JiraStatus) => void;
+  onIssueTypeChange: (key: string, type: IssueType) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -238,29 +249,7 @@ function DroppableSprintColumn({
           <table className="w-full table-fixed border-collapse">
             <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
               <tr className="border-b border-border-subtle text-left">
-                <th className="w-9 py-2 pl-1 pr-1">
-                  <label className="flex cursor-pointer items-center justify-center">
-                    <input type="checkbox" checked={allChecked} onChange={onToggleAll} className="sr-only" />
-                    <span
-                      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-                        allChecked
-                          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                          : someChecked
-                          ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
-                          : "border-white/[0.12] bg-white/[0.02]"
-                      }`}
-                    >
-                      {allChecked && (
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                      {someChecked && !allChecked && (
-                        <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
-                      )}
-                    </span>
-                  </label>
-                </th>
+                <th className="w-9 py-2 pl-1 pr-1" />
                 {COLUMN_PRESETS.compact.map((colId) => {
                   const label = COMPACT_HEADER_LABELS[colId] ?? "";
                   const isCenter = colId === "points";
@@ -299,6 +288,10 @@ function DroppableSprintColumn({
                     onTitleChange={onTitleChange}
                     editingTitleKey={editingTitleKey}
                     onEditingTitleKeyChange={onEditingTitleKeyChange}
+                    readinessMap={readinessMap}
+                    onReadinessChange={onReadinessChange}
+                    onJiraStatusChange={onJiraStatusChange}
+                    onIssueTypeChange={onIssueTypeChange}
                     insertLine={insertLine}
                     sortableData={{ columnId }}
                   />
@@ -369,6 +362,11 @@ export function MultiSprintView({
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
+  const [readinessMap, setReadinessMap] = useState<Record<string, TicketReadiness | null>>({});
+
+  const getMutateForKey = useCallback((key: string) => {
+    return leftTickets.some((t) => t.key === key) ? mutateLeft : mutateRight;
+  }, [leftTickets, mutateLeft, mutateRight]);
 
   const handleTitleChange = useCallback(async (key: string, title: string) => {
     const inLeft = leftTickets.some((t) => t.key === key);
@@ -385,6 +383,42 @@ export function MultiSprintView({
     }
   }, [leftTickets, rightTickets, mutateLeft, mutateRight]);
 
+  const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
+    const prev = readinessMap[key];
+    setReadinessMap((m) => ({ ...m, [key]: readiness }));
+    saveTicketMetadata(key, { readiness }).then((ok) => {
+      if (!ok) setReadinessMap((m) => ({ ...m, [key]: prev }));
+    });
+  }, [readinessMap]);
+
+  const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
+    const mutate = getMutateForKey(key);
+    const allTickets = [...leftTickets, ...rightTickets];
+    const prev = allTickets.find((t) => t.key === key)?.jiraStatus;
+    mutate((data) => data?.map((t) => t.key === key ? { ...t, jiraStatus: status } : t), { revalidate: false });
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } });
+    } catch {
+      if (prev !== undefined) {
+        mutate((data) => data?.map((t) => t.key === key ? { ...t, jiraStatus: prev } : t), { revalidate: false });
+      }
+    }
+  }, [leftTickets, rightTickets, getMutateForKey]);
+
+  const handleIssueTypeChange = useCallback(async (key: string, type: IssueType) => {
+    const mutate = getMutateForKey(key);
+    const allTickets = [...leftTickets, ...rightTickets];
+    const prev = allTickets.find((t) => t.key === key)?.type;
+    mutate((data) => data?.map((t) => t.key === key ? { ...t, type } : t), { revalidate: false });
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { type } });
+    } catch {
+      if (prev !== undefined) {
+        mutate((data) => data?.map((t) => t.key === key ? { ...t, type: prev } : t), { revalidate: false });
+      }
+    }
+  }, [leftTickets, rightTickets, getMutateForKey]);
+
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((msg: string) => {
@@ -393,6 +427,17 @@ export function MultiSprintView({
     toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }, []);
   useEffect(() => () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }, []);
+
+  const handleCopyToClipboard = useCallback(() => {
+    const allTickets = [...leftTickets, ...rightTickets];
+    const selected = allTickets.filter((t) => checkedKeys.has(t.key));
+    const text = selected.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`Copied ${selected.length} ticket${selected.length === 1 ? "" : "s"} to clipboard`);
+    }).catch(() => {
+      showToast("Failed to copy to clipboard");
+    });
+  }, [leftTickets, rightTickets, checkedKeys, showToast]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -614,6 +659,17 @@ export function MultiSprintView({
   }, [rightAllChecked, rightTickets]);
 
   const totalItems = leftTickets.length + rightTickets.length;
+  const allBothChecked = leftAllChecked && rightAllChecked && totalItems > 0;
+  const someBothChecked = leftSomeChecked || rightSomeChecked;
+
+  const toggleAll = useCallback(() => {
+    setCheckedKeys((prev) => {
+      if (allBothChecked) return new Set();
+      const next = new Set(prev);
+      [...leftTickets, ...rightTickets].forEach((t) => next.add(t.key));
+      return next;
+    });
+  }, [allBothChecked, leftTickets, rightTickets]);
   const totalChecked = checkedKeys.size;
   const totalSelectedPoints = [...leftTickets, ...rightTickets]
     .filter((t) => checkedKeys.has(t.key))
@@ -638,17 +694,6 @@ export function MultiSprintView({
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
           <ViewHeaderDivider />
           <span className="text-sm text-white/35">{totalItems} items total</span>
-          {totalChecked > 0 && (
-            <>
-              <div className="h-4 w-px shrink-0 bg-white/[0.08]" />
-              <span className="text-sm text-[var(--color-brand-400)]">
-                {totalChecked} selected
-                {totalSelectedPoints > 0 && (
-                  <span className="ml-1 text-white/35">· {totalSelectedPoints} pts</span>
-                )}
-              </span>
-            </>
-          )}
         </ViewHeader>
 
         {/* Content */}
@@ -679,6 +724,10 @@ export function MultiSprintView({
               onTitleChange={handleTitleChange}
               editingTitleKey={editingTitleKey}
               onEditingTitleKeyChange={setEditingTitleKey}
+              readinessMap={readinessMap}
+              onReadinessChange={handleReadinessChange}
+              onJiraStatusChange={handleJiraStatusChange}
+              onIssueTypeChange={handleIssueTypeChange}
             />
             <div className="w-px shrink-0 bg-white/[0.06]" />
             <DroppableSprintColumn
@@ -706,6 +755,10 @@ export function MultiSprintView({
               onTitleChange={handleTitleChange}
               editingTitleKey={editingTitleKey}
               onEditingTitleKeyChange={setEditingTitleKey}
+              readinessMap={readinessMap}
+              onReadinessChange={handleReadinessChange}
+              onJiraStatusChange={handleJiraStatusChange}
+              onIssueTypeChange={handleIssueTypeChange}
             />
           </div>
 
@@ -722,6 +775,18 @@ export function MultiSprintView({
             </div>
           )}
         </div>
+
+        {someBothChecked && (
+          <BulkActionBar
+            count={totalChecked}
+            totalCount={totalItems}
+            selectedPoints={totalSelectedPoints}
+            allChecked={allBothChecked}
+            onToggleAll={toggleAll}
+            onClear={() => setCheckedKeys(new Set())}
+            onCopyToClipboard={handleCopyToClipboard}
+          />
+        )}
 
         {toast && (
           <div

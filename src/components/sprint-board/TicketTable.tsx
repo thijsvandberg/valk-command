@@ -429,38 +429,7 @@ export function TicketTable({
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
       <tr className="group/thead border-b border-border-default text-left text-xs font-medium text-white/30">
-        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }}>
-          <label
-            className={`flex cursor-pointer items-center justify-center transition-opacity duration-100 ${
-              someChecked ? "opacity-100" : "opacity-0 group-hover/thead:opacity-100"
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={allChecked}
-              onChange={onToggleAll}
-              className="sr-only"
-            />
-            <span
-              className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-                allChecked
-                  ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                  : someChecked
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
-                  : "border-white/[0.12] bg-white/[0.02]"
-              }`}
-            >
-              {allChecked && (
-                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                  <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-              {someChecked && !allChecked && (
-                <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
-              )}
-            </span>
-          </label>
-        </th>
+        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }} />
         {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>
     </thead>

@@ -210,24 +210,26 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
               {ticket.editState === "draft" && <EditStateDot state="draft" />}
               {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
               {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  isFollowed ? unfollow(ticket.key) : follow(ticket.key);
-                }}
-                className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
-                  isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"
-                }`}
-                title={isFollowed ? "Unfollow" : "Follow for notifications"}
-              >
-                <Star
-                  size={11}
-                  strokeWidth={1.5}
-                  className={isFollowed ? "text-amber-400 fill-amber-400" : "text-white/40"}
-                />
-              </button>
+              {!preset && (
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    isFollowed ? unfollow(ticket.key) : follow(ticket.key);
+                  }}
+                  className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
+                    isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"
+                  }`}
+                  title={isFollowed ? "Unfollow" : "Follow for notifications"}
+                >
+                  <Star
+                    size={11}
+                    strokeWidth={1.5}
+                    className={isFollowed ? "text-amber-400 fill-amber-400" : "text-white/40"}
+                  />
+                </button>
+              )}
             </span>
           </td>
         );
