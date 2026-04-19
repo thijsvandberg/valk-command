@@ -108,6 +108,7 @@ function DroppableSprintColumn({
   onIssueTypeChange: (key: string, type: IssueType) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
+  const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCriterion, setActiveCriterion] = useState<StatCriterion | null>(null);
@@ -284,7 +285,22 @@ function DroppableSprintColumn({
                     isDragActive={activeDragId !== null}
                     selectedTicket={selectedKey}
                     onSelectTicket={onSelect}
-                    onCheckboxClick={(key) => onToggleCheck(key)}
+                    onCheckboxClick={(key, clickIdx, shiftKey) => {
+                      const anchor = lastCheckRef.current;
+                      if (shiftKey && anchor !== null) {
+                        const from = Math.min(anchor.idx, clickIdx);
+                        const to = Math.max(anchor.idx, clickIdx);
+                        const rangeKeys = filteredTickets.slice(from, to + 1).map((t) => t.key);
+                        rangeKeys.forEach((k) => {
+                          if (anchor.checked) { if (!checkedKeys.has(k)) onToggleCheck(k); }
+                          else { if (checkedKeys.has(k)) onToggleCheck(k); }
+                        });
+                      } else {
+                        const willBeChecked = !checkedKeys.has(key);
+                        lastCheckRef.current = { idx: clickIdx, checked: willBeChecked };
+                        onToggleCheck(key);
+                      }
+                    }}
                     onTitleChange={onTitleChange}
                     editingTitleKey={editingTitleKey}
                     onEditingTitleKeyChange={onEditingTitleKeyChange}
