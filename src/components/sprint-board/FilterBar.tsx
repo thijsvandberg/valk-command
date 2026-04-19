@@ -80,22 +80,19 @@ export interface SavedView {
 export type ColumnId = "type" | "key" | "title" | "epic" | "jiraStatus" | "sprint" | "points" | "assignee" | "flagged" | "poStatus" | "quality" | "notes" | "pipeline";
 
 export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[] = [
-  { id: "type", label: "Type" },
   { id: "key", label: "Key" },
   { id: "title", label: "Title" },
   { id: "epic", label: "Epic" },
-  { id: "jiraStatus", label: "Jira Status" },
   { id: "sprint", label: "Sprint" },
   { id: "points", label: "Points" },
   { id: "assignee", label: "Assignee" },
   { id: "flagged", label: "Flagged" },
-  { id: "poStatus", label: "Readiness" },
   { id: "quality", label: "Quality Score (QS)" },
   { id: "notes", label: "Notes" },
   { id: "pipeline", label: "Pipeline" },
 ];
 
-export const DEFAULT_VISIBLE: ColumnId[] = ["type", "key", "title", "epic", "jiraStatus", "points", "assignee", "flagged", "poStatus", "quality", "notes", "pipeline"];
+export const DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "epic", "points", "assignee", "flagged", "quality", "notes", "pipeline"];
 
 export type ColumnPreset = "full" | "compact";
 
