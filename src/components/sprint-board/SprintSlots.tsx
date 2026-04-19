@@ -326,7 +326,7 @@ export function SprintSlots({
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
         {/* Active sort label — shown to the left of the icon group */}
         {sortField && sortField !== "rank" && sortDir && onSortChange && (
-          <span className="flex items-center gap-0.5 mr-1">
+          <span className="group/sort flex items-center gap-0.5 mr-1">
             <button
               type="button"
               onClick={() => onSortChange(sortField, sortDir === "asc" ? "desc" : "asc")}
@@ -342,7 +342,8 @@ export function SprintSlots({
             <button
               type="button"
               onClick={() => onSortChange("rank" as SortField, "asc" as SortDir)}
-              className="flex items-center justify-center rounded p-0.5 text-white/20 cursor-pointer hover:text-white/50 hover:bg-white/[0.04]"
+              className="flex items-center justify-center rounded p-0.5 text-white/20 cursor-pointer opacity-0 group-hover/sort:opacity-100 hover:text-white/50 hover:bg-white/[0.04]"
+              style={{ transition: "opacity 0.15s ease" }}
               title="Clear sort"
             >
               <X className="h-3 w-3" strokeWidth={1.5} />
