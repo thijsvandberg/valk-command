@@ -423,7 +423,7 @@ export function TicketStatusPill({
               onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
               title={onIssueTypeChange ? "Change issue type" : issueType}
               disabled={!onIssueTypeChange}
-              className={`flex items-center justify-center rounded p-0.5 transition-colors duration-150 ${
+              className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
                 onIssueTypeChange ? "cursor-pointer hover:bg-white/[0.06]" : "cursor-default"
               }`}
             >
