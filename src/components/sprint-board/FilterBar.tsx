@@ -100,7 +100,7 @@ export type ColumnPreset = "full" | "compact";
 
 export const COLUMN_PRESETS: Record<ColumnPreset, ColumnId[]> = {
   full: COLUMNS.map((c) => c.id),
-  compact: ["type", "key", "title", "jiraStatus", "points", "assignee"],
+  compact: ["key", "title", "points", "assignee"],
 };
 
 // ---------------------------------------------------------------------------

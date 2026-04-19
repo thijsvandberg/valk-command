@@ -98,7 +98,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   },
   ref
 ) {
-  const isCompact = preset === "compact";
   const presetCols = preset ? new Set(COLUMN_PRESETS[preset]) : null;
   const col = colProp ?? ((id: ColumnId) => presetCols?.has(id) ?? true);
   const isEditingTitle = editingTitleKey === ticket.key;
@@ -171,13 +170,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     if (!col(id)) return null;
     switch (id) {
       case "type": {
-        if (isCompact) {
-          return (
-            <td key={id} className="w-6 py-2 pr-1">
-              <IssueTypeIcon type={ticket.type} size={14} />
-            </td>
-          );
-        }
         const sl = stickyOffsets?.[id];
         return (
           <td
@@ -191,13 +183,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       }
       case "key": {
         const sl = stickyOffsets?.[id];
-        if (isCompact) {
-          return (
-            <td key={id} className="py-2 pr-2">
-              <span className="font-mono text-xs text-white/40">{ticket.key}</span>
-            </td>
-          );
-        }
         return (
           <td
             key={id}
@@ -248,16 +233,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       }
       case "title": {
-        if (isCompact) {
-          return (
-            <td key={id} className="overflow-hidden py-2 pr-3">
-              <span className="block w-full truncate text-sm text-white/70">
-                {ticket.title}
-              </span>
-            </td>
-          );
-        }
-
         const sl = stickyOffsets?.[id];
         const stickyBg = sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : "";
 
@@ -373,14 +348,14 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "jiraStatus":
         return (
-          <td key={id} className={`${isCompact ? "w-28 py-2 pr-2" : "py-1.5 pr-3"} overflow-hidden`}>
+          <td key={id} className="py-1.5 pr-3 overflow-hidden">
             {isRemoved ? (
-              <span className={`inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 ${isCompact ? "text-caption" : "text-label"} font-medium bg-red-500/10 text-red-400/70`}>
+              <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium bg-red-500/10 text-red-400/70">
                 REMOVED
               </span>
             ) : (
               <span
-                className={`inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 ${isCompact ? "text-caption" : "text-label"} font-medium`}
+                className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium"
                 style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
               >
                 {ticket.jiraStatus}
@@ -398,13 +373,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "points":
         return (
-          <td key={id} className={`overflow-hidden ${isCompact ? "w-8 py-2 pr-2" : "py-1.5 pr-3"} text-center text-xs tabular-nums text-white/30`}>
+          <td key={id} className="overflow-hidden py-1.5 pr-3 text-center text-xs tabular-nums text-white/30">
             {ticket.storyPoints ?? "-"}
           </td>
         );
       case "assignee":
         return (
-          <td key={id} className={`overflow-hidden ${isCompact ? "w-8 py-2 pr-3" : "py-1.5 pr-3"}`}>
+          <td key={id} className="overflow-hidden py-1.5 pr-3">
             <Avatar assignee={ticket.assignee} size={18} />
           </td>
         );
@@ -530,7 +505,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     >
       {/* Checkbox -- stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
-        className={`cursor-pointer select-none ${isCompact ? "w-9 py-2" : "py-1.5"} pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : ""}`}
+        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : ""}`}
         style={stickyOffsets?._check !== undefined ? { position: "sticky", left: stickyOffsets._check, zIndex: 2 } : undefined}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
@@ -544,8 +519,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
               isChecked
                 ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
                 : "border-white/[0.12] bg-white/[0.03]"
-            }${isCompact && !isChecked ? " opacity-0 group-hover/row:opacity-100" : ""}`}
-            style={isCompact ? { transition: "opacity 0.15s ease, background-color 0.15s ease" } : { opacity: showCheckbox ? 1 : 0, transition: "opacity 0.15s ease, background-color 0.15s ease" }}
+            }`}
+            style={{ opacity: showCheckbox ? 1 : 0, transition: "opacity 0.15s ease, background-color 0.15s ease" }}
           >
             {isChecked && (
               <svg width="8" height="8" viewBox="0 0 8 8" fill="none">

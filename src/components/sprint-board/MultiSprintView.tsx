@@ -14,7 +14,7 @@ import { COLUMN_PRESETS } from "./FilterBar";
 import { CalendarRange, RefreshCw, X, Columns2, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
-import { jira } from "@/lib/api-client";
+import { apiFetch, jira } from "@/lib/api-client";
 import {
   DndContext,
   DragOverlay,
@@ -50,7 +50,7 @@ const compareCollisionDetection: CollisionDetection = (args) => {
 
 // Header labels for compact preset columns
 const COMPACT_HEADER_LABELS: Record<string, string> = {
-  type: "", key: "Key", title: "Title", jiraStatus: "Status", points: "Pts", assignee: "",
+  key: "Key", title: "Title", points: "Pts", assignee: "",
 };
 
 // --- Droppable sprint column ---
@@ -72,6 +72,9 @@ function DroppableSprintColumn({
   onChangeSprint,
   activeDragId,
   dragOverId,
+  onTitleChange,
+  editingTitleKey,
+  onEditingTitleKeyChange,
 }: {
   columnId: "left" | "right";
   sprintId: string;
@@ -89,6 +92,9 @@ function DroppableSprintColumn({
   onChangeSprint: (id: string) => void;
   activeDragId: string | null;
   dragOverId: string | null;
+  onTitleChange: (key: string, title: string) => void;
+  editingTitleKey: string | null;
+  onEditingTitleKeyChange: (key: string | null) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -290,6 +296,9 @@ function DroppableSprintColumn({
                     selectedTicket={selectedKey}
                     onSelectTicket={onSelect}
                     onCheckboxClick={(key) => onToggleCheck(key)}
+                    onTitleChange={onTitleChange}
+                    editingTitleKey={editingTitleKey}
+                    onEditingTitleKeyChange={onEditingTitleKeyChange}
                     insertLine={insertLine}
                     sortableData={{ columnId }}
                   />
@@ -359,6 +368,22 @@ export function MultiSprintView({
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
+  const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
+
+  const handleTitleChange = useCallback(async (key: string, title: string) => {
+    const inLeft = leftTickets.some((t) => t.key === key);
+    const sourceTickets = inLeft ? leftTickets : rightTickets;
+    const mutate = inLeft ? mutateLeft : mutateRight;
+    const prev = sourceTickets.find((t) => t.key === key)?.title;
+    mutate((data) => data?.map((t) => t.key === key ? { ...t, title } : t), { revalidate: false });
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(key)}/summary`, { method: "PUT", body: { title } });
+    } catch {
+      if (prev !== undefined) {
+        mutate((data) => data?.map((t) => t.key === key ? { ...t, title: prev } : t), { revalidate: false });
+      }
+    }
+  }, [leftTickets, rightTickets, mutateLeft, mutateRight]);
 
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -651,6 +676,9 @@ export function MultiSprintView({
               }}
               activeDragId={activeDragId}
               dragOverId={dragOverId}
+              onTitleChange={handleTitleChange}
+              editingTitleKey={editingTitleKey}
+              onEditingTitleKeyChange={setEditingTitleKey}
             />
             <div className="w-px shrink-0 bg-white/[0.06]" />
             <DroppableSprintColumn
@@ -675,6 +703,9 @@ export function MultiSprintView({
               }}
               activeDragId={activeDragId}
               dragOverId={dragOverId}
+              onTitleChange={handleTitleChange}
+              editingTitleKey={editingTitleKey}
+              onEditingTitleKeyChange={setEditingTitleKey}
             />
           </div>
 
