@@ -62,7 +62,7 @@ function SortableTab({
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className={`relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`relative flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
             ? "bg-white/[0.07] text-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
             : "text-white/35 hover:text-white/60 hover:bg-white/[0.04] active:bg-white/[0.06]"
@@ -227,12 +227,12 @@ export function SprintSlots({
   return (
     <BarContainer>
       {/* Scrollable tab area */}
-      <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-0 flex-1 items-center gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {/* All tab -- always first, visually distinct with icon */}
       <button
         type="button"
         onClick={onAllClick}
-        className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
             ? "bg-white/[0.07] text-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
             : "text-white/35 hover:text-white/60 hover:bg-white/[0.04] active:bg-white/[0.06]"
@@ -252,7 +252,7 @@ export function SprintSlots({
             key={view.id}
             type="button"
             onClick={() => onViewClick?.(view)}
-            className={`flex shrink-0 items-center rounded-md px-2.5 py-1.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            className={`flex h-7 shrink-0 items-center rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
                 ? "bg-white/[0.07] text-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
                 : "text-white/35 hover:text-white/60 hover:bg-white/[0.04] active:bg-white/[0.06]"
@@ -314,7 +314,7 @@ export function SprintSlots({
             type="button"
             onClick={onEphemeralClick}
             title="Temporary view -- not pinned"
-            className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium cursor-pointer ${
+            className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium cursor-pointer ${
               ephemeralIsActive
                 ? "bg-white/[0.05] text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
                 : "text-white/25 hover:text-white/50 hover:bg-white/[0.03]"
