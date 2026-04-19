@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ChevronDown, ChevronUp, RefreshCw, LayoutGrid, Layers } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronDown, ChevronUp, RefreshCw, LayoutGrid, Layers, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
-import { ColumnToggle, SortDropdown } from "./FilterBar";
+import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
 import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
 import {
@@ -322,9 +322,35 @@ export function SprintSlots({
       })()}
       </div>
 
-      {/* Right side: group by (All view only), column toggle, sort, refresh + toggle filters */}
+      {/* Right side: active sort label + icon group */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
-        {/* Group by — only visible in the All view */}
+        {/* Active sort label — shown to the left of the icon group */}
+        {sortField && sortField !== "rank" && sortDir && onSortChange && (
+          <span className="flex items-center gap-0.5 mr-1">
+            <button
+              type="button"
+              onClick={() => onSortChange(sortField, sortDir === "asc" ? "desc" : "asc")}
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-[var(--color-brand-400)] cursor-pointer hover:bg-white/[0.04] active:bg-white/[0.06]"
+              title={`Sorted: ${SORT_OPTIONS.find((o) => o.field === sortField)?.label} (${sortDir === "asc" ? "ascending" : "descending"}). Click to toggle.`}
+            >
+              <span>{SORT_OPTIONS.find((o) => o.field === sortField)?.label ?? "Sort"}</span>
+              {sortDir === "asc"
+                ? <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
+                : <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
+              }
+            </button>
+            <button
+              type="button"
+              onClick={() => onSortChange("rank" as SortField, "asc" as SortDir)}
+              className="flex items-center justify-center rounded p-0.5 text-white/20 cursor-pointer hover:text-white/50 hover:bg-white/[0.04]"
+              title="Clear sort"
+            >
+              <X className="h-3 w-3" strokeWidth={1.5} />
+            </button>
+          </span>
+        )}
+
+        {/* Group by -- only visible in the All view */}
         {allActive && groupBy !== undefined && onGroupByChange && (
           <GroupByDropdown value={groupBy} onChange={onGroupByChange} />
         )}

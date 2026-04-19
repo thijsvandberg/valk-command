@@ -107,7 +107,7 @@ export const COLUMN_PRESETS: Record<ColumnPreset, ColumnId[]> = {
 // Sort dropdown (icon-only)
 // ---------------------------------------------------------------------------
 
-const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDir }[] = [
+export const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDir }[] = [
   { field: "rank", label: "Jira rank (default)", defaultDir: "asc" },
   { field: "lastChanged", label: "Last changed", defaultDir: "desc" },
   { field: "quality", label: "Quality Score", defaultDir: "desc" },
@@ -145,7 +145,7 @@ export function SortDropdown({
   const activeLabel = SORT_OPTIONS.find((o) => o.field === field)?.label ?? "Sort";
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex items-center gap-1">
       <Button
         variant={isActive ? "soft" : "ghost"}
         size="md"
