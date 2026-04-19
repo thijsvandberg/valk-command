@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ChevronDown, ChevronUp, RefreshCw, LayoutGrid, Layers, X } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronDown, ChevronUp, RefreshCw, LayoutGrid, Layers } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -326,29 +326,18 @@ export function SprintSlots({
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
         {/* Active sort label — shown to the left of the icon group */}
         {sortField && sortField !== "rank" && sortDir && onSortChange && (
-          <span className="group/sort flex items-center gap-0.5 mr-1">
-            <button
-              type="button"
-              onClick={() => onSortChange(sortField, sortDir === "asc" ? "desc" : "asc")}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-[var(--color-brand-400)] cursor-pointer hover:bg-white/[0.04] active:bg-white/[0.06]"
-              title={`Sorted: ${SORT_OPTIONS.find((o) => o.field === sortField)?.label} (${sortDir === "asc" ? "ascending" : "descending"}). Click to toggle.`}
-            >
-              <span>{SORT_OPTIONS.find((o) => o.field === sortField)?.label ?? "Sort"}</span>
-              {sortDir === "asc"
-                ? <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
-                : <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
-              }
-            </button>
-            <button
-              type="button"
-              onClick={() => onSortChange("rank" as SortField, "asc" as SortDir)}
-              className="flex items-center justify-center rounded p-0.5 text-white/20 cursor-pointer opacity-0 group-hover/sort:opacity-100 hover:text-white/50 hover:bg-white/[0.04]"
-              style={{ transition: "opacity 0.15s ease" }}
-              title="Clear sort"
-            >
-              <X className="h-3 w-3" strokeWidth={1.5} />
-            </button>
-          </span>
+          <button
+            type="button"
+            onClick={() => onSortChange(sortField, sortDir === "asc" ? "desc" : "asc")}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 mr-1 text-[11px] text-[var(--color-brand-400)] cursor-pointer hover:bg-white/[0.04] active:bg-white/[0.06]"
+            title={`Sorted: ${SORT_OPTIONS.find((o) => o.field === sortField)?.label} (${sortDir === "asc" ? "ascending" : "descending"}). Click to toggle.`}
+          >
+            <span>{SORT_OPTIONS.find((o) => o.field === sortField)?.label ?? "Sort"}</span>
+            {sortDir === "asc"
+              ? <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
+              : <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
+            }
+          </button>
         )}
 
         {/* Group by -- only visible in the All view */}
