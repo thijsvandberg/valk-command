@@ -2,6 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { forwardRef } from "react";
+import { User } from "lucide-react";
 
 interface UserAvatarProps {
   collapsed: boolean;
@@ -14,8 +15,8 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
     const { user } = useUser();
 
     const initials = user
-      ? `${(user.firstName?.[0] ?? "").toUpperCase()}${(user.lastName?.[0] ?? "").toUpperCase()}` || "?"
-      : "?";
+      ? `${(user.firstName?.[0] ?? "").toUpperCase()}${(user.lastName?.[0] ?? "").toUpperCase()}`
+      : "";
 
     const hasImage = !!user?.imageUrl;
 
@@ -48,10 +49,12 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
               className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
             />
-          ) : (
+          ) : initials ? (
             <span className="text-[10px] font-semibold tracking-wide text-[var(--color-brand-300)]">
               {initials}
             </span>
+          ) : (
+            <User className="h-3.5 w-3.5 text-[var(--color-brand-300)]" strokeWidth={1.5} />
           )}
         </span>
         {!collapsed && user?.firstName && (
