@@ -3,8 +3,8 @@
 import { forwardRef, useRef, useCallback, useState, useEffect } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
-import type { ColumnId } from "@/components/sprint-board/FilterBar";
-import { COLUMNS } from "@/components/sprint-board/FilterBar";
+import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar";
+import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X } from "lucide-react";
@@ -23,30 +23,32 @@ export interface TicketRowBaseProps {
   ticket: Ticket;
   ticketIdx: number;
   isChecked: boolean;
-  isHovered: boolean;
+  isHovered?: boolean;
   isSelected: boolean;
-  isFocused: boolean;
-  isInflight: boolean;
+  isFocused?: boolean;
+  isInflight?: boolean;
   someChecked: boolean;
   isDragActive: boolean;
-  col: (id: ColumnId) => boolean;
-  sprintNameMap: Record<string, string>;
-  poStatuses: Record<string, POStatus>;
-  readinessMap: Record<string, TicketReadiness | null>;
+  // Column visibility: either pass `col` + `columnOrder`, or use `preset` for a predefined set
+  preset?: ColumnPreset;
+  col?: (id: ColumnId) => boolean;
+  sprintNameMap?: Record<string, string>;
+  poStatuses?: Record<string, POStatus>;
+  readinessMap?: Record<string, TicketReadiness | null>;
   selectedTicket: string | null;
-  onHoverRow: (key: string | null) => void;
-  onLeaveRow: () => void;
+  onHoverRow?: (key: string | null) => void;
+  onLeaveRow?: () => void;
   onSelectTicket: (key: string | null) => void;
   onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
-  onPoStatusChange: (key: string, status: POStatus) => void;
-  onReadinessChange: (key: string, readiness: TicketReadiness | null) => void;
+  onPoStatusChange?: (key: string, status: POStatus) => void;
+  onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
-  editingTitleKey: string | null;
-  onEditingTitleKeyChange: (key: string | null) => void;
-  reviewPopoverKey: string | null;
-  onToggleReviewPopover: (key: string) => void;
+  editingTitleKey?: string | null;
+  onEditingTitleKeyChange?: (key: string | null) => void;
+  reviewPopoverKey?: string | null;
+  onToggleReviewPopover?: (key: string) => void;
   columnOrder?: ColumnId[];
   insertLine?: "above" | "below";
   rowStyle?: React.CSSProperties;
@@ -61,16 +63,17 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     ticket,
     ticketIdx,
     isChecked,
-    isHovered,
+    isHovered = false,
     isSelected,
-    isFocused,
-    isInflight,
+    isFocused = false,
+    isInflight = false,
     someChecked,
     isDragActive,
-    col,
-    sprintNameMap,
-    poStatuses,
-    readinessMap,
+    preset,
+    col: colProp,
+    sprintNameMap = {},
+    poStatuses = {},
+    readinessMap = {},
     selectedTicket,
     onHoverRow,
     onLeaveRow,
@@ -81,9 +84,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
-    editingTitleKey,
+    editingTitleKey = null,
     onEditingTitleKeyChange,
-    reviewPopoverKey,
+    reviewPopoverKey = null,
     onToggleReviewPopover,
     columnOrder,
     insertLine,
@@ -95,6 +98,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   },
   ref
 ) {
+  const isCompact = preset === "compact";
+  const presetCols = preset ? new Set(COLUMN_PRESETS[preset]) : null;
+  const col = colProp ?? ((id: ColumnId) => presetCols?.has(id) ?? true);
   const isEditingTitle = editingTitleKey === ticket.key;
   const [editTitleValue, setEditTitleValue] = useState("");
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
@@ -105,7 +111,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     if (!isEditingTitle) return;
     function handleMouseDown(e: MouseEvent) {
       if (titleEditContainerRef.current && !titleEditContainerRef.current.contains(e.target as Node)) {
-        onEditingTitleKeyChange(null);
+        onEditingTitleKeyChange?.(null);
       }
     }
     document.addEventListener("mousedown", handleMouseDown);
@@ -135,7 +141,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = useCallback(() => {
-    onHoverRow(ticket.key);
+    onHoverRow?.(ticket.key);
     prefetchTimerRef.current = setTimeout(() => {
       prefetchTicketDetail(ticket.key);
     }, 200);
@@ -146,7 +152,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       clearTimeout(prefetchTimerRef.current);
       prefetchTimerRef.current = null;
     }
-    onLeaveRow();
+    onLeaveRow?.();
   }, [onLeaveRow]);
 
   const insertLineShadow = insertLine === "above"
@@ -159,12 +165,19 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     ...rowStyle,
   };
 
-  const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
+  const effectiveOrder = columnOrder ?? (preset ? COLUMN_PRESETS[preset] : DEFAULT_ORDER);
 
   const renderCell = (id: ColumnId) => {
     if (!col(id)) return null;
     switch (id) {
       case "type": {
+        if (isCompact) {
+          return (
+            <td key={id} className="w-6 py-2 pr-1">
+              <IssueTypeIcon type={ticket.type} size={14} />
+            </td>
+          );
+        }
         const sl = stickyOffsets?.[id];
         return (
           <td
@@ -178,6 +191,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       }
       case "key": {
         const sl = stickyOffsets?.[id];
+        if (isCompact) {
+          return (
+            <td key={id} className="py-2 pr-2">
+              <span className="font-mono text-xs text-white/40">{ticket.key}</span>
+            </td>
+          );
+        }
         return (
           <td
             key={id}
@@ -195,7 +215,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                   title={ticket.title}
                   issueType={ticket.type}
                   readiness={readinessMap[ticket.key] ?? null}
-                  onReadinessChange={(r) => onReadinessChange(ticket.key, r)}
+                  onReadinessChange={onReadinessChange ? (r) => onReadinessChange(ticket.key, r) : undefined}
                   onJiraStatusChange={onJiraStatusChange ? (s) => onJiraStatusChange(ticket.key, s) : undefined}
                   onIssueTypeChange={onIssueTypeChange ? (t) => onIssueTypeChange(ticket.key, t) : undefined}
                   variant="list"
@@ -228,6 +248,16 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       }
       case "title": {
+        if (isCompact) {
+          return (
+            <td key={id} className="overflow-hidden py-2 pr-3">
+              <span className="block w-full truncate text-sm text-white/70">
+                {ticket.title}
+              </span>
+            </td>
+          );
+        }
+
         const sl = stickyOffsets?.[id];
         const stickyBg = sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : "";
 
@@ -258,9 +288,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                       if (trimmed && trimmed !== ticket.title) {
                         onTitleChange?.(ticket.key, trimmed);
                       }
-                      onEditingTitleKeyChange(null);
+                      onEditingTitleKeyChange?.(null);
                     } else if (e.key === "Escape") {
-                      onEditingTitleKeyChange(null);
+                      onEditingTitleKeyChange?.(null);
                     }
                   }}
                   rows={1}
@@ -273,7 +303,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                     if (trimmed && trimmed !== ticket.title) {
                       onTitleChange?.(ticket.key, trimmed);
                     }
-                    onEditingTitleKeyChange(null);
+                    onEditingTitleKeyChange?.(null);
                   }}
                   className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-white/[0.08] bg-[var(--color-surface-elevated)] text-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-white/[0.15] hover:text-white/70"
                   title="Save"
@@ -282,7 +312,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                 </button>
                 <button
                   type="button"
-                  onClick={() => onEditingTitleKeyChange(null)}
+                  onClick={() => onEditingTitleKeyChange?.(null)}
                   className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-white/[0.08] bg-[var(--color-surface-elevated)] text-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-white/[0.15] hover:text-white/70"
                   title="Cancel"
                 >
@@ -296,7 +326,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`max-w-0 py-1.5 pr-3 text-white/80${stickyBg}`}
+            className={`overflow-hidden max-w-0 py-1.5 pr-3 text-white/80${stickyBg}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             <div className="flex items-center">
@@ -308,7 +338,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                   onClick={(e) => {
                     e.stopPropagation();
                     setEditTitleValue(ticket.title);
-                    onEditingTitleKeyChange(ticket.key);
+                    onEditingTitleKeyChange?.(ticket.key);
                     requestAnimationFrame(() => {
                       const ta = titleInputRef.current;
                       if (ta) {
@@ -343,14 +373,14 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "jiraStatus":
         return (
-          <td key={id} className="py-1.5 pr-3 overflow-hidden">
+          <td key={id} className={`${isCompact ? "w-28 py-2 pr-2" : "py-1.5 pr-3"} overflow-hidden`}>
             {isRemoved ? (
-              <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium bg-red-500/10 text-red-400/70">
+              <span className={`inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 ${isCompact ? "text-caption" : "text-label"} font-medium bg-red-500/10 text-red-400/70`}>
                 REMOVED
               </span>
             ) : (
               <span
-                className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium"
+                className={`inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 ${isCompact ? "text-caption" : "text-label"} font-medium`}
                 style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
               >
                 {ticket.jiraStatus}
@@ -368,13 +398,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "points":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3 text-center tabular-nums text-white/30">
+          <td key={id} className={`overflow-hidden ${isCompact ? "w-8 py-2 pr-2" : "py-1.5 pr-3"} text-center text-xs tabular-nums text-white/30`}>
             {ticket.storyPoints ?? "-"}
           </td>
         );
       case "assignee":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3">
+          <td key={id} className={`overflow-hidden ${isCompact ? "w-8 py-2 pr-3" : "py-1.5 pr-3"}`}>
             <Avatar assignee={ticket.assignee} size={18} />
           </td>
         );
@@ -394,7 +424,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           >
             <ReadinessCell
               value={readinessMap[ticket.key] ?? null}
-              onChange={(v) => onReadinessChange(ticket.key, v)}
+              onChange={onReadinessChange ? (v) => onReadinessChange(ticket.key, v) : () => {}}
               subtle
             />
           </td>
@@ -411,7 +441,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
               score={ticket.qualityScore}
               ticketKey={ticket.key}
               isPopoverOpen={reviewPopoverKey === ticket.key}
-              onTogglePopover={() => onToggleReviewPopover(ticket.key)}
+              onTogglePopover={onToggleReviewPopover ? () => onToggleReviewPopover(ticket.key) : undefined}
             />
           </td>
         );
@@ -498,9 +528,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       {...dragListeners}
       {...dragAttributes}
     >
-      {/* Checkbox — stops pointer propagation so drag sensor never activates on checkbox interaction */}
+      {/* Checkbox -- stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
-        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : ""}`}
+        className={`cursor-pointer select-none ${isCompact ? "w-9 py-2" : "py-1.5"} pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : ""}`}
         style={stickyOffsets?._check !== undefined ? { position: "sticky", left: stickyOffsets._check, zIndex: 2 } : undefined}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
@@ -532,7 +562,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   );
 });
 
-export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "dragListeners" | "dragAttributes" | "data-index">) {
+export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "dragListeners" | "dragAttributes" | "data-index"> & {
+  sortableData?: Record<string, unknown>;
+}) {
   const {
     attributes,
     listeners,
@@ -542,8 +574,7 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
     isDragging,
   } = useSortable({
     id: props.ticket.key,
-    // sprintId is used by SprintBoard's drag handler to detect cross-group drops in All view
-    data: { sprintId: props.ticket.sprintId },
+    data: props.sortableData ?? { sprintId: props.ticket.sprintId },
   });
 
   const rowStyle: React.CSSProperties = {
@@ -558,9 +589,11 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
     } : {}),
   };
 
+  const { sortableData: _, ...rowProps } = props;
+
   return (
     <TicketRow
-      {...props}
+      {...rowProps}
       ref={setNodeRef}
       rowStyle={rowStyle}
       dragListeners={listeners}

@@ -96,6 +96,13 @@ export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[]
 
 export const DEFAULT_VISIBLE: ColumnId[] = ["type", "key", "title", "epic", "jiraStatus", "points", "assignee", "flagged", "poStatus", "quality", "notes", "pipeline"];
 
+export type ColumnPreset = "full" | "compact";
+
+export const COLUMN_PRESETS: Record<ColumnPreset, ColumnId[]> = {
+  full: COLUMNS.map((c) => c.id),
+  compact: ["type", "key", "title", "jiraStatus", "points", "assignee"],
+};
+
 // ---------------------------------------------------------------------------
 // Sort dropdown (icon-only)
 // ---------------------------------------------------------------------------

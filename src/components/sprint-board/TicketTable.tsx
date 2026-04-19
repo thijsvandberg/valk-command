@@ -248,10 +248,8 @@ export function TicketTable({
   const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Column width lookup. Title is the flex filler by default but can be pinned by the user.
   const colW = useCallback((id: string): number | undefined => {
-    if (id === "title") return columnWidths?.["title"] ?? undefined;
-    return columnWidths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? undefined;
+    return columnWidths?.[id] ?? (DEFAULT_COLUMN_WIDTHS[id] || undefined);
   }, [columnWidths]);
 
   // Compute left-pixel offsets for sticky columns (drag handle, checkbox, type, key, title).
