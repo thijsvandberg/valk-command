@@ -161,7 +161,7 @@ function DroppableSprintColumn({
       style={{ transition: "background-color 0.15s ease" }}
     >
       {/* Column header - z-20 beats the sticky thead's z-10, keeping dropdown on top */}
-      <div className="relative z-20 flex items-center gap-2 border-b border-border-default bg-[var(--color-surface-elevated)] px-3 py-2">
+      <div className="relative z-20 flex h-[44px] shrink-0 items-center gap-2 border-b border-border-default bg-[var(--color-surface-elevated)] px-3">
         <div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_left,rgba(46,145,73,0.06)_0%,transparent_70%)]" />
 
         {/* Sprint selector trigger */}
@@ -249,7 +249,7 @@ function DroppableSprintColumn({
         ) : (
           <table className="w-full table-fixed border-collapse">
             <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-              <tr className="border-b border-border-subtle text-left">
+              <tr className="h-[44px] border-b border-border-subtle text-left">
                 <th className="w-9 py-2 pl-1 pr-1" />
                 {COLUMN_PRESETS.compact.map((colId) => {
                   const label = COMPACT_HEADER_LABELS[colId] ?? "";

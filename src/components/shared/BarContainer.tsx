@@ -29,7 +29,7 @@ export function BarContainer({
   const paddingClass = padding === "compact" ? "px-3" : "px-4";
 
   return (
-    <div className={`flex h-11 shrink-0 items-center ${paddingClass} ${borderClass} ${className ?? ""}`}>
+    <div className={`flex h-[44px] shrink-0 items-center ${paddingClass} ${borderClass} ${className ?? ""}`}>
       {children}
     </div>
   );
