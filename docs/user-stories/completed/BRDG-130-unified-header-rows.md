@@ -98,11 +98,11 @@ The app has at least 8 distinct header bar patterns, each with its own height, p
 
 ### Phase 4: Visual verification
 
-- [ ] All header bars across the app are exactly 44px tall
-- [ ] Tab items fit within the 44px bar without overflow or clipping
-- [ ] Active/inactive tab text colors are identical everywhere
-- [ ] Border-bottom lines align seamlessly when bars are stacked vertically
-- [ ] No visual regression in responsive/narrow layouts
+- [x] All header bars across the app are exactly 44px tall
+- [x] Tab items fit within the 44px bar without overflow or clipping
+- [x] Active/inactive tab text colors are identical everywhere
+- [x] Border-bottom lines align seamlessly when bars are stacked vertically
+- [x] No visual regression in responsive/narrow layouts
 
 ## Technical Notes
 
