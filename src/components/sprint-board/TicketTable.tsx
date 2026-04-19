@@ -426,14 +426,7 @@ export function TicketTable({
     );
   }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh, stickyOffsets]);
 
-  const theadContent = (
-    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-      <tr className="group/thead border-b border-border-default text-left text-xs font-medium text-white/30">
-        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }} />
-        {effectiveOrder.map((id) => renderHeaderCell(id))}
-      </tr>
-    </thead>
-  );
+  const theadContent = null;
 
   const virtualizedTable = (
     <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
