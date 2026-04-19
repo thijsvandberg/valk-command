@@ -52,10 +52,10 @@ The Sprint Board uses `TicketRow.tsx` (via `TicketTable.tsx`) while the Compare 
 - [x] Verify that `TicketRow` works without features it does not need in Compare context (no inline editing, no column resize, no sorting headers)
 
 ### Phase 2: Migrate Compare view to shared component
-- [ ] Replace inline `SortableTicketRow` in `MultiSprintView.tsx` with the shared `TicketRow` wrapped in `useSortable`
-- [ ] Wire up the existing Compare column set (type, key, title, status, points, assignee) via the preset system
-- [ ] Preserve existing Compare-specific behavior: per-column search, cross-column DnD, multi-select checkboxes
-- [ ] Remove the old inline implementation from `MultiSprintView.tsx`
+- [x] Replace inline `SortableTicketRow` in `MultiSprintView.tsx` with the shared `TicketRow` wrapped in `useSortable`
+- [x] Wire up the existing Compare column set (type, key, title, status, points, assignee) via the preset system
+- [x] Preserve existing Compare-specific behavior: per-column search, cross-column DnD, multi-select checkboxes
+- [x] Remove the old inline implementation from `MultiSprintView.tsx`
 
 ### Phase 3: Visual parity and polish
 - [ ] Confirm both views render identically for the shared columns (font, spacing, colors, hover states)

@@ -2,15 +2,15 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import type { Ticket, Sprint, POStatus } from "@/types/ticket";
-import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { Avatar } from "@/components/shared/Avatar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { SidePanel } from "./SidePanel";
 import { GroupStatBar } from "./GroupStatBar";
 import type { StatCriterion } from "./GroupStatBar";
 import { SprintSelector } from "./SprintSelector";
+import { SortableTicketRow } from "./TicketRow";
+import { COLUMN_PRESETS } from "./FilterBar";
 import { CalendarRange, RefreshCw, X, Columns2, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
@@ -27,14 +27,11 @@ import {
   type CollisionDetection,
   useDroppable,
   pointerWithin,
-  closestCenter,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  useSortable,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 // Prefer the most specific droppable (ticket row) over the large column container.
 // Ticket rows are checked first with pointerWithin; if the pointer is between rows or
@@ -51,123 +48,10 @@ const compareCollisionDetection: CollisionDetection = (args) => {
   return pointerWithin({ ...args, droppableContainers: columnContainers });
 };
 
-// --- Sortable ticket row ---
-
-function SortableTicketRow({
-  ticket,
-  columnId,
-  isChecked,
-  isSelected,
-  onToggleCheck,
-  onSelect,
-  insertLine,
-}: {
-  ticket: Ticket;
-  columnId: "left" | "right";
-  isChecked: boolean;
-  isSelected: boolean;
-  onToggleCheck: (key: string) => void;
-  onSelect: (key: string | null) => void;
-  insertLine?: "above" | "below";
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: ticket.key,
-    data: { columnId },
-  });
-
-  const statusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-
-  const insertLineShadow =
-    insertLine === "above"
-      ? "inset 0 2px 0 var(--color-brand-500)"
-      : insertLine === "below"
-      ? "inset 0 -2px 0 var(--color-brand-500)"
-      : undefined;
-
-  return (
-    <tr
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      className={`group cursor-grab active:cursor-grabbing border-b border-border-subtle ${
-        isDragging
-          ? "opacity-40"
-          : isSelected
-          ? "bg-[var(--color-brand-500)]/[0.06]"
-          : isChecked
-          ? "bg-[var(--color-brand-500)]/[0.03]"
-          : "hover:bg-white/[0.02]"
-      }`}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        ...(insertLineShadow ? { boxShadow: insertLineShadow } : {}),
-      }}
-    >
-
-      <td className="w-9 py-2 pl-1 pr-1">
-        <label className="flex cursor-pointer items-center justify-center">
-          <input
-            type="checkbox"
-            checked={isChecked}
-            onChange={() => onToggleCheck(ticket.key)}
-            className="sr-only"
-          />
-          <span
-            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-              isChecked
-                ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                : "border-white/[0.12] bg-white/[0.03] opacity-0 group-hover:opacity-100"
-            }`}
-            style={{ transition: "opacity 0.15s ease, background-color 0.15s ease" }}
-          >
-            {isChecked && (
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </span>
-        </label>
-      </td>
-
-      <td className="w-6 py-2 pr-1">
-        <IssueTypeIcon type={ticket.type} size={14} />
-      </td>
-
-      <td className="w-24 py-2 pr-2">
-        <span className="font-mono text-xs text-white/40">{ticket.key}</span>
-      </td>
-
-      <td className="overflow-hidden py-2 pr-3">
-        <button
-          type="button"
-          onClick={() => onSelect(isSelected ? null : ticket.key)}
-          className="block w-full cursor-pointer truncate text-left text-sm text-white/70 hover:text-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "color 0.15s ease" }}
-        >
-          {ticket.title}
-        </button>
-      </td>
-
-      <td className="w-28 py-2 pr-2">
-        <span
-          className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-medium"
-          style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
-        >
-          {ticket.jiraStatus}
-        </span>
-      </td>
-
-      <td className="w-8 py-2 pr-2 text-center text-xs tabular-nums text-white/30">
-        {ticket.storyPoints ?? "-"}
-      </td>
-
-      <td className="w-8 py-2 pr-3">
-        <Avatar assignee={ticket.assignee} size={18} />
-      </td>
-    </tr>
-  );
-}
+// Header labels for compact preset columns
+const COMPACT_HEADER_LABELS: Record<string, string> = {
+  type: "", key: "Key", title: "Title", jiraStatus: "Status", points: "Pts", assignee: "",
+};
 
 // --- Droppable sprint column ---
 
@@ -371,20 +255,24 @@ function DroppableSprintColumn({
                     </span>
                   </label>
                 </th>
-                <th className="w-6 py-2 pr-1" />
-                <th className="w-24 py-2 pr-2 text-xs font-medium text-white/25">Key</th>
-                <th className="py-2 pr-3 text-xs font-medium text-white/25">Title</th>
-                <th className="w-28 py-2 pr-2 text-xs font-medium text-white/25">Status</th>
-                <th className="w-8 py-2 pr-2 text-center text-xs font-medium text-white/25">Pts</th>
-                <th className="w-8 py-2 pr-3" />
+                {COLUMN_PRESETS.compact.map((colId) => {
+                  const label = COMPACT_HEADER_LABELS[colId] ?? "";
+                  const isCenter = colId === "points";
+                  return label ? (
+                    <th key={colId} className={`py-2 pr-2 text-xs font-medium text-white/25${isCenter ? " text-center" : ""}`}>
+                      {label}
+                    </th>
+                  ) : (
+                    <th key={colId} className="py-2 pr-1" />
+                  );
+                })}
               </tr>
             </thead>
             <SortableContext items={filteredTickets.map((t) => t.key)} strategy={() => null}>
             <tbody>
-              {filteredTickets.map((ticket) => {
+              {filteredTickets.map((ticket, idx) => {
                 let insertLine: "above" | "below" | undefined;
                 if (dragOverId && ticket.key === dragOverId && overInsertIdx !== -1) {
-                  // Same column: direction based on list position. Cross-column: always insert above.
                   insertLine = activeInsertIdx !== -1
                     ? (activeInsertIdx > overInsertIdx ? "above" : "below")
                     : "above";
@@ -393,26 +281,30 @@ function DroppableSprintColumn({
                   <SortableTicketRow
                     key={ticket.key}
                     ticket={ticket}
-                    columnId={columnId}
+                    ticketIdx={idx}
+                    preset="compact"
                     isChecked={checkedKeys.has(ticket.key)}
                     isSelected={selectedKey === ticket.key}
-                    onToggleCheck={onToggleCheck}
-                    onSelect={onSelect}
+                    someChecked={someChecked}
+                    isDragActive={activeDragId !== null}
+                    selectedTicket={selectedKey}
+                    onSelectTicket={onSelect}
+                    onCheckboxClick={(key) => onToggleCheck(key)}
                     insertLine={insertLine}
+                    sortableData={{ columnId }}
                   />
                 );
               })}
               {filteredTickets.length === 0 && isFiltered && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-white/20">
+                  <td colSpan={1 + COLUMN_PRESETS.compact.length} className="py-12 text-center text-xs text-white/20">
                     No matching tickets
                   </td>
                 </tr>
               )}
-              {/* Drop-here hint when dragging over an empty filtered list */}
               {isOver && filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
+                  <td colSpan={1 + COLUMN_PRESETS.compact.length} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
                     Drop here to move
                   </td>
                 </tr>
