@@ -99,19 +99,35 @@ export function ReviewPopover({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Position fixed relative to anchor button, clamped to viewport
-  const popoverWidth = 384; // w-96
-  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const popoverMaxWidth = 384; // w-96
+  const gap = 8;
+  const margin = 12;
+  const [pos, setPos] = useState<{ top: number | undefined; bottom: number | undefined; left: number; width: number }>({
+    top: 0, bottom: undefined, left: 0, width: popoverMaxWidth,
+  });
   useEffect(() => {
     function updatePos() {
       if (!anchorRef.current) return;
       const rect = anchorRef.current.getBoundingClientRect();
-      const vw = window.innerWidth;
-      // Try to center on the button, but clamp to stay 8px from edges
-      const idealLeft = rect.left + rect.width / 2 - popoverWidth / 2;
-      const clampedLeft = Math.min(Math.max(8, idealLeft), vw - popoverWidth - 8);
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+
+      // Horizontal
+      const effectiveWidth = Math.min(popoverMaxWidth, vw - margin * 2);
+      const anchorCenter = rect.left + rect.width / 2;
+      const idealLeft = anchorCenter - effectiveWidth / 2;
+      const clampedLeft = Math.min(Math.max(margin, idealLeft), vw - effectiveWidth - margin);
+
+      // Vertical: flip above anchor if not enough space below
+      const spaceBelow = vh - rect.bottom - gap;
+      const maxPopoverHeight = vh * 0.7; // matches max-h-[70vh]
+      const showAbove = spaceBelow < Math.min(maxPopoverHeight, 300) && rect.top > spaceBelow;
+
       setPos({
-        top: rect.bottom + 8,
+        top: showAbove ? undefined : rect.bottom + gap,
+        bottom: showAbove ? vh - rect.top + gap : undefined,
         left: clampedLeft,
+        width: effectiveWidth,
       });
     }
     updatePos();
@@ -167,8 +183,8 @@ export function ReviewPopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-50 w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
-      style={{ top: pos.top, left: pos.left }}
+      className="fixed z-50 max-w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
+      style={{ top: pos.top, bottom: pos.bottom, left: pos.left, width: pos.width }}
       onClick={(e) => e.stopPropagation()}
     >
 
