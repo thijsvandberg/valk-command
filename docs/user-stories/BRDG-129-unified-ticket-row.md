@@ -1,6 +1,6 @@
 # BRDG-129: Unified Ticket Row Component
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -58,9 +58,9 @@ The Sprint Board uses `TicketRow.tsx` (via `TicketTable.tsx`) while the Compare 
 - [x] Remove the old inline implementation from `MultiSprintView.tsx`
 
 ### Phase 3: Visual parity and polish
-- [ ] Confirm both views render identically for the shared columns (font, spacing, colors, hover states)
-- [ ] Verify drag overlay appearance matches between views
-- [ ] Test with 50+ tickets in Compare view to ensure no performance regression (add virtualization if needed)
+- [x] Confirm both views render identically for the shared columns (font, spacing, colors, hover states)
+- [x] Verify drag overlay appearance matches between views
+- [x] Test with 50+ tickets in Compare view to ensure no performance regression (add virtualization if needed)
 
 ## Technical Notes
 

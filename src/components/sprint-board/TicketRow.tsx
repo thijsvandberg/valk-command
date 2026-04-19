@@ -132,7 +132,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const { data: healthMap } = usePipelineHealth();
   const health = healthMap?.[ticket.key];
 
-  // Suppress hover-based UI (checkbox, drag handle) on non-active rows during any drag
+  // Suppress hover-based UI (checkbox, drag handle) on non-active rows during any drag.
   const showCheckbox = isChecked || (isHovered && !isDragActive) || someChecked;
   const isRemoved = Boolean(ticket.removedFromJiraAt);
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
@@ -544,8 +544,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
               isChecked
                 ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
                 : "border-white/[0.12] bg-white/[0.03]"
-            }`}
-            style={{ opacity: showCheckbox ? 1 : 0, transition: "opacity 0.15s ease, background-color 0.15s ease" }}
+            }${isCompact && !isChecked ? " opacity-0 group-hover/row:opacity-100" : ""}`}
+            style={isCompact ? { transition: "opacity 0.15s ease, background-color 0.15s ease" } : { opacity: showCheckbox ? 1 : 0, transition: "opacity 0.15s ease, background-color 0.15s ease" }}
           >
             {isChecked && (
               <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
