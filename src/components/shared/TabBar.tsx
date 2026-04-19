@@ -10,11 +10,11 @@ const activeClass =
   "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full";
 
 const inactiveClass =
-  "text-white/35 hover:text-white/60 active:text-white/50";
+  "text-white/35 hover:text-white/60 hover:bg-white/[0.03] active:text-white/50";
 
 export function TabBar({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <BarContainer className={`gap-0 ${className ?? ""}`}>
+    <BarContainer className={`items-stretch gap-0 ${className ?? ""}`}>
       {children}
     </BarContainer>
   );
