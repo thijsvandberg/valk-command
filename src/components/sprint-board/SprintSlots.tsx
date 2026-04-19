@@ -57,21 +57,25 @@ function SortableTab({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div ref={setNodeRef} style={style} className="relative flex items-center">
       <button
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className={`relative flex items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
-            ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
-            : "text-white/35 hover:text-white/60 active:text-white/50"
+            ? "bg-white/[0.07] text-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+            : "text-white/35 hover:text-white/60 hover:bg-white/[0.04] active:bg-white/[0.06]"
         }`}
+        style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
         {...attributes}
         {...listeners}
       >
         {sprint.state === "active" && (
-          <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-white/20"}`} />
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-white/20"}`}
+            style={isActive ? { boxShadow: "0 0 4px var(--color-brand-400)" } : undefined}
+          />
         )}
         {sprint.name}
       </button>
@@ -221,18 +225,19 @@ export function SprintSlots({
   }
 
   return (
-    <BarContainer className="items-stretch">
+    <BarContainer>
       {/* Scrollable tab area */}
-      <div className="flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {/* All tab -- always first, visually distinct with icon */}
       <button
         type="button"
         onClick={onAllClick}
-        className={`relative flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
-            ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
-            : "text-white/35 hover:text-white/60"
+            ? "bg-white/[0.07] text-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+            : "text-white/35 hover:text-white/60 hover:bg-white/[0.04] active:bg-white/[0.06]"
         }`}
+        style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
         title="Show all tickets across sprints"
       >
         <LayoutGrid className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
@@ -247,11 +252,12 @@ export function SprintSlots({
             key={view.id}
             type="button"
             onClick={() => onViewClick?.(view)}
-            className={`relative flex shrink-0 items-center px-3 py-2 text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            className={`flex shrink-0 items-center rounded-md px-2.5 py-1.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
-                ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full"
-                : "text-white/35 hover:text-white/60"
+                ? "bg-white/[0.07] text-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+                : "text-white/35 hover:text-white/60 hover:bg-white/[0.04] active:bg-white/[0.06]"
             }`}
+            style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
           >
             {view.title}
           </button>
@@ -308,11 +314,12 @@ export function SprintSlots({
             type="button"
             onClick={onEphemeralClick}
             title="Temporary view -- not pinned"
-            className={`relative flex shrink-0 items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-100 ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium cursor-pointer ${
               ephemeralIsActive
-                ? "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)]/60 after:rounded-full"
-                : "text-white/35 hover:text-white/60"
+                ? "bg-white/[0.05] text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+                : "text-white/25 hover:text-white/50 hover:bg-white/[0.03]"
             }`}
+            style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
           >
             {eSprint.state === "active" && (
               <span className={`h-1.5 w-1.5 rounded-full ${ephemeralIsActive ? "bg-[var(--color-brand-400)]/60" : "bg-white/15"}`} />
