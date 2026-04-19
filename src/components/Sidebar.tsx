@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, useSyncExternalStore, useCallback } from "react";
-import { useClerk } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
+import { useState, useRef, useSyncExternalStore, useCallback } from "react";
 import {
   LayoutGrid,
   MessageCircle,
@@ -13,16 +12,15 @@ import {
   SlidersHorizontal,
   NotebookPen,
   Users,
-  Settings,
   Menu,
   X,
   ChevronLeft,
   ChevronRight,
-  LogOut,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
-import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
+import { UserAvatar } from "@/components/sidebar/UserAvatar";
+import { UserProfilePopover } from "@/components/sidebar/UserProfilePopover";
 
 const navItems = [
   {
@@ -65,11 +63,6 @@ const navItems = [
     href: "/stakeholder",
     icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
   },
-  {
-    label: "Settings",
-    href: "/settings",
-    icon: <Settings className="h-5 w-5" strokeWidth={1.5} />,
-  },
 ];
 
 const STORAGE_KEY = "sidebar-collapsed";
@@ -93,9 +86,9 @@ function getCollapsedServerSnapshot(): boolean {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { signOut } = useClerk();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileTriggerRef = useRef<HTMLButtonElement>(null);
 
   const collapsed = useSyncExternalStore(
     subscribeToStorage,
@@ -106,7 +99,6 @@ export default function Sidebar() {
   const toggleCollapsed = useCallback(() => {
     try {
       localStorage.setItem(STORAGE_KEY, String(!collapsed));
-      // Dispatch storage event so useSyncExternalStore picks up the change
       window.dispatchEvent(new Event("storage"));
     } catch { /* noop */ }
   }, [collapsed]);
@@ -190,7 +182,7 @@ export default function Sidebar() {
           </ul>
         </nav>
 
-        {/* Bottom: sync + logout + collapse toggle */}
+        {/* Bottom: sync + profile + collapse toggle */}
         <div className={`flex flex-col border-t border-border-subtle pt-2 pb-3 gap-2 ${collapsed ? "px-1.5" : "px-3"}`}>
           <div className={`flex items-center ${collapsed ? "flex-col gap-2" : "justify-between"}`}>
             <SyncIndicator collapsed={collapsed} />
@@ -206,23 +198,20 @@ export default function Sidebar() {
               }
             </button>
           </div>
-          <button
-            type="button"
-            onClick={async () => {
-              // Clear dev bypass cookie if active (no-op in production)
-              await apiFetch("/api/dev/bypass", { method: "DELETE" }).catch(() => {});
-              // Sign out of Clerk if a session exists, then hard-redirect to login
-              await signOut();
-              window.location.href = "/login";
-            }}
-            className={`flex items-center ${collapsed ? "justify-center" : "gap-2"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs text-white/30 cursor-pointer hover:bg-hover-list-item hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
-            title={collapsed ? "Sign out" : undefined}
-            aria-label="Sign out"
-          >
-            <LogOut size={14} strokeWidth={1.5} />
-            {!collapsed && <span>Sign out</span>}
-          </button>
+          <UserAvatar
+            ref={profileTriggerRef}
+            collapsed={collapsed}
+            onClick={() => setProfileOpen((prev) => !prev)}
+            open={profileOpen}
+          />
         </div>
+
+        <UserProfilePopover
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          triggerRef={profileTriggerRef}
+          onNavigate={() => setMobileOpen(false)}
+        />
 
         {/* Sidebar right edge accent */}
         <div className="hidden lg:block absolute top-0 right-0 h-full w-px bg-white/[0.06]" />

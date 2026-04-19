@@ -16,8 +16,18 @@ vi.mock("next/link", () => ({
 }));
 
 // Mock @clerk/nextjs to avoid needing a ClerkProvider
+const mockSignOut = vi.fn();
 vi.mock("@clerk/nextjs", () => ({
-  useClerk: () => ({ signOut: vi.fn() }),
+  useClerk: () => ({ signOut: mockSignOut }),
+  useUser: () => ({
+    user: {
+      firstName: "Test",
+      lastName: "User",
+      fullName: "Test User",
+      primaryEmailAddress: { emailAddress: "test@example.com" },
+      imageUrl: null,
+    },
+  }),
 }));
 
 // Mock SyncIndicator to avoid needing ActivityProvider
@@ -43,7 +53,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("Refinement")).toBeInTheDocument();
     expect(screen.getByText("Stakeholder")).toBeInTheDocument();
     expect(screen.getByText("Story Writer")).toBeInTheDocument();
-    expect(screen.getByText("Settings")).toBeInTheDocument();
+    expect(screen.getByText("Pipelines")).toBeInTheDocument();
   });
 
   it("all navigation links point to correct routes", () => {
@@ -60,7 +70,6 @@ describe("Sidebar", () => {
       "/test-center",
       "/refinement",
       "/stakeholder",
-      "/settings",
     ]);
   });
 
@@ -96,5 +105,41 @@ describe("Sidebar", () => {
     const closeButton = screen.getByLabelText("Close sidebar");
     fireEvent.click(closeButton);
     expect(sidebar.className).toContain("-translate-x-full");
+  });
+
+  it("renders the user avatar with initials", () => {
+    render(<Sidebar />);
+    const avatarButton = screen.getByLabelText("User menu");
+    expect(avatarButton).toBeInTheDocument();
+    expect(screen.getByText("TU")).toBeInTheDocument();
+    expect(screen.getByText("Test")).toBeInTheDocument();
+  });
+
+  it("opens profile popover on avatar click", () => {
+    render(<Sidebar />);
+    const avatarButton = screen.getByLabelText("User menu");
+    fireEvent.click(avatarButton);
+
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.getByText("Test User")).toBeInTheDocument();
+    expect(screen.getByText("test@example.com")).toBeInTheDocument();
+  });
+
+  it("shows Settings and Notifications in profile popover", () => {
+    render(<Sidebar />);
+    fireEvent.click(screen.getByLabelText("User menu"));
+
+    expect(screen.getByRole("menuitem", { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /notifications/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
+  });
+
+  it("closes profile popover on Escape", () => {
+    render(<Sidebar />);
+    fireEvent.click(screen.getByLabelText("User menu"));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });
