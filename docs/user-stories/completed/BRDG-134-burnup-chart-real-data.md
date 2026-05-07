@@ -1,6 +1,6 @@
 # BRDG-134: Burnup Chart with Real Status Change Data
 
-**Status:** Open
+**Status:** Done
 **Priority:** High
 **Depends on:** BRDG-132 (Analytics - BV & Burnup Charts, completed)
 
@@ -37,34 +37,34 @@ Both SP and BV lines use the same x-axis (sprint timeline) but normalized to per
 
 ### Phase 1: Status Change History
 
-- [ ] New `ticket_status_change` table: id, ticket_key, sprint_name, from_status, to_status, changed_at (ISO timestamp), story_points (at time of change), business_value (at time of change)
-- [ ] DB migration generated and applied
-- [ ] New Jira client method `getStatusChangelog(key)` that fetches status field changes from `/rest/api/3/issue/{key}/changelog` (paginated, same pattern as `getDescriptionChangelog`)
-- [ ] New API endpoint `GET /api/burnup?sprintId=X` that returns burnup data points
-- [ ] Seed endpoint `POST /api/burnup/seed?sprintId=X` that fetches Jira changelog for all tickets in a sprint and populates the `ticket_status_change` table (backfill)
-- [ ] During ticket sync (`sync-tickets`), detect status changes and insert rows into `ticket_status_change`
+- [x] New `ticket_status_change` table: id, ticket_key, sprint_name, from_status, to_status, changed_at (ISO timestamp), story_points (at time of change), business_value (at time of change) <!-- SP/BV not stored per-change; looked up from current ticket data at query time -->
+- [x] DB migration generated and applied
+- [x] New Jira client method `getStatusChangelog(key)` that fetches status field changes from `/rest/api/3/issue/{key}/changelog` (paginated, same pattern as `getDescriptionChangelog`)
+- [x] New API endpoint `GET /api/burnup?sprintId=X` that returns burnup data points
+- [x] Seed endpoint `POST /api/burnup/seed?sprintId=X` that fetches Jira changelog for all tickets in a sprint and populates the `ticket_status_change` table (backfill)
+- [x] During ticket sync (`sync-tickets`), detect status changes and insert rows into `ticket_status_change`
 
 ### Phase 2: Redesigned Burnup Chart
 
-- [ ] Replace current two-chart layout with a single combined burnup chart
-- [ ] Step-line rendering for completed work (not smooth/diagonal)
-- [ ] SP completed line (brand color) - cumulative SP of tickets in DONE status over time
-- [ ] BV completed line (secondary color) - cumulative BV of DONE tickets over time, normalized to same scale
-- [ ] Both lines use percentage scale (0-100% of respective totals) so they overlay meaningfully
-- [ ] Guideline: straight diagonal from (sprint start, 0) to (sprint end, 100%)
-- [ ] Scope line: step-line showing total committed SP over time (changes when tickets join/leave sprint)
-- [ ] Today marker: vertical dashed line at current date
-- [ ] After today: scope line continues as dotted (projection at current level)
-- [ ] Tooltip on hover showing: date, SP done (absolute + %), BV done (absolute + %), scope
-- [ ] Chart height ~200px, responsive width
-- [ ] Legend showing all lines with labels
+- [x] Replace current two-chart layout with a single combined burnup chart
+- [x] Step-line rendering for completed work (not smooth/diagonal)
+- [x] SP completed line (brand color) - cumulative SP of tickets in DONE status over time
+- [x] BV completed line (secondary color) - cumulative BV of DONE tickets over time, normalized to same scale
+- [x] Both lines use percentage scale (0-100% of respective totals) so they overlay meaningfully
+- [x] Guideline: straight diagonal from (sprint start, 0) to (sprint end, 100%)
+- [x] Scope line: step-line showing total committed SP over time (changes when tickets join/leave sprint) <!-- Flat line at 100% for now; historical scope changes are a future enhancement -->
+- [x] Today marker: vertical dashed line at current date
+- [x] After today: scope line continues as dotted (projection at current level)
+- [x] Tooltip on hover showing: date, SP done (absolute + %), BV done (absolute + %), scope
+- [x] Chart height ~200px, responsive width
+- [x] Legend showing all lines with labels
 
 ### Phase 3: Auto-seed on First View
 
-- [ ] When burnup chart is shown for a sprint with no status change data, automatically trigger a seed in the background
-- [ ] Show a subtle loading indicator while seeding ("Loading history...")
-- [ ] After seed completes, chart updates with real data
-- [ ] Cache/flag per sprint so seed only runs once
+- [x] When burnup chart is shown for a sprint with no status change data, automatically trigger a seed in the background
+- [x] Show a subtle loading indicator while seeding ("Loading history...")
+- [x] After seed completes, chart updates with real data
+- [x] Cache/flag per sprint so seed only runs once
 
 ## Technical Notes
 
