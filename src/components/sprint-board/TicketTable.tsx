@@ -180,6 +180,7 @@ export function TicketTable({
   onLeaveRow,
   onPoStatusChange,
   onReadinessChange,
+  onBusinessValueChange,
   onJiraStatusChange,
   onIssueTypeChange,
   onTitleChange,
@@ -220,6 +221,7 @@ export function TicketTable({
   onLeaveRow: () => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
+  onBusinessValueChange?: (key: string, value: number | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -378,6 +380,7 @@ export function TicketTable({
     onCheckboxClick: handleCheckboxClick,
     onPoStatusChange,
     onReadinessChange: onReadinessChange ?? (() => {}),
+    onBusinessValueChange,
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
@@ -387,7 +390,7 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
     stickyOffsets,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth

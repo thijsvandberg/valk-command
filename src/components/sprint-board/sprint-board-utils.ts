@@ -38,7 +38,7 @@ export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) 
 
 export async function saveTicketMetadata(
   jiraKey: string,
-  updates: { readiness?: TicketReadiness | null; poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null },
+  updates: { readiness?: TicketReadiness | null; poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null; businessValue?: number | null },
 ): Promise<boolean> {
   // Optimistically update SWR cache for ticket lists and detail
   const updateTicket = (ticket: Ticket): Ticket => {
@@ -47,6 +47,7 @@ export async function saveTicketMetadata(
     if (updates.poStatus !== undefined) patched.poStatus = updates.poStatus;
     if (updates.poNotes !== undefined) patched.notes = updates.poNotes;
     if (updates.qualityScore !== undefined) patched.qualityScore = updates.qualityScore;
+    if (updates.businessValue !== undefined) patched.businessValue = updates.businessValue;
     return patched;
   };
 
@@ -65,6 +66,7 @@ export async function saveTicketMetadata(
       ...(updates.poStatus !== undefined ? { poStatus: updates.poStatus } : {}),
       ...(updates.poNotes !== undefined ? { notes: updates.poNotes } : {}),
       ...(updates.qualityScore !== undefined ? { qualityScore: updates.qualityScore } : {}),
+      ...(updates.businessValue !== undefined ? { businessValue: updates.businessValue } : {}),
     } : current,
     { revalidate: false },
   );

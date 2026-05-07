@@ -13,6 +13,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
 import { getBvColor } from "@/types/ticket";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { prefetchTicketDetail } from "@/lib/prefetch";
@@ -43,6 +44,7 @@ export interface TicketRowBaseProps {
   onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
   onPoStatusChange?: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
+  onBusinessValueChange?: (key: string, value: number | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -82,6 +84,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     onCheckboxClick,
     onPoStatusChange,
     onReadinessChange,
+    onBusinessValueChange,
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
@@ -423,29 +426,21 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             />
           </td>
         );
-      case "bv": {
-        const bv = ticket.businessValue;
-        const bvColor = bv != null ? getBvColor(bv) : null;
+      case "bv":
         return (
           <td
             key={id}
-            className="overflow-hidden py-1.5 pr-3 text-center text-xs tabular-nums leading-none"
+            className="overflow-hidden py-1.5 pr-3 text-center"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            {bv != null ? (
-              <span
-                className="inline-flex h-5 w-5 items-center justify-center rounded font-medium"
-                style={{ backgroundColor: bvColor!.bg, color: bvColor!.text }}
-              >
-                {bv}
-              </span>
-            ) : (
-              <span className="text-white/10">-</span>
-            )}
+            <BusinessValuePicker
+              value={ticket.businessValue}
+              onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
+              subtle
+            />
           </td>
         );
-      }
       case "notes":
         return (
           <td key={id} className="overflow-hidden py-1.5 pr-2">

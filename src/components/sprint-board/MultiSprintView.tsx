@@ -80,6 +80,7 @@ function DroppableSprintColumn({
   onEditingTitleKeyChange,
   readinessMap,
   onReadinessChange,
+  onBusinessValueChange,
   onJiraStatusChange,
   onIssueTypeChange,
 }: {
@@ -104,6 +105,7 @@ function DroppableSprintColumn({
   onEditingTitleKeyChange: (key: string | null) => void;
   readinessMap: Record<string, TicketReadiness | null>;
   onReadinessChange: (key: string, readiness: TicketReadiness | null) => void;
+  onBusinessValueChange?: (key: string, value: number | null) => void;
   onJiraStatusChange: (key: string, status: JiraStatus) => void;
   onIssueTypeChange: (key: string, type: IssueType) => void;
 }) {
@@ -306,6 +308,7 @@ function DroppableSprintColumn({
                     onEditingTitleKeyChange={onEditingTitleKeyChange}
                     readinessMap={readinessMap}
                     onReadinessChange={onReadinessChange}
+                    onBusinessValueChange={onBusinessValueChange}
                     onJiraStatusChange={onJiraStatusChange}
                     onIssueTypeChange={onIssueTypeChange}
                     insertLine={insertLine}
@@ -398,6 +401,10 @@ export function MultiSprintView({
       }
     }
   }, [leftTickets, rightTickets, mutateLeft, mutateRight]);
+
+  const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
+    saveTicketMetadata(key, { businessValue: value });
+  }, []);
 
   const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
     const prev = readinessMap[key];
@@ -742,6 +749,7 @@ export function MultiSprintView({
               onEditingTitleKeyChange={setEditingTitleKey}
               readinessMap={readinessMap}
               onReadinessChange={handleReadinessChange}
+              onBusinessValueChange={handleBusinessValueChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
             />
@@ -773,6 +781,7 @@ export function MultiSprintView({
               onEditingTitleKeyChange={setEditingTitleKey}
               readinessMap={readinessMap}
               onReadinessChange={handleReadinessChange}
+              onBusinessValueChange={handleBusinessValueChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
             />

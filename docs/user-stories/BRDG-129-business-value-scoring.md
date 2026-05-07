@@ -41,10 +41,10 @@ As the PO, I want to assign a Business Value (BV) score to each ticket on the Sp
 - [x] Column is toggleable via column picker
 
 ### Phase 3: Inline editing
-- [ ] Click on BV cell to open a picker (dropdown or segmented control with 1-7)
-- [ ] Option to clear the value (set to null)
-- [ ] Optimistic update on selection
-- [ ] Persists via existing metadata endpoint
+- [x] Click on BV cell to open a picker (dropdown or segmented control with 1-7)
+- [x] Option to clear the value (set to null)
+- [x] Optimistic update on selection
+- [x] Persists via existing metadata endpoint
 
 ### Phase 4: Sprint aggregates
 - [ ] Show sprint BV total in the board header/summary area
