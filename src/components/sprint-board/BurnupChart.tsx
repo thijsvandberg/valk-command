@@ -238,22 +238,26 @@ export function BurnupChart({
     <div ref={containerRef} className="relative">
       <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Sprint burnup</div>
 
-      {/* Loading overlay when seeding */}
-      {(!data || !data.seeded || isValidating) && points.length === 0 && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-[var(--color-surface-default)]/80">
-          <span className="text-caption text-white/30">Loading history...</span>
-        </div>
+      {/* Subtle seeding indicator (non-blocking) */}
+      {data && !data.seeded && (
+        <div className="mb-1 text-caption text-white/20">Updating history...</div>
       )}
 
       <svg
         width={width}
         height={CHART_HEIGHT}
-        className="overflow-visible"
         role="img"
         aria-label="Sprint burnup chart"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
+        {/* Clip path to keep chart lines within the plot area */}
+        <defs>
+          <clipPath id={`burnup-clip-${sprintId}`}>
+            <rect x={xStart} y={yTop} width={xEnd - xStart} height={yBottom - yTop} />
+          </clipPath>
+        </defs>
+
         {/* Y-axis gridlines (percentage) */}
         {gridPcts.map((pct) => (
           <g key={pct}>
@@ -293,6 +297,9 @@ export function BurnupChart({
             {formatShortDate(l.date)}
           </text>
         ))}
+
+        {/* All chart lines clipped to plot area */}
+        <g clipPath={`url(#burnup-clip-${sprintId})`}>
 
         {/* Guideline: diagonal from (start, 0%) to (end, 100%) */}
         <line
@@ -383,6 +390,8 @@ export function BurnupChart({
             </text>
           </>
         )}
+
+        </g>
 
         {/* Hover crosshair */}
         {tooltipData && (

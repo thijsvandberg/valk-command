@@ -169,21 +169,21 @@ export async function GET(request: Request) {
     let runningScopeSp = 0;
     let runningScopeBv = 0;
 
-    // Compute initial scope from scope events: tickets added before or at sprint start
-    // If no scope events exist, assume all current tickets were there from the start
     const hasScopeData = scopeRows.length > 0;
     if (!hasScopeData) {
       runningScopeSp = currentTotalSp;
       runningScopeBv = currentTotalBv;
     }
 
-    // Group events by day, tracking running state
+    // Group events by day, clamping pre-sprint events to sprint start
     const startDay = sprintStart.slice(0, 10);
     const dayMap = new Map<string, { spDone: number; bvDone: number; scopeSp: number; scopeBv: number }>();
     dayMap.set(startDay, { spDone: 0, bvDone: 0, scopeSp: runningScopeSp, scopeBv: runningScopeBv });
 
     for (const event of events) {
-      const day = event.changedAt.slice(0, 10);
+      // Clamp events before sprint start to the start day
+      const rawDay = event.changedAt.slice(0, 10);
+      const day = rawDay < startDay ? startDay : rawDay;
 
       if (event.type === "scope") {
         if (event.action === "added") {
