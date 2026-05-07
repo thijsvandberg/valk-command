@@ -18,6 +18,9 @@ const STATUS_LABELS: Record<JiraStatus, string> = {
   DEPRECATED: "Deprecated",
 };
 
+// Display order for status bars: done first, then working backwards
+const STATUS_ORDER: JiraStatus[] = ["DONE", "TEST", "IN PROGRESS", "TO DO"];
+
 interface SprintAnalyticsProps {
   tickets: Ticket[];
   onClose?: () => void;
@@ -26,6 +29,7 @@ interface SprintAnalyticsProps {
 
 export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsProps) {
   const [expanded, setExpanded] = useState(true);
+  const [assigneesExpanded, setAssigneesExpanded] = useState(false);
 
   const totalPoints = useMemo(
     () => tickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0),
@@ -108,6 +112,16 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
     ? Math.max(...bvByAssignee.map((a) => a.value))
     : 0;
 
+  // Totals excluding DEPRECATED for status bars
+  const totalPointsForBar = useMemo(
+    () => STATUS_ORDER.reduce((sum, s) => sum + pointsByStatus[s], 0),
+    [pointsByStatus],
+  );
+  const totalBvForBar = useMemo(
+    () => STATUS_ORDER.reduce((sum, s) => sum + bvByStatus[s], 0),
+    [bvByStatus],
+  );
+
   if (totalPoints === 0 && bvTotal === 0) return null;
 
   return (
@@ -144,15 +158,15 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
 
       {expanded && (
         <div className="px-5 pb-3 pt-1">
-          {/* Story points distribution bar */}
+          {/* Story points by status */}
           {totalPoints > 0 && (
             <div className="mb-3">
-              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Points by status</div>
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Story Points by status</div>
               <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
-                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                {STATUS_ORDER.map((status) => {
                   const pts = pointsByStatus[status];
-                  if (pts === 0) return null;
-                  const pct = (pts / totalPoints) * 100;
+                  if (pts === 0 || totalPointsForBar === 0) return null;
+                  const pct = (pts / totalPointsForBar) * 100;
                   return (
                     <div
                       key={status}
@@ -168,7 +182,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                 })}
               </div>
               <div className="mt-1.5 flex flex-wrap gap-3">
-                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                {STATUS_ORDER.map((status) => {
                   const pts = pointsByStatus[status];
                   if (pts === 0) return null;
                   return (
@@ -185,15 +199,15 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
             </div>
           )}
 
-          {/* BV distribution by status */}
+          {/* Business Value by status */}
           {bvTotal > 0 && (
             <div className="mb-3">
-              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">BV by status</div>
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Business Value by status</div>
               <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
-                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                {STATUS_ORDER.map((status) => {
                   const bv = bvByStatus[status];
-                  if (bv === 0) return null;
-                  const pct = (bv / bvTotal) * 100;
+                  if (bv === 0 || totalBvForBar === 0) return null;
+                  const pct = (bv / totalBvForBar) * 100;
                   return (
                     <div
                       key={status}
@@ -209,7 +223,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                 })}
               </div>
               <div className="mt-1.5 flex flex-wrap gap-3">
-                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                {STATUS_ORDER.map((status) => {
                   const bv = bvByStatus[status];
                   if (bv === 0) return null;
                   return (
@@ -226,55 +240,76 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
             </div>
           )}
 
-          {/* Points by assignee */}
-          {pointsByAssignee.length > 0 && (
+          {/* Collapsible assignee sections */}
+          {(pointsByAssignee.length > 0 || bvByAssignee.length > 0) && (
             <div className="mb-3">
-              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Points by assignee</div>
-              <div className="space-y-1">
-                {pointsByAssignee.map((a) => (
-                  <div key={a.name} className="flex items-center gap-2">
-                    <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
-                    <div className="flex-1">
-                      <div
-                        className="h-2 rounded-full"
-                        style={{
-                          width: `${(a.points / maxAssigneePoints) * 100}%`,
-                          backgroundColor: a.color,
-                          opacity: 0.5,
-                          minWidth: 4,
-                        }}
-                      />
-                    </div>
-                    <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.points}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+              <button
+                type="button"
+                onClick={() => setAssigneesExpanded(!assigneesExpanded)}
+                className="mb-1.5 flex items-center gap-1 text-caption uppercase tracking-wider text-white/25 cursor-pointer hover:text-white/40"
+              >
+                <ChevronRight
+                  className={`h-2.5 w-2.5 transition-transform duration-150 ${assigneesExpanded ? "rotate-90" : ""}`}
+                  strokeWidth={1.5}
+                />
+                By assignee
+              </button>
 
-          {/* BV by assignee */}
-          {bvByAssignee.length > 0 && (
-            <div className="mb-3">
-              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">BV by assignee</div>
-              <div className="space-y-1">
-                {bvByAssignee.map((a) => (
-                  <div key={a.name} className="flex items-center gap-2">
-                    <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
-                    <div className="flex-1">
-                      <div
-                        className="h-2 rounded-full"
-                        style={{
-                          width: `${(a.value / maxAssigneeBv) * 100}%`,
-                          backgroundColor: a.color,
-                          opacity: 0.5,
-                          minWidth: 4,
-                        }}
-                      />
+              {assigneesExpanded && (
+                <div className="space-y-3">
+                  {/* Story Points by assignee */}
+                  {pointsByAssignee.length > 0 && (
+                    <div>
+                      <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Story Points by assignee</div>
+                      <div className="space-y-1">
+                        {pointsByAssignee.map((a) => (
+                          <div key={a.name} className="flex items-center gap-2">
+                            <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
+                            <div className="flex-1">
+                              <div
+                                className="h-2 rounded-full"
+                                style={{
+                                  width: `${(a.points / maxAssigneePoints) * 100}%`,
+                                  backgroundColor: a.color,
+                                  opacity: 0.5,
+                                  minWidth: 4,
+                                }}
+                              />
+                            </div>
+                            <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.points}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.value}</span>
-                  </div>
-                ))}
-              </div>
+                  )}
+
+                  {/* Business Value by assignee */}
+                  {bvByAssignee.length > 0 && (
+                    <div>
+                      <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Business Value by assignee</div>
+                      <div className="space-y-1">
+                        {bvByAssignee.map((a) => (
+                          <div key={a.name} className="flex items-center gap-2">
+                            <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
+                            <div className="flex-1">
+                              <div
+                                className="h-2 rounded-full"
+                                style={{
+                                  width: `${(a.value / maxAssigneeBv) * 100}%`,
+                                  backgroundColor: a.color,
+                                  opacity: 0.5,
+                                  minWidth: 4,
+                                }}
+                              />
+                            </div>
+                            <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
