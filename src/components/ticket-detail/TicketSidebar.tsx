@@ -85,11 +85,13 @@ export function TicketSidebar({
   const hasDescription = description.trim().length > 20;
   const hasAcceptanceCriteria = /acceptance\s*criteria/i.test(description);
   const hasPoints = ticket.storyPoints !== null;
+  const hasBV = businessValue !== null;
   const hasReview = ticket.qualityScore !== null;
   const completenessChecks = [
     { label: "Description", done: hasDescription },
     { label: "AC", done: hasAcceptanceCriteria },
     { label: "Points", done: hasPoints },
+    { label: "BV", done: hasBV },
     { label: "Review", done: hasReview },
   ];
   const completenessCount = completenessChecks.filter((c) => c.done).length;
