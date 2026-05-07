@@ -430,7 +430,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className="overflow-hidden py-1.5 pr-3 text-center"
+            className="py-1.5 pr-3 text-center"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
