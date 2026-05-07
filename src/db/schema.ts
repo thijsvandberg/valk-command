@@ -86,6 +86,7 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   }).notNull().default("untested"),
   lastTestRunAt: text("last_test_run_at"),
   lastTestReportUrl: text("last_test_report_url"),
+  businessValue: integer("business_value"),
 });
 
 export const workspaceTask = sqliteTable("workspace_task", {

@@ -398,6 +398,7 @@ export interface UpdateMetadataInput {
   poStatus?: string | null;
   qualityScore?: number | null;
   poNotes?: string | null;
+  businessValue?: number | null;
 }
 
 const VALID_READINESS_VALUES = [
@@ -476,6 +477,21 @@ export async function updateTicketMetadata(
       typeof input.poNotes === "string"
         ? sanitizeHtml(input.poNotes)
         : input.poNotes;
+  }
+
+  if (input.businessValue !== undefined) {
+    if (input.businessValue !== null) {
+      if (
+        !Number.isInteger(input.businessValue) ||
+        input.businessValue < 1 ||
+        input.businessValue > 7
+      ) {
+        throw new ValidationError(
+          "businessValue must be an integer between 1 and 7, or null",
+        );
+      }
+    }
+    updates.businessValue = input.businessValue;
   }
 
   if (existing) {

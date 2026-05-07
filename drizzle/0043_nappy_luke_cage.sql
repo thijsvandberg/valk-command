@@ -1,0 +1,1 @@
+ALTER TABLE `ticket_metadata` ADD `business_value` integer;
