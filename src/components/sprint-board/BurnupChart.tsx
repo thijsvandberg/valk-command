@@ -107,16 +107,34 @@ export function BurnupChart({
     return d;
   }, []);
 
-  const totalDays = daysBetween(start, end);
+  // Build working-day timeline (excludes weekends)
+  const workingDays = useMemo(() => {
+    const days: Date[] = [];
+    const totalCalDays = daysBetween(start, end);
+    for (let d = 0; d <= totalCalDays; d++) {
+      const date = new Date(start.getTime() + d * 24 * 60 * 60 * 1000);
+      if (!isWeekend(date)) days.push(date);
+    }
+    return days;
+  }, [start, end]);
 
+  const totalWorkingDays = workingDays.length - 1;
+
+  // Map any date to its x position based on working-day index
   const toX = useCallback(
     (date: Date) => {
       const plotW = width - PADDING.left - PADDING.right;
-      if (totalDays <= 0) return PADDING.left;
-      const day = daysBetween(start, date);
-      return PADDING.left + (day / totalDays) * plotW;
+      if (totalWorkingDays <= 0) return PADDING.left;
+      // Find the working day index for this date (snap weekends to next Monday)
+      const dateMs = date.getTime();
+      let idx = 0;
+      for (let i = 0; i < workingDays.length; i++) {
+        if (workingDays[i].getTime() <= dateMs) idx = i;
+        else break;
+      }
+      return PADDING.left + (idx / totalWorkingDays) * plotW;
     },
-    [totalDays, width, start],
+    [totalWorkingDays, width, workingDays],
   );
 
   const toXDay = useCallback(
@@ -176,11 +194,12 @@ export function BurnupChart({
     if (hoverX === null || width === 0 || points.length === 0) return null;
     const plotW = width - PADDING.left - PADDING.right;
     const relX = hoverX - PADDING.left;
-    if (relX < 0 || relX > plotW || totalDays <= 0) return null;
+    if (relX < 0 || relX > plotW || totalWorkingDays <= 0) return null;
 
-    const dayFraction = relX / plotW;
-    const day = Math.round(dayFraction * totalDays);
-    const date = new Date(start.getTime() + day * 24 * 60 * 60 * 1000);
+    // Map x position to working day
+    const dayIdx = Math.round((relX / plotW) * totalWorkingDays);
+    const clampedIdx = Math.max(0, Math.min(dayIdx, workingDays.length - 1));
+    const date = workingDays[clampedIdx];
     const dateStr = date.toISOString().slice(0, 10);
 
     // Find the closest data point at or before this date
@@ -202,7 +221,7 @@ export function BurnupChart({
       scopeBv: closest.scopeBv,
       x: hoverX,
     };
-  }, [hoverX, width, points, totalDays, start]);
+  }, [hoverX, width, points, totalWorkingDays, workingDays]);
 
   const xStart = PADDING.left;
   const xEnd = width - PADDING.right;
@@ -216,15 +235,10 @@ export function BurnupChart({
   // Percentage gridlines
   const gridPcts = [25, 50, 75, 100];
 
-  // X-axis labels: every day
+  // X-axis labels: working days only
   const xLabels = useMemo(() => {
-    const labels: { date: Date; x: number }[] = [];
-    for (let d = 0; d <= totalDays; d++) {
-      const date = new Date(start.getTime() + d * 24 * 60 * 60 * 1000);
-      labels.push({ date, x: toX(date) });
-    }
-    return labels;
-  }, [totalDays, start, toX]);
+    return workingDays.map((date) => ({ date, x: toX(date) }));
+  }, [workingDays, toX]);
 
   if (width === 0) {
     return (
