@@ -27,6 +27,9 @@ export function GroupStatBar({
   showDot = false,
 }: GroupStatBarProps) {
   const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+  const bvTickets = tickets.filter((t) => t.businessValue != null);
+  const bvTotal = bvTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
+  const bvAvg = bvTickets.length > 0 ? (bvTotal / bvTickets.length).toFixed(1) : null;
   const todoCount = tickets.filter((t) => t.jiraStatus === "TO DO").length;
   const inProgressCount = tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
   const testCount = tickets.filter((t) => t.jiraStatus === "TEST").length;
@@ -54,6 +57,9 @@ export function GroupStatBar({
       </StatPill>
       {totalPoints > 0 && (
         <StatPill size="sm" variant="dim">{totalPoints} pts</StatPill>
+      )}
+      {bvTickets.length > 0 && (
+        <StatPill size="sm" variant="dim">BV: {bvTotal}{bvAvg ? ` avg ${bvAvg}` : ""}</StatPill>
       )}
       {noPointsCount > 0 && (
         <StatPill

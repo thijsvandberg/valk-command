@@ -47,10 +47,10 @@ As the PO, I want to assign a Business Value (BV) score to each ticket on the Sp
 - [x] Persists via existing metadata endpoint
 
 ### Phase 4: Sprint aggregates
-- [ ] Show sprint BV total in the board header/summary area
-- [ ] Show sprint BV average in the board header/summary area
-- [ ] Format: "BV: 28 avg 4.0" or similar compact representation
-- [ ] Aggregates update live when individual scores change
+- [x] Show sprint BV total in the board header/summary area
+- [x] Show sprint BV average in the board header/summary area
+- [x] Format: "BV: 28 avg 4.0" or similar compact representation
+- [x] Aggregates update live when individual scores change
 
 ### Phase 5: Ticket sidebar
 - [ ] Display BV score in the PO Metadata section of the ticket sidebar

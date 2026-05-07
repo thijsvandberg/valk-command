@@ -240,6 +240,9 @@ export default function SprintBoard() {
   const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
   const totalPoints = allTickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0);
   const noPointsCount = allTickets.filter((t) => !t.storyPoints).length;
+  const bvScoredTickets = allTickets.filter((t) => t.businessValue != null);
+  const bvTotal = bvScoredTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
+  const bvAvg = bvScoredTickets.length > 0 ? (bvTotal / bvScoredTickets.length).toFixed(1) : null;
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
 
@@ -886,6 +889,9 @@ export default function SprintBoard() {
                   </StatPill>
                   {!isAllView && !f.activeView && totalPoints > 0 && (
                     <StatPill size="md" variant="dim">{totalPoints} pts</StatPill>
+                  )}
+                  {!isAllView && !f.activeView && bvScoredTickets.length > 0 && (
+                    <StatPill size="md" variant="dim">BV: {bvTotal}{bvAvg ? ` avg ${bvAvg}` : ""}</StatPill>
                   )}
                   {!isAllView && !f.activeView && noPointsCount > 0 && (
                     <StatPill size="md" variant="warning">{noPointsCount} no pts</StatPill>
