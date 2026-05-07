@@ -148,25 +148,28 @@ export function BurnupChart({
   const hasSp = totalSp > 0;
   const hasBv = totalBv > 0;
 
+  // Use max scope as the 100% reference so scope line sits near top
+  // and done lines are relative to the same scale
+  const maxScope = useMemo(() => Math.max(...points.map((p) => p.scopeSp), totalSp, 1), [points, totalSp]);
+  const maxBvScope = useMemo(() => Math.max(...points.map((p) => p.scopeBv), totalBv, 1), [points, totalBv]);
+
   const spPoints = useMemo(() => {
     if (!hasSp) return [];
-    return points.map((p) => ({ x: toXDay(p.date), y: toY(p.spPct) }));
-  }, [points, hasSp, toXDay, toY]);
+    return points.map((p) => ({ x: toXDay(p.date), y: toY((p.spDone / maxScope) * 100) }));
+  }, [points, hasSp, toXDay, toY, maxScope]);
 
   const bvPoints = useMemo(() => {
     if (!hasBv) return [];
-    return points.map((p) => ({ x: toXDay(p.date), y: toY(p.bvPct) }));
-  }, [points, hasBv, toXDay, toY]);
+    return points.map((p) => ({ x: toXDay(p.date), y: toY((p.bvDone / maxBvScope) * 100) }));
+  }, [points, hasBv, toXDay, toY, maxBvScope]);
 
-  // Scope line as step-line (percentage of current total)
-  const maxScopeSp = useMemo(() => Math.max(...points.map((p) => p.scopeSp), totalSp, 1), [points, totalSp]);
   const scopePoints = useMemo(() => {
     if (points.length === 0) return [];
     return points.map((p) => ({
       x: toXDay(p.date),
-      y: toY((p.scopeSp / maxScopeSp) * 100),
+      y: toY((p.scopeSp / maxScope) * 100),
     }));
-  }, [points, maxScopeSp, toXDay, toY]);
+  }, [points, maxScope, toXDay, toY]);
 
   // Tooltip
   const tooltipData = useMemo(() => {
