@@ -1,5 +1,10 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
+
+const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|ogg)$/i;
+function isVideoAttachment(altOrSrc: string): boolean {
+  return VIDEO_EXTENSIONS.test(altOrSrc);
+}
 import Prism from "prismjs";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-javascript";
@@ -96,16 +101,28 @@ function inlineFormat(text: string): ReactNode {
       const src = match[4];
       const alt = match[3];
       if (src.startsWith("/api/attachments/")) {
-        parts.push(
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={i++}
-            src={src}
-            alt={alt}
-            className="my-1 max-w-full rounded-lg border border-border-default"
-            style={{ maxHeight: "480px", objectFit: "contain" }}
-          />,
-        );
+        if (isVideoAttachment(alt)) {
+          parts.push(
+            <video
+              key={i++}
+              src={src}
+              controls
+              className="my-1 max-w-full rounded-lg border border-border-default"
+              style={{ maxHeight: "480px" }}
+            />,
+          );
+        } else {
+          parts.push(
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i++}
+              src={src}
+              alt={alt}
+              className="my-1 max-w-full rounded-lg border border-border-default"
+              style={{ maxHeight: "480px", objectFit: "contain" }}
+            />,
+          );
+        }
       } else {
         // Non-resolvable attachment (e.g. Jira media storage ID)
         parts.push(
@@ -647,17 +664,28 @@ export function renderMarkdown(text: string): ReactNode[] {
     // Standalone image line: render as block figure
     const standaloneImg = line.trim().match(/^!\[([^\]]*)\]\((\/api\/attachments\/[^)]+)\)$/);
     if (standaloneImg) {
+      const mediaAlt = standaloneImg[1];
+      const mediaSrc = standaloneImg[2];
       elements.push(
         <figure key={`img-${idx}`} className="my-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={standaloneImg[2]}
-            alt={standaloneImg[1]}
-            className="max-w-full rounded-lg border border-border-default"
-            style={{ maxHeight: "600px", objectFit: "contain" }}
-          />
-          {standaloneImg[1] && (
-            <figcaption className="mt-1.5 text-label text-white/25">{standaloneImg[1]}</figcaption>
+          {isVideoAttachment(mediaAlt) ? (
+            <video
+              src={mediaSrc}
+              controls
+              className="max-w-full rounded-lg border border-border-default"
+              style={{ maxHeight: "600px" }}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mediaSrc}
+              alt={mediaAlt}
+              className="max-w-full rounded-lg border border-border-default"
+              style={{ maxHeight: "600px", objectFit: "contain" }}
+            />
+          )}
+          {mediaAlt && (
+            <figcaption className="mt-1.5 text-label text-white/25">{mediaAlt}</figcaption>
           )}
         </figure>,
       );
