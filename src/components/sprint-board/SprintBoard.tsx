@@ -962,7 +962,7 @@ export default function SprintBoard() {
               </div>
             )}
 
-            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} />}
+            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintStartDate={activeSprint?.startDate} sprintEndDate={activeSprint?.endDate} sprintState={activeSprint?.state} />}
 
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
@@ -1004,7 +1004,7 @@ export default function SprintBoard() {
               </div>
             )}
 
-            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} />}
+            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintStartDate={activeSprint?.startDate} sprintEndDate={activeSprint?.endDate} sprintState={activeSprint?.state} />}
 
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 

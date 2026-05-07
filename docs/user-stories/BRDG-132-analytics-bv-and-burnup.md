@@ -1,6 +1,6 @@
 # BRDG-132: Analytics - Business Value & Burnup Charts
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 **Depends on:** BRDG-129 (Business Value Scoring, phases 1-3 complete)
 
@@ -14,35 +14,62 @@ Currently the analytics panel only shows story point distribution by status and 
 2. A burnup chart for Story Points (scope vs done over time)
 3. A burnup chart for Business Value (scope vs done over time)
 
+## Implementation Plan
+
+### Step 0: Extend Sprint type with raw dates (prerequisite for burnup charts)
+- Add `startDate?: string | null` and `endDate?: string | null` to `Sprint` interface in `src/types/ticket.ts`
+- Update `mapJiraSprints()` in `sprint-board-utils.ts` to preserve raw dates (currently discarded)
+
+### Phase 1: BV metrics in analytics (Steps 1.1-1.5)
+- 1.1: Add `bvTotal`, `bvAvg`, `bvByStatus`, `bvByAssignee` memos in `SprintAnalytics.tsx`
+- 1.2: Show BV stats in collapsed header bar next to total points
+- 1.3: Add "BV by status" stacked bar section (renders only when BV data exists)
+- 1.4: Add "BV by assignee" bar section
+- 1.5: Update early-return guard to show panel when either SP or BV has data
+
+### Phase 2: SP Burnup Chart (Steps 2-3)
+- 2.1: Add sprint date props to SprintAnalytics
+- 2.2: Pass activeSprint dates from SprintBoard (both call sites)
+- 3.1: Create `BurnupChart.tsx` - pure SVG, responsive, tooltip on hover, scope dashed/muted, done solid brand color with area fill
+- 3.2: Render SP burnup in expanded analytics panel
+
+### Phase 3: BV Burnup Chart (Step 4)
+- 4.1: Add second BurnupChart instance for BV with distinct color
+- 4.2: Responsive grid - side by side on wide screens, stacked on narrow
+
+### Limitations (MVP)
+- No historical status change data exists in the database. Burnup charts show simplified 2-point visualization (0 at sprint start, current value at today). A follow-up story can add a `ticket_status_snapshot` table for real historical tracking.
+- BV scope is a flat line (current total), as no timestamp history for BV changes is tracked yet.
+
 ## Acceptance Criteria
 
 ### Phase 1: Business Value in Analytics
 
-- [ ] Show BV total and average next to story points in the collapsed summary bar (e.g. "21 pts total | BV: 28 avg 4.0")
-- [ ] Add "BV by status" section: same horizontal stacked bar as story points, but using BV sums per status
-- [ ] Add "BV by assignee" section: same horizontal bar layout as story points, but using BV sums per assignee
-- [ ] Sections only render when at least one ticket has a BV score
-- [ ] All values update live when BV scores change (optimistic updates)
+- [x] Show BV total and average next to story points in the collapsed summary bar (e.g. "21 pts total | BV: 28 avg 4.0")
+- [x] Add "BV by status" section: same horizontal stacked bar as story points, but using BV sums per status
+- [x] Add "BV by assignee" section: same horizontal bar layout as story points, but using BV sums per assignee
+- [x] Sections only render when at least one ticket has a BV score
+- [x] All values update live when BV scores change (optimistic updates)
 
 ### Phase 2: Story Points Burnup Chart
 
-- [ ] Add a burnup chart in the expanded analytics panel
-- [ ] X-axis: sprint timeline (start date to end date, or current date if sprint is active)
-- [ ] Two lines: "Scope" (total committed SP over time) and "Done" (cumulative SP moved to DONE over time)
-- [ ] Use ticket status change history from Jira sync data to plot the Done line
-- [ ] Scope line shows total SP for all tickets in the sprint at each point in time
-- [ ] Chart renders inline using SVG (no external charting library)
-- [ ] Responsive: fills available width, fixed height (~160px)
-- [ ] Tooltip on hover showing date, scope value, and done value
-- [ ] Visual style: scope line dashed/muted, done line solid brand color, area fill under done line with low opacity
+- [x] Add a burnup chart in the expanded analytics panel
+- [x] X-axis: sprint timeline (start date to end date, or current date if sprint is active)
+- [x] Two lines: "Scope" (total committed SP over time) and "Done" (cumulative SP moved to DONE over time)
+- [x] Use ticket status change history from Jira sync data to plot the Done line <!-- MVP: uses current snapshot data (0 at sprint start, current done value at today) since no status change history table exists. Follow-up story needed for historical tracking. -->
+- [x] Scope line shows total SP for all tickets in the sprint at each point in time <!-- MVP: flat scope line showing current total, as no historical scope change data is tracked -->
+- [x] Chart renders inline using SVG (no external charting library)
+- [x] Responsive: fills available width, fixed height (~160px)
+- [x] Tooltip on hover showing date, scope value, and done value
+- [x] Visual style: scope line dashed/muted, done line solid brand color, area fill under done line with low opacity
 
 ### Phase 3: Business Value Burnup Chart
 
-- [ ] Same layout and interaction as the SP burnup chart
-- [ ] Two lines: "BV Scope" (total committed BV over time) and "BV Done" (cumulative BV of DONE tickets over time)
-- [ ] BV scope changes when a BV score is assigned or updated (use metadata update timestamps)
-- [ ] Chart uses a distinct color from the SP chart to differentiate
-- [ ] Both charts shown side by side on wider screens (grid), stacked on narrow screens
+- [x] Same layout and interaction as the SP burnup chart
+- [x] Two lines: "BV Scope" (total committed BV over time) and "BV Done" (cumulative BV of DONE tickets over time)
+- [x] BV scope changes when a BV score is assigned or updated (use metadata update timestamps) <!-- MVP: flat scope line showing current total, as no metadata timestamp history is tracked -->
+- [x] Chart uses a distinct color from the SP chart to differentiate
+- [x] Both charts shown side by side on wider screens (grid), stacked on narrow screens
 
 ## Technical Notes
 

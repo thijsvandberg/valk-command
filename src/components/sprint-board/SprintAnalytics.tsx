@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import type { Ticket, JiraStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { ChevronRight, BarChart2, X } from "lucide-react";
+import { BurnupChart } from "./BurnupChart";
 
 const STATUS_COLORS: Record<JiraStatus, string> = Object.fromEntries(
   Object.entries(JIRA_STATUS_COLORS).map(([k, v]) => [k, v.text])
@@ -17,7 +18,15 @@ const STATUS_LABELS: Record<JiraStatus, string> = {
   DEPRECATED: "Deprecated",
 };
 
-export function SprintAnalytics({ tickets, onClose }: { tickets: Ticket[]; onClose?: () => void }) {
+interface SprintAnalyticsProps {
+  tickets: Ticket[];
+  onClose?: () => void;
+  sprintStartDate?: string | null;
+  sprintEndDate?: string | null;
+  sprintState?: "active" | "future" | "closed";
+}
+
+export function SprintAnalytics({ tickets, onClose, sprintStartDate, sprintEndDate, sprintState }: SprintAnalyticsProps) {
   const [expanded, setExpanded] = useState(true);
 
   const totalPoints = useMemo(
@@ -59,7 +68,61 @@ export function SprintAnalytics({ tickets, onClose }: { tickets: Ticket[]; onClo
     ? Math.max(...pointsByAssignee.map((a) => a.points))
     : 0;
 
-  if (totalPoints === 0) return null;
+  // BV aggregates (exclude BV=0/null and DEPRECATED tickets)
+  const bvScoredTickets = useMemo(
+    () => tickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED"),
+    [tickets],
+  );
+  const bvTotal = useMemo(() => bvScoredTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0), [bvScoredTickets]);
+  const bvAvg = bvScoredTickets.length > 0 ? (bvTotal / bvScoredTickets.length).toFixed(1) : null;
+
+  // BV distribution by status
+  const bvByStatus = useMemo(() => {
+    const map: Record<JiraStatus, number> = {
+      "TO DO": 0,
+      "IN PROGRESS": 0,
+      TEST: 0,
+      DONE: 0,
+      DEPRECATED: 0,
+    };
+    bvScoredTickets.forEach((t) => {
+      map[t.jiraStatus] += t.businessValue ?? 0;
+    });
+    return map;
+  }, [bvScoredTickets]);
+
+  // BV by assignee
+  const bvByAssignee = useMemo(() => {
+    const map: Record<string, { name: string; value: number; color: string }> = {};
+    bvScoredTickets.forEach((t) => {
+      if (t.assignee) {
+        const key = t.assignee.name;
+        if (!map[key]) {
+          map[key] = { name: key, value: 0, color: t.assignee.color };
+        }
+        map[key].value += t.businessValue ?? 0;
+      }
+    });
+    return Object.values(map).sort((a, b) => b.value - a.value);
+  }, [bvScoredTickets]);
+
+  const maxAssigneeBv = bvByAssignee.length > 0
+    ? Math.max(...bvByAssignee.map((a) => a.value))
+    : 0;
+
+  // Burnup data
+  const donePoints = useMemo(
+    () => tickets.filter((t) => t.jiraStatus === "DONE").reduce((sum, t) => sum + (t.storyPoints || 0), 0),
+    [tickets],
+  );
+  const doneBv = useMemo(
+    () => bvScoredTickets.filter((t) => t.jiraStatus === "DONE").reduce((sum, t) => sum + (t.businessValue ?? 0), 0),
+    [bvScoredTickets],
+  );
+
+  const hasBurnupDates = sprintStartDate && sprintEndDate && sprintState;
+
+  if (totalPoints === 0 && bvTotal === 0) return null;
 
   return (
     <div className="border-b border-border-default">
@@ -75,7 +138,11 @@ export function SprintAnalytics({ tickets, onClose }: { tickets: Ticket[]; onClo
         />
         <BarChart2 className="h-3.5 w-3.5" strokeWidth={1.5} />
         Analytics
-        <span className="text-white/20">{totalPoints} pts total</span>
+        <span className="text-white/20">
+          {totalPoints > 0 && <>{totalPoints} pts total</>}
+          {totalPoints > 0 && bvTotal > 0 && " | "}
+          {bvTotal > 0 && <>BV: {bvTotal}{bvAvg ? ` avg ${bvAvg}` : ""}</>}
+        </span>
       </button>
       {onClose && (
         <button
@@ -92,47 +159,90 @@ export function SprintAnalytics({ tickets, onClose }: { tickets: Ticket[]; onClo
       {expanded && (
         <div className="px-5 pb-3 pt-1">
           {/* Story points distribution bar */}
-          <div className="mb-3">
-            <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Points by status</div>
-            <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
-              {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
-                const pts = pointsByStatus[status];
-                if (pts === 0) return null;
-                const pct = (pts / totalPoints) * 100;
-                return (
-                  <div
-                    key={status}
-                    className="h-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: STATUS_COLORS[status],
-                      opacity: 0.7,
-                    }}
-                    title={`${STATUS_LABELS[status]}: ${pts} pts (${Math.round(pct)}%)`}
-                  />
-                );
-              })}
-            </div>
-            <div className="mt-1.5 flex flex-wrap gap-3">
-              {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
-                const pts = pointsByStatus[status];
-                if (pts === 0) return null;
-                return (
-                  <span key={status} className="flex items-center gap-1 text-caption text-white/40">
-                    <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: STATUS_COLORS[status] }}
+          {totalPoints > 0 && (
+            <div className="mb-3">
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Points by status</div>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
+                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                  const pts = pointsByStatus[status];
+                  if (pts === 0) return null;
+                  const pct = (pts / totalPoints) * 100;
+                  return (
+                    <div
+                      key={status}
+                      className="h-full"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: STATUS_COLORS[status],
+                        opacity: 0.7,
+                      }}
+                      title={`${STATUS_LABELS[status]}: ${pts} pts (${Math.round(pct)}%)`}
                     />
-                    {STATUS_LABELS[status]} {pts}
-                  </span>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-3">
+                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                  const pts = pointsByStatus[status];
+                  if (pts === 0) return null;
+                  return (
+                    <span key={status} className="flex items-center gap-1 text-caption text-white/40">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: STATUS_COLORS[status] }}
+                      />
+                      {STATUS_LABELS[status]} {pts}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* BV distribution by status */}
+          {bvTotal > 0 && (
+            <div className="mb-3">
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">BV by status</div>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
+                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                  const bv = bvByStatus[status];
+                  if (bv === 0) return null;
+                  const pct = (bv / bvTotal) * 100;
+                  return (
+                    <div
+                      key={status}
+                      className="h-full"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: STATUS_COLORS[status],
+                        opacity: 0.7,
+                      }}
+                      title={`${STATUS_LABELS[status]}: ${bv} BV (${Math.round(pct)}%)`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-3">
+                {(Object.keys(STATUS_COLORS) as JiraStatus[]).map((status) => {
+                  const bv = bvByStatus[status];
+                  if (bv === 0) return null;
+                  return (
+                    <span key={status} className="flex items-center gap-1 text-caption text-white/40">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: STATUS_COLORS[status] }}
+                      />
+                      {STATUS_LABELS[status]} {bv}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Points by assignee */}
           {pointsByAssignee.length > 0 && (
-            <div>
+            <div className="mb-3">
               <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Points by assignee</div>
               <div className="space-y-1">
                 {pointsByAssignee.map((a) => (
@@ -153,6 +263,64 @@ export function SprintAnalytics({ tickets, onClose }: { tickets: Ticket[]; onClo
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* BV by assignee */}
+          {bvByAssignee.length > 0 && (
+            <div className="mb-3">
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">BV by assignee</div>
+              <div className="space-y-1">
+                {bvByAssignee.map((a) => (
+                  <div key={a.name} className="flex items-center gap-2">
+                    <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
+                    <div className="flex-1">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{
+                          width: `${(a.value / maxAssigneeBv) * 100}%`,
+                          backgroundColor: a.color,
+                          opacity: 0.5,
+                          minWidth: 4,
+                        }}
+                      />
+                    </div>
+                    <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Burnup charts */}
+          {hasBurnupDates && (totalPoints > 0 || bvTotal > 0) && (
+            <div className="mt-1 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {totalPoints > 0 && (
+                <BurnupChart
+                  sprintStartDate={sprintStartDate!}
+                  sprintEndDate={sprintEndDate!}
+                  sprintState={sprintState!}
+                  scopeValue={totalPoints}
+                  doneValue={donePoints}
+                  label="Story Points"
+                  doneColor="#58b4e6"
+                  scopeColor="rgba(88, 180, 230, 0.35)"
+                  fillColor="rgba(88, 180, 230, 0.08)"
+                />
+              )}
+              {bvTotal > 0 && (
+                <BurnupChart
+                  sprintStartDate={sprintStartDate!}
+                  sprintEndDate={sprintEndDate!}
+                  sprintState={sprintState!}
+                  scopeValue={bvTotal}
+                  doneValue={doneBv}
+                  label="Business Value"
+                  doneColor="#4ade80"
+                  scopeColor="rgba(74, 222, 128, 0.35)"
+                  fillColor="rgba(74, 222, 128, 0.08)"
+                />
+              )}
             </div>
           )}
         </div>

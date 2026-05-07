@@ -176,6 +176,8 @@ export interface Sprint {
   dateRange: string;
   state: "active" | "future" | "closed";
   ticketCount: number;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface StoryVersion {
