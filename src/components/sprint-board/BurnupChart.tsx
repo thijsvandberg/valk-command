@@ -14,7 +14,7 @@ interface BurnupChartProps {
 }
 
 const CHART_HEIGHT = 200;
-const PADDING = { top: 16, right: 16, bottom: 32, left: 56 };
+const PADDING = { top: 16, right: 16, bottom: 32, left: 40 };
 
 const COLORS = {
   spDone: "#58b4e6",
@@ -241,9 +241,12 @@ export function BurnupChart({
     <div ref={containerRef} className="relative">
       <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Sprint burnup</div>
 
-      {/* Subtle seeding indicator (non-blocking) */}
-      {data && !data.seeded && (
-        <div className="mb-1 text-caption text-white/20">Updating history...</div>
+      {/* Loading indicator */}
+      {(!data || (data && !data.seeded)) && (
+        <div className="absolute right-5 top-0 flex items-center gap-1.5 text-caption text-white/25">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white/20" />
+          Loading history...
+        </div>
       )}
 
       <svg
@@ -273,10 +276,10 @@ export function BurnupChart({
               strokeWidth={1}
             />
             <text
-              x={xStart - 6}
+              x={xStart - 4}
               y={toY(pct) + 3}
               textAnchor="end"
-              className="text-[9px]"
+              className="text-[8px]"
               fill={COLORS.gridLabel}
             >
               {pct}%
