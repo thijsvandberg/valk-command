@@ -141,6 +141,7 @@ export async function GET(
     readiness: (meta?.readiness ?? null) as TicketReadiness | null,
     poStatus: (meta?.poStatus ?? null) as POStatus,
     qualityScore: meta?.qualityScore ?? null,
+    businessValue: meta?.businessValue ?? null,
     editState,
     notes: meta?.poNotes ?? "",
     sprintId: t.sprintName ?? undefined,

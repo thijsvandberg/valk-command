@@ -20,6 +20,7 @@ function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     editState: "clean",
     notes: "",
     sprintId: "s1",
+    businessValue: null,
     ...overrides,
   };
 }

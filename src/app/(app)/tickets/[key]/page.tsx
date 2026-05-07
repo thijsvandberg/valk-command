@@ -74,6 +74,7 @@ export default function TicketDetailPage({
     editState: apiData.editState ?? "clean",
     notes: apiData.notes ?? "",
     sprintId: apiData.sprintId,
+    businessValue: apiData.businessValue ?? null,
   } : undefined, [apiData]);
 
   const detail: TicketDetail | undefined = apiData ? {

@@ -12,6 +12,7 @@ import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
+import { getBvColor } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { prefetchTicketDetail } from "@/lib/prefetch";
@@ -422,6 +423,29 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             />
           </td>
         );
+      case "bv": {
+        const bv = ticket.businessValue;
+        const bvColor = bv != null ? getBvColor(bv) : null;
+        return (
+          <td
+            key={id}
+            className="overflow-hidden py-1.5 pr-3 text-center text-xs tabular-nums leading-none"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {bv != null ? (
+              <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded font-medium"
+                style={{ backgroundColor: bvColor!.bg, color: bvColor!.text }}
+              >
+                {bv}
+              </span>
+            ) : (
+              <span className="text-white/10">-</span>
+            )}
+          </td>
+        );
+      }
       case "notes":
         return (
           <td key={id} className="overflow-hidden py-1.5 pr-2">

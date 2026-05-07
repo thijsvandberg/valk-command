@@ -19,6 +19,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   flagged: 32,
   poStatus: 40,
   quality: 64,
+  bv: 40,
   notes: 32,
   pipeline: 96,
 };

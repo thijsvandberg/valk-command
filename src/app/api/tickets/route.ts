@@ -125,6 +125,7 @@ export async function GET(request: Request) {
       readiness: (meta?.readiness ?? null) as TicketReadiness | null,
       poStatus: (meta?.poStatus ?? null) as POStatus,
       qualityScore: meta?.qualityScore ?? null,
+      businessValue: meta?.businessValue ?? null,
       editState,
       notes: meta?.poNotes ?? "",
       jiraRank: t.jiraRank ?? null,

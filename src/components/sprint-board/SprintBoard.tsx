@@ -810,7 +810,7 @@ export default function SprintBoard() {
                   <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
                     <button
                       type="button"
-                      onClick={() => { setAnalyticsVisible((v) => !v); setHeaderMenuOpen(false); }}
+                      onClick={() => { setAnalyticsVisible((v) => { if (!v) setBarsCollapsed(false); return !v; }); setHeaderMenuOpen(false); }}
                       className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
                         analyticsVisible
                           ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"

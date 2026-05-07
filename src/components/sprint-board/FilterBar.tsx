@@ -46,7 +46,7 @@ export const EDIT_STATE_OPTIONS: { value: string; label: string; dotClass: strin
 // Sort types (exported for reuse)
 // ---------------------------------------------------------------------------
 
-export type SortField = "rank" | "quality" | "points" | "key" | "title" | "epic" | "jiraStatus" | "assignee" | "readiness" | "lastChanged";
+export type SortField = "rank" | "quality" | "bv" | "points" | "key" | "title" | "epic" | "jiraStatus" | "assignee" | "readiness" | "lastChanged";
 export type SortDir = "asc" | "desc";
 
 // ---------------------------------------------------------------------------
@@ -77,7 +77,7 @@ export interface SavedView {
 // Column types (exported for reuse)
 // ---------------------------------------------------------------------------
 
-export type ColumnId = "type" | "key" | "title" | "epic" | "jiraStatus" | "sprint" | "points" | "assignee" | "flagged" | "poStatus" | "quality" | "notes" | "pipeline";
+export type ColumnId = "type" | "key" | "title" | "epic" | "jiraStatus" | "sprint" | "points" | "assignee" | "flagged" | "poStatus" | "quality" | "bv" | "notes" | "pipeline";
 
 export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[] = [
   { id: "key", label: "Key" },
@@ -88,11 +88,12 @@ export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[]
   { id: "assignee", label: "Assignee" },
   { id: "flagged", label: "Flagged" },
   { id: "quality", label: "Quality Score (QS)" },
+  { id: "bv", label: "Business Value (BV)" },
   { id: "notes", label: "Notes" },
   { id: "pipeline", label: "Pipeline" },
 ];
 
-export const DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "epic", "points", "assignee", "flagged", "quality", "notes", "pipeline"];
+export const DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "epic", "points", "assignee", "flagged", "quality", "bv", "notes", "pipeline"];
 
 export type ColumnPreset = "full" | "compact";
 
@@ -109,6 +110,7 @@ export const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDi
   { field: "rank", label: "Jira rank (default)", defaultDir: "asc" },
   { field: "lastChanged", label: "Last changed", defaultDir: "desc" },
   { field: "quality", label: "Quality Score", defaultDir: "desc" },
+  { field: "bv", label: "Business Value", defaultDir: "desc" },
   { field: "points", label: "Story points", defaultDir: "desc" },
   { field: "key", label: "Ticket key", defaultDir: "asc" },
   { field: "title", label: "Title", defaultDir: "asc" },

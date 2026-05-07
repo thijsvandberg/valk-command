@@ -33,12 +33,12 @@ As the PO, I want to assign a Business Value (BV) score to each ticket on the Sp
 - [x] Validate input: integer between 1 and 7, or null to clear
 
 ### Phase 2: Sprint Board column
-- [ ] Add "BV" column to the sprint board table
-- [ ] Column shows the numeric score (1-7) or empty when unset
-- [ ] Color coding: low (1-2) muted/cool, medium (3-5) neutral, high (6-7) warm/accent
-- [ ] Column is visible in the default column preset
-- [ ] Column is sortable
-- [ ] Column is toggleable via column picker
+- [x] Add "BV" column to the sprint board table
+- [x] Column shows the numeric score (1-7) or empty when unset
+- [x] Color coding: low (1-2) muted/cool, medium (3-5) neutral, high (6-7) warm/accent
+- [x] Column is visible in the default column preset
+- [x] Column is sortable
+- [x] Column is toggleable via column picker
 
 ### Phase 3: Inline editing
 - [ ] Click on BV cell to open a picker (dropdown or segmented control with 1-7)

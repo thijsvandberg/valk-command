@@ -342,6 +342,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     editState: (ticketData.editState ?? "clean") as import("@/types/ticket").TicketEditState,
     notes: "",
     sprintId: ticketData.sprintId ?? undefined,
+    businessValue: ticketData.businessValue ?? null,
   } as import("@/types/ticket").Ticket) : null;
 
   const writerContextValue: WriterContextValue = {

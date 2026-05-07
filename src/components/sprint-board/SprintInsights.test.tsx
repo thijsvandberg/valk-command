@@ -20,6 +20,7 @@ const MOCK_TICKETS: Ticket[] = [
     editState: "clean" as const,
     notes: "",
     sprintId: "s1",
+    businessValue: null,
   },
 ];
 

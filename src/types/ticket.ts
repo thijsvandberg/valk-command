@@ -70,6 +70,21 @@ export function getEpicColor(epic: string): { bg: string; text: string } | undef
   return EPIC_COLORS[epic] ?? EPIC_COLORS[epic.toUpperCase()];
 }
 
+// Business Value color bands: low (1-2) cool/muted, medium (3-5) neutral, high (6-7) warm/accent
+export const BV_COLORS: Record<number, { text: string; bg: string }> = {
+  1: { text: "#6b7a8d", bg: "rgba(107, 122, 141, 0.10)" },
+  2: { text: "#7d8ea0", bg: "rgba(125, 142, 160, 0.10)" },
+  3: { text: "#94a3b8", bg: "rgba(148, 163, 184, 0.10)" },
+  4: { text: "#b0b8c4", bg: "rgba(176, 184, 196, 0.10)" },
+  5: { text: "#c8a84e", bg: "rgba(200, 168, 78, 0.10)" },
+  6: { text: "#e0a030", bg: "rgba(224, 160, 48, 0.12)" },
+  7: { text: "#eab308", bg: "rgba(234, 179, 8, 0.14)" },
+};
+
+export function getBvColor(value: number): { text: string; bg: string } {
+  return BV_COLORS[value] ?? BV_COLORS[4];
+}
+
 export interface Assignee {
   name: string;
   initials: string;
@@ -144,6 +159,7 @@ export interface Ticket {
   readiness: TicketReadiness | null;
   poStatus: POStatus;
   qualityScore: number | null;
+  businessValue: number | null;
   editState: TicketEditState;
   notes: string;
   jiraRank?: number | null;

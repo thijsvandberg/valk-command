@@ -143,20 +143,21 @@ const COLUMN_SORT_FIELDS: Partial<Record<ColumnId, SortField>> = {
   assignee: "assignee",
   poStatus: "readiness",
   quality: "quality",
+  bv: "bv",
 };
 
 function defaultSortDir(field: SortField): SortDir {
-  return field === "quality" || field === "points" || field === "lastChanged" ? "desc" : "asc";
+  return field === "quality" || field === "bv" || field === "points" || field === "lastChanged" ? "desc" : "asc";
 }
 
 const HEADER_LABELS: Record<ColumnId, string> = {
   type: "", key: "Key", title: "Title", epic: "Epic",
   jiraStatus: "Status", sprint: "Sprint", points: "Pts", assignee: "",
-  flagged: "", poStatus: "RDY", quality: "QS", notes: "", pipeline: "",
+  flagged: "", poStatus: "RDY", quality: "QS", bv: "BV", notes: "", pipeline: "",
 };
 
-const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality"]);
-const CENTER_COLUMNS: Set<ColumnId> = new Set(["points", "poStatus"]);
+const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality", "bv"]);
+const CENTER_COLUMNS: Set<ColumnId> = new Set(["points", "poStatus", "bv"]);
 
 export function TicketTable({
   tickets,

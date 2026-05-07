@@ -178,6 +178,11 @@ export function useSprintBoardFilters(
           const bScore = b.qualityScore ?? -1;
           return (aScore - bScore) * dir;
         }
+        case "bv": {
+          const aBv = a.businessValue ?? -1;
+          const bBv = b.businessValue ?? -1;
+          return (aBv - bBv) * dir;
+        }
         case "points": {
           const aPts = a.storyPoints ?? -1;
           const bPts = b.storyPoints ?? -1;

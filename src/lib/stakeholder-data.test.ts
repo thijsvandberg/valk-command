@@ -26,6 +26,7 @@ function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     notes: "some internal note",
     jiraRank: 1,
     sprintId: "42",
+    businessValue: null,
     jiraUpdatedAt: null,
     removedFromJiraAt: null,
     ...overrides,
