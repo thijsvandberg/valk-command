@@ -14,7 +14,7 @@ interface BurnupChartProps {
 }
 
 const CHART_HEIGHT = 200;
-const PADDING = { top: 16, right: 16, bottom: 32, left: 44 };
+const PADDING = { top: 16, right: 16, bottom: 32, left: 56 };
 
 const COLORS = {
   spDone: "#58b4e6",
