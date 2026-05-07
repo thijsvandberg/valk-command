@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getBvColor } from "@/types/ticket";
-import { X } from "lucide-react";
+import { Minus, X } from "lucide-react";
 
-const BV_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
+const BV_SCORE_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 export function BusinessValuePicker({
   value,
@@ -39,8 +39,10 @@ export function BusinessValuePicker({
     };
   }, [open]);
 
+  const isNA = value === 0;
   const color = value != null ? getBvColor(value) : null;
   const showBg = !subtle || hovered || open;
+  const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
 
   return (
     <div ref={ref} className="relative inline-flex justify-center">
@@ -49,7 +51,7 @@ export function BusinessValuePicker({
         onClick={() => setOpen((o) => !o)}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        title={value != null ? `Business Value: ${value}` : "Set Business Value"}
+        title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
         className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
         style={{
           color: color?.text ?? "rgba(255,255,255,0.2)",
@@ -57,7 +59,7 @@ export function BusinessValuePicker({
           opacity: hovered && showBg ? 0.85 : 1,
         }}
       >
-        {value != null ? value : <span className="h-1.5 w-1.5 rounded-full bg-white/20" />}
+        {displayLabel ?? <span className="h-1.5 w-1.5 rounded-full bg-white/20" />}
       </button>
 
       {open && (
@@ -69,7 +71,23 @@ export function BusinessValuePicker({
           }}
         >
           <div className="flex items-center gap-1">
-            {BV_OPTIONS.map((n) => {
+            {/* N/A option */}
+            <button
+              type="button"
+              onClick={() => { onChange(0); setOpen(false); }}
+              title="Not applicable"
+              className="flex h-7 w-7 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+              style={{
+                color: isNA ? "#fff" : "#555a64",
+                backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)",
+                boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined,
+              }}
+            >
+              <Minus size={12} strokeWidth={1.5} />
+            </button>
+
+            {/* Score options 1-7 */}
+            {BV_SCORE_OPTIONS.map((n) => {
               const c = getBvColor(n);
               const isActive = n === value;
               return (
@@ -88,6 +106,8 @@ export function BusinessValuePicker({
                 </button>
               );
             })}
+
+            {/* Clear (back to unset) */}
             {value != null && (
               <button
                 type="button"

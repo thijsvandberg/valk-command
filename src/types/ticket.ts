@@ -71,7 +71,9 @@ export function getEpicColor(epic: string): { bg: string; text: string } | undef
 }
 
 // Business Value color bands: low (1-2) cool/muted, medium (3-5) neutral, high (6-7) warm/accent
+// 0 = not applicable (N/A), excluded from averages
 export const BV_COLORS: Record<number, { text: string; bg: string }> = {
+  0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
   1: { text: "#6b7a8d", bg: "rgba(107, 122, 141, 0.10)" },
   2: { text: "#7d8ea0", bg: "rgba(125, 142, 160, 0.10)" },
   3: { text: "#94a3b8", bg: "rgba(148, 163, 184, 0.10)" },

@@ -27,7 +27,7 @@ export function GroupStatBar({
   showDot = false,
 }: GroupStatBarProps) {
   const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
-  const bvTickets = tickets.filter((t) => t.businessValue != null);
+  const bvTickets = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
   const bvAvg = bvTickets.length > 0 ? (bvTotal / bvTickets.length).toFixed(1) : null;
   const todoCount = tickets.filter((t) => t.jiraStatus === "TO DO").length;

@@ -240,7 +240,7 @@ export default function SprintBoard() {
   const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
   const totalPoints = allTickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0);
   const noPointsCount = allTickets.filter((t) => !t.storyPoints).length;
-  const bvScoredTickets = allTickets.filter((t) => t.businessValue != null);
+  const bvScoredTickets = allTickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvScoredTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
   const bvAvg = bvScoredTickets.length > 0 ? (bvTotal / bvScoredTickets.length).toFixed(1) : null;
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;

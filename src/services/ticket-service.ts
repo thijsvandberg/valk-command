@@ -483,11 +483,11 @@ export async function updateTicketMetadata(
     if (input.businessValue !== null) {
       if (
         !Number.isInteger(input.businessValue) ||
-        input.businessValue < 1 ||
+        input.businessValue < 0 ||
         input.businessValue > 7
       ) {
         throw new ValidationError(
-          "businessValue must be an integer between 1 and 7, or null",
+          "businessValue must be an integer between 0 and 7, or null",
         );
       }
     }
