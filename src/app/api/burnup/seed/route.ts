@@ -34,29 +34,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ seeded: true, changeCount: 0, message: "Already seeded" });
     }
 
-    // Resolve sprint name for JQL (Sprint field uses names, not IDs)
+    // Resolve sprint name and start date
     const sprintRow = await db.query.appSetting.findFirst({
       where: (r, { eq: eqFn }) => eqFn(r.key, "jira_sprints"),
     });
     let sprintName: string | null = null;
+    let sprintStartDate: string | null = null;
     if (sprintRow) {
-      const sprints = JSON.parse(sprintRow.value) as Array<{ id: number; name: string }>;
+      const sprints = JSON.parse(sprintRow.value) as Array<{ id: number; name: string; startDate: string | null }>;
       const s = sprints.find((sp) => String(sp.id) === sprintId);
-      if (s) sprintName = s.name;
+      if (s) {
+        sprintName = s.name;
+        sprintStartDate = s.startDate ?? null;
+      }
+    }
+
+    // Fallback: fetch sprint dates from Jira
+    if (!sprintStartDate && jiraClient.isLive) {
+      try {
+        const jiraSprints = await jiraClient.getSprints();
+        const js = jiraSprints.find((s) => String(s.id) === sprintId);
+        if (js) {
+          sprintStartDate = js.startDate ?? null;
+          if (!sprintName) sprintName = js.name;
+        }
+      } catch { /* ignore */ }
     }
 
     // Find all tickets EVER in this sprint via JQL, plus current tickets from local DB
     const ticketKeys = new Set<string>();
+    const currentTicketKeys = new Set<string>();
 
-    // Current tickets from local DB (always available, even without Jira)
+    // Current tickets from local DB
     const localTickets = await db
       .select({ jiraKey: ticket.jiraKey })
       .from(ticket)
       .where(eq(ticket.sprintName, sprintId))
       .all();
-    for (const t of localTickets) ticketKeys.add(t.jiraKey);
+    for (const t of localTickets) {
+      ticketKeys.add(t.jiraKey);
+      currentTicketKeys.add(t.jiraKey);
+    }
 
-    // Historical tickets via JQL "sprint WAS {id}"
+    // Historical tickets via JQL "sprint was {name}"
     if (jiraClient.isLive && sprintName) {
       try {
         const jqlResults = await jiraClient.searchIssues(
@@ -66,9 +86,7 @@ export async function POST(request: Request) {
           request.signal,
         );
         for (const issue of jqlResults) ticketKeys.add(issue.key);
-      } catch {
-        // JQL might not support "was" in all instances; fall back to local only
-      }
+      } catch { /* JQL fallback */ }
     }
 
     if (ticketKeys.size === 0) {
@@ -102,11 +120,16 @@ export async function POST(request: Request) {
     const existingStatusSet = new Set(existingStatusChanges.map((c) => `${c.ticketKey}:${c.changedAt}`));
 
     const existingScopeChanges = await db
-      .select({ ticketKey: ticketScopeChange.ticketKey, changedAt: ticketScopeChange.changedAt })
+      .select({ ticketKey: ticketScopeChange.ticketKey, changedAt: ticketScopeChange.changedAt, action: ticketScopeChange.action })
       .from(ticketScopeChange)
       .where(eq(ticketScopeChange.sprintName, sprintId))
       .all();
     const existingScopeSet = new Set(existingScopeChanges.map((c) => `${c.ticketKey}:${c.changedAt}`));
+
+    // Track which tickets have an explicit "added" event from changelog
+    const ticketsWithAddEvent = new Set(
+      existingScopeChanges.filter((c) => c.action === "added").map((c) => c.ticketKey),
+    );
 
     let changeCount = 0;
 
@@ -141,6 +164,7 @@ export async function POST(request: Request) {
           const isInSprint = sprintName ? toNames.includes(sprintName) : false;
 
           if (!wasInSprint && isInSprint) {
+            ticketsWithAddEvent.add(key);
             const scopeKey = `${key}:${sc.changedAt}`;
             if (!existingScopeSet.has(scopeKey)) {
               scopeRows.push({
@@ -182,6 +206,40 @@ export async function POST(request: Request) {
         }
       } catch {
         // Individual ticket failures should not stop the batch
+      }
+    }
+
+    // Synthesize "added" events at sprint start for tickets that are currently
+    // in the sprint but have no explicit "added" changelog entry.
+    // These are tickets that were part of the sprint from the beginning.
+    if (sprintStartDate) {
+      const syntheticRows: Array<{
+        id: string; ticketKey: string; sprintName: string;
+        action: "added"; storyPoints: number; businessValue: number;
+        changedAt: string;
+      }> = [];
+
+      for (const key of currentTicketKeys) {
+        if (ticketsWithAddEvent.has(key)) continue;
+        const vals = valueMap.get(key) ?? { sp: 0, bv: 0 };
+        syntheticRows.push({
+          id: `scope-${key}-add-synthetic`,
+          ticketKey: key,
+          sprintName: sprintId,
+          action: "added",
+          storyPoints: vals.sp,
+          businessValue: vals.bv,
+          changedAt: sprintStartDate,
+        });
+      }
+
+      if (syntheticRows.length > 0) {
+        db.transaction((tx) => {
+          for (const row of syntheticRows) {
+            tx.insert(ticketScopeChange).values(row).onConflictDoNothing().run();
+          }
+        });
+        changeCount += syntheticRows.length;
       }
     }
 
