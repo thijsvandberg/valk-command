@@ -564,6 +564,19 @@ export const ticketStatusChange = sqliteTable("ticket_status_change", {
 
 export type TicketStatusChange = typeof ticketStatusChange.$inferSelect;
 
+// Scope changes: when tickets join or leave a sprint (for burnup scope line)
+export const ticketScopeChange = sqliteTable("ticket_scope_change", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key").notNull(),
+  sprintName: text("sprint_name").notNull(),
+  action: text("action", { enum: ["added", "removed"] }).notNull(),
+  storyPoints: real("story_points"),
+  businessValue: integer("business_value"),
+  changedAt: text("changed_at").notNull(),
+}, (table) => [
+  index("ticket_scope_change_sprint_idx").on(table.sprintName, table.changedAt),
+]);
+
 export type TicketConfluenceLink = typeof ticketConfluenceLink.$inferSelect;
 export type NewTicketConfluenceLink = typeof ticketConfluenceLink.$inferInsert;
 

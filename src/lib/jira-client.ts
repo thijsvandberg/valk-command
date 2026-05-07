@@ -962,9 +962,21 @@ export class JiraClient {
    * Returns transitions in chronological order.
    */
   async getStatusChangelog(key: string, signal?: AbortSignal): Promise<StatusChange[]> {
-    if (!isConfigured()) return [];
+    const { statusChanges } = await this.getBurnupChangelog(key, signal);
+    return statusChanges;
+  }
 
-    const results: StatusChange[] = [];
+  /**
+   * Fetch both status and Sprint field changes from the Jira changelog.
+   * Single paginated pass extracts both, avoiding duplicate API calls.
+   */
+  async getBurnupChangelog(key: string, signal?: AbortSignal): Promise<{
+    statusChanges: StatusChange[];
+    sprintChanges: SprintFieldChange[];
+  }> {
+    if (!isConfigured()) return { statusChanges: [], sprintChanges: [] };
+
+    const allEntries: ChangelogEntry[] = [];
     let startAt = 0;
     const maxResults = 100;
 
@@ -984,13 +996,16 @@ export class JiraClient {
         signal,
       );
 
-      results.push(...filterStatusChanges(page.values));
+      allEntries.push(...page.values);
 
       if (page.isLast !== false || startAt + page.values.length >= page.total) break;
       startAt += page.values.length;
     }
 
-    return results;
+    return {
+      statusChanges: filterStatusChanges(allEntries),
+      sprintChanges: filterSprintChanges(allEntries),
+    };
   }
 
   /**
@@ -1056,6 +1071,29 @@ export function filterStatusChanges(entries: ChangelogEntry[]): StatusChange[] {
         results.push({
           fromStatus: item.fromString,
           toStatus: item.toString,
+          changedAt: entry.created,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+export interface SprintFieldChange {
+  fromSprints: string | null;
+  toSprints: string | null;
+  changedAt: string;
+}
+
+/** Filter raw Jira changelog entries to Sprint field changes. */
+export function filterSprintChanges(entries: ChangelogEntry[]): SprintFieldChange[] {
+  const results: SprintFieldChange[] = [];
+  for (const entry of entries) {
+    for (const item of entry.items) {
+      if (item.field === "Sprint") {
+        results.push({
+          fromSprints: item.fromString,
+          toSprints: item.toString,
           changedAt: entry.created,
         });
       }

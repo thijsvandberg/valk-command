@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
-import { ticket, activityLog } from "@/db/schema";
+import { ticket, ticketMetadata, ticketScopeChange, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { jiraClient, extractSprint, JiraApiError, type JiraIssue } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
@@ -209,6 +209,27 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     let removedCount = 0;
     if (removedFromSprint.length > 0) {
       const removedKeys = removedFromSprint.map((t) => t.jiraKey);
+
+      // Record scope changes for burnup chart
+      const removedTicketData = await db
+        .select({ jiraKey: ticket.jiraKey, sp: ticket.storyPoints, bv: ticketMetadata.businessValue })
+        .from(ticket)
+        .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
+        .where(inArray(ticket.jiraKey, removedKeys))
+        .all();
+      const now = new Date().toISOString();
+      for (const t of removedTicketData) {
+        db.insert(ticketScopeChange).values({
+          id: `scope-${t.jiraKey}-rm-${Date.now()}`,
+          ticketKey: t.jiraKey,
+          sprintName: sprintId,
+          action: "removed",
+          storyPoints: t.sp ?? 0,
+          businessValue: (t.bv != null && t.bv >= 1) ? t.bv : 0,
+          changedAt: now,
+        }).onConflictDoNothing().run();
+      }
+
       await db.update(ticket)
         .set({ sprintName: "" })
         .where(inArray(ticket.jiraKey, removedKeys));

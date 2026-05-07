@@ -158,6 +158,16 @@ export function BurnupChart({
     return points.map((p) => ({ x: toXDay(p.date), y: toY(p.bvPct) }));
   }, [points, hasBv, toXDay, toY]);
 
+  // Scope line as step-line (percentage of current total)
+  const maxScopeSp = useMemo(() => Math.max(...points.map((p) => p.scopeSp), totalSp, 1), [points, totalSp]);
+  const scopePoints = useMemo(() => {
+    if (points.length === 0) return [];
+    return points.map((p) => ({
+      x: toXDay(p.date),
+      y: toY((p.scopeSp / maxScopeSp) * 100),
+    }));
+  }, [points, maxScopeSp, toXDay, toY]);
+
   // Tooltip
   const tooltipData = useMemo(() => {
     if (hoverX === null || width === 0 || points.length === 0) return null;
@@ -295,22 +305,26 @@ export function BurnupChart({
           strokeDasharray="4 4"
         />
 
-        {/* Scope line: flat at 100% */}
-        <line
-          x1={xStart}
-          y1={y100}
-          x2={showToday ? todayX : xEnd}
-          y2={y100}
-          stroke={COLORS.scope}
-          strokeWidth={1.5}
-        />
+        {/* Scope step-line */}
+        {scopePoints.length > 0 && (
+          <path
+            d={stepLinePath(scopePoints) + ` H${showToday ? todayX : xEnd}`}
+            fill="none"
+            stroke={COLORS.scope}
+            strokeWidth={1.5}
+            strokeLinejoin="miter"
+          />
+        )}
+        {scopePoints.length === 0 && (
+          <line x1={xStart} y1={y100} x2={showToday ? todayX : xEnd} y2={y100} stroke={COLORS.scope} strokeWidth={1.5} />
+        )}
         {/* Scope projection after today (dotted) */}
         {showToday && todayX < xEnd && (
           <line
             x1={todayX}
-            y1={y100}
+            y1={scopePoints.length > 0 ? scopePoints[scopePoints.length - 1].y : y100}
             x2={xEnd}
-            y2={y100}
+            y2={scopePoints.length > 0 ? scopePoints[scopePoints.length - 1].y : y100}
             stroke={COLORS.scope}
             strokeWidth={1.5}
             strokeDasharray="3 4"

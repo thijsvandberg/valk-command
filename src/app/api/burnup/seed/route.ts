@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketStatusChange } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { jiraClient } from "@/lib/jira-client";
+import { ticket, ticketMetadata, ticketStatusChange, ticketScopeChange } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
+import { jiraClient, SPRINT_FIELD } from "@/lib/jira-client";
 import { normalizeStatus } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -11,7 +11,8 @@ import { cache } from "@/lib/cache";
 /**
  * POST /api/burnup/seed?sprintId=X
  *
- * Backfills status change history from Jira changelog for all tickets in a sprint.
+ * Backfills status change AND scope change history from Jira changelog
+ * for all tickets that were ever in the sprint.
  */
 export async function POST(request: Request) {
   const limited = applyRateLimit("sync");
@@ -33,49 +34,151 @@ export async function POST(request: Request) {
       return NextResponse.json({ seeded: true, changeCount: 0, message: "Already seeded" });
     }
 
-    // Load all tickets for this sprint
-    const tickets = await db
-      .select({ jiraKey: ticket.jiraKey, jiraCreatedAt: ticket.jiraCreatedAt, status: ticket.status })
+    // Resolve sprint name for JQL (Sprint field uses names, not IDs)
+    const sprintRow = await db.query.appSetting.findFirst({
+      where: (r, { eq: eqFn }) => eqFn(r.key, "jira_sprints"),
+    });
+    let sprintName: string | null = null;
+    if (sprintRow) {
+      const sprints = JSON.parse(sprintRow.value) as Array<{ id: number; name: string }>;
+      const s = sprints.find((sp) => String(sp.id) === sprintId);
+      if (s) sprintName = s.name;
+    }
+
+    // Find all tickets EVER in this sprint via JQL, plus current tickets from local DB
+    const ticketKeys = new Set<string>();
+
+    // Current tickets from local DB (always available, even without Jira)
+    const localTickets = await db
+      .select({ jiraKey: ticket.jiraKey })
       .from(ticket)
       .where(eq(ticket.sprintName, sprintId))
       .all();
+    for (const t of localTickets) ticketKeys.add(t.jiraKey);
 
-    if (tickets.length === 0) {
-      return NextResponse.json({ seeded: true, changeCount: 0, message: "No tickets in sprint" });
+    // Historical tickets via JQL "sprint WAS {id}"
+    if (jiraClient.isLive && sprintName) {
+      try {
+        const jqlResults = await jiraClient.searchIssues(
+          `sprint was "${sprintName}"`,
+          ["summary", SPRINT_FIELD],
+          100,
+          request.signal,
+        );
+        for (const issue of jqlResults) ticketKeys.add(issue.key);
+      } catch {
+        // JQL might not support "was" in all instances; fall back to local only
+      }
     }
 
-    // Load existing status changes to avoid duplicates
-    const existingChanges = await db
+    if (ticketKeys.size === 0) {
+      await upsertSetting(`burnup_seeded_${sprintId}`, new Date().toISOString());
+      return NextResponse.json({ seeded: true, changeCount: 0, message: "No tickets found" });
+    }
+
+    // Load SP/BV for all known tickets
+    const allKeys = Array.from(ticketKeys);
+    const ticketData = await db
+      .select({
+        jiraKey: ticket.jiraKey,
+        storyPoints: ticket.storyPoints,
+        bv: ticketMetadata.businessValue,
+      })
+      .from(ticket)
+      .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
+      .where(inArray(ticket.jiraKey, allKeys))
+      .all();
+    const valueMap = new Map(ticketData.map((t) => [t.jiraKey, {
+      sp: t.storyPoints ?? 0,
+      bv: (t.bv != null && t.bv >= 1) ? t.bv : 0,
+    }]));
+
+    // Existing changes to avoid duplicates
+    const existingStatusChanges = await db
       .select({ ticketKey: ticketStatusChange.ticketKey, changedAt: ticketStatusChange.changedAt })
       .from(ticketStatusChange)
       .where(eq(ticketStatusChange.sprintName, sprintId))
       .all();
-    const existingSet = new Set(existingChanges.map((c) => `${c.ticketKey}:${c.changedAt}`));
+    const existingStatusSet = new Set(existingStatusChanges.map((c) => `${c.ticketKey}:${c.changedAt}`));
+
+    const existingScopeChanges = await db
+      .select({ ticketKey: ticketScopeChange.ticketKey, changedAt: ticketScopeChange.changedAt })
+      .from(ticketScopeChange)
+      .where(eq(ticketScopeChange.sprintName, sprintId))
+      .all();
+    const existingScopeSet = new Set(existingScopeChanges.map((c) => `${c.ticketKey}:${c.changedAt}`));
 
     let changeCount = 0;
 
-    for (const t of tickets) {
+    for (const key of allKeys) {
       try {
-        const changelog = await jiraClient.getStatusChangelog(t.jiraKey, request.signal);
+        const { statusChanges, sprintChanges } = await jiraClient.getBurnupChangelog(key, request.signal);
+        const vals = valueMap.get(key) ?? { sp: 0, bv: 0 };
 
-        const rows = changelog
+        // Status changes
+        const statusRows = statusChanges
           .map((change) => ({
-            id: `sc-${t.jiraKey}-${new Date(change.changedAt).getTime()}`,
-            ticketKey: t.jiraKey,
+            id: `sc-${key}-${new Date(change.changedAt).getTime()}`,
+            ticketKey: key,
             fromStatus: change.fromStatus ? normalizeStatus(change.fromStatus) : null,
             toStatus: normalizeStatus(change.toStatus),
             changedAt: change.changedAt,
             sprintName: sprintId,
           }))
-          .filter((row) => !existingSet.has(`${row.ticketKey}:${row.changedAt}`));
+          .filter((row) => !existingStatusSet.has(`${row.ticketKey}:${row.changedAt}`));
 
-        if (rows.length > 0) {
+        // Sprint field changes: detect when ticket joins/leaves this sprint
+        const scopeRows: Array<{
+          id: string; ticketKey: string; sprintName: string;
+          action: "added" | "removed"; storyPoints: number; businessValue: number;
+          changedAt: string;
+        }> = [];
+
+        for (const sc of sprintChanges) {
+          const fromNames = sc.fromSprints ?? "";
+          const toNames = sc.toSprints ?? "";
+          const wasInSprint = sprintName ? fromNames.includes(sprintName) : false;
+          const isInSprint = sprintName ? toNames.includes(sprintName) : false;
+
+          if (!wasInSprint && isInSprint) {
+            const scopeKey = `${key}:${sc.changedAt}`;
+            if (!existingScopeSet.has(scopeKey)) {
+              scopeRows.push({
+                id: `scope-${key}-add-${new Date(sc.changedAt).getTime()}`,
+                ticketKey: key,
+                sprintName: sprintId,
+                action: "added",
+                storyPoints: vals.sp,
+                businessValue: vals.bv,
+                changedAt: sc.changedAt,
+              });
+            }
+          } else if (wasInSprint && !isInSprint) {
+            const scopeKey = `${key}:${sc.changedAt}`;
+            if (!existingScopeSet.has(scopeKey)) {
+              scopeRows.push({
+                id: `scope-${key}-rm-${new Date(sc.changedAt).getTime()}`,
+                ticketKey: key,
+                sprintName: sprintId,
+                action: "removed",
+                storyPoints: vals.sp,
+                businessValue: vals.bv,
+                changedAt: sc.changedAt,
+              });
+            }
+          }
+        }
+
+        if (statusRows.length > 0 || scopeRows.length > 0) {
           db.transaction((tx) => {
-            for (const row of rows) {
+            for (const row of statusRows) {
               tx.insert(ticketStatusChange).values(row).onConflictDoNothing().run();
             }
+            for (const row of scopeRows) {
+              tx.insert(ticketScopeChange).values(row).onConflictDoNothing().run();
+            }
           });
-          changeCount += rows.length;
+          changeCount += statusRows.length + scopeRows.length;
         }
       } catch {
         // Individual ticket failures should not stop the batch
