@@ -14,7 +14,7 @@ interface BurnupChartProps {
 }
 
 const CHART_HEIGHT = 200;
-const PADDING = { top: 16, right: 16, bottom: 32, left: 16 };
+const PADDING = { top: 16, right: 16, bottom: 32, left: 44 };
 
 const COLORS = {
   spDone: "#58b4e6",
@@ -34,12 +34,16 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function isWeekend(d: Date): boolean {
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+
 /** Build SVG path for a step-line from an array of {x, y} points. */
 function stepLinePath(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return "";
   let d = `M${pts[0].x},${pts[0].y}`;
   for (let i = 1; i < pts.length; i++) {
-    // Horizontal to next x, then vertical to next y
     d += ` H${pts[i].x} V${pts[i].y}`;
   }
   return d;
@@ -182,6 +186,7 @@ export function BurnupChart({
       bvDone: closest.bvDone,
       bvPct: closest.bvPct,
       scopeSp: closest.scopeSp,
+      scopeBv: closest.scopeBv,
       x: hoverX,
     };
   }, [hoverX, width, points, totalDays, start]);
@@ -198,20 +203,16 @@ export function BurnupChart({
   // Percentage gridlines
   const gridPcts = [25, 50, 75, 100];
 
-  // X-axis date labels: show a few intermediate dates
+  // X-axis labels: every working day (skip weekends)
   const xLabels = useMemo(() => {
     const labels: { date: Date; x: number }[] = [];
-    const step = Math.max(1, Math.round(totalDays / 5));
-    for (let d = 0; d <= totalDays; d += step) {
+    for (let d = 0; d <= totalDays; d++) {
       const date = new Date(start.getTime() + d * 24 * 60 * 60 * 1000);
+      if (isWeekend(date)) continue;
       labels.push({ date, x: toX(date) });
     }
-    // Always include end
-    if (labels.length > 0 && labels[labels.length - 1].x < xEnd - 30) {
-      labels.push({ date: end, x: toX(end) });
-    }
     return labels;
-  }, [totalDays, start, end, toX, xEnd]);
+  }, [totalDays, start, toX]);
 
   if (width === 0) {
     return (
@@ -255,7 +256,7 @@ export function BurnupChart({
               strokeWidth={1}
             />
             <text
-              x={xStart - 4}
+              x={xStart - 6}
               y={toY(pct) + 3}
               textAnchor="end"
               className="text-[9px]"
@@ -269,7 +270,7 @@ export function BurnupChart({
         {/* X-axis baseline */}
         <line x1={xStart} y1={yBottom} x2={xEnd} y2={yBottom} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
 
-        {/* X-axis date labels */}
+        {/* X-axis date labels (working days only) */}
         {xLabels.map((l, i) => (
           <text
             key={i}
@@ -294,7 +295,7 @@ export function BurnupChart({
           strokeDasharray="4 4"
         />
 
-        {/* Scope line: flat at 100% (or step-line if scope changes tracked in future) */}
+        {/* Scope line: flat at 100% */}
         <line
           x1={xStart}
           y1={y100}
@@ -388,7 +389,7 @@ export function BurnupChart({
         <div
           className="pointer-events-none absolute z-10 rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-2 text-caption shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
           style={{
-            left: Math.min(Math.max(tooltipData.x + 10, 0), width - 160),
+            left: Math.min(Math.max(tooltipData.x + 10, 0), width - 180),
             top: PADDING.top,
           }}
         >
@@ -396,13 +397,13 @@ export function BurnupChart({
           {hasSp && (
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.spDone }} />
-              <span className="text-white/40">SP: {tooltipData.spDone}/{tooltipData.scopeSp} ({tooltipData.spPct}%)</span>
+              <span className="text-white/40">Story Points: {tooltipData.spDone}/{tooltipData.scopeSp} ({tooltipData.spPct}%)</span>
             </div>
           )}
           {hasBv && (
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.bvDone }} />
-              <span className="text-white/40">BV: {tooltipData.bvDone} ({tooltipData.bvPct}%)</span>
+              <span className="text-white/40">Business Value: {tooltipData.bvDone}/{tooltipData.scopeBv} ({tooltipData.bvPct}%)</span>
             </div>
           )}
           <div className="flex items-center gap-1.5">
@@ -417,13 +418,13 @@ export function BurnupChart({
         {hasSp && (
           <span className="flex items-center gap-1.5 text-caption text-white/30">
             <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: COLORS.spDone }} />
-            Completed SP
+            Story Points
           </span>
         )}
         {hasBv && (
           <span className="flex items-center gap-1.5 text-caption text-white/30">
             <span className="inline-block h-px w-3 border-t border-dashed" style={{ borderColor: COLORS.bvDone }} />
-            Completed BV
+            Business Value
           </span>
         )}
         <span className="flex items-center gap-1.5 text-caption text-white/30">

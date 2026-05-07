@@ -13,6 +13,7 @@ export interface BurnupDataPoint {
   bvDone: number;
   bvPct: number;
   scopeSp: number;
+  scopeBv: number;
 }
 
 export interface BurnupResponse {
@@ -187,6 +188,7 @@ export async function GET(request: Request) {
       bvDone: vals.bvDone,
       bvPct: totalBv > 0 ? Math.round((vals.bvDone / totalBv) * 1000) / 10 : 0,
       scopeSp: totalSp,
+      scopeBv: totalBv,
     }));
 
     const result: BurnupResponse = {
