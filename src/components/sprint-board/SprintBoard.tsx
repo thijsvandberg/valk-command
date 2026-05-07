@@ -951,7 +951,7 @@ export default function SprintBoard() {
               </div>
             )}
 
-            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
+            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} />}
 
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
@@ -993,7 +993,7 @@ export default function SprintBoard() {
               </div>
             )}
 
-            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} />}
+            {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} />}
 
             {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 

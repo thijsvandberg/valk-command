@@ -1,6 +1,6 @@
 # BRDG-129: Business Value Scoring
 
-**Status:** Open
+**Status:** Completed
 **Priority:** High
 
 ## Description

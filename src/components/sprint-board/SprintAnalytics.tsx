@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import type { Ticket, JiraStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
-import { ChevronRight, BarChart2 } from "lucide-react";
+import { ChevronRight, BarChart2, X } from "lucide-react";
 
 const STATUS_COLORS: Record<JiraStatus, string> = Object.fromEntries(
   Object.entries(JIRA_STATUS_COLORS).map(([k, v]) => [k, v.text])
@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<JiraStatus, string> = {
   DEPRECATED: "Deprecated",
 };
 
-export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
+export function SprintAnalytics({ tickets, onClose }: { tickets: Ticket[]; onClose?: () => void }) {
   const [expanded, setExpanded] = useState(true);
 
   const totalPoints = useMemo(
@@ -63,10 +63,11 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
 
   return (
     <div className="border-b border-border-default">
+      <div className="relative">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-2 px-5 py-2 text-xs text-white/40 cursor-pointer hover:text-white/60 hover:bg-white/[0.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.03]"
+        className="flex w-full items-center gap-2 px-5 py-2 pr-10 text-xs text-white/40 cursor-pointer hover:text-white/60 hover:bg-white/[0.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.03]"
       >
         <ChevronRight
           className={`h-3 w-3 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
@@ -76,6 +77,17 @@ export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
         Analytics
         <span className="text-white/20">{totalPoints} pts total</span>
       </button>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-white/25 cursor-pointer hover:text-white/50 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
+          title="Close analytics"
+        >
+          <X size={13} strokeWidth={1.5} />
+        </button>
+      )}
+      </div>
 
       {expanded && (
         <div className="px-5 pb-3 pt-1">

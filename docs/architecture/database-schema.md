@@ -53,6 +53,7 @@ PO-owned annotations per ticket. Never synced back to Jira.
 | `test_status` | enum | `untested`, `pass`, `fail` |
 | `last_test_run_at` | text | ISO timestamp |
 | `last_test_report_url` | text | Link to test report |
+| `business_value` | integer | Business Value score (1-7, nullable) |
 
 #### `ticket_subtask`
 
@@ -507,7 +508,7 @@ story_writer_session (1) --- (*) related_story_candidate
 
 ## Migrations
 
-41 migration files in `drizzle/` (0000–0040). Managed via:
+44 migration files in `drizzle/` (0000–0043). Managed via:
 
 - `npm run db:generate` - Generate new migration from schema changes
 - `npm run db:push` - Push schema directly to DB (development)
