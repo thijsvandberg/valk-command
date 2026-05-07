@@ -9,9 +9,6 @@ const swrFetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface BurnupChartProps {
   sprintId: string;
-  sprintStartDate: string;
-  sprintEndDate: string;
-  sprintState: "active" | "future" | "closed";
   totalSp: number;
   totalBv: number;
 }
@@ -62,9 +59,6 @@ function stepLineAreaPath(pts: { x: number; y: number }[], yBaseline: number): s
 
 export function BurnupChart({
   sprintId,
-  sprintStartDate,
-  sprintEndDate,
-  sprintState,
   totalSp,
   totalBv,
 }: BurnupChartProps) {
@@ -98,8 +92,11 @@ export function BurnupChart({
     return () => observer.disconnect();
   }, []);
 
-  const start = useMemo(() => new Date(sprintStartDate), [sprintStartDate]);
-  const end = useMemo(() => new Date(sprintEndDate), [sprintEndDate]);
+  const sprintStartDate = data?.sprintStart;
+  const sprintEndDate = data?.sprintEnd;
+
+  const start = useMemo(() => sprintStartDate ? new Date(sprintStartDate) : new Date(), [sprintStartDate]);
+  const end = useMemo(() => sprintEndDate ? new Date(sprintEndDate) : new Date(), [sprintEndDate]);
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -196,7 +193,7 @@ export function BurnupChart({
   const y0 = toY(0);
   const y100 = toY(100);
   const todayX = toX(today);
-  const showToday = sprintState === "active" && today >= start && today <= end;
+  const showToday = today >= start && today <= end;
 
   // Percentage gridlines
   const gridPcts = [25, 50, 75, 100];

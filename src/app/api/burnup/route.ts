@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketMetadata, ticketStatusChange, appSetting } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { ticket, ticketMetadata, ticketStatusChange } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { normalizeStatus } from "@/lib/upsert-issue";
+import { jiraClient } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 
 export interface BurnupDataPoint {
@@ -61,6 +62,20 @@ export async function GET(request: Request) {
       if (sprint) {
         sprintStart = sprint.startDate ?? null;
         sprintEnd = sprint.endDate ?? null;
+      }
+    }
+
+    // Fallback: fetch directly from Jira if local cache has no dates
+    if (!sprintStart || !sprintEnd) {
+      try {
+        const jiraSprints = await jiraClient.getSprints();
+        const jiraSprint = jiraSprints.find((s) => String(s.id) === sprintId);
+        if (jiraSprint) {
+          sprintStart = jiraSprint.startDate ?? null;
+          sprintEnd = jiraSprint.endDate ?? null;
+        }
+      } catch {
+        // Jira unavailable
       }
     }
 

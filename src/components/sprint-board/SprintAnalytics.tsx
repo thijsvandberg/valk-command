@@ -22,12 +22,9 @@ interface SprintAnalyticsProps {
   tickets: Ticket[];
   onClose?: () => void;
   sprintId?: string | null;
-  sprintStartDate?: string | null;
-  sprintEndDate?: string | null;
-  sprintState?: "active" | "future" | "closed";
 }
 
-export function SprintAnalytics({ tickets, onClose, sprintId, sprintStartDate, sprintEndDate, sprintState }: SprintAnalyticsProps) {
+export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsProps) {
   const [expanded, setExpanded] = useState(true);
 
   const totalPoints = useMemo(
@@ -110,8 +107,6 @@ export function SprintAnalytics({ tickets, onClose, sprintId, sprintStartDate, s
   const maxAssigneeBv = bvByAssignee.length > 0
     ? Math.max(...bvByAssignee.map((a) => a.value))
     : 0;
-
-  const hasBurnupDates = sprintStartDate && sprintEndDate && sprintState;
 
   if (totalPoints === 0 && bvTotal === 0) return null;
 
@@ -284,12 +279,9 @@ export function SprintAnalytics({ tickets, onClose, sprintId, sprintStartDate, s
           )}
 
           {/* Burnup chart */}
-          {hasBurnupDates && sprintId && sprintId !== "__all__" && (totalPoints > 0 || bvTotal > 0) && (
+          {sprintId && sprintId !== "__all__" && (totalPoints > 0 || bvTotal > 0) && (
             <BurnupChart
               sprintId={sprintId}
-              sprintStartDate={sprintStartDate!}
-              sprintEndDate={sprintEndDate!}
-              sprintState={sprintState!}
               totalSp={totalPoints}
               totalBv={bvTotal}
             />
