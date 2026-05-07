@@ -83,7 +83,6 @@ export async function POST(request: Request) {
           `sprint was "${sprintName}"`,
           ["summary", SPRINT_FIELD],
           100,
-          request.signal,
         );
         for (const issue of jqlResults) ticketKeys.add(issue.key);
       } catch { /* JQL fallback */ }
@@ -135,7 +134,7 @@ export async function POST(request: Request) {
 
     for (const key of allKeys) {
       try {
-        const { statusChanges, sprintChanges } = await jiraClient.getBurnupChangelog(key, request.signal);
+        const { statusChanges, sprintChanges } = await jiraClient.getBurnupChangelog(key);
         const vals = valueMap.get(key) ?? { sp: 0, bv: 0 };
 
         // Status changes

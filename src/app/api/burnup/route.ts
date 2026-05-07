@@ -128,13 +128,23 @@ export async function GET(request: Request) {
     const seeded = !!seededRow || statusRows.length > 0;
 
     if (!seeded) {
+      // No historical data yet: show baseline from current ticket state
+      const doneSpNow = tickets.filter((t) => t.status === "DONE").reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+      const doneBvNow = tickets.filter((t) => t.status === "DONE" && t.bv != null && t.bv >= 1).reduce((s, t) => s + (t.bv ?? 0), 0);
+      const now = new Date();
+      const endDate = new Date(sprintEnd);
+      const currentDay = (now < endDate ? now : endDate).toISOString().slice(0, 10);
+      const startDay = sprintStart.slice(0, 10);
       const result: BurnupResponse = {
         seeded: false,
         sprintStart,
         sprintEnd,
         totalSp: currentTotalSp,
         totalBv: currentTotalBv,
-        points: [],
+        points: [
+          { date: startDay, spDone: 0, spPct: 0, bvDone: 0, bvPct: 0, scopeSp: currentTotalSp, scopeBv: currentTotalBv },
+          { date: currentDay, spDone: doneSpNow, spPct: currentTotalSp > 0 ? Math.round((doneSpNow / currentTotalSp) * 1000) / 10 : 0, bvDone: doneBvNow, bvPct: currentTotalBv > 0 ? Math.round((doneBvNow / currentTotalBv) * 1000) / 10 : 0, scopeSp: currentTotalSp, scopeBv: currentTotalBv },
+        ],
       };
       return NextResponse.json(result);
     }
