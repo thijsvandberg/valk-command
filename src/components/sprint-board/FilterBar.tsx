@@ -577,6 +577,11 @@ function ExpandableSearch({
 // FilterBar component
 // ---------------------------------------------------------------------------
 
+export const GAPS_OPTIONS: { value: string; label: string; dotClass: string }[] = [
+  { value: "no_points", label: "No story points", dotClass: "bg-[#eab308]/50" },
+  { value: "no_bv", label: "No business value", dotClass: "bg-[#eab308]/50" },
+];
+
 export function FilterBar({
   statusFilter,
   epicFilter,
@@ -584,12 +589,14 @@ export function FilterBar({
   readinessFilter,
   editStateFilter,
   issueTypeFilter,
+  gapsFilter,
   onStatusFilterChange,
   onEpicFilterChange,
   onAssigneeFilterChange,
   onReadinessFilterChange,
   onEditStateFilterChange,
   onIssueTypeFilterChange,
+  onGapsFilterChange,
   statusOptions,
   epicOptions,
   assigneeOptions,
@@ -614,12 +621,14 @@ export function FilterBar({
   readinessFilter: Set<string>;
   editStateFilter: Set<string>;
   issueTypeFilter: Set<string>;
+  gapsFilter?: Set<string>;
   onStatusFilterChange: (next: Set<string>) => void;
   onEpicFilterChange: (next: Set<string>) => void;
   onAssigneeFilterChange: (next: Set<string>) => void;
   onReadinessFilterChange: (next: Set<string>) => void;
   onEditStateFilterChange: (next: Set<string>) => void;
   onIssueTypeFilterChange: (next: Set<string>) => void;
+  onGapsFilterChange?: (next: Set<string>) => void;
   statusOptions: string[];
   epicOptions: string[];
   assigneeOptions: string[];
@@ -641,7 +650,7 @@ export function FilterBar({
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const saveViewRef = useRef<HTMLDivElement>(null);
 
-  const readinessOptions = READINESS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string);
+  const readinessOptions = [...READINESS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string), "none"];
   const editStateValues = EDIT_STATE_OPTIONS.map((o) => o.value);
 
   const hasActiveFilters =
@@ -651,6 +660,7 @@ export function FilterBar({
     readinessFilter.size > 0 ||
     editStateFilter.size > 0 ||
     issueTypeFilter.size > 0 ||
+    (gapsFilter?.size ?? 0) > 0 ||
     (teamFilter?.size ?? 0) > 0 ||
     (sprintFilter?.size ?? 0) > 0;
 
@@ -661,6 +671,7 @@ export function FilterBar({
     onReadinessFilterChange(new Set());
     onEditStateFilterChange(new Set());
     onIssueTypeFilterChange(new Set());
+    if (onGapsFilterChange) onGapsFilterChange(new Set());
     if (onTeamFilterChange) onTeamFilterChange(new Set());
     if (onSprintFilterChange) onSprintFilterChange(new Set());
   }
@@ -725,6 +736,14 @@ export function FilterBar({
         selected={readinessFilter}
         onChange={onReadinessFilterChange}
         renderOption={(v) => {
+          if (v === "none") {
+            return (
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full border border-white/20" />
+                No readiness
+              </span>
+            );
+          }
           const cfg = READINESS_CONFIG[v as keyof typeof READINESS_CONFIG];
           return (
             <span className="flex items-center gap-2">
@@ -767,6 +786,23 @@ export function FilterBar({
           );
         }}
       />
+      {gapsFilter && onGapsFilterChange && (
+        <FilterDropdown
+          label="Gaps"
+          options={GAPS_OPTIONS.map((o) => o.value)}
+          selected={gapsFilter}
+          onChange={onGapsFilterChange}
+          renderOption={(v) => {
+            const cfg = GAPS_OPTIONS.find((o) => o.value === v);
+            return (
+              <span className="flex items-center gap-2">
+                <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg?.dotClass ?? ""}`} />
+                {cfg?.label ?? v}
+              </span>
+            );
+          }}
+        />
+      )}
       {teamFilter && onTeamFilterChange && teamOptions && teamOptions.length > 0 && (
         <FilterDropdown
           label="Team"

@@ -44,6 +44,7 @@ export function useSprintBoardFilters(
   const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
   const [teamFilter, setTeamFilter] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [gapsFilter, setGapsFilter] = useState<Set<string>>(new Set());
 
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
@@ -128,13 +129,18 @@ export function useSprintBoardFilters(
       }
       if (readinessFilter.size > 0) {
         const current = readinessMap[t.key] ?? null;
-        if (current === null || !readinessFilter.has(current)) return false;
+        const matches = current === null ? readinessFilter.has("none") : readinessFilter.has(current);
+        if (!matches) return false;
       }
       if (editStateFilter.size > 0) {
         const effectiveState = isRemoved ? "removed" : t.editState;
         if (!editStateFilter.has(effectiveState)) return false;
       }
       if (issueTypeFilter.size > 0 && !issueTypeFilter.has(t.type)) return false;
+      if (gapsFilter.size > 0) {
+        if (gapsFilter.has("no_points") && t.storyPoints) return false;
+        if (gapsFilter.has("no_bv") && t.businessValue != null && t.businessValue >= 1) return false;
+      }
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
       if (isAllView && teamFilter.size > 0) {
         const sprintName = t.sprintId ? sprintNameMap?.[t.sprintId] : undefined;
@@ -150,7 +156,7 @@ export function useSprintBoardFilters(
       }
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter, readinessMap, isAllView, sprintFilter, teamFilter, sprintNameMap, searchQuery]);
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter, readinessMap, isAllView, sprintFilter, teamFilter, sprintNameMap, searchQuery, gapsFilter]);
 
   const sortedTickets = useMemo(() => {
     if (sortField === "rank") {
@@ -215,7 +221,7 @@ export function useSprintBoardFilters(
     return sorted;
   }, [filteredTickets, sortField, sortDir, poPriorityOrder, readinessMap]);
 
-  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0;
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0 || gapsFilter.size > 0;
 
   const handleColumnToggle = useCallback((id: ColumnId, show: boolean) => {
     setVisibleColumns((prev) => {
@@ -237,6 +243,7 @@ export function useSprintBoardFilters(
 
   const resetFilters = useCallback(() => {
     setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [] });
+    setGapsFilter(new Set());
   }, [setStoredFilters]);
 
   const handleSaveView = useCallback((title: string) => {
@@ -311,6 +318,8 @@ export function useSprintBoardFilters(
     teamOptions,
     searchQuery,
     setSearchQuery,
+    gapsFilter,
+    setGapsFilter,
     savedViews,
     setSavedViews,
     activeViewId,
