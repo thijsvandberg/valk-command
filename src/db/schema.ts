@@ -547,6 +547,23 @@ export const ticketConfluenceLink = sqliteTable("ticket_confluence_link", {
   index("ticket_confluence_link_page_id_idx").on(table.pageId),
 ]);
 
+// Status transitions recorded during sync or backfilled from Jira changelog
+export const ticketStatusChange = sqliteTable("ticket_status_change", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status").notNull(),
+  changedAt: text("changed_at").notNull(),
+  sprintName: text("sprint_name"),
+}, (table) => [
+  index("ticket_status_change_ticket_key_idx").on(table.ticketKey),
+  index("ticket_status_change_sprint_changed_idx").on(table.sprintName, table.changedAt),
+]);
+
+export type TicketStatusChange = typeof ticketStatusChange.$inferSelect;
+
 export type TicketConfluenceLink = typeof ticketConfluenceLink.$inferSelect;
 export type NewTicketConfluenceLink = typeof ticketConfluenceLink.$inferInsert;
 

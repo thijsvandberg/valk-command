@@ -309,6 +309,13 @@
       "when": 1778138150878,
       "tag": "0043_nappy_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1778155254889,
+      "tag": "0044_pink_betty_ross",
+      "breakpoints": true
     }
   ]
 }

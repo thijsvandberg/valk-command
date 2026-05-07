@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange } from "@/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
@@ -143,6 +143,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
 
   // Detect story points change for auto-transition (checked before the transaction)
   const pointsChanged = !!existing && existing.storyPoints !== storyPoints;
+  const statusChanged = existing && existing.status !== ticketData.status;
 
   // All DB writes in a single transaction for SQLite performance
   db.transaction((tx) => {
@@ -151,6 +152,18 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
       tx.update(ticket).set(ticketData).where(eq(ticket.jiraKey, issue.key)).run();
     } else {
       tx.insert(ticket).values(ticketData).run();
+    }
+
+    // Record status transition for burnup chart
+    if (statusChanged) {
+      tx.insert(ticketStatusChange).values({
+        id: `sc-${issue.key}-${Date.now()}`,
+        ticketKey: issue.key,
+        fromStatus: existing!.status,
+        toStatus: ticketData.status,
+        changedAt: fields.updated ?? now,
+        sprintName,
+      }).run();
     }
 
     // Metadata

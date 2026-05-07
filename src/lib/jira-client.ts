@@ -958,6 +958,42 @@ export class JiraClient {
   }
 
   /**
+   * Fetch all status field changes from the Jira changelog for an issue.
+   * Returns transitions in chronological order.
+   */
+  async getStatusChangelog(key: string, signal?: AbortSignal): Promise<StatusChange[]> {
+    if (!isConfigured()) return [];
+
+    const results: StatusChange[] = [];
+    let startAt = 0;
+    const maxResults = 100;
+
+    while (true) {
+      if (signal?.aborted) {
+        throw new DOMException("The operation was aborted", "AbortError");
+      }
+
+      const page = await jiraFetch<{
+        startAt: number;
+        maxResults: number;
+        total: number;
+        isLast: boolean;
+        values: ChangelogEntry[];
+      }>(
+        `/rest/api/3/issue/${key}/changelog?startAt=${startAt}&maxResults=${maxResults}`,
+        signal,
+      );
+
+      results.push(...filterStatusChanges(page.values));
+
+      if (page.isLast !== false || startAt + page.values.length >= page.total) break;
+      startAt += page.values.length;
+    }
+
+    return results;
+  }
+
+  /**
    * Whether the client is talking to a real Jira instance.
    */
   get isLive(): boolean {
@@ -998,6 +1034,29 @@ export function filterDescriptionChanges(entries: ChangelogEntry[]): Description
           author: entry.author.displayName,
           avatar: entry.author.avatarUrls?.["48x48"] ?? null,
           created: entry.created,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+export interface StatusChange {
+  fromStatus: string | null;
+  toStatus: string;
+  changedAt: string;
+}
+
+/** Filter raw Jira changelog entries to only status field changes. */
+export function filterStatusChanges(entries: ChangelogEntry[]): StatusChange[] {
+  const results: StatusChange[] = [];
+  for (const entry of entries) {
+    for (const item of entry.items) {
+      if (item.field === "status" && item.toString !== null) {
+        results.push({
+          fromStatus: item.fromString,
+          toStatus: item.toString,
+          changedAt: entry.created,
         });
       }
     }

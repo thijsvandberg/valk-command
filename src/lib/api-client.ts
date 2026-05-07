@@ -586,6 +586,14 @@ export const config = {
     apiFetch<unknown>("/api/config", { signal }),
 };
 
+export const burnup = {
+  url: (sprintId: string) => `/api/burnup?sprintId=${enc(sprintId)}` as const,
+  get: (sprintId: string, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/burnup?sprintId=${enc(sprintId)}`, { signal }),
+  seed: (sprintId: string, signal?: AbortSignal) =>
+    apiFetch<{ seeded: boolean; changeCount: number }>(`/api/burnup/seed?sprintId=${enc(sprintId)}`, { method: "POST", signal }),
+};
+
 export const cache = {
   flush: (signal?: AbortSignal) =>
     apiFetch<void>("/api/cache/flush", { method: "POST", signal }),
