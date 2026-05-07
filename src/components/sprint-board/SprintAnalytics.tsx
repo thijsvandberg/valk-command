@@ -21,12 +21,13 @@ const STATUS_LABELS: Record<JiraStatus, string> = {
 interface SprintAnalyticsProps {
   tickets: Ticket[];
   onClose?: () => void;
+  sprintId?: string | null;
   sprintStartDate?: string | null;
   sprintEndDate?: string | null;
   sprintState?: "active" | "future" | "closed";
 }
 
-export function SprintAnalytics({ tickets, onClose, sprintStartDate, sprintEndDate, sprintState }: SprintAnalyticsProps) {
+export function SprintAnalytics({ tickets, onClose, sprintId, sprintStartDate, sprintEndDate, sprintState }: SprintAnalyticsProps) {
   const [expanded, setExpanded] = useState(true);
 
   const totalPoints = useMemo(
@@ -109,16 +110,6 @@ export function SprintAnalytics({ tickets, onClose, sprintStartDate, sprintEndDa
   const maxAssigneeBv = bvByAssignee.length > 0
     ? Math.max(...bvByAssignee.map((a) => a.value))
     : 0;
-
-  // Burnup data
-  const donePoints = useMemo(
-    () => tickets.filter((t) => t.jiraStatus === "DONE").reduce((sum, t) => sum + (t.storyPoints || 0), 0),
-    [tickets],
-  );
-  const doneBv = useMemo(
-    () => bvScoredTickets.filter((t) => t.jiraStatus === "DONE").reduce((sum, t) => sum + (t.businessValue ?? 0), 0),
-    [bvScoredTickets],
-  );
 
   const hasBurnupDates = sprintStartDate && sprintEndDate && sprintState;
 
@@ -292,36 +283,16 @@ export function SprintAnalytics({ tickets, onClose, sprintStartDate, sprintEndDa
             </div>
           )}
 
-          {/* Burnup charts */}
-          {hasBurnupDates && (totalPoints > 0 || bvTotal > 0) && (
-            <div className="mt-1 grid grid-cols-1 gap-3 md:grid-cols-2">
-              {totalPoints > 0 && (
-                <BurnupChart
-                  sprintStartDate={sprintStartDate!}
-                  sprintEndDate={sprintEndDate!}
-                  sprintState={sprintState!}
-                  scopeValue={totalPoints}
-                  doneValue={donePoints}
-                  label="Story Points"
-                  doneColor="#58b4e6"
-                  scopeColor="rgba(88, 180, 230, 0.35)"
-                  fillColor="rgba(88, 180, 230, 0.08)"
-                />
-              )}
-              {bvTotal > 0 && (
-                <BurnupChart
-                  sprintStartDate={sprintStartDate!}
-                  sprintEndDate={sprintEndDate!}
-                  sprintState={sprintState!}
-                  scopeValue={bvTotal}
-                  doneValue={doneBv}
-                  label="Business Value"
-                  doneColor="#4ade80"
-                  scopeColor="rgba(74, 222, 128, 0.35)"
-                  fillColor="rgba(74, 222, 128, 0.08)"
-                />
-              )}
-            </div>
+          {/* Burnup chart */}
+          {hasBurnupDates && sprintId && sprintId !== "__all__" && (totalPoints > 0 || bvTotal > 0) && (
+            <BurnupChart
+              sprintId={sprintId}
+              sprintStartDate={sprintStartDate!}
+              sprintEndDate={sprintEndDate!}
+              sprintState={sprintState!}
+              totalSp={totalPoints}
+              totalBv={bvTotal}
+            />
           )}
         </div>
       )}

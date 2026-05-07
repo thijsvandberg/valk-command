@@ -1,21 +1,33 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import useSWR from "swr";
+import { burnup } from "@/lib/api-client";
+import type { BurnupResponse, BurnupDataPoint } from "@/app/api/burnup/route";
+
+const swrFetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface BurnupChartProps {
+  sprintId: string;
   sprintStartDate: string;
   sprintEndDate: string;
   sprintState: "active" | "future" | "closed";
-  scopeValue: number;
-  doneValue: number;
-  label: string;
-  doneColor: string;
-  scopeColor: string;
-  fillColor: string;
+  totalSp: number;
+  totalBv: number;
 }
 
-const CHART_HEIGHT = 160;
-const PADDING = { top: 20, right: 12, bottom: 28, left: 36 };
+const CHART_HEIGHT = 200;
+const PADDING = { top: 16, right: 16, bottom: 32, left: 16 };
+
+const COLORS = {
+  spDone: "#58b4e6",
+  bvDone: "#4ade80",
+  scope: "#e05a5a",
+  guideline: "rgba(255,255,255,0.12)",
+  today: "rgba(255,255,255,0.25)",
+  grid: "rgba(255,255,255,0.04)",
+  gridLabel: "rgba(255,255,255,0.15)",
+};
 
 function formatShortDate(d: Date): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -25,20 +37,54 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/** Build SVG path for a step-line from an array of {x, y} points. */
+function stepLinePath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    // Horizontal to next x, then vertical to next y
+    d += ` H${pts[i].x} V${pts[i].y}`;
+  }
+  return d;
+}
+
+/** Build SVG path for the filled area under a step-line. */
+function stepLineAreaPath(pts: { x: number; y: number }[], yBaseline: number): string {
+  if (pts.length === 0) return "";
+  let d = `M${pts[0].x},${yBaseline}`;
+  d += ` V${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    d += ` H${pts[i].x} V${pts[i].y}`;
+  }
+  d += ` H${pts[pts.length - 1].x} V${yBaseline} Z`;
+  return d;
+}
+
 export function BurnupChart({
+  sprintId,
   sprintStartDate,
   sprintEndDate,
   sprintState,
-  scopeValue,
-  doneValue,
-  label,
-  doneColor,
-  scopeColor,
-  fillColor,
+  totalSp,
+  totalBv,
 }: BurnupChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hoverX, setHoverX] = useState<number | null>(null);
+  const seedAttempted = useRef(false);
+
+  const { data, mutate, isValidating } = useSWR<BurnupResponse>(
+    sprintId ? burnup.url(sprintId) : null,
+    swrFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 },
+  );
+
+  // Auto-seed when no data exists
+  useEffect(() => {
+    if (!data || data.seeded || seedAttempted.current) return;
+    seedAttempted.current = true;
+    burnup.seed(sprintId).finally(() => mutate());
+  }, [data, sprintId, mutate]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -60,43 +106,30 @@ export function BurnupChart({
     return d;
   }, []);
 
-  const timelineEnd = useMemo(() => {
-    if (sprintState === "active") {
-      return today < end ? today : end;
-    }
-    return end;
-  }, [sprintState, today, end]);
-
   const totalDays = daysBetween(start, end);
-  const elapsedDays = daysBetween(start, timelineEnd);
-
-  const yMax = useMemo(() => Math.max(scopeValue, doneValue, 1) * 1.15, [scopeValue, doneValue]);
-
-  const yGridlines = useMemo(() => {
-    const step = Math.ceil(yMax / 4);
-    if (step === 0) return [];
-    const lines: number[] = [];
-    for (let v = step; v < yMax; v += step) {
-      lines.push(v);
-    }
-    return lines;
-  }, [yMax]);
 
   const toX = useCallback(
-    (day: number) => {
+    (date: Date) => {
       const plotW = width - PADDING.left - PADDING.right;
       if (totalDays <= 0) return PADDING.left;
+      const day = daysBetween(start, date);
       return PADDING.left + (day / totalDays) * plotW;
     },
-    [totalDays, width],
+    [totalDays, width, start],
   );
 
+  const toXDay = useCallback(
+    (dayStr: string) => toX(new Date(dayStr)),
+    [toX],
+  );
+
+  // Y-axis: percentage 0-100
   const toY = useCallback(
-    (val: number) => {
+    (pct: number) => {
       const plotH = CHART_HEIGHT - PADDING.top - PADDING.bottom;
-      return PADDING.top + plotH * (1 - val / yMax);
+      return PADDING.top + plotH * (1 - pct / 100);
     },
-    [yMax],
+    [],
   );
 
   const handleMouseMove = useCallback(
@@ -109,8 +142,24 @@ export function BurnupChart({
 
   const handleMouseLeave = useCallback(() => setHoverX(null), []);
 
+  // Compute chart data points from API response
+  const points = data?.points ?? [];
+  const hasSp = totalSp > 0;
+  const hasBv = totalBv > 0;
+
+  const spPoints = useMemo(() => {
+    if (!hasSp) return [];
+    return points.map((p) => ({ x: toXDay(p.date), y: toY(p.spPct) }));
+  }, [points, hasSp, toXDay, toY]);
+
+  const bvPoints = useMemo(() => {
+    if (!hasBv) return [];
+    return points.map((p) => ({ x: toXDay(p.date), y: toY(p.bvPct) }));
+  }, [points, hasBv, toXDay, toY]);
+
+  // Tooltip
   const tooltipData = useMemo(() => {
-    if (hoverX === null || width === 0) return null;
+    if (hoverX === null || width === 0 || points.length === 0) return null;
     const plotW = width - PADDING.left - PADDING.right;
     const relX = hoverX - PADDING.left;
     if (relX < 0 || relX > plotW || totalDays <= 0) return null;
@@ -118,186 +167,275 @@ export function BurnupChart({
     const dayFraction = relX / plotW;
     const day = Math.round(dayFraction * totalDays);
     const date = new Date(start.getTime() + day * 24 * 60 * 60 * 1000);
+    const dateStr = date.toISOString().slice(0, 10);
 
-    const doneFraction = elapsedDays > 0 ? Math.min(day / elapsedDays, 1) : 0;
-    const doneAtDay = Math.round(doneFraction * doneValue);
+    // Find the closest data point at or before this date
+    let closest: BurnupDataPoint | null = null;
+    for (const p of points) {
+      if (p.date <= dateStr) closest = p;
+      else break;
+    }
+
+    if (!closest) closest = points[0];
 
     return {
       date: formatShortDate(date),
-      scope: scopeValue,
-      done: doneAtDay,
+      spDone: closest.spDone,
+      spPct: closest.spPct,
+      bvDone: closest.bvDone,
+      bvPct: closest.bvPct,
+      scopeSp: closest.scopeSp,
       x: hoverX,
     };
-  }, [hoverX, width, totalDays, start, elapsedDays, doneValue, scopeValue]);
+  }, [hoverX, width, points, totalDays, start]);
+
+  const xStart = PADDING.left;
+  const xEnd = width - PADDING.right;
+  const yBottom = CHART_HEIGHT - PADDING.bottom;
+  const yTop = PADDING.top;
+  const y0 = toY(0);
+  const y100 = toY(100);
+  const todayX = toX(today);
+  const showToday = sprintState === "active" && today >= start && today <= end;
+
+  // Percentage gridlines
+  const gridPcts = [25, 50, 75, 100];
+
+  // X-axis date labels: show a few intermediate dates
+  const xLabels = useMemo(() => {
+    const labels: { date: Date; x: number }[] = [];
+    const step = Math.max(1, Math.round(totalDays / 5));
+    for (let d = 0; d <= totalDays; d += step) {
+      const date = new Date(start.getTime() + d * 24 * 60 * 60 * 1000);
+      labels.push({ date, x: toX(date) });
+    }
+    // Always include end
+    if (labels.length > 0 && labels[labels.length - 1].x < xEnd - 30) {
+      labels.push({ date: end, x: toX(end) });
+    }
+    return labels;
+  }, [totalDays, start, end, toX, xEnd]);
 
   if (width === 0) {
-    return <div ref={containerRef} className="relative" style={{ minHeight: CHART_HEIGHT + 40 }} />;
+    return (
+      <div ref={containerRef} className="relative" style={{ minHeight: CHART_HEIGHT + 48 }}>
+        <div className="flex h-full items-center justify-center text-caption text-white/20">
+          Loading burnup...
+        </div>
+      </div>
+    );
   }
-
-  const xStart = toX(0);
-  const xElapsed = toX(elapsedDays);
-  const xEnd = toX(totalDays);
-  const yBottom = CHART_HEIGHT - PADDING.bottom;
-  const yScope = toY(scopeValue);
-  const yDone = toY(doneValue);
-  const yZero = toY(0);
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="mb-1 text-caption uppercase tracking-wider text-white/25">{label} burnup</div>
+      <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Sprint burnup</div>
+
+      {/* Loading overlay when seeding */}
+      {(!data || !data.seeded || isValidating) && points.length === 0 && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-[var(--color-surface-default)]/80">
+          <span className="text-caption text-white/30">Loading history...</span>
+        </div>
+      )}
+
       <svg
         width={width}
         height={CHART_HEIGHT}
         className="overflow-visible"
         role="img"
-        aria-label={`${label} burnup chart: scope ${scopeValue}, done ${doneValue}`}
+        aria-label="Sprint burnup chart"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Y-axis gridlines */}
-        {yGridlines.map((v) => (
-          <g key={v}>
+        {/* Y-axis gridlines (percentage) */}
+        {gridPcts.map((pct) => (
+          <g key={pct}>
             <line
-              x1={PADDING.left}
-              y1={toY(v)}
-              x2={width - PADDING.right}
-              y2={toY(v)}
-              stroke="rgba(255,255,255,0.04)"
+              x1={xStart}
+              y1={toY(pct)}
+              x2={xEnd}
+              y2={toY(pct)}
+              stroke={COLORS.grid}
               strokeWidth={1}
             />
             <text
-              x={PADDING.left - 6}
-              y={toY(v) + 3}
+              x={xStart - 4}
+              y={toY(pct) + 3}
               textAnchor="end"
               className="text-[9px]"
-              fill="rgba(255,255,255,0.2)"
+              fill={COLORS.gridLabel}
             >
-              {v}
+              {pct}%
             </text>
           </g>
         ))}
 
         {/* X-axis baseline */}
-        <line
-          x1={PADDING.left}
-          y1={yBottom}
-          x2={width - PADDING.right}
-          y2={yBottom}
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth={1}
-        />
+        <line x1={xStart} y1={yBottom} x2={xEnd} y2={yBottom} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
 
-        {/* Scope line (dashed, full sprint width) */}
+        {/* X-axis date labels */}
+        {xLabels.map((l, i) => (
+          <text
+            key={i}
+            x={l.x}
+            y={yBottom + 16}
+            textAnchor={i === 0 ? "start" : i === xLabels.length - 1 ? "end" : "middle"}
+            className="text-[9px]"
+            fill={COLORS.gridLabel}
+          >
+            {formatShortDate(l.date)}
+          </text>
+        ))}
+
+        {/* Guideline: diagonal from (start, 0%) to (end, 100%) */}
         <line
           x1={xStart}
-          y1={yScope}
+          y1={y0}
           x2={xEnd}
-          y2={yScope}
-          stroke={scopeColor}
-          strokeWidth={1.5}
-          strokeDasharray="6 4"
+          y2={y100}
+          stroke={COLORS.guideline}
+          strokeWidth={1}
+          strokeDasharray="4 4"
         />
 
-        {/* Done area fill */}
-        <polygon
-          points={`${xStart},${yZero} ${xElapsed},${yDone} ${xElapsed},${yZero}`}
-          fill={fillColor}
-        />
-
-        {/* Done line */}
+        {/* Scope line: flat at 100% (or step-line if scope changes tracked in future) */}
         <line
           x1={xStart}
-          y1={yZero}
-          x2={xElapsed}
-          y2={yDone}
-          stroke={doneColor}
-          strokeWidth={2}
-          strokeLinecap="round"
+          y1={y100}
+          x2={showToday ? todayX : xEnd}
+          y2={y100}
+          stroke={COLORS.scope}
+          strokeWidth={1.5}
         />
-
-        {/* Done endpoint dot */}
-        <circle cx={xElapsed} cy={yDone} r={3} fill={doneColor} />
-
-        {/* Today marker for active sprints */}
-        {sprintState === "active" && today < end && (
+        {/* Scope projection after today (dotted) */}
+        {showToday && todayX < xEnd && (
           <line
-            x1={xElapsed}
-            y1={PADDING.top}
-            x2={xElapsed}
-            y2={yBottom}
-            stroke="rgba(255,255,255,0.12)"
-            strokeWidth={1}
-            strokeDasharray="3 3"
+            x1={todayX}
+            y1={y100}
+            x2={xEnd}
+            y2={y100}
+            stroke={COLORS.scope}
+            strokeWidth={1.5}
+            strokeDasharray="3 4"
+            opacity={0.5}
           />
         )}
 
-        {/* X-axis labels */}
-        <text x={xStart} y={yBottom + 16} textAnchor="start" className="text-[9px]" fill="rgba(255,255,255,0.2)">
-          {formatShortDate(start)}
-        </text>
-        <text x={xEnd} y={yBottom + 16} textAnchor="end" className="text-[9px]" fill="rgba(255,255,255,0.2)">
-          {formatShortDate(end)}
-        </text>
-        {sprintState === "active" && today < end && elapsedDays > 2 && totalDays - elapsedDays > 2 && (
-          <text x={xElapsed} y={yBottom + 16} textAnchor="middle" className="text-[9px]" fill="rgba(255,255,255,0.3)">
-            Today
-          </text>
+        {/* SP completed step-line area fill */}
+        {hasSp && spPoints.length > 0 && (
+          <path d={stepLineAreaPath(spPoints, y0)} fill="rgba(88, 180, 230, 0.06)" />
         )}
 
-        {/* Scope value label */}
-        <text x={xEnd + 2} y={yScope + 3} textAnchor="start" className="text-[9px]" fill={scopeColor}>
-          {scopeValue}
-        </text>
+        {/* SP completed step-line */}
+        {hasSp && spPoints.length > 0 && (
+          <path
+            d={stepLinePath(spPoints)}
+            fill="none"
+            stroke={COLORS.spDone}
+            strokeWidth={2}
+            strokeLinejoin="miter"
+          />
+        )}
 
-        {/* Done value label */}
-        <text x={xElapsed + 6} y={yDone + 3} textAnchor="start" className="text-[9px]" fill={doneColor}>
-          {doneValue}
-        </text>
+        {/* BV completed step-line */}
+        {hasBv && bvPoints.length > 0 && (
+          <path
+            d={stepLinePath(bvPoints)}
+            fill="none"
+            stroke={COLORS.bvDone}
+            strokeWidth={1.5}
+            strokeLinejoin="miter"
+            strokeDasharray="6 2"
+          />
+        )}
+
+        {/* Today marker */}
+        {showToday && (
+          <>
+            <line
+              x1={todayX}
+              y1={yTop}
+              x2={todayX}
+              y2={yBottom}
+              stroke={COLORS.today}
+              strokeWidth={1}
+              strokeDasharray="3 3"
+            />
+            <text
+              x={todayX}
+              y={yTop - 4}
+              textAnchor="middle"
+              className="text-[9px]"
+              fill="rgba(255,255,255,0.3)"
+            >
+              Today
+            </text>
+          </>
+        )}
 
         {/* Hover crosshair */}
         {tooltipData && (
           <line
             x1={tooltipData.x}
-            y1={PADDING.top}
+            y1={yTop}
             x2={tooltipData.x}
             y2={yBottom}
-            stroke="rgba(255,255,255,0.15)"
+            stroke="rgba(255,255,255,0.18)"
             strokeWidth={1}
             strokeDasharray="2 2"
           />
         )}
       </svg>
 
-      {/* Tooltip overlay */}
+      {/* Tooltip */}
       {tooltipData && (
         <div
-          className="pointer-events-none absolute z-10 rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2 py-1.5 text-caption shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+          className="pointer-events-none absolute z-10 rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-2 text-caption shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
           style={{
-            left: Math.min(tooltipData.x + 8, width - 120),
+            left: Math.min(Math.max(tooltipData.x + 10, 0), width - 160),
             top: PADDING.top,
           }}
         >
-          <div className="text-white/50">{tooltipData.date}</div>
+          <div className="mb-1 text-white/50">{tooltipData.date}</div>
+          {hasSp && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.spDone }} />
+              <span className="text-white/40">SP: {tooltipData.spDone}/{tooltipData.scopeSp} ({tooltipData.spPct}%)</span>
+            </div>
+          )}
+          {hasBv && (
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.bvDone }} />
+              <span className="text-white/40">BV: {tooltipData.bvDone} ({tooltipData.bvPct}%)</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: scopeColor }} />
-            <span className="text-white/40">Scope: {tooltipData.scope}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: doneColor }} />
-            <span className="text-white/40">Done: {tooltipData.done}</span>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.scope }} />
+            <span className="text-white/40">Scope: {tooltipData.scopeSp} SP</span>
           </div>
         </div>
       )}
 
       {/* Legend */}
-      <div className="mt-1.5 flex gap-4">
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        {hasSp && (
+          <span className="flex items-center gap-1.5 text-caption text-white/30">
+            <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: COLORS.spDone }} />
+            Completed SP
+          </span>
+        )}
+        {hasBv && (
+          <span className="flex items-center gap-1.5 text-caption text-white/30">
+            <span className="inline-block h-px w-3 border-t border-dashed" style={{ borderColor: COLORS.bvDone }} />
+            Completed BV
+          </span>
+        )}
         <span className="flex items-center gap-1.5 text-caption text-white/30">
-          <span className="inline-block h-px w-3 border-t border-dashed" style={{ borderColor: scopeColor }} />
-          Scope
+          <span className="inline-block h-px w-3 border-t border-dashed" style={{ borderColor: COLORS.guideline }} />
+          Guideline
         </span>
         <span className="flex items-center gap-1.5 text-caption text-white/30">
-          <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: doneColor }} />
-          Done
+          <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: COLORS.scope }} />
+          Scope
         </span>
       </div>
     </div>
