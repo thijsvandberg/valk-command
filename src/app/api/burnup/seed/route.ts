@@ -61,9 +61,10 @@ export async function POST(request: Request) {
       } catch { /* ignore */ }
     }
 
-    // Find all tickets EVER in this sprint via JQL, plus current tickets from local DB
+    // Find all tickets: current local DB + Jira live sprint + JQL historical
     const ticketKeys = new Set<string>();
     const currentTicketKeys = new Set<string>();
+    const jiraCurrentKeys = new Set<string>();
 
     // Current tickets from local DB
     const localTickets = await db
@@ -74,6 +75,18 @@ export async function POST(request: Request) {
     for (const t of localTickets) {
       ticketKeys.add(t.jiraKey);
       currentTicketKeys.add(t.jiraKey);
+    }
+
+    // Fetch current sprint issues from Jira to detect removals
+    if (jiraClient.isLive) {
+      try {
+        const jiraIssues = await jiraClient.getSprintIssues(parseInt(sprintId, 10));
+        for (const issue of jiraIssues) {
+          jiraCurrentKeys.add(issue.key);
+          ticketKeys.add(issue.key);
+          currentTicketKeys.add(issue.key);
+        }
+      } catch { /* Jira unavailable */ }
     }
 
     // Historical tickets via JQL "sprint was {name}"
@@ -239,6 +252,48 @@ export async function POST(request: Request) {
           }
         });
         changeCount += syntheticRows.length;
+      }
+    }
+
+    // Detect tickets removed from the sprint: they have an "added" event
+    // but are NOT in Jira's current sprint contents.
+    if (jiraCurrentKeys.size > 0) {
+      const removedRows: Array<{
+        id: string; ticketKey: string; sprintName: string;
+        action: "removed"; storyPoints: number; businessValue: number;
+        changedAt: string;
+      }> = [];
+
+      for (const key of ticketsWithAddEvent) {
+        if (jiraCurrentKeys.has(key)) continue;
+        // This ticket was added but is no longer in the sprint
+        const vals = valueMap.get(key) ?? { sp: 0, bv: 0 };
+        // Find the latest Sprint changelog entry for this ticket to get removal time
+        // If not available, use current timestamp
+        const existingRemoval = await db.query.ticketScopeChange.findFirst({
+          where: (r, { eq: eqFn, and: andFn }) =>
+            andFn(eqFn(r.ticketKey, key), eqFn(r.sprintName, sprintId), eqFn(r.action, "removed")),
+        });
+        if (!existingRemoval) {
+          removedRows.push({
+            id: `scope-${key}-rm-detected-${Date.now()}`,
+            ticketKey: key,
+            sprintName: sprintId,
+            action: "removed",
+            storyPoints: vals.sp,
+            businessValue: vals.bv,
+            changedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      if (removedRows.length > 0) {
+        db.transaction((tx) => {
+          for (const row of removedRows) {
+            tx.insert(ticketScopeChange).values(row).onConflictDoNothing().run();
+          }
+        });
+        changeCount += removedRows.length;
       }
     }
 

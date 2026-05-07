@@ -216,12 +216,11 @@ export function BurnupChart({
   // Percentage gridlines
   const gridPcts = [25, 50, 75, 100];
 
-  // X-axis labels: every working day (skip weekends)
+  // X-axis labels: every day
   const xLabels = useMemo(() => {
     const labels: { date: Date; x: number }[] = [];
     for (let d = 0; d <= totalDays; d++) {
       const date = new Date(start.getTime() + d * 24 * 60 * 60 * 1000);
-      if (isWeekend(date)) continue;
       labels.push({ date, x: toX(date) });
     }
     return labels;
