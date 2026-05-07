@@ -9,6 +9,7 @@ import { tickets } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
@@ -38,6 +39,7 @@ export function TicketSidebar({
   onNavigateToDev?: () => void;
 }) {
   const [readiness, setReadiness] = useState<TicketReadiness | null>(ticket.readiness);
+  const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
   const [poNotes, setPoNotes] = useState(ticket.notes);
   const [collapsed, setCollapsed] = useLocalStorage("ticket-sidebar-collapsed", false);
 
@@ -56,6 +58,15 @@ export function TicketSidebar({
     setReadiness(v);
     try {
       await tickets.updateMetadata(ticket.key, { readiness: v });
+    } catch (err) {
+      console.error("Operation failed:", err);
+    }
+  }, [ticket.key]);
+
+  const handleBusinessValueChange = useCallback(async (v: number | null) => {
+    setBusinessValue(v);
+    try {
+      await tickets.updateMetadata(ticket.key, { businessValue: v });
     } catch (err) {
       console.error("Operation failed:", err);
     }
@@ -275,6 +286,12 @@ export function TicketSidebar({
               <div>
                 <label className="mb-1.5 block text-xs text-white/30">Readiness</label>
                 <ReadinessCell value={readiness} onChange={handleReadinessChange} align="left" />
+              </div>
+
+              {/* Business Value */}
+              <div>
+                <label className="mb-1.5 block text-xs text-white/30">Business Value</label>
+                <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="left" />
               </div>
 
               {/* PO Notes */}

@@ -18,7 +18,7 @@ const STATUS_LABELS: Record<JiraStatus, string> = {
 };
 
 export function SprintAnalytics({ tickets }: { tickets: Ticket[] }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const totalPoints = useMemo(
     () => tickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0),

@@ -53,8 +53,8 @@ As the PO, I want to assign a Business Value (BV) score to each ticket on the Sp
 - [x] Aggregates update live when individual scores change
 
 ### Phase 5: Ticket sidebar
-- [ ] Display BV score in the PO Metadata section of the ticket sidebar
-- [ ] Editable from the sidebar using the same picker component
+- [x] Display BV score in the PO Metadata section of the ticket sidebar
+- [x] Editable from the sidebar using the same picker component
 
 ## Technical Notes
 
