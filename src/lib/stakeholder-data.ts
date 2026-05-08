@@ -125,9 +125,18 @@ interface BriefingPayload {
   todoCount: number;
   inProgressCount: number;
   unassignedInProgressCount: number;
+  bvTotal: number;
+  bvAvg: number | null;
   done: BriefingTicketGroup[];
   inProgress: BriefingTicketGroup[];
   todo: BriefingTicketGroup[];
+}
+
+function computeBvAggregates(tickets: StakeholderTicket[]): { bvTotal: number; bvAvg: number | null } {
+  const scored = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1);
+  const bvTotal = scored.reduce((s, t) => s + (t.businessValue ?? 0), 0);
+  const bvAvg = scored.length > 0 ? bvTotal / scored.length : null;
+  return { bvTotal, bvAvg };
 }
 
 function groupTitlesByEpic(tickets: StakeholderTicket[]): BriefingTicketGroup[] {
@@ -152,6 +161,8 @@ export function buildBriefingPayload(
   const totalPoints = allTickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
   const percentComplete = totalPoints > 0 ? Math.round((donePoints / totalPoints) * 100) : 0;
 
+  const { bvTotal, bvAvg } = computeBvAggregates(allTickets);
+
   const payload: BriefingPayload = {
     sprintName: sprint.name,
     daysRemaining: sprint.workingDaysRemaining,
@@ -161,6 +172,8 @@ export function buildBriefingPayload(
     todoCount: todoTickets.length,
     inProgressCount: inProgressTickets.length,
     unassignedInProgressCount: inProgressTickets.filter((t) => !t.assignee).length,
+    bvTotal,
+    bvAvg: bvAvg !== null ? Math.round(bvAvg * 10) / 10 : null,
     done: groupTitlesByEpic(doneTickets),
     inProgress: groupTitlesByEpic(inProgressTickets),
     todo: groupTitlesByEpic(todoTickets),
@@ -194,6 +207,7 @@ interface DeepDiveTicket {
   title: string;
   epic: string;
   storyPoints: number | null;
+  businessValue: number | null;
   assignee: string | null;
 }
 
@@ -204,6 +218,8 @@ interface DeepDivePayload {
   donePoints: number;
   totalPoints: number;
   percentComplete: number;
+  bvTotal: number;
+  bvAvg: number | null;
   done: DeepDiveTicket[];
   inProgress: DeepDiveTicket[];
   todo: DeepDiveTicket[];
@@ -225,9 +241,12 @@ export function buildDeepDivePayload(
       title: t.title,
       epic: t.epic ?? "Other",
       storyPoints: t.storyPoints,
+      businessValue: t.businessValue,
       assignee: t.assignee?.name ?? null,
     }));
   }
+
+  const { bvTotal, bvAvg } = computeBvAggregates(allTickets);
 
   const payload: DeepDivePayload = {
     sprintName: sprint.name,
@@ -236,6 +255,8 @@ export function buildDeepDivePayload(
     donePoints,
     totalPoints,
     percentComplete,
+    bvTotal,
+    bvAvg: bvAvg !== null ? Math.round(bvAvg * 10) / 10 : null,
     done: toDeepDiveTickets(doneTickets),
     inProgress: toDeepDiveTickets(inProgressTickets),
     todo: toDeepDiveTickets(todoTickets),

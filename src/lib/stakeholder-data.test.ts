@@ -5,6 +5,7 @@ import {
   toStakeholderSprint,
   buildMarkdownSummary,
   buildBriefingPayload,
+  buildDeepDivePayload,
 } from "./stakeholder-data";
 import type { Ticket } from "@/types/ticket";
 
@@ -301,5 +302,50 @@ describe("buildBriefingPayload", () => {
     const otherGroup = parsed.todo.find((g: { epic: string }) => g.epic === "Other");
     expect(otherGroup).toBeDefined();
     expect(otherGroup.titles).toContain("Feature C");
+  });
+
+  it("includes BV aggregates when tickets have business value", () => {
+    const bvDone = [{ ...done[0], businessValue: 6 }];
+    const bvInProgress = [{ ...inProgress[0], businessValue: 4 }];
+    const result = buildBriefingPayload(sprintData, bvDone, bvInProgress, todo);
+    const parsed = JSON.parse(result.sprintData);
+    expect(parsed.bvTotal).toBe(10);
+    expect(parsed.bvAvg).toBe(5);
+  });
+
+  it("sets bvTotal to 0 and bvAvg to null when no BV scores", () => {
+    const result = buildBriefingPayload(sprintData, done, inProgress, todo);
+    const parsed = JSON.parse(result.sprintData);
+    expect(parsed.bvTotal).toBe(0);
+    expect(parsed.bvAvg).toBeNull();
+  });
+});
+
+describe("buildDeepDivePayload", () => {
+  const sprintData = { name: "Sprint 5", state: "active", startDate: null, endDate: null, workingDaysRemaining: 3, goal: "Ship MVP" };
+
+  const done = [
+    { title: "Feature A", epic: "UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 5, businessValue: 7, assignee: { name: "Alice", initials: "AL" }, jiraKey: "VPL-1" },
+  ];
+  const inProgress = [
+    { title: "Feature B", epic: "UPSELL", type: "story" as const, status: "In Progress" as const, storyPoints: 3, businessValue: 4, assignee: null, jiraKey: "VPL-2" },
+  ];
+  const todo = [
+    { title: "Feature C", epic: null, type: "task" as const, status: "To Do" as const, storyPoints: 2, businessValue: null, assignee: null, jiraKey: "VPL-3" },
+  ];
+
+  it("includes businessValue per ticket", () => {
+    const result = buildDeepDivePayload(sprintData, done, inProgress, todo);
+    const parsed = JSON.parse(result.sprintData);
+    expect(parsed.done[0].businessValue).toBe(7);
+    expect(parsed.inProgress[0].businessValue).toBe(4);
+    expect(parsed.todo[0].businessValue).toBeNull();
+  });
+
+  it("includes sprint-level BV aggregates", () => {
+    const result = buildDeepDivePayload(sprintData, done, inProgress, todo);
+    const parsed = JSON.parse(result.sprintData);
+    expect(parsed.bvTotal).toBe(11);
+    expect(parsed.bvAvg).toBe(5.5);
   });
 });
