@@ -894,6 +894,7 @@ function StakeholderView() {
                   todoTickets={todoTickets}
                   deprecatedTickets={deprecatedTickets}
                   carriedKeys={carriedKeys.size > 0 ? carriedKeys : undefined}
+                  previousTickets={prevAllTickets.length > 0 ? prevAllTickets : undefined}
                   showHealthBanner={false}
                   showGoal={false}
                 />

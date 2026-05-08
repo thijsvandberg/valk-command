@@ -2,6 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import type { StakeholderTicket } from "@/lib/stakeholder-data";
+import { getBvColor } from "@/types/ticket";
 import { getJiraUrl } from "@/lib/jira-url";
 
 interface TicketGroupProps {
@@ -9,6 +10,7 @@ interface TicketGroupProps {
   showKeys?: boolean;
   showAssignee?: boolean;
   carriedKeys?: Set<string>;
+  deemphasizeUnscored?: boolean;
 }
 
 function StatusDot({ status }: { status: StakeholderTicket["status"] }) {
@@ -48,6 +50,21 @@ function AssigneeAvatar({ assignee }: { assignee: { name: string; initials: stri
   );
 }
 
+function BvBadge({ value }: { value: number | null }) {
+  if (value === null) return null;
+  const { text, bg } = getBvColor(value);
+  const label = value === 0 ? "-" : String(value);
+  return (
+    <span
+      className="shrink-0 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-[10px] font-semibold tabular-nums"
+      style={{ color: text, backgroundColor: bg }}
+      title={`Business Value: ${value === 0 ? "N/A" : value}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 function TypeBadge({ type }: { type: StakeholderTicket["type"] }) {
   if (type === "bug") {
     return (
@@ -77,7 +94,7 @@ function groupByEpic(tickets: StakeholderTicket[]): [string, StakeholderTicket[]
   return Array.from(map.entries());
 }
 
-export function TicketGroup({ tickets, showKeys = false, showAssignee = false, carriedKeys }: TicketGroupProps) {
+export function TicketGroup({ tickets, showKeys = false, showAssignee = false, carriedKeys, deemphasizeUnscored = false }: TicketGroupProps) {
   if (tickets.length === 0) {
     return <p className="text-sm text-text-muted italic">None</p>;
   }
@@ -93,11 +110,15 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
           </div>
           <ul className="space-y-1.5">
             {items.map((t, i) => (
-              <li key={i} className="flex items-start gap-2.5 group">
+              <li
+                key={i}
+                className={`flex items-start gap-2.5 group${deemphasizeUnscored && t.businessValue === null ? " opacity-50" : ""}`}
+              >
                 <StatusDot status={t.status} />
                 <span className="flex-1 text-sm leading-snug text-text-secondary group-hover:text-text-primary transition-colors duration-100">
                   {t.title}
                 </span>
+                <BvBadge value={t.businessValue} />
                 <TypeBadge type={t.type} />
                 {t.jiraKey && (
                   <a

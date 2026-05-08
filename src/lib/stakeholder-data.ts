@@ -7,6 +7,7 @@ export interface StakeholderTicket {
   type: "story" | "bug" | "spike" | "task";
   status: "Completed" | "In Progress" | "In Review" | "To Do" | "Deprecated";
   storyPoints: number | null;
+  businessValue: number | null;
   assignee: { name: string; initials: string } | null;
   // Null for main sprint sections; set only for upcoming section (reveal via toggle)
   jiraKey: string | null;
@@ -70,6 +71,7 @@ export function toStakeholderTickets(tickets: Ticket[]): StakeholderTicket[] {
     type: toTicketType(t.type),
     status: toHumanStatus(t.jiraStatus),
     storyPoints: t.storyPoints ?? null,
+    businessValue: t.businessValue ?? null,
     assignee: t.assignee ? { name: t.assignee.name, initials: t.assignee.initials } : null,
     jiraKey: t.key,
   }));
@@ -83,6 +85,7 @@ export function toUpcomingTickets(tickets: Ticket[]): StakeholderTicket[] {
     type: toTicketType(t.type),
     status: toHumanStatus(t.jiraStatus),
     storyPoints: t.storyPoints ?? null,
+    businessValue: t.businessValue ?? null,
     assignee: t.assignee ? { name: t.assignee.name, initials: t.assignee.initials } : null,
     jiraKey: t.key,
   }));

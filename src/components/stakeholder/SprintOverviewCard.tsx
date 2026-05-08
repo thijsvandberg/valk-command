@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { ArrowDownWideNarrow } from "lucide-react";
 import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
+import { getBvColor } from "@/types/ticket";
 import { ProgressBar } from "./ProgressBar";
 import { TicketGroup } from "./TicketGroup";
 import { SprintHealthBanner } from "./SprintHealthBanner";
 import { EpicFilterChips } from "./EpicFilterChips";
+
+type BvFilter = "all" | "high" | "medium";
 
 interface SprintOverviewCardProps {
   sprint: StakeholderSprint;
@@ -15,6 +19,7 @@ interface SprintOverviewCardProps {
   todoTickets: StakeholderTicket[];
   deprecatedTickets: StakeholderTicket[];
   carriedKeys?: Set<string>;
+  previousTickets?: StakeholderTicket[];
   /** Whether to render the SprintHealthBanner inside the card (default: true) */
   showHealthBanner?: boolean;
   /** Whether to render the sprint goal inside the card (default: true) */
@@ -52,11 +57,13 @@ function SectionHeader({
   label,
   count,
   pts,
+  bvTotal,
   color,
 }: {
   label: string;
   count: number;
   pts: number;
+  bvTotal?: number;
   color: "green" | "amber" | "brand" | "muted";
 }) {
   const styles = {
@@ -92,12 +99,185 @@ function SectionHeader({
       {pts > 0 && (
         <span className="text-caption tabular-nums opacity-60">{pts}pt</span>
       )}
+      {bvTotal !== undefined && bvTotal > 0 && (
+        <span className="text-caption tabular-nums opacity-50">BV {bvTotal}</span>
+      )}
     </h3>
   );
 }
 
 function pts(tickets: StakeholderTicket[]): number {
   return tickets.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+}
+
+function bvSum(tickets: StakeholderTicket[]): number {
+  return tickets
+    .filter((t) => t.businessValue != null && t.businessValue >= 1)
+    .reduce((s, t) => s + (t.businessValue ?? 0), 0);
+}
+
+function bvAvg(tickets: StakeholderTicket[]): number | null {
+  const scored = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1);
+  if (scored.length === 0) return null;
+  return scored.reduce((s, t) => s + (t.businessValue ?? 0), 0) / scored.length;
+}
+
+function bvBandCount(tickets: StakeholderTicket[], min: number, max: number): number {
+  return tickets.filter((t) => t.businessValue != null && t.businessValue >= min && t.businessValue <= max).length;
+}
+
+function sortByBv(tickets: StakeholderTicket[]): StakeholderTicket[] {
+  return [...tickets].sort((a, b) => (b.businessValue ?? -1) - (a.businessValue ?? -1));
+}
+
+function filterByBv(tickets: StakeholderTicket[], filter: BvFilter): StakeholderTicket[] {
+  if (filter === "all") return tickets;
+  if (filter === "high") return tickets.filter((t) => t.businessValue != null && t.businessValue >= 6);
+  return tickets.filter((t) => t.businessValue != null && t.businessValue >= 3 && t.businessValue <= 5);
+}
+
+// BV distribution bar
+function BvDistributionBar({ tickets }: { tickets: StakeholderTicket[] }) {
+  const high = bvBandCount(tickets, 6, 7);
+  const medium = bvBandCount(tickets, 3, 5);
+  const low = bvBandCount(tickets, 1, 2);
+  const total = high + medium + low;
+  if (total === 0) return null;
+
+  const highColor = getBvColor(7);
+  const medColor = getBvColor(4);
+  const lowColor = getBvColor(1);
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-overlay-subtle">
+        {high > 0 && (
+          <div
+            className="h-full"
+            style={{ width: `${(high / total) * 100}%`, backgroundColor: highColor.text, opacity: 0.6 }}
+            title={`High value (6-7): ${high}`}
+          />
+        )}
+        {medium > 0 && (
+          <div
+            className="h-full"
+            style={{ width: `${(medium / total) * 100}%`, backgroundColor: medColor.text, opacity: 0.5 }}
+            title={`Medium value (3-5): ${medium}`}
+          />
+        )}
+        {low > 0 && (
+          <div
+            className="h-full"
+            style={{ width: `${(low / total) * 100}%`, backgroundColor: lowColor.text, opacity: 0.4 }}
+            title={`Low value (1-2): ${low}`}
+          />
+        )}
+      </div>
+      <div className="flex gap-2 text-caption text-text-muted tabular-nums shrink-0">
+        {high > 0 && (
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: highColor.text }} />
+            {high} high
+          </span>
+        )}
+        {medium > 0 && (
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: medColor.text }} />
+            {medium} med
+          </span>
+        )}
+        {low > 0 && (
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: lowColor.text }} />
+            {low} low
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// BV summary section
+function BvSummaryBar({ tickets, previousTickets }: { tickets: StakeholderTicket[]; previousTickets?: StakeholderTicket[] }) {
+  const total = bvSum(tickets);
+  const avg = bvAvg(tickets);
+  if (total === 0) return null;
+
+  const prevTotal = previousTickets ? bvSum(previousTickets) : null;
+  const delta = prevTotal !== null && prevTotal > 0 ? total - prevTotal : null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-medium text-text-secondary">
+          BV: {total}
+        </span>
+        {avg !== null && (
+          <span className="text-xs text-text-muted tabular-nums">
+            avg {avg.toFixed(1)}
+          </span>
+        )}
+        {delta !== null && (
+          <span className={`text-xs tabular-nums ${delta > 0 ? "text-emerald-400/70" : delta < 0 ? "text-amber-400/70" : "text-text-muted"}`}>
+            {delta > 0 ? "+" : ""}{delta} vs prev
+          </span>
+        )}
+      </div>
+      <BvDistributionBar tickets={tickets} />
+    </div>
+  );
+}
+
+// Top value items highlight
+function TopValueItems({ tickets }: { tickets: StakeholderTicket[] }) {
+  const topItems = tickets
+    .filter((t) => t.businessValue != null && t.businessValue >= 6)
+    .sort((a, b) => (b.businessValue ?? 0) - (a.businessValue ?? 0));
+
+  if (topItems.length === 0) return null;
+
+  const highColor = getBvColor(7);
+
+  return (
+    <div
+      className="rounded-lg border px-4 py-3 space-y-2"
+      style={{ borderColor: `${highColor.text}20`, backgroundColor: `${highColor.bg}` }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className="text-caption font-semibold uppercase tracking-[0.12em]"
+          style={{ color: highColor.text }}
+        >
+          Top value items
+        </span>
+        <span
+          className="rounded-full px-1.5 py-0.5 text-caption tabular-nums"
+          style={{ color: highColor.text, backgroundColor: `${highColor.text}15` }}
+        >
+          {topItems.length}
+        </span>
+      </div>
+      <ul className="space-y-1">
+        {topItems.map((t, i) => {
+          const bvColor = getBvColor(t.businessValue!);
+          return (
+            <li key={i} className="flex items-center gap-2 text-sm">
+              <span
+                className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-[10px] font-semibold tabular-nums shrink-0"
+                style={{ color: bvColor.text, backgroundColor: bvColor.bg }}
+              >
+                {t.businessValue}
+              </span>
+              <span className="text-text-secondary truncate">{t.title}</span>
+              {t.assignee && (
+                <span className="text-caption text-text-muted shrink-0">({t.assignee.name})</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 export function SprintOverviewCard({
@@ -108,6 +288,7 @@ export function SprintOverviewCard({
   todoTickets,
   deprecatedTickets,
   carriedKeys,
+  previousTickets,
   showHealthBanner = true,
   showGoal = true,
 }: SprintOverviewCardProps) {
@@ -115,6 +296,8 @@ export function SprintOverviewCard({
   const isActive = sprint.state === "active";
 
   const [selectedEpics, setSelectedEpics] = useState<Set<string>>(new Set());
+  const [bvFilter, setBvFilter] = useState<BvFilter>("all");
+  const [sortByBvEnabled, setSortByBvEnabled] = useState(false);
 
   const handleToggleEpic = useCallback((epic: string) => {
     setSelectedEpics((prev) => {
@@ -127,9 +310,16 @@ export function SprintOverviewCard({
 
   const handleClearAll = useCallback(() => setSelectedEpics(new Set()), []);
 
-  function filterByEpic(tickets: StakeholderTicket[]): StakeholderTicket[] {
-    if (selectedEpics.size === 0) return tickets;
-    return tickets.filter((t) => selectedEpics.has(t.epic ?? "Other"));
+  function filterTickets(tickets: StakeholderTicket[]): StakeholderTicket[] {
+    let result = tickets;
+    if (selectedEpics.size > 0) {
+      result = result.filter((t) => selectedEpics.has(t.epic ?? "Other"));
+    }
+    result = filterByBv(result, bvFilter);
+    if (sortByBvEnabled) {
+      result = sortByBv(result);
+    }
+    return result;
   }
 
   const allTickets = useMemo(
@@ -137,11 +327,16 @@ export function SprintOverviewCard({
     [doneTickets, inReviewTickets, inProgressTickets, todoTickets, deprecatedTickets],
   );
 
-  const filteredDone = filterByEpic(doneTickets);
-  const filteredInReview = filterByEpic(inReviewTickets);
-  const filteredInProgress = filterByEpic(inProgressTickets);
-  const filteredTodo = filterByEpic(todoTickets);
-  const filteredDeprecated = filterByEpic(deprecatedTickets);
+  const hasBvData = useMemo(
+    () => allTickets.some((t) => t.businessValue != null && t.businessValue >= 1),
+    [allTickets],
+  );
+
+  const filteredDone = filterTickets(doneTickets);
+  const filteredInReview = filterTickets(inReviewTickets);
+  const filteredInProgress = filterTickets(inProgressTickets);
+  const filteredTodo = filterTickets(todoTickets);
+  const filteredDeprecated = filterTickets(deprecatedTickets);
 
   const donePoints = pts(doneTickets);
   const inReviewPoints = pts(inReviewTickets);
@@ -226,38 +421,85 @@ export function SprintOverviewCard({
         </div>
       )}
 
-      {/* Epic filter chips — only when 2+ distinct epics */}
-      <EpicFilterChips
-        tickets={allTickets}
-        selectedEpics={selectedEpics}
-        onToggle={handleToggleEpic}
-        onClearAll={handleClearAll}
-      />
+      {/* BV summary */}
+      {hasBvData && (
+        <BvSummaryBar tickets={allTickets} previousTickets={previousTickets} />
+      )}
+
+      {/* Filter controls row: epic chips + BV filter + sort */}
+      <div className="space-y-3">
+        <EpicFilterChips
+          tickets={allTickets}
+          selectedEpics={selectedEpics}
+          onToggle={handleToggleEpic}
+          onClearAll={handleClearAll}
+        />
+        {hasBvData && (
+          <div className="flex flex-wrap items-center gap-2">
+            {(["all", "high", "medium"] as const).map((f) => {
+              const labels: Record<BvFilter, string> = { all: "All", high: "High (6-7)", medium: "Medium (3-5)" };
+              const isActive = bvFilter === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setBvFilter(f)}
+                  className={`rounded-full px-2.5 py-0.5 text-caption font-medium transition-colors duration-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    isActive
+                      ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
+                      : "bg-overlay-subtle text-text-muted hover:bg-overlay-default hover:text-text-tertiary"
+                  }`}
+                >
+                  {labels[f]}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setSortByBvEnabled((v) => !v)}
+              title="Sort by business value"
+              className={`ml-1 flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium transition-colors duration-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                sortByBvEnabled
+                  ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
+                  : "bg-overlay-subtle text-text-muted hover:bg-overlay-default hover:text-text-tertiary"
+              }`}
+            >
+              <ArrowDownWideNarrow size={11} strokeWidth={1.5} />
+              BV
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Top value items highlight */}
+      {hasBvData && bvFilter === "all" && (
+        <TopValueItems tickets={allTickets} />
+      )}
 
       {/* Ticket columns */}
       <div className={gridClass}>
         {showCompleted && (
           <section>
-            <SectionHeader label="Completed" count={filteredDone.length} pts={pts(filteredDone)} color="green" />
-            <TicketGroup tickets={filteredDone} carriedKeys={carriedKeys} />
+            <SectionHeader label="Completed" count={filteredDone.length} pts={pts(filteredDone)} bvTotal={bvSum(filteredDone)} color="green" />
+            <TicketGroup tickets={filteredDone} carriedKeys={carriedKeys} deemphasizeUnscored={hasBvData} />
           </section>
         )}
         {showInReview && (
           <section>
-            <SectionHeader label="Testing" count={filteredInReview.length} pts={pts(filteredInReview)} color="amber" />
-            <TicketGroup tickets={filteredInReview} showAssignee carriedKeys={carriedKeys} />
+            <SectionHeader label="Testing" count={filteredInReview.length} pts={pts(filteredInReview)} bvTotal={bvSum(filteredInReview)} color="amber" />
+            <TicketGroup tickets={filteredInReview} showAssignee carriedKeys={carriedKeys} deemphasizeUnscored={hasBvData} />
           </section>
         )}
         {showInProgress && (
           <section>
-            <SectionHeader label="In Progress" count={filteredInProgress.length} pts={pts(filteredInProgress)} color="brand" />
-            <TicketGroup tickets={filteredInProgress} showAssignee carriedKeys={carriedKeys} />
+            <SectionHeader label="In Progress" count={filteredInProgress.length} pts={pts(filteredInProgress)} bvTotal={bvSum(filteredInProgress)} color="brand" />
+            <TicketGroup tickets={filteredInProgress} showAssignee carriedKeys={carriedKeys} deemphasizeUnscored={hasBvData} />
           </section>
         )}
         {showTodo && (
           <section>
-            <SectionHeader label="To Do" count={filteredTodo.length} pts={pts(filteredTodo)} color="muted" />
-            <TicketGroup tickets={filteredTodo} carriedKeys={carriedKeys} />
+            <SectionHeader label="To Do" count={filteredTodo.length} pts={pts(filteredTodo)} bvTotal={bvSum(filteredTodo)} color="muted" />
+            <TicketGroup tickets={filteredTodo} carriedKeys={carriedKeys} deemphasizeUnscored={hasBvData} />
           </section>
         )}
       </div>

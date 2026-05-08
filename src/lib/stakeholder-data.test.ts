@@ -74,14 +74,20 @@ describe("toStakeholderTickets", () => {
     expect(toStakeholderTickets([makeTicket({ jiraStatus: "DEPRECATED" })])[0].status).toBe("Deprecated");
   });
 
-  it("preserves title, epic, storyPoints, and assignee name/initials", () => {
-    const result = toStakeholderTickets([makeTicket()]);
+  it("preserves title, epic, storyPoints, businessValue, and assignee name/initials", () => {
+    const result = toStakeholderTickets([makeTicket({ businessValue: 5 })]);
     const t = result[0];
     expect(t.title).toBe("Test ticket");
     expect(t.epic).toBe("BT: UPSELL");
     expect(t.storyPoints).toBe(3);
+    expect(t.businessValue).toBe(5);
     expect(t.assignee?.name).toBe("Alice");
     expect(t.assignee?.initials).toBe("AL");
+  });
+
+  it("sets businessValue to null when absent", () => {
+    const result = toStakeholderTickets([makeTicket()]);
+    expect(result[0].businessValue).toBeNull();
   });
 
   it("sets assignee to null for unassigned tickets", () => {
@@ -168,15 +174,15 @@ describe("buildMarkdownSummary", () => {
   const sprint = { name: "Sprint 5", state: "active", startDate: null, endDate: null, workingDaysRemaining: null, goal: null };
 
   const done = [
-    { title: "Feature A", epic: "BT: UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 5, assignee: null, jiraKey: null },
-    { title: "Feature B", epic: "BT: UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 3, assignee: null, jiraKey: null },
+    { title: "Feature A", epic: "BT: UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 5, businessValue: null, assignee: null, jiraKey: null },
+    { title: "Feature B", epic: "BT: UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 3, businessValue: null, assignee: null, jiraKey: null },
   ];
   const inProgress = [
-    { title: "Feature C", epic: null, type: "task" as const, status: "In Progress" as const, storyPoints: 2, assignee: { name: "Alice", initials: "AL" }, jiraKey: null },
+    { title: "Feature C", epic: null, type: "task" as const, status: "In Progress" as const, storyPoints: 2, businessValue: null, assignee: { name: "Alice", initials: "AL" }, jiraKey: null },
   ];
   const todo: typeof done = [];
   const upcoming = [
-    { title: "Feature D", epic: "Other", type: "story" as const, status: "To Do" as const, storyPoints: null, assignee: null, jiraKey: "VPL-99" },
+    { title: "Feature D", epic: "Other", type: "story" as const, status: "To Do" as const, storyPoints: null, businessValue: null, assignee: null, jiraKey: "VPL-99" },
   ];
 
   it("includes sprint name in heading", () => {
@@ -240,13 +246,13 @@ describe("buildBriefingPayload", () => {
   const sprintData = { name: "Sprint 5", state: "active", startDate: null, endDate: null, workingDaysRemaining: 3, goal: null };
 
   const done = [
-    { title: "Feature A", epic: "UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 5, assignee: { name: "Alice", initials: "AL" }, jiraKey: "VPL-1" },
+    { title: "Feature A", epic: "UPSELL", type: "story" as const, status: "Completed" as const, storyPoints: 5, businessValue: null, assignee: { name: "Alice", initials: "AL" }, jiraKey: "VPL-1" },
   ];
   const inProgress = [
-    { title: "Feature B", epic: "UPSELL", type: "story" as const, status: "In Progress" as const, storyPoints: 3, assignee: null, jiraKey: "VPL-2" },
+    { title: "Feature B", epic: "UPSELL", type: "story" as const, status: "In Progress" as const, storyPoints: 3, businessValue: null, assignee: null, jiraKey: "VPL-2" },
   ];
   const todo = [
-    { title: "Feature C", epic: null, type: "task" as const, status: "To Do" as const, storyPoints: 2, assignee: null, jiraKey: "VPL-3" },
+    { title: "Feature C", epic: null, type: "task" as const, status: "To Do" as const, storyPoints: 2, businessValue: null, assignee: null, jiraKey: "VPL-3" },
   ];
 
   it("returns a Record<string, string> with a sprintData key", () => {
