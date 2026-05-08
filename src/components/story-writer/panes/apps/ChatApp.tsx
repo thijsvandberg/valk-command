@@ -66,8 +66,8 @@ export function ChatApp() {
             onClick={() => setShowLogs(false)}
             className={`rounded px-2 py-1 text-caption font-medium cursor-pointer ${
               !showLogs
-                ? "text-white/70 bg-white/[0.06]"
-                : "text-white/30 hover:text-white/50 hover:bg-hover-list-item"
+                ? "text-text-secondary bg-overlay-default"
+                : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
             }`}
           >
             Chat
@@ -77,15 +77,15 @@ export function ChatApp() {
             onClick={() => setShowLogs(true)}
             className={`flex items-center gap-1 rounded px-2 py-1 text-caption font-medium cursor-pointer ${
               showLogs
-                ? "text-white/70 bg-white/[0.06]"
-                : "text-white/30 hover:text-white/50 hover:bg-hover-list-item"
+                ? "text-text-secondary bg-overlay-default"
+                : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
             }`}
           >
             <ScrollText size={10} strokeWidth={1.5} />
             Logs
           </button>
           {(writer.aiDrafts.length > 0 || writer.messages.length > 0) && (
-            <span className="ml-1 text-caption text-white/25 tabular-nums">
+            <span className="ml-1 text-caption text-text-muted tabular-nums">
               {[
                 writer.aiDrafts.length > 0 &&
                   `${writer.aiDrafts.length} draft${writer.aiDrafts.length !== 1 ? "s" : ""}`,

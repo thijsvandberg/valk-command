@@ -19,37 +19,37 @@ export function ResultIcon({ result, isActive }: { result: PaletteResult; isActi
   switch (result.category) {
     case "page":
       return (
-        <span className={`${base} ${isActive ? "bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]" : "bg-white/[0.04] text-white/30"}`}>
+        <span className={`${base} ${isActive ? "bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]" : "bg-overlay-subtle text-text-tertiary"}`}>
           {result.icon}
         </span>
       );
     case "action":
       return (
-        <span className={`${base} ${isActive ? "bg-amber-500/15 text-amber-400" : "bg-white/[0.04] text-white/30"}`}>
+        <span className={`${base} ${isActive ? "bg-amber-500/15 text-amber-400" : "bg-overlay-subtle text-text-tertiary"}`}>
           <Zap className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
     case "ticket":
       return (
-        <span className={`${base} ${isActive ? "bg-[var(--color-secondary-600)]/15 text-[var(--color-secondary-400)]" : "bg-white/[0.04] text-white/30"}`}>
+        <span className={`${base} ${isActive ? "bg-[var(--color-secondary-600)]/15 text-[var(--color-secondary-400)]" : "bg-overlay-subtle text-text-tertiary"}`}>
           <KanbanSquare className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
     case "direct-ticket":
       return (
-        <span className={`${base} ${isActive ? "bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]" : "bg-white/[0.04] text-white/30"}`}>
+        <span className={`${base} ${isActive ? "bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]" : "bg-overlay-subtle text-text-tertiary"}`}>
           <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
     case "conversation":
       return (
-        <span className={`${base} ${isActive ? "bg-purple-500/15 text-purple-400" : "bg-white/[0.04] text-white/30"}`}>
+        <span className={`${base} ${isActive ? "bg-purple-500/15 text-purple-400" : "bg-overlay-subtle text-text-tertiary"}`}>
           <MessageCircle className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
     case "story-writer":
       return (
-        <span className={`${base} ${isActive ? "bg-emerald-500/15 text-emerald-400" : "bg-white/[0.04] text-white/30"}`}>
+        <span className={`${base} ${isActive ? "bg-emerald-500/15 text-emerald-400" : "bg-overlay-subtle text-text-tertiary"}`}>
           <NotebookPen className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
@@ -61,7 +61,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "page":
       return (
         <div className="flex flex-col min-w-0 flex-1">
-          <span className={`text-sm truncate ${isActive ? "text-white/90" : "text-white/60"}`}>
+          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.label}
           </span>
         </div>
@@ -69,11 +69,11 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "action":
       return (
         <div className="flex flex-col min-w-0 flex-1">
-          <span className={`text-sm truncate ${isActive ? "text-white/90" : "text-white/60"}`}>
+          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.label}
           </span>
           {result.description && (
-            <span className="text-label text-white/25 truncate mt-0.5">{result.description}</span>
+            <span className="text-label text-text-muted truncate mt-0.5">{result.description}</span>
           )}
         </div>
       );
@@ -81,8 +81,8 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
       const sc = statusColor(result.status);
       return (
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <span className="shrink-0 font-mono text-label text-white/30 font-medium">{result.key}</span>
-          <span className={`text-sm truncate ${isActive ? "text-white/90" : "text-white/60"}`}>
+          <span className="shrink-0 font-mono text-label text-text-tertiary font-medium">{result.key}</span>
+          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.summary}
           </span>
           <span
@@ -100,7 +100,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
           <span className="shrink-0 rounded px-1.5 py-0.5 text-label font-mono font-semibold bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]">
             {result.key}
           </span>
-          <span className={`text-sm ${isActive ? "text-white/60" : "text-white/35"}`}>
+          <span className={`text-sm ${isActive ? "text-text-secondary" : "text-text-tertiary"}`}>
             Press Enter to open directly
           </span>
         </div>
@@ -108,25 +108,25 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "conversation":
       return (
         <div className="flex flex-col min-w-0 flex-1">
-          <span className={`text-sm truncate ${isActive ? "text-white/90" : "text-white/60"}`}>
+          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.title}
           </span>
           {result.lastMessage && (
-            <span className="text-xs text-white/20 truncate mt-0.5">{result.lastMessage}</span>
+            <span className="text-xs text-text-muted truncate mt-0.5">{result.lastMessage}</span>
           )}
         </div>
       );
     case "story-writer":
       return (
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="shrink-0 font-mono text-label text-white/30 font-medium">{result.ticketKey}</span>
+          <span className="shrink-0 font-mono text-label text-text-tertiary font-medium">{result.ticketKey}</span>
           {result.targetTicketKey && (
             <>
               <Scissors size={9} strokeWidth={2} className="shrink-0 text-violet-400/50" />
-              <span className="shrink-0 font-mono text-label text-white/30 font-medium">{result.targetTicketKey}</span>
+              <span className="shrink-0 font-mono text-label text-text-tertiary font-medium">{result.targetTicketKey}</span>
             </>
           )}
-          <span className={`text-sm truncate ${isActive ? "text-white/90" : "text-white/60"}`}>
+          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.title}
           </span>
           {result.targetTicketKey && (

@@ -230,7 +230,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                   <Star
                     size={11}
                     strokeWidth={1.5}
-                    className={isFollowed ? "text-amber-400 fill-amber-400" : "text-white/40"}
+                    className={isFollowed ? "text-amber-400 fill-amber-400" : "text-text-tertiary"}
                   />
                 </button>
               )}
@@ -246,7 +246,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           return (
             <td
               key={id}
-              className={`relative max-w-0 py-1.5 pr-3 text-white/80${stickyBg}`}
+              className={`relative max-w-0 py-1.5 pr-3 text-text-primary${stickyBg}`}
               style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
@@ -275,7 +275,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                     }
                   }}
                   rows={1}
-                  className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-sm leading-snug text-white/90 shadow-[0_4px_24px_rgba(0,0,0,0.4)] outline-none focus:border-[var(--color-brand-500)]/70"
+                  className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-sm leading-snug text-text-primary shadow-[0_4px_24px_rgba(0,0,0,0.4)] outline-none focus:border-[var(--color-brand-500)]/70"
                 />
                 <button
                   type="button"
@@ -286,7 +286,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                     }
                     onEditingTitleKeyChange?.(null);
                   }}
-                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-white/[0.08] bg-[var(--color-surface-elevated)] text-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-white/[0.15] hover:text-white/70"
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-border-strong hover:text-text-secondary"
                   title="Save"
                 >
                   <Check size={14} strokeWidth={1.5} />
@@ -294,7 +294,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                 <button
                   type="button"
                   onClick={() => onEditingTitleKeyChange?.(null)}
-                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-white/[0.08] bg-[var(--color-surface-elevated)] text-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-white/[0.15] hover:text-white/70"
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-border-strong hover:text-text-secondary"
                   title="Cancel"
                 >
                   <X size={14} strokeWidth={1.5} />
@@ -307,7 +307,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`overflow-hidden max-w-0 py-1.5 pr-3 text-white/80${stickyBg}`}
+            className={`overflow-hidden max-w-0 py-1.5 pr-3 text-text-primary${stickyBg}`}
             style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
           >
             <div className="flex items-center">
@@ -329,7 +329,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                       }
                     });
                   }}
-                  className="ml-1.5 hidden h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-white/25 transition-colors duration-100 group-hover/row:flex hover:!bg-white/[0.06] hover:!text-white/60"
+                  className="ml-1.5 hidden h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-text-muted transition-colors duration-100 group-hover/row:flex hover:!bg-overlay-default hover:!text-text-secondary"
                   title="Edit summary"
                 >
                   <Pencil size={11} strokeWidth={1.5} />
@@ -371,15 +371,15 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "sprint":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3 text-xs text-white/35 truncate">
+          <td key={id} className="overflow-hidden py-1.5 pr-3 text-xs text-text-tertiary truncate">
             {ticket.sprintId
               ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId)
-              : <span className="text-white/15">&#8212;</span>}
+              : <span className="text-text-muted">&#8212;</span>}
           </td>
         );
       case "points":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3 text-center text-xs tabular-nums text-white/30">
+          <td key={id} className="overflow-hidden py-1.5 pr-3 text-center text-xs tabular-nums text-text-tertiary">
             {ticket.storyPoints ?? "-"}
           </td>
         );
@@ -446,7 +446,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           <td key={id} className="overflow-hidden py-1.5 pr-2">
             {ticket.notes && (
               <span title={ticket.notes}>
-                <MessageSquare className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
+                <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
               </span>
             )}
           </td>
@@ -477,7 +477,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                       ? "bg-emerald-500/10 text-emerald-400/60"
                       : lastDeploy.state === "FAILED"
                       ? "bg-red-500/10 text-red-400/60"
-                      : "bg-white/[0.04] text-white/25"
+                      : "bg-overlay-subtle text-text-muted"
                   }`}
                   title={`Deploy: ${lastDeploy.environment ?? "unknown"} — ${lastDeploy.state}${lastDeploy.completedAt ? ` (${new Date(lastDeploy.completedAt).toLocaleString("en-GB")})` : ""}`}
                 >
@@ -510,13 +510,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
       }}
-      className={`group/row border-b border-white/[0.03] transition-colors duration-100 ${
+      className={`group/row border-b border-border-subtle transition-colors duration-100 ${
         dragListeners ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
       } ${
         isSelected
           ? "bg-[var(--color-brand-600)]/12 border-l-2 border-l-[var(--color-brand-500)]"
           : isHovered
-          ? ticket.flagged ? "bg-[rgba(229,83,75,0.08)]" : "bg-white/[0.02]"
+          ? ticket.flagged ? "bg-[rgba(229,83,75,0.08)]" : "bg-overlay-subtle"
           : ticket.flagged
           ? "bg-[rgba(229,83,75,0.06)]"
           : ""
@@ -539,7 +539,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
               isChecked
                 ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                : "border-white/[0.12] bg-white/[0.03]"
+                : "border-border-strong bg-overlay-subtle"
             }`}
             style={{ opacity: showCheckbox ? 1 : 0, transition: "opacity 0.15s ease, background-color 0.15s ease" }}
           >
@@ -580,7 +580,7 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
     transition: isDragging ? undefined : transition ?? undefined,
     ...(isDragging ? {
       opacity: 0.3,
-      outline: "1px dashed rgba(255,255,255,0.08)",
+      outline: "1px dashed var(--color-overlay-strong)",
       outlineOffset: "-1px",
     } : {}),
   };

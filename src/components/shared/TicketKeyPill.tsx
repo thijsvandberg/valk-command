@@ -34,7 +34,7 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor }:
 
   return (
     <div className="group flex shrink-0 items-center">
-      <div className={`flex shrink-0 items-center overflow-hidden ${statusLabel ? "rounded-md bg-white/[0.07]" : ""}`}>
+      <div className={`flex shrink-0 items-center overflow-hidden ${statusLabel ? "rounded-md bg-overlay-default" : ""}`}>
         <button
           type="button"
           onClick={handleCopy}
@@ -45,8 +45,8 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor }:
             copied
               ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
               : statusLabel
-                ? "text-white/60 hover:bg-hover-list-item"
-                : "bg-white/[0.07] text-white/60 hover:bg-white/[0.10] hover:text-white/75"
+                ? "text-text-secondary hover:bg-hover-list-item"
+                : "bg-overlay-default text-text-secondary hover:bg-overlay-strong hover:text-text-secondary"
           }`}
         >
           {ticketKey}
@@ -68,7 +68,7 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor }:
           target="_blank"
           rel="noopener noreferrer"
           title="Open in Jira"
-          className="flex shrink-0 items-center pl-1.5 text-white/25 hover:text-white/60 transition-[color] duration-100 focus-visible:outline-none"
+          className="flex shrink-0 items-center pl-1.5 text-text-muted hover:text-text-secondary transition-[color] duration-100 focus-visible:outline-none"
         >
           <ExternalLink size={14} strokeWidth={1.5} />
         </a>

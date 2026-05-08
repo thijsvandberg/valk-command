@@ -46,11 +46,11 @@ export function GroupStatBar({
     <div className="flex items-center gap-2">
       {isCollapsible && (
         isCollapsed
-          ? <ChevronRight className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
-          : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" strokeWidth={1.5} />
+          ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+          : <ChevronDown className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
       )}
       {label && (
-        <span className="text-xs font-medium text-white/60 truncate">{label}</span>
+        <span className="text-xs font-medium text-text-secondary truncate">{label}</span>
       )}
       <StatPill size="sm" variant="default" className={label ? "ml-1" : undefined}>
         {tickets.length} items

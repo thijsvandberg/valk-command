@@ -12,7 +12,7 @@ export function LinkedIssuesSection({ issues }: { issues: TicketDetail["linkedIs
     return (
       <div className="mt-8">
         <SectionHeader title="Linked Issues" />
-        <p className="mt-3 text-sm text-white/25">No linked items</p>
+        <p className="mt-3 text-sm text-text-muted">No linked items</p>
       </div>
     );
   }
@@ -29,7 +29,7 @@ export function LinkedIssuesSection({ issues }: { issues: TicketDetail["linkedIs
       <div className="mt-3 space-y-4">
         {Object.entries(grouped).map(([relation, items]) => (
           <div key={relation}>
-            <div className="mb-2 text-label font-medium uppercase tracking-wider text-white/25">
+            <div className="mb-2 text-label font-medium uppercase tracking-wider text-text-muted">
               {relation}
             </div>
             <div className="overflow-hidden rounded-lg border border-border-default">
@@ -48,7 +48,7 @@ export function LinkedIssuesSection({ issues }: { issues: TicketDetail["linkedIs
                   >
                     {item.key}
                   </Link>
-                  <span className="min-w-0 flex-1 truncate text-sm text-white/60">{item.title}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{item.title}</span>
                   <StatusBadge status={item.jiraStatus} />
                   <Avatar assignee={item.assignee} size={22} />
                 </div>

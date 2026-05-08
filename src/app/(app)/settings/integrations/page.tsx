@@ -11,21 +11,21 @@ type StatusState = "ok" | "error" | "unconfigured" | "loading";
 
 function StatusIcon({ state }: { state: StatusState }) {
   if (state === "loading") {
-    return <RefreshCw size={14} strokeWidth={1.5} className="animate-spin text-white/20" />;
+    return <RefreshCw size={14} strokeWidth={1.5} className="animate-spin text-text-muted" />;
   }
   if (state === "ok") {
     return <CheckCircle2 size={14} strokeWidth={1.5} className="text-[#4aaa60]" />;
   }
   if (state === "unconfigured") {
-    return <AlertCircle size={14} strokeWidth={1.5} className="text-white/25" />;
+    return <AlertCircle size={14} strokeWidth={1.5} className="text-text-muted" />;
   }
   return <XCircle size={14} strokeWidth={1.5} className="text-[#e5534b]" />;
 }
 
 function StatusLabel({ state, errorMsg }: { state: StatusState; errorMsg?: string }) {
-  if (state === "loading") return <span className="text-xs text-white/30">Checking...</span>;
+  if (state === "loading") return <span className="text-xs text-text-tertiary">Checking...</span>;
   if (state === "ok") return <span className="text-xs text-[#4aaa60]/80">Connected</span>;
-  if (state === "unconfigured") return <span className="text-xs text-white/25">Not configured</span>;
+  if (state === "unconfigured") return <span className="text-xs text-text-muted">Not configured</span>;
   return <span className="text-xs text-[#e5534b]/80" title={errorMsg}>Error</span>;
 }
 
@@ -50,13 +50,13 @@ function IntegrationRow({
         <StatusIcon state={state} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-white/70">{name}</p>
+            <p className="text-sm font-medium text-text-secondary">{name}</p>
             {docsUrl && (
               <a
                 href={docsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/15 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "color 0.15s ease" }}
                 title="Documentation"
               >
@@ -64,7 +64,7 @@ function IntegrationRow({
               </a>
             )}
           </div>
-          <p className="mt-0.5 text-xs leading-relaxed text-white/35">{description}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">{description}</p>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ function IntegrationRow({
           type="button"
           onClick={onRetest}
           disabled={state === "unconfigured" || state === "loading"}
-          className="rounded-lg border border-border-strong bg-white/[0.03] px-2.5 py-1 text-xs text-white/40 cursor-pointer hover:bg-hover-interactive hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-lg border border-border-strong bg-overlay-subtle px-2.5 py-1 text-xs text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30"
           style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
         >
           Test
@@ -112,17 +112,17 @@ export default function IntegrationsPage() {
 
   return (
     <>
-      <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.06em] text-white/50">
+      <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
         Integrations
       </h2>
 
-      <p className="mb-6 text-xs leading-relaxed text-white/30">
+      <p className="mb-6 text-xs leading-relaxed text-text-tertiary">
         Credentials are configured via environment variables in{" "}
-        <code className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-label text-white/50">.env.local</code>.
+        <code className="rounded bg-overlay-default px-1.5 py-0.5 font-mono text-label text-text-secondary">.env.local</code>.
         Use the test buttons to verify connectivity.
       </p>
 
-      <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-white/[0.02] overflow-hidden">
+      <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-overlay-subtle overflow-hidden">
         <IntegrationRow
           name="Jira"
           description="Ticket sync, sprint data, and issue management."
@@ -145,10 +145,10 @@ export default function IntegrationsPage() {
         />
       </div>
 
-      <div className="mt-6 rounded-lg border border-border-subtle bg-white/[0.01] px-4 py-3">
-        <p className="text-label leading-relaxed text-white/25">
+      <div className="mt-6 rounded-lg border border-border-subtle bg-overlay-subtle px-4 py-3">
+        <p className="text-label leading-relaxed text-text-muted">
           To update credentials, edit{" "}
-          <code className="font-mono text-white/40">.env.local</code> and restart the dev server.
+          <code className="font-mono text-text-tertiary">.env.local</code> and restart the dev server.
           All tokens are server-side only and are never exposed to the browser.
         </p>
       </div>

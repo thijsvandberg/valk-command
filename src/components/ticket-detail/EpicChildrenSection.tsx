@@ -12,7 +12,7 @@ export function EpicChildrenSection({ items }: { items: TicketDetail["epicChildr
     return (
       <div className="mt-8">
         <SectionHeader title="Child Issues" />
-        <p className="mt-3 text-sm text-white/25">No child issues</p>
+        <p className="mt-3 text-sm text-text-muted">No child issues</p>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export function EpicChildrenSection({ items }: { items: TicketDetail["epicChildr
             >
               {child.key}
             </Link>
-            <span className="min-w-0 flex-1 truncate text-sm text-white/60">{child.title}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{child.title}</span>
             <StatusBadge status={child.jiraStatus} />
             <Avatar assignee={child.assignee} size={22} />
           </div>

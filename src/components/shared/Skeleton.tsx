@@ -13,7 +13,7 @@ export function SkeletonLine({
 }: SkeletonLineProps) {
   return (
     <div
-      className={`animate-pulse rounded bg-white/[0.06] ${height} ${width}${className ? ` ${className}` : ""}`}
+      className={`animate-pulse rounded bg-overlay-default ${height} ${width}${className ? ` ${className}` : ""}`}
       aria-hidden="true"
     />
   );
@@ -48,7 +48,7 @@ export function SkeletonTable({ rows = 5, className }: SkeletonTableProps) {
       className={`rounded-xl border border-border-strong overflow-hidden${className ? ` ${className}` : ""}`}
       aria-hidden="true"
     >
-      <div className="px-4 py-2.5 bg-white/[0.02] border-b border-border-default">
+      <div className="px-4 py-2.5 bg-overlay-subtle border-b border-border-default">
         <SkeletonLine width="w-48" />
       </div>
       {Array.from({ length: rows }).map((_, i) => (

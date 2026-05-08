@@ -1,8 +1,8 @@
 import type { HTMLAttributes } from "react";
 
 const VARIANT_CLASSES = {
-  default: "rounded-xl border border-border-strong bg-white/[0.03]",
-  subtle: "rounded-xl border border-border-subtle bg-white/[0.02]",
+  default: "rounded-xl border border-border-strong bg-overlay-subtle",
+  subtle: "rounded-xl border border-border-subtle bg-overlay-subtle",
   floating:
     "rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
   dashed: "rounded-xl border border-dashed border-border-strong",

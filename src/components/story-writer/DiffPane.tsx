@@ -88,7 +88,7 @@ export function DiffPane({
                 icon={<GitCompare size={11} strokeWidth={1.5} />}
                 onClick={() => onDiffViewModeChange("diff")}
                 title="Show diff"
-                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
+                className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
               >
                 Diff
               </Button>
@@ -99,7 +99,7 @@ export function DiffPane({
                 icon={<Eye size={11} strokeWidth={1.5} />}
                 onClick={() => onDiffViewModeChange("plain")}
                 title="Preview the selected version"
-                className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
+                className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
               >
                 Preview
               </Button>
@@ -109,7 +109,7 @@ export function DiffPane({
       )}
 
       {isAiDraft && totalDrafts > 0 && (
-        <div className="flex items-center justify-between border-b border-border-default bg-white/[0.015] px-3 py-1.5">
+        <div className="flex items-center justify-between border-b border-border-default bg-overlay-subtle px-3 py-1.5">
           <div className="flex items-center gap-1.5">
             <Button
               variant="ghost"
@@ -118,9 +118,9 @@ export function DiffPane({
               icon={<ChevronLeft size={14} strokeWidth={1.5} />}
               disabled={selectedDraftIdx === 0}
               onClick={() => onNavigateDraft(-1)}
-              className="border-0 bg-transparent text-white/40"
+              className="border-0 bg-transparent text-text-tertiary"
             />
-            <span className="text-xs text-white/45">
+            <span className="text-xs text-text-tertiary">
               AI Draft {selectedDraftIdx + 1} of {totalDrafts}
             </span>
             <Button
@@ -130,7 +130,7 @@ export function DiffPane({
               icon={<ChevronRight size={14} strokeWidth={1.5} />}
               disabled={selectedDraftIdx === totalDrafts - 1}
               onClick={() => onNavigateDraft(1)}
-              className="border-0 bg-transparent text-white/40"
+              className="border-0 bg-transparent text-text-tertiary"
             />
           </div>
 
@@ -161,7 +161,7 @@ export function DiffPane({
 
       <div className="flex-1 overflow-y-auto p-3">
         {!selected ? (
-          <div className="flex h-full items-center justify-center text-xs text-white/25">
+          <div className="flex h-full items-center justify-center text-xs text-text-muted">
             {rightVersions.length === 0 ? "No versions to compare" : "Select a version"}
           </div>
         ) : (

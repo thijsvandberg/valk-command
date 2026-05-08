@@ -12,7 +12,7 @@ function StoryRow({ story }: { story: InvestigationRelatedStory }) {
   const { exists, status } = useTicketExists(story.key);
 
   return (
-    <div className="py-2 border-b border-white/[0.03] last:border-0">
+    <div className="py-2 border-b border-border-subtle last:border-0">
       <div className="flex items-center gap-2">
         <Link
           href={`/tickets/${story.key}`}
@@ -24,16 +24,16 @@ function StoryRow({ story }: { story: InvestigationRelatedStory }) {
           href={getJiraUrl(story.key)}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-white/25 cursor-pointer hover:text-white/50 transition-colors duration-150 shrink-0"
+          className="text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-150 shrink-0"
           title="Open in Jira"
         >
           <ExternalLink size={11} strokeWidth={1.5} />
         </a>
         {exists && status && <StatusBadge status={status} />}
-        <span className="text-xs text-white/50">{story.summary}</span>
+        <span className="text-xs text-text-secondary">{story.summary}</span>
       </div>
       {story.relevance && (
-        <p className="text-label text-white/25 mt-0.5">
+        <p className="text-label text-text-muted mt-0.5">
           {story.relevance}
         </p>
       )}

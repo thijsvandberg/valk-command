@@ -44,7 +44,7 @@ export default function TaskProgress({
           ) : (
             <div className="h-2 w-2 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
           )}
-          <span className="text-xs font-medium text-white/50">
+          <span className="text-xs font-medium text-text-secondary">
             {status === "submitting" && `Submitting ${skill}...`}
             {status === "streaming" && (progressText
               ? progressText.slice(0, 80)
@@ -58,7 +58,7 @@ export default function TaskProgress({
         {toolCalls.length > 0 && status === "streaming" && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {toolCalls.slice(-5).map((tc) => (
-              <Tag key={tc.id} className="border border-border-subtle text-label text-white/30">
+              <Tag key={tc.id} className="border border-border-subtle text-label text-text-tertiary">
                 {formatToolName(tc.tool)}
               </Tag>
             ))}

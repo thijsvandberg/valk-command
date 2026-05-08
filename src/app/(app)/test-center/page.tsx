@@ -20,7 +20,7 @@ export default function TestCenterPage() {
         </div>
         <div className="relative flex min-h-full items-center justify-center py-24">
           <EmptyState
-            icon={<FlaskConical size={20} strokeWidth={1.5} className="text-white/30" />}
+            icon={<FlaskConical size={20} strokeWidth={1.5} className="text-text-tertiary" />}
             title="Test Center coming soon"
             description="Test coverage tracking and quality reports will appear here."
           />

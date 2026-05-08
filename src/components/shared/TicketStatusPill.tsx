@@ -67,7 +67,7 @@ function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTy
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[130px] rounded-lg border border-white/[0.07] py-1"
+      className="absolute top-full left-0 z-50 mt-1 min-w-[130px] rounded-lg border border-border-default py-1"
       style={{
         backgroundColor: "var(--color-surface-floating)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -81,10 +81,10 @@ function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTy
             key={type}
             type="button"
             onClick={() => { onChange(type); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
             <IssueTypeIcon type={type} size={12} />
-            <span className={isActive ? "font-medium" : ""} style={{ color: isActive ? color : "rgba(255,255,255,0.5)" }}>
+            <span className={isActive ? "font-medium" : ""} style={{ color: isActive ? color : "var(--color-text-secondary)" }}>
               {TYPE_LABELS[type]}
             </span>
             {isActive && (
@@ -143,13 +143,13 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
   }
 
   const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06] text-white/60";
-  const iconClass = "shrink-0 text-white/30";
+    "flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
+  const iconClass = "shrink-0 text-text-tertiary";
 
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[188px] rounded-lg border border-white/[0.07] py-1"
+      className="absolute top-full left-0 z-50 mt-1 min-w-[188px] rounded-lg border border-border-default py-1"
       style={{
         backgroundColor: "var(--color-surface-floating)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -222,7 +222,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[172px] rounded-lg border border-white/[0.07] py-1"
+      className="absolute top-full left-0 z-50 mt-1 min-w-[172px] rounded-lg border border-border-default py-1"
       style={{
         backgroundColor: "var(--color-surface-floating)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -236,7 +236,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
             key={status}
             type="button"
             onClick={() => { onChange(status); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
             <span
               className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide"
@@ -244,7 +244,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
             >
               {JIRA_STATUS_ABBREVIATIONS[status]}
             </span>
-            <span className={isActive ? "text-white/90" : "text-white/50"}>{status}</span>
+            <span className={isActive ? "text-text-primary" : "text-text-secondary"}>{status}</span>
           </button>
         );
       })}
@@ -285,7 +285,7 @@ function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: Readine
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[210px] rounded-lg border border-white/[0.07] py-1"
+      className="absolute top-full left-0 z-50 mt-1 min-w-[210px] rounded-lg border border-border-default py-1"
       style={{
         backgroundColor: "var(--color-surface-floating)",
         boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -299,15 +299,15 @@ function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: Readine
             key={opt.label}
             type="button"
             onClick={() => { onChange(opt.value); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
+            className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
             <span
               className="shrink-0 w-4 flex items-center justify-center"
-              style={{ color: cfg?.color ?? "rgba(255,255,255,0.2)" }}
+              style={{ color: cfg?.color ?? "var(--color-text-muted)" }}
             >
               {opt.value ? <ReadinessIcon value={opt.value} size={13} /> : <Minus style={{ width: 11, height: 11 }} strokeWidth={1.5} />}
             </span>
-            <span className={isActive ? "text-white/85 font-medium" : "text-white/50"}>{opt.label}</span>
+            <span className={isActive ? "text-text-primary font-medium" : "text-text-secondary"}>{opt.label}</span>
           </button>
         );
       })}
@@ -424,7 +424,7 @@ export function TicketStatusPill({
               title={onIssueTypeChange ? "Change issue type" : issueType}
               disabled={!onIssueTypeChange}
               className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
-                onIssueTypeChange ? "cursor-pointer hover:bg-white/[0.06]" : "cursor-default"
+                onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
               }`}
             >
               <IssueTypeIcon type={issueType} size={iconSize} />
@@ -453,7 +453,7 @@ export function TicketStatusPill({
                 setKeyDropdownOpen((o) => !o);
               }
             }}
-            className={`font-mono ${textSize} font-medium text-white/55 transition-colors duration-150 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+            className={`font-mono ${textSize} font-medium text-text-secondary transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             style={{ minWidth: "9ch" }}
           >
             {ticketKey}
@@ -509,9 +509,9 @@ export function TicketStatusPill({
               title={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}
               disabled={!onReadinessChange}
               className={`flex items-center justify-center rounded transition-colors duration-150 ${
-                onReadinessChange ? "cursor-pointer hover:bg-white/[0.06]" : "cursor-default"
+                onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
               }`}
-              style={{ color: readinessCfg?.color ?? "rgba(255,255,255,0.2)", width: iconSize + 4, height: iconSize + 4 }}
+              style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 4, height: iconSize + 4 }}
             >
               {readiness ? (
                 <ReadinessIcon value={readiness} size={iconSize} />
@@ -540,7 +540,7 @@ export function TicketStatusPill({
   // ---------------------------------------------------------------------------
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-white/[0.06] ring-1 ring-inset ring-white/[0.06]">
+      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ring-1 ring-inset ring-white/[0.06]">
 
         {/* Issue type segment */}
         {issueType && (
@@ -554,7 +554,7 @@ export function TicketStatusPill({
                 disabled={!onIssueTypeChange}
                 className={`${issueTypePx} flex items-center justify-center rounded-l-md transition-colors duration-150 ${
                   onIssueTypeChange
-                    ? "cursor-pointer hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    ? "cursor-pointer hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     : "cursor-default"
                 }`}
               >
@@ -569,7 +569,7 @@ export function TicketStatusPill({
                 />
               )}
             </div>
-            <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
+            <span className="w-px self-stretch bg-overlay-default shrink-0" />
           </>
         )}
 
@@ -584,7 +584,7 @@ export function TicketStatusPill({
                 setKeyDropdownOpen((o) => !o);
               }
             }}
-            className={`${px} font-mono ${textSize} font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] flex items-center gap-1 text-white/50 hover:bg-white/[0.05] hover:text-white/75 ${!issueType ? "rounded-l-md" : ""}`}
+            className={`${px} font-mono ${textSize} font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] flex items-center gap-1 text-text-secondary hover:bg-overlay-default hover:text-text-secondary ${!issueType ? "rounded-l-md" : ""}`}
             style={{ minWidth: "9ch" }}
           >
             {ticketKey}
@@ -601,7 +601,7 @@ export function TicketStatusPill({
         </div>
 
         {/* Divider */}
-        <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
+        <span className="w-px self-stretch bg-overlay-default shrink-0" />
 
         {/* Jira status segment */}
         <div className="relative flex">
@@ -639,7 +639,7 @@ export function TicketStatusPill({
         {/* Readiness segment */}
         {showReadiness && (
           <>
-            <span className="w-px self-stretch bg-white/[0.07] shrink-0" />
+            <span className="w-px self-stretch bg-overlay-default shrink-0" />
             <div className="relative flex">
               <button
                 ref={readinessBtnRef}
@@ -649,10 +649,10 @@ export function TicketStatusPill({
                 disabled={!onReadinessChange}
                 className={`${px} flex items-center justify-center rounded-r-md transition-colors duration-150 ${
                   onReadinessChange
-                    ? "cursor-pointer hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    ? "cursor-pointer hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     : "cursor-default"
                 }`}
-                style={{ color: readinessCfg?.color ?? "rgba(255,255,255,0.2)" }}
+                style={{ color: readinessCfg?.color ?? "var(--color-text-muted)" }}
               >
                 {readiness ? (
                   <ReadinessIcon value={readiness} size={iconSize} />

@@ -44,7 +44,7 @@ export function VersionList({
         selectedId={compareOld !== null ? String(compareOld) : ""}
         onSelect={(id) => onOldChange(Number(id))}
       />
-      <span className="shrink-0 text-xs text-white/25">vs</span>
+      <span className="shrink-0 text-xs text-text-muted">vs</span>
       <VersionPicker
         options={newOptions}
         selectedId={compareNew !== null ? String(compareNew) : ""}
@@ -58,8 +58,8 @@ export function VersionList({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-default pb-2">
         <div className="flex items-center gap-2">
-          <h3 className="font-[var(--font-display)] text-sm font-semibold text-white/80">History</h3>
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/[0.06] px-1.5 text-caption font-medium tabular-nums text-white/40">
+          <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">History</h3>
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
             {sorted.length}
           </span>
         </div>
@@ -77,7 +77,7 @@ export function VersionList({
 
       {/* Import result feedback */}
       {importResult && (
-        <div className="mt-2 rounded-lg border border-border-default bg-white/[0.02] px-4 py-2.5 text-xs text-white/50">
+        <div className="mt-2 rounded-lg border border-border-default bg-overlay-subtle px-4 py-2.5 text-xs text-text-secondary">
           {importResult.imported > 0
             ? `Imported ${importResult.imported} version${importResult.imported !== 1 ? "s" : ""} from Jira${importResult.skipped > 0 ? ` (${importResult.skipped} already existed)` : ""}.`
             : "History is up to date. No new versions found in Jira."}
@@ -86,7 +86,7 @@ export function VersionList({
 
       {/* Compare dropdowns */}
       {sorted.length > 1 && (
-        <div className="mt-3 mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border-default bg-white/[0.02] px-4 py-3">
+        <div className="mt-3 mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border-default bg-overlay-subtle px-4 py-3">
           {compareBar}
         </div>
       )}
@@ -100,7 +100,7 @@ export function VersionList({
             <div
               key={version.versionNumber}
               onClick={() => onVersionClick(version.versionNumber)}
-              className={`flex w-full items-center gap-3 px-4 py-3 text-left cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.04] ${
+              className={`flex w-full items-center gap-3 px-4 py-3 text-left cursor-pointer hover:bg-overlay-subtle active:bg-overlay-subtle ${
                 idx < sorted.length - 1 ? "border-b border-border-subtle" : ""
               }`}
               style={{ transition: "background-color 0.15s ease" }}
@@ -115,13 +115,13 @@ export function VersionList({
                   className="h-7 w-7 shrink-0 rounded-full"
                 />
               ) : (
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-strong bg-white/[0.03] text-caption font-semibold tabular-nums text-white/40">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-strong bg-overlay-subtle text-caption font-semibold tabular-nums text-text-tertiary">
                   v{version.versionNumber}
                 </div>
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-white/60">
+                  <span className="text-sm text-text-secondary">
                     {version.label === "draft"
                       ? "Local draft"
                       : version.label === "ai-draft"
@@ -143,14 +143,14 @@ export function VersionList({
                     <Tag color="amber">Outdated</Tag>
                   )}
                   {version.updatedBy && (
-                    <span className="text-xs text-white/30">{version.updatedBy}</span>
+                    <span className="text-xs text-text-tertiary">{version.updatedBy}</span>
                   )}
                 </div>
-                <div className="mt-0.5 text-xs text-white/25">
+                <div className="mt-0.5 text-xs text-text-muted">
                   {formatVersionDate(version.date)}
                 </div>
               </div>
-              <ChevronRight size={10} strokeWidth={1} className="shrink-0 text-white/15" />
+              <ChevronRight size={10} strokeWidth={1} className="shrink-0 text-text-muted" />
             </div>
           );
         })}

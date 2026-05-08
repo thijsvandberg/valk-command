@@ -64,7 +64,7 @@ function SessionCard({
             {session.ticketKey}
           </code>
           {session.issueType && (
-            <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-caption text-white/35">
+            <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary">
               {session.issueType}
             </span>
           )}
@@ -91,33 +91,33 @@ function SessionCard({
       {/* Title(s) */}
       {isSplit ? (
         <div className="space-y-1">
-          <p className="text-body-sm font-semibold leading-snug text-white/80 truncate">
+          <p className="text-body-sm font-semibold leading-snug text-text-primary truncate">
             {session.title}
           </p>
-          <p className="text-body-sm leading-snug text-white/40 truncate">
+          <p className="text-body-sm leading-snug text-text-tertiary truncate">
             {session.targetTitle ?? session.targetTicketKey}
           </p>
         </div>
       ) : (
-        <p className="font-[var(--font-display)] text-body font-semibold leading-snug text-white/85 line-clamp-2">
+        <p className="font-[var(--font-display)] text-body font-semibold leading-snug text-text-primary line-clamp-2">
           {session.title}
         </p>
       )}
 
       {/* Bottom row: metadata + actions */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-label text-white/30 min-w-0 truncate">
+        <div className="flex items-center gap-2 text-label text-text-tertiary min-w-0 truncate">
           {sprintLabel && (
             <span className="truncate">{sprintLabel}</span>
           )}
           {sprintLabel && session.epic && (
-            <span className="text-white/15">|</span>
+            <span className="text-text-muted">|</span>
           )}
           {session.epic && (
             <span className="truncate">{session.epic}</span>
           )}
           {(sprintLabel || session.epic) && session.updatedAt && (
-            <span className="text-white/15">|</span>
+            <span className="text-text-muted">|</span>
           )}
           {session.updatedAt && (
             <span className="shrink-0">{formatTimeAgo(session.updatedAt)}</span>
@@ -192,7 +192,7 @@ export default function StoryWriterLandingPage() {
   return (
     <div className="flex flex-col h-full">
       <ViewHeader
-        icon={<NotebookPen size={15} strokeWidth={1.5} className="text-white/30" />}
+        icon={<NotebookPen size={15} strokeWidth={1.5} className="text-text-tertiary" />}
       >
         <ViewHeaderTitle>Story Writer</ViewHeaderTitle>
       </ViewHeader>
@@ -202,7 +202,7 @@ export default function StoryWriterLandingPage() {
           {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
 
           <div className="flex items-center justify-between mb-5">
-            <span className="text-sm text-white/40">
+            <span className="text-sm text-text-tertiary">
               {loading
                 ? "Loading..."
                 : `${sessions.length} active session${sessions.length === 1 ? "" : "s"}`}
@@ -224,7 +224,7 @@ export default function StoryWriterLandingPage() {
                   <NotebookPen
                     size={20}
                     strokeWidth={1.5}
-                    className="text-white/30"
+                    className="text-text-tertiary"
                   />
                 }
                 title="No active sessions"

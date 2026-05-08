@@ -23,7 +23,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
     <div className="space-y-4">
       {/* Question header */}
       <div className="border-b border-border-default pb-3">
-        <p className="font-[var(--font-display)] text-base font-semibold tracking-[-0.02em] text-white/90 leading-snug">
+        <p className="font-[var(--font-display)] text-base font-semibold tracking-[-0.02em] text-text-primary leading-snug">
           {data.question}
         </p>
       </div>
@@ -36,7 +36,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
             Finding
           </span>
         </div>
-        <div className="text-sm leading-[1.7] text-white/80 font-[var(--font-body)]">
+        <div className="text-sm leading-[1.7] text-text-primary font-[var(--font-body)]">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {data.finding}
           </ReactMarkdown>

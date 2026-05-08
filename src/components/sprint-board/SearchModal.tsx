@@ -516,13 +516,13 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         className="relative z-10 w-full max-w-[1200px] overflow-hidden rounded-xl"
         style={{
           backgroundColor: "var(--color-surface-floating)",
-          boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px var(--color-overlay-default)",
           animation: "searchModalIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
         onKeyDown={handleKeyDown}
       >
         <div className="flex items-center gap-3 border-b border-border-default px-5 py-3.5">
-          <Search className="h-5 w-5 shrink-0 text-white/35" strokeWidth={1.5} />
+          <Search className="h-5 w-5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
           <input
             ref={inputRef}
             type="text"
@@ -532,16 +532,16 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               else setJiraQuery(e.target.value);
             }}
             placeholder={mode === "local" ? "Search tickets..." : "Search Jira..."}
-            className="flex-1 bg-transparent text-heading-sm text-white/90 placeholder-white/25 focus:outline-none"
+            className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none"
           />
-          <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+          <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ backgroundColor: "var(--color-overlay-default)" }}>
             <button
               type="button"
               onClick={() => { setMode("local"); setActiveIdx(-1); }}
               className="rounded-full px-3 py-1 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
               style={{
                 backgroundColor: mode === "local" ? "var(--color-brand-500)" : "transparent",
-                color: mode === "local" ? "#fff" : "rgba(255,255,255,0.4)",
+                color: mode === "local" ? "#fff" : "var(--color-text-tertiary)",
                 transition: "background-color 100ms, color 100ms",
               }}
             >
@@ -553,7 +553,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               className="rounded-full px-3 py-1 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
               style={{
                 backgroundColor: mode === "jira" ? "var(--color-brand-500)" : "transparent",
-                color: mode === "jira" ? "#fff" : "rgba(255,255,255,0.4)",
+                color: mode === "jira" ? "#fff" : "var(--color-text-tertiary)",
                 transition: "background-color 100ms, color 100ms",
               }}
             >
@@ -572,8 +572,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 style={{
                   backgroundColor: showFilters
                     ? "rgba(74, 170, 96, 0.12)"
-                    : "rgba(255,255,255,0.04)",
-                  color: showFilters ? "var(--color-brand-400)" : "rgba(255,255,255,0.4)",
+                    : "var(--color-overlay-subtle)",
+                  color: showFilters ? "var(--color-brand-400)" : "var(--color-text-tertiary)",
                   transition: "background-color 120ms, color 120ms",
                 }}
               >
@@ -603,7 +603,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             <button
               type="button"
               onClick={() => setShowJqlOverride((v) => !v)}
-              className="text-xs text-white/30 hover:text-white/50 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+              className="text-xs text-text-tertiary hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
             >
               {showJqlOverride ? "Hide JQL" : "JQL override"}
             </button>
@@ -613,7 +613,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 value={jiraJql}
                 onChange={(e) => setJiraJql(e.target.value)}
                 placeholder="project = VPL AND ..."
-                className="flex-1 bg-transparent text-xs text-white/60 placeholder-white/20 focus:outline-none font-mono"
+                className="flex-1 bg-transparent text-xs text-text-secondary placeholder-text-muted focus:outline-none font-mono"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runJiraSearch(); } }}
               />
             )}
@@ -643,7 +643,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             >
               {detectedKey}
             </span>
-            <span className="text-label text-white/40">
+            <span className="text-label text-text-tertiary">
               {fetchingKey ? "Downloading from Jira..." : "Press Enter to open directly"}
             </span>
           </button>
@@ -666,7 +666,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             style={{
               maxHeight: "min(700px, calc(100vh - 260px))",
               scrollbarWidth: "thin",
-              scrollbarColor: "rgba(255,255,255,0.08) transparent",
+              scrollbarColor: "var(--color-overlay-strong) transparent",
               borderTop: showPreview ? (focusedPanel === "list" ? "2px solid rgba(74, 170, 96, 0.3)" : "2px solid transparent") : undefined,
               transition: "border-color 150ms",
             }}
@@ -829,14 +829,14 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             {!showLocalSkeleton && showSavedSearches && (
               <div className="py-2">
                 <div className="flex items-center px-5 pb-1 pt-2">
-                  <span className="text-caption font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Saved searches</span>
+                  <span className="text-caption font-semibold uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>Saved searches</span>
                 </div>
                 {savedSearches.map((s) => (
                   <div
                     key={s.id}
                     className="group flex w-full items-center gap-3 px-6 py-2.5 text-left"
                     style={{ transition: "background-color 80ms" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.025)")}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-overlay-subtle)")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
                   >
                     <button
@@ -849,7 +849,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                       className="flex flex-1 items-center gap-3 cursor-pointer focus-visible:outline-none min-w-0"
                     >
                       <Bookmark className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-brand-400)", opacity: 0.7 }} strokeWidth={1.5} />
-                      <span className="text-body truncate" style={{ color: "rgba(255,255,255,0.65)" }}>{s.label}</span>
+                      <span className="text-body truncate" style={{ color: "var(--color-text-secondary)" }}>{s.label}</span>
                       {hasActiveFilters(s.filters) && (
                         <span
                           className="shrink-0 rounded-full px-1.5 py-0.5 text-caption font-medium"
@@ -864,15 +864,15 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                       aria-label={`Delete saved search "${s.label}"`}
                       onClick={(e) => { e.stopPropagation(); deleteSearch(s.id); }}
                       className="shrink-0 opacity-0 group-hover:opacity-100 cursor-pointer rounded p-0.5 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-                      style={{ color: "rgba(255,255,255,0.3)", transition: "opacity 100ms, color 100ms" }}
+                      style={{ color: "var(--color-text-tertiary)", transition: "opacity 100ms, color 100ms" }}
                       onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,100,100,0.7)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-tertiary)")}
                     >
                       <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
                     </button>
                   </div>
                 ))}
-                {showHistory && <div className="mx-5 my-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.04)" }} />}
+                {showHistory && <div className="mx-5 my-1 h-px" style={{ backgroundColor: "var(--color-overlay-subtle)" }} />}
               </div>
             )}
 
@@ -880,14 +880,14 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             {!showLocalSkeleton && showHistory && (
               <div className="py-2">
                 <div className="flex items-center justify-between px-5 pb-1 pt-2">
-                  <span className="text-caption font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Recent searches</span>
+                  <span className="text-caption font-semibold uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>Recent searches</span>
                   <button
                     type="button"
                     onClick={clearHistory}
                     className="text-caption cursor-pointer"
-                    style={{ color: "rgba(255,255,255,0.25)", transition: "color 100ms" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
+                    style={{ color: "var(--color-text-muted)", transition: "color 100ms" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
                   >
                     Clear
                   </button>
@@ -899,11 +899,11 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     onClick={() => setQuery(q)}
                     className="flex w-full items-center gap-3 px-6 py-2.5 text-left cursor-pointer focus-visible:outline-none"
                     style={{ transition: "background-color 80ms" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.025)")}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-overlay-subtle)")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
                   >
-                    <Clock className="h-3.5 w-3.5 shrink-0 text-white/20" strokeWidth={1.5} />
-                    <span className="text-body" style={{ color: "rgba(255,255,255,0.55)" }}>{q}</span>
+                    <Clock className="h-3.5 w-3.5 shrink-0 text-text-muted" strokeWidth={1.5} />
+                    <span className="text-body" style={{ color: "var(--color-text-secondary)" }}>{q}</span>
                   </button>
                 ))}
               </div>
@@ -920,9 +920,9 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               <div
                 onMouseDown={onDragHandleMouseDown}
                 className="relative flex w-2 shrink-0 cursor-col-resize items-center justify-center"
-                style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}
+                style={{ borderLeft: "1px solid var(--color-overlay-default)" }}
               >
-                <div className="h-12 w-0.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.12)" }} />
+                <div className="h-12 w-0.5 rounded-full" style={{ backgroundColor: "var(--color-overlay-strong)" }} />
               </div>
               <div
                 ref={previewPaneRef}
@@ -931,7 +931,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                   width: previewWidth,
                   maxHeight: "min(700px, calc(100vh - 260px))",
                   scrollbarWidth: "thin",
-                  scrollbarColor: "rgba(255,255,255,0.08) transparent",
+                  scrollbarColor: "var(--color-overlay-strong) transparent",
                   borderTop: focusedPanel === "preview" ? "2px solid rgba(74, 170, 96, 0.3)" : "2px solid transparent",
                   transition: "border-color 150ms",
                 }}
@@ -946,17 +946,17 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           )}
         </div>
 
-        <div className="flex items-center gap-4 border-t border-border-default px-6 py-3 text-caption text-white/20">
-          <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u2191\u2193"}</kbd> navigate</span>
-          <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u21b5"}</kbd> open</span>
+        <div className="flex items-center gap-4 border-t border-border-default px-6 py-3 text-caption text-text-muted">
+          <span><kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono">{"\u2191\u2193"}</kbd> navigate</span>
+          <span><kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono">{"\u21b5"}</kbd> open</span>
           {mode === "local" && previewEnabled && activeIdx >= 0 && visibleRows[activeIdx]?.group === "tickets" && (
-            <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u2192"}</kbd> preview</span>
+            <span><kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono">{"\u2192"}</kbd> preview</span>
           )}
           {focusedPanel === "preview" && (
-            <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u2190"}</kbd> list</span>
+            <span><kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono">{"\u2190"}</kbd> list</span>
           )}
-          <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">{"\u21e7\u21b5"}</kbd> new tab</span>
-          <span><kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-0.5 font-mono">esc</kbd> close</span>
+          <span><kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono">{"\u21e7\u21b5"}</kbd> new tab</span>
+          <span><kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono">esc</kbd> close</span>
           <div className="flex-1" />
           {/* Save this search — shown in local mode when there's a meaningful query */}
           {mode === "local" && query.trim().length >= 2 && (
@@ -972,7 +972,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 <div
                   className="flex items-center gap-1.5 overflow-hidden rounded-md"
                   style={{
-                    backgroundColor: "rgba(255,255,255,0.05)",
+                    backgroundColor: "var(--color-overlay-default)",
                     border: "1px solid rgba(74, 170, 96, 0.35)",
                     padding: "2px 6px 2px 8px",
                   }}
@@ -985,7 +985,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     onChange={(e) => setSaveLabel(e.target.value)}
                     placeholder="Name this search..."
                     maxLength={200}
-                    className="bg-transparent text-body-sm text-white/80 placeholder-white/20 focus:outline-none"
+                    className="bg-transparent text-body-sm text-text-primary placeholder-text-muted focus:outline-none"
                     style={{ width: 160 }}
                   />
                   <button
@@ -996,7 +996,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded cursor-pointer disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                     style={{
                       backgroundColor: saveLabel.trim() ? "rgba(74, 170, 96, 0.2)" : "transparent",
-                      color: saveLabel.trim() ? "var(--color-brand-400)" : "rgba(255,255,255,0.2)",
+                      color: saveLabel.trim() ? "var(--color-brand-400)" : "var(--color-text-muted)",
                       transition: "background-color 100ms, color 100ms",
                     }}
                   >
@@ -1007,9 +1007,9 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                     onClick={handleSaveCancel}
                     title="Cancel"
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-                    style={{ color: "rgba(255,255,255,0.2)", transition: "color 100ms" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.2)")}
+                    style={{ color: "var(--color-text-muted)", transition: "color 100ms" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
                   >
                     <X className="h-3 w-3" strokeWidth={2} />
                   </button>
@@ -1023,8 +1023,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 onClick={handleSaveOpen}
                 className="flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-default"
                 style={{
-                  backgroundColor: isCurrentSearchSaved ? "rgba(74, 170, 96, 0.1)" : "rgba(255,255,255,0.04)",
-                  color: isCurrentSearchSaved ? "var(--color-brand-400)" : isFull ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.25)",
+                  backgroundColor: isCurrentSearchSaved ? "rgba(74, 170, 96, 0.1)" : "var(--color-overlay-subtle)",
+                  color: isCurrentSearchSaved ? "var(--color-brand-400)" : isFull ? "var(--color-overlay-strong)" : "var(--color-text-muted)",
                   transition: "background-color 120ms, color 120ms",
                 }}
               >
@@ -1041,8 +1041,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               onClick={() => setPreviewEnabled((v) => !v)}
               className="flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
               style={{
-                backgroundColor: previewEnabled ? "rgba(74, 170, 96, 0.1)" : "rgba(255,255,255,0.04)",
-                color: previewEnabled ? "var(--color-brand-400)" : "rgba(255,255,255,0.25)",
+                backgroundColor: previewEnabled ? "rgba(74, 170, 96, 0.1)" : "var(--color-overlay-subtle)",
+                color: previewEnabled ? "var(--color-brand-400)" : "var(--color-text-muted)",
                 transition: "background-color 120ms, color 120ms",
               }}
             >

@@ -86,10 +86,10 @@ function ToastItem({
         <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-[var(--color-brand-400)]" strokeWidth={2} />
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-white/80 font-[var(--font-body)]">
+        <p className="text-xs font-medium text-text-primary font-[var(--font-body)]">
           {isError ? "Action failed" : isCancelled ? "Action cancelled" : "Action complete"}
         </p>
-        <p className="text-label text-white/40 font-[var(--font-body)] truncate mt-0.5">
+        <p className="text-label text-text-tertiary font-[var(--font-body)] truncate mt-0.5">
           {isError ? (error ?? "Unknown error") : isCancelled ? "Cancelled by user" : (summary ?? "Done")}
         </p>
       </div>
@@ -111,7 +111,7 @@ function ToastItem({
           iconOnly
           icon={<X className="h-3.5 w-3.5" strokeWidth={2} />}
           onClick={onDismiss}
-          className="text-white/20 hover:text-white/50 border-0"
+          className="text-text-muted hover:text-text-secondary border-0"
           aria-label="Dismiss"
         />
       </div>

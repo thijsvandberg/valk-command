@@ -70,7 +70,7 @@ export function DiffViewer({
         selectedId={compareOld !== null ? String(compareOld) : ""}
         onSelect={(id) => onOldChange(Number(id))}
       />
-      <span className="shrink-0 text-xs text-white/25">vs</span>
+      <span className="shrink-0 text-xs text-text-muted">vs</span>
       <VersionPicker
         options={newOptions}
         selectedId={compareNew !== null ? String(compareNew) : ""}
@@ -96,26 +96,26 @@ export function DiffViewer({
         {diffStats && (
           <div className="flex items-center gap-3 text-xs">
             {diffStats.changeHunkCount > 0 && (
-              <span className="text-white/30">
+              <span className="text-text-tertiary">
                 {diffStats.decidedCount}/{diffStats.changeHunkCount} reviewed
               </span>
             )}
             {diffStats.added > 0 && (
               <span className="flex items-center gap-1" style={{ color: "#3fb950" }}>
                 <span className="font-mono font-semibold">+{diffStats.added}</span>
-                <span className="text-white/40">added</span>
+                <span className="text-text-tertiary">added</span>
               </span>
             )}
             {diffStats.removed > 0 && (
               <span className="flex items-center gap-1" style={{ color: "#e5534b" }}>
                 <span className="font-mono font-semibold">&minus;{diffStats.removed}</span>
-                <span className="text-white/40">removed</span>
+                <span className="text-text-tertiary">removed</span>
               </span>
             )}
             {diffStats.modified > 0 && (
               <span className="flex items-center gap-1" style={{ color: "#d2a8ff" }}>
                 <span className="font-mono font-semibold">~{diffStats.modified}</span>
-                <span className="text-white/40">modified</span>
+                <span className="text-text-tertiary">modified</span>
               </span>
             )}
           </div>
@@ -127,8 +127,8 @@ export function DiffViewer({
         <div className="mb-3 flex items-center gap-3 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-600)]/[0.06] px-4 py-3">
           <Info size={16} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-white/60">No content changes detected</p>
-            <p className="mt-0.5 text-label text-white/35">
+            <p className="text-xs font-medium text-text-secondary">No content changes detected</p>
+            <p className="mt-0.5 text-label text-text-tertiary">
               Jira was updated (e.g. status transition, comment, or field change) but the description content is unchanged.
             </p>
           </div>
@@ -148,7 +148,7 @@ export function DiffViewer({
       {loadingContent ? (
         <div className="mt-3 space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-4 animate-pulse rounded bg-white/[0.04]" style={{ width: `${70 + i * 8}%` }} />
+            <div key={i} className="h-4 animate-pulse rounded bg-overlay-subtle" style={{ width: `${70 + i * 8}%` }} />
           ))}
         </div>
       ) : (
@@ -190,11 +190,11 @@ export function DiffViewer({
             </>
           )}
           {showRevertActions && (
-            <span className="text-xs text-white/40">Revert:</span>
+            <span className="text-xs text-text-tertiary">Revert:</span>
           )}
 
           {mergeResult !== null && !showConflictActions && (
-            <span className="text-xs text-white/50">Apply merge selections as local edit</span>
+            <span className="text-xs text-text-secondary">Apply merge selections as local edit</span>
           )}
 
           <div className="flex-1" />

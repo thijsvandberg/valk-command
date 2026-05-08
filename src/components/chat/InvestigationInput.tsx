@@ -76,7 +76,7 @@ export default function InvestigationInput({
                   className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
                     !explainMode
                       ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                      : "text-white/40 hover:text-white/60"
+                      : "text-text-tertiary hover:text-text-secondary"
                   }`}
                 >
                   Tech
@@ -87,7 +87,7 @@ export default function InvestigationInput({
                   className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
                     explainMode
                       ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                      : "text-white/40 hover:text-white/60"
+                      : "text-text-tertiary hover:text-text-secondary"
                   }`}
                 >
                   Explain
@@ -103,7 +103,7 @@ export default function InvestigationInput({
               placeholder="Ask a question about the codebase... (include a Jira key like VPL-20661 for extra context)"
               disabled={disabled || sending}
               rows={1}
-              className="flex-1 resize-none rounded-xl bg-[var(--color-surface-floating)] px-4 py-3 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/30 border border-border-default focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 disabled:opacity-50"
+              className="flex-1 resize-none rounded-xl bg-[var(--color-surface-floating)] px-4 py-3 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary placeholder-text-tertiary border border-border-default focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 disabled:opacity-50"
               aria-label="Investigation question"
             />
           </div>

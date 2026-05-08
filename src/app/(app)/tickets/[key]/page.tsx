@@ -290,8 +290,8 @@ export default function TicketDetailPage({
     return (
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={32} strokeWidth={2} className="animate-spin text-white/20" />
-          <span className="text-sm text-white/30">Loading ticket...</span>
+          <Loader2 size={32} strokeWidth={2} className="animate-spin text-text-muted" />
+          <span className="text-sm text-text-tertiary">Loading ticket...</span>
         </div>
       </div>
     );
@@ -302,8 +302,8 @@ export default function TicketDetailPage({
       return (
         <div className="flex h-full items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 size={32} strokeWidth={2} className="animate-spin text-white/20" />
-            <span className="text-sm text-white/30">Checking Jira...</span>
+            <Loader2 size={32} strokeWidth={2} className="animate-spin text-text-muted" />
+            <span className="text-sm text-text-tertiary">Checking Jira...</span>
           </div>
         </div>
       );
@@ -311,8 +311,8 @@ export default function TicketDetailPage({
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
-          <h1 className="font-[var(--font-display)] text-2xl font-semibold text-white/80">Ticket not found</h1>
-          <p className="mt-2 text-sm text-white/40">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
+          <h1 className="font-[var(--font-display)] text-2xl font-semibold text-text-primary">Ticket not found</h1>
+          <p className="mt-2 text-sm text-text-tertiary">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
           <Link
             href="/sprint-board"
             className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
@@ -344,7 +344,7 @@ export default function TicketDetailPage({
                   <Tooltip content={ticketSprintLabel || "Sprint"}>
                     <Link
                       href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                      className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <IterationCw size={12} strokeWidth={1.5} />
                       <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
@@ -356,13 +356,13 @@ export default function TicketDetailPage({
                     {ticket.epicKey ? (
                       <Link
                         href={`/tickets/${ticket.epicKey}`}
-                        className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35 cursor-pointer hover:bg-white/[0.09] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                        className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                       >
                         <Zap size={12} strokeWidth={1.5} />
                         <span className="max-w-[120px] truncate">{ticket.epic}</span>
                       </Link>
                     ) : (
-                      <span className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-0.5 text-label font-medium text-white/35">
+                      <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary">
                         <Zap size={12} strokeWidth={1.5} />
                         <span className="max-w-[120px] truncate">{ticket.epic}</span>
                       </span>
@@ -372,7 +372,7 @@ export default function TicketDetailPage({
               </nav>
             )}
             {(ticketSprintId || ticket.epic) && (
-              <div className="h-5 w-px shrink-0 bg-white/[0.06]" />
+              <div className="h-5 w-px shrink-0 bg-overlay-default" />
             )}
             {showPushButton && (
               <Button
@@ -484,7 +484,7 @@ export default function TicketDetailPage({
           size="lg"
         />
         <ViewHeaderDivider />
-        <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-white/90">
+        <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
           {ticket.title}
         </span>
       </ViewHeader>
@@ -530,7 +530,7 @@ export default function TicketDetailPage({
               <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
-                <p className="mt-0.5 text-xs text-white/40">
+                <p className="mt-0.5 text-xs text-text-tertiary">
                   Jira was updated since your local edit. Click to review and resolve.
                 </p>
               </div>
@@ -538,7 +538,7 @@ export default function TicketDetailPage({
                 <button
                   type="button"
                   onClick={handleDiscardDraft}
-                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-white/60 hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30"
+                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30"
                   style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                 >
                   Accept Jira version
@@ -579,7 +579,7 @@ export default function TicketDetailPage({
             {/* Metadata strip */}
             {ticket.assignee && (
               <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-white/40">
+                <span className="flex items-center gap-1.5 text-text-tertiary">
                   <Avatar assignee={ticket.assignee} size={18} />
                   <span className="truncate">{ticket.assignee.name}</span>
                 </span>

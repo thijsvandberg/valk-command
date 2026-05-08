@@ -75,12 +75,12 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setVisible(false)}
       >
-        <span className="text-caption text-white/20 tabular-nums cursor-default select-none">
+        <span className="text-caption text-text-muted tabular-nums cursor-default select-none">
           {formatTimeAgo(displayIso)}
         </span>
         {visible && (
           <span
-            className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+            className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-text-secondary shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
               pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
             }`}
           >
@@ -95,12 +95,12 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
           onMouseEnter={() => setSyncVisible(true)}
           onMouseLeave={() => setSyncVisible(false)}
         >
-          <span className="text-caption text-white/15 tabular-nums cursor-default select-none">
+          <span className="text-caption text-text-muted tabular-nums cursor-default select-none">
             (synced {formatTimeAgo(createdAt)})
           </span>
           {syncVisible && (
             <span
-              className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-white/70 shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+              className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-text-secondary shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
                 pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
               }`}
             >
@@ -149,13 +149,13 @@ function notificationIcon(type: string) {
     case "story-writer":
       return <NotebookPen size={13} strokeWidth={1.5} className="text-sky-400" />;
     case "system":
-      return <Info size={13} strokeWidth={1.5} className="text-white/40" />;
+      return <Info size={13} strokeWidth={1.5} className="text-text-tertiary" />;
     case "agent":
       return <Bot size={13} strokeWidth={1.5} className="text-purple-400" />;
     case "scheduler":
       return <Timer size={13} strokeWidth={1.5} className="text-orange-400" />;
     default:
-      return <Bell size={13} strokeWidth={1.5} className="text-white/30" />;
+      return <Bell size={13} strokeWidth={1.5} className="text-text-tertiary" />;
   }
 }
 
@@ -321,7 +321,7 @@ export function NotificationBell() {
           <Card variant="floating" className="w-[360px] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
-            <span className="font-[var(--font-display)] text-body font-semibold text-white/70">
+            <span className="font-[var(--font-display)] text-body font-semibold text-text-secondary">
               Notifications
             </span>
             <div className="flex items-center gap-1">
@@ -366,14 +366,14 @@ export function NotificationBell() {
                     aria-label={`${typeLabel(type)}${unread > 0 ? `: ${unread} unread` : ""}`}
                     aria-pressed={isActive}
                     className={`flex items-center gap-1 h-6 rounded-md px-1.5 cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                      isActive ? "bg-white/[0.08]" : "hover:bg-hover-list-item"
+                      isActive ? "bg-overlay-strong" : "hover:bg-hover-list-item"
                     }`}
                   >
                     <div className={isActive ? "" : "opacity-35"}>
                       {notificationIcon(type)}
                     </div>
                     {unread > 0 && (
-                      <span className="text-caption tabular-nums font-medium leading-none text-white/60">
+                      <span className="text-caption tabular-nums font-medium leading-none text-text-secondary">
                         {unread > 99 ? "99" : unread}
                       </span>
                     )}
@@ -383,7 +383,7 @@ export function NotificationBell() {
 
               {/* Separator between types and teams */}
               {typeCounts.size > 1 && teamCounts.size > 1 && (
-                <span className="mx-1 h-3.5 w-px shrink-0 bg-white/[0.10]" />
+                <span className="mx-1 h-3.5 w-px shrink-0 bg-overlay-strong" />
               )}
 
               {/* Team chips */}
@@ -399,12 +399,12 @@ export function NotificationBell() {
                     className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
                       isActive
                         ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)] ring-1 ring-inset ring-[var(--color-brand-500)]/25"
-                        : "bg-white/[0.04] text-white/35 hover:bg-white/[0.07] hover:text-white/55"
+                        : "bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary"
                     }`}
                   >
                     {team}
                     {unread > 0 && (
-                      <span className="tabular-nums text-white/60">
+                      <span className="tabular-nums text-text-secondary">
                         {unread}
                       </span>
                     )}
@@ -417,11 +417,11 @@ export function NotificationBell() {
           {/* Notification list */}
           <div className="max-h-[400px] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-body text-white/25">
+              <div className="px-4 py-8 text-center text-body text-text-muted">
                 No notifications yet
               </div>
             ) : filteredNotifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-body text-white/25">
+              <div className="px-4 py-8 text-center text-body text-text-muted">
                 No notifications for this filter
               </div>
             ) : (
@@ -429,7 +429,7 @@ export function NotificationBell() {
                 {filteredNotifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`group flex items-start gap-3 px-4 py-3 border-b border-border-subtle last:border-b-0 transition-colors duration-150 hover:bg-white/[0.02] ${
+                    className={`group flex items-start gap-3 px-4 py-3 border-b border-border-subtle last:border-b-0 transition-colors duration-150 hover:bg-overlay-subtle ${
                       !n.read ? "bg-[var(--color-brand-500)]/[0.04]" : ""
                     }`}
                   >
@@ -438,7 +438,7 @@ export function NotificationBell() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-body-sm text-white/65 leading-relaxed">
+                      <p className="text-body-sm text-text-secondary leading-relaxed">
                         {renderMessage(
                           n.message,
                           n.jiraKey,
@@ -451,14 +451,14 @@ export function NotificationBell() {
                         )}
                       </p>
                       {n.jiraTitle && (
-                        <p className="mt-0.5 line-clamp-2 text-label leading-snug text-white/35">
+                        <p className="mt-0.5 line-clamp-2 text-label leading-snug text-text-tertiary">
                           {n.jiraTitle}
                         </p>
                       )}
                       <div className="mt-1.5 flex items-center gap-2.5 flex-wrap">
                         <TimeAgo createdAt={n.createdAt} eventAt={n.eventAt} />
                         {n.sprintName && (
-                          <span className="inline-flex items-center rounded-md bg-white/[0.06] px-1.5 py-px text-caption text-white/30 leading-tight">
+                          <span className="inline-flex items-center rounded-md bg-overlay-default px-1.5 py-px text-caption text-text-tertiary leading-tight">
                             {n.sprintName}
                           </span>
                         )}
@@ -467,7 +467,7 @@ export function NotificationBell() {
                             href={n.linkUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex h-5 w-5 items-center justify-center rounded text-white/30 hover:text-white/55 transition-colors duration-150"
+                            className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary hover:text-text-secondary transition-colors duration-150"
                             title="Open link"
                           >
                             <ExternalLink size={12} strokeWidth={1.5} />
@@ -495,7 +495,7 @@ export function NotificationBell() {
                       <button
                         type="button"
                         onClick={() => dismissOne(n.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-white/0 group-hover:text-white/30 hover:!text-white/60 hover:bg-hover-interactive transition-colors duration-150"
+                        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-transparent group-hover:text-text-tertiary hover:!text-text-secondary hover:bg-hover-interactive transition-colors duration-150"
                         title="Dismiss"
                       >
                         <X size={11} strokeWidth={2} />
@@ -505,7 +505,7 @@ export function NotificationBell() {
                 ))}
                 {/* Only show the overflow count when no filter is active — when filtered, all shown results are from the loaded set */}
                 {!hasFilter && hiddenCount > 0 && (
-                  <div className="border-t border-border-subtle px-4 py-2.5 text-center text-label text-white/25">
+                  <div className="border-t border-border-subtle px-4 py-2.5 text-center text-label text-text-muted">
                     {hiddenCount} more notification{hiddenCount === 1 ? "" : "s"} not shown
                   </div>
                 )}

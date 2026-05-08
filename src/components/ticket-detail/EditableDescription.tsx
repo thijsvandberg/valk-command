@@ -237,16 +237,16 @@ export function EditableDescription({
                     type="checkbox"
                     checked={overrideConfirmed}
                     onChange={(e) => onOverrideChange?.(e.target.checked)}
-                    className="h-3 w-3 rounded border-white/20 bg-white/[0.03] accent-[var(--color-brand-500)] cursor-pointer"
+                    className="h-3 w-3 rounded border-white/20 bg-overlay-subtle accent-[var(--color-brand-500)] cursor-pointer"
                   />
-                  <span className="text-caption text-white/40">Override remote</span>
+                  <span className="text-caption text-text-tertiary">Override remote</span>
                 </label>
               )}
               <Button
                 variant="ghost"
                 size="md"
                 onClick={handleDiscard}
-                className="!text-white/35 hover:!text-white/60 !text-body-sm"
+                className="!text-text-tertiary hover:!text-text-secondary !text-body-sm"
               >
                 Discard
               </Button>
@@ -254,7 +254,7 @@ export function EditableDescription({
                 variant="ghost"
                 size="md"
                 onClick={save}
-                className="!bg-white/[0.08] !text-white/70 hover:!bg-white/[0.12] hover:!text-white !text-body-sm"
+                className="!bg-overlay-strong !text-text-secondary hover:!bg-overlay-strong hover:!text-text-primary !text-body-sm"
               >
                 Save
               </Button>

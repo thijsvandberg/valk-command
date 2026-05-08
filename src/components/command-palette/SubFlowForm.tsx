@@ -29,14 +29,14 @@ export function SubFlowForm({
   return (
     <div className="p-4">
       {/* Mode toggle */}
-      <div className="mb-4 flex gap-1 rounded-lg bg-white/[0.04] p-1">
+      <div className="mb-4 flex gap-1 rounded-lg bg-overlay-subtle p-1">
         <button
           type="button"
           onClick={() => onModeChange("create")}
           className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
             subFlow.mode === "create"
-              ? "bg-[var(--color-surface-floating)] text-white/80 shadow-sm"
-              : "text-white/40 hover:text-white/60"
+              ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
+              : "text-text-tertiary hover:text-text-secondary"
           }`}
         >
           <Plus size={12} strokeWidth={2} />
@@ -47,8 +47,8 @@ export function SubFlowForm({
           onClick={() => onModeChange("existing")}
           className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
             subFlow.mode === "existing"
-              ? "bg-[var(--color-surface-floating)] text-white/80 shadow-sm"
-              : "text-white/40 hover:text-white/60"
+              ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
+              : "text-text-tertiary hover:text-text-secondary"
           }`}
         >
           <Link size={12} strokeWidth={2} />
@@ -60,7 +60,7 @@ export function SubFlowForm({
       {subFlow.mode === "create" && (
         <div className="mb-4 space-y-3">
           <div>
-            <label className="mb-1.5 block text-label font-medium text-white/45">
+            <label className="mb-1.5 block text-label font-medium text-text-tertiary">
               Story title
             </label>
             <input
@@ -68,19 +68,19 @@ export function SubFlowForm({
               type="text"
               value={subFlow.title}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="Story title..."
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-label font-medium text-white/45">
+            <label className="mb-1.5 block text-label font-medium text-text-tertiary">
               Sprint
             </label>
             <div className="relative">
               <select
                 value={subFlow.sprintId}
                 onChange={(e) => onSprintChange(e.target.value)}
-                className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
               >
                 {subFlow.loadingSprints ? (
                   <option value="">Loading sprints...</option>
@@ -97,7 +97,7 @@ export function SubFlowForm({
               <ChevronDown
                 size={13}
                 strokeWidth={1.5}
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35"
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
               />
             </div>
           </div>
@@ -107,7 +107,7 @@ export function SubFlowForm({
       {/* Use existing form */}
       {subFlow.mode === "existing" && (
         <div className="mb-4">
-          <label className="mb-1.5 block text-label font-medium text-white/45">
+          <label className="mb-1.5 block text-label font-medium text-text-tertiary">
             Ticket key
           </label>
           <input
@@ -115,10 +115,10 @@ export function SubFlowForm({
             type="text"
             value={subFlow.existingKey}
             onChange={(e) => onExistingKeyChange(e.target.value.toUpperCase())}
-            className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+            className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
             placeholder="VPL-123"
           />
-          <p className="mt-1.5 text-label text-white/30">
+          <p className="mt-1.5 text-label text-text-tertiary">
             The ticket must be synced locally.
           </p>
         </div>
@@ -137,7 +137,7 @@ export function SubFlowForm({
           type="button"
           onClick={onCancel}
           disabled={subFlow.loading}
-          className="px-3 py-1.5 text-sm text-white/40 hover:text-white/60 disabled:opacity-40 transition-colors duration-150 cursor-pointer"
+          className="px-3 py-1.5 text-sm text-text-tertiary hover:text-text-secondary disabled:opacity-40 transition-colors duration-150 cursor-pointer"
         >
           Cancel
         </button>

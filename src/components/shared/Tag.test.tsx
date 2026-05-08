@@ -11,8 +11,8 @@ describe("Tag", () => {
   it("applies neutral color by default", () => {
     const { container } = render(<Tag>Label</Tag>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("bg-white/[0.06]");
-    expect(el.className).toContain("text-white/40");
+    expect(el.className).toContain("bg-overlay-default");
+    expect(el.className).toContain("text-text-tertiary");
   });
 
   it("applies brand color", () => {

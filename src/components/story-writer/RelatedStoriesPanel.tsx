@@ -31,7 +31,7 @@ function ScoreBadge({ score }: { score: number }) {
       ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
       : score >= 60
         ? "bg-amber-500/15 text-amber-400 border-amber-500/20"
-        : "bg-white/[0.06] text-white/40 border-border-strong";
+        : "bg-overlay-default text-text-tertiary border-border-strong";
 
   return (
     <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-caption font-bold tabular-nums border shrink-0 ${color}`}>
@@ -78,7 +78,7 @@ function CandidateCard({
       className={`group rounded-lg border cursor-pointer transition-colors duration-150 ${
         isSelected
           ? "border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/[0.06]"
-          : "border-border-default bg-white/[0.02] hover:border-white/[0.12] hover:bg-hover-list-item"
+          : "border-border-default bg-overlay-subtle hover:border-border-strong hover:bg-hover-list-item"
       }`}
       onClick={onSelect}
     >
@@ -107,7 +107,7 @@ function CandidateCard({
             className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-caption font-medium transition-colors duration-150 cursor-pointer disabled:opacity-50 ${
               candidate.isLinked
                 ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-                : "border-white/[0.10] bg-white/[0.03] text-white/45 hover:border-[var(--color-brand-500)]/25 hover:bg-[var(--color-brand-500)]/08 hover:text-[var(--color-brand-400)]"
+                : "border-border-strong bg-overlay-subtle text-text-tertiary hover:border-[var(--color-brand-500)]/25 hover:bg-[var(--color-brand-500)]/08 hover:text-[var(--color-brand-400)]"
             }`}
           >
             {linking ? (
@@ -123,11 +123,11 @@ function CandidateCard({
       </div>
       {/* Title + match reason */}
       <div className="px-3 pt-0.5 pb-2.5">
-        <p className="text-body leading-[1.45] text-white/70 line-clamp-2">
+        <p className="text-body leading-[1.45] text-text-secondary line-clamp-2">
           {candidate.title}
         </p>
         {candidate.matchReason && (
-          <p className="mt-1 text-label italic text-white/30 line-clamp-1">
+          <p className="mt-1 text-label italic text-text-tertiary line-clamp-1">
             {candidate.matchReason}
           </p>
         )}
@@ -200,17 +200,17 @@ function TicketDetail({
           size="sm"
           icon={<ChevronLeft size={13} strokeWidth={1.5} />}
           onClick={onBack}
-          className="border-0 bg-transparent text-white/40 hover:text-white/70"
+          className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary"
         >
           Back
         </Button>
-        <span className="font-mono text-label font-semibold text-white/60">{jiraKey}</span>
+        <span className="font-mono text-label font-semibold text-text-secondary">{jiraKey}</span>
         <a
           href={`/tickets/${jiraKey}/write`}
           target="_blank"
           rel="noopener noreferrer"
           title="Open story writer in new tab"
-          className="ml-auto flex items-center gap-1 text-caption text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
+          className="ml-auto flex items-center gap-1 text-caption text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
         >
           <ExternalLink size={11} strokeWidth={1.5} />
           Story writer
@@ -220,7 +220,7 @@ function TicketDetail({
           target="_blank"
           rel="noopener noreferrer"
           title="Open in Jira"
-          className="flex items-center gap-1 text-caption text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
+          className="flex items-center gap-1 text-caption text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
         >
           <ExternalLink size={11} strokeWidth={1.5} />
           Jira
@@ -230,7 +230,7 @@ function TicketDetail({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 size={16} className="animate-spin text-white/25" />
+            <Loader2 size={16} className="animate-spin text-text-muted" />
           </div>
         ) : data ? (
           <div className="space-y-3">
@@ -238,20 +238,20 @@ function TicketDetail({
               {data.type && <IssueTypeIcon type={data.type.toLowerCase()} size={14} />}
               <MiniStatusBadge status={data.status} />
             </div>
-            <h3 className="text-body font-semibold leading-[1.4] text-white/85">
+            <h3 className="text-body font-semibold leading-[1.4] text-text-primary">
               {data.title}
             </h3>
             {data.description ? (
-              <div className="description-content text-body-sm leading-[1.7] text-white/60">
+              <div className="description-content text-body-sm leading-[1.7] text-text-secondary">
                 {renderMarkdown(data.description)}
               </div>
             ) : (
-              <p className="text-body-sm text-white/25 italic">No description</p>
+              <p className="text-body-sm text-text-muted italic">No description</p>
             )}
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-body-sm text-white/35">
+            <p className="text-body-sm text-text-tertiary">
               Story not in local database.
             </p>
             <a
@@ -284,10 +284,10 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
         <div className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2.5">
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
-              <p className="text-body-sm text-white/25">
+              <p className="text-body-sm text-text-muted">
                 No related stories found yet.
               </p>
-              <p className="mt-1 text-label text-white/15">
+              <p className="mt-1 text-label text-text-muted">
                 Use the Find Related quick action in the chat.
               </p>
             </div>

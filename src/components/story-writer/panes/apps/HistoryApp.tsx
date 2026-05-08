@@ -16,7 +16,7 @@ export function HistoryApp() {
 
   if (!writer.ticketData) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-white/20">
+      <div className="flex h-full items-center justify-center text-xs text-text-muted">
         Loading...
       </div>
     );

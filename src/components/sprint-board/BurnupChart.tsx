@@ -20,10 +20,10 @@ const COLORS = {
   spDone: "#58b4e6",
   bvDone: "#4ade80",
   scope: "#e05a5a",
-  guideline: "rgba(255,255,255,0.12)",
-  today: "rgba(255,255,255,0.25)",
-  grid: "rgba(255,255,255,0.04)",
-  gridLabel: "rgba(255,255,255,0.15)",
+  guideline: "var(--color-overlay-strong)",
+  today: "var(--color-text-muted)",
+  grid: "var(--color-overlay-subtle)",
+  gridLabel: "var(--color-text-muted)",
 };
 
 function formatShortDate(d: Date): string {
@@ -243,7 +243,7 @@ export function BurnupChart({
   if (width === 0) {
     return (
       <div ref={containerRef} className="relative" style={{ minHeight: CHART_HEIGHT + 48 }}>
-        <div className="flex h-full items-center justify-center text-caption text-white/20">
+        <div className="flex h-full items-center justify-center text-caption text-text-muted">
           Loading burnup...
         </div>
       </div>
@@ -252,11 +252,11 @@ export function BurnupChart({
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Sprint burnup</div>
+      <div className="mb-1.5 text-caption uppercase tracking-wider text-text-muted">Sprint burnup</div>
 
       {/* Loading indicator */}
       {(!data || (data && !data.seeded)) && (
-        <div className="absolute right-5 top-0 flex items-center gap-1.5 text-caption text-white/25">
+        <div className="absolute right-5 top-0 flex items-center gap-1.5 text-caption text-text-muted">
           <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white/20" />
           Loading history...
         </div>
@@ -301,7 +301,7 @@ export function BurnupChart({
         ))}
 
         {/* X-axis baseline */}
-        <line x1={xStart} y1={yBottom} x2={xEnd} y2={yBottom} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+        <line x1={xStart} y1={yBottom} x2={xEnd} y2={yBottom} stroke="var(--color-overlay-default)" strokeWidth={1} />
 
         {/* X-axis date labels (working days only) */}
         {xLabels.map((l, i) => (
@@ -403,7 +403,7 @@ export function BurnupChart({
               y={yTop - 4}
               textAnchor="middle"
               className="text-[9px]"
-              fill="rgba(255,255,255,0.3)"
+              fill="var(--color-text-tertiary)"
             >
               Today
             </text>
@@ -419,7 +419,7 @@ export function BurnupChart({
             y1={yTop}
             x2={tooltipData.x}
             y2={yBottom}
-            stroke="rgba(255,255,255,0.18)"
+            stroke="var(--color-text-muted)"
             strokeWidth={1}
             strokeDasharray="2 2"
           />
@@ -435,22 +435,22 @@ export function BurnupChart({
             top: PADDING.top,
           }}
         >
-          <div className="mb-1 text-white/50">{tooltipData.date}</div>
+          <div className="mb-1 text-text-secondary">{tooltipData.date}</div>
           {hasSp && (
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.spDone }} />
-              <span className="text-white/40">Story Points: {tooltipData.spDone}/{tooltipData.scopeSp} ({tooltipData.spPct}%)</span>
+              <span className="text-text-tertiary">Story Points: {tooltipData.spDone}/{tooltipData.scopeSp} ({tooltipData.spPct}%)</span>
             </div>
           )}
           {hasBv && (
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.bvDone }} />
-              <span className="text-white/40">Business Value: {tooltipData.bvDone}/{tooltipData.scopeBv} ({tooltipData.bvPct}%)</span>
+              <span className="text-text-tertiary">Business Value: {tooltipData.bvDone}/{tooltipData.scopeBv} ({tooltipData.bvPct}%)</span>
             </div>
           )}
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.scope }} />
-            <span className="text-white/40">Scope: {tooltipData.scopeSp} SP</span>
+            <span className="text-text-tertiary">Scope: {tooltipData.scopeSp} SP</span>
           </div>
         </div>
       )}
@@ -458,22 +458,22 @@ export function BurnupChart({
       {/* Legend */}
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
         {hasSp && (
-          <span className="flex items-center gap-1.5 text-caption text-white/30">
+          <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
             <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: COLORS.spDone }} />
             Story Points
           </span>
         )}
         {hasBv && (
-          <span className="flex items-center gap-1.5 text-caption text-white/30">
+          <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
             <span className="inline-block h-px w-3 border-t border-dashed" style={{ borderColor: COLORS.bvDone }} />
             Business Value
           </span>
         )}
-        <span className="flex items-center gap-1.5 text-caption text-white/30">
+        <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
           <span className="inline-block h-px w-3 border-t border-dashed" style={{ borderColor: COLORS.guideline }} />
           Guideline
         </span>
-        <span className="flex items-center gap-1.5 text-caption text-white/30">
+        <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
           <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: COLORS.scope }} />
           Scope
         </span>

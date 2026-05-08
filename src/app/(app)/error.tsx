@@ -15,8 +15,8 @@ export default function AppError({
   }, [error]);
 
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-white/70">
-      <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-[-0.02em] text-white/90">Something went wrong</h2>
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-text-secondary">
+      <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-[-0.02em] text-text-primary">Something went wrong</h2>
       <p className="max-w-md text-center text-sm">
         An unexpected error occurred. You can try again or navigate to a different page.
       </p>

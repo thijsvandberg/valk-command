@@ -70,7 +70,7 @@ function PaneDivider({ leftIdx, rightIdx, onResize }: PaneDividerProps) {
       onMouseDown={handleMouseDown}
       className="group relative z-10 flex w-1 shrink-0 cursor-col-resize items-center justify-center transition-colors duration-150 hover:bg-[var(--color-brand-500)]/20"
     >
-      <div className="h-8 w-0.5 rounded-full bg-white/[0.08] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/40" />
+      <div className="h-8 w-0.5 rounded-full bg-overlay-strong transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/40" />
     </div>
   );
 }
@@ -177,7 +177,7 @@ export function PaneArea() {
                 onDragOver={handleDragOver}
               >
                 {!activeApp && (
-                  <div className="flex h-full items-center justify-center text-xs text-white/15">
+                  <div className="flex h-full items-center justify-center text-xs text-text-muted">
                     Drop an app here
                   </div>
                 )}
@@ -193,7 +193,7 @@ export function PaneArea() {
             <div key={`expand-${slotIdx}`} className="flex shrink-0" style={{ width: EXPAND_SLOT_W }}>
               {/* w-1 matches PaneDivider width for visual continuity */}
               <div className="w-1 shrink-0 flex items-center justify-center">
-                <div className="h-8 w-0.5 rounded-full bg-white/[0.08]" />
+                <div className="h-8 w-0.5 rounded-full bg-overlay-strong" />
               </div>
               <div
                 className={`flex flex-1 flex-col items-center justify-center transition-colors duration-150 ${

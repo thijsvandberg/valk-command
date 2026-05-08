@@ -21,12 +21,12 @@ export function LoadingState({
           <Loader2
             size={32}
             strokeWidth={2}
-            className="animate-spin text-white/20"
+            className="animate-spin text-text-muted"
           />
-          <span className="text-sm text-white/30">{label}</span>
+          <span className="text-sm text-text-tertiary">{label}</span>
         </div>
       ) : (
-        <span className="text-sm text-white/30">{label}</span>
+        <span className="text-sm text-text-tertiary">{label}</span>
       )}
     </div>
   );

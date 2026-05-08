@@ -28,21 +28,21 @@ function FileRow({ file }: { file: InvestigationKeyFile }) {
   const { directory, filename } = truncatePath(file.file);
 
   return (
-    <div className="py-1.5 border-b border-white/[0.03] last:border-0">
+    <div className="py-1.5 border-b border-border-subtle last:border-0">
       <div className="flex items-center gap-2">
-        <FileCode size={13} strokeWidth={1.5} className="text-white/20 shrink-0" />
+        <FileCode size={13} strokeWidth={1.5} className="text-text-muted shrink-0" />
         {repo && (
-          <span className="shrink-0 rounded px-1.5 py-0.5 text-caption font-medium bg-white/[0.06] text-white/35">
+          <span className="shrink-0 rounded px-1.5 py-0.5 text-caption font-medium bg-overlay-default text-text-tertiary">
             {repo}
           </span>
         )}
-        <span className="font-mono text-xs text-white/60 break-all">
-          <span className="text-white/30">{directory}</span>
+        <span className="font-mono text-xs text-text-secondary break-all">
+          <span className="text-text-tertiary">{directory}</span>
           <span className="text-[var(--color-brand-300)]">{filename}</span>
         </span>
       </div>
       {file.purpose && (
-        <p className="text-label text-white/35 mt-0.5 ml-[29px]">
+        <p className="text-label text-text-tertiary mt-0.5 ml-[29px]">
           {file.purpose}
         </p>
       )}

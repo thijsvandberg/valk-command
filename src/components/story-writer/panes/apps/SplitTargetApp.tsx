@@ -100,7 +100,7 @@ export function SplitTargetApp() {
               icon={<GitCompare size={11} strokeWidth={1.5} />}
               onClick={() => setViewMode("diff")}
               title="Show diff"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
+              className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
             >
               Diff
             </Button>
@@ -111,7 +111,7 @@ export function SplitTargetApp() {
               icon={<Eye size={11} strokeWidth={1.5} />}
               onClick={() => setViewMode("editor")}
               title="Show editor"
-              className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
+              className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
             >
               Editor
             </Button>
@@ -124,7 +124,7 @@ export function SplitTargetApp() {
 
   if (!writer.targetTicketKey) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-white/25">
+      <div className="flex h-full items-center justify-center text-xs text-text-muted">
         No split target selected
       </div>
     );
@@ -161,7 +161,7 @@ export function SplitTargetApp() {
           showHeader={false}
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-xs text-white/25">
+        <div className="flex h-full items-center justify-center text-xs text-text-muted">
           No AI drafts yet for this story
         </div>
       )}

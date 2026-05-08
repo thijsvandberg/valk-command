@@ -58,7 +58,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
           placeholder="Send a message..."
           disabled={disabled || sending}
           rows={1}
-          className="flex-1 resize-none rounded-xl bg-[var(--color-surface-floating)] px-4 py-3 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/30 border border-border-default focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 disabled:opacity-50"
+          className="flex-1 resize-none rounded-xl bg-[var(--color-surface-floating)] px-4 py-3 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary placeholder-text-tertiary border border-border-default focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 disabled:opacity-50"
           aria-label="Message input"
         />
         <Button

@@ -56,13 +56,13 @@ function SortablePromptRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded-xl border border-border-default bg-white/[0.02] p-4 flex flex-col gap-3"
+      className="rounded-xl border border-border-default bg-overlay-subtle p-4 flex flex-col gap-3"
     >
       <div className="flex items-center gap-2">
         <button
           {...attributes}
           {...listeners}
-          className="text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing transition-colors duration-150 touch-none"
+          className="text-text-muted hover:text-text-secondary cursor-grab active:cursor-grabbing transition-colors duration-150 touch-none"
           tabIndex={-1}
         >
           <GripVertical size={14} strokeWidth={1.5} />
@@ -184,7 +184,7 @@ export default function PromptsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xs font-medium text-white/50 uppercase tracking-[0.06em]">
+        <h2 className="text-xs font-medium text-text-secondary uppercase tracking-[0.06em]">
           Story Writer Quick Prompts
         </h2>
         <Button
@@ -211,11 +211,11 @@ export default function PromptsPage() {
       </TabBar>
 
       {loading ? (
-        <div className="text-sm text-white/30">Loading...</div>
+        <div className="text-sm text-text-tertiary">Loading...</div>
       ) : (
         <div className="flex flex-col gap-3">
           {prompts.length === 0 && (
-            <p className="text-sm text-white/30 py-1">
+            <p className="text-sm text-text-tertiary py-1">
               No quick prompts configured for this issue type.
             </p>
           )}

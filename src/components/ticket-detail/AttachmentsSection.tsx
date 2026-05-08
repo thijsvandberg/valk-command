@@ -10,7 +10,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
     return (
       <div className="mt-8">
         <SectionHeader title="Attachments" />
-        <p className="mt-3 text-sm text-white/25">No attachments</p>
+        <p className="mt-3 text-sm text-text-muted">No attachments</p>
       </div>
     );
   }
@@ -24,8 +24,8 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
             key={att.id}
             className={`group relative overflow-hidden rounded-lg border ${
               att.cleaned
-                ? "border-border-subtle bg-white/[0.01]"
-                : "border-border-default bg-white/[0.03] cursor-pointer hover:border-white/[0.10] hover:bg-hover-list-item"
+                ? "border-border-subtle bg-overlay-subtle"
+                : "border-border-default bg-overlay-subtle cursor-pointer hover:border-border-strong hover:bg-hover-list-item"
             }`}
           >
             <div
@@ -33,7 +33,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
               style={att.cleaned ? {} : { backgroundColor: `${att.color}08` }}
             >
               {att.cleaned ? (
-                <div className="flex flex-col items-center gap-1 text-white/15">
+                <div className="flex flex-col items-center gap-1 text-text-muted">
                   <FileMinus className="h-6 w-6" strokeWidth={1.5} />
                   <span className="text-caption">Cleaned</span>
                 </div>
@@ -56,8 +56,8 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
               )}
             </div>
             <div className="border-t border-border-subtle px-2.5 py-2">
-              <div className="truncate text-xs text-white/50">{att.filename}</div>
-              <div className="mt-0.5 text-caption text-white/25">
+              <div className="truncate text-xs text-text-secondary">{att.filename}</div>
+              <div className="mt-0.5 text-caption text-text-muted">
                 {att.cleaned && att.cleanedAt
                   ? `Cleaned ${new Date(att.cleanedAt).toLocaleDateString()}`
                   : `${(att.size / 1000).toFixed(0)} KB`}

@@ -60,7 +60,7 @@ function SprintDropTile({
       className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-100 ${
         isOver
           ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/12 text-[var(--color-brand-300)]"
-          : "border-border-default bg-white/[0.025] text-white/35 hover:border-white/10 hover:text-white/55"
+          : "border-border-default bg-overlay-subtle text-text-tertiary hover:border-white/10 hover:text-text-secondary"
       }`}
     >
       <ArrowRight size={10} strokeWidth={1.5} className="shrink-0 opacity-50" />
@@ -82,10 +82,10 @@ function SprintDropZoneBar({
   const targets = slotSprints.filter((id) => id !== activeSprintId);
   return (
     <div className="absolute inset-0 z-10 flex items-center gap-2 bg-[var(--color-surface-elevated)] px-5">
-      <span className="shrink-0 text-caption font-medium uppercase tracking-widest text-white/20">
+      <span className="shrink-0 text-caption font-medium uppercase tracking-widest text-text-muted">
         Move to
       </span>
-      <span className="h-3 w-px shrink-0 bg-white/[0.07]" />
+      <span className="h-3 w-px shrink-0 bg-overlay-default" />
       {targets.map((sprintId) => {
         const sprint = sprints.find((s) => s.id === sprintId);
         if (!sprint) return null;
@@ -780,9 +780,9 @@ export default function SprintBoard() {
       <div className="flex min-w-0 flex-1 flex-col">
         {(isAllView || activeSprint || f.activeView) && (
           <ViewHeader
-            icon={isAllView ? <LayoutGrid size={15} strokeWidth={1.5} className="text-white/30" />
-              : f.activeView ? <Bookmark size={15} strokeWidth={1.5} className="text-white/30" fill="currentColor" />
-              : <CalendarRange size={15} strokeWidth={1.5} className="text-white/30" />}
+            icon={isAllView ? <LayoutGrid size={15} strokeWidth={1.5} className="text-text-tertiary" />
+              : f.activeView ? <Bookmark size={15} strokeWidth={1.5} className="text-text-tertiary" fill="currentColor" />
+              : <CalendarRange size={15} strokeWidth={1.5} className="text-text-tertiary" />}
             actions={<>
               {!isAllView && !f.activeView && activeSprint && (
                 <Button
@@ -811,17 +811,17 @@ export default function SprintBoard() {
                   onClick={() => setHeaderMenuOpen((v) => !v)}
                   title="More options"
                   aria-label="More options"
-                  className={headerMenuOpen ? "border-white/[0.12] bg-white/[0.08] text-white/70" : ""}
+                  className={headerMenuOpen ? "border-border-strong bg-overlay-strong text-text-secondary" : ""}
                 />
                 {headerMenuOpen && (
-                  <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                  <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
                     <button
                       type="button"
                       onClick={() => { setAnalyticsVisible((v) => !v); setHeaderMenuOpen(false); }}
                       className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
                         analyticsVisible
                           ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
-                          : "text-white/65 hover:bg-hover-interactive hover:text-white/85"
+                          : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
                       }`}
                     >
                       <BarChart2 size={13} strokeWidth={1.5} className="shrink-0" />
@@ -836,7 +836,7 @@ export default function SprintBoard() {
                           router.push(`/sprint-board/compare?left=${encodeURIComponent(leftSprint)}&right=${encodeURIComponent(rightSprint)}`);
                           setHeaderMenuOpen(false);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                       >
                         <Columns2 size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Compare</span>
@@ -845,7 +845,7 @@ export default function SprintBoard() {
                     <button
                       type="button"
                       onClick={() => { setSprintsModalOpen(true); setHeaderMenuOpen(false); }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                     >
                       <List size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>Sprints</span>
@@ -858,7 +858,7 @@ export default function SprintBoard() {
                           router.push(`/stakeholder?team=${team}&sprintId=${activeSprint.id}`);
                           setHeaderMenuOpen(false);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/65 cursor-pointer hover:bg-hover-interactive hover:text-white/85 transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                       >
                         <Users size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Stakeholder View</span>
@@ -977,8 +977,8 @@ export default function SprintBoard() {
                 <div style={{ opacity: 0.92 }}>
                   <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
                     <IssueTypeIcon type={boardActiveDragTicket.type} />
-                    <span className="font-mono text-xs text-white/40">{boardActiveDragTicket.key}</span>
-                    <span className="max-w-48 truncate text-white/75">{boardActiveDragTicket.title}</span>
+                    <span className="font-mono text-xs text-text-tertiary">{boardActiveDragTicket.key}</span>
+                    <span className="max-w-48 truncate text-text-secondary">{boardActiveDragTicket.title}</span>
                     {boardDraggedKeys.length > 1 && (
                       <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-caption text-[var(--color-brand-300)]">
                         +{boardDraggedKeys.length - 1}
@@ -1024,7 +1024,7 @@ export default function SprintBoard() {
       {toast && (
         <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
-          <span className="text-sm text-white/70">{toast}</span>
+          <span className="text-sm text-text-secondary">{toast}</span>
         </div>
       )}
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />

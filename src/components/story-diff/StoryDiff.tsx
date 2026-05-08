@@ -95,8 +95,8 @@ const C = {
   deletedLineBg: "rgba(229, 83, 75, 0.10)",
   deletedWordBg: "rgba(229, 83, 75, 0.30)",
   deletedGutter: "#e5534b",
-  gutterBg: "rgba(255, 255, 255, 0.02)",
-  border: "rgba(255, 255, 255, 0.06)",
+  gutterBg: "var(--color-overlay-subtle)",
+  border: "var(--color-overlay-default)",
   modifiedBadge: "#d2a8ff",
 } as const;
 
@@ -362,19 +362,19 @@ function DiffSummary({ stats }: { stats: DiffStats }) {
       {stats.added > 0 && (
         <span className="flex items-center gap-1" style={{ color: C.addedGutter }}>
           <span className="font-mono font-semibold">+{stats.added}</span>
-          <span className="text-white/40">added</span>
+          <span className="text-text-tertiary">added</span>
         </span>
       )}
       {stats.removed > 0 && (
         <span className="flex items-center gap-1" style={{ color: C.deletedGutter }}>
           <span className="font-mono font-semibold">&minus;{stats.removed}</span>
-          <span className="text-white/40">removed</span>
+          <span className="text-text-tertiary">removed</span>
         </span>
       )}
       {stats.modified > 0 && (
         <span className="flex items-center gap-1" style={{ color: C.modifiedBadge }}>
           <span className="font-mono font-semibold">~{stats.modified}</span>
-          <span className="text-white/40">modified</span>
+          <span className="text-text-tertiary">modified</span>
         </span>
       )}
     </div>
@@ -390,10 +390,10 @@ function CollapsedBar({ count, onExpand }: { count: number; onExpand: () => void
     <button
       type="button"
       onClick={onExpand}
-      className="flex w-full items-center justify-center gap-1.5 border-y px-4 py-1.5 text-label text-white/25 cursor-pointer hover:bg-white/[0.02] hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
+      className="flex w-full items-center justify-center gap-1.5 border-y px-4 py-1.5 text-label text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-tertiary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
       style={{
         borderColor: C.border,
-        backgroundColor: "rgba(255, 255, 255, 0.01)",
+        backgroundColor: "var(--color-overlay-subtle)",
         transition: "background-color 0.15s ease, color 0.15s ease",
       }}
     >
@@ -408,7 +408,7 @@ function CollapsedBar({ count, onExpand }: { count: number; onExpand: () => void
 // -----------------------------------------------------------------------
 
 const decisionStyles: Record<HunkDecision, { label: string; color: string; bg: string; borderColor: string }> = {
-  pending: { label: "", color: "", bg: "rgba(255, 255, 255, 0.015)", borderColor: C.border },
+  pending: { label: "", color: "", bg: "var(--color-overlay-subtle)", borderColor: C.border },
   accept: { label: "Accepted", color: C.addedGutter, bg: "rgba(46, 160, 80, 0.10)", borderColor: "rgba(46, 160, 80, 0.20)" },
   reject: { label: "Rejected", color: C.deletedGutter, bg: "rgba(229, 83, 75, 0.08)", borderColor: "rgba(229, 83, 75, 0.18)" },
   custom: { label: "Custom edit", color: C.modifiedBadge, bg: "rgba(210, 168, 255, 0.08)", borderColor: "rgba(210, 168, 255, 0.18)" },
@@ -448,7 +448,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onReset(hunkIndex)}
-              className={`${btnBase} text-white/30 hover:bg-hover-interactive hover:text-white/50`}
+              className={`${btnBase} text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Clear decision"
             >
@@ -461,7 +461,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onAccept(hunkIndex)}
-              className={`${btnBase} text-white/50 hover:bg-[rgba(46,160,80,0.12)] hover:text-[${C.addedGutter}]`}
+              className={`${btnBase} text-text-secondary hover:bg-[rgba(46,160,80,0.12)] hover:text-[${C.addedGutter}]`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Accept new version"
             >
@@ -471,7 +471,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onReject(hunkIndex)}
-              className={`${btnBase} text-white/50 hover:bg-[rgba(229,83,75,0.10)] hover:text-[${C.deletedGutter}]`}
+              className={`${btnBase} text-text-secondary hover:bg-[rgba(229,83,75,0.10)] hover:text-[${C.deletedGutter}]`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Keep old version"
             >
@@ -481,7 +481,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onEdit(hunkIndex)}
-              className={`${btnBase} text-white/50 hover:bg-hover-interactive hover:text-white/70`}
+              className={`${btnBase} text-text-secondary hover:bg-hover-interactive hover:text-text-secondary`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Edit this section"
             >
@@ -529,7 +529,7 @@ function HunkEditor({
           e.target.style.height = "auto";
           e.target.style.height = `${e.target.scrollHeight}px`;
         }}
-        className="w-full resize-none rounded-md border border-border-strong bg-white/[0.03] px-3 py-2 font-mono text-sm leading-6 text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+        className="w-full resize-none rounded-md border border-border-strong bg-overlay-subtle px-3 py-2 font-mono text-sm leading-6 text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
         rows={3}
       />
       <div className="mt-2 flex items-center gap-2">
@@ -584,13 +584,13 @@ function UnifiedLine({ line, showLineNumbers }: { line: DiffLine; showLineNumber
       {showLineNumbers && (
         <>
           <div
-            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-white/15"
+            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-text-muted"
             style={{ backgroundColor: C.gutterBg }}
           >
             {line.oldLineNum ?? ""}
           </div>
           <div
-            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-white/15"
+            className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-text-muted"
             style={{ backgroundColor: C.gutterBg }}
           >
             {line.newLineNum ?? ""}
@@ -599,7 +599,7 @@ function UnifiedLine({ line, showLineNumbers }: { line: DiffLine; showLineNumber
       )}
       <div
         className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-sm ${
-          line.type === "delete" ? "text-white/60" : "text-white/70"
+          line.type === "delete" ? "text-text-secondary" : "text-text-secondary"
         }`}
       >
         <LineContent line={line} />
@@ -687,7 +687,7 @@ function buildSplitRows(lines: DiffLine[]): SplitRow[] {
 function SplitCell({ line, side, showLineNumbers }: { line: DiffLine | null; side: "left" | "right"; showLineNumbers: boolean }) {
   if (!line) {
     return (
-      <div className="flex h-full text-body leading-6" style={{ backgroundColor: "rgba(255, 255, 255, 0.01)" }}>
+      <div className="flex h-full text-body leading-6" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
         <div className="w-5 shrink-0" style={{ backgroundColor: C.gutterBg }} />
         {showLineNumbers && <div className="w-10 shrink-0" style={{ backgroundColor: C.gutterBg }} />}
         <div className="min-w-0 flex-1 px-3 py-px">&nbsp;</div>
@@ -705,11 +705,11 @@ function SplitCell({ line, side, showLineNumbers }: { line: DiffLine | null; sid
         {marker}
       </div>
       {showLineNumbers && (
-        <div className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-white/15" style={{ backgroundColor: C.gutterBg }}>
+        <div className="w-10 shrink-0 select-none pr-2 text-right font-mono text-label text-text-muted" style={{ backgroundColor: C.gutterBg }}>
           {num ?? ""}
         </div>
       )}
-      <div className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-sm ${line.type === "delete" ? "text-white/60" : "text-white/70"}`}>
+      <div className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-sm ${line.type === "delete" ? "text-text-secondary" : "text-text-secondary"}`}>
         <LineContent line={line} />
       </div>
     </div>
@@ -742,8 +742,8 @@ function SplitDiff({
   return (
     <div className="overflow-hidden rounded-lg border" style={{ borderColor: C.border }}>
       <div className="sticky top-0 z-10 grid grid-cols-2 bg-[var(--color-surface-elevated)]" style={{ borderBottom: `1px solid ${C.border}` }}>
-        <div className="px-4 py-2 text-xs font-medium text-white/40" style={{ borderRight: `1px solid ${C.border}` }}>{oldLabel ?? "Old"}</div>
-        <div className="px-4 py-2 text-xs font-medium text-white/40">{newLabel ?? "New"}</div>
+        <div className="px-4 py-2 text-xs font-medium text-text-tertiary" style={{ borderRight: `1px solid ${C.border}` }}>{oldLabel ?? "Old"}</div>
+        <div className="px-4 py-2 text-xs font-medium text-text-tertiary">{newLabel ?? "New"}</div>
       </div>
 
       {hunks.map((h, hi) => {
@@ -901,7 +901,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
   if (oldText === "" && newText === "") {
     return (
       <div data-testid="story-diff-empty" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
-        <p className="font-[var(--font-body)] text-sm text-white/40">No content in either version.</p>
+        <p className="font-[var(--font-body)] text-sm text-text-tertiary">No content in either version.</p>
       </div>
     );
   }
@@ -909,7 +909,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
   if (oldText === newText) {
     return (
       <div data-testid="story-diff-identical" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
-        <p className="font-[var(--font-body)] text-sm text-white/40">No changes between versions.</p>
+        <p className="font-[var(--font-body)] text-sm text-text-tertiary">No changes between versions.</p>
       </div>
     );
   }
@@ -939,8 +939,8 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
           title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
           className={`ml-auto flex items-center gap-1 rounded px-2 py-1 text-label font-mono cursor-pointer border transition-colors duration-150 ${
             showLineNumbers
-              ? "text-white/50 bg-white/[0.08] border-white/[0.18]"
-              : "text-white/30 border-border-strong hover:text-white/50 hover:border-white/[0.15] hover:bg-hover-list-item"
+              ? "text-text-secondary bg-overlay-strong border-border-strong"
+              : "text-text-tertiary border-border-strong hover:text-text-secondary hover:border-border-strong hover:bg-hover-list-item"
           }`}
         >
           #

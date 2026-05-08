@@ -41,7 +41,7 @@ function VersionPickerItem({
       type="button"
       onClick={onSelect}
       className={`flex w-full items-start gap-3 border-b border-border-subtle px-3.5 py-2.5 text-left cursor-pointer transition-colors duration-150 last:border-0 ${
-        selected ? "bg-white/[0.05]" : "hover:bg-white/[0.035]"
+        selected ? "bg-overlay-default" : "hover:bg-overlay-subtle"
       }`}
     >
       {/* Avatar or version badge */}
@@ -58,7 +58,7 @@ function VersionPickerItem({
             className={`flex h-8 w-8 items-center justify-center rounded-full text-caption font-bold tracking-tight ring-1 ${
               isDraft
                 ? "bg-blue-500/10 text-blue-400/80 ring-blue-500/15"
-                : "bg-white/[0.06] text-white/40 ring-white/[0.07]"
+                : "bg-overlay-default text-text-tertiary ring-white/[0.07]"
             }`}
           >
             {option.versionNum !== undefined ? `v${option.versionNum}` : "AI"}
@@ -69,7 +69,7 @@ function VersionPickerItem({
       {/* Text content */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <span className="text-body font-semibold text-white/85 leading-tight">
+          <span className="text-body font-semibold text-text-primary leading-tight">
             {option.title ?? option.label}
           </span>
           {option.tag === "current" && (
@@ -85,11 +85,11 @@ function VersionPickerItem({
             <Tag color="purple" className="font-semibold leading-none">Draft</Tag>
           )}
           {option.author && (
-            <span className="text-body-sm text-white/45 truncate">{option.author}</span>
+            <span className="text-body-sm text-text-tertiary truncate">{option.author}</span>
           )}
         </div>
         {option.isoDate && (
-          <p className="mt-0.5 text-label leading-tight text-white/30">
+          <p className="mt-0.5 text-label leading-tight text-text-tertiary">
             {formatRichDate(option.isoDate)}
           </p>
         )}
@@ -141,8 +141,8 @@ export function VersionPicker({
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors duration-150 ${
           open
-            ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.06] text-white/85"
-            : "border-white/[0.10] bg-white/[0.04] text-white/65 hover:bg-white/[0.07] hover:text-white/85"
+            ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.06] text-text-primary"
+            : "border-border-strong bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary"
         }`}
       >
         <span
@@ -154,14 +154,14 @@ export function VersionPicker({
         <ChevronDown
           size={11}
           strokeWidth={2}
-          className={`shrink-0 transition-transform duration-150 ${open ? "rotate-180 text-white/50" : "text-white/30"}`}
+          className={`shrink-0 transition-transform duration-150 ${open ? "rotate-180 text-text-secondary" : "text-text-tertiary"}`}
         />
       </button>
 
       {/* Dropdown panel */}
       {open && (
         <div
-          className={`absolute top-full z-modal mt-1.5 w-72 overflow-hidden rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.6),0_4px_12px_rgba(0,0,0,0.3)] ${
+          className={`absolute top-full z-modal mt-1.5 w-72 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.6),0_4px_12px_rgba(0,0,0,0.3)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -180,7 +180,7 @@ export function VersionPicker({
                   <div className="mx-3.5 border-t border-border-default" />
                 )}
                 <div className="px-3.5 pb-1 pt-2.5">
-                  <span className="text-caption font-medium uppercase tracking-[0.07em] text-white/30">
+                  <span className="text-caption font-medium uppercase tracking-[0.07em] text-text-tertiary">
                     {name}
                   </span>
                 </div>

@@ -24,9 +24,9 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <p className="text-sm font-medium text-white/30">{title}</p>
+      <p className="text-sm font-medium text-text-tertiary">{title}</p>
       {description && (
-        <p className="mt-1 text-xs text-white/20">{description}</p>
+        <p className="mt-1 text-xs text-text-muted">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>

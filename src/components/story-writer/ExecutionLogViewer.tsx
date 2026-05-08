@@ -45,17 +45,17 @@ function CollapsibleText({ label, text, mono = true, defaultOpen = false }: { la
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-1.5 text-left cursor-pointer hover:text-white transition-colors duration-100"
+        className="flex w-full items-start gap-1.5 text-left cursor-pointer hover:text-text-primary transition-colors duration-100"
       >
         {open
-          ? <ChevronDown size={12} className="mt-0.5 shrink-0 text-white/70" />
-          : <ChevronRight size={12} className="mt-0.5 shrink-0 text-white/70" />
+          ? <ChevronDown size={12} className="mt-0.5 shrink-0 text-text-secondary" />
+          : <ChevronRight size={12} className="mt-0.5 shrink-0 text-text-secondary" />
         }
-        {label && <span className="text-xs font-semibold text-white/80 shrink-0">{label}</span>}
-        {!open && <span className="text-xs text-white/65 truncate">{preview}{text.length > 140 ? "…" : ""}</span>}
+        {label && <span className="text-xs font-semibold text-text-primary shrink-0">{label}</span>}
+        {!open && <span className="text-xs text-text-secondary truncate">{preview}{text.length > 140 ? "…" : ""}</span>}
       </button>
       {open && (
-        <pre className={`mt-2 ml-4 whitespace-pre-wrap break-words rounded-md bg-black/30 border border-white/[0.12] px-3 py-2.5 text-body leading-[1.75] text-white/90 ${mono ? "font-mono" : ""}`}>
+        <pre className={`mt-2 ml-4 whitespace-pre-wrap break-words rounded-md bg-black/30 border border-border-strong px-3 py-2.5 text-body leading-[1.75] text-text-primary ${mono ? "font-mono" : ""}`}>
           {text}
         </pre>
       )}
@@ -63,12 +63,12 @@ function CollapsibleText({ label, text, mono = true, defaultOpen = false }: { la
   );
 }
 
-function EntryLabel({ icon, label, time, color = "text-white/80" }: { icon: React.ReactNode; label: string; time: string; color?: string }) {
+function EntryLabel({ icon, label, time, color = "text-text-primary" }: { icon: React.ReactNode; label: string; time: string; color?: string }) {
   return (
     <div className={`flex items-center gap-2 text-xs ${color}`}>
       {icon}
       <span className="font-semibold">{label}</span>
-      <span className="ml-auto text-white/50 tabular-nums">{time}</span>
+      <span className="ml-auto text-text-secondary tabular-nums">{time}</span>
     </div>
   );
 }
@@ -77,9 +77,9 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
   switch (entry.type) {
     case "prompt":
       return (
-        <div className="rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-2.5 space-y-2">
+        <div className="rounded-md border border-border-strong bg-overlay-default px-3 py-2.5 space-y-2">
           <EntryLabel
-            icon={<Terminal size={12} className="text-white/70" />}
+            icon={<Terminal size={12} className="text-text-secondary" />}
             label="Prompt"
             time={formatTs(entry.timestamp)}
           />
@@ -89,21 +89,21 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
 
     case "system":
       return (
-        <div className="rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-2.5">
-          <div className="flex items-center gap-2 text-xs text-white/70">
-            <Cpu size={12} className="text-white/60" />
+        <div className="rounded-md border border-border-strong bg-overlay-subtle px-3 py-2.5">
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <Cpu size={12} className="text-text-secondary" />
             <span className="font-semibold">Session init</span>
-            <span className="font-mono text-white/80">{entry.model}</span>
-            <span className="ml-auto text-white/50 tabular-nums">{formatTs(entry.timestamp)}</span>
+            <span className="font-mono text-text-primary">{entry.model}</span>
+            <span className="ml-auto text-text-secondary tabular-nums">{formatTs(entry.timestamp)}</span>
           </div>
         </div>
       );
 
     case "text":
       return (
-        <div className="rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-2.5 space-y-2">
+        <div className="rounded-md border border-border-strong bg-overlay-default px-3 py-2.5 space-y-2">
           <EntryLabel
-            icon={<FileText size={12} className="text-white/70" />}
+            icon={<FileText size={12} className="text-text-secondary" />}
             label="Text"
             time={formatTs(entry.timestamp)}
           />
@@ -117,7 +117,7 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
           <div className="flex items-center gap-2 text-xs">
             <Wrench size={12} className="text-amber-400" />
             <span className="font-mono font-semibold text-amber-300">{entry.name}</span>
-            <span className="ml-auto text-white/50 tabular-nums">{formatTs(entry.timestamp)}</span>
+            <span className="ml-auto text-text-secondary tabular-nums">{formatTs(entry.timestamp)}</span>
           </div>
           {entry.input && Object.keys(entry.input).length > 0 && (
             <CollapsibleText label="input" text={JSON.stringify(entry.input, null, 2)} />
@@ -127,11 +127,11 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
 
     case "tool_result":
       return (
-        <div className="rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-2.5 space-y-2">
-          <div className="flex items-center gap-2 text-xs text-white/75">
-            <span className="font-mono text-white/60 text-sm">↳</span>
+        <div className="rounded-md border border-border-strong bg-overlay-subtle px-3 py-2.5 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <span className="font-mono text-text-secondary text-sm">↳</span>
             <span className="font-semibold">Tool result</span>
-            <span className="ml-auto text-white/50 tabular-nums">{formatTs(entry.timestamp)}</span>
+            <span className="ml-auto text-text-secondary tabular-nums">{formatTs(entry.timestamp)}</span>
           </div>
           {entry.content && (
             <CollapsibleText label="" text={entry.content} />
@@ -145,14 +145,14 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
           <div className="flex items-center gap-2 text-xs">
             <span className="font-semibold text-[var(--color-brand-300)]">Result</span>
             {entry.durationMs && (
-              <span className="text-white/70">{(entry.durationMs / 1000).toFixed(1)}s</span>
+              <span className="text-text-secondary">{(entry.durationMs / 1000).toFixed(1)}s</span>
             )}
             {entry.usage && (
-              <span className="text-white/60">
+              <span className="text-text-secondary">
                 {String((entry.usage as Record<string, unknown>).input_tokens ?? 0)} in · {String((entry.usage as Record<string, unknown>).output_tokens ?? 0)} out
               </span>
             )}
-            <span className="ml-auto text-white/50 tabular-nums">{formatTs(entry.timestamp)}</span>
+            <span className="ml-auto text-text-secondary tabular-nums">{formatTs(entry.timestamp)}</span>
           </div>
           {entry.output && (
             <CollapsibleText label="" text={entry.output} mono={false} defaultOpen />
@@ -196,11 +196,11 @@ function TaskLogDetail({ taskId, ticketKey }: { taskId: string; ticketKey: strin
   if (error) return <p className="px-2 py-3 text-xs text-red-400/70">Failed to load log</p>;
   if (!entries) return (
     <div className="flex items-center gap-2 px-2 py-3">
-      <Loader2 size={12} className="animate-spin text-white/40" />
-      <span className="text-xs text-white/40">Loading…</span>
+      <Loader2 size={12} className="animate-spin text-text-tertiary" />
+      <span className="text-xs text-text-tertiary">Loading…</span>
     </div>
   );
-  if (entries.length === 0) return <p className="px-2 py-3 text-xs text-white/35">No entries</p>;
+  if (entries.length === 0) return <p className="px-2 py-3 text-xs text-text-tertiary">No entries</p>;
 
   return (
     <div className="space-y-1.5 py-2.5">
@@ -215,18 +215,18 @@ function TaskLogRow({ log, ticketKey }: { log: LogMeta; ticketKey: string }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border border-border-strong bg-white/[0.025] overflow-hidden">
+    <div className="rounded-lg border border-border-strong bg-overlay-subtle overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-2.5 px-3 py-3 text-left cursor-pointer hover:bg-hover-interactive transition-colors duration-100"
       >
         {expanded
-          ? <ChevronDown size={13} className="shrink-0 text-white/70" />
-          : <ChevronRight size={13} className="shrink-0 text-white/70" />
+          ? <ChevronDown size={13} className="shrink-0 text-text-secondary" />
+          : <ChevronRight size={13} className="shrink-0 text-text-secondary" />
         }
-        <span className="font-mono text-sm font-medium text-white/85">{log.taskId}</span>
-        <span className="ml-auto text-xs text-white/55 tabular-nums">{formatTs(log.createdAt)}</span>
+        <span className="font-mono text-sm font-medium text-text-primary">{log.taskId}</span>
+        <span className="ml-auto text-xs text-text-secondary tabular-nums">{formatTs(log.createdAt)}</span>
       </button>
       {expanded && (
         <div className="border-t border-border-default px-3">
@@ -279,7 +279,7 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border-default px-4 py-2.5">
-        <span className="text-xs font-medium text-white/45">Execution logs</span>
+        <span className="text-xs font-medium text-text-tertiary">Execution logs</span>
         <Button
           variant="ghost"
           size="sm"
@@ -289,22 +289,22 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
           disabled={loading}
           title="Refresh"
           aria-label="Refresh"
-          className="border-0 bg-transparent text-white/35 hover:text-white/60"
+          className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary"
         />
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3">
         {loading && !logs && (
           <div className="flex items-center gap-2 py-8 justify-center">
-            <Loader2 size={14} className="animate-spin text-white/35" />
-            <span className="text-xs text-white/35">Loading…</span>
+            <Loader2 size={14} className="animate-spin text-text-tertiary" />
+            <span className="text-xs text-text-tertiary">Loading…</span>
           </div>
         )}
 
         {!loading && logs?.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-12">
-            <Terminal size={18} className="text-white/20" strokeWidth={1.5} />
-            <p className="text-xs text-white/30 text-center">No logs yet. Send a message to start.</p>
+            <Terminal size={18} className="text-text-muted" strokeWidth={1.5} />
+            <p className="text-xs text-text-tertiary text-center">No logs yet. Send a message to start.</p>
           </div>
         )}
 

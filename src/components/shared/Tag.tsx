@@ -6,7 +6,7 @@ const COLOR_CLASSES = {
   purple: "bg-purple-500/15 text-purple-400",
   amber: "bg-amber-500/15 text-amber-400",
   red: "bg-red-500/15 text-red-400",
-  neutral: "bg-white/[0.06] text-white/40",
+  neutral: "bg-overlay-default text-text-tertiary",
 } as const;
 
 type TagColor = keyof typeof COLOR_CLASSES;

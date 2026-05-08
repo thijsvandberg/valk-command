@@ -73,10 +73,10 @@ function extractSprintNumber(sprintName: string): number {
 }
 
 const navBtnClass =
-  "flex items-center rounded-md p-1.5 text-white/40 cursor-pointer hover:bg-hover-interactive hover:text-white/70 disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
+  "flex items-center rounded-md p-1.5 text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-secondary disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 const selectClass =
-  "rounded-md border border-border-strong bg-white/[0.04] px-2 py-1 text-xs text-white/70 cursor-pointer hover:border-white/[0.12] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
+  "rounded-md border border-border-strong bg-overlay-subtle px-2 py-1 text-xs text-text-secondary cursor-pointer hover:border-border-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 // Analysis trigger button with state indicator
 function AnalysisButton({
@@ -103,7 +103,7 @@ function AnalysisButton({
       onClick={onClick}
       disabled={disabled}
       title={`Generate ${label} for this sprint`}
-      className="relative flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60 transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="relative flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
     >
       {isRunning ? (
         <RefreshCw size={12} strokeWidth={1.5} className="animate-spin" />
@@ -192,7 +192,7 @@ function OverflowMenu({
   }
 
   const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/50 cursor-pointer hover:bg-white/[0.05] hover:text-white/80 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
+    "flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <div ref={containerRef} className="relative">
@@ -201,7 +201,7 @@ function OverflowMenu({
         onClick={() => setOpen((v) => !v)}
         className={[
           navBtnClass,
-          open ? "bg-white/[0.06] text-white/70" : "",
+          open ? "bg-overlay-default text-text-secondary" : "",
         ].join(" ")}
         aria-label="More options"
         title="More options"
@@ -232,7 +232,7 @@ function OverflowMenu({
 
           {hasPreviousSprint && (
             <>
-              <div className="my-1 h-px bg-white/[0.06]" />
+              <div className="my-1 h-px bg-overlay-default" />
               <button
                 type="button"
                 onClick={() => { onToggleCompare(); setOpen(false); }}
@@ -247,7 +247,7 @@ function OverflowMenu({
 
           {sprint && (
             <>
-              <div className="my-1 h-px bg-white/[0.06]" />
+              <div className="my-1 h-px bg-overlay-default" />
               <button
                 type="button"
                 onClick={handleCopy}
@@ -307,19 +307,19 @@ function GeneratePrompt({
   const Icon = type === "brief" ? Sparkles : BookOpen;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 space-y-3">
+    <div className="rounded-xl border border-border-default bg-overlay-subtle px-4 py-4 space-y-3">
       <div className="flex items-center gap-2">
         <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/50 shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/50">
           AI {label}
         </span>
       </div>
-      <p className="text-xs text-white/30 leading-relaxed">{description}</p>
+      <p className="text-xs text-text-tertiary leading-relaxed">{description}</p>
       <button
         type="button"
         onClick={onGenerate}
         disabled={disabled}
-        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs bg-white/[0.05] text-white/50 cursor-pointer hover:bg-white/[0.08] hover:text-white/70 transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs bg-overlay-default text-text-secondary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <Icon size={11} strokeWidth={1.5} />
         Generate {label}
@@ -636,7 +636,7 @@ function StakeholderView() {
         actions={
           <div className="flex items-center gap-1.5">
             {isLoading && (
-              <RefreshCw size={12} strokeWidth={1.5} className="animate-spin text-white/20 mr-1" />
+              <RefreshCw size={12} strokeWidth={1.5} className="animate-spin text-text-muted mr-1" />
             )}
 
             {/* AI analysis buttons */}
@@ -666,7 +666,7 @@ function StakeholderView() {
                   }}
                   disabled={anyRunning}
                 />
-                <span className="h-4 w-px bg-white/[0.08] mx-0.5" aria-hidden />
+                <span className="h-4 w-px bg-overlay-strong mx-0.5" aria-hidden />
               </>
             )}
 
@@ -674,7 +674,7 @@ function StakeholderView() {
             {syncStatus !== "idle" && (
               <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-opacity duration-300 ${
                 syncStatus === "syncing"
-                  ? "text-white/35"
+                  ? "text-text-tertiary"
                   : "text-[var(--color-secondary-400)]/60"
               }`}>
                 {syncStatus === "syncing" ? (
@@ -713,7 +713,7 @@ function StakeholderView() {
           <>
             <ViewHeaderDivider />
             <div className="flex items-center gap-1.5">
-              <label htmlFor="team-select" className="text-xs text-white/30">
+              <label htmlFor="team-select" className="text-xs text-text-tertiary">
                 Team
               </label>
               <select
@@ -784,14 +784,14 @@ function StakeholderView() {
           <div className="mx-auto max-w-7xl space-y-10">
             {/* Sprint heading + health + goal + sparkline */}
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/25">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
                 Sprint overview
               </p>
               {!isCompareMode && (
                 <>
                   {/* Title row: name + health + sparkline — natural flow, no justify-between */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <h1 className="text-3xl font-semibold tracking-tight text-white/90 leading-none">
+                    <h1 className="text-3xl font-semibold tracking-tight text-text-primary leading-none">
                       {stakeholderSprint.name}
                     </h1>
                     {sprintHealth && (
@@ -811,7 +811,7 @@ function StakeholderView() {
 
                   {/* Sprint goal */}
                   {stakeholderSprint.goal && (
-                    <p className="max-w-2xl text-sm italic text-white/45 border-l-2 border-[var(--color-brand-400)]/25 pl-3">
+                    <p className="max-w-2xl text-sm italic text-text-tertiary border-l-2 border-[var(--color-brand-400)]/25 pl-3">
                       {stakeholderSprint.goal}
                     </p>
                   )}
@@ -828,9 +828,9 @@ function StakeholderView() {
             {isCompareMode && prevStakeholderSprint ? (
               <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
                 <div className="space-y-6 overflow-auto">
-                  <h2 className="text-lg font-semibold tracking-tight text-white/60">
+                  <h2 className="text-lg font-semibold tracking-tight text-text-secondary">
                     {prevStakeholderSprint.name}
-                    <span className="ml-2 text-xs font-normal text-white/25">Previous</span>
+                    <span className="ml-2 text-xs font-normal text-text-muted">Previous</span>
                   </h2>
                   {isPrevLoading ? (
                     <LoadingState label="Loading previous sprint..." variant="spinner" />
@@ -846,12 +846,12 @@ function StakeholderView() {
                   )}
                 </div>
                 <div className="space-y-6 overflow-auto">
-                  <h2 className="text-lg font-semibold tracking-tight text-white/90">
+                  <h2 className="text-lg font-semibold tracking-tight text-text-primary">
                     {stakeholderSprint.name}
-                    <span className="ml-2 text-xs font-normal text-white/25">Current</span>
+                    <span className="ml-2 text-xs font-normal text-text-muted">Current</span>
                   </h2>
                   {isCarryOverLoading && (
-                    <p className="flex items-center gap-1.5 text-xs text-white/20">
+                    <p className="flex items-center gap-1.5 text-xs text-text-muted">
                       <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
                       Loading carry-over data...
                     </p>
@@ -876,7 +876,7 @@ function StakeholderView() {
               <div className="space-y-6">
                 {/* Carry-over summary */}
                 {isCarryOverLoading && previousSprint && (
-                  <p className="flex items-center gap-1.5 text-xs text-white/20">
+                  <p className="flex items-center gap-1.5 text-xs text-text-muted">
                     <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
                     Loading carry-over data...
                   </p>
@@ -900,7 +900,7 @@ function StakeholderView() {
               </div>
             )}
 
-            <p className="text-xs text-white/20">Last updated: {lastUpdatedDisplay}</p>
+            <p className="text-xs text-text-muted">Last updated: {lastUpdatedDisplay}</p>
           </div>
         )}
       </div>
@@ -917,7 +917,7 @@ function StakeholderView() {
           {/* Panel */}
           <div
             ref={drawerRef}
-            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col border-l border-white/[0.07] bg-[var(--color-surface-elevated)]"
+            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
             style={{ width: drawerWidth, maxWidth: "90vw", boxShadow: "-8px 0 32px rgba(0,0,0,0.5)" }}
           >
             {/* Resize handle — drag left edge to resize */}
@@ -928,15 +928,15 @@ function StakeholderView() {
             />
 
             {/* Drawer header */}
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-white/30">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-default px-5 py-3.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">
                 AI Analysis
               </span>
               <button
                 type="button"
                 onClick={() => setAiDrawerOpen(false)}
                 aria-label="Close AI analysis"
-                className="rounded p-1 text-white/25 cursor-pointer hover:bg-white/[0.05] hover:text-white/60 transition-colors duration-150"
+                className="rounded p-1 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150"
               >
                 <X size={14} strokeWidth={1.5} />
               </button>
@@ -968,7 +968,7 @@ function StakeholderView() {
 
               {/* Divider between sections when both are visible */}
               {!dismissed.brief && !dismissed["deep-dive"] && (
-                <div className="h-px bg-white/[0.06]" />
+                <div className="h-px bg-overlay-default" />
               )}
 
               {/* Deep Dive panel or generate prompt */}

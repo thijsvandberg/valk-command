@@ -16,7 +16,7 @@ describe("Button", () => {
   it("applies ghost variant by default", () => {
     const { container } = render(<Button>Ghost</Button>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("bg-white/[0.02]");
+    expect(el.className).toContain("bg-overlay-subtle");
   });
 
   it("applies primary variant classes", () => {

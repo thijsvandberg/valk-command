@@ -43,10 +43,10 @@ export function SyncDropdown({
         title="Sync options"
         className={[
           "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors duration-150 cursor-pointer",
-          "bg-white/[0.04] text-white/40 hover:bg-white/[0.07] hover:text-white/60",
+          "bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary",
           "disabled:opacity-25 disabled:cursor-not-allowed",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
-          open ? "bg-white/[0.07] text-white/60" : "",
+          open ? "bg-overlay-default text-text-secondary" : "",
         ].join(" ")}
       >
         <RefreshCw
@@ -63,7 +63,7 @@ export function SyncDropdown({
             type="button"
             onClick={() => { onSyncSprint(); setOpen(false); }}
             disabled={isSyncing || disabled}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/50 cursor-pointer hover:bg-white/[0.05] hover:text-white/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <CloudDownload size={12} strokeWidth={1.5} className={isSyncing ? "animate-spin" : ""} />
             Sync current sprint
@@ -72,7 +72,7 @@ export function SyncDropdown({
             type="button"
             onClick={() => { onSyncHistory(); setOpen(false); }}
             disabled={isSyncingHistory || disabled}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/50 cursor-pointer hover:bg-white/[0.05] hover:text-white/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <History size={12} strokeWidth={1.5} className={isSyncingHistory ? "animate-spin" : ""} />
             Sync history

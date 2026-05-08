@@ -50,27 +50,27 @@ export function SplitPaneHeader({
           <span
             className={`rounded px-1.5 py-0.5 text-caption font-medium ${
               slot === "original"
-                ? "bg-white/[0.06] text-white/40"
+                ? "bg-overlay-default text-text-tertiary"
                 : "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]/70"
             }`}
           >
             {slot === "original" ? "Original" : "Split target"}
           </span>
         </div>
-        <p className="truncate text-xs text-white/50 leading-tight mt-0.5">{title}</p>
+        <p className="truncate text-xs text-text-secondary leading-tight mt-0.5">{title}</p>
       </div>
 
       <div className="flex items-center gap-1">
         {onPaneViewChange && (
-          <div className="flex items-center gap-0.5 rounded-md bg-white/[0.04] p-0.5">
+          <div className="flex items-center gap-0.5 rounded-md bg-overlay-subtle p-0.5">
             <button
               type="button"
               onClick={() => onPaneViewChange("editor")}
               title="Editor"
               className={`flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer transition-colors duration-150 ${
                 paneView === "editor"
-                  ? "bg-[var(--color-surface-floating)] text-white/70 shadow-sm"
-                  : "text-white/35 hover:text-white/55"
+                  ? "bg-[var(--color-surface-floating)] text-text-secondary shadow-sm"
+                  : "text-text-tertiary hover:text-text-secondary"
               }`}
             >
               <FileText size={11} strokeWidth={1.5} />
@@ -82,8 +82,8 @@ export function SplitPaneHeader({
               title="Diff"
               className={`relative flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer transition-colors duration-150 ${
                 paneView === "diff"
-                  ? "bg-[var(--color-surface-floating)] text-white/70 shadow-sm"
-                  : "text-white/35 hover:text-white/55"
+                  ? "bg-[var(--color-surface-floating)] text-text-secondary shadow-sm"
+                  : "text-text-tertiary hover:text-text-secondary"
               }`}
             >
               <GitCompare size={11} strokeWidth={1.5} />
@@ -101,7 +101,7 @@ export function SplitPaneHeader({
             size="sm"
             onClick={onShowOriginal}
             title="Show original story"
-            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-hover-list-item"
+            className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
           >
             Show original
           </Button>
@@ -112,7 +112,7 @@ export function SplitPaneHeader({
             size="sm"
             onClick={onShowTarget}
             title="Show split target story"
-            className="border-0 bg-transparent text-white/40 hover:text-white/60 hover:bg-hover-list-item"
+            className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
           >
             Show target
           </Button>
@@ -125,7 +125,7 @@ export function SplitPaneHeader({
           onClick={onCollapse}
           title={collapseTitle}
           aria-label={collapseTitle}
-          className="border-0 bg-transparent text-white/30 hover:text-white/55 hover:bg-white/[0.05]"
+          className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-overlay-default"
         />
       </div>
     </div>

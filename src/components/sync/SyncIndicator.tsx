@@ -108,7 +108,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2.5 px-3 py-2 w-full"} rounded-lg text-white/40 cursor-pointer hover:bg-hover-list-item hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06] transition-colors duration-150`}
+        className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2.5 px-3 py-2 w-full"} rounded-lg text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default transition-colors duration-150`}
         aria-label="Activity status"
         title={collapsed ? stateLabel(activityState, incrementalSyncRemaining, hasChecked) : undefined}
       >
@@ -125,11 +125,11 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
             <span className="flex-1 text-left text-xs font-[var(--font-body)] truncate">
               {stateLabel(activityState, incrementalSyncRemaining, hasChecked)}
               {lastEntry?.completedAt && activityState === "idle" && incrementalSyncRemaining === 0 && hasChecked && (
-                <span className="text-white/20 ml-1.5">{timeAgo(lastEntry.completedAt)}</span>
+                <span className="text-text-muted ml-1.5">{timeAgo(lastEntry.completedAt)}</span>
               )}
             </span>
             <ChevronUp
-              className={`h-3 w-3 text-white/20 transition-transform duration-200 ${expanded ? "" : "rotate-180"}`}
+              className={`h-3 w-3 text-text-muted transition-transform duration-200 ${expanded ? "" : "rotate-180"}`}
               strokeWidth={1.5}
             />
           </>
@@ -139,11 +139,11 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
       {/* Expanded panel */}
       {expanded && (
         <div
-          className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[0_4px_24px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] overflow-hidden"
+          className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[0_4px_24px_rgba(0,0,0,0.5),0_0_0_1px_var(--color-overlay-subtle)] overflow-hidden"
           style={{ width: collapsed ? "240px" : "100%", minWidth: "220px" }}
         >
           <div className="px-3 py-2.5 border-b border-border-default flex items-center justify-between">
-            <span className="text-label font-semibold tracking-wide uppercase text-white/30 font-[var(--font-body)]">
+            <span className="text-label font-semibold tracking-wide uppercase text-text-tertiary font-[var(--font-body)]">
               Recent activity
             </span>
             {runningEntries.length > 0 && (
@@ -161,8 +161,8 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
           <div className="px-3 py-2 flex items-center gap-2 border-b border-border-default">
             {!incrementalSyncLastAt ? (
               <>
-                <RefreshCw className="h-3.5 w-3.5 text-white/20 animate-spin shrink-0" strokeWidth={2} />
-                <span className="text-label text-white/30 font-[var(--font-body)]">
+                <RefreshCw className="h-3.5 w-3.5 text-text-muted animate-spin shrink-0" strokeWidth={2} />
+                <span className="text-label text-text-tertiary font-[var(--font-body)]">
                   Checking Jira...
                 </span>
               </>
@@ -173,7 +173,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
                   <span className="text-label text-[var(--color-brand-300)] font-[var(--font-body)]">
                     {incrementalSyncRemaining} ticket{incrementalSyncRemaining === 1 ? "" : "s"} still catching up
                   </span>
-                  <div className="text-caption text-white/20 font-[var(--font-body)] mt-0.5">
+                  <div className="text-caption text-text-muted font-[var(--font-body)] mt-0.5">
                     Last sync {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
                   </div>
                 </div>
@@ -182,10 +182,10 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
               <>
                 <CheckCheck className="h-3.5 w-3.5 text-[var(--color-brand-500)]/60 shrink-0" strokeWidth={2} />
                 <div className="flex-1 min-w-0">
-                  <span className="text-label text-white/30 font-[var(--font-body)]">
+                  <span className="text-label text-text-tertiary font-[var(--font-body)]">
                     Jira sync up to date
                   </span>
-                  <div className="text-caption text-white/20 font-[var(--font-body)] mt-0.5">
+                  <div className="text-caption text-text-muted font-[var(--font-body)] mt-0.5">
                     Last check {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
                   </div>
                 </div>
@@ -194,30 +194,30 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
           </div>
           <ul className="max-h-[240px] overflow-y-auto">
             {(!recentEntries || recentEntries.length === 0) && (
-              <li className="px-3 py-3 text-xs text-white/25 font-[var(--font-body)]">
+              <li className="px-3 py-3 text-xs text-text-muted font-[var(--font-body)]">
                 No activity yet
               </li>
             )}
             {recentEntries?.slice(0, 8).map((entry) => (
               <li
                 key={entry.id}
-                className="px-3 py-2 flex items-start gap-2.5 hover:bg-white/[0.02] transition-colors duration-100"
+                className="px-3 py-2 flex items-start gap-2.5 hover:bg-overlay-subtle transition-colors duration-100"
               >
                 <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${statusDot(entry.status)}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs text-white/60 font-[var(--font-body)] truncate">
+                    <span className="text-xs text-text-secondary font-[var(--font-body)] truncate">
                       {entryTypeLabel(entry.type)}
                       {entry.sprintName && (
-                        <span className="text-white/30 ml-1">&middot; {entry.sprintName}</span>
+                        <span className="text-text-tertiary ml-1">&middot; {entry.sprintName}</span>
                       )}
                     </span>
-                    <span className="text-caption text-white/20 shrink-0 font-[var(--font-body)]">
+                    <span className="text-caption text-text-muted shrink-0 font-[var(--font-body)]">
                       {timeAgo(entry.completedAt ?? entry.startedAt)}
                     </span>
                   </div>
                   {entry.summary && (
-                    <div className="text-label text-white/30 truncate font-[var(--font-body)] mt-0.5">
+                    <div className="text-label text-text-tertiary truncate font-[var(--font-body)] mt-0.5">
                       {entry.summary}
                     </div>
                   )}

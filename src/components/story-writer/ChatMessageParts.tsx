@@ -101,8 +101,8 @@ export function MessageInfoButton({
         title="Message info"
         className={`flex size-[22px] items-center justify-center rounded-full border cursor-pointer transition-colors duration-150 ${
           open
-            ? "border-white/[0.15] bg-white/[0.10] text-white/70"
-            : "border-border-strong bg-white/[0.04] text-white/35 hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white/60"
+            ? "border-border-strong bg-overlay-strong text-text-secondary"
+            : "border-border-strong bg-overlay-subtle text-text-tertiary hover:border-border-strong hover:bg-overlay-strong hover:text-text-secondary"
         }`}
       >
         <Info size={11} strokeWidth={1.5} />
@@ -110,23 +110,23 @@ export function MessageInfoButton({
 
       {open && (
         <div
-          className={`absolute bottom-full mb-2 w-52 rounded-xl border border-white/[0.10] bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-20 p-3 ${
+          className={`absolute bottom-full mb-2 w-52 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-20 p-3 ${
             isUser ? "left-0" : "right-0"
           }`}
         >
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-caption font-medium uppercase tracking-[0.06em] text-white/35">Sent</span>
-              <span className="text-label tabular-nums text-white/65">{formatTimestamp(message.timestamp)}</span>
+              <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">Sent</span>
+              <span className="text-label tabular-nums text-text-secondary">{formatTimestamp(message.timestamp)}</span>
             </div>
 
             {logsTaskId && onOpenLogs && (
               <>
-                <div className="h-px bg-white/[0.06]" />
+                <div className="h-px bg-overlay-default" />
                 <button
                   type="button"
                   onClick={() => { onOpenLogs(logsTaskId); setOpen(false); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-label text-white/50 hover:text-white/80 hover:bg-hover-interactive cursor-pointer transition-colors duration-150"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-label text-text-secondary hover:text-text-primary hover:bg-hover-interactive cursor-pointer transition-colors duration-150"
                 >
                   <ExternalLink size={11} strokeWidth={1.5} className="shrink-0" />
                   View execution logs
@@ -256,8 +256,8 @@ export function ChatMessage({
           draftOnly
             ? ""
             : isUser
-              ? "px-4 py-3 bg-[var(--color-brand-600)]/15 text-white/90 border border-[var(--color-brand-500)]/15"
-              : "px-4 py-3 bg-white/[0.05] text-white/85 border border-border-default"
+              ? "px-4 py-3 bg-[var(--color-brand-600)]/15 text-text-primary border border-[var(--color-brand-500)]/15"
+              : "px-4 py-3 bg-overlay-default text-text-primary border border-border-default"
         }`}
       >
         {displayContent && (
@@ -274,8 +274,8 @@ export function ChatMessage({
                 onClick={() => setExpanded((v) => !v)}
                 className={`flex items-center gap-1 text-label cursor-pointer transition-colors duration-150 ${
                   expanded
-                    ? "mt-1 text-white/35 hover:text-white/55"
-                    : "mt-1 text-white/45 hover:text-white/65"
+                    ? "mt-1 text-text-tertiary hover:text-text-secondary"
+                    : "mt-1 text-text-tertiary hover:text-text-secondary"
                 }`}
               >
                 {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
@@ -334,7 +334,7 @@ export function ChatMessage({
                       : 300,
                   }}
                 >
-                  <div className="description-content chat-markdown text-xs leading-[1.7] text-white/70">
+                  <div className="description-content chat-markdown text-xs leading-[1.7] text-text-secondary">
                     {renderMarkdown(draftContent)}
                   </div>
                 </div>
@@ -382,19 +382,19 @@ export function DraftCard({ content }: { content: string }) {
   if (!content) return null;
 
   return (
-    <div className="rounded-lg border border-border-strong bg-white/[0.02]">
+    <div className="rounded-lg border border-border-strong bg-overlay-subtle">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
+        className="flex w-full items-center gap-2 px-3 py-2 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150"
       >
-        <FileText size={12} strokeWidth={1.5} className="text-white/30 shrink-0" />
-        <span className="text-label font-medium text-white/45">Current draft</span>
+        <FileText size={12} strokeWidth={1.5} className="text-text-tertiary shrink-0" />
+        <span className="text-label font-medium text-text-tertiary">Current draft</span>
         <span className="ml-auto">
           {expanded ? (
-            <ChevronUp size={12} className="text-white/25" />
+            <ChevronUp size={12} className="text-text-muted" />
           ) : (
-            <ChevronDown size={12} className="text-white/25" />
+            <ChevronDown size={12} className="text-text-muted" />
           )}
         </span>
       </button>
@@ -403,7 +403,7 @@ export function DraftCard({ content }: { content: string }) {
           <div className="relative">
             <div
               ref={contentRef}
-              className={`description-content chat-markdown text-xs leading-[1.7] text-white/70 overflow-hidden ${
+              className={`description-content chat-markdown text-xs leading-[1.7] text-text-secondary overflow-hidden ${
                 !isOverflowing ? "" : ""
               }`}
               style={isOverflowing ? { maxHeight: "none" } : undefined}
@@ -441,14 +441,14 @@ export function RelatedStoriesInline({
   return (
     <div className="mt-2 rounded-lg border border-[var(--color-brand-500)]/12 bg-[var(--color-brand-500)]/[0.03] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
-        <span className="text-caption font-semibold uppercase tracking-[0.06em] text-white/35">
+        <span className="text-caption font-semibold uppercase tracking-[0.06em] text-text-tertiary">
           Related Stories
         </span>
         {onOpenPanel && (
           <button
             type="button"
             onClick={onOpenPanel}
-            className="text-caption text-white/30 hover:text-white/60 cursor-pointer transition-colors duration-150"
+            className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
           >
             Open panel
           </button>
@@ -457,7 +457,7 @@ export function RelatedStoriesInline({
       <div className="divide-y divide-border-subtle">
         {candidates.map((c) => (
           <div key={c.id} className="flex items-center gap-2 px-3 py-2">
-            <span className={`shrink-0 text-caption font-bold tabular-nums w-6 text-right ${c.score >= 80 ? "text-emerald-400" : c.score >= 60 ? "text-amber-400" : "text-white/35"}`}>
+            <span className={`shrink-0 text-caption font-bold tabular-nums w-6 text-right ${c.score >= 80 ? "text-emerald-400" : c.score >= 60 ? "text-amber-400" : "text-text-tertiary"}`}>
               {c.score}
             </span>
             <a
@@ -468,7 +468,7 @@ export function RelatedStoriesInline({
             >
               {c.jiraKey}
             </a>
-            <span className="min-w-0 flex-1 truncate text-label text-white/60">
+            <span className="min-w-0 flex-1 truncate text-label text-text-secondary">
               {c.title}
             </span>
             <button
@@ -478,7 +478,7 @@ export function RelatedStoriesInline({
               className={`shrink-0 flex items-center gap-1 rounded border px-1.5 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-150 disabled:opacity-50 ${
                 c.isLinked
                   ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                  : "border-white/[0.10] text-white/35 hover:border-[var(--color-brand-500)]/20 hover:text-[var(--color-brand-400)]"
+                  : "border-border-strong text-text-tertiary hover:border-[var(--color-brand-500)]/20 hover:text-[var(--color-brand-400)]"
               }`}
             >
               {linkingId === c.id ? (
@@ -532,15 +532,15 @@ export function QuickActionsPopover({
         disabled={disabled}
         className={`shrink-0 ${
           open
-            ? "bg-white/[0.10] border-white/[0.15] text-white/80"
-            : "bg-white/[0.04] border-white/[0.10] text-white/55 hover:text-white/75 hover:bg-white/[0.08]"
+            ? "bg-overlay-strong border-border-strong text-text-primary"
+            : "bg-overlay-subtle border-border-strong text-text-secondary hover:text-text-secondary hover:bg-overlay-strong"
         }`}
         title="AI actions"
         aria-label="AI actions"
       />
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-1.5 w-52 rounded-lg border border-white/[0.10] bg-[var(--color-surface-floating)] py-1 shadow-xl shadow-black/30">
+        <div className="absolute bottom-full left-0 mb-1.5 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-xl shadow-black/30">
           {actions.map((action) => {
             const Icon = action.icon;
             return (
@@ -551,14 +551,14 @@ export function QuickActionsPopover({
                 disabled={!action.enabled}
                 className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
                   action.enabled
-                    ? "text-white/70 hover:bg-hover-interactive hover:text-white/90"
-                    : "text-white/25 cursor-not-allowed"
+                    ? "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
+                    : "text-text-muted cursor-not-allowed"
                 }`}
               >
                 <Icon size={14} strokeWidth={1.5} className="shrink-0" />
                 <span>{action.label}</span>
                 {!action.enabled && (
-                  <span className="ml-auto text-caption text-white/15">soon</span>
+                  <span className="ml-auto text-caption text-text-muted">soon</span>
                 )}
               </button>
             );

@@ -21,15 +21,15 @@ export function StakeholderSummaryCard({ content }: StakeholderSummaryCardProps)
           Summary for Stakeholders
         </span>
       </div>
-      <div className="text-sm leading-[1.8] text-white/75 font-[var(--font-body)]">
+      <div className="text-sm leading-[1.8] text-text-secondary font-[var(--font-body)]">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
             p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
             strong: ({ children }) => (
-              <strong className="font-semibold text-white/90">{children}</strong>
+              <strong className="font-semibold text-text-primary">{children}</strong>
             ),
-            em: ({ children }) => <em className="italic text-white/60">{children}</em>,
+            em: ({ children }) => <em className="italic text-text-secondary">{children}</em>,
             ul: ({ children }) => (
               <ul className="mb-3 space-y-1 pl-4 last:mb-0">{children}</ul>
             ),
@@ -43,19 +43,19 @@ export function StakeholderSummaryCard({ content }: StakeholderSummaryCardProps)
             ),
             // No code formatting in the stakeholder card
             code: ({ children }) => (
-              <span className="font-[var(--font-body)] text-white/80">{children}</span>
+              <span className="font-[var(--font-body)] text-text-primary">{children}</span>
             ),
             pre: ({ children }) => (
               <div className="mb-3 last:mb-0">{children}</div>
             ),
             h1: ({ children }) => (
-              <p className="mb-2 font-semibold text-white/90">{children}</p>
+              <p className="mb-2 font-semibold text-text-primary">{children}</p>
             ),
             h2: ({ children }) => (
-              <p className="mb-2 font-semibold text-white/85">{children}</p>
+              <p className="mb-2 font-semibold text-text-primary">{children}</p>
             ),
             h3: ({ children }) => (
-              <p className="mb-2 font-semibold text-white/80">{children}</p>
+              <p className="mb-2 font-semibold text-text-primary">{children}</p>
             ),
           }}
         >

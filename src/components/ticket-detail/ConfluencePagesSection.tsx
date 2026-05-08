@@ -66,8 +66,8 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-3 px-3">
-        <Loader2 size={12} strokeWidth={1.5} className="animate-spin text-white/20" />
-        <span className="text-xs text-white/25">Loading preview...</span>
+        <Loader2 size={12} strokeWidth={1.5} className="animate-spin text-text-muted" />
+        <span className="text-xs text-text-muted">Loading preview...</span>
       </div>
     );
   }
@@ -75,8 +75,8 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
   if (!data?.bodyHtml) {
     return (
       <div className="flex items-center gap-2 py-3 px-3">
-        <AlertCircle size={12} strokeWidth={1.5} className="text-white/20" />
-        <span className="text-xs text-white/25">Preview not available</span>
+        <AlertCircle size={12} strokeWidth={1.5} className="text-text-muted" />
+        <span className="text-xs text-text-muted">Preview not available</span>
       </div>
     );
   }
@@ -84,7 +84,7 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
   return (
     <div className="px-3 pb-3 pt-1">
       {/* Meta line */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-label text-white/25">
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-label text-text-muted">
         {data.lastModifiedBy && (
           <span className="flex items-center gap-1">
             <User size={10} strokeWidth={1.5} />
@@ -101,13 +101,13 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
 
       {/* Rendered HTML preview */}
       <div
-        className="confluence-preview text-xs leading-relaxed text-white/50"
+        className="confluence-preview text-xs leading-relaxed text-text-secondary"
         /* Sanitized server-side before reaching here */
         dangerouslySetInnerHTML={{ __html: data.bodyHtml }}
       />
 
       {data.truncated && (
-        <p className="mt-2 text-label text-white/20">Preview truncated to 500 words.</p>
+        <p className="mt-2 text-label text-text-muted">Preview truncated to 500 words.</p>
       )}
 
       <a
@@ -166,26 +166,26 @@ function SearchPopover({
     >
       {/* Search input */}
       <div className="flex items-center gap-2 border-b border-border-default px-3 py-2.5">
-        <Search size={13} strokeWidth={1.5} className="shrink-0 text-white/25" />
+        <Search size={13} strokeWidth={1.5} className="shrink-0 text-text-muted" />
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search Confluence pages..."
-          className="flex-1 bg-transparent text-sm text-white/70 placeholder:text-white/25 focus:outline-none"
+          className="flex-1 bg-transparent text-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
         />
         {isLoading && (
-          <Loader2 size={12} strokeWidth={1.5} className="shrink-0 animate-spin text-white/25" />
+          <Loader2 size={12} strokeWidth={1.5} className="shrink-0 animate-spin text-text-muted" />
         )}
       </div>
 
       {/* Results */}
       <div className="max-h-48 overflow-y-auto py-1">
         {!debouncedQuery || debouncedQuery.length < 2 ? (
-          <p className="px-3 py-2 text-xs text-white/25">Type at least 2 characters to search</p>
+          <p className="px-3 py-2 text-xs text-text-muted">Type at least 2 characters to search</p>
         ) : data?.results?.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-white/25">No pages found</p>
+          <p className="px-3 py-2 text-xs text-text-muted">No pages found</p>
         ) : (
           data?.results?.map((r) => (
             <button
@@ -194,10 +194,10 @@ function SearchPopover({
               onClick={() => onSelect(r)}
               className="flex w-full items-start gap-2.5 px-3 py-2 text-left cursor-pointer hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
-              <FileText size={13} strokeWidth={1.5} className="mt-0.5 shrink-0 text-white/20" />
+              <FileText size={13} strokeWidth={1.5} className="mt-0.5 shrink-0 text-text-muted" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-white/65">{r.title}</p>
-                <p className="mt-0.5 text-label text-white/25">{r.spaceTitle}</p>
+                <p className="truncate text-xs font-medium text-text-secondary">{r.title}</p>
+                <p className="mt-0.5 text-label text-text-muted">{r.spaceTitle}</p>
               </div>
             </button>
           ))
@@ -240,18 +240,18 @@ function MentionedPagesSection({
 
   return (
     <div className="mt-3">
-      <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-white/20">
+      <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
         Mentioned
       </p>
       <div className="space-y-1">
         {unlinkedMentions.map((m) => (
           <div key={m.pageId} className="flex items-center gap-2">
-            <FileText size={11} strokeWidth={1.5} className="shrink-0 text-white/15" />
-            <span className="min-w-0 flex-1 truncate text-label text-white/35">{m.title}</span>
+            <FileText size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+            <span className="min-w-0 flex-1 truncate text-label text-text-tertiary">{m.title}</span>
             <button
               type="button"
               onClick={() => onLink(m)}
-              className="shrink-0 rounded px-1.5 py-0.5 text-caption text-white/30 cursor-pointer hover:bg-hover-interactive hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="shrink-0 rounded px-1.5 py-0.5 text-caption text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
             >
               Link
@@ -330,11 +330,11 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
         className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <div className="flex items-center gap-1.5">
-          <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">
+          <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">
             Confluence
           </h3>
           {links.length > 0 && (
-            <span className="text-caption text-white/15">
+            <span className="text-caption text-text-muted">
               {links.length} page{links.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -342,7 +342,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
         <ChevronDown
           size={12}
           strokeWidth={1.5}
-          className={`shrink-0 text-white/20 ${expanded ? "" : "-rotate-90"}`}
+          className={`shrink-0 text-text-muted ${expanded ? "" : "-rotate-90"}`}
           style={{ transition: "transform 0.2s ease" }}
         />
       </button>
@@ -351,11 +351,11 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
         <div className="mt-2 space-y-1">
           {/* Linked pages */}
           {links.length === 0 && (
-            <p className="py-1 text-xs text-white/20">No pages linked yet</p>
+            <p className="py-1 text-xs text-text-muted">No pages linked yet</p>
           )}
 
           {links.map((link) => (
-            <div key={link.id} className="group/link rounded-lg border border-border-subtle bg-white/[0.01]">
+            <div key={link.id} className="group/link rounded-lg border border-border-subtle bg-overlay-subtle">
               {/* Page row */}
               <div className="flex items-center gap-2 px-2.5 py-2">
                 <button
@@ -365,12 +365,12 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
                   title="Expand preview"
                 >
                   {expandedPageId === link.pageId ? (
-                    <ChevronDown size={11} strokeWidth={1.5} className="shrink-0 text-white/30" />
+                    <ChevronDown size={11} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
                   ) : (
-                    <ChevronRight size={11} strokeWidth={1.5} className="shrink-0 text-white/20" />
+                    <ChevronRight size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
                   )}
-                  <BookOpen size={11} strokeWidth={1.5} className="shrink-0 text-white/20" />
-                  <span className="truncate text-xs text-white/55 group-hover/link:text-white/70" style={{ transition: "color 0.15s ease" }}>
+                  <BookOpen size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+                  <span className="truncate text-xs text-text-secondary group-hover/link:text-text-secondary" style={{ transition: "color 0.15s ease" }}>
                     {link.pageTitle}
                   </span>
                 </button>
@@ -381,7 +381,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="rounded p-0.5 text-white/20 cursor-pointer hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="rounded p-0.5 text-text-muted cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "color 0.15s ease" }}
                     title="Open in Confluence"
                   >
@@ -390,7 +390,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
                   <button
                     type="button"
                     onClick={() => handleUnlink(link.id)}
-                    className="rounded p-0.5 text-white/20 cursor-pointer hover:text-[#e5534b]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="rounded p-0.5 text-text-muted cursor-pointer hover:text-[#e5534b]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "color 0.15s ease" }}
                     title="Unlink page"
                   >
@@ -413,7 +413,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
             <button
               type="button"
               onClick={() => setShowSearch((v) => !v)}
-              className="flex items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-2.5 py-1.5 text-xs text-white/30 w-full cursor-pointer hover:border-[var(--color-brand-500)]/40 hover:text-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-2.5 py-1.5 text-xs text-text-tertiary w-full cursor-pointer hover:border-[var(--color-brand-500)]/40 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "border-color 0.15s ease, color 0.15s ease" }}
             >
               <Plus size={12} strokeWidth={1.5} />

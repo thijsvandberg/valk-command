@@ -86,11 +86,11 @@ export function ApplicationListBar() {
                 className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium cursor-pointer select-none ${
                   isActive
                     ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                    : "text-white/35 hover:text-white/60 hover:bg-white/[0.04]"
+                    : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle"
                 }`}
                 style={{ transition: "color 120ms, background-color 120ms" }}
               >
-                <span className={isActive ? "text-[var(--color-brand-400)]" : "text-white/25"}>
+                <span className={isActive ? "text-[var(--color-brand-400)]" : "text-text-muted"}>
                   {app.icon}
                 </span>
                 {app.label}

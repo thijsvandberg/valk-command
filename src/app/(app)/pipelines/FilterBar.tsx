@@ -36,7 +36,7 @@ export function StatusFilter({
         className={selected !== "all" ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
         {current.label}
-        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
       {open && (
@@ -49,7 +49,7 @@ export function StatusFilter({
                 type="button"
                 onClick={() => { onSelect(opt.value); setOpen(false); }}
                 className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
+                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                 }`}
               >
                 {opt.label}
@@ -92,7 +92,7 @@ export function DateRangeFilter({
         className={selected !== "all" ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
         {current.label}
-        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
       {open && (
@@ -105,7 +105,7 @@ export function DateRangeFilter({
                 type="button"
                 onClick={() => { onSelect(opt.value); setOpen(false); }}
                 className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
+                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                 }`}
               >
                 {opt.label}
@@ -156,7 +156,7 @@ export function CreatorFilter({
         className={selected.length > 0 ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
         {label}
-        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
       {open && (
@@ -165,15 +165,15 @@ export function CreatorFilter({
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Search */}
             <div className="px-2 py-2 border-b border-border-default">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
-                <Search size={11} strokeWidth={1.5} className="text-white/20 shrink-0" />
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">
+                <Search size={11} strokeWidth={1.5} className="text-text-muted shrink-0" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search creators..."
                   autoFocus
-                  className="flex-1 bg-transparent text-body-sm text-white/60 placeholder:text-white/20 outline-none"
+                  className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted outline-none"
                 />
               </div>
             </div>
@@ -183,7 +183,7 @@ export function CreatorFilter({
                 <button
                   type="button"
                   onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-white/40 hover:bg-hover-list-item"
+                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item"
                 >
                   Clear selection
                 </button>
@@ -196,7 +196,7 @@ export function CreatorFilter({
                     type="button"
                     onClick={() => onToggle(name)}
                     className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                      isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
+                      isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                     }`}
                   >
                     <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
@@ -241,7 +241,7 @@ export function RepoFilter({
         className={selected ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
         {selected || "All repos"}
-        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
       {open && (
@@ -252,7 +252,7 @@ export function RepoFilter({
               type="button"
               onClick={() => { onSelect(null); setOpen(false); }}
               className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
+                !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
               }`}
             >
               All repos
@@ -263,7 +263,7 @@ export function RepoFilter({
                 type="button"
                 onClick={() => { onSelect(repo); setOpen(false); }}
                 className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                  selected === repo ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-white/50 hover:bg-hover-list-item"
+                  selected === repo ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                 }`}
               >
                 {repo}
@@ -326,7 +326,7 @@ export function SprintFilter({
         type="button"
         onClick={() => onToggle(id)}
         className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-          isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : dimmed ? "text-white/35 hover:bg-hover-list-item" : "text-white/50 hover:bg-hover-list-item"
+          isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : dimmed ? "text-text-tertiary hover:bg-hover-list-item" : "text-text-secondary hover:bg-hover-list-item"
         }`}
       >
         <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
@@ -349,7 +349,7 @@ export function SprintFilter({
         className={selected.length > 0 ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
         {label}
-        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-white/20" />
+        <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
       {open && (
@@ -358,15 +358,15 @@ export function SprintFilter({
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Search */}
             <div className="px-2 py-2 border-b border-border-default">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04]">
-                <Search size={11} strokeWidth={1.5} className="text-white/20 shrink-0" />
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">
+                <Search size={11} strokeWidth={1.5} className="text-text-muted shrink-0" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search sprints..."
                   autoFocus
-                  className="flex-1 bg-transparent text-body-sm text-white/60 placeholder:text-white/20 outline-none"
+                  className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted outline-none"
                 />
               </div>
             </div>
@@ -377,7 +377,7 @@ export function SprintFilter({
                 <button
                   type="button"
                   onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-white/40 hover:bg-hover-list-item"
+                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item"
                 >
                   Clear selection
                 </button>
@@ -396,7 +396,7 @@ export function SprintFilter({
               {filtered(closed).length > 0 && (
                 <>
                   <div className="mx-3 my-1 border-t border-border-default" />
-                  <span className="block px-3 py-1 text-caption font-medium text-white/20 uppercase tracking-wider">Recent</span>
+                  <span className="block px-3 py-1 text-caption font-medium text-text-muted uppercase tracking-wider">Recent</span>
                   {filtered(closed).map((s) => renderItem(s, true))}
                 </>
               )}

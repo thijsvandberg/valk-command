@@ -127,26 +127,26 @@ function SprintSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? setOpen(false) : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-border-default bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex w-full items-center gap-2 rounded-md border border-border-default bg-overlay-subtle px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-border-strong hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
-        <span className="flex-1 min-w-0 truncate text-white/75">
-          {selected?.label ?? <span className="text-white/25">No sprint</span>}
+        <span className="flex-1 min-w-0 truncate text-text-secondary">
+          {selected?.label ?? <span className="text-text-muted">No sprint</span>}
         </span>
-        <ChevronDown size={12} strokeWidth={1.5} className={`shrink-0 text-white/25 ${open ? "rotate-180" : ""}`} style={{ transition: "transform 150ms" }} />
+        <ChevronDown size={12} strokeWidth={1.5} className={`shrink-0 text-text-muted ${open ? "rotate-180" : ""}`} style={{ transition: "transform 150ms" }} />
       </button>
 
       {open && (
         <div ref={panelRef} style={panelStyle} onKeyDown={nav}
-          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]"
+          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_var(--color-overlay-subtle)]"
         >
           <div className="border-b border-border-subtle px-2 py-1.5">
             <div className="relative">
-              <Search size={11} strokeWidth={1.5} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-white/25" />
+              <Search size={11} strokeWidth={1.5} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
               <input ref={searchRef} type="text" value={search}
                 onChange={(e) => { setSearch(e.target.value); setFocused(0); }}
                 onKeyDown={nav}
-                className="w-full rounded bg-white/[0.04] py-1 pl-6 pr-2 text-xs text-white/70 placeholder-white/20 focus:outline-none focus:bg-white/[0.07]"
+                className="w-full rounded bg-overlay-subtle py-1 pl-6 pr-2 text-xs text-text-secondary placeholder-text-muted focus:outline-none focus:bg-overlay-default"
                 placeholder="Search sprints…"
                 style={{ transition: "background-color 80ms" }}
               />
@@ -154,11 +154,11 @@ function SprintSelectDropdown({
           </div>
           <div className="max-h-52 overflow-y-auto">
             {flat.length === 0
-              ? <p className="px-3.5 py-3 text-xs text-white/30">No sprints found</p>
+              ? <p className="px-3.5 py-3 text-xs text-text-tertiary">No sprints found</p>
               : sections.map((sec, si) => (
                 <div key={sec.key}>
                   {sec.label && (
-                    <p className={`px-3 pt-2 pb-0.5 text-caption font-semibold uppercase tracking-widest text-white/20 ${si > 0 ? "mt-1 border-t border-border-subtle" : ""}`}>
+                    <p className={`px-3 pt-2 pb-0.5 text-caption font-semibold uppercase tracking-widest text-text-muted ${si > 0 ? "mt-1 border-t border-border-subtle" : ""}`}>
                       {sec.label}
                     </p>
                   )}
@@ -172,18 +172,18 @@ function SprintSelectDropdown({
                         onClick={() => { onChange(opt.value); setOpen(false); }}
                         onMouseEnter={() => setFocused(fi)}
                         className="flex w-full items-center gap-2.5 px-3 py-2 text-left cursor-pointer"
-                        style={{ backgroundColor: isFoc ? "rgba(255,255,255,0.05)" : "transparent", transition: "background-color 60ms" }}
+                        style={{ backgroundColor: isFoc ? "var(--color-overlay-default)" : "transparent", transition: "background-color 60ms" }}
                       >
                         <span className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[3px] border"
                           style={{
                             backgroundColor: isSel ? "var(--color-brand-500)" : "transparent",
-                            borderColor: isSel ? "var(--color-brand-500)" : "rgba(255,255,255,0.15)",
+                            borderColor: isSel ? "var(--color-brand-500)" : "var(--color-text-muted)",
                             transition: "background-color 100ms, border-color 100ms",
                           }}
                         >
                           {isSel && <Check size={8} strokeWidth={2.5} className="text-white" />}
                         </span>
-                        <span className="flex-1 min-w-0 truncate text-body text-white/70">{opt.label}</span>
+                        <span className="flex-1 min-w-0 truncate text-body text-text-secondary">{opt.label}</span>
                       </button>
                     );
                   })}
@@ -249,28 +249,28 @@ function SessionSelectDropdown({
   return (
     <>
       <button ref={triggerRef} type="button" onClick={() => open ? closePanel() : openPanel()} onKeyDown={nav}
-        className="flex w-full items-center gap-2 rounded-md border border-border-default bg-white/[0.03] px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex w-full items-center gap-2 rounded-md border border-border-default bg-overlay-subtle px-2.5 py-1.5 text-body text-left cursor-pointer hover:border-border-strong hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 100ms, border-color 100ms" }}
       >
         <span className="flex-1 min-w-0">
           {selected ? (
-            <span className="block truncate text-white/75">{selected.label}
-              {selected.sublabel && <span className="ml-2 text-label text-white/35">{selected.sublabel}</span>}
+            <span className="block truncate text-text-secondary">{selected.label}
+              {selected.sublabel && <span className="ml-2 text-label text-text-tertiary">{selected.sublabel}</span>}
             </span>
           ) : (
-            <span className="text-white/25">{placeholder}</span>
+            <span className="text-text-muted">{placeholder}</span>
           )}
         </span>
-        <ChevronDown size={12} strokeWidth={1.5} className={`shrink-0 text-white/25 ${open ? "rotate-180" : ""}`} style={{ transition: "transform 150ms" }} />
+        <ChevronDown size={12} strokeWidth={1.5} className={`shrink-0 text-text-muted ${open ? "rotate-180" : ""}`} style={{ transition: "transform 150ms" }} />
       </button>
 
       {open && (
         <div ref={panelRef} style={panelStyle} onKeyDown={nav}
-          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] py-1.5"
+          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.7),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_var(--color-overlay-subtle)] py-1.5"
         >
           <div className="max-h-52 overflow-y-auto">
             {options.length === 0
-              ? <p className="px-3.5 py-3 text-xs text-white/30">No sessions found</p>
+              ? <p className="px-3.5 py-3 text-xs text-text-tertiary">No sessions found</p>
               : options.map((opt, fi) => {
                 const isSel = opt.value === value;
                 const isFoc = fi === focused;
@@ -280,12 +280,12 @@ function SessionSelectDropdown({
                     onClick={() => { onChange(opt.value); setOpen(false); }}
                     onMouseEnter={() => setFocused(fi)}
                     className="flex w-full items-start gap-2.5 px-3 py-2 text-left cursor-pointer"
-                    style={{ backgroundColor: isFoc ? "rgba(255,255,255,0.05)" : "transparent", transition: "background-color 60ms" }}
+                    style={{ backgroundColor: isFoc ? "var(--color-overlay-default)" : "transparent", transition: "background-color 60ms" }}
                   >
                     <span className="flex h-[14px] w-[14px] mt-0.5 shrink-0 items-center justify-center rounded-[3px] border"
                       style={{
                         backgroundColor: isSel ? "var(--color-brand-500)" : "transparent",
-                        borderColor: isSel ? "var(--color-brand-500)" : "rgba(255,255,255,0.15)",
+                        borderColor: isSel ? "var(--color-brand-500)" : "var(--color-text-muted)",
                         transition: "background-color 100ms, border-color 100ms",
                       }}
                     >
@@ -293,7 +293,7 @@ function SessionSelectDropdown({
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block font-mono text-label font-medium text-[var(--color-brand-400)]/80">{opt.label}</span>
-                      {opt.sublabel && <span className="block truncate text-xs text-white/50 mt-0.5">{opt.sublabel}</span>}
+                      {opt.sublabel && <span className="block truncate text-xs text-text-secondary mt-0.5">{opt.sublabel}</span>}
                     </span>
                   </button>
                 );
@@ -486,7 +486,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
       className="fixed inset-0 z-modal flex items-center justify-center bg-black/55 backdrop-blur-[3px]"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-[560px] rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_32px_80px_rgba(0,0,0,0.65),0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(46,145,73,0.22),inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+      <div className="w-full max-w-[560px] rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_32px_80px_rgba(0,0,0,0.65),0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(46,145,73,0.22),inset_0_0_0_1px_var(--color-overlay-subtle)]">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
@@ -495,8 +495,8 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               <NotebookPen size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             </div>
             <div>
-              <p className="text-body font-semibold text-white/85 leading-none">Story writer</p>
-              <p className="text-label text-white/30 mt-0.5">Create, resume, or open a story</p>
+              <p className="text-body font-semibold text-text-primary leading-none">Story writer</p>
+              <p className="text-label text-text-tertiary mt-0.5">Create, resume, or open a story</p>
             </div>
           </div>
           <Button
@@ -505,19 +505,19 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
             iconOnly
             icon={<X size={14} strokeWidth={1.5} />}
             onClick={onClose}
-            className="text-white/25"
+            className="text-text-muted"
           />
         </div>
 
         {/* ── Mode tabs ── */}
-        <div className="mx-5 mb-4 flex gap-0.5 rounded-lg bg-white/[0.035] p-0.5">
+        <div className="mx-5 mb-4 flex gap-0.5 rounded-lg bg-overlay-subtle p-0.5">
           {(["new","session","existing"] as LauncherMode[]).map((m) => (
             <div key={m} className="relative flex-1">
               <button type="button" onClick={() => setMode(m)}
                 className={`flex w-full items-center justify-center gap-1.5 rounded-[7px] py-[7px] text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
                   mode === m
-                    ? "bg-white/[0.07] text-white/85 shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
-                    : "text-white/35 hover:text-white/55"
+                    ? "bg-overlay-default text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+                    : "text-text-tertiary hover:text-text-secondary"
                 }`}
               >
                 {m === "new"      && <Plus size={11} strokeWidth={2.5} />}
@@ -541,7 +541,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {mode === "new" && (
             <div className="space-y-3.5">
               <div>
-                <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Title</label>
+                <label className="mb-1 block text-label font-medium text-text-tertiary uppercase tracking-wide">Title</label>
                 <TextInput
                   autoFocus
                   value={newTitle}
@@ -552,7 +552,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               </div>
 
               <div>
-                <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Issue type</label>
+                <label className="mb-1 block text-label font-medium text-text-tertiary uppercase tracking-wide">Issue type</label>
                 <div className="flex gap-1">
                   {ISSUE_TYPES.map(({ value, label }) => {
                     const active = issueType === value;
@@ -561,12 +561,12 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                       <button key={value} type="button" onClick={() => setIssueType(value)}
                         className="flex flex-1 items-center justify-center gap-1 rounded-md border py-1.5 cursor-pointer transition-colors duration-120"
                         style={{
-                          borderColor: active ? `${color}45` : "rgba(255,255,255,0.06)",
+                          borderColor: active ? `${color}45` : "var(--color-overlay-default)",
                           backgroundColor: active ? `${color}12` : "transparent",
                         }}
                       >
                         <IssueTypeIcon type={value} size={12} />
-                        <span className="text-label font-medium" style={{ color: active ? color : "rgba(255,255,255,0.35)" }}>
+                        <span className="text-label font-medium" style={{ color: active ? color : "var(--color-text-tertiary)" }}>
                           {label}
                         </span>
                       </button>
@@ -576,11 +576,11 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               </div>
 
               <div>
-                <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Sprint</label>
+                <label className="mb-1 block text-label font-medium text-text-tertiary uppercase tracking-wide">Sprint</label>
                 <SprintSelectDropdown value={selectedSprintId} options={sprintOptions} onChange={setSelectedSprintId} />
               </div>
 
-              <p className="text-label text-white/25">Creates in Jira and opens in story writer.</p>
+              <p className="text-label text-text-muted">Creates in Jira and opens in story writer.</p>
             </div>
           )}
 
@@ -588,15 +588,15 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {mode === "session" && (
             <div>
               {sessionsLoading ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-xs text-white/25">
+                <div className="flex items-center justify-center gap-2 py-10 text-xs text-text-muted">
                   <span className="h-3 w-3 rounded-full border-2 border-white/15 border-t-white/40 animate-spin" />
                   Loading…
                 </div>
               ) : sessions.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border-default py-8 text-center">
-                  <History size={18} strokeWidth={1} className="mx-auto mb-2 text-white/15" />
-                  <p className="text-xs text-white/25">No open sessions</p>
-                  <p className="mt-1 text-label text-white/15">Start a new story to begin</p>
+                  <History size={18} strokeWidth={1} className="mx-auto mb-2 text-text-muted" />
+                  <p className="text-xs text-text-muted">No open sessions</p>
+                  <p className="mt-1 text-label text-text-muted">Start a new story to begin</p>
                 </div>
               ) : sessions.length <= 3 ? (
                 <div className="space-y-2">
@@ -616,20 +616,20 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                         className={`group relative flex w-full items-center gap-3 rounded-lg border px-3.5 py-3 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                           isSelected
                             ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.06]"
-                            : "border-border-default bg-white/[0.02] hover:border-white/[0.10] hover:bg-white/[0.035]"
+                            : "border-border-default bg-overlay-subtle hover:border-border-strong hover:bg-overlay-subtle"
                         }`}
                         style={{ transition: "background-color 80ms, border-color 80ms" }}
                       >
                         <div className="min-w-0 flex-1">
                           {/* Breadcrumb: sprint / epic / key */}
-                          <div className="flex items-center gap-1.5 flex-wrap text-label text-white/40 mb-1">
+                          <div className="flex items-center gap-1.5 flex-wrap text-label text-text-tertiary mb-1">
                             {sprintName && (
                               <>
                                 <span className="flex items-center gap-1">
                                   <IterationCw size={11} strokeWidth={1.5} style={{ color: "#d4904a", flexShrink: 0 }} />
                                   <span className="truncate max-w-[120px]">{sprintName}</span>
                                 </span>
-                                <span className="text-white/15">/</span>
+                                <span className="text-text-muted">/</span>
                               </>
                             )}
                             {s.epic && (
@@ -638,24 +638,24 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                                   <Zap size={11} strokeWidth={1.5} style={{ color: "#9b6cd4", flexShrink: 0 }} />
                                   <span className="truncate max-w-[120px]">{s.epic}</span>
                                 </span>
-                                <span className="text-white/15">/</span>
+                                <span className="text-text-muted">/</span>
                               </>
                             )}
-                            <span className="flex items-center gap-1 text-white/55">
+                            <span className="flex items-center gap-1 text-text-secondary">
                               <IssueTypeIcon type={s.issueType ?? "story"} size={11} />
                               <span className="font-mono font-medium">{s.ticketKey}</span>
                             </span>
                             {s.targetTicketKey && (
                               <>
                                 <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
-                                <span className="font-mono font-medium text-white/55">{s.targetTicketKey}</span>
+                                <span className="font-mono font-medium text-text-secondary">{s.targetTicketKey}</span>
                                 <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>
                             )}
                           </div>
-                          <p className="text-body text-white/55 leading-snug truncate">{s.title}</p>
+                          <p className="text-body text-text-secondary leading-snug truncate">{s.title}</p>
                           {s.targetTicketKey && (
-                            <p className="text-body-sm text-white/30 leading-snug truncate mt-0.5">
+                            <p className="text-body-sm text-text-tertiary leading-snug truncate mt-0.5">
                               {s.targetTitle ?? s.targetTicketKey}
                             </p>
                           )}
@@ -679,15 +679,15 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               ) : (
                 <div className="space-y-2.5">
                   <div>
-                    <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Active session</label>
+                    <label className="mb-1 block text-label font-medium text-text-tertiary uppercase tracking-wide">Active session</label>
                     <SessionSelectDropdown value={selectedSessionKey} options={sessionOptions} onChange={setSelectedSessionKey} />
                   </div>
 
                   {selectedSession && (
-                    <div className="rounded-lg border border-border-default bg-white/[0.02] px-3.5 py-3">
+                    <div className="rounded-lg border border-border-default bg-overlay-subtle px-3.5 py-3">
                       <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap text-label text-white/40 mb-1">
+                          <div className="flex items-center gap-1.5 flex-wrap text-label text-text-tertiary mb-1">
                             {(() => {
                               const name = resolveSprintName(selectedSession.sprintName, sprintOptions);
                               return name ? (
@@ -696,7 +696,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                                     <IterationCw size={11} strokeWidth={1.5} style={{ color: "#d4904a" }} />
                                     <span className="truncate max-w-[120px]">{name}</span>
                                   </span>
-                                  <span className="text-white/15">/</span>
+                                  <span className="text-text-muted">/</span>
                                 </>
                               ) : null;
                             })()}
@@ -706,24 +706,24 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                                   <Zap size={11} strokeWidth={1.5} style={{ color: "#9b6cd4" }} />
                                   <span className="truncate max-w-[120px]">{selectedSession.epic}</span>
                                 </span>
-                                <span className="text-white/15">/</span>
+                                <span className="text-text-muted">/</span>
                               </>
                             )}
-                            <span className="flex items-center gap-1 text-white/55">
+                            <span className="flex items-center gap-1 text-text-secondary">
                               <IssueTypeIcon type={selectedSession.issueType ?? "story"} size={11} />
                               <span className="font-mono font-medium">{selectedSession.ticketKey}</span>
                             </span>
                             {selectedSession.targetTicketKey && (
                               <>
                                 <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
-                                <span className="font-mono font-medium text-white/55">{selectedSession.targetTicketKey}</span>
+                                <span className="font-mono font-medium text-text-secondary">{selectedSession.targetTicketKey}</span>
                                 <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>
                             )}
                           </div>
-                          <p className="text-body text-white/55 leading-snug">{selectedSession.title}</p>
+                          <p className="text-body text-text-secondary leading-snug">{selectedSession.title}</p>
                           {selectedSession.targetTicketKey && (
-                            <p className="text-body-sm text-white/30 leading-snug mt-0.5">
+                            <p className="text-body-sm text-text-tertiary leading-snug mt-0.5">
                               {selectedSession.targetTitle ?? selectedSession.targetTicketKey}
                             </p>
                           )}
@@ -750,7 +750,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {/* ── EXISTING STORY ── */}
           {mode === "existing" && (
             <div>
-              <label className="mb-1 block text-label font-medium text-white/35 uppercase tracking-wide">Search story</label>
+              <label className="mb-1 block text-label font-medium text-text-tertiary uppercase tracking-wide">Search story</label>
               <div className="relative">
                 {searchLoading && (
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full border-2 border-white/15 border-t-white/40 animate-spin" />
@@ -779,14 +779,14 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                           onClick={() => { setSelectedTicket(r); setSearchQuery(`${r.key} — ${r.summary}`); setShowDropdown(false); }}
                           onMouseEnter={() => setFocusedSearch(i)}
                           className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left cursor-pointer"
-                          style={{ backgroundColor: isFoc ? "rgba(255,255,255,0.05)" : "transparent", transition: "background-color 60ms" }}
+                          style={{ backgroundColor: isFoc ? "var(--color-overlay-default)" : "transparent", transition: "background-color 60ms" }}
                         >
                           <span className="mt-px shrink-0 font-mono text-label font-medium text-[var(--color-brand-400)]/75" style={{ color: isFoc ? undefined : undefined }}>
                             {r.key}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-body text-white/60">{r.summary}</p>
-                            {r.sprintName && <p className="mt-0.5 text-caption text-white/25">{r.sprintName}</p>}
+                            <p className="truncate text-body text-text-secondary">{r.summary}</p>
+                            {r.sprintName && <p className="mt-0.5 text-caption text-text-muted">{r.sprintName}</p>}
                           </div>
                           <StatusBadge status={r.status as JiraStatus} className="shrink-0 rounded-[4px] px-1.5 text-caption tracking-wide" />
                         </button>
@@ -799,11 +799,11 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               {selectedTicket && (
                 <div className="mt-2 flex items-center gap-2.5 rounded-md border border-[var(--color-brand-500)]/18 bg-[var(--color-brand-500)]/[0.05] px-3 py-2">
                   <span className="shrink-0 font-mono text-label font-medium text-[var(--color-brand-400)]">{selectedTicket.key}</span>
-                  <span className="truncate text-xs text-white/55">{selectedTicket.summary}</span>
+                  <span className="truncate text-xs text-text-secondary">{selectedTicket.summary}</span>
                 </div>
               )}
               {!selectedTicket && searchQuery.length >= 2 && !searchLoading && searchResults.length === 0 && (
-                <p className="mt-2 text-label text-white/25">No stories found.</p>
+                <p className="mt-2 text-label text-text-muted">No stories found.</p>
               )}
             </div>
           )}

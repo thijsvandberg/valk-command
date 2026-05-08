@@ -237,8 +237,8 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   }, [workspaceTask.status, workspaceTask.taskId, workspaceTask.output, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations]);
 
   const headerIcon = isInvestigation
-    ? <Search size={15} strokeWidth={1.5} className="text-white/30" />
-    : <MessageCircle size={15} strokeWidth={1.5} className="text-white/30" />;
+    ? <Search size={15} strokeWidth={1.5} className="text-text-tertiary" />
+    : <MessageCircle size={15} strokeWidth={1.5} className="text-text-tertiary" />;
 
   const headerTitle = activeConv
     ? activeConv.title
@@ -261,7 +261,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         {activeConv && (
           <>
             <ViewHeaderDivider />
-            <span className="text-sm text-white/35">
+            <span className="text-sm text-text-tertiary">
               {messages.length} messages
             </span>
           </>
@@ -269,7 +269,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         {(workspaceTask.status === "streaming" || workspaceTask.status === "submitting") && (
           <>
             <ViewHeaderDivider />
-            <span className="flex items-center gap-1.5 text-xs text-white/40">
+            <span className="flex items-center gap-1.5 text-xs text-text-tertiary">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse inline-block" />
               Task running...
             </span>
@@ -369,7 +369,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center">
-            <p className="font-[var(--font-body)] text-sm text-white/30">
+            <p className="font-[var(--font-body)] text-sm text-text-tertiary">
               Select a conversation or start a new one.
             </p>
           </div>

@@ -82,7 +82,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
         enabled
           ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/30"
-          : "border-white/[0.10] bg-white/[0.06]"
+          : "border-border-strong bg-overlay-default"
       }`}
     >
       <span
@@ -134,22 +134,22 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.06em] text-white/50">
+      <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
         Browser Notifications
       </h2>
 
       <div className="flex flex-col gap-4">
         {/* Main toggle */}
-        <div className="flex items-center justify-between rounded-xl border border-border-default bg-white/[0.02] p-4">
+        <div className="flex items-center justify-between rounded-xl border border-border-default bg-overlay-subtle p-4">
           <div className="flex items-center gap-3">
             {enabled ? (
               <Bell size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             ) : (
-              <BellOff size={16} strokeWidth={1.5} className="text-white/30" />
+              <BellOff size={16} strokeWidth={1.5} className="text-text-tertiary" />
             )}
             <div>
-              <p className="text-sm font-medium text-white/80">Desktop notifications</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-white/40">
+              <p className="text-sm font-medium text-text-primary">Desktop notifications</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">
                 Get notified when a chat or story writer response completes while you are in another tab.
               </p>
             </div>
@@ -164,7 +164,7 @@ export default function NotificationsPage() {
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
               enabled
                 ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/30"
-                : "border-white/[0.10] bg-white/[0.06]"
+                : "border-border-strong bg-overlay-default"
             }`}
           >
             <span
@@ -176,23 +176,23 @@ export default function NotificationsPage() {
         </div>
 
         {/* Permission status */}
-        <div className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-white/[0.01] px-4 py-3">
+        <div className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-overlay-subtle px-4 py-3">
           {permissionGranted ? (
             <>
               <ShieldCheck size={14} strokeWidth={1.5} className="text-emerald-400/70" />
-              <span className="text-xs text-white/40">Browser permission granted</span>
+              <span className="text-xs text-text-tertiary">Browser permission granted</span>
             </>
           ) : permissionDenied ? (
             <>
               <ShieldX size={14} strokeWidth={1.5} className="text-red-400/70" />
-              <span className="text-xs text-white/40">
+              <span className="text-xs text-text-tertiary">
                 Browser permission denied. Reset it in your browser&apos;s site settings.
               </span>
             </>
           ) : (
             <>
-              <ShieldCheck size={14} strokeWidth={1.5} className="text-white/20" />
-              <span className="text-xs text-white/40">
+              <ShieldCheck size={14} strokeWidth={1.5} className="text-text-muted" />
+              <span className="text-xs text-text-tertiary">
                 Browser permission will be requested when you enable notifications.
               </span>
             </>
@@ -200,18 +200,18 @@ export default function NotificationsPage() {
         </div>
 
         {/* Info */}
-        <p className="text-label leading-relaxed text-white/25">
+        <p className="text-label leading-relaxed text-text-muted">
           Notifications are only sent when the Bridge tab is not in focus.
           Chat responses and story writer completions will trigger a desktop notification
           so you can multitask without watching the tab.
         </p>
       </div>
 
-      <h2 className="mb-5 mt-10 text-xs font-medium uppercase tracking-[0.06em] text-white/50">
+      <h2 className="mb-5 mt-10 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
         Notification Categories
       </h2>
 
-      <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-white/[0.02] overflow-hidden">
+      <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-overlay-subtle overflow-hidden">
         {CATEGORY_ORDER.map((category) => {
           const meta = CATEGORY_META[category];
           const isEnabled = preferences ? (preferences[category] ?? true) : true;
@@ -219,12 +219,12 @@ export default function NotificationsPage() {
           return (
             <div key={category} className="flex items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-3">
-                <span className={isEnabled ? "text-[var(--color-brand-400)]" : "text-white/20"}>
+                <span className={isEnabled ? "text-[var(--color-brand-400)]" : "text-text-muted"}>
                   {meta.icon}
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-white/70">{meta.label}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-white/35">{meta.description}</p>
+                  <p className="text-sm font-medium text-text-secondary">{meta.label}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">{meta.description}</p>
                 </div>
               </div>
               <Toggle
@@ -236,7 +236,7 @@ export default function NotificationsPage() {
         })}
       </div>
 
-      <p className="mt-4 text-label leading-relaxed text-white/25">
+      <p className="mt-4 text-label leading-relaxed text-text-muted">
         Disabled categories are silently ignored. They will not appear in the notification bell even if triggered.
       </p>
     </>

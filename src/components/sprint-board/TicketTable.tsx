@@ -96,7 +96,7 @@ function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; tota
         <div className={`mx-3 my-2 flex h-8 items-center justify-center rounded border border-dashed text-xs transition-colors duration-150 ${
           isOver
             ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-300)]"
-            : "border-border-default text-white/20"
+            : "border-border-default text-text-muted"
         }`}>
           Drop to move to this sprint
         </div>
@@ -421,7 +421,7 @@ export function TicketTable({
     return (
       <th key={id} className={`group/th relative overflow-hidden py-2 pr-3${isCenter ? " text-center" : ""}${bgClass}`} style={fullStyle}>
         {isSortable ? (
-          <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-white/60${isCenter ? " justify-center w-full" : ""}`}>
+          <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-text-secondary${isCenter ? " justify-center w-full" : ""}`}>
             {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
           </button>
         ) : label}
@@ -432,7 +432,7 @@ export function TicketTable({
 
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-      <tr className="group/thead h-[44px] border-b border-border-default text-left text-xs font-medium text-white/30">
+      <tr className="group/thead h-[44px] border-b border-border-default text-left text-xs font-medium text-text-tertiary">
         <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }} />
         {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>
@@ -523,12 +523,12 @@ export function TicketTable({
                   </td>
                 )}
                 {col("key") && (
-                  <td className="py-2 pr-3 font-mono text-xs text-white/50">
+                  <td className="py-2 pr-3 font-mono text-xs text-text-secondary">
                     {activeTicket.key}
                   </td>
                 )}
                 {col("title") && (
-                  <td className="max-w-0 truncate py-2 pr-3 text-white/80">
+                  <td className="max-w-0 truncate py-2 pr-3 text-text-primary">
                     {activeTicket.title}
                   </td>
                 )}
@@ -616,7 +616,7 @@ export function TicketTable({
             {/* Group header row */}
             <tr
               className="border-b border-border-strong cursor-pointer select-none"
-              style={{ background: "rgba(255,255,255,0.025)" }}
+              style={{ background: "var(--color-overlay-subtle)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
               <td colSpan={totalColSpan} className="py-2 pl-3 pr-4">
@@ -653,7 +653,7 @@ export function TicketTable({
       {isGrouped ? groupedTable : (enableVirtualization ? virtualizedTable : dndTable)}
       {tickets.length === 0 && !isGrouped && (
         <EmptyState
-          icon={<Sheet className="h-6 w-6 text-white/10" strokeWidth={1} />}
+          icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
           title="No tickets in this sprint"
           description="Tickets will appear here once they are added to the sprint in Jira"
           className="py-16"
@@ -661,7 +661,7 @@ export function TicketTable({
       )}
       {isGrouped && groups.every((g) => g.tickets.length === 0) && (
         <EmptyState
-          icon={<Sheet className="h-6 w-6 text-white/10" strokeWidth={1} />}
+          icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
           title="No tickets"
           description="Tickets will appear here once they are added in Jira"
           className="py-16"

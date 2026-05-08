@@ -72,7 +72,7 @@ export function SprintSelector({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search sprints..."
           autoFocus
-          className="w-full rounded-md border border-border-default bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-white/25 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+          className="w-full rounded-md border border-border-default bg-overlay-subtle px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
         />
       </div>
 
@@ -87,7 +87,7 @@ export function SprintSelector({
               className={`rounded px-2 py-0.5 text-xs font-medium cursor-pointer transition-colors duration-100 ${
                 teamFilter === team
                   ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)] ring-1 ring-[var(--color-brand-500)]/30"
-                  : "bg-white/[0.05] text-white/40 hover:bg-white/[0.08] hover:text-white/60"
+                  : "bg-overlay-default text-text-tertiary hover:bg-overlay-strong hover:text-text-secondary"
               }`}
             >
               {team}
@@ -106,7 +106,7 @@ export function SprintSelector({
               onSelect(s.id);
               onClose();
             }}
-            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/70 cursor-pointer hover:bg-hover-list-item hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
           >
             <span className="flex items-center gap-2 min-w-0">
               <span
@@ -115,12 +115,12 @@ export function SprintSelector({
               />
               <span className="truncate">{s.name}</span>
             </span>
-            <span className="ml-3 shrink-0 text-xs text-white/25">{sprintSecondary(s)}</span>
+            <span className="ml-3 shrink-0 text-xs text-text-muted">{sprintSecondary(s)}</span>
           </button>
         ))}
 
         {visibleActive.length === 0 && (
-          <p className="px-3 py-4 text-center text-xs text-white/25">No sprints match</p>
+          <p className="px-3 py-4 text-center text-xs text-text-muted">No sprints match</p>
         )}
 
         {closed.length > 0 && (
@@ -128,7 +128,7 @@ export function SprintSelector({
             <button
               type="button"
               onClick={() => setShowClosed(!showClosed)}
-              className="flex w-full items-center gap-1.5 px-3 py-2 text-xs text-white/30 cursor-pointer hover:text-white/50"
+              className="flex w-full items-center gap-1.5 px-3 py-2 text-xs text-text-tertiary cursor-pointer hover:text-text-secondary"
             >
               <ChevronRight
                 className={`h-3 w-3 transition-transform duration-150 ${showClosed ? "rotate-90" : ""}`}
@@ -145,13 +145,13 @@ export function SprintSelector({
                     onSelect(s.id);
                     onClose();
                   }}
-                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/40 cursor-pointer hover:bg-hover-list-item hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.06]"
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
                 >
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/20" />
                     <span className="truncate">{s.name}</span>
                   </span>
-                  <span className="ml-3 shrink-0 text-xs text-white/20">{sprintSecondary(s)}</span>
+                  <span className="ml-3 shrink-0 text-xs text-text-muted">{sprintSecondary(s)}</span>
                 </button>
               ))}
           </>

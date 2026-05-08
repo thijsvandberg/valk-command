@@ -75,10 +75,10 @@ export function BulkActionBar({
         </button>
       )}
 
-      <span className="text-xs font-medium text-white/60">
+      <span className="text-xs font-medium text-text-secondary">
         {count}{totalCount ? `/${totalCount}` : ""} selected
         {selectedPoints !== undefined && selectedPoints > 0 && (
-          <span className="ml-1 text-white/35">&middot; {selectedPoints} pts</span>
+          <span className="ml-1 text-text-tertiary">&middot; {selectedPoints} pts</span>
         )}
       </span>
       <BarDivider />
@@ -88,7 +88,7 @@ export function BulkActionBar({
             variant="ghost"
             size="md"
             onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-            className="border-0 text-white/60 hover:text-white"
+            className="border-0 text-text-secondary hover:text-text-primary"
           >
             Set Readiness
           </Button>
@@ -104,13 +104,13 @@ export function BulkActionBar({
                       onSetReadiness(opt.value);
                       setShowStatusDropdown(false);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-white/60 cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06]"
+                    className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
                   >
                     <span
                       className="shrink-0 flex h-4 w-4 items-center justify-center rounded-full"
                       style={{
-                        color: cfg?.color ?? "rgba(255,255,255,0.25)",
-                        backgroundColor: cfg?.bg ?? "rgba(255,255,255,0.05)",
+                        color: cfg?.color ?? "var(--color-text-muted)",
+                        backgroundColor: cfg?.bg ?? "var(--color-overlay-default)",
                       }}
                     >
                       {opt.value && <ReadinessIcon value={opt.value} size={10} />}
@@ -129,7 +129,7 @@ export function BulkActionBar({
           size="md"
           disabled={isRefreshing}
           onClick={onRefreshFromJira}
-          className="border-0 text-white/60 hover:text-white"
+          className="border-0 text-text-secondary hover:text-text-primary"
         >
           {isRefreshing ? "Syncing..." : "Refresh from Jira"}
         </Button>
@@ -139,7 +139,7 @@ export function BulkActionBar({
           variant="ghost"
           size="md"
           onClick={onReviewStory}
-          className="border-0 text-white/60 hover:text-white"
+          className="border-0 text-text-secondary hover:text-text-primary"
         >
           Review Story
         </Button>
@@ -149,7 +149,7 @@ export function BulkActionBar({
           variant="ghost"
           size="md"
           onClick={onCopyToClipboard}
-          className="border-0 text-white/60 hover:text-white"
+          className="border-0 text-text-secondary hover:text-text-primary"
         >
           <Copy className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
           Copy
@@ -160,7 +160,7 @@ export function BulkActionBar({
         variant="ghost"
         size="sm"
         onClick={onClear}
-        className="border-0 bg-transparent text-white/30 hover:text-white/50 hover:bg-transparent"
+        className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-transparent"
       >
         Clear
       </Button>

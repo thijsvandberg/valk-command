@@ -82,7 +82,7 @@ export function CommentsSection({
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a PO comment..."
                 rows={2}
-                className="w-full resize-none rounded-lg border border-border-default bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handleAddComment();
@@ -113,27 +113,27 @@ export function CommentsSection({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-white/60">{comment.author || "Product Owner"}</span>
-                  <span className="text-caption text-white/25">{isSending ? "Posting..." : new Date(comment.createdAt).toLocaleString()}</span>
+                  <span className="text-xs font-medium text-text-secondary">{comment.author || "Product Owner"}</span>
+                  <span className="text-caption text-text-muted">{isSending ? "Posting..." : new Date(comment.createdAt).toLocaleString()}</span>
                   <Button
                     variant="destructive"
                     size="sm"
                     iconOnly
                     onClick={() => handleDeleteComment(comment.id)}
-                    className="ml-auto hidden group-hover:flex !text-white/20 hover:!text-[#e5534b]"
+                    className="ml-auto hidden group-hover:flex !text-text-muted hover:!text-[#e5534b]"
                     title="Delete comment"
                     aria-label="Delete comment"
                     icon={<Trash2 size={14} strokeWidth={1.2} />}
                   />
                 </div>
-                <div className="description-content mt-1 text-sm leading-[1.7] text-white/50">{renderMarkdown(comment.content)}</div>
+                <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
               </div>
             </div>
             );
           })}
 
           {!loading && poComments.length === 0 && !newComment.trim() && (
-            <p className="pl-10 text-xs text-white/20">No comments yet</p>
+            <p className="pl-10 text-xs text-text-muted">No comments yet</p>
           )}
         </div>
       </div>
@@ -153,10 +153,10 @@ export function CommentsSection({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-white/60">{comment.authorName}</span>
-                    <span className="text-caption text-white/25">{new Date(comment.createdAt).toLocaleString()}</span>
+                    <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
+                    <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString()}</span>
                   </div>
-                  <div className="description-content mt-1 text-sm leading-[1.7] text-white/50">{renderMarkdown(comment.content)}</div>
+                  <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
                 </div>
               </div>
             ))}

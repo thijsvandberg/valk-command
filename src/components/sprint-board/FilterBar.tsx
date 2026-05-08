@@ -161,7 +161,7 @@ export function SortDropdown({
         }
         title={isActive ? `Sorted: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
         aria-label={isActive ? `Sort: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
-        className={isActive ? "" : "border-0 bg-transparent text-white/40 hover:bg-hover-list-item hover:text-white/60"}
+        className={isActive ? "" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
       />
 
       {open && (
@@ -179,7 +179,7 @@ export function SortDropdown({
                 setOpen(false);
               }}
               className={`flex w-full items-center justify-between px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item ${
-                opt.field === field ? "text-white bg-white/[0.03]" : "text-white/50"
+                opt.field === field ? "text-text-primary bg-overlay-subtle" : "text-text-secondary"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -197,14 +197,14 @@ export function SortDropdown({
           ))}
           {isActive && (
             <>
-              <div className="my-1 h-px bg-white/[0.06]" />
+              <div className="my-1 h-px bg-overlay-default" />
               <button
                 type="button"
                 onClick={() => {
                   onChange("rank", "asc");
                   setOpen(false);
                 }}
-                className="flex w-full items-center px-3 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-hover-list-item hover:text-white/50"
+                className="flex w-full items-center px-3 py-1.5 text-xs text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
               >
                 Reset to default
               </button>
@@ -249,10 +249,10 @@ function SortableColumnItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/65 hover:bg-hover-list-item hover:text-white/85"
+      className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
     >
       <div
-        className="flex shrink-0 items-center justify-center w-7 h-7 cursor-grab active:cursor-grabbing text-white/20 hover:text-white/40"
+        className="flex shrink-0 items-center justify-center w-7 h-7 cursor-grab active:cursor-grabbing text-text-muted hover:text-text-tertiary"
         {...listeners}
         {...attributes}
       >
@@ -265,7 +265,7 @@ function SortableColumnItem({
           className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
           style={{
             backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
-            borderColor: checked ? "var(--color-brand-500)" : "rgba(255,255,255,0.18)",
+            borderColor: checked ? "var(--color-brand-500)" : "var(--color-text-muted)",
             transition: "background-color 100ms, border-color 100ms",
           }}
         >
@@ -342,10 +342,10 @@ export function ColumnToggle({
         icon={<Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
         title="Toggle columns"
         aria-label="Toggle columns"
-        className="border-0 bg-transparent text-white/40 hover:bg-hover-list-item hover:text-white/60"
+        className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden flex flex-col">
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_var(--color-overlay-subtle)] overflow-hidden flex flex-col">
           <div className="overflow-y-auto max-h-[70vh] py-1.5">
             <DndContext
               sensors={sensors}
@@ -367,19 +367,19 @@ export function ColumnToggle({
                 Enabling one appends it to order via toggleColumn. */}
             {COLUMNS.filter((c) => !order.includes(c.id)).length > 0 && (
               <>
-                <div className="my-1 h-px bg-white/[0.06]" />
+                <div className="my-1 h-px bg-overlay-default" />
                 {COLUMNS.filter((c) => !order.includes(c.id)).map((c) => (
                   <div
                     key={c.id}
-                    className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-white/40 hover:bg-hover-list-item hover:text-white/65"
+                    className="flex w-full items-center gap-1.5 pr-3.5 py-1 text-body text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
                   >
-                    <div className="flex shrink-0 items-center justify-center w-7 h-7 text-white/10">
+                    <div className="flex shrink-0 items-center justify-center w-7 h-7 text-text-muted">
                       <GripVertical size={12} strokeWidth={1.5} />
                     </div>
                     <label className="flex flex-1 items-center gap-3 cursor-pointer select-none">
                       <span
                         className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
-                        style={{ backgroundColor: "transparent", borderColor: "rgba(255,255,255,0.12)" }}
+                        style={{ backgroundColor: "transparent", borderColor: "var(--color-overlay-strong)" }}
                       />
                       <input
                         type="checkbox"
@@ -396,11 +396,11 @@ export function ColumnToggle({
           </div>
           {onReset && (
             <>
-              <div className="h-px bg-white/[0.06]" />
+              <div className="h-px bg-overlay-default" />
               <button
                 type="button"
                 onClick={() => { onReset(); setOpen(false); }}
-                className="flex w-full items-center px-3.5 py-1.5 text-xs text-white/30 cursor-pointer hover:bg-hover-list-item hover:text-white/50"
+                className="flex w-full items-center px-3.5 py-1.5 text-xs text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
               >
                 Reset to default
               </button>
@@ -456,7 +456,7 @@ function SaveViewPopover({
       ref={ref}
       className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3)]"
     >
-      <p className="mb-2 text-label font-medium text-white/40">
+      <p className="mb-2 text-label font-medium text-text-tertiary">
         {isUpdate ? "Update saved view" : "Save current filter view"}
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -479,7 +479,7 @@ function SaveViewPopover({
         </Button>
         {isUpdate && onDelete && (
           <>
-            <div className="h-px bg-white/[0.06]" />
+            <div className="h-px bg-overlay-default" />
             <Button
               type="button"
               variant="destructive"
@@ -532,7 +532,7 @@ function ExpandableSearch({
           setExpanded(true);
           requestAnimationFrame(() => inputRef.current?.focus());
         }}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 hover:text-white/50 hover:bg-hover-list-item cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "color 120ms, background-color 120ms" }}
         title="Search tickets"
       >
@@ -563,8 +563,8 @@ function ExpandableSearch({
             onChange("");
             inputRef.current?.focus();
           }}
-          className="absolute right-2.5 flex h-4 w-4 items-center justify-center rounded-full text-white/30 hover:text-white/60 cursor-pointer"
-          style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+          className="absolute right-2.5 flex h-4 w-4 items-center justify-center rounded-full text-text-tertiary hover:text-text-secondary cursor-pointer"
+          style={{ backgroundColor: "var(--color-overlay-default)" }}
         >
           <X className="h-2.5 w-2.5" strokeWidth={2} />
         </button>
@@ -853,7 +853,7 @@ export function FilterBar({
             icon={<Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} fill={activeView ? "currentColor" : "none"} />}
             title={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
             aria-label={activeView ? `Saved view: ${activeView.title}` : "Save current filter view"}
-            className={`border-0 bg-transparent ${activeView ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10" : "text-white/35 hover:bg-hover-list-item hover:text-white/60"}`}
+            className={`border-0 bg-transparent ${activeView ? "text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10" : "text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}`}
           />
           {saveViewOpen && (
             <SaveViewPopover

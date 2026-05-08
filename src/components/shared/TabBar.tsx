@@ -7,10 +7,10 @@ const baseClass =
   "relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 const activeClass =
-  "text-white/90 after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full";
+  "text-text-primary after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full";
 
 const inactiveClass =
-  "text-white/35 hover:text-white/60 hover:bg-white/[0.03] active:text-white/50";
+  "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle active:text-text-secondary";
 
 export function TabBar({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -72,8 +72,8 @@ function TabBadge({ active, badge, highlight }: { active: boolean; badge: number
   const cls = highlight
     ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
     : active
-      ? "bg-white/[0.10] text-white/50"
-      : "bg-white/[0.06] text-white/30";
+      ? "bg-overlay-strong text-text-secondary"
+      : "bg-overlay-default text-text-tertiary";
 
   return (
     <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${cls}`}>

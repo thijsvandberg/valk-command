@@ -32,7 +32,7 @@ export default function ConversationList({
   return (
     <div className="flex h-full flex-col border-r border-border-default bg-[var(--color-surface-elevated)]" data-testid="conversation-list">
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <h2 className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-white/70">
+        <h2 className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-text-secondary">
           Conversations
         </h2>
         <ConversationTypePicker onCreate={onCreate} />
@@ -61,15 +61,15 @@ export default function ConversationList({
                     onClick={() => onSelect(conversation.id)}
                     className={`flex-1 min-w-0 rounded-lg px-3 py-2.5 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       isActive
-                        ? "bg-[var(--color-brand-600)]/12 text-white"
-                        : "text-white/60 hover:bg-hover-list-item hover:text-white/80 active:bg-white/[0.06]"
+                        ? "bg-[var(--color-brand-600)]/12 text-text-primary"
+                        : "text-text-secondary hover:bg-hover-list-item hover:text-text-primary active:bg-overlay-default"
                     }`}
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       {conversation.type === "investigation" ? (
-                        <Search size={13} strokeWidth={1.5} className="shrink-0 text-white/30" />
+                        <Search size={13} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
                       ) : (
-                        <MessageCircle size={13} strokeWidth={1.5} className="shrink-0 text-white/30" />
+                        <MessageCircle size={13} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
                       )}
                       <span className="block truncate font-[var(--font-body)] text-sm font-medium">
                         {conversation.title}

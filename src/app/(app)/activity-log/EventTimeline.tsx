@@ -39,11 +39,11 @@ export function EventTimeline({
   return (
     <div className="mb-5 rounded-xl border border-border-default bg-[var(--color-surface-elevated)] px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
       <div className="flex items-center gap-2 mb-3">
-        <Activity className="h-3.5 w-3.5 text-white/20" strokeWidth={1.5} />
-        <span className="text-label font-semibold uppercase tracking-wider text-white/20 font-[var(--font-body)]">
+        <Activity className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+        <span className="text-label font-semibold uppercase tracking-wider text-text-muted font-[var(--font-body)]">
           Last 24 Hours
         </span>
-        <span className="ml-auto text-caption text-white/15 font-[var(--font-body)]">
+        <span className="ml-auto text-caption text-text-muted font-[var(--font-body)]">
           {entries.length} {entries.length === 1 ? "event" : "events"}
         </span>
       </div>
@@ -51,11 +51,11 @@ export function EventTimeline({
       {/* Timeline track */}
       <div
         ref={containerRef}
-        className="relative h-6 rounded-full bg-white/[0.03] border border-border-subtle overflow-visible"
+        className="relative h-6 rounded-full bg-overlay-subtle border border-border-subtle overflow-visible"
         style={{ marginBottom: "20px" }}
       >
         {/* Track fill */}
-        <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.015))" }} />
+        <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, var(--color-overlay-subtle))" }} />
 
         {/* Dots */}
         {entries.map((entry) => {
@@ -104,8 +104,8 @@ export function EventTimeline({
 
         {/* Now indicator */}
         <div
-          className="absolute top-0 bottom-0 right-0 w-px bg-white/[0.08]"
-          style={{ borderRight: "1px dashed rgba(255,255,255,0.08)" }}
+          className="absolute top-0 bottom-0 right-0 w-px bg-overlay-strong"
+          style={{ borderRight: "1px dashed var(--color-overlay-strong)" }}
         />
       </div>
 
@@ -114,7 +114,7 @@ export function EventTimeline({
         {hourLabels.map(({ label, pct }) => (
           <span
             key={label}
-            className="absolute text-caption text-white/15 font-[var(--font-body)] -translate-x-1/2"
+            className="absolute text-caption text-text-muted font-[var(--font-body)] -translate-x-1/2"
             style={{ left: `${pct}%` }}
           >
             {label}
@@ -132,10 +132,10 @@ export function EventTimeline({
             transform: "translate(-50%, -100%)",
           }}
         >
-          <div className="text-label font-semibold text-white/80 font-[var(--font-body)]">
+          <div className="text-label font-semibold text-text-primary font-[var(--font-body)]">
             {entryTypeLabel(tooltip.entry.type)}
           </div>
-          <div className="text-caption text-white/40 font-[var(--font-body)] mt-0.5 space-y-0.5">
+          <div className="text-caption text-text-tertiary font-[var(--font-body)] mt-0.5 space-y-0.5">
             <div>{formatTimestamp(tooltip.entry.startedAt)}</div>
             {tooltip.entry.scope && <div>{tooltip.entry.scope}</div>}
             {tooltip.entry.durationMs && <div>{formatDuration(tooltip.entry.durationMs)}</div>}
@@ -145,7 +145,7 @@ export function EventTimeline({
 
       {entries.length === 0 && (
         <div className="flex items-center justify-center py-2">
-          <span className="text-xs text-white/15 font-[var(--font-body)]">No events in the last 24 hours</span>
+          <span className="text-xs text-text-muted font-[var(--font-body)]">No events in the last 24 hours</span>
         </div>
       )}
     </div>

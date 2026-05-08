@@ -126,7 +126,7 @@ function inlineFormat(text: string): ReactNode {
       } else {
         // Non-resolvable attachment (e.g. Jira media storage ID)
         parts.push(
-          <span key={i++} className="my-1 inline-flex items-center gap-1 rounded bg-white/[0.05] px-2 py-0.5 text-[0.8em] text-white/30">
+          <span key={i++} className="my-1 inline-flex items-center gap-1 rounded bg-overlay-default px-2 py-0.5 text-[0.8em] text-text-tertiary">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 opacity-50">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
             </svg>
@@ -233,7 +233,7 @@ function renderTable(tableLines: string[], key: string): ReactNode {
             {headers.map((h, hi) => (
               <th
                 key={hi}
-                className="border border-border-strong bg-white/[0.04] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-white/50"
+                className="border border-border-strong bg-overlay-subtle px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary"
               >
                 {inlineFormat(h)}
               </th>
@@ -242,9 +242,9 @@ function renderTable(tableLines: string[], key: string): ReactNode {
         </thead>
         <tbody>
           {dataRows.map((row, ri) => (
-            <tr key={ri} className="border-b border-border-default transition-colors hover:bg-white/[0.02]">
+            <tr key={ri} className="border-b border-border-default transition-colors hover:bg-overlay-subtle">
               {row.map((cell, ci) => (
-                <td key={ci} className="border border-border-default px-3 py-2 text-white/60">
+                <td key={ci} className="border border-border-default px-3 py-2 text-text-secondary">
                   {inlineFormat(cell)}
                 </td>
               ))}
@@ -259,16 +259,16 @@ function renderTable(tableLines: string[], key: string): ReactNode {
 // Renders a code block with optional language label and line numbers
 function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode {
   return (
-    <div key={key} className="my-3 overflow-hidden rounded-xl" style={{ background: "rgba(0,0,0,0.28)", border: "1px solid rgba(255,255,255,0.07)" }}>
+    <div key={key} className="my-3 overflow-hidden rounded-xl" style={{ background: "rgba(0,0,0,0.28)", border: "1px solid var(--color-overlay-default)" }}>
       {/* Header bar */}
-      <div className="flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}>
+      <div className="flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--color-overlay-default)", background: "var(--color-overlay-subtle)" }}>
         <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
         </div>
         {lang && (
-          <span className="ml-1 font-mono text-caption font-medium uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.28)" }}>{lang}</span>
+          <span className="ml-1 font-mono text-caption font-medium uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>{lang}</span>
         )}
       </div>
       {/* Code table */}
@@ -284,13 +284,13 @@ function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode 
               <tr key={li} className="group">
                 <td
                   className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-label leading-[1.6rem]"
-                  style={{ color: "rgba(255,255,255,0.2)", borderColor: "rgba(255,255,255,0.05)", whiteSpace: "nowrap" }}
+                  style={{ color: "var(--color-text-muted)", borderColor: "var(--color-overlay-default)", whiteSpace: "nowrap" }}
                 >
                   {li + 1}
                 </td>
                 <td
                   className="rm-code-content py-0 pl-4 pr-6 font-mono text-[0.8125rem] leading-[1.6rem]"
-                  style={{ color: "rgba(255,255,255,0.72)", whiteSpace: "pre" }}
+                  style={{ color: "var(--color-text-secondary)", whiteSpace: "pre" }}
                   dangerouslySetInnerHTML={{ __html: highlightCodeLine(codeLine, lang) || "\u00a0" }}
                 />
               </tr>
@@ -396,12 +396,12 @@ export function renderMarkdown(text: string): ReactNode[] {
           elements.push(
             <details
               key={`expand-${elements.length}`}
-              className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-white/[0.02]"
+              className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-overlay-subtle"
             >
-              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-hover-list-item hover:text-white/90">
+              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-hover-list-item hover:text-text-primary">
                 <span className="flex items-center gap-2">
                   <svg
-                    className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
+                    className="expand-arrow h-3.5 w-3.5 shrink-0 text-text-tertiary"
                     style={{ transition: "transform 0.15s ease" }}
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                   >
@@ -451,7 +451,7 @@ export function renderMarkdown(text: string): ReactNode[] {
             >
               <div className="mb-1 flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-                <span className="text-label font-semibold uppercase tracking-wider text-white/40">{style.label}</span>
+                <span className="text-label font-semibold uppercase tracking-wider text-text-tertiary">{style.label}</span>
               </div>
               <div>{inner}</div>
             </div>
@@ -524,12 +524,12 @@ export function renderMarkdown(text: string): ReactNode[] {
       elements.push(
         <details
           key={`expand-${elements.length}`}
-          className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-white/[0.02]"
+          className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-overlay-subtle"
         >
-          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-hover-list-item hover:text-white/90">
+          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-hover-list-item hover:text-text-primary">
             <span className="flex items-center gap-2">
               <svg
-                className="expand-arrow h-3.5 w-3.5 shrink-0 text-white/30"
+                className="expand-arrow h-3.5 w-3.5 shrink-0 text-text-tertiary"
                 style={{ transition: "transform 0.15s ease" }}
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
               >
@@ -579,7 +579,7 @@ export function renderMarkdown(text: string): ReactNode[] {
       const content = trimStart.startsWith("- [] ") ? trimStart.slice(5) : trimStart.slice(6);
       elements.push(
         <div key={`cb-${idx}`} className="my-1 flex items-start gap-2">
-          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-white/[0.12] bg-white/[0.03]" />
+          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border-strong bg-overlay-subtle" />
           <span>{inlineFormat(content)}</span>
         </div>
       );
@@ -685,7 +685,7 @@ export function renderMarkdown(text: string): ReactNode[] {
             />
           )}
           {mediaAlt && (
-            <figcaption className="mt-1.5 text-label text-white/25">{mediaAlt}</figcaption>
+            <figcaption className="mt-1.5 text-label text-text-muted">{mediaAlt}</figcaption>
           )}
         </figure>,
       );

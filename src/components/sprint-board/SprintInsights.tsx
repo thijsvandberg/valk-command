@@ -65,18 +65,18 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
-        className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/[0.02] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
+        className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 0.15s ease" }}
       >
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-white/30" strokeWidth={1.5} />
-          <span className="text-xs font-semibold text-white/60">Sprint Insights</span>
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/[0.06] px-1 text-caption tabular-nums text-white/30">
+          <Clock className="h-4 w-4 text-text-tertiary" strokeWidth={1.5} />
+          <span className="text-xs font-semibold text-text-secondary">Sprint Insights</span>
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-overlay-default px-1 text-caption tabular-nums text-text-tertiary">
             {insights.totalTickets}
           </span>
         </div>
         <ChevronDown
-          className={`h-3 w-3 text-white/25 ${collapsed ? "rotate-180" : ""}`}
+          className={`h-3 w-3 text-text-muted ${collapsed ? "rotate-180" : ""}`}
           strokeWidth={1.5}
           style={{ transition: "transform 0.2s ease" }}
         />
@@ -87,7 +87,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {/* Stale stories */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-text-muted">
                 Stale Stories
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -97,13 +97,13 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 >
                   {insights.staleStories}
                 </span>
-                <span className="text-caption text-white/20">outdated scores</span>
+                <span className="text-caption text-text-muted">outdated scores</span>
               </div>
             </Card>
 
             {/* Unreviewed */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-text-muted">
                 Unreviewed
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -113,13 +113,13 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 >
                   {insights.unreviewedTickets}
                 </span>
-                <span className="text-caption text-white/20">no score</span>
+                <span className="text-caption text-text-muted">no score</span>
               </div>
             </Card>
 
             {/* Blocked */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-text-muted">
                 Blocked
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -129,13 +129,13 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 >
                   {insights.blockedItems}
                 </span>
-                <span className="text-caption text-white/20">flagged</span>
+                <span className="text-caption text-text-muted">flagged</span>
               </div>
             </Card>
 
             {/* Average quality */}
             <Card variant="subtle" className="px-3 py-2.5">
-              <div className="text-caption font-medium uppercase tracking-wider text-white/25">
+              <div className="text-caption font-medium uppercase tracking-wider text-text-muted">
                 Avg Quality
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
@@ -147,10 +147,10 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                     >
                       {insights.avgQualityScore}
                     </span>
-                    <span className="text-caption text-white/20">/100</span>
+                    <span className="text-caption text-text-muted">/100</span>
                   </>
                 ) : (
-                  <span className="text-sm text-white/15">--</span>
+                  <span className="text-sm text-text-muted">--</span>
                 )}
               </div>
             </Card>

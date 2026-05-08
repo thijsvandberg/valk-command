@@ -42,10 +42,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div className="flex h-full min-h-[200px] items-center justify-center">
           <div className="text-center">
-            <h2 className="font-[var(--font-display)] text-lg font-semibold text-white/70">
+            <h2 className="font-[var(--font-display)] text-lg font-semibold text-text-secondary">
               Something went wrong
             </h2>
-            <p className="mt-2 text-sm text-white/40">
+            <p className="mt-2 text-sm text-text-tertiary">
               An unexpected error occurred in this section.
             </p>
             <Button variant="primary" size="lg" onClick={this.handleRetry} className="mt-4">

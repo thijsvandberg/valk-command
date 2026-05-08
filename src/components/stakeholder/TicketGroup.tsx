@@ -79,7 +79,7 @@ function groupByEpic(tickets: StakeholderTicket[]): [string, StakeholderTicket[]
 
 export function TicketGroup({ tickets, showKeys = false, showAssignee = false, carriedKeys }: TicketGroupProps) {
   if (tickets.length === 0) {
-    return <p className="text-sm text-white/25 italic">None</p>;
+    return <p className="text-sm text-text-muted italic">None</p>;
   }
 
   const groups = groupByEpic(tickets);
@@ -88,14 +88,14 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
     <div className="space-y-5">
       {groups.map(([epic, items]) => (
         <div key={epic}>
-          <div className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-white/30">
+          <div className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-text-tertiary">
             {epic}
           </div>
           <ul className="space-y-1.5">
             {items.map((t, i) => (
               <li key={i} className="flex items-start gap-2.5 group">
                 <StatusDot status={t.status} />
-                <span className="flex-1 text-sm leading-snug text-white/75 group-hover:text-white/90 transition-colors duration-100">
+                <span className="flex-1 text-sm leading-snug text-text-secondary group-hover:text-text-primary transition-colors duration-100">
                   {t.title}
                 </span>
                 <TypeBadge type={t.type} />
@@ -107,7 +107,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                     className="mt-[3px] shrink-0 opacity-0 group-hover:opacity-50 hover:!opacity-90 transition-opacity duration-100 cursor-pointer"
                     aria-label={`Open ${t.jiraKey} in Jira`}
                   >
-                    <ExternalLink size={11} strokeWidth={1.5} className="text-white/60" />
+                    <ExternalLink size={11} strokeWidth={1.5} className="text-text-secondary" />
                   </a>
                 )}
                 {t.jiraKey && carriedKeys?.has(t.jiraKey) && (
@@ -116,7 +116,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   </span>
                 )}
                 {showKeys && t.jiraKey && (
-                  <span className="shrink-0 rounded bg-white/[0.06] px-1 py-0.5 text-caption font-mono text-white/30">
+                  <span className="shrink-0 rounded bg-overlay-default px-1 py-0.5 text-caption font-mono text-text-tertiary">
                     {t.jiraKey}
                   </span>
                 )}
@@ -124,7 +124,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   <AssigneeAvatar assignee={t.assignee} />
                 )}
                 {t.storyPoints !== null && (
-                  <span className="shrink-0 text-xs tabular-nums text-white/20">{t.storyPoints}pt</span>
+                  <span className="shrink-0 text-xs tabular-nums text-text-muted">{t.storyPoints}pt</span>
                 )}
               </li>
             ))}

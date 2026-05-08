@@ -89,7 +89,7 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
               top: activePoint.y - HEIGHT - 4,
             }}
           >
-            <p className="text-caption font-medium text-white/70">{activePoint.d.sprintName}</p>
+            <p className="text-caption font-medium text-text-secondary">{activePoint.d.sprintName}</p>
             <p className="text-caption tabular-nums text-[var(--color-brand-400)]/80">
               {activePoint.d.completedPoints} pts done
             </p>

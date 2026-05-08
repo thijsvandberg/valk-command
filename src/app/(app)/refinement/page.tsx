@@ -20,7 +20,7 @@ export default function RefinementPage() {
         </div>
         <div className="relative flex min-h-full items-center justify-center py-24">
           <EmptyState
-            icon={<Layers size={20} strokeWidth={1.5} className="text-white/30" />}
+            icon={<Layers size={20} strokeWidth={1.5} className="text-text-tertiary" />}
             title="Refinement coming soon"
             description="Backlog refinement workflows and story scoring will appear here."
           />

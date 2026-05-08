@@ -32,11 +32,11 @@ export function CopyActions({ content, className, label }: CopyActionsProps) {
 
   return (
     <div className={`flex items-center gap-1 ${className ?? "mt-2 pt-2 border-t border-border-subtle"}`}>
-      {label && <span className="text-caption text-white/20 mr-1">{label}</span>}
+      {label && <span className="text-caption text-text-muted mr-1">{label}</span>}
       <button
         type="button"
         onClick={handleCopyMd}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-white/30 cursor-pointer hover:text-white/50 hover:bg-hover-list-item active:bg-white/[0.06] transition-colors duration-100"
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-hover-list-item active:bg-overlay-default transition-colors duration-100"
         title="Copy as Markdown"
       >
         {copiedMd ? <Check size={11} strokeWidth={2} /> : <Copy size={11} strokeWidth={1.5} />}
@@ -45,7 +45,7 @@ export function CopyActions({ content, className, label }: CopyActionsProps) {
       <button
         type="button"
         onClick={handleCopyRtf}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-white/30 cursor-pointer hover:text-white/50 hover:bg-hover-list-item active:bg-white/[0.06] transition-colors duration-100"
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-hover-list-item active:bg-overlay-default transition-colors duration-100"
         title="Copy as formatted text"
       >
         {copiedRtf ? <Check size={11} strokeWidth={2} /> : <FileText size={11} strokeWidth={1.5} />}

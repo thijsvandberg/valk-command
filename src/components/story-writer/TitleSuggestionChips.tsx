@@ -27,17 +27,17 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
             key={title}
             className={[
               "group flex items-center gap-2.5 rounded-md px-1 py-0.5 -mx-1 transition-colors duration-150",
-              isSelected ? "bg-[var(--color-brand-500)]/[0.07]" : "hover:bg-white/[0.03]",
+              isSelected ? "bg-[var(--color-brand-500)]/[0.07]" : "hover:bg-overlay-subtle",
             ].join(" ")}
           >
             <span className="flex h-4 w-4 shrink-0 items-center justify-center">
               {isSelected
                 ? <Check size={10} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
-                : <span className="font-mono text-label tabular-nums text-white/25 select-none">{i + 1}</span>}
+                : <span className="font-mono text-label tabular-nums text-text-muted select-none">{i + 1}</span>}
             </span>
             <span className={[
               "flex-1 leading-[1.75]",
-              isSelected ? "text-white/90" : "text-white/75",
+              isSelected ? "text-text-primary" : "text-text-secondary",
             ].join(" ")}>
               {title}
             </span>
@@ -49,7 +49,7 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
                 "shrink-0 text-label font-medium cursor-pointer transition-colors duration-150",
                 isSelected
                   ? "text-[var(--color-brand-400)]/60 pointer-events-none"
-                  : "text-white/20 hover:text-[var(--color-brand-400)] group-hover:text-white/35",
+                  : "text-text-muted hover:text-[var(--color-brand-400)] group-hover:text-text-tertiary",
               ].join(" ")}
             >
               {isSelected ? "Applied" : "Use"}

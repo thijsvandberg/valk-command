@@ -307,10 +307,10 @@ export function StoryWriterChat({
 
           {messages.length === 0 && status === "ready" && (
             <div className="flex flex-col items-center gap-3 py-16">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] border border-border-default">
-                <FileText size={18} className="text-white/20" strokeWidth={1.5} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-overlay-subtle border border-border-default">
+                <FileText size={18} className="text-text-muted" strokeWidth={1.5} />
               </div>
-              <p className="text-xs text-white/25 text-center max-w-[200px]">
+              <p className="text-xs text-text-muted text-center max-w-[200px]">
                 Start a conversation to improve this story
               </p>
             </div>
@@ -351,13 +351,13 @@ export function StoryWriterChat({
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-1.5 px-2 py-1">
                     <AlertCircle size={10} className="shrink-0 text-amber-500/40" strokeWidth={1.5} />
-                    <span className="text-caption text-white/30">Not sent</span>
+                    <span className="text-caption text-text-tertiary">Not sent</span>
                   </div>
                 </div>
               )}
               {idx === lastAssistantIdx && lastResponseDurationMs != null && (
                 <div className="mt-1 pl-1">
-                  <span className="text-caption text-white/25 select-none">
+                  <span className="text-caption text-text-muted select-none">
                     ✻ Responded in {formatDuration(lastResponseDurationMs)}
                   </span>
                 </div>
@@ -373,13 +373,13 @@ export function StoryWriterChat({
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-2 px-2 py-1">
                     <AlertCircle size={11} className="shrink-0 text-amber-500/50" strokeWidth={1.5} />
-                    <span className="text-caption text-white/35">No response received</span>
+                    <span className="text-caption text-text-tertiary">No response received</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       icon={<RotateCcw size={9} strokeWidth={2} />}
                       onClick={() => onSend(msg.content)}
-                      className="text-caption text-white/45 hover:text-white/70"
+                      className="text-caption text-text-tertiary hover:text-text-secondary"
                     >
                       Retry
                     </Button>
@@ -395,7 +395,7 @@ export function StoryWriterChat({
         <div className="border-t border-border-default px-4 py-2">
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
-            <span className="text-xs text-white/40 truncate">
+            <span className="text-xs text-text-tertiary truncate">
               {streamProgress.slice(0, 80)}
             </span>
           </div>
@@ -419,7 +419,7 @@ export function StoryWriterChat({
           <button
             type="button"
             onClick={onClearFailed}
-            className="text-caption text-white/35 hover:text-white/55 cursor-pointer"
+            className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer"
           >
             Clear failed messages
           </button>
@@ -428,12 +428,12 @@ export function StoryWriterChat({
 
       <div className="shrink-0 border-t border-border-default">
         <div className="px-3 pt-2.5 pb-1.5">
-          <p className="mb-1.5 text-caption font-medium uppercase tracking-[0.06em] text-white/35">
+          <p className="mb-1.5 text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
             Quick prompts
           </p>
           <div className="flex flex-wrap items-center gap-1">
             {quickPrompts.map((s) => (
-              <div key={s.id} className="group flex items-stretch rounded-md border border-border-default bg-white/[0.02] overflow-hidden hover:border-white/[0.11] transition-colors duration-150">
+              <div key={s.id} className="group flex items-stretch rounded-md border border-border-default bg-overlay-subtle overflow-hidden hover:border-border-strong transition-colors duration-150">
                 <button
                   type="button"
                   onClick={() => {
@@ -442,7 +442,7 @@ export function StoryWriterChat({
                     fillInput(s.text);
                   }}
                   disabled={isBusy}
-                  className="px-2.5 py-1 text-label font-medium text-white/50 cursor-pointer hover:text-white/80 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {s.label}
                 </button>
@@ -450,7 +450,7 @@ export function StoryWriterChat({
                   type="button"
                   onClick={() => handleDirectSend(s.text, s.enableCodebase === true)}
                   disabled={isBusy || !!inputValue.trim()}
-                  className="flex items-center justify-center border-l border-border-default px-2 text-white/20 cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Submit immediately"
                 >
                   <SendHorizontal size={9} strokeWidth={2} />
@@ -461,12 +461,12 @@ export function StoryWriterChat({
         </div>
 
         <div className="px-3 pb-2.5 pt-1">
-          <div className="flex flex-col rounded-xl border border-white/[0.10] bg-white/[0.03] focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
+          <div className="flex flex-col rounded-xl border border-border-strong bg-overlay-subtle focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
             <div
               onMouseDown={handleResizeMouseDown}
               className="flex h-3 cursor-row-resize items-center justify-center opacity-35 hover:opacity-80 transition-opacity duration-150"
             >
-              <GripHorizontal size={12} className="text-white/40" />
+              <GripHorizontal size={12} className="text-text-tertiary" />
             </div>
             <div ref={inputWrapperRef} style={manualInputHeight ? { height: manualInputHeight } : undefined} className={manualInputHeight ? "overflow-hidden" : undefined}>
               <textarea
@@ -482,7 +482,7 @@ export function StoryWriterChat({
                 onKeyDown={handleKeyDown}
                 placeholder="Describe what to improve..."
                 rows={1}
-                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-white/90 placeholder-white/40 focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
+                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary placeholder-white/40 focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
               />
             </div>
             <div className="flex items-center justify-between px-2 pb-2 pt-0.5">
@@ -503,7 +503,7 @@ export function StoryWriterChat({
                   disabled={isBusy}
                 />
                 {usage && (usage.inputTokens > 0 || usage.outputTokens > 0) && (
-                  <span className="text-caption text-white/40 tabular-nums">
+                  <span className="text-caption text-text-tertiary tabular-nums">
                     {(usage.inputTokens / 1000).toFixed(1)}k&nbsp;in&nbsp;·&nbsp;{(usage.outputTokens / 1000).toFixed(1)}k&nbsp;out
                     {usage.cost > 0 && <>&nbsp;·&nbsp;${usage.cost.toFixed(4)}</>}
                   </span>
@@ -519,7 +519,7 @@ export function StoryWriterChat({
                     onModelChange(MODEL_OPTIONS[next].value);
                   }}
                   disabled={isBusy}
-                  className="border-white/[0.10] bg-white/[0.04] font-mono text-caption tracking-[0.04em] text-white/55 hover:text-white/75 hover:border-white/[0.15] hover:bg-white/[0.07]"
+                  className="border-border-strong bg-overlay-subtle font-mono text-caption tracking-[0.04em] text-text-secondary hover:text-text-secondary hover:border-border-strong hover:bg-overlay-default"
                   title="Switch model"
                 >
                   {MODEL_OPTIONS.find((o) => o.value === model)?.label ?? "Sonnet"}
@@ -534,7 +534,7 @@ export function StoryWriterChat({
                   className={`text-caption ${
                     codebaseResearch
                       ? ""
-                      : "border-white/[0.10] bg-white/[0.04] text-white/40 hover:text-white/65 hover:border-white/[0.15] hover:bg-white/[0.07]"
+                      : "border-border-strong bg-overlay-subtle text-text-tertiary hover:text-text-secondary hover:border-border-strong hover:bg-overlay-default"
                   }`}
                 >
                   Codebase

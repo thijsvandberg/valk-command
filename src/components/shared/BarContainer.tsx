@@ -36,5 +36,5 @@ export function BarContainer({
 }
 
 export function BarDivider({ className }: { className?: string } = {}) {
-  return <div className={`h-4 w-px shrink-0 bg-white/[0.08] ${className ?? ""}`} />;
+  return <div className={`h-4 w-px shrink-0 bg-overlay-strong ${className ?? ""}`} />;
 }

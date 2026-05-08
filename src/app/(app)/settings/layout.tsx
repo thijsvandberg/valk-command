@@ -19,7 +19,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   return (
     <div className="flex flex-col h-full">
       <ViewHeader
-        icon={<Settings2 size={15} strokeWidth={1.5} className="text-white/30" />}
+        icon={<Settings2 size={15} strokeWidth={1.5} className="text-text-tertiary" />}
       >
         <ViewHeaderTitle>Settings</ViewHeaderTitle>
       </ViewHeader>

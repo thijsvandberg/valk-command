@@ -12,7 +12,7 @@ export function SubtasksSection({ subtasks }: { subtasks: TicketDetail["subtasks
     return (
       <div className="mt-8">
         <SectionHeader title="Subtasks" />
-        <p className="mt-3 text-sm text-white/25">No subtasks</p>
+        <p className="mt-3 text-sm text-text-muted">No subtasks</p>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export function SubtasksSection({ subtasks }: { subtasks: TicketDetail["subtasks
             >
               {sub.key}
             </Link>
-            <span className="min-w-0 flex-1 truncate text-sm text-white/60">{sub.title}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
             <StatusBadge status={sub.jiraStatus} />
             <Avatar assignee={sub.assignee} size={22} />
           </div>

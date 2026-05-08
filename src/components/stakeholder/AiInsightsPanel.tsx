@@ -42,8 +42,8 @@ function renderDeepDiveContent(content: string, inDrawer = false) {
   let key = 0;
 
   const bodyClass = inDrawer
-    ? "leading-[1.75] text-white/70 whitespace-pre-wrap"
-    : "text-sm leading-relaxed text-white/65 whitespace-pre-wrap max-w-prose";
+    ? "leading-[1.75] text-text-secondary whitespace-pre-wrap"
+    : "text-sm leading-relaxed text-text-secondary whitespace-pre-wrap max-w-prose";
 
   function flushBuffer() {
     if (buffer.length === 0) return;
@@ -68,8 +68,8 @@ function renderDeepDiveContent(content: string, inDrawer = false) {
           key={key++}
           className={
             inDrawer
-              ? `font-semibold text-white/85 ${level === "##" ? "mt-6 mb-2" : "mt-4 mb-1"}`
-              : `font-semibold text-white/80 ${level === "##" ? "text-sm mt-3" : "text-xs mt-2"}`
+              ? `font-semibold text-text-primary ${level === "##" ? "mt-6 mb-2" : "mt-4 mb-1"}`
+              : `font-semibold text-text-primary ${level === "##" ? "text-sm mt-3" : "text-xs mt-2"}`
           }
           style={inDrawer ? { fontSize: level === "##" ? "1.0625rem" : "1rem" } : undefined}
         >
@@ -132,7 +132,7 @@ export function AiInsightsPanel({
               AI {label}
             </span>
             {generatedAt && hasResult && (
-              <span className="flex items-center gap-1 text-caption text-white/25 truncate">
+              <span className="flex items-center gap-1 text-caption text-text-muted truncate">
                 <Clock size={9} strokeWidth={1.5} className="shrink-0" />
                 {formatRelative(generatedAt)}
               </span>
@@ -161,21 +161,21 @@ export function AiInsightsPanel({
         {/* Body */}
         {isRunning && (
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2 text-xs text-white/30">
+            <div className="flex items-center gap-2 text-xs text-text-tertiary">
               <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
               <span>{live.progressText || "Generating..."}</span>
             </div>
             <div className="space-y-2 pt-1">
-              <div className="h-2.5 w-full animate-pulse rounded-full bg-white/[0.05]" />
-              <div className="h-2.5 w-[88%] animate-pulse rounded-full bg-white/[0.04]" />
-              <div className="h-2.5 w-[72%] animate-pulse rounded-full bg-white/[0.03]" />
+              <div className="h-2.5 w-full animate-pulse rounded-full bg-overlay-default" />
+              <div className="h-2.5 w-[88%] animate-pulse rounded-full bg-overlay-subtle" />
+              <div className="h-2.5 w-[72%] animate-pulse rounded-full bg-overlay-subtle" />
             </div>
           </div>
         )}
 
         {!isRunning && type === "brief" && displayNarrative && (
           <div className="space-y-3">
-            <p className="leading-[1.75] text-white/70" style={{ fontSize: "1rem" }}>
+            <p className="leading-[1.75] text-text-secondary" style={{ fontSize: "1rem" }}>
               {displayNarrative}
             </p>
             {displayRisks.length > 0 && (
@@ -201,7 +201,7 @@ export function AiInsightsPanel({
             <button
               type="button"
               onClick={onRetry}
-              className="shrink-0 rounded-md px-2.5 py-1 text-xs text-white/40 bg-white/[0.04] cursor-pointer hover:bg-white/[0.07] hover:text-white/70 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="shrink-0 rounded-md px-2.5 py-1 text-xs text-text-tertiary bg-overlay-subtle cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               Retry
             </button>
@@ -245,7 +245,7 @@ export function AiInsightsPanel({
               AI {label}
             </span>
             {generatedAt && hasResult && (
-              <span className="flex items-center gap-1 text-caption text-white/25 truncate">
+              <span className="flex items-center gap-1 text-caption text-text-muted truncate">
                 <Clock size={9} strokeWidth={1.5} className="shrink-0" />
                 {formatRelative(generatedAt)}
               </span>
@@ -275,7 +275,7 @@ export function AiInsightsPanel({
                 type="button"
                 onClick={() => setCollapsed((c) => !c)}
                 aria-label={collapsed ? `Expand AI ${label}` : `Collapse AI ${label}`}
-                className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="rounded p-1 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 {collapsed ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronUp size={12} strokeWidth={1.5} />}
               </button>
@@ -285,7 +285,7 @@ export function AiInsightsPanel({
                 type="button"
                 onClick={onDismiss}
                 aria-label={`Dismiss AI ${label}`}
-                className="rounded p-1 text-white/20 cursor-pointer hover:bg-white/[0.05] hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="rounded p-1 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <X size={12} strokeWidth={1.5} />
               </button>
@@ -299,14 +299,14 @@ export function AiInsightsPanel({
             {/* Loading state */}
             {isRunning && (
               <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs text-white/30">
+                <div className="flex items-center gap-2 text-xs text-text-tertiary">
                   <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
                   <span>{live.progressText || "Generating..."}</span>
                 </div>
                 <div className="space-y-2 pt-1">
-                  <div className="h-2.5 w-full animate-pulse rounded-full bg-white/[0.05]" />
-                  <div className="h-2.5 w-[88%] animate-pulse rounded-full bg-white/[0.04]" />
-                  <div className="h-2.5 w-[72%] animate-pulse rounded-full bg-white/[0.03]" />
+                  <div className="h-2.5 w-full animate-pulse rounded-full bg-overlay-default" />
+                  <div className="h-2.5 w-[88%] animate-pulse rounded-full bg-overlay-subtle" />
+                  <div className="h-2.5 w-[72%] animate-pulse rounded-full bg-overlay-subtle" />
                 </div>
               </div>
             )}
@@ -314,7 +314,7 @@ export function AiInsightsPanel({
             {/* Brief: narrative + risks */}
             {!isRunning && type === "brief" && displayNarrative && (
               <div className="space-y-3">
-                <p className="text-sm leading-relaxed text-white/70 max-w-prose">{displayNarrative}</p>
+                <p className="text-sm leading-relaxed text-text-secondary max-w-prose">{displayNarrative}</p>
                 {displayRisks.length > 0 && (
                   <div className="space-y-1.5 pt-1">
                     {displayRisks.map((risk, i) => (
@@ -342,7 +342,7 @@ export function AiInsightsPanel({
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="shrink-0 rounded-md px-2.5 py-1 text-xs text-white/40 bg-white/[0.04] cursor-pointer hover:bg-white/[0.07] hover:text-white/70 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  className="shrink-0 rounded-md px-2.5 py-1 text-xs text-text-tertiary bg-overlay-subtle cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   Retry
                 </button>

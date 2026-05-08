@@ -182,7 +182,7 @@ export default function ActivityLogPage() {
         {/* Filters */}
         <div className="flex flex-col gap-3 mb-5">
           <div className="flex items-center gap-3">
-            <Filter className="h-3.5 w-3.5 text-white/25" strokeWidth={2} />
+            <Filter className="h-3.5 w-3.5 text-text-muted" strokeWidth={2} />
             <SelectFilter
               value={statusFilter}
               options={STATUS_OPTIONS}
@@ -192,7 +192,7 @@ export default function ActivityLogPage() {
               type="button"
               onClick={refresh}
               title="Refresh"
-              className="flex items-center gap-1.5 rounded-lg border border-border-default bg-transparent px-2.5 py-1.5 text-xs text-white/40 cursor-pointer hover:border-white/[0.1] hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+              className="flex items-center gap-1.5 rounded-lg border border-border-default bg-transparent px-2.5 py-1.5 text-xs text-text-tertiary cursor-pointer hover:border-border-strong hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
             >
               <RefreshCw className="h-3 w-3" strokeWidth={2} />
             </button>
@@ -217,7 +217,7 @@ export default function ActivityLogPage() {
                 className={`px-2.5 py-1 rounded-md text-label font-[var(--font-body)] cursor-pointer border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
                   selectedTypes.has(opt.value)
                     ? "border-[var(--color-brand-400)]/30 bg-[var(--color-brand-400)]/10 text-[var(--color-brand-400)]"
-                    : "border-border-default bg-transparent text-white/35 hover:border-white/[0.1] hover:text-white/50"
+                    : "border-border-default bg-transparent text-text-tertiary hover:border-border-strong hover:text-text-secondary"
                 }`}
               >
                 {opt.label}
@@ -227,7 +227,7 @@ export default function ActivityLogPage() {
               <button
                 type="button"
                 onClick={() => { setStoredTypes([]); setOffset(0); }}
-                className="px-2.5 py-1 rounded-md text-label font-[var(--font-body)] text-white/25 cursor-pointer hover:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
+                className="px-2.5 py-1 rounded-md text-label font-[var(--font-body)] text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
               >
                 Clear
               </button>

@@ -50,10 +50,10 @@ export default function LoginPage() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)] px-4">
         <div className="w-full max-w-sm rounded-xl border border-border-default bg-[var(--color-surface-elevated)] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <div className="mb-6 text-center">
-            <h1 className="font-[var(--font-display)] text-xl font-semibold tracking-[-0.03em] text-white/90">
+            <h1 className="font-[var(--font-display)] text-xl font-semibold tracking-[-0.03em] text-text-primary">
               Access denied
             </h1>
-            <p className="mt-2 text-sm leading-relaxed text-white/40">
+            <p className="mt-2 text-sm leading-relaxed text-text-tertiary">
               Your account is not a member of the Bridge organization. Contact
               the admin to get access.
             </p>
@@ -61,7 +61,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => signOut({ redirectUrl: "/login" })}
-            className="h-10 w-full cursor-pointer rounded-lg border border-border-strong bg-white/[0.03] text-sm text-white/60 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white/90"
+            className="h-10 w-full cursor-pointer rounded-lg border border-border-strong bg-overlay-subtle text-sm text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
           >
             Sign out
           </button>
@@ -85,11 +85,11 @@ export default function LoginPage() {
         appearance={{
           variables: {
             colorBackground: "var(--color-surface-elevated)",
-            colorText: "rgba(255,255,255,0.9)",
-            colorTextSecondary: "rgba(255,255,255,0.4)",
+            colorText: "var(--color-text-primary)",
+            colorTextSecondary: "var(--color-text-tertiary)",
             colorPrimary: "var(--color-brand-600)",
-            colorInputBackground: "rgba(255,255,255,0.03)",
-            colorInputText: "rgba(255,255,255,0.9)",
+            colorInputBackground: "var(--color-overlay-subtle)",
+            colorInputText: "var(--color-text-primary)",
             borderRadius: "0.75rem",
           },
           elements: {

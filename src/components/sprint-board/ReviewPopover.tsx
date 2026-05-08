@@ -18,9 +18,9 @@ function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
   const color = getScoreColor(dim.score);
   return (
     <div className="flex items-center justify-between py-1.5">
-      <span className="text-xs text-white/50">{dim.label}</span>
+      <span className="text-xs text-text-secondary">{dim.label}</span>
       <div className="flex items-center gap-2">
-        <div className="h-1 w-16 rounded-full bg-white/[0.06] overflow-hidden">
+        <div className="h-1 w-16 rounded-full bg-overlay-default overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.6 }}
@@ -183,7 +183,7 @@ export function ReviewPopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-50 max-w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)]"
+      className="fixed z-50 max-w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_var(--color-overlay-subtle)]"
       style={{ top: pos.top, bottom: pos.bottom, left: pos.left, width: pos.width }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -191,12 +191,12 @@ export function ReviewPopover({
       <div className="relative p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-medium text-white/40">Quality Review</span>
+          <span className="text-xs font-medium text-text-tertiary">Quality Review</span>
           <Button
             variant="ghost"
             size="sm"
             iconOnly
-            icon={<X size={12} strokeWidth={1.5} className="text-white/30" />}
+            icon={<X size={12} strokeWidth={1.5} className="text-text-tertiary" />}
             onClick={onClose}
           />
         </div>
@@ -204,8 +204,8 @@ export function ReviewPopover({
         {latestReview ? (
           <>
             {/* Overall score */}
-            <div className="flex items-center justify-between mb-3 rounded-md bg-white/[0.03] px-3 py-2">
-              <span className="text-xs text-white/50">Overall</span>
+            <div className="flex items-center justify-between mb-3 rounded-md bg-overlay-subtle px-3 py-2">
+              <span className="text-xs text-text-secondary">Overall</span>
               <div className="flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"
@@ -214,7 +214,7 @@ export function ReviewPopover({
                 <span className="text-base font-semibold tabular-nums" style={{ color }}>
                   {latestReview.overallScore}
                 </span>
-                <span className="text-caption text-white/20">/100</span>
+                <span className="text-caption text-text-muted">/100</span>
               </div>
             </div>
 
@@ -227,7 +227,7 @@ export function ReviewPopover({
 
             {/* Summary */}
             {latestReview.summary && (
-              <p className="mb-3 text-label leading-relaxed text-white/35 line-clamp-3">
+              <p className="mb-3 text-label leading-relaxed text-text-tertiary line-clamp-3">
                 {latestReview.summary}
               </p>
             )}
@@ -235,10 +235,10 @@ export function ReviewPopover({
             {/* Suggestions */}
             {latestReview.suggestions.length > 0 && (
               <div className="mb-3">
-                <p className="mb-1 text-caption font-medium uppercase tracking-wider text-white/20">Suggestions</p>
+                <p className="mb-1 text-caption font-medium uppercase tracking-wider text-text-muted">Suggestions</p>
                 <ul className="space-y-0.5">
                   {latestReview.suggestions.slice(0, 3).map((s, i) => (
-                    <li key={i} className="flex items-start gap-1.5 text-label text-white/35">
+                    <li key={i} className="flex items-start gap-1.5 text-label text-text-tertiary">
                       <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-white/20" />
                       <span className="line-clamp-1">{s}</span>
                     </li>
@@ -249,7 +249,7 @@ export function ReviewPopover({
 
             {/* Timestamp + freshness */}
             <div className="space-y-1.5 border-t border-border-default pt-3">
-              <div className="text-caption text-white/25">
+              <div className="text-caption text-text-muted">
                 {new Date(latestReview.createdAt).toLocaleString()} via {latestReview.source.replace("-", " ")}
               </div>
               <FreshnessIndicator
@@ -262,7 +262,7 @@ export function ReviewPopover({
 
             {/* History count */}
             {reviews.length > 1 && (
-              <div className="mt-2 text-caption text-white/20">
+              <div className="mt-2 text-caption text-text-muted">
                 {reviews.length} reviews total
               </div>
             )}
@@ -270,7 +270,7 @@ export function ReviewPopover({
         ) : (
           /* Empty state */
           <div className="flex flex-col items-center py-4">
-            <p className="mb-3 text-xs text-white/30">No review yet</p>
+            <p className="mb-3 text-xs text-text-tertiary">No review yet</p>
             <Button
               variant="secondary"
               size="md"

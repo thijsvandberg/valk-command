@@ -40,7 +40,7 @@ function dateRange(sprint: JiraSprint): string {
 function stateColor(state: string): string {
   if (state === "active") return "#4aaa60";
   if (state === "future") return "#60a5fa";
-  return "rgba(255,255,255,0.2)";
+  return "var(--color-text-muted)";
 }
 
 function stateLabel(state: string): string {
@@ -184,7 +184,7 @@ export function SprintListModal({
   return (
     <div
       ref={ref}
-      className={`absolute top-full z-50 mt-1.5 w-80 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)] ${alignLeft ? "left-0" : "right-0"}`}
+      className={`absolute top-full z-50 mt-1.5 w-80 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_var(--color-overlay-subtle)] ${alignLeft ? "left-0" : "right-0"}`}
       style={{ animation: "sprintListIn 0.15s ease-out" }}
     >
       <div className="flex items-center justify-between border-b border-border-default px-4 pt-3 pb-0">
@@ -196,13 +196,13 @@ export function SprintListModal({
               onClick={() => setTab(t.key)}
               className={`relative rounded-t-md px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 tab === t.key
-                  ? "text-white after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--color-brand-400)]"
-                  : "text-white/35 hover:text-white/55 active:text-white/65"
+                  ? "text-text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-full after:bg-[var(--color-brand-400)]"
+                  : "text-text-tertiary hover:text-text-secondary active:text-text-secondary"
               }`}
             >
               {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span className="ml-1 text-caption text-white/20">{t.count}</span>
+                <span className="ml-1 text-caption text-text-muted">{t.count}</span>
               )}
             </button>
           ))}
@@ -214,7 +214,7 @@ export function SprintListModal({
           iconOnly
           icon={<X className="h-3 w-3" strokeWidth={1.5} />}
           onClick={onClose}
-          className="mb-1 text-white/25"
+          className="mb-1 text-text-muted"
         />
       </div>
 
@@ -229,7 +229,7 @@ export function SprintListModal({
 
       <div className="max-h-72 overflow-y-auto px-1.5 py-1.5">
         {filtered.length === 0 ? (
-          <div className="px-3 py-6 text-center text-xs text-white/25">
+          <div className="px-3 py-6 text-center text-xs text-text-muted">
             {allSprints.length === 0
               ? "No sprints cached. Sync from Jira to load."
               : tab === "hidden"
@@ -244,7 +244,7 @@ export function SprintListModal({
               <button
                 key={sprint.id}
                 type="button"
-                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-white/65 cursor-pointer hover:bg-white/[0.05] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 onClick={() => {
                   onSelect(String(sprint.id), sprint.name);
                   onClose();
@@ -256,10 +256,10 @@ export function SprintListModal({
                     style={{ backgroundColor: stateColor(sprint.state) }}
                   />
                   <span className="truncate">{sprint.name}</span>
-                  <span className="shrink-0 text-caption tabular-nums text-white/15">#{sprint.id}</span>
+                  <span className="shrink-0 text-caption tabular-nums text-text-muted">#{sprint.id}</span>
                 </span>
                 <span className="ml-2 flex shrink-0 items-center gap-1">
-                  <span className="text-xs text-white/20">
+                  <span className="text-xs text-text-muted">
                     {dateRange(sprint) || stateLabel(sprint.state)}
                   </span>
                   <button
@@ -268,7 +268,7 @@ export function SprintListModal({
                       e.stopPropagation();
                       handleToggleHidden(sprint.id, isHidden);
                     }}
-                    className="flex h-5 w-5 items-center justify-center rounded cursor-pointer text-white/15 hover:text-white/40 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="flex h-5 w-5 items-center justify-center rounded cursor-pointer text-text-muted hover:text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     title={isHidden ? "Restore sprint" : "Hide sprint"}
                   >
                     {isHidden ? (
@@ -286,7 +286,7 @@ export function SprintListModal({
                         router.push(`/stakeholder?team=${team}&sprintId=${sprint.id}`);
                         onClose();
                       }}
-                      className="flex h-5 w-5 items-center justify-center rounded cursor-pointer text-white/15 hover:text-white/40 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      className="flex h-5 w-5 items-center justify-center rounded cursor-pointer text-text-muted hover:text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                       title="View stakeholder"
                     >
                       <Users className="h-3 w-3" strokeWidth={1.5} />
@@ -302,7 +302,7 @@ export function SprintListModal({
                       className={`flex h-5 w-5 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                         isPinned
                           ? "text-[var(--color-brand-400)]"
-                          : "text-white/15 hover:text-white/40 hover:bg-hover-list-item"
+                          : "text-text-muted hover:text-text-tertiary hover:bg-hover-list-item"
                       }`}
                       title={isPinned ? "Unpin from tabs" : "Pin to tab"}
                     >

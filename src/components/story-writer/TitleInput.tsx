@@ -13,7 +13,7 @@ export function TitleInput({ value, onChange, placeholder = "Story title..." }: 
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full bg-transparent px-4 pt-4 pb-1 font-[var(--font-display)] text-[1.35rem] font-semibold leading-snug tracking-tight text-white/90 placeholder:text-white/20 focus:outline-none"
+      className="w-full bg-transparent px-4 pt-4 pb-1 font-[var(--font-display)] text-[1.35rem] font-semibold leading-snug tracking-tight text-text-primary placeholder:text-text-muted focus:outline-none"
     />
   );
 }

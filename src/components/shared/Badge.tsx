@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
 const VARIANT_CLASSES = {
-  default: "bg-white/[0.06] text-white/40",
+  default: "bg-overlay-default text-text-tertiary",
   brand: "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]",
   success: "bg-emerald-500/15 text-emerald-400",
   warning: "bg-amber-500/15 text-amber-400",

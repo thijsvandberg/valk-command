@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SWRProvider>
     <ActivityProvider>
-      <div className="flex flex-col h-screen bg-[var(--color-surface-base)] text-white">
+      <div className="flex flex-col h-screen bg-[var(--color-surface-base)] text-text-primary">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:rounded-lg focus:bg-[var(--color-brand-600)] focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:shadow-lg focus:outline-none"

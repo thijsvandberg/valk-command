@@ -64,7 +64,7 @@ export function CommandPalette() {
         style={{
           backgroundColor: "var(--color-surface-floating)",
           boxShadow:
-            "0 0 0 1px rgba(255,255,255,0.04), 0 24px 64px rgba(0,0,0,0.65), 0 8px 24px rgba(0,0,0,0.4), 0 0 80px rgba(19,69,128,0.08)",
+            "0 0 0 1px var(--color-overlay-subtle), 0 24px 64px rgba(0,0,0,0.65), 0 8px 24px rgba(0,0,0,0.4), 0 0 80px rgba(19,69,128,0.08)",
         }}
         onKeyDown={handleKeyDown}
       >
@@ -74,40 +74,40 @@ export function CommandPalette() {
             <button
               type="button"
               onClick={() => { setSubFlow({ kind: "none" }); requestAnimationFrame(() => inputRef.current?.focus()); }}
-              className="flex items-center justify-center h-[18px] w-[18px] shrink-0 text-white/30 hover:text-white/55 transition-colors duration-75 cursor-pointer"
+              className="flex items-center justify-center h-[18px] w-[18px] shrink-0 text-text-tertiary hover:text-text-secondary transition-colors duration-75 cursor-pointer"
               aria-label="Back to palette"
             >
               <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.5} />
             </button>
-            <span className="flex-1 text-heading-sm text-white/50 font-[var(--font-body)]">New Story</span>
-            <kbd className="hidden sm:flex items-center rounded-md border border-border-strong bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
+            <span className="flex-1 text-heading-sm text-text-secondary font-[var(--font-body)]">New Story</span>
+            <kbd className="hidden sm:flex items-center rounded-md border border-border-strong bg-overlay-subtle px-1.5 py-0.5 text-caption font-mono text-text-muted tracking-wide">
               ESC
             </kbd>
           </div>
         ) : (
           <div className="flex items-center gap-3 px-5 py-4">
-            <Search className="h-[18px] w-[18px] shrink-0 text-white/25" strokeWidth={1.5} />
+            <Search className="h-[18px] w-[18px] shrink-0 text-text-muted" strokeWidth={1.5} />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search pages, tickets, or actions..."
-              className="flex-1 bg-transparent text-heading-sm text-white/90 placeholder-white/20 focus:outline-none font-[var(--font-body)]"
+              className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none font-[var(--font-body)]"
               spellCheck={false}
               autoComplete="off"
             />
             {isLoading && (
               <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-white/40" />
             )}
-            <kbd className="hidden sm:flex items-center rounded-md border border-border-strong bg-white/[0.03] px-1.5 py-0.5 text-caption font-mono text-white/20 tracking-wide">
+            <kbd className="hidden sm:flex items-center rounded-md border border-border-strong bg-overlay-subtle px-1.5 py-0.5 text-caption font-mono text-text-muted tracking-wide">
               ESC
             </kbd>
           </div>
         )}
 
         {/* Divider */}
-        <div className="h-px bg-white/[0.06]" />
+        <div className="h-px bg-overlay-default" />
 
         {/* Sub-flow form or results list */}
         {isSubFlow ? (
@@ -136,12 +136,12 @@ export function CommandPalette() {
             style={{
               maxHeight: 380,
               scrollbarWidth: "thin",
-              scrollbarColor: "rgba(255,255,255,0.06) transparent",
+              scrollbarColor: "var(--color-overlay-default) transparent",
             }}
           >
             {allResults.length === 0 && query.trim().length > 0 && !isLoading && (
-              <div className="flex flex-col items-center justify-center py-12 text-white/20 text-sm">
-                <Search className="h-8 w-8 mb-3 text-white/10" strokeWidth={1} />
+              <div className="flex flex-col items-center justify-center py-12 text-text-muted text-sm">
+                <Search className="h-8 w-8 mb-3 text-text-muted" strokeWidth={1} />
                 <span>No results for &ldquo;{query}&rdquo;</span>
               </div>
             )}
@@ -151,7 +151,7 @@ export function CommandPalette() {
               return (
                 <div key={`${group.category}-${sectionStartIdx}`}>
                   {/* Section header */}
-                  <div className="px-5 pt-3 pb-1.5 text-caption font-semibold uppercase tracking-[0.08em] text-white/20 font-[var(--font-body)]">
+                  <div className="px-5 pt-3 pb-1.5 text-caption font-semibold uppercase tracking-[0.08em] text-text-muted font-[var(--font-body)]">
                     {CATEGORY_LABELS[group.category]}
                   </div>
 
@@ -167,14 +167,14 @@ export function CommandPalette() {
                         onClick={() => executeResult(result)}
                         className={`group flex items-center gap-3 mx-2 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-75 ${
                           isActive
-                            ? "bg-white/[0.06]"
-                            : "hover:bg-white/[0.03]"
+                            ? "bg-overlay-default"
+                            : "hover:bg-overlay-subtle"
                         }`}
                       >
                         <ResultIcon result={result} isActive={isActive} />
                         <ResultLabel result={result} isActive={isActive} />
                         {isActive && (
-                          <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-white/20" strokeWidth={1.5} />
+                          <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-text-muted" strokeWidth={1.5} />
                         )}
                       </div>
                     );
@@ -186,31 +186,31 @@ export function CommandPalette() {
         )}
 
         {/* Footer hints */}
-        <div className="flex items-center gap-4 border-t border-border-default px-5 py-2.5 text-caption text-white/18">
+        <div className="flex items-center gap-4 border-t border-border-default px-5 py-2.5 text-caption text-text-muted">
           {isSubFlow ? (
             <>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u21b5"}</kbd>
-                <span className="text-white/20">confirm</span>
+                <kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono text-text-muted">{"\u21b5"}</kbd>
+                <span className="text-text-muted">confirm</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">esc</kbd>
-                <span className="text-white/20">back</span>
+                <kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono text-text-muted">esc</kbd>
+                <span className="text-text-muted">back</span>
               </span>
             </>
           ) : (
             <>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u2191\u2193"}</kbd>
-                <span className="text-white/20">navigate</span>
+                <kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono text-text-muted">{"\u2191\u2193"}</kbd>
+                <span className="text-text-muted">navigate</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">{"\u21b5"}</kbd>
-                <span className="text-white/20">open</span>
+                <kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono text-text-muted">{"\u21b5"}</kbd>
+                <span className="text-text-muted">open</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="rounded border border-border-strong bg-white/[0.03] px-1 py-0.5 font-mono text-white/20">esc</kbd>
-                <span className="text-white/20">close</span>
+                <kbd className="rounded border border-border-strong bg-overlay-subtle px-1 py-0.5 font-mono text-text-muted">esc</kbd>
+                <span className="text-text-muted">close</span>
               </span>
             </>
           )}

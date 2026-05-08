@@ -41,7 +41,7 @@ export function EpicFilterChips({
           "rounded-full px-2.5 py-1 text-xs transition-colors duration-100 cursor-pointer",
           isAllActive
             ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
-            : "bg-white/[0.04] text-white/30 hover:bg-hover-interactive hover:text-white/50",
+            : "bg-overlay-subtle text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary",
         ].join(" ")}
       >
         All
@@ -58,13 +58,13 @@ export function EpicFilterChips({
               "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors duration-100 cursor-pointer",
               isActive
                 ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
-                : "bg-white/[0.04] text-white/30 hover:bg-hover-interactive hover:text-white/50",
+                : "bg-overlay-subtle text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary",
             ].join(" ")}
           >
             <span>{epic}</span>
             <span className={[
               "rounded-full px-1 py-px text-caption tabular-nums",
-              isActive ? "bg-[var(--color-brand-400)]/20" : "bg-white/[0.06]",
+              isActive ? "bg-[var(--color-brand-400)]/20" : "bg-overlay-default",
             ].join(" ")}>
               {count}
             </span>

@@ -116,7 +116,7 @@ export default function Sidebar() {
       <Button
         variant="ghost"
         iconOnly
-        icon={<Menu className="h-5 w-5 text-white/70" strokeWidth={1.5} />}
+        icon={<Menu className="h-5 w-5 text-text-secondary" strokeWidth={1.5} />}
         onClick={() => setMobileOpen(true)}
         className="fixed top-4 left-4 z-50 h-10 w-10 rounded-lg bg-[var(--color-surface-elevated)] border-border-default lg:hidden hover:bg-[var(--color-surface-floating)]"
         aria-label="Open sidebar"
@@ -143,7 +143,7 @@ export default function Sidebar() {
           <Button
             variant="ghost"
             iconOnly
-            icon={<X className="h-4 w-4 text-white/50" strokeWidth={1.5} />}
+            icon={<X className="h-4 w-4 text-text-secondary" strokeWidth={1.5} />}
             onClick={() => setMobileOpen(false)}
             className="h-8 w-8 rounded-lg border-transparent hover:bg-hover-interactive"
             aria-label="Close sidebar"
@@ -164,12 +164,12 @@ export default function Sidebar() {
                     className={`group flex items-center ${collapsed ? "justify-center" : "gap-3"} rounded-lg ${collapsed ? "px-0 py-2.5" : "px-3 py-2.5"} text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       active
                         ? "bg-[var(--color-brand-600)]/12 text-[var(--color-brand-300)]"
-                        : "text-white/50 hover:bg-hover-list-item hover:text-white/80 active:bg-white/[0.06]"
+                        : "text-text-secondary hover:bg-hover-list-item hover:text-text-primary active:bg-overlay-default"
                     }`}
                     aria-current={active ? "page" : undefined}
                     title={collapsed ? item.label : undefined}
                   >
-                    <span className={`shrink-0 ${active ? "text-[var(--color-brand-400)]" : "text-white/30 group-hover:text-white/50"}`}>
+                    <span className={`shrink-0 ${active ? "text-[var(--color-brand-400)]" : "text-text-tertiary group-hover:text-text-secondary"}`}>
                       {item.icon}
                     </span>
                     {!collapsed && (
@@ -189,7 +189,7 @@ export default function Sidebar() {
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-white/20 cursor-pointer hover:bg-hover-list-item hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-hover-list-item hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {collapsed
@@ -214,7 +214,7 @@ export default function Sidebar() {
         />
 
         {/* Sidebar right edge accent */}
-        <div className="hidden lg:block absolute top-0 right-0 h-full w-px bg-white/[0.06]" />
+        <div className="hidden lg:block absolute top-0 right-0 h-full w-px bg-overlay-default" />
       </aside>
     </>
   );

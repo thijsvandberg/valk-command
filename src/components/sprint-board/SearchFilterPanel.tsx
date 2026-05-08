@@ -210,7 +210,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
   return (
     <div
       className="flex flex-wrap items-center gap-2 border-b border-border-default px-5 py-2.5"
-      style={{ backgroundColor: "rgba(255,255,255,0.015)" }}
+      style={{ backgroundColor: "var(--color-overlay-subtle)" }}
     >
       <FilterDropdown
         label="Status"
@@ -282,7 +282,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
       />
 
       {/* Separator between dropdowns and date range */}
-      <div className="h-5 w-px shrink-0 bg-white/[0.10]" />
+      <div className="h-5 w-px shrink-0 bg-overlay-strong" />
 
       {/* Date range single-select pills */}
       <div className="flex items-center gap-1 shrink-0">
@@ -296,13 +296,13 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
               backgroundColor:
                 selectedDateOption === opt.value
                   ? "var(--color-brand-500)"
-                  : "rgba(255,255,255,0.03)",
+                  : "var(--color-overlay-subtle)",
               borderColor:
                 selectedDateOption === opt.value
                   ? "var(--color-brand-500)"
-                  : "rgba(255,255,255,0.07)",
+                  : "var(--color-overlay-default)",
               color:
-                selectedDateOption === opt.value ? "#fff" : "rgba(255,255,255,0.5)",
+                selectedDateOption === opt.value ? "#fff" : "var(--color-text-secondary)",
               transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms",
             }}
           >
@@ -321,10 +321,10 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
               setCustomFrom(e.target.value);
               updateCustomDate(e.target.value, customTo);
             }}
-            className="rounded-md border border-border-default bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
+            className="rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label text-text-secondary focus:outline-none focus:border-[var(--color-brand-500)]/50"
             style={{ colorScheme: "dark" }}
           />
-          <span className="text-caption text-white/20">to</span>
+          <span className="text-caption text-text-muted">to</span>
           <input
             type="date"
             value={customTo}
@@ -332,14 +332,14 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
               setCustomTo(e.target.value);
               updateCustomDate(customFrom, e.target.value);
             }}
-            className="rounded-md border border-border-default bg-white/[0.03] px-2 py-1 text-label text-white/60 focus:outline-none focus:border-[var(--color-brand-500)]/50"
+            className="rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label text-text-secondary focus:outline-none focus:border-[var(--color-brand-500)]/50"
             style={{ colorScheme: "dark" }}
           />
         </div>
       )}
 
       {/* Separator between date group and section chips */}
-      <div className="h-5 w-px shrink-0 bg-white/[0.10]" />
+      <div className="h-5 w-px shrink-0 bg-overlay-strong" />
 
       {/* Section filter chips — single-row, same height as date pills */}
       {SECTION_DEFS.map((s) => {
@@ -354,9 +354,9 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             aria-pressed={isActive}
             className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap shrink-0"
             style={{
-              backgroundColor: isActive ? "rgba(74, 170, 96, 0.12)" : "rgba(255,255,255,0.03)",
-              borderColor: isActive ? "rgba(74, 170, 96, 0.35)" : "rgba(255,255,255,0.07)",
-              color: isActive ? "var(--color-brand-400)" : "rgba(255,255,255,0.5)",
+              backgroundColor: isActive ? "rgba(74, 170, 96, 0.12)" : "var(--color-overlay-subtle)",
+              borderColor: isActive ? "rgba(74, 170, 96, 0.35)" : "var(--color-overlay-default)",
+              color: isActive ? "var(--color-brand-400)" : "var(--color-text-secondary)",
               transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms",
             }}
           >
@@ -365,7 +365,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             {count > 0 && (
               <span
                 className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
-                style={{ backgroundColor: isActive ? "var(--color-brand-400)" : "rgba(255,255,255,0.3)" }}
+                style={{ backgroundColor: isActive ? "var(--color-brand-400)" : "var(--color-text-tertiary)" }}
               />
             )}
           </button>
@@ -381,7 +381,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             setCustomTo("");
             onChange({ ...EMPTY_FILTERS });
           }}
-          className="ml-auto flex items-center gap-1 text-label text-white/30 cursor-pointer hover:text-white/55 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] shrink-0"
+          className="ml-auto flex items-center gap-1 text-label text-text-tertiary cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] shrink-0"
           style={{ transition: "color 100ms" }}
         >
           <X className="h-3 w-3" strokeWidth={2} />

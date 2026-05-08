@@ -40,7 +40,7 @@ function statusColor(status: string): string {
 function ScoreBar({ score, max }: { score: number; max: number }) {
   const pct = Math.round((score / max) * 100);
   return (
-    <div className="h-1.5 w-full rounded-full bg-white/[0.08]">
+    <div className="h-1.5 w-full rounded-full bg-overlay-strong">
       <div
         className="h-full rounded-full transition-[width] duration-150"
         style={{ width: `${pct}%`, backgroundColor: verdictColor(pct >= 90 ? "Ready for sprint" : pct >= 75 ? "Minor issues" : pct >= 60 ? "Needs work" : "Not ready") }}
@@ -58,9 +58,9 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
           <a href={data.issue.url} target="_blank" rel="noopener noreferrer" className="text-[#60a5fa] text-xs font-medium hover:underline">
             {data.issue.key}
           </a>
-          <span className="text-white/30 text-xs ml-2">{data.issue.type}</span>
-          <h3 className="text-white/90 text-sm font-medium mt-0.5 leading-snug">{data.issue.summary}</h3>
-          <div className="flex gap-3 mt-1 text-label text-white/40">
+          <span className="text-text-tertiary text-xs ml-2">{data.issue.type}</span>
+          <h3 className="text-text-primary text-sm font-medium mt-0.5 leading-snug">{data.issue.summary}</h3>
+          <div className="flex gap-3 mt-1 text-label text-text-tertiary">
             {data.issue.sprint && <span>{data.issue.sprint}</span>}
             {data.issue.assignee && <span>{data.issue.assignee}</span>}
             <span>{data.issue.status}</span>
@@ -71,8 +71,8 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       {/* Score */}
       <div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white/90">{data.score}</span>
-          <span className="text-sm text-white/30">/ {data.maxScore}</span>
+          <span className="text-2xl font-bold text-text-primary">{data.score}</span>
+          <span className="text-sm text-text-tertiary">/ {data.maxScore}</span>
           <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: verdictColor(data.verdict) + "20", color: verdictColor(data.verdict) }}>
             {data.verdict}
           </span>
@@ -88,11 +88,11 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
           <div key={c.name}>
             <div className="flex items-center gap-2 py-1">
               <span className="text-xs w-4 text-center" style={{ color: statusColor(c.status) }}>{statusIcon(c.status)}</span>
-              <span className="text-xs text-white/70 flex-1">{c.name}</span>
+              <span className="text-xs text-text-secondary flex-1">{c.name}</span>
               <span className="text-xs font-mono" style={{ color: c.score === c.maxScore ? "#34d399" : c.score === 0 ? "#f87171" : "#fbbf24" }}>
                 {c.score}
               </span>
-              <span className="text-xs text-white/20 font-mono">/{c.maxScore}</span>
+              <span className="text-xs text-text-muted font-mono">/{c.maxScore}</span>
             </div>
             {c.subItems && c.status !== "pass" && (
               <div className="ml-6 space-y-0.5">
@@ -100,10 +100,10 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
                   <div key={i} className="flex items-start gap-2 py-0.5">
                     <span className="text-caption w-3 text-center mt-0.5" style={{ color: statusColor(s.status) }}>{statusIcon(s.status)}</span>
                     <div className="flex-1">
-                      <span className="text-label text-white/50">{s.name}</span>
-                      {s.issue && <p className="text-label text-white/30 mt-0.5">{s.issue}</p>}
+                      <span className="text-label text-text-secondary">{s.name}</span>
+                      {s.issue && <p className="text-label text-text-tertiary mt-0.5">{s.issue}</p>}
                     </div>
-                    <span className="text-caption font-mono text-white/30">{s.score}/{s.maxScore}</span>
+                    <span className="text-caption font-mono text-text-tertiary">{s.score}/{s.maxScore}</span>
                   </div>
                 ))}
               </div>
@@ -115,12 +115,12 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       {/* Issues & suggestions */}
       {data.issues.length > 0 && (
         <div className="border-t border-border-default pt-3 space-y-2">
-          <p className="text-label text-white/40 font-medium uppercase tracking-wider">Suggestions</p>
+          <p className="text-label text-text-tertiary font-medium uppercase tracking-wider">Suggestions</p>
           {data.issues.map((issue, i) => (
             <div key={i} className="text-xs">
-              <span className="text-white/50 font-medium">{issue.criterion}</span>
-              {issue.location && <span className="text-white/30"> ({issue.location})</span>}
-              <p className="text-white/40 mt-0.5">{issue.problem}</p>
+              <span className="text-text-secondary font-medium">{issue.criterion}</span>
+              {issue.location && <span className="text-text-tertiary"> ({issue.location})</span>}
+              <p className="text-text-tertiary mt-0.5">{issue.problem}</p>
               <p className="text-[#60a5fa]/70 mt-0.5">{issue.suggestion}</p>
             </div>
           ))}
@@ -128,7 +128,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       )}
 
       {/* Summary */}
-      <p className="text-xs text-white/30 border-t border-border-default pt-3">{data.summary}</p>
+      <p className="text-xs text-text-tertiary border-t border-border-default pt-3">{data.summary}</p>
     </div>
   );
 }
@@ -159,7 +159,7 @@ function MessageContent({ content }: { content: string }) {
     if (typeof jsonData === "object" && jsonData && "skill" in jsonData && (jsonData as ReviewStoryData).skill === "review-story") {
       return <ReviewStoryCard data={jsonData as ReviewStoryData} />;
     }
-    return <pre className="text-xs text-white/60 whitespace-pre-wrap">{JSON.stringify(jsonData, null, 2)}</pre>;
+    return <pre className="text-xs text-text-secondary whitespace-pre-wrap">{JSON.stringify(jsonData, null, 2)}</pre>;
   }
 
   // HTML report (legacy)
@@ -170,7 +170,7 @@ function MessageContent({ content }: { content: string }) {
     const summary = summaryMatch ? summaryMatch[1].trim() : null;
     return (
       <div className="space-y-3">
-        {summary && <p className="text-white/60 text-xs">{summary}</p>}
+        {summary && <p className="text-text-secondary text-xs">{summary}</p>}
         <iframe
           srcDoc={html}
           className="w-full rounded-lg border border-border-default"
@@ -226,7 +226,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-white/30">Send a message to start the conversation.</p>
+        <p className="text-sm text-text-tertiary">Send a message to start the conversation.</p>
       </div>
     );
   }
@@ -243,7 +243,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
             return (
               <div key={message.id} className="flex justify-start">
                 <div
-                  className={`w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-white/80 ${isSending ? "opacity-60" : ""}`}
+                  className={`w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""}`}
                   data-testid="message-investigation"
                 >
                   <MessageContent content={message.content} />
@@ -261,13 +261,13 @@ export default function MessageList({ messages, loading, error }: MessageListPro
                 className={`max-w-[80%] overflow-x-auto rounded-xl px-4 py-3 text-sm leading-[1.7] font-[var(--font-body)] ${
                   message.role === "user"
                     ? "bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.18)]"
-                    : "bg-[var(--color-surface-floating)] text-white/80 border border-border-default"
+                    : "bg-[var(--color-surface-floating)] text-text-primary border border-border-default"
                 } ${isSending ? "opacity-60" : ""}`}
                 data-testid={`message-${message.role}`}
               >
                 <MessageContent content={message.content} />
                 {isSending && (
-                  <p className="mt-1 text-caption text-white/30">Sending...</p>
+                  <p className="mt-1 text-caption text-text-tertiary">Sending...</p>
                 )}
                 {message.role === "assistant" && !isSending && (
                   <CopyActions content={message.content} />

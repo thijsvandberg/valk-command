@@ -22,13 +22,13 @@ export function StoryPreviewApp() {
   return (
     <div className="flex h-full flex-col overflow-y-auto p-4">
       {title && (
-        <h1 className="mb-4 font-[var(--font-display)] text-lg font-semibold text-white/90 tracking-tight">
+        <h1 className="mb-4 font-[var(--font-display)] text-lg font-semibold text-text-primary tracking-tight">
           {title}
         </h1>
       )}
       <div className="description-content">
         {content ? renderMarkdown(content) : (
-          <p className="text-xs text-white/25">No content yet.</p>
+          <p className="text-xs text-text-muted">No content yet.</p>
         )}
       </div>
     </div>

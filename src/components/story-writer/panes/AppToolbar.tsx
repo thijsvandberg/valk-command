@@ -61,7 +61,7 @@ export function AppToolbar() {
           >
             {/* Divider between panes */}
             {visPos > 0 && (
-              <div className="w-px shrink-0 bg-white/[0.06]" />
+              <div className="w-px shrink-0 bg-overlay-default" />
             )}
 
             <div
@@ -81,13 +81,13 @@ export function AppToolbar() {
                     className="flex shrink-0 select-none cursor-grab items-center gap-1.5 active:cursor-grabbing"
                     title="Drag to move to another pane"
                   >
-                    <span className="text-label font-semibold text-white/70">
+                    <span className="text-label font-semibold text-text-secondary">
                       {toolbar.label}
                     </span>
                     {toolbar.contextLabel && (
                       <>
-                        <span className="text-white/20 text-caption">·</span>
-                        <span className="min-w-0 truncate text-label text-white/35">
+                        <span className="text-text-muted text-caption">·</span>
+                        <span className="min-w-0 truncate text-label text-text-tertiary">
                           {toolbar.contextLabel}
                         </span>
                       </>
@@ -110,7 +110,7 @@ export function AppToolbar() {
                     <button
                       type="button"
                       onClick={() => pane.closeApp(activeApp)}
-                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-white/30 transition-colors duration-100 hover:bg-hover-interactive hover:text-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:text-white/40"
+                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-text-tertiary transition-colors duration-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:text-text-tertiary"
                       title={`Close ${toolbar.label}`}
                       aria-label={`Close ${toolbar.label}`}
                     >
@@ -121,7 +121,7 @@ export function AppToolbar() {
                   </div>
                 </>
               ) : (
-                <span className="text-caption text-white/15">
+                <span className="text-caption text-text-muted">
                   {isDragTarget ? "Drop here" : `Pane ${paneIdx + 1}`}
                 </span>
               )}

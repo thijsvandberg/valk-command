@@ -130,7 +130,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-2 px-5 py-2 pr-10 text-xs text-white/40 cursor-pointer hover:text-white/60 hover:bg-white/[0.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.03]"
+        className="flex w-full items-center gap-2 px-5 py-2 pr-10 text-xs text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle"
       >
         <ChevronRight
           className={`h-3 w-3 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
@@ -138,7 +138,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
         />
         <BarChart2 className="h-3.5 w-3.5" strokeWidth={1.5} />
         Analytics
-        <span className="text-white/20">
+        <span className="text-text-muted">
           {totalPoints > 0 && <>{totalPoints} pts total</>}
           {totalPoints > 0 && bvTotal > 0 && " | "}
           {bvTotal > 0 && <>BV: {bvTotal}{bvAvg ? ` avg ${bvAvg}` : ""}</>}
@@ -148,7 +148,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-white/25 cursor-pointer hover:text-white/50 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-strong"
           title="Close analytics"
         >
           <X size={13} strokeWidth={1.5} />
@@ -161,8 +161,8 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
           {/* Story points by status */}
           {totalPoints > 0 && (
             <div className="mb-3">
-              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Story Points by status</div>
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-text-muted">Story Points by status</div>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-overlay-subtle">
                 {STATUS_ORDER.map((status) => {
                   const pts = pointsByStatus[status];
                   if (pts === 0 || totalPointsForBar === 0) return null;
@@ -186,7 +186,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                   const pts = pointsByStatus[status];
                   if (pts === 0) return null;
                   return (
-                    <span key={status} className="flex items-center gap-1 text-caption text-white/40">
+                    <span key={status} className="flex items-center gap-1 text-caption text-text-tertiary">
                       <span
                         className="h-1.5 w-1.5 rounded-full"
                         style={{ backgroundColor: STATUS_COLORS[status] }}
@@ -202,8 +202,8 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
           {/* Business Value by status */}
           {bvTotal > 0 && (
             <div className="mb-3">
-              <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Business Value by status</div>
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.04]">
+              <div className="mb-1.5 text-caption uppercase tracking-wider text-text-muted">Business Value by status</div>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-overlay-subtle">
                 {STATUS_ORDER.map((status) => {
                   const bv = bvByStatus[status];
                   if (bv === 0 || totalBvForBar === 0) return null;
@@ -227,7 +227,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                   const bv = bvByStatus[status];
                   if (bv === 0) return null;
                   return (
-                    <span key={status} className="flex items-center gap-1 text-caption text-white/40">
+                    <span key={status} className="flex items-center gap-1 text-caption text-text-tertiary">
                       <span
                         className="h-1.5 w-1.5 rounded-full"
                         style={{ backgroundColor: STATUS_COLORS[status] }}
@@ -246,7 +246,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
               <button
                 type="button"
                 onClick={() => setAssigneesExpanded(!assigneesExpanded)}
-                className="mb-1.5 flex items-center gap-1 text-caption uppercase tracking-wider text-white/25 cursor-pointer hover:text-white/40"
+                className="mb-1.5 flex items-center gap-1 text-caption uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary"
               >
                 <ChevronRight
                   className={`h-2.5 w-2.5 transition-transform duration-150 ${assigneesExpanded ? "rotate-90" : ""}`}
@@ -260,11 +260,11 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                   {/* Story Points by assignee */}
                   {pointsByAssignee.length > 0 && (
                     <div>
-                      <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Story Points by assignee</div>
+                      <div className="mb-1.5 text-caption uppercase tracking-wider text-text-muted">Story Points by assignee</div>
                       <div className="space-y-1">
                         {pointsByAssignee.map((a) => (
                           <div key={a.name} className="flex items-center gap-2">
-                            <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
+                            <span className="w-20 truncate text-label text-text-tertiary">{a.name.split(" ")[0]}</span>
                             <div className="flex-1">
                               <div
                                 className="h-2 rounded-full"
@@ -276,7 +276,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                                 }}
                               />
                             </div>
-                            <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.points}</span>
+                            <span className="w-6 text-right text-caption tabular-nums text-text-tertiary">{a.points}</span>
                           </div>
                         ))}
                       </div>
@@ -286,11 +286,11 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                   {/* Business Value by assignee */}
                   {bvByAssignee.length > 0 && (
                     <div>
-                      <div className="mb-1.5 text-caption uppercase tracking-wider text-white/25">Business Value by assignee</div>
+                      <div className="mb-1.5 text-caption uppercase tracking-wider text-text-muted">Business Value by assignee</div>
                       <div className="space-y-1">
                         {bvByAssignee.map((a) => (
                           <div key={a.name} className="flex items-center gap-2">
-                            <span className="w-20 truncate text-label text-white/40">{a.name.split(" ")[0]}</span>
+                            <span className="w-20 truncate text-label text-text-tertiary">{a.name.split(" ")[0]}</span>
                             <div className="flex-1">
                               <div
                                 className="h-2 rounded-full"
@@ -302,7 +302,7 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
                                 }}
                               />
                             </div>
-                            <span className="w-6 text-right text-caption tabular-nums text-white/30">{a.value}</span>
+                            <span className="w-6 text-right text-caption tabular-nums text-text-tertiary">{a.value}</span>
                           </div>
                         ))}
                       </div>

@@ -35,7 +35,7 @@ export function DraftPreviewApp() {
             icon={<GitCompare size={11} strokeWidth={1.5} />}
             onClick={handleOpenDiff}
             title="Open in Diff view"
-            className="border-0 bg-transparent text-white/35 hover:text-white/55 hover:bg-hover-list-item"
+            className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
           >
             Open in Diff
           </Button>
@@ -59,7 +59,7 @@ export function DraftPreviewApp() {
 
   if (!draftPreviewContent) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-white/20">
+      <div className="flex h-full items-center justify-center text-xs text-text-muted">
         No draft selected. Open a draft from the chat.
       </div>
     );

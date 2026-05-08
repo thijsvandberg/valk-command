@@ -44,8 +44,8 @@ export function EditStateDot({ state }: { state: EditState }) {
           className="absolute -bottom-[5px] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45"
           style={{
             backgroundColor: "rgb(22,22,34)",
-            borderRight: "1px solid rgba(255,255,255,0.07)",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            borderRight: "1px solid var(--color-overlay-default)",
+            borderBottom: "1px solid var(--color-overlay-default)",
           }}
         />
         {/* Panel */}
@@ -53,15 +53,15 @@ export function EditStateDot({ state }: { state: EditState }) {
           className="font-sans relative flex flex-col overflow-hidden rounded-lg"
           style={{
             backgroundColor: "rgb(22,22,34)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            border: "1px solid var(--color-overlay-default)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.3)",
           }}
         >
           {/* Accent top bar */}
           <span className="h-[2px] w-full shrink-0" style={{ backgroundColor: cfg.accent, opacity: 0.6 }} />
           <span className="flex flex-col gap-1 px-3 py-2.5">
-            <span className="text-label font-semibold tracking-wide text-white/90">{cfg.label}</span>
-            <span className="text-[10.5px] leading-relaxed text-white/40">{cfg.description}</span>
+            <span className="text-label font-semibold tracking-wide text-text-primary">{cfg.label}</span>
+            <span className="text-[10.5px] leading-relaxed text-text-tertiary">{cfg.description}</span>
           </span>
         </span>
       </span>
@@ -96,7 +96,7 @@ export function QualityBadge({
   }
 
   const content = score === null ? (
-    <span className="text-white/15 leading-none">--</span>
+    <span className="text-text-muted leading-none">--</span>
   ) : (
     <span
       className="inline-flex items-center gap-1.5 tabular-nums leading-none"
@@ -125,7 +125,7 @@ export function QualityBadge({
           e.stopPropagation();
           onTogglePopover();
         }}
-        className="cursor-pointer rounded px-1 py-0.5 leading-none hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-white/[0.08]"
+        className="cursor-pointer rounded px-1 py-0.5 leading-none hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-strong"
         title={score !== null ? `Quality: ${score}/100` : "No review"}
       >
         {content}
@@ -188,14 +188,14 @@ export function POStatusCell({
           showLabel ? "h-7 px-2.5 py-0.5 hover:opacity-80" : "h-6 w-6 justify-center hover:opacity-80"
         }`}
         style={{
-          color: colors?.text || "rgba(255,255,255,0.2)",
-          backgroundColor: colors?.bg || "rgba(255,255,255,0.04)",
+          color: colors?.text || "var(--color-text-muted)",
+          backgroundColor: colors?.bg || "var(--color-overlay-subtle)",
         }}
         title={value || "No status"}
       >
         <POStatusIcon status={value} />
         {showLabel && (
-          <span className="text-xs font-medium" style={{ color: colors?.text || "rgba(255,255,255,0.35)" }}>
+          <span className="text-xs font-medium" style={{ color: colors?.text || "var(--color-text-tertiary)" }}>
             {value || "No status"}
           </span>
         )}
@@ -213,11 +213,11 @@ export function POStatusCell({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-white/[0.06] ${
-                  opt.value === value ? "text-white" : "text-white/60"
+                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default ${
+                  opt.value === value ? "text-text-primary" : "text-text-secondary"
                 }`}
               >
-                <span style={{ color: optColors?.text || "rgba(255,255,255,0.25)" }}>
+                <span style={{ color: optColors?.text || "var(--color-text-muted)" }}>
                   <POStatusIcon status={opt.value} size={13} />
                 </span>
                 {opt.label}

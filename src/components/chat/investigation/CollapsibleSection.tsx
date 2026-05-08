@@ -32,22 +32,22 @@ export function CollapsibleSection({
         <Icon
           size={14}
           strokeWidth={1.5}
-          className="text-white/25 group-hover:text-white/40 transition-colors duration-150"
+          className="text-text-muted group-hover:text-text-tertiary transition-colors duration-150"
         />
-        <span className="font-[var(--font-display)] text-xs font-semibold tracking-[-0.01em] text-white/50 group-hover:text-white/70 transition-colors duration-150 uppercase">
+        <span className="font-[var(--font-display)] text-xs font-semibold tracking-[-0.01em] text-text-secondary group-hover:text-text-secondary transition-colors duration-150 uppercase">
           {title}
         </span>
         <ChevronRight
           size={12}
           strokeWidth={2}
-          className={`ml-auto text-white/20 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+          className={`ml-auto text-text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`}
         />
       </button>
       {open && (
-        <div className="pb-2 text-sm leading-[1.7] text-white/70 font-[var(--font-body)]">
+        <div className="pb-2 text-sm leading-[1.7] text-text-secondary font-[var(--font-body)]">
           {children}
           {copyContent && (
-            <CopyActions content={copyContent} className="mt-2 pt-1.5 border-t border-white/[0.03]" />
+            <CopyActions content={copyContent} className="mt-2 pt-1.5 border-t border-border-subtle" />
           )}
         </div>
       )}

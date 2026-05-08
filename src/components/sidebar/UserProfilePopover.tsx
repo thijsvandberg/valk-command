@@ -223,7 +223,7 @@ export function UserProfilePopover({
       role="menu"
       tabIndex={-1}
       onKeyDown={handleKeyNav}
-      className="fixed w-64 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.04)]"
+      className="fixed w-64 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_var(--color-overlay-subtle)]"
       style={{
         zIndex: 60,
         bottom: pos.bottom,
@@ -260,17 +260,17 @@ export function UserProfilePopover({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-white/80">
+          <div className="truncate text-sm font-medium text-text-primary">
             {user?.fullName ?? "User"}
           </div>
-          <div className="truncate text-[11px] text-white/30">
+          <div className="truncate text-[11px] text-text-tertiary">
             {user?.primaryEmailAddress?.emailAddress ?? ""}
           </div>
         </div>
       </div>
 
       {/* Divider */}
-      <div className="h-px bg-white/[0.06]" />
+      <div className="h-px bg-overlay-default" />
 
       {/* Menu items */}
       <div className="py-1.5">
@@ -287,16 +287,16 @@ export function UserProfilePopover({
               item.disabled
                 ? "opacity-40 cursor-not-allowed"
                 : activeIdx === idx
-                  ? "bg-hover-list-item text-white/75"
-                  : "text-white/50 hover:bg-hover-list-item hover:text-white/75"
+                  ? "bg-hover-list-item text-text-secondary"
+                  : "text-text-secondary hover:bg-hover-list-item hover:text-text-secondary"
             }`}
           >
-            <span className={item.disabled ? "text-white/25" : "text-white/30"}>
+            <span className={item.disabled ? "text-text-muted" : "text-text-tertiary"}>
               {item.icon}
             </span>
             <span className="flex-1 text-left">{item.label}</span>
             {item.secondaryLabel && (
-              <span className="text-[10px] text-white/20">
+              <span className="text-[10px] text-text-muted">
                 {item.secondaryLabel}
               </span>
             )}
@@ -305,7 +305,7 @@ export function UserProfilePopover({
       </div>
 
       {/* Divider */}
-      <div className="h-px bg-white/[0.06]" />
+      <div className="h-px bg-overlay-default" />
 
       {/* Sign out */}
       <div className="py-1.5">

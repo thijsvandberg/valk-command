@@ -96,7 +96,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
         <Button
           variant="ghost"
           size="sm"
-          icon={<ChevronLeft size={14} className="text-white/40" strokeWidth={1.5} />}
+          icon={<ChevronLeft size={14} className="text-text-tertiary" strokeWidth={1.5} />}
           onClick={onBack}
         >
           Back
@@ -111,8 +111,8 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
               title="Unified diff view"
               className={`px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
                 diffMode === "unified"
-                  ? "bg-white/[0.08] text-white/70"
-                  : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
+                  ? "bg-overlay-strong text-text-secondary"
+                  : "text-text-tertiary hover:bg-overlay-subtle hover:text-text-secondary"
               }`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
             >
@@ -124,8 +124,8 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
               title="Side-by-side diff view"
               className={`border-l border-border-strong px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] ${
                 diffMode === "side-by-side"
-                  ? "bg-white/[0.08] text-white/70"
-                  : "text-white/30 hover:bg-white/[0.03] hover:text-white/50"
+                  ? "bg-overlay-strong text-text-secondary"
+                  : "text-text-tertiary hover:bg-overlay-subtle hover:text-text-secondary"
               }`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
             >
@@ -156,15 +156,15 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
 
       {/* Version info */}
       <div className="border-b border-border-default px-4 py-3">
-        <p className="font-[var(--font-body)] text-sm text-white/70">
+        <p className="font-[var(--font-body)] text-sm text-text-secondary">
           {isFirstVersion
             ? `Version ${current.versionNumber} (initial)`
             : `Version ${previous!.versionNumber} \u2192 Version ${current.versionNumber}`}
         </p>
-        <div className="mt-1 flex items-center gap-3 text-xs text-white/40">
+        <div className="mt-1 flex items-center gap-3 text-xs text-text-tertiary">
           <span>{formatDate(current.date)}</span>
           {current.updatedBy && (
-            <span className="text-white/30">{current.updatedBy}</span>
+            <span className="text-text-tertiary">{current.updatedBy}</span>
           )}
         </div>
       </div>
@@ -173,9 +173,9 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {isFirstVersion ? (
           <div>
-            <p className="mb-2 text-xs font-medium text-white/40">Initial version</p>
-            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-sm leading-[1.7] text-white/80 whitespace-pre-wrap">
-              {current.content || <span className="text-white/30">No content</span>}
+            <p className="mb-2 text-xs font-medium text-text-tertiary">Initial version</p>
+            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary whitespace-pre-wrap">
+              {current.content || <span className="text-text-tertiary">No content</span>}
             </div>
           </div>
         ) : (
@@ -191,7 +191,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
 
       {/* Keyboard hint */}
       <div className="border-t border-border-default px-4 py-2">
-        <p className="text-caption text-white/20">
+        <p className="text-caption text-text-muted">
           Use arrow keys or j/k to navigate, Esc to go back
         </p>
       </div>

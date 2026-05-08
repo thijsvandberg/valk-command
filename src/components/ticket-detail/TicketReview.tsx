@@ -38,8 +38,8 @@ function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
   return (
     <div className="grid grid-cols-[16px_1fr_60px_44px] items-center gap-x-2 px-3 py-2">
       <span className="text-center text-xs font-medium" style={{ color }}>{icon}</span>
-      <span className="text-xs text-white/50">{dim.label}</span>
-      <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+      <span className="text-xs text-text-secondary">{dim.label}</span>
+      <div className="h-1 rounded-full bg-overlay-default overflow-hidden">
         <div
           className="h-full rounded-full"
           style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.5 }}
@@ -148,7 +148,7 @@ function ReviewDetail({
         </div>
         <div className="text-right">
           <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
-          <div className="mt-0.5 text-caption text-white/20">
+          <div className="mt-0.5 text-caption text-text-muted">
             {new Date(review.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           </div>
         </div>
@@ -163,43 +163,43 @@ function ReviewDetail({
 
       {/* Summary */}
       {review.summary && (
-        <div className="rounded-lg bg-white/[0.02] px-4 py-3">
-          <p className="text-sm leading-relaxed text-white/55">{review.summary}</p>
+        <div className="rounded-lg bg-overlay-subtle px-4 py-3">
+          <p className="text-sm leading-relaxed text-text-secondary">{review.summary}</p>
         </div>
       )}
 
       {/* Issues / Suggestions */}
       {review.suggestions.length > 0 && (
         <div>
-          <p className="mb-3 text-label font-medium uppercase tracking-wider text-white/25">
+          <p className="mb-3 text-label font-medium uppercase tracking-wider text-text-muted">
             Issues ({review.suggestions.length})
           </p>
           <div className="space-y-3">
             {review.suggestions.map((s, i) => {
               const parsed = parseSuggestion(s);
               return (
-                <div key={i} className="rounded-lg border border-border-subtle bg-white/[0.02] px-4 py-3">
+                <div key={i} className="rounded-lg border border-border-subtle bg-overlay-subtle px-4 py-3">
                   {/* Issue header: criterion, score, location */}
                   <div className="flex items-center gap-2 mb-2">
                     {parsed.criterion && (
-                      <span className="text-label font-medium uppercase tracking-wider text-white/25">{parsed.criterion}</span>
+                      <span className="text-label font-medium uppercase tracking-wider text-text-muted">{parsed.criterion}</span>
                     )}
                     {parsed.score && (
-                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-caption tabular-nums text-white/30">{parsed.score}</span>
+                      <span className="rounded bg-overlay-default px-1.5 py-0.5 text-caption tabular-nums text-text-tertiary">{parsed.score}</span>
                     )}
                     {parsed.location && (
-                      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-caption text-white/30">{parsed.location}</span>
+                      <span className="rounded bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary">{parsed.location}</span>
                     )}
                   </div>
 
                   {/* Problem */}
-                  <p className="text-sm leading-relaxed text-white/60">{parsed.problem}</p>
+                  <p className="text-sm leading-relaxed text-text-secondary">{parsed.problem}</p>
 
                   {/* Suggestion */}
                   {parsed.suggestion && (
                     <div className="mt-3 flex gap-2 rounded-md bg-[var(--color-brand-500)]/[0.04] px-3 py-2">
                       <span className="shrink-0 text-xs font-medium text-[var(--color-brand-400)]/50 mt-px">Suggestion</span>
-                      <p className="text-sm leading-relaxed text-white/50">{parsed.suggestion}</p>
+                      <p className="text-sm leading-relaxed text-text-secondary">{parsed.suggestion}</p>
                     </div>
                   )}
                 </div>
@@ -224,14 +224,14 @@ function ReviewHistoryItem({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border border-border-default bg-white/[0.02]">
+    <div className="rounded-lg border border-border-default bg-overlay-subtle">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/[0.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
-        <div className="flex items-center gap-2 text-xs text-white/40">
-          <span className="font-medium text-white/60 capitalize">{review.source.replace("-", " ")}</span>
+        <div className="flex items-center gap-2 text-xs text-text-tertiary">
+          <span className="font-medium text-text-secondary capitalize">{review.source.replace("-", " ")}</span>
           <span>{new Date(review.createdAt).toLocaleDateString()}</span>
           <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
         </div>
@@ -240,9 +240,9 @@ function ReviewHistoryItem({
             {review.overallScore}
           </span>
           {expanded ? (
-            <ChevronUp size={14} className="text-white/25" strokeWidth={1.5} />
+            <ChevronUp size={14} className="text-text-muted" strokeWidth={1.5} />
           ) : (
-            <ChevronDown size={14} className="text-white/25" strokeWidth={1.5} />
+            <ChevronDown size={14} className="text-text-muted" strokeWidth={1.5} />
           )}
         </div>
       </button>
@@ -347,7 +347,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
       {latestReview ? (
         <div>
           <SectionHeader title="Latest Review" />
-          <div className="mt-3 rounded-lg border border-border-default bg-white/[0.02] p-4">
+          <div className="mt-3 rounded-lg border border-border-default bg-overlay-subtle p-4">
             <ReviewDetail review={latestReview} currentVersionHash={currentVersionHash} />
           </div>
           <div className="mt-3 flex items-center gap-3">
@@ -380,7 +380,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         <div>
           <SectionHeader title="Review" />
           <div className="mt-3">
-            <p className="mb-3 text-sm text-white/25">No review yet</p>
+            <p className="mb-3 text-sm text-text-muted">No review yet</p>
             <Button
               variant="secondary"
               size="md"

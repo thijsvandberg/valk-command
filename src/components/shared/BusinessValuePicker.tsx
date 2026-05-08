@@ -54,8 +54,8 @@ export function BusinessValuePicker({
         title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
         className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
         style={{
-          color: color?.text ?? "rgba(255,255,255,0.2)",
-          backgroundColor: showBg ? (color?.bg ?? "rgba(255,255,255,0.04)") : "transparent",
+          color: color?.text ?? "var(--color-text-muted)",
+          backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
           opacity: hovered && showBg ? 0.85 : 1,
         }}
       >
@@ -64,7 +64,7 @@ export function BusinessValuePicker({
 
       {open && (
         <div
-          className={`absolute top-full z-50 mt-1 rounded-lg border border-white/[0.07] p-1.5 ${align === "left" ? "left-0" : "right-0"}`}
+          className={`absolute top-full z-50 mt-1 rounded-lg border border-border-default p-1.5 ${align === "left" ? "left-0" : "right-0"}`}
           style={{
             backgroundColor: "var(--color-surface-floating)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
@@ -113,7 +113,7 @@ export function BusinessValuePicker({
                 type="button"
                 onClick={() => { onChange(null); setOpen(false); }}
                 title="Clear"
-                className="flex h-7 w-7 items-center justify-center rounded-md text-white/25 cursor-pointer hover:bg-white/[0.06] hover:text-white/50 transition-colors duration-100 active:opacity-60"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60"
               >
                 <X size={12} strokeWidth={1.5} />
               </button>

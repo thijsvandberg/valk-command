@@ -64,14 +64,14 @@ export function PreviewPane({
               href={`/sprint-board?sprint=${encodeURIComponent(result.sprintId)}`}
               onClick={onClose}
               className="flex items-center gap-1 cursor-pointer"
-              style={{ color: "rgba(255,255,255,0.4)", textDecoration: "none", transition: "color 120ms" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.75)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+              style={{ color: "var(--color-text-tertiary)", textDecoration: "none", transition: "color 120ms" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-tertiary)")}
             >
               <IterationCw className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "#d4904a" }} />
               <span className="truncate max-w-[160px]" title={displaySprintName}>{displaySprintName}</span>
             </a>
-            <span className="text-white/15">/</span>
+            <span className="text-text-muted">/</span>
           </>
         )}
         {result.epic && (
@@ -81,29 +81,29 @@ export function PreviewPane({
                 href={`/tickets/${result.epicKey}`}
                 onClick={onClose}
                 className="flex items-center gap-1 cursor-pointer"
-                style={{ color: "rgba(255,255,255,0.4)", textDecoration: "none", transition: "color 120ms" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.75)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+                style={{ color: "var(--color-text-tertiary)", textDecoration: "none", transition: "color 120ms" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-tertiary)")}
               >
                 <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "#9b6cd4" }} />
                 <span className="truncate max-w-[160px]" title={result.epic}>{result.epic}</span>
               </a>
             ) : (
-              <span className="flex items-center gap-1 text-white/40">
+              <span className="flex items-center gap-1 text-text-tertiary">
                 <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "#9b6cd4" }} />
                 <span className="truncate max-w-[160px]" title={result.epic}>{result.epic}</span>
               </span>
             )}
-            <span className="text-white/15">/</span>
+            <span className="text-text-muted">/</span>
           </>
         )}
         <a
           href={`/tickets/${result.key}`}
           onClick={onClose}
           className="flex items-center gap-1 cursor-pointer"
-          style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none", transition: "color 120ms" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.85)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
+          style={{ color: "var(--color-text-secondary)", textDecoration: "none", transition: "color 120ms" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-primary)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
         >
           <span className="shrink-0">
             <IssueTypeIcon type={issueTypeForIcon} size={13} />
@@ -112,7 +112,7 @@ export function PreviewPane({
         </a>
       </div>
 
-      <h3 className="text-body-lg font-medium leading-snug text-white/90">
+      <h3 className="text-body-lg font-medium leading-snug text-text-primary">
         {result.summary}
       </h3>
 
@@ -131,7 +131,7 @@ export function PreviewPane({
           </a>
         )}
         {updatedLabel && (
-          <span className="text-label text-white/20">{updatedLabel}</span>
+          <span className="text-label text-text-muted">{updatedLabel}</span>
         )}
       </div>
 
@@ -139,20 +139,20 @@ export function PreviewPane({
         <div className="flex items-center gap-4 text-label">
           {result.reporter && (
             <span className="flex items-center gap-1.5">
-              <span className="text-white/25 uppercase tracking-wide">By</span>
-              <span className="text-white/55">{result.reporter}</span>
+              <span className="text-text-muted uppercase tracking-wide">By</span>
+              <span className="text-text-secondary">{result.reporter}</span>
             </span>
           )}
           {result.assignee && (
             <span className="flex items-center gap-1.5">
-              <span className="text-white/25 uppercase tracking-wide">Assigned</span>
-              <span className="text-white/55">{result.assignee}</span>
+              <span className="text-text-muted uppercase tracking-wide">Assigned</span>
+              <span className="text-text-secondary">{result.assignee}</span>
             </span>
           )}
           {result.storyPoints != null && (
             <span className="flex items-center gap-1.5">
-              <span className="text-white/25 uppercase tracking-wide">Points</span>
-              <span className="text-white/55">{result.storyPoints}</span>
+              <span className="text-text-muted uppercase tracking-wide">Points</span>
+              <span className="text-text-secondary">{result.storyPoints}</span>
             </span>
           )}
         </div>
@@ -160,8 +160,8 @@ export function PreviewPane({
 
       {result.labels && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-          <span className="text-label text-white/30 uppercase tracking-wide">Labels</span>
-          <span className="text-body-sm text-white/65">{result.labels}</span>
+          <span className="text-label text-text-tertiary uppercase tracking-wide">Labels</span>
+          <span className="text-body-sm text-text-secondary">{result.labels}</span>
         </div>
       )}
 
@@ -170,7 +170,7 @@ export function PreviewPane({
           {renderMarkdown(result.description)}
         </div>
       ) : (
-        <p className="text-body-sm text-white/20 italic">No description</p>
+        <p className="text-body-sm text-text-muted italic">No description</p>
       )}
     </div>
   );
@@ -284,11 +284,11 @@ export function MatchSnippet({ matches }: { matches?: readonly FuseResultMatch[]
     const label = BODY_FIELD_LABELS[fieldName] ?? fieldName;
 
     return (
-      <span className="block truncate text-label leading-snug" style={{ color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
-        <span className="mr-1 uppercase tracking-wide text-caption" style={{ color: "rgba(255,255,255,0.2)" }}>{label}</span>
-        {windowStart > 0 && <span style={{ color: "rgba(255,255,255,0.2)" }}>…</span>}
+      <span className="block truncate text-label leading-snug" style={{ color: "var(--color-text-tertiary)", marginTop: 1 }}>
+        <span className="mr-1 uppercase tracking-wide text-caption" style={{ color: "var(--color-text-muted)" }}>{label}</span>
+        {windowStart > 0 && <span style={{ color: "var(--color-text-muted)" }}>…</span>}
         {parts}
-        {windowEnd < value.length && <span style={{ color: "rgba(255,255,255,0.2)" }}>…</span>}
+        {windowEnd < value.length && <span style={{ color: "var(--color-text-muted)" }}>…</span>}
       </span>
     );
   }
@@ -308,8 +308,8 @@ export function SkeletonRow({ idx }: { idx: number }) {
   const widths = ["w-48", "w-56", "w-40", "w-52", "w-44"];
   return (
     <div className="flex items-center gap-3 px-6 py-4">
-      <div className={`h-3 animate-pulse rounded bg-white/[0.06] ${widths[idx % widths.length]}`} />
-      <div className="ml-auto h-4 w-14 animate-pulse rounded bg-white/[0.06]" />
+      <div className={`h-3 animate-pulse rounded bg-overlay-default ${widths[idx % widths.length]}`} />
+      <div className="ml-auto h-4 w-14 animate-pulse rounded bg-overlay-default" />
     </div>
   );
 }
@@ -352,9 +352,9 @@ export function LocalResultRow({
       }}
     >
       {!active && (
-        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
+        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "var(--color-overlay-subtle)" }} />
       )}
-      <span className="min-w-0 flex-1 overflow-hidden text-body-lg text-white/75">
+      <span className="min-w-0 flex-1 overflow-hidden text-body-lg text-text-secondary">
         <HighlightedText text={result.summary} matches={result.matches} fieldName="summary" />
         {hasBodyFieldMatch(result.matches) && <MatchSnippet matches={result.matches} />}
       </span>
@@ -362,13 +362,13 @@ export function LocalResultRow({
         {(showKey || displaySprintName) && (
           <span className="hidden sm:flex items-center gap-1.5">
             {showKey && (
-              <span className="font-mono text-label text-white/45 tracking-tight">{result.key}</span>
+              <span className="font-mono text-label text-text-tertiary tracking-tight">{result.key}</span>
             )}
             {showKey && displaySprintName && (
-              <span className="text-white/15 text-label">·</span>
+              <span className="text-text-muted text-label">·</span>
             )}
             {displaySprintName && (
-              <span className="text-label text-white/20 truncate max-w-[140px]">{displaySprintName}</span>
+              <span className="text-label text-text-muted truncate max-w-[140px]">{displaySprintName}</span>
             )}
           </span>
         )}
@@ -406,20 +406,20 @@ export function JiraResultRow({
       }}
     >
       {!active && (
-        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
+        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "var(--color-overlay-subtle)" }} />
       )}
-      <span className="min-w-0 flex-1 truncate text-body-lg text-white/75">{issue.summary}</span>
+      <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{issue.summary}</span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {(showKey || issue.sprintName) && (
           <span className="hidden sm:flex items-center gap-1.5">
             {showKey && (
-              <span className="font-mono text-label text-white/45 tracking-tight">{issue.key}</span>
+              <span className="font-mono text-label text-text-tertiary tracking-tight">{issue.key}</span>
             )}
             {showKey && issue.sprintName && (
-              <span className="text-white/15 text-label">·</span>
+              <span className="text-text-muted text-label">·</span>
             )}
             {issue.sprintName && (
-              <span className="text-label text-white/20 truncate max-w-[140px]">{issue.sprintName}</span>
+              <span className="text-label text-text-muted truncate max-w-[140px]">{issue.sprintName}</span>
             )}
           </span>
         )}
@@ -448,10 +448,10 @@ export function EmptyState({ query, mode, onSwitchToJira }: { query: string; mod
   const hasQuery = query.length >= 2;
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.04)" }}>
-        <Search className="h-4 w-4 text-white/20" strokeWidth={1.5} />
+      <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+        <Search className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
       </div>
-      <p className="text-sm text-white/30">
+      <p className="text-sm text-text-tertiary">
         {!hasQuery
           ? "Type at least 2 characters to search"
           : mode === "local" ? `No results matched "${query}"` : `No Jira results for "${query}"`}
@@ -508,26 +508,26 @@ export function GroupedResultSection({
         aria-label={`Toggle ${label} section`}
         className="flex w-full items-center gap-2 px-5 py-2 cursor-pointer focus-visible:outline-none"
         style={{
-          backgroundColor: "rgba(255,255,255,0.025)",
-          borderTop: "1px solid rgba(255,255,255,0.05)",
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          backgroundColor: "var(--color-overlay-subtle)",
+          borderTop: "1px solid var(--color-overlay-default)",
+          borderBottom: "1px solid var(--color-overlay-default)",
         }}
       >
         <ChevronRight
           className="h-3 w-3 shrink-0"
           strokeWidth={2}
           style={{
-            color: "rgba(255,255,255,0.3)",
+            color: "var(--color-text-tertiary)",
             transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
             transition: "transform 150ms cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         />
-        <span className="text-label font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <span className="text-label font-semibold uppercase tracking-widest" style={{ color: "var(--color-text-tertiary)" }}>
           {label}
         </span>
         <span
           className="rounded-full px-1.5 py-0.5 text-caption font-medium"
-          style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}
+          style={{ backgroundColor: "var(--color-overlay-default)", color: "var(--color-text-tertiary)" }}
         >
           {count}
         </span>
@@ -541,9 +541,9 @@ export function GroupedResultSection({
               type="button"
               onClick={onShowMore}
               className="flex w-full items-center justify-center px-6 py-2 text-label cursor-pointer focus-visible:outline-none"
-              style={{ color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
+              style={{ color: "var(--color-text-tertiary)", borderBottom: "1px solid var(--color-overlay-subtle)" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-tertiary)")}
             >
               Show {count - initialLimit} more
             </button>
@@ -598,23 +598,23 @@ export function ConversationResultRow({
       }}
     >
       {!active && (
-        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
+        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "var(--color-overlay-subtle)" }} />
       )}
-      <MessageSquare className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "rgba(255,255,255,0.2)" }} />
-      <span className="min-w-0 flex-1 truncate text-body text-white/70">
+      <MessageSquare className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "var(--color-text-muted)" }} />
+      <span className="min-w-0 flex-1 truncate text-body text-text-secondary">
         {result.title}
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {result.relatedTicket && (
-          <span className="font-mono text-label text-white/30 tracking-tight">{result.relatedTicket}</span>
+          <span className="font-mono text-label text-text-tertiary tracking-tight">{result.relatedTicket}</span>
         )}
         <span
           className="rounded px-1.5 py-0.5 text-caption font-medium capitalize"
-          style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
+          style={{ backgroundColor: "var(--color-overlay-default)", color: "var(--color-text-tertiary)" }}
         >
           {result.type}
         </span>
-        <span className="text-caption text-white/20">{relativeCreatedAt(result.createdAt)}</span>
+        <span className="text-caption text-text-muted">{relativeCreatedAt(result.createdAt)}</span>
       </span>
     </a>
   );
@@ -650,15 +650,15 @@ export function CommentResultRow({
       }}
     >
       {!active && (
-        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "rgba(255,255,255,0.025)" }} />
+        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: "var(--color-overlay-subtle)" }} />
       )}
-      <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" strokeWidth={1.5} style={{ color: "rgba(255,255,255,0.2)" }} />
+      <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" strokeWidth={1.5} style={{ color: "var(--color-text-muted)" }} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-body text-white/70">{result.content}</span>
-        <span className="text-label text-white/30">{result.author}</span>
+        <span className="block truncate text-body text-text-secondary">{result.content}</span>
+        <span className="text-label text-text-tertiary">{result.author}</span>
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2 pt-0.5">
-        <span className="font-mono text-label text-white/35 tracking-tight">{result.ticketKey}</span>
+        <span className="font-mono text-label text-text-tertiary tracking-tight">{result.ticketKey}</span>
         <span
           className="rounded px-1.5 py-0.5 text-caption font-medium"
           style={{

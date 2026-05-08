@@ -25,7 +25,7 @@ export function AdjacentSprintSection({
   if (tickets.length === 0) return null;
 
   const labelColor =
-    label === "Previous" ? "text-white/25" : "text-white/30";
+    label === "Previous" ? "text-text-muted" : "text-text-tertiary";
 
   return (
     <section>
@@ -41,7 +41,7 @@ export function AdjacentSprintSection({
           <ChevronDown
             size={12}
             strokeWidth={1.5}
-            className={`text-white/20 group-hover:text-white/40 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
+            className={`text-text-muted group-hover:text-text-tertiary transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
           />
           <span className={`text-caption tabular-nums ${labelColor}`}>
             {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
@@ -52,7 +52,7 @@ export function AdjacentSprintSection({
           <button
             type="button"
             onClick={() => setShowKeys((v) => !v)}
-            className="text-label text-white/25 cursor-pointer hover:text-white/50 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="text-label text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             {showKeys ? "Hide" : "Show"} details
           </button>

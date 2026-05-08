@@ -24,28 +24,28 @@ function renderSimpleMarkdown(text: string): React.ReactNode[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.startsWith("## ")) {
-      elements.push(<h3 key={`h-${i}`} className="mt-4 mb-1 font-[var(--font-display)] text-sm font-semibold text-white/80">{line.slice(3)}</h3>);
+      elements.push(<h3 key={`h-${i}`} className="mt-4 mb-1 font-[var(--font-display)] text-sm font-semibold text-text-primary">{line.slice(3)}</h3>);
     } else if (line.startsWith("### ")) {
-      elements.push(<h4 key={`h4-${i}`} className="mt-3 mb-1 text-xs font-semibold text-white/70">{line.slice(4)}</h4>);
+      elements.push(<h4 key={`h4-${i}`} className="mt-3 mb-1 text-xs font-semibold text-text-secondary">{line.slice(4)}</h4>);
     } else if (/^- \[[ x]\] /.test(line)) {
       const checked = line.startsWith("- [x] ");
       const content = line.slice(6);
       elements.push(
-        <div key={`cb-${i}`} className="my-0.5 flex items-start gap-1.5 text-xs text-white/50">
-          <span className={`mt-0.5 flex h-3 w-3 shrink-0 items-center justify-center rounded border ${checked ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10" : "border-white/[0.12] bg-white/[0.03]"}`}>
+        <div key={`cb-${i}`} className="my-0.5 flex items-start gap-1.5 text-xs text-text-secondary">
+          <span className={`mt-0.5 flex h-3 w-3 shrink-0 items-center justify-center rounded border ${checked ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10" : "border-border-strong bg-overlay-subtle"}`}>
             {checked && <Check size={8} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
           </span>
           <span className={checked ? "line-through opacity-60" : ""}>{content}</span>
         </div>
       );
     } else if (line.startsWith("- ")) {
-      elements.push(<li key={`li-${i}`} className="ml-4 list-disc text-xs text-white/50">{line.slice(2)}</li>);
+      elements.push(<li key={`li-${i}`} className="ml-4 list-disc text-xs text-text-secondary">{line.slice(2)}</li>);
     } else if (/^\d+\. /.test(line)) {
-      elements.push(<li key={`ol-${i}`} className="ml-4 list-decimal text-xs text-white/50">{line.replace(/^\d+\.\s*/, "")}</li>);
+      elements.push(<li key={`ol-${i}`} className="ml-4 list-decimal text-xs text-text-secondary">{line.replace(/^\d+\.\s*/, "")}</li>);
     } else if (line.trim() === "") {
       elements.push(<div key={`br-${i}`} className="h-1.5" />);
     } else {
-      elements.push(<p key={`p-${i}`} className="text-xs leading-relaxed text-white/50">{line}</p>);
+      elements.push(<p key={`p-${i}`} className="text-xs leading-relaxed text-text-secondary">{line}</p>);
     }
   }
   return elements;
@@ -60,15 +60,15 @@ function TicketDescription({ ticketKey }: { ticketKey: string }) {
   if (!description) {
     return (
       <div>
-        <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-white/50">Description</h3>
-        <p className="mt-2 text-xs text-white/25">No description</p>
+        <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
+        <p className="mt-2 text-xs text-text-muted">No description</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-white/50">Description</h3>
+      <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
       <div className="mt-2 max-h-64 overflow-y-auto">
         {renderSimpleMarkdown(description)}
       </div>
@@ -222,7 +222,7 @@ export function SidePanel({
           <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
             <div className="group/key flex items-center gap-2.5">
               <IssueTypeIcon type={ticket.type} />
-              <span className="font-mono text-sm font-medium text-white/70">
+              <span className="font-mono text-sm font-medium text-text-secondary">
                 {ticket.key}
               </span>
               <Button
@@ -240,7 +240,7 @@ export function SidePanel({
                     onShowToast("Failed to copy link");
                   }
                 }}
-                className="text-white/0 group-hover/key:text-white/30 hover:!text-white/60"
+                className="text-transparent group-hover/key:text-text-tertiary hover:!text-text-secondary"
                 title="Copy Jira link"
               />
               {ticket.editState === "draft" && (
@@ -258,7 +258,7 @@ export function SidePanel({
               {/* Write Story */}
               <a
                 href={`/tickets/${ticket.key}/write`}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white/50 cursor-pointer bg-white/[0.02] border border-border-default hover:bg-hover-interactive hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-secondary cursor-pointer bg-overlay-subtle border border-border-default hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
                 title="Write story"
               >
                 <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -307,7 +307,7 @@ export function SidePanel({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-5 py-5">
-            <h2 className="font-[var(--font-display)] text-lg font-semibold leading-snug text-white">
+            <h2 className="font-[var(--font-display)] text-lg font-semibold leading-snug text-text-primary">
               {ticket.title}
             </h2>
 
@@ -321,9 +321,9 @@ export function SidePanel({
                 <AlertCircle className="h-4 w-4 shrink-0 text-[#ea8744]" strokeWidth={1.5} />
                 <div>
                   <span className="text-xs font-medium text-[#ea8744]">Conflict</span>
-                  <span className="ml-1.5 text-xs text-white/30">Open full view to review diff</span>
+                  <span className="ml-1.5 text-xs text-text-tertiary">Open full view to review diff</span>
                 </div>
-                <ChevronRight className="ml-auto h-2.5 w-2.5 text-white/20" strokeWidth={1.5} />
+                <ChevronRight className="ml-auto h-2.5 w-2.5 text-text-muted" strokeWidth={1.5} />
               </Link>
             )}
 
@@ -344,7 +344,7 @@ export function SidePanel({
                 </span>
               )}
               {ticket.storyPoints !== null && (
-                <span className="inline-flex items-center rounded-md bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-white/50">
+                <span className="inline-flex items-center rounded-md bg-overlay-default px-2 py-0.5 text-xs font-medium text-text-secondary">
                   {ticket.storyPoints} pts
                 </span>
               )}
@@ -353,20 +353,20 @@ export function SidePanel({
             {/* Assignee */}
             <div className="mt-5 flex items-center gap-2.5">
               <Avatar assignee={ticket.assignee} />
-              <span className="text-sm text-white/50">
+              <span className="text-sm text-text-secondary">
                 {ticket.assignee?.name || "Unassigned"}
               </span>
             </div>
 
             {/* Ticket description */}
-            <div className="my-6 h-px bg-white/[0.06]" />
+            <div className="my-6 h-px bg-overlay-default" />
             <TicketDescription ticketKey={ticket.key} />
 
             {/* Divider */}
-            <div className="my-6 h-px bg-white/[0.06]" />
+            <div className="my-6 h-px bg-overlay-default" />
 
             {/* PO Metadata section */}
-            <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.06em] text-white/50">
+            <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
               PO Metadata
               {ticket.notes.trim() && (
                 <span
@@ -380,14 +380,14 @@ export function SidePanel({
               {/* Readiness */}
               {onReadinessChange && (
                 <div>
-                  <label className="mb-1.5 block text-xs text-white/40">Readiness</label>
+                  <label className="mb-1.5 block text-xs text-text-tertiary">Readiness</label>
                   <ReadinessCell value={readiness ?? null} onChange={onReadinessChange} align="left" />
                 </div>
               )}
 
               {/* Quality Score */}
               <div>
-                <label className="mb-1.5 block text-xs text-white/40">Quality Score</label>
+                <label className="mb-1.5 block text-xs text-text-tertiary">Quality Score</label>
                 <div className="flex items-center gap-2">
                   <QualityBadge score={ticket.qualityScore} />
                 </div>
@@ -395,13 +395,13 @@ export function SidePanel({
 
               {/* Notes */}
               <div>
-                <label className="mb-1.5 block text-xs text-white/40">Notes</label>
+                <label className="mb-1.5 block text-xs text-text-tertiary">Notes</label>
                 <textarea
                   defaultValue={ticket.notes}
                   placeholder="Add PO notes..."
                   rows={3}
                   onBlur={(e) => onNotesChange(e.target.value)}
-                  className="w-full rounded-md border border-border-default bg-white/[0.03] px-3 py-2 text-sm text-white/80 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none resize-none"
+                  className="w-full rounded-md border border-border-default bg-overlay-subtle px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none resize-none"
                 />
               </div>
             </div>
@@ -409,7 +409,7 @@ export function SidePanel({
             {/* View changes link for tickets with versions */}
             {hasVersions && (
               <>
-                <div className="my-6 h-px bg-white/[0.06]" />
+                <div className="my-6 h-px bg-overlay-default" />
                 <Link
                   href={`/tickets/${ticket.key}`}
                   className="flex items-center gap-2 text-xs text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
@@ -422,28 +422,28 @@ export function SidePanel({
             )}
 
             {/* Actions */}
-            <div className="my-6 h-px bg-white/[0.06]" />
-            <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-white/50">
+            <div className="my-6 h-px bg-overlay-default" />
+            <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
               Actions
             </h3>
             <div className="mt-3 flex flex-col gap-2">
               <Button
                 variant="ghost"
                 size="lg"
-                icon={<CheckSquare className="h-4 w-4 shrink-0 text-white/40" strokeWidth={1.5} />}
+                icon={<CheckSquare className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />}
                 onClick={() => {
                   onShowToast(`Review story queued for ${ticket.key}`);
                 }}
-                className="justify-start px-3 text-sm text-white/60 hover:text-white/80"
+                className="justify-start px-3 text-sm text-text-secondary hover:text-text-primary"
               >
                 Review Story
               </Button>
               <a
                 href={`/chat?ticket=${ticket.key}`}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/60 cursor-pointer hover:bg-hover-list-item hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
               >
-                <MessageSquare className="h-4 w-4 shrink-0 text-white/40" strokeWidth={1.5} />
+                <MessageSquare className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
                 Chat about this ticket
               </a>
             </div>

@@ -19,8 +19,8 @@ import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePag
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between py-2">
-      <span className="shrink-0 text-xs text-white/30">{label}</span>
-      <div className="min-w-0 text-right text-sm text-white/60">{children}</div>
+      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
+      <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
     </div>
   );
 }
@@ -107,7 +107,7 @@ export function TicketSidebar({
         size="md"
         iconOnly
         onClick={() => setCollapsed((v) => !v)}
-        className={`absolute top-1/2 -translate-y-1/2 z-20 !rounded-full bg-[var(--color-surface-elevated)] !border-border-strong !text-white/30 hover:!text-white/70 hover:!border-[var(--color-brand-500)]/50 ${
+        className={`absolute top-1/2 -translate-y-1/2 z-20 !rounded-full bg-[var(--color-surface-elevated)] !border-border-strong !text-text-tertiary hover:!text-text-secondary hover:!border-[var(--color-brand-500)]/50 ${
           collapsed ? "-left-5" : "left-0 -translate-x-1/2"
         }`}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -120,7 +120,7 @@ export function TicketSidebar({
       />
 
       {/* Left edge line */}
-      <div className={`absolute top-0 left-0 h-full w-px bg-white/[0.06] transition-opacity duration-200 ${collapsed ? "opacity-0" : "opacity-100"}`} />
+      <div className={`absolute top-0 left-0 h-full w-px bg-overlay-default transition-opacity duration-200 ${collapsed ? "opacity-0" : "opacity-100"}`} />
 
       {/* Sidebar content */}
       {!collapsed && (
@@ -128,8 +128,8 @@ export function TicketSidebar({
           {/* Completeness indicator */}
           <div>
             <div className="flex items-center justify-between">
-              <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">Readiness</h3>
-              <span className="text-label tabular-nums text-white/30">{completenessCount}/{completenessChecks.length}</span>
+              <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">Readiness</h3>
+              <span className="text-label tabular-nums text-text-tertiary">{completenessCount}/{completenessChecks.length}</span>
             </div>
             <div className="mt-2 flex gap-1">
               {completenessChecks.map((check) => (
@@ -138,7 +138,7 @@ export function TicketSidebar({
                   className="group relative h-1.5 flex-1 overflow-hidden rounded-full"
                   title={`${check.label}: ${check.done ? "Complete" : "Missing"}`}
                 >
-                  <div className="absolute inset-0 rounded-full bg-white/[0.06]" />
+                  <div className="absolute inset-0 rounded-full bg-overlay-default" />
                   {check.done && (
                     <div
                       className="absolute inset-0 rounded-full bg-[var(--color-brand-500)]"
@@ -152,7 +152,7 @@ export function TicketSidebar({
               {completenessChecks.map((check) => (
                 <span
                   key={check.label}
-                  className={`flex-1 truncate text-center text-caption ${check.done ? "text-white/30" : "text-white/15"}`}
+                  className={`flex-1 truncate text-center text-caption ${check.done ? "text-text-tertiary" : "text-text-muted"}`}
                 >
                   {check.label}
                 </span>
@@ -162,7 +162,7 @@ export function TicketSidebar({
 
           {/* Jira details */}
           <div>
-            <h3 className="text-label font-semibold uppercase tracking-wider text-white/25">Details</h3>
+            <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">Details</h3>
             <div className="mt-2 divide-y divide-border-subtle">
               <DetailRow label="Status">
                 {(() => {
@@ -194,7 +194,7 @@ export function TicketSidebar({
                   title="View review details"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="shrink-0 text-xs text-white/30">Quality</span>
+                    <span className="shrink-0 text-xs text-text-tertiary">Quality</span>
                     <div className="flex items-center gap-1.5">
                       {ticket.qualityScore !== null ? (
                         <>
@@ -205,7 +205,7 @@ export function TicketSidebar({
                         </>
                       ) : (
                         <span
-                          className="text-xs text-white/20 hover:text-[var(--color-brand-400)]"
+                          className="text-xs text-text-muted hover:text-[var(--color-brand-400)]"
                           style={{ transition: "color 0.15s ease" }}
                         >
                           Run review
@@ -214,7 +214,7 @@ export function TicketSidebar({
                     </div>
                   </div>
                   {ticket.qualityScore !== null && (
-                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-overlay-default">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -274,7 +274,7 @@ export function TicketSidebar({
 
           {/* PO Metadata */}
           <div className="rounded-lg border border-[var(--color-brand-500)]/10 bg-[var(--color-brand-500)]/[0.03] p-4">
-            <h3 className="flex items-center gap-2 text-label font-semibold uppercase tracking-wider text-white/25">
+            <h3 className="flex items-center gap-2 text-label font-semibold uppercase tracking-wider text-text-muted">
               PO Metadata
               {poNotes.trim() && (
                 <span
@@ -286,25 +286,25 @@ export function TicketSidebar({
             <div className="mt-3 space-y-4">
               {/* Readiness */}
               <div>
-                <label className="mb-1.5 block text-xs text-white/30">Readiness</label>
+                <label className="mb-1.5 block text-xs text-text-tertiary">Readiness</label>
                 <ReadinessCell value={readiness} onChange={handleReadinessChange} align="left" />
               </div>
 
               {/* Business Value */}
               <div>
-                <label className="mb-1.5 block text-xs text-white/30">Business Value</label>
+                <label className="mb-1.5 block text-xs text-text-tertiary">Business Value</label>
                 <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="left" />
               </div>
 
               {/* PO Notes */}
               <div>
-                <label className="mb-1.5 block text-xs text-white/30">Notes</label>
+                <label className="mb-1.5 block text-xs text-text-tertiary">Notes</label>
                 <textarea
                   defaultValue={poNotes}
                   placeholder="Add PO notes..."
                   rows={3}
                   onBlur={(e) => handleNotesChange(e.target.value)}
-                  className="w-full resize-none rounded-lg border border-border-strong bg-white/[0.04] px-3 py-2 text-sm text-white/70 placeholder:text-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                   style={{ transition: "border-color 0.15s ease" }}
                 />
               </div>

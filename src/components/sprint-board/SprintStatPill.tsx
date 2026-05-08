@@ -85,18 +85,18 @@ export type StatPillVariant = "default" | "dim" | "warning";
 
 const STAT_VARIANT_STYLE: Record<StatPillVariant, { bg: string; text: string; activeBg: string; activeText: string; activeRing: string }> = {
   default: {
-    bg: "rgba(255,255,255,0.07)",
-    text: "rgba(255,255,255,0.38)",
-    activeBg: "rgba(255,255,255,0.12)",
-    activeText: "rgba(255,255,255,0.55)",
-    activeRing: "rgba(255,255,255,0.22)",
+    bg: "var(--color-overlay-default)",
+    text: "var(--color-text-tertiary)",
+    activeBg: "var(--color-overlay-strong)",
+    activeText: "var(--color-text-secondary)",
+    activeRing: "var(--color-text-muted)",
   },
   dim: {
-    bg: "rgba(255,255,255,0.04)",
-    text: "rgba(255,255,255,0.22)",
-    activeBg: "rgba(255,255,255,0.09)",
-    activeText: "rgba(255,255,255,0.42)",
-    activeRing: "rgba(255,255,255,0.18)",
+    bg: "var(--color-overlay-subtle)",
+    text: "var(--color-text-muted)",
+    activeBg: "var(--color-overlay-strong)",
+    activeText: "var(--color-text-tertiary)",
+    activeRing: "var(--color-text-muted)",
   },
   warning: {
     bg: "rgba(234,179,8,0.06)",

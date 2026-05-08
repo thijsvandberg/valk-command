@@ -81,8 +81,8 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               <Scissors size={15} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white/85">Split story</h2>
-              <p className="text-label text-white/35 mt-0.5">Select or create the target story</p>
+              <h2 className="text-sm font-semibold text-text-primary">Split story</h2>
+              <p className="text-label text-text-tertiary mt-0.5">Select or create the target story</p>
             </div>
           </div>
           <Button
@@ -91,19 +91,19 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
             iconOnly
             icon={<X size={15} strokeWidth={1.5} />}
             onClick={onClose}
-            className="border-0 bg-transparent text-white/30 hover:text-white/55 hover:bg-white/[0.05]"
+            className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-overlay-default"
           />
         </div>
 
         {/* Mode selector */}
-        <div className="mb-4 flex gap-1 rounded-lg bg-white/[0.04] p-1">
+        <div className="mb-4 flex gap-1 rounded-lg bg-overlay-subtle p-1">
           <button
             type="button"
             onClick={() => setMode("create")}
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
               mode === "create"
-                ? "bg-[var(--color-surface-floating)] text-white/80 shadow-sm"
-                : "text-white/40 hover:text-white/60"
+                ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
+                : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
             <Plus size={12} strokeWidth={2} />
@@ -114,8 +114,8 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
             onClick={() => setMode("existing")}
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
               mode === "existing"
-                ? "bg-[var(--color-surface-floating)] text-white/80 shadow-sm"
-                : "text-white/40 hover:text-white/60"
+                ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
+                : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
             <Link size={12} strokeWidth={2} />
@@ -127,45 +127,45 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
         {mode === "create" && (
           <div className="mb-5 space-y-3">
             <div>
-              <label className="mb-1.5 block text-label font-medium text-white/45">
+              <label className="mb-1.5 block text-label font-medium text-text-tertiary">
                 New story title
               </label>
               <input
                 type="text"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+                className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
                 placeholder="Story title..."
               />
             </div>
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="mb-1.5 block text-label font-medium text-white/45">
+                <label className="mb-1.5 block text-label font-medium text-text-tertiary">
                   Issue type
                 </label>
                 <div className="relative">
                   <select
                     value={selectedIssueType}
                     onChange={(e) => setSelectedIssueType(e.target.value)}
-                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
                   >
                     <option value="story">Story</option>
                     <option value="task">Task</option>
                     <option value="bug">Bug</option>
                     <option value="spike">Spike</option>
                   </select>
-                  <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35" />
+                  <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
                 </div>
               </div>
               <div className="flex-1">
-                <label className="mb-1.5 block text-label font-medium text-white/45">
+                <label className="mb-1.5 block text-label font-medium text-text-tertiary">
                   Sprint
                 </label>
                 <div className="relative">
                   <select
                     value={selectedSprintId}
                     onChange={(e) => setSelectedSprintId(e.target.value)}
-                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-white/80 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
                   >
                     {sprints.length === 0 && (
                       <option value="">No sprints configured</option>
@@ -176,11 +176,11 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                       </option>
                     ))}
                   </select>
-                  <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35" />
+                  <ChevronDown size={13} strokeWidth={1.5} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
                 </div>
               </div>
             </div>
-            <p className="text-label text-white/30">
+            <p className="text-label text-text-tertiary">
               A new story will be created on Jira and linked to the original.
             </p>
           </div>
@@ -189,17 +189,17 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
         {/* Use existing */}
         {mode === "existing" && (
           <div className="mb-5">
-            <label className="mb-1.5 block text-label font-medium text-white/45">
+            <label className="mb-1.5 block text-label font-medium text-text-tertiary">
               Ticket key
             </label>
             <input
               type="text"
               value={existingKey}
               onChange={(e) => setExistingKey(e.target.value.toUpperCase())}
-              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-white/80 placeholder-white/20 focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="VPL-123"
             />
-            <p className="mt-1.5 text-label text-white/30">
+            <p className="mt-1.5 text-label text-text-tertiary">
               The existing story must be synced locally. It will be linked to the original.
             </p>
           </div>

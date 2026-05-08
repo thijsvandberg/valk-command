@@ -54,7 +54,7 @@ const PR_STATUS_STYLES: Record<DevPullRequest["status"], { bg: string; text: str
 function BuildStateIcon({ state, size = 13 }: { state: string; size?: number }) {
   if (state === "SUCCESSFUL") return <CheckCircle2 size={size} strokeWidth={1.5} className="text-[#4aaa60]" />;
   if (state === "FAILED") return <XCircle size={size} strokeWidth={1.5} className="text-[#e5534b]" />;
-  if (state === "STOPPED") return <OctagonX size={size} strokeWidth={1.5} className="text-white/25" />;
+  if (state === "STOPPED") return <OctagonX size={size} strokeWidth={1.5} className="text-text-muted" />;
   if (state === "PAUSED") return <Circle size={size} strokeWidth={1.5} className="text-amber-400" />;
   return <Loader2 size={size} strokeWidth={1.5} className="animate-spin text-[#ea8744]" />;
 }
@@ -62,10 +62,10 @@ function BuildStateIcon({ state, size = 13 }: { state: string; size?: number }) 
 function SectionHeader({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
   return (
     <div className="flex items-center gap-2 pb-3">
-      <span className="text-white/20">{icon}</span>
-      <h3 className="text-sm font-semibold text-white/50">{title}</h3>
+      <span className="text-text-muted">{icon}</span>
+      <h3 className="text-sm font-semibold text-text-secondary">{title}</h3>
       {count !== undefined && count > 0 && (
-        <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-label tabular-nums text-white/30">{count}</span>
+        <span className="rounded-md bg-overlay-default px-1.5 py-0.5 text-label tabular-nums text-text-tertiary">{count}</span>
       )}
     </div>
   );
@@ -77,16 +77,16 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
   const totalReviewers = pr.reviewers.length;
 
   return (
-    <div className="rounded-lg border border-border-default bg-white/[0.02] p-4">
+    <div className="rounded-lg border border-border-default bg-overlay-subtle p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
-            <GitPullRequest size={15} strokeWidth={1.5} className="shrink-0 text-white/25" />
+            <GitPullRequest size={15} strokeWidth={1.5} className="shrink-0 text-text-muted" />
             <a
               href={pr.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-w-0 truncate text-sm font-medium text-white/70 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="min-w-0 truncate text-sm font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease" }}
             >
               {pr.title}
@@ -98,20 +98,20 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               {pr.status}
             </span>
           </div>
-          <p className="mt-1.5 text-xs text-white/30">
+          <p className="mt-1.5 text-xs text-text-tertiary">
             {pr.author}
-            <span className="text-white/15"> in </span>
-            <span className="font-medium text-white/25">{pr.repo}</span>
-            <span className="text-white/15"> · </span>
-            <span className="text-white/20">{pr.sourceBranch}</span>
-            <span className="text-white/10"> -&gt; </span>
-            <span className="text-white/20">{pr.destBranch}</span>
+            <span className="text-text-muted"> in </span>
+            <span className="font-medium text-text-muted">{pr.repo}</span>
+            <span className="text-text-muted"> · </span>
+            <span className="text-text-muted">{pr.sourceBranch}</span>
+            <span className="text-text-muted"> -&gt; </span>
+            <span className="text-text-muted">{pr.destBranch}</span>
           </p>
         </div>
-        <span className="shrink-0 text-xs text-white/20">{relativeDate(pr.createdAt)}</span>
+        <span className="shrink-0 text-xs text-text-muted">{relativeDate(pr.createdAt)}</span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/30">
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-text-tertiary">
         {/* Reviewers */}
         {totalReviewers > 0 && (
           <div className="flex items-center gap-2">
@@ -121,11 +121,11 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               ) : approvedCount > 0 ? (
                 <Circle size={13} strokeWidth={1.5} className="text-[#ea8744]" />
               ) : (
-                <Circle size={13} strokeWidth={1.5} className="text-white/15" />
+                <Circle size={13} strokeWidth={1.5} className="text-text-muted" />
               )}
               {approvedCount}/{totalReviewers} approved
             </span>
-            <span className="text-white/15">
+            <span className="text-text-muted">
               ({pr.reviewers.map((r) => r.name).join(", ")})
             </span>
           </div>
@@ -134,17 +134,17 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
         {/* Diff */}
         {pr.diffStats && (
           <span className="flex items-center gap-1.5">
-            <FileCode2 size={13} strokeWidth={1.5} className="text-white/15" />
+            <FileCode2 size={13} strokeWidth={1.5} className="text-text-muted" />
             <span className="text-[#4aaa60]/70">+{pr.diffStats.linesAdded}</span>
             <span className="text-[#e5534b]/60">-{pr.diffStats.linesRemoved}</span>
-            <span className="text-white/20">{pr.diffStats.filesChanged} files</span>
+            <span className="text-text-muted">{pr.diffStats.filesChanged} files</span>
           </span>
         )}
 
         {/* Comments */}
         {pr.commentCount > 0 && (
           <span className="flex items-center gap-1">
-            <MessageSquare size={13} strokeWidth={1.5} className="text-white/15" />
+            <MessageSquare size={13} strokeWidth={1.5} className="text-text-muted" />
             {pr.commentCount} comment{pr.commentCount > 1 ? "s" : ""}
           </span>
         )}
@@ -166,12 +166,12 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               href={b.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-md bg-white/[0.03] px-2 py-1 text-label text-white/30 cursor-pointer hover:bg-hover-interactive hover:text-white/40"
+              className="flex items-center gap-1.5 rounded-md bg-overlay-subtle px-2 py-1 text-label text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-tertiary"
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
             >
               <BuildStateIcon state={b.state} size={12} />
               {b.name}
-              <ExternalLink size={9} strokeWidth={1.5} className="text-white/10" />
+              <ExternalLink size={9} strokeWidth={1.5} className="text-text-muted" />
             </a>
           ))}
         </div>
@@ -198,39 +198,39 @@ function DeploymentsTable({ deployments }: { deployments: DevDeployment[] }) {
     <div className="space-y-4">
       {sortedTypes.map((type) => (
         <div key={type}>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/30">{type}</h4>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">{type}</h4>
           <div className="overflow-hidden rounded-lg border border-border-default">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border-subtle bg-white/[0.02]">
-                  <th className="px-3 py-2 text-left font-medium text-white/25">Pipeline</th>
-                  <th className="px-3 py-2 text-left font-medium text-white/25">Environment</th>
-                  <th className="px-3 py-2 text-left font-medium text-white/25">Status</th>
-                  <th className="px-3 py-2 text-left font-medium text-white/25">Completed</th>
+                <tr className="border-b border-border-subtle bg-overlay-subtle">
+                  <th className="px-3 py-2 text-left font-medium text-text-muted">Pipeline</th>
+                  <th className="px-3 py-2 text-left font-medium text-text-muted">Environment</th>
+                  <th className="px-3 py-2 text-left font-medium text-text-muted">Status</th>
+                  <th className="px-3 py-2 text-left font-medium text-text-muted">Completed</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.03]">
+              <tbody className="divide-y divide-border-subtle">
                 {grouped[type].map((d, i) => (
-                  <tr key={`${d.environment}-${i}`} className="hover:bg-white/[0.02]" style={{ transition: "background-color 0.15s ease" }}>
+                  <tr key={`${d.environment}-${i}`} className="hover:bg-overlay-subtle" style={{ transition: "background-color 0.15s ease" }}>
                     <td className="px-3 py-2">
                       <a
                         href={d.pipelineUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-white/40 cursor-pointer hover:text-[var(--color-brand-400)]"
+                        className="text-text-tertiary cursor-pointer hover:text-[var(--color-brand-400)]"
                         style={{ transition: "color 0.15s ease" }}
                       >
                         {d.pipelineName}
                       </a>
                     </td>
-                    <td className="px-3 py-2 text-white/40">{d.environment}</td>
+                    <td className="px-3 py-2 text-text-tertiary">{d.environment}</td>
                     <td className="px-3 py-2">
                       <span className="flex items-center gap-1.5">
                         <BuildStateIcon state={d.state} size={12} />
-                        <span className="text-white/40">{d.state === "SUCCESSFUL" ? "Successful" : d.state === "FAILED" ? "Failed" : "In progress"}</span>
+                        <span className="text-text-tertiary">{d.state === "SUCCESSFUL" ? "Successful" : d.state === "FAILED" ? "Failed" : "In progress"}</span>
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-white/25">{d.completedAt ? shortDate(d.completedAt) : ""}</td>
+                    <td className="px-3 py-2 text-text-muted">{d.completedAt ? shortDate(d.completedAt) : ""}</td>
                   </tr>
                 ))}
               </tbody>
@@ -246,19 +246,19 @@ function BranchRow({ branch }: { branch: DevBranch }) {
   return (
     <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-2 min-w-0">
-        <GitBranch size={14} strokeWidth={1.5} className="shrink-0 text-white/20" />
+        <GitBranch size={14} strokeWidth={1.5} className="shrink-0 text-text-muted" />
         <a
           href={branch.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="truncate text-xs font-medium text-white/50 cursor-pointer hover:text-[var(--color-brand-400)]"
+          className="truncate text-xs font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)]"
           style={{ transition: "color 0.15s ease" }}
         >
           {branch.name}
         </a>
       </div>
       {branch.lastCommit && (
-        <span className="shrink-0 pl-3 text-label text-white/20">
+        <span className="shrink-0 pl-3 text-label text-text-muted">
           {branch.lastCommit.author} · {relativeDate(branch.lastCommit.date)}
         </span>
       )}
@@ -269,9 +269,9 @@ function BranchRow({ branch }: { branch: DevBranch }) {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <GitCommit size={32} strokeWidth={1} className="text-white/10" />
-      <p className="mt-3 text-sm text-white/25">No development activity linked to this ticket</p>
-      <p className="mt-1 text-xs text-white/15">Branches, pull requests, and deployments will appear here when linked via the ticket key.</p>
+      <GitCommit size={32} strokeWidth={1} className="text-text-muted" />
+      <p className="mt-3 text-sm text-text-muted">No development activity linked to this ticket</p>
+      <p className="mt-1 text-xs text-text-muted">Branches, pull requests, and deployments will appear here when linked via the ticket key.</p>
     </div>
   );
 }
@@ -280,7 +280,7 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-4 py-8">
       {[0.8, 0.6, 0.7].map((w, i) => (
-        <div key={i} className="h-20 rounded-lg bg-white/[0.02]" style={{ width: `${w * 100}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
+        <div key={i} className="h-20 rounded-lg bg-overlay-subtle" style={{ width: `${w * 100}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
       ))}
     </div>
   );
@@ -300,24 +300,24 @@ function PipelineRunsSection({ ticketKey, deploymentUrls }: { ticketKey: string;
         title="Pipeline History"
         count={filteredRuns.length}
       />
-      <div className="divide-y divide-border-subtle rounded-lg border border-border-default bg-white/[0.02]">
+      <div className="divide-y divide-border-subtle rounded-lg border border-border-default bg-overlay-subtle">
         {filteredRuns.map((run) => (
           <div key={run.id} className="flex items-center gap-3 px-3 py-2.5">
             <BuildStateIcon state={run.state} size={13} />
-            <span className="text-body-sm font-mono text-white/60">#{run.buildNumber}</span>
-            <span className="text-label text-white/30 truncate flex-1">{run.branchName}</span>
+            <span className="text-body-sm font-mono text-text-secondary">#{run.buildNumber}</span>
+            <span className="text-label text-text-tertiary truncate flex-1">{run.branchName}</span>
             {run.environment && (
               <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/80">
                 {run.environment}
               </span>
             )}
-            <span className="text-label text-white/25 tabular-nums">{run.completedAt ? relativeDate(run.completedAt) : "running"}</span>
+            <span className="text-label text-text-muted tabular-nums">{run.completedAt ? relativeDate(run.completedAt) : "running"}</span>
             {run.pipelineUrl && (
               <a
                 href={run.pipelineUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/15 hover:text-white/40 transition-colors duration-150 cursor-pointer"
+                className="text-text-muted hover:text-text-tertiary transition-colors duration-150 cursor-pointer"
               >
                 <ExternalLink size={11} strokeWidth={1.5} />
               </a>
@@ -387,7 +387,7 @@ export function TicketDevelopment({ ticketKey }: { ticketKey: string }) {
             title="Branches"
             count={data.branches.length}
           />
-          <div className="divide-y divide-border-subtle rounded-lg border border-border-default bg-white/[0.02] px-3">
+          <div className="divide-y divide-border-subtle rounded-lg border border-border-default bg-overlay-subtle px-3">
             {data.branches.map((b) => (
               <BranchRow key={b.name} branch={b} />
             ))}

@@ -121,18 +121,18 @@ export default function SchedulerPage() {
 
   return (
     <>
-      <h2 className="text-xs font-medium text-white/50 uppercase tracking-[0.06em] mb-2">
+      <h2 className="text-xs font-medium text-text-secondary uppercase tracking-[0.06em] mb-2">
         Scheduled Tasks
       </h2>
-      <p className="text-xs text-white/30 mb-6 leading-[1.6]">
+      <p className="text-xs text-text-tertiary mb-6 leading-[1.6]">
         Tasks run automatically during normal app usage. The scheduler checks for due tasks
         on every page load and every 30 seconds.
       </p>
 
       {loading ? (
-        <div className="text-sm text-white/30">Loading...</div>
+        <div className="text-sm text-text-tertiary">Loading...</div>
       ) : tasks.length === 0 ? (
-        <div className="text-sm text-white/30">No scheduled tasks registered.</div>
+        <div className="text-sm text-text-tertiary">No scheduled tasks registered.</div>
       ) : (
         <div className="flex flex-col gap-3">
           {tasks.map((task) => {
@@ -140,15 +140,15 @@ export default function SchedulerPage() {
             return (
               <div
                 key={task.name}
-                className="rounded-xl border border-border-default bg-white/[0.02] p-4"
+                className="rounded-xl border border-border-default bg-overlay-subtle p-4"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2.5">
-                    <Clock size={13} strokeWidth={1.5} className="text-white/30" />
-                    <span className="text-sm font-medium text-white/80">{task.label}</span>
+                    <Clock size={13} strokeWidth={1.5} className="text-text-tertiary" />
+                    <span className="text-sm font-medium text-text-primary">{task.label}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-caption font-mono text-white/40">
+                    <span className="rounded-md bg-overlay-default px-2 py-0.5 text-caption font-mono text-text-tertiary">
                       every {formatInterval(task.intervalMs)}
                     </span>
                     {task.enabled ? (
@@ -157,7 +157,7 @@ export default function SchedulerPage() {
                         Active
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-caption font-medium text-white/25">
+                      <span className="flex items-center gap-1 text-caption font-medium text-text-muted">
                         <XCircle size={10} strokeWidth={2} />
                         Disabled
                       </span>
@@ -165,7 +165,7 @@ export default function SchedulerPage() {
                     <button
                       onClick={() => handleRunNow(task.name)}
                       disabled={running[task.name]}
-                      className="flex items-center gap-1 rounded-md border border-border-strong bg-white/[0.04] px-2 py-0.5 text-caption font-medium text-white/50 transition-colors hover:border-white/[0.15] hover:bg-white/[0.08] hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center gap-1 rounded-md border border-border-strong bg-overlay-subtle px-2 py-0.5 text-caption font-medium text-text-secondary transition-colors hover:border-border-strong hover:bg-overlay-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Play size={8} strokeWidth={2} className={running[task.name] ? "animate-pulse" : ""} />
                       {running[task.name] ? "Running..." : "Run now"}
@@ -176,7 +176,7 @@ export default function SchedulerPage() {
                 <div className="flex items-center gap-4 text-xs">
                   {task.lastRunAt ? (
                     <>
-                      <span className="flex items-center gap-1.5 text-white/35">
+                      <span className="flex items-center gap-1.5 text-text-tertiary">
                         <RefreshCw size={10} strokeWidth={1.5} />
                         {formatTimeAgo(task.lastRunAt)}
                       </span>
@@ -184,7 +184,7 @@ export default function SchedulerPage() {
                         <span className={`flex items-center gap-1.5 ${
                           result.isError
                             ? "text-red-400/70"
-                            : "text-white/30"
+                            : "text-text-tertiary"
                         }`}>
                           {result.isError && <AlertTriangle size={10} strokeWidth={1.5} />}
                           {result.text}
@@ -192,7 +192,7 @@ export default function SchedulerPage() {
                       )}
                     </>
                   ) : (
-                    <span className="text-white/25">Never run</span>
+                    <span className="text-text-muted">Never run</span>
                   )}
                 </div>
               </div>

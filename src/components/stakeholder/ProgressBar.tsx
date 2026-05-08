@@ -16,12 +16,12 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-4">
-        <span className="text-sm text-white/50">Story points</span>
-        <span className="text-sm font-medium tabular-nums text-white/70">
-          {completed} <span className="text-white/30">/ {total}</span>
+        <span className="text-sm text-text-secondary">Story points</span>
+        <span className="text-sm font-medium tabular-nums text-text-secondary">
+          {completed} <span className="text-text-tertiary">/ {total}</span>
         </span>
       </div>
-      <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-overlay-default">
         {/* Done: secondary (teal) */}
         <div
           className="absolute inset-y-0 left-0 bg-[var(--color-secondary-400)]/70 transition-[width] duration-700 ease-out"
@@ -39,7 +39,7 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
         />
       </div>
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 text-caption text-white/25">
+        <div className="flex items-center gap-3 text-caption text-text-muted">
           {completed > 0 && (
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-secondary-400)]/60" />
@@ -59,7 +59,7 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
             </span>
           )}
         </div>
-        <div className="text-xs text-white/30 tabular-nums">{overallPct}% complete</div>
+        <div className="text-xs text-text-tertiary tabular-nums">{overallPct}% complete</div>
       </div>
     </div>
   );

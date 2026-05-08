@@ -42,7 +42,7 @@ function SprintStateBadge({ state }: { state: string }) {
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-white/[0.06] px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-white/30">
+    <span className="inline-flex items-center rounded-full bg-overlay-default px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-text-tertiary">
       Planned
     </span>
   );
@@ -76,9 +76,9 @@ function SectionHeader({
       badge: "bg-[var(--color-brand-400)]/10 text-[var(--color-brand-400)]/60",
     },
     muted: {
-      heading: "text-white/30",
-      line: "bg-white/[0.04]",
-      badge: "bg-white/[0.06] text-white/30",
+      heading: "text-text-tertiary",
+      line: "bg-overlay-subtle",
+      badge: "bg-overlay-default text-text-tertiary",
     },
   }[color];
 
@@ -179,12 +179,12 @@ export function SprintOverviewCard({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <SprintStateBadge state={sprint.state} />
         {dateLabel && (
-          <span className="text-sm text-white/40">{dateLabel}</span>
+          <span className="text-sm text-text-tertiary">{dateLabel}</span>
         )}
         {isActive && sprint.workingDaysRemaining !== null && (
           <span
             className={`text-sm font-medium ${
-              sprint.workingDaysRemaining <= 2 ? "text-amber-400/80" : "text-white/40"
+              sprint.workingDaysRemaining <= 2 ? "text-amber-400/80" : "text-text-tertiary"
             }`}
           >
             {sprint.workingDaysRemaining === 0
@@ -194,7 +194,7 @@ export function SprintOverviewCard({
         )}
         {showGoal && sprint.goal && (
           <div className="w-full border-l-2 border-[var(--color-brand-400)]/25 pl-3 py-1">
-            <p className="text-sm italic text-white/40">{sprint.goal}</p>
+            <p className="text-sm italic text-text-tertiary">{sprint.goal}</p>
           </div>
         )}
       </div>
@@ -219,7 +219,7 @@ export function SprintOverviewCard({
             total={totalPoints}
           />
           {itemParts.length > 0 && (
-            <p className="text-xs text-white/30 tabular-nums">
+            <p className="text-xs text-text-tertiary tabular-nums">
               {itemParts.join(" · ")}
             </p>
           )}

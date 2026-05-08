@@ -21,7 +21,7 @@ export function HealthScoreBadge({ healthScore }: { healthScore: HealthScore }) 
   const tooltipContent = `Health score ${score}/100 — Success rate: ${components.successRate} · Duration consistency: ${components.durationConsistency} · Error-free streak: ${components.errorFreeStreak}`;
 
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const trendColor = trend === "up" ? "text-green-400/70" : trend === "down" ? "text-red-400/70" : "text-white/25";
+  const trendColor = trend === "up" ? "text-green-400/70" : trend === "down" ? "text-red-400/70" : "text-text-muted";
 
   return (
     <Tooltip content={tooltipContent}>
@@ -32,7 +32,7 @@ export function HealthScoreBadge({ healthScore }: { healthScore: HealthScore }) 
         <span className={`text-sm font-bold tabular-nums font-[var(--font-display)] tracking-tight ${bandColor.text}`}>
           {score}
         </span>
-        <span className="text-caption text-white/20 font-[var(--font-body)]">/100</span>
+        <span className="text-caption text-text-muted font-[var(--font-body)]">/100</span>
         <TrendIcon className={`h-3 w-3 ${trendColor}`} strokeWidth={2} />
       </div>
     </Tooltip>
@@ -53,7 +53,7 @@ function DeltaChip({
   const diff = current - previous;
   if (diff === 0) {
     return (
-      <span className="flex items-center gap-0.5 text-caption text-white/20 font-[var(--font-body)]">
+      <span className="flex items-center gap-0.5 text-caption text-text-muted font-[var(--font-body)]">
         <Minus className="h-2.5 w-2.5" strokeWidth={2.5} />
         <span>same</span>
       </span>
@@ -130,10 +130,10 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
           key={m.label}
           className="flex flex-col gap-1 rounded-xl border border-border-default bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
         >
-          <span className="text-caption uppercase tracking-widest text-white/20 font-semibold font-[var(--font-body)]">
+          <span className="text-caption uppercase tracking-widest text-text-muted font-semibold font-[var(--font-body)]">
             {m.label}
           </span>
-          <span className="text-xl font-bold tabular-nums font-[var(--font-display)] tracking-tight text-white/85">
+          <span className="text-xl font-bold tabular-nums font-[var(--font-display)] tracking-tight text-text-primary">
             {m.value}
           </span>
           {m.delta}

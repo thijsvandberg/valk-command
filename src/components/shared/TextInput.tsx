@@ -16,13 +16,13 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
     return (
       <div className="relative">
         {icon && (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/25">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
             {icon}
           </span>
         )}
         <input
           ref={ref}
-          className={`w-full rounded-lg border border-border-strong bg-white/[0.03] text-white/80 placeholder-white/25 focus:outline-none focus:border-[var(--color-brand-500)]/40 transition-colors duration-150 ${sizeClass}${icon ? " pl-8" : ""}${className ? ` ${className}` : ""}`}
+          className={`w-full rounded-lg border border-border-strong bg-overlay-subtle text-text-primary placeholder-text-muted focus:outline-none focus:border-[var(--color-brand-500)]/40 transition-colors duration-150 ${sizeClass}${icon ? " pl-8" : ""}${className ? ` ${className}` : ""}`}
           {...rest}
         />
       </div>

@@ -308,12 +308,12 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
         <div className="mt-3 space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-3 rounded-lg border border-border-default px-4 py-3">
-              <div className="h-7 w-7 animate-pulse rounded-full bg-white/[0.06]" />
+              <div className="h-7 w-7 animate-pulse rounded-full bg-overlay-default" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 w-32 animate-pulse rounded bg-white/[0.06]" />
-                <div className="h-2.5 w-20 animate-pulse rounded bg-white/[0.04]" />
+                <div className="h-3 w-32 animate-pulse rounded bg-overlay-default" />
+                <div className="h-2.5 w-20 animate-pulse rounded bg-overlay-subtle" />
               </div>
-              <div className="h-3 w-8 animate-pulse rounded bg-white/[0.06]" />
+              <div className="h-3 w-8 animate-pulse rounded bg-overlay-default" />
             </div>
           ))}
         </div>
@@ -325,7 +325,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     return (
       <div className="mt-8">
         <SectionHeader title="History" count={0} />
-        <p className="mt-3 text-sm text-white/30">No version history yet</p>
+        <p className="mt-3 text-sm text-text-tertiary">No version history yet</p>
       </div>
     );
   }

@@ -34,9 +34,9 @@ function StatusIcon({ status }: { status: ActivityLogEntry["status"] }) {
     return <AlertTriangle className="h-3.5 w-3.5 text-amber-400" strokeWidth={2} />;
   }
   if (status === "cancelled") {
-    return <Ban className="h-3.5 w-3.5 text-white/30" strokeWidth={2} />;
+    return <Ban className="h-3.5 w-3.5 text-text-tertiary" strokeWidth={2} />;
   }
-  return <RefreshCw className="h-3.5 w-3.5 text-white/30 animate-spin" strokeWidth={2} />;
+  return <RefreshCw className="h-3.5 w-3.5 text-text-tertiary animate-spin" strokeWidth={2} />;
 }
 
 function statusLabel(status: ActivityLogEntry["status"]): string {
@@ -56,7 +56,7 @@ function ScopeCell({
   sprintMap: Map<string, string>;
 }) {
   if (!scope || scope === "0") {
-    return <span className="text-xs text-white/25 font-[var(--font-body)] truncate">-</span>;
+    return <span className="text-xs text-text-muted font-[var(--font-body)] truncate">-</span>;
   }
 
   // Ticket keys: comma-separated VPL-XXXXX patterns
@@ -95,7 +95,7 @@ function ScopeCell({
   }
 
   // Fallback: plain text (e.g. "sprints", "history")
-  return <span className="text-xs text-white/25 font-[var(--font-body)] truncate">{scope}</span>;
+  return <span className="text-xs text-text-muted font-[var(--font-body)] truncate">{scope}</span>;
 }
 
 export function SelectFilter({
@@ -112,7 +112,7 @@ export function SelectFilter({
       <select
         value={value}
         onChange={onChange}
-        className="appearance-none rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-1.5 pr-7 text-xs text-white/60 font-[var(--font-body)] cursor-pointer hover:border-white/[0.1] focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+        className="appearance-none rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-1.5 pr-7 text-xs text-text-secondary font-[var(--font-body)] cursor-pointer hover:border-border-strong focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -120,7 +120,7 @@ export function SelectFilter({
           </option>
         ))}
       </select>
-      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-white/20 pointer-events-none" strokeWidth={2} />
+      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-text-muted pointer-events-none" strokeWidth={2} />
     </div>
   );
 }
@@ -154,13 +154,13 @@ export function ActivityTable({
     <>
       <div className="rounded-xl border border-border-default bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
         {/* Header row */}
-        <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-border-default bg-white/[0.015]">
+        <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-border-default bg-overlay-subtle">
           <span />
-          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Type</span>
-          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Status</span>
-          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Duration</span>
-          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)]">Scope</span>
-          <span className="text-label font-semibold uppercase tracking-wide text-white/25 font-[var(--font-body)] text-right">Time</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Type</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Status</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Duration</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Scope</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)] text-right">Time</span>
         </div>
 
         {/* Loading state */}
@@ -171,8 +171,8 @@ export function ActivityTable({
         {/* Empty state */}
         {entries?.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
-            <Clock className="h-8 w-8 text-white/10" strokeWidth={1.5} />
-            <span className="text-sm text-white/25 font-[var(--font-body)]">No activity entries found</span>
+            <Clock className="h-8 w-8 text-text-muted" strokeWidth={1.5} />
+            <span className="text-sm text-text-muted font-[var(--font-body)]">No activity entries found</span>
           </div>
         )}
 
@@ -186,15 +186,15 @@ export function ActivityTable({
             <div key={entry.id} ref={(el) => rowRefsCallback(entry.id, el)}>
               <div
                 className={`grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-3 items-start transition-colors duration-100 ${
-                  i < (entries.length - 1) || isExpanded ? "border-b border-white/[0.03]" : ""
-                } ${hasExpandableContent ? "hover:bg-white/[0.015] cursor-pointer" : ""}`}
+                  i < (entries.length - 1) || isExpanded ? "border-b border-border-subtle" : ""
+                } ${hasExpandableContent ? "hover:bg-overlay-subtle cursor-pointer" : ""}`}
                 onClick={() => hasExpandableContent && onToggleExpanded(entry.id)}
               >
                 {/* Expand chevron */}
                 <div className="flex items-center justify-center pt-0.5">
                   {hasExpandableContent && (
                     <ChevronRight
-                      className={`h-3 w-3 text-white/20 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+                      className={`h-3 w-3 text-text-muted transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
                       strokeWidth={2}
                     />
                   )}
@@ -202,11 +202,11 @@ export function ActivityTable({
 
                 {/* Type + summary preview */}
                 <div className="min-w-0">
-                  <span className="text-xs text-white/70 font-[var(--font-body)]">
+                  <span className="text-xs text-text-secondary font-[var(--font-body)]">
                     {entryTypeLabel(entry.type)}
                   </span>
                   {entry.summary && !isExpanded && (
-                    <div className="text-label text-white/30 truncate font-[var(--font-body)] mt-0.5">
+                    <div className="text-label text-text-tertiary truncate font-[var(--font-body)] mt-0.5">
                       {entry.summary}
                     </div>
                   )}
@@ -223,8 +223,8 @@ export function ActivityTable({
                   <span className={`text-xs font-[var(--font-body)] ${
                     entry.status === "success" ? "text-[var(--color-brand-400)]/70" :
                     entry.status === "failed" ? "text-amber-400/70" :
-                    entry.status === "cancelled" ? "text-white/30" :
-                    "text-white/30"
+                    entry.status === "cancelled" ? "text-text-tertiary" :
+                    "text-text-tertiary"
                   }`}>
                     {statusLabel(entry.status)}
                   </span>
@@ -245,7 +245,7 @@ export function ActivityTable({
                       type="button"
                       title="Dismiss"
                       onClick={() => onAcknowledgeEntry(entry.id)}
-                      className="ml-1 flex items-center justify-center h-4 w-4 rounded text-white/20 hover:text-white/50 hover:bg-hover-interactive transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                      className="ml-1 flex items-center justify-center h-4 w-4 rounded text-text-muted hover:text-text-secondary hover:bg-hover-interactive transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <X className="h-2.5 w-2.5" strokeWidth={2.5} />
                     </button>
@@ -253,7 +253,7 @@ export function ActivityTable({
                 </div>
 
                 {/* Duration */}
-                <span className="text-xs text-white/30 font-[var(--font-body)] tabular-nums">
+                <span className="text-xs text-text-tertiary font-[var(--font-body)] tabular-nums">
                   {formatDuration(entry.durationMs)}
                 </span>
 
@@ -263,28 +263,28 @@ export function ActivityTable({
                 </div>
 
                 {/* Timestamp */}
-                <span className="text-xs text-white/25 font-[var(--font-body)] tabular-nums text-right">
+                <span className="text-xs text-text-muted font-[var(--font-body)] tabular-nums text-right">
                   {formatTimestamp(entry.startedAt)}
                 </span>
               </div>
 
               {/* Expanded detail panel */}
               {isExpanded && (
-                <div className={`px-10 py-3 bg-white/[0.008] ${i < (entries.length - 1) ? "border-b border-white/[0.03]" : ""}`}>
+                <div className={`px-10 py-3 bg-overlay-subtle ${i < (entries.length - 1) ? "border-b border-border-subtle" : ""}`}>
                   {entry.summary && (
                     <div className="mb-2">
-                      <span className="text-caption uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Summary</span>
-                      <p className="mt-1 text-xs text-white/50 font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
+                      <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Summary</span>
+                      <p className="mt-1 text-xs text-text-secondary font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
                     </div>
                   )}
                   {entry.errorDetail && (
                     <div>
-                      <span className="text-caption uppercase tracking-wide font-semibold text-white/20 font-[var(--font-body)]">Error detail</span>
+                      <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Error detail</span>
                       {structured ? (
                         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
                           {Object.entries(structured).map(([k, v]) => (
                             <span key={k} className="text-label font-[var(--font-body)]">
-                              <span className="text-white/25">{k}: </span>
+                              <span className="text-text-muted">{k}: </span>
                               <span className="text-amber-400/70">{String(v)}</span>
                             </span>
                           ))}
@@ -311,7 +311,7 @@ export function ActivityTable({
         >
           Previous
         </Button>
-        <span className="text-label text-white/20 font-[var(--font-body)]">
+        <span className="text-label text-text-muted font-[var(--font-body)]">
           Showing {offset + 1} - {offset + (entries?.length ?? 0)}
         </span>
         <Button

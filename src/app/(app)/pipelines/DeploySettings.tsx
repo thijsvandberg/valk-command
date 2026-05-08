@@ -50,23 +50,23 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
         className="flex items-center gap-2 mb-3 cursor-pointer group"
       >
         <Rocket size={14} strokeWidth={1.5} className="text-violet-400/60" />
-        <span className="text-xs font-medium text-white/50 uppercase tracking-wider group-hover:text-white/70 transition-colors duration-150">
+        <span className="text-xs font-medium text-text-secondary uppercase tracking-wider group-hover:text-text-secondary transition-colors duration-150">
           Deployment Timeline
         </span>
         <span className="rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/60 tabular-nums">
           {deployments.length}
         </span>
         {collapsed ? (
-          <ChevronDown size={12} strokeWidth={1.5} className="text-white/20" />
+          <ChevronDown size={12} strokeWidth={1.5} className="text-text-muted" />
         ) : (
-          <ChevronUp size={12} strokeWidth={1.5} className="text-white/20" />
+          <ChevronUp size={12} strokeWidth={1.5} className="text-text-muted" />
         )}
       </button>
       {!collapsed && (
         <div className="space-y-4">
           {Array.from(byDate.entries()).map(([date, deploys]) => (
             <div key={date}>
-              <span className="text-label font-medium text-white/25 uppercase tracking-wider">{date}</span>
+              <span className="text-label font-medium text-text-muted uppercase tracking-wider">{date}</span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {deploys.map((d) => (
                   <div
@@ -76,11 +76,11 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
                         ? "border-emerald-500/15 bg-emerald-500/[0.04]"
                         : d.state === "FAILED"
                         ? "border-red-500/15 bg-red-500/[0.04]"
-                        : "border-border-default bg-white/[0.02]"
+                        : "border-border-default bg-overlay-subtle"
                     }`}
                   >
                     {stateIcon(d.state, 12)}
-                    <span className="font-medium text-white/60">{d.environment}</span>
+                    <span className="font-medium text-text-secondary">{d.environment}</span>
                     {d.ticketKey && (
                       <Link
                         href={`/tickets/${d.ticketKey}`}
@@ -89,7 +89,7 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
                         {d.ticketKey}
                       </Link>
                     )}
-                    <span className="text-caption text-white/20">{d.repo}</span>
+                    <span className="text-caption text-text-muted">{d.repo}</span>
                   </div>
                 ))}
               </div>
@@ -143,8 +143,8 @@ export function DeploySettingsPanel() {
           <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Header */}
             <div className="px-4 pt-3.5 pb-2.5">
-              <h3 className="text-body-sm font-semibold text-white/60">Deploy notifications</h3>
-              <p className="text-label text-white/25 mt-0.5">
+              <h3 className="text-body-sm font-semibold text-text-secondary">Deploy notifications</h3>
+              <p className="text-label text-text-muted mt-0.5">
                 Browser alerts when deployments complete for followed tickets.
               </p>
             </div>
@@ -159,12 +159,12 @@ export function DeploySettingsPanel() {
             <button
               type="button"
               onClick={toggleEnabled}
-              className="w-full flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
+              className="w-full flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150"
             >
-              <span className="text-body-sm text-white/50">
+              <span className="text-body-sm text-text-secondary">
                 {settings.enabled ? "Enabled" : "Disabled"}
                 {settings.enabled && (
-                  <span className="ml-1.5 text-caption text-white/20">{enabledEnvCount}/{totalEnvCount}</span>
+                  <span className="ml-1.5 text-caption text-text-muted">{enabledEnvCount}/{totalEnvCount}</span>
                 )}
               </span>
               <span className={`relative inline-flex items-center h-5 w-8 rounded-full transition-colors duration-150 ${
@@ -184,14 +184,14 @@ export function DeploySettingsPanel() {
                     key={env}
                     type="button"
                     onClick={() => toggleEnvironment(env)}
-                    className="w-full flex items-center gap-2.5 px-4 py-1.5 cursor-pointer hover:bg-white/[0.03] transition-colors duration-150"
+                    className="w-full flex items-center gap-2.5 px-4 py-1.5 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150"
                   >
                     <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
                       on ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
                     }`}>
                       {on && "\u2713"}
                     </span>
-                    <span className={`text-body-sm ${on ? "text-white/50" : "text-white/25"}`}>{env}</span>
+                    <span className={`text-body-sm ${on ? "text-text-secondary" : "text-text-muted"}`}>{env}</span>
                   </button>
                 ))}
               </div>

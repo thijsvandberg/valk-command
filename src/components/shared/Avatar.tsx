@@ -7,10 +7,10 @@ export function Avatar({ assignee, size = 24 }: { assignee: Assignee | null; siz
   if (!assignee) {
     return (
       <div
-        className="flex items-center justify-center rounded-full border border-border-default bg-white/[0.03]"
+        className="flex items-center justify-center rounded-full border border-border-default bg-overlay-subtle"
         style={{ width: size, height: size }}
       >
-        <User className="text-white/15" style={{ width: iconSize, height: iconSize }} strokeWidth={1.5} />
+        <User className="text-text-muted" style={{ width: iconSize, height: iconSize }} strokeWidth={1.5} />
       </div>
     );
   }

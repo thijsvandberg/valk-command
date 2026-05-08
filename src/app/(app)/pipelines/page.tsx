@@ -292,7 +292,7 @@ export default function PipelinesPage() {
               setRepoFilter(null);
               setShowUnlinked(false);
             }}
-            className="ml-2 rounded-md bg-white/[0.06] px-2 py-0.5 text-caption font-medium text-white/35 cursor-pointer hover:bg-white/[0.1] hover:text-white/50 transition-colors duration-150"
+            className="ml-2 rounded-md bg-overlay-default px-2 py-0.5 text-caption font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150"
             title="Clear all filters"
           >
             {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active &times;
@@ -311,13 +311,13 @@ export default function PipelinesPage() {
                 <>
                   <div className="flex items-center gap-2 mb-4">
                     <Unlink size={14} strokeWidth={1.5} className="text-amber-400/60" />
-                    <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                    <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                       Unlinked runs
                     </span>
                     <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/60 tabular-nums">
                       {filteredRuns.length}
                     </span>
-                    <span className="text-label text-white/25">
+                    <span className="text-label text-text-muted">
                       Runs without a ticket key
                     </span>
                   </div>
@@ -353,10 +353,10 @@ export default function PipelinesPage() {
               )}
 
               {/* Keyboard shortcuts hint */}
-              <div className="mt-6 flex items-center justify-center gap-4 text-caption text-white/15">
-                <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">R</kbd> Refresh</span>
-                <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">F</kbd> Cycle status filter</span>
-                <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] text-white/25 font-mono">S</kbd> Toggle sprint</span>
+              <div className="mt-6 flex items-center justify-center gap-4 text-caption text-text-muted">
+                <span><kbd className="px-1 py-0.5 rounded bg-overlay-default text-text-muted font-mono">R</kbd> Refresh</span>
+                <span><kbd className="px-1 py-0.5 rounded bg-overlay-default text-text-muted font-mono">F</kbd> Cycle status filter</span>
+                <span><kbd className="px-1 py-0.5 rounded bg-overlay-default text-text-muted font-mono">S</kbd> Toggle sprint</span>
               </div>
             </>
           )}
