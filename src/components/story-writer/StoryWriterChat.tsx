@@ -54,6 +54,7 @@ interface StoryWriterChatProps {
   draftContentMap: Record<string, string>;
   onViewDraft?: (draftId: string) => void;
   onFocusDraft?: (draftId: string) => void;
+  onAcceptDraft?: (draftId: string) => void;
   onOpenLogs?: (taskId: string) => void;
   onApplyTitle?: (title: string) => void;
   issueType?: IssueType;
@@ -128,6 +129,7 @@ export function StoryWriterChat({
   draftContentMap,
   onViewDraft,
   onFocusDraft,
+  onAcceptDraft,
   onOpenLogs,
   onApplyTitle,
   issueType = "story",
@@ -321,6 +323,7 @@ export function StoryWriterChat({
                 draftContent={messageDraftMap[msg.id] ? draftContentMap[messageDraftMap[msg.id]] : undefined}
                 onViewDraft={onViewDraft}
                 onFocusDraft={onFocusDraft}
+                onAcceptDraft={onAcceptDraft}
                 logsTaskId={messageLogsTaskIds[idx]}
                 onOpenLogs={onOpenLogs}
                 onStoryKeyClick={onStoryKeyClick}

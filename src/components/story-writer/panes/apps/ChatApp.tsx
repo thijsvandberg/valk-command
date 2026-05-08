@@ -133,6 +133,7 @@ export function ChatApp() {
           draftContentMap={draftContentMap}
           onViewDraft={handleViewDraft}
           onFocusDraft={handleFocusDraft}
+          onAcceptDraft={writer.onAcceptDraft}
           onOpenLogs={() => setShowLogs(true)}
           onApplyTitle={writer.onTitleChange}
           issueType={writer.ticketData?.type ?? "story"}

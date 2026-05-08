@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Zap,
   Maximize2,
+  Check,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -145,6 +146,7 @@ export function ChatMessage({
   draftContent,
   onViewDraft,
   onFocusDraft,
+  onAcceptDraft,
   logsTaskId,
   onOpenLogs,
   onStoryKeyClick,
@@ -155,6 +157,7 @@ export function ChatMessage({
   draftContent?: string;
   onViewDraft?: (draftId: string) => void;
   onFocusDraft?: (draftId: string) => void;
+  onAcceptDraft?: (draftId: string) => void;
   logsTaskId?: string | null;
   onOpenLogs?: (taskId: string) => void;
   onStoryKeyClick?: (key: string) => void;
@@ -249,7 +252,7 @@ export function ChatMessage({
 
       <div
         ref={containerRef}
-        className={`max-w-[85%] rounded-xl text-sm leading-[1.75] ${allTitleSuggestions.length > 0 ? "w-full" : ""} ${
+        className={`max-w-[85%] rounded-xl text-sm leading-[1.75] ${allTitleSuggestions.length > 0 || draftId ? "w-full" : ""} ${
           draftOnly
             ? ""
             : isUser
@@ -322,18 +325,32 @@ export function ChatMessage({
               </button>
             </div>
             {draftExpanded && draftContent && (
-              <div
-                className="border-t border-[var(--color-brand-500)]/10 px-3 py-2.5 overflow-y-auto"
-                style={{
-                  maxHeight: containerWidth > 0
-                    ? Math.min(Math.round(containerWidth * 0.65), typeof window !== "undefined" ? window.innerHeight - 180 : 600)
-                    : 300,
-                }}
-              >
-                <div className="description-content chat-markdown text-xs leading-[1.7] text-white/70">
-                  {renderMarkdown(draftContent)}
+              <>
+                <div
+                  className="border-t border-[var(--color-brand-500)]/10 px-3 py-2.5 overflow-y-auto"
+                  style={{
+                    maxHeight: containerWidth > 0
+                      ? Math.min(Math.round(containerWidth * 0.65), typeof window !== "undefined" ? window.innerHeight - 180 : 600)
+                      : 300,
+                  }}
+                >
+                  <div className="description-content chat-markdown text-xs leading-[1.7] text-white/70">
+                    {renderMarkdown(draftContent)}
+                  </div>
                 </div>
-              </div>
+                {onAcceptDraft && draftId && (
+                  <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => onAcceptDraft(draftId)}
+                      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                    >
+                      <Check size={12} strokeWidth={2} />
+                      Accept draft
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
