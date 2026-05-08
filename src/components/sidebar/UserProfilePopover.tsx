@@ -13,6 +13,7 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import {
   Moon,
+  Sun,
   Bell,
   Command,
   Settings,
@@ -20,6 +21,7 @@ import {
   User,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface UserProfilePopoverProps {
   open: boolean;
@@ -50,6 +52,7 @@ export function UserProfilePopover({
   const { user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ bottom: number; left: number }>({
     bottom: 0,
@@ -69,11 +72,14 @@ export function UserProfilePopover({
     () => [
       {
         id: "theme",
-        icon: <Moon className={iconClass} strokeWidth={1.5} />,
+        icon: theme === "dark"
+          ? <Sun className={iconClass} strokeWidth={1.5} />
+          : <Moon className={iconClass} strokeWidth={1.5} />,
         label: "Theme",
-        secondaryLabel: "Coming soon",
-        disabled: true,
-        action: () => {},
+        secondaryLabel: theme === "dark" ? "Dark" : "Light",
+        action: () => {
+          toggleTheme();
+        },
       },
       {
         id: "notifications",
@@ -113,7 +119,7 @@ export function UserProfilePopover({
         },
       },
     ],
-    [router, onNavigate, onClose],
+    [router, onNavigate, onClose, theme, toggleTheme],
   );
 
   const signOutItem: MenuItem = useMemo(

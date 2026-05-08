@@ -62,9 +62,9 @@ The app is hardcoded to dark mode. All colors use CSS custom properties (`--colo
 - [x] Update `color-scheme` meta/CSS to match the active theme
 
 ### Phase 2: Toggle UI
-- [ ] Add a theme toggle button in the top navigation / settings area
-- [ ] Toggle shows current mode and switches instantly without page reload
-- [ ] Smooth transition when switching (e.g. `transition: background-color 200ms`)
+- [x] Add a theme toggle button in the top navigation / settings area
+- [x] Toggle shows current mode and switches instantly without page reload
+- [x] Smooth transition when switching (e.g. `transition: background-color 200ms`)
 
 ### Phase 3: Polish
 - [ ] Verify all views render correctly in light mode (Dashboard, Chat, Sprint Board, Story Writer, Test Center, Refinement, Scheduled Jobs, Stakeholder)
