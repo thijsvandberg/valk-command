@@ -21,7 +21,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     "bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-[var(--color-brand-400)] shadow-[0_2px_8px_rgba(14,142,136,0.30)]",
   secondary:
-    "bg-[var(--color-secondary-500)]/15 text-[var(--color-secondary-300)] border border-[var(--color-secondary-500)]/25 hover:bg-[var(--color-secondary-500)]/25 focus-visible:outline-[var(--color-secondary-400)]",
+    "bg-overlay-subtle text-text-secondary border border-border-default hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-[var(--color-brand-400)]",
   soft:
     "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/25 hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-[var(--color-brand-400)]",
   ghost:

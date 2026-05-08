@@ -290,7 +290,7 @@ export function SidePanel({
                 href={`/tickets/${ticket.key}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-secondary-300)] cursor-pointer bg-[var(--color-secondary-500)]/15 border border-[var(--color-secondary-500)]/25 hover:bg-[var(--color-secondary-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-secondary-400)] active:scale-[0.97] transition-colors duration-150"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-secondary cursor-pointer bg-overlay-subtle border border-border-default hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
                 title="Open in new tab"
               >
                 <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />

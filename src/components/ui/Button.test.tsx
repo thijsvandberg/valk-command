@@ -28,7 +28,7 @@ describe("Button", () => {
   it("applies secondary variant classes", () => {
     const { container } = render(<Button variant="secondary">Secondary</Button>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("bg-[var(--color-secondary-500)]/15");
+    expect(el.className).toContain("bg-overlay-subtle");
   });
 
   it("applies soft variant classes", () => {
