@@ -211,7 +211,7 @@ function OverflowMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[188px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-lg shadow-black/50">
+        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[188px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]">
           <button
             type="button"
             onClick={() => { onSyncSprint(); setOpen(false); }}
@@ -561,16 +561,23 @@ function StakeholderView() {
     setSyncStatus("syncing");
     if (syncStatusTimerRef.current) clearTimeout(syncStatusTimerRef.current);
     try {
-      // Sync sprint metadata (goal, dates, state) and tickets in parallel
+      // Sync sprint metadata (active+future AND history) and current sprint tickets
       await Promise.all([
         apiFetch("/api/jira/sync-sprints", { method: "POST" }),
+        apiFetch("/api/jira/sync-sprints?scope=history", { method: "POST" }),
         apiFetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" }),
       ]);
 
+      // Fetch fresh sprint list (states are now up-to-date) for backfill check
+      type FreshSprint = { id: number; name: string; state: string };
+      const freshSprints = await apiFetch<FreshSprint[]>("/api/jira/sprints");
+      const freshTeamClosed = freshSprints.filter(
+        (s) => extractTeamPrefix(s.name) === selectedTeamPrefix && s.state === "closed",
+      );
+
       // Backfill closed sprints missing from velocity data
       const syncedSprintIds = new Set(velocityData?.map((v) => v.sprintId) ?? []);
-      const missingSprints = teamSprints
-        .filter((s) => s.state === "closed" && !syncedSprintIds.has(s.id));
+      const missingSprints = freshTeamClosed.filter((s) => !syncedSprintIds.has(s.id));
       for (const sprint of missingSprints) {
         await apiFetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
       }

@@ -132,8 +132,8 @@ function sortByBv(tickets: StakeholderTicket[]): StakeholderTicket[] {
 
 function filterByBvBand(tickets: StakeholderTicket[], filter: BvFilter): StakeholderTicket[] {
   if (filter === "all") return tickets;
-  if (filter === "high") return tickets.filter((t) => t.businessValue != null && t.businessValue >= 6);
-  return tickets.filter((t) => t.businessValue != null && t.businessValue >= 3 && t.businessValue <= 5);
+  if (filter === "high") return tickets.filter((t) => t.businessValue != null && t.businessValue >= 5);
+  return tickets.filter((t) => t.businessValue != null && t.businessValue >= 3 && t.businessValue <= 4);
 }
 
 // BV summary section, structured to mirror ProgressBar
@@ -145,13 +145,13 @@ function BvSummarySection({ tickets, previousTickets }: { tickets: StakeholderTi
   const prevTotal = previousTickets ? bvSum(previousTickets) : null;
   const delta = prevTotal !== null && prevTotal > 0 ? total - prevTotal : null;
 
-  const high = bvBandCount(tickets, 6, 7);
-  const medium = bvBandCount(tickets, 3, 5);
+  const high = bvBandCount(tickets, 5, 7);
+  const medium = bvBandCount(tickets, 3, 4);
   const low = bvBandCount(tickets, 1, 2);
   const bandTotal = high + medium + low;
 
   const highColor = getBvColor(7);
-  const medColor = getBvColor(4);
+  const medColor = getBvColor(3);
   const lowColor = getBvColor(1);
 
   return (
@@ -177,14 +177,14 @@ function BvSummarySection({ tickets, previousTickets }: { tickets: StakeholderTi
               <div
                 className="h-full transition-[width] duration-700 ease-out"
                 style={{ width: `${(high / bandTotal) * 100}%`, backgroundColor: highColor.text, opacity: 0.6 }}
-                title={`High value (6-7): ${high}`}
+                title={`High value (5-7): ${high}`}
               />
             )}
             {medium > 0 && (
               <div
                 className="h-full transition-[width] duration-700 ease-out"
                 style={{ width: `${(medium / bandTotal) * 100}%`, backgroundColor: medColor.text, opacity: 0.5 }}
-                title={`Medium value (3-5): ${medium}`}
+                title={`Medium value (3-4): ${medium}`}
               />
             )}
             {low > 0 && (
@@ -224,7 +224,7 @@ function BvSummarySection({ tickets, previousTickets }: { tickets: StakeholderTi
 // Top value items highlight
 function TopValueItems({ tickets }: { tickets: StakeholderTicket[] }) {
   const topItems = tickets
-    .filter((t) => t.businessValue != null && t.businessValue >= 6)
+    .filter((t) => t.businessValue != null && t.businessValue >= 5)
     .sort((a, b) => (b.businessValue ?? 0) - (a.businessValue ?? 0));
 
   if (topItems.length === 0) return null;
@@ -429,7 +429,7 @@ export function SprintOverviewCard({
       {hasBvData && (
         <div className="flex flex-wrap items-center gap-2">
           {(["all", "high", "medium"] as const).map((f) => {
-            const labels: Record<BvFilter, string> = { all: "All", high: "High (6-7)", medium: "Medium (3-5)" };
+            const labels: Record<BvFilter, string> = { all: "All", high: "High (5-7)", medium: "Medium (3-4)" };
             const active = bvFilter === f;
             return (
               <button
