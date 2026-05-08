@@ -53,12 +53,12 @@ function AssigneeAvatar({ assignee }: { assignee: { name: string; initials: stri
 function BvBadge({ value }: { value: number | null }) {
   if (value === null) return null;
   const { text, bg } = getBvColor(value);
-  const label = value === 0 ? "-" : String(value);
+  const label = value === 0 ? "-" : `${value} BV`;
   return (
     <span
-      className="shrink-0 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-[10px] font-semibold tabular-nums"
+      className="shrink-0 inline-flex h-[18px] items-center justify-center rounded px-1.5 text-[10px] font-semibold tabular-nums"
       style={{ color: text, backgroundColor: bg }}
-      title={`Business Value: ${value === 0 ? "N/A" : value}`}
+      title={`Business value: ${value === 0 ? "N/A" : value}`}
     >
       {label}
     </span>
@@ -145,7 +145,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   <AssigneeAvatar assignee={t.assignee} />
                 )}
                 {t.storyPoints !== null && (
-                  <span className="shrink-0 text-xs tabular-nums text-text-muted">{t.storyPoints}pt</span>
+                  <span className="shrink-0 text-xs tabular-nums text-text-muted">{t.storyPoints} SP</span>
                 )}
               </li>
             ))}

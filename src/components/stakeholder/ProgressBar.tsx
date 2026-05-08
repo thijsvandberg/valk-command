@@ -43,19 +43,19 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
           {completed > 0 && (
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-secondary-400)]/60" />
-              {completed}pt done
+              {completed} SP done
             </span>
           )}
           {inReview > 0 && (
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-testing-400)]/50" />
-              {inReview}pt testing
+              {inReview} SP testing
             </span>
           )}
           {inProgress > 0 && (
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]/50" />
-              {inProgress}pt in progress
+              {inProgress} SP in progress
             </span>
           )}
         </div>
