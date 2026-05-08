@@ -27,18 +27,18 @@
   --color-brand-900: #032c2a;
   --color-brand-950: #021a19;
 
-  /* Secondary: Coral */
-  --color-secondary-50: #fef2ef;
-  --color-secondary-100: #fddbd4;
-  --color-secondary-200: #fabcae;
-  --color-secondary-300: #f5a08a;
-  --color-secondary-400: #f0917a;
-  --color-secondary-500: #e67158;
-  --color-secondary-600: #d95840;
-  --color-secondary-700: #c44530;
-  --color-secondary-800: #9a3625;
-  --color-secondary-900: #6e271b;
-  --color-secondary-950: #451912;
+  /* Secondary: Emerald (positive/success accents) */
+  --color-secondary-50: #ecfdf5;
+  --color-secondary-100: #d1fae5;
+  --color-secondary-200: #a7f3d0;
+  --color-secondary-300: #6ee7b7;
+  --color-secondary-400: #34d399;
+  --color-secondary-500: #10b981;
+  --color-secondary-600: #059669;
+  --color-secondary-700: #047857;
+  --color-secondary-800: #065f46;
+  --color-secondary-900: #064e3b;
+  --color-secondary-950: #022c22;
 
   --color-warning-50: #fffbeb;
   --color-warning-100: #fef3c7;
