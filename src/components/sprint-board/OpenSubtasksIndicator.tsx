@@ -29,14 +29,21 @@ function IndicatorPopover({
   triggerRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; flipped: boolean } | null>(null);
   const [closing, setClosing] = useState(false);
 
   useLayoutEffect(() => {
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+    const POPOVER_HEIGHT = 140;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const flipped = spaceBelow < POPOVER_HEIGHT + 12;
+    setPos({
+      top: flipped ? rect.top - 6 : rect.bottom + 6,
+      left: rect.left + rect.width / 2,
+      flipped,
+    });
   }, [triggerRef]);
 
   useEffect(() => {
@@ -82,7 +89,7 @@ function IndicatorPopover({
       ref={ref}
       style={{
         position: "fixed",
-        top: pos.top,
+        ...(pos.flipped ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
         left: pos.left,
         transform: "translateX(-50%)",
         zIndex: 9999,

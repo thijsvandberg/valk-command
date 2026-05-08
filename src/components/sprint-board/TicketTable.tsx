@@ -386,13 +386,14 @@ export function TicketTable({
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
+    onCloseSubtasks,
     editingTitleKey,
     onEditingTitleKeyChange: setEditingTitleKey,
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
     stickyOffsets,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth

@@ -50,7 +50,7 @@ export function IssueTypePicker({ type, size = 16, onTypeChange }: IssueTypePick
 
       {open && (
         <div
-          className="absolute left-0 top-full z-50 mt-1.5 w-[118px] overflow-hidden rounded-lg border border-border-default bg-[#141822] shadow-[var(--shadow-xl)]"
+          className="absolute left-0 top-full z-50 mt-1.5 w-[118px] overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]"
           style={{ animation: "issue-picker-in 0.12s cubic-bezier(0.16,1,0.3,1)" }}
         >
           <style>{`
