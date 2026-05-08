@@ -62,7 +62,7 @@ export function SprintSelector({
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1.5 w-72 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+      className="absolute top-full left-0 z-50 mt-1.5 w-72 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]"
     >
       {/* Search */}
       <div className="p-2 pb-1">

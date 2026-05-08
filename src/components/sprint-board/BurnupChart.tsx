@@ -429,7 +429,7 @@ export function BurnupChart({
       {/* Tooltip */}
       {tooltipData && (
         <div
-          className="pointer-events-none absolute z-10 rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-2 text-caption shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+          className="pointer-events-none absolute z-10 rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-2 text-caption shadow-[var(--shadow-md)]"
           style={{
             left: Math.min(Math.max(tooltipData.x + 10, 0), width - 180),
             top: PADDING.top,

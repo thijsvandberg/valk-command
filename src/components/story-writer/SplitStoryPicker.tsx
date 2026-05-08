@@ -73,7 +73,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
       onMouseDown={(e) => { mouseDownOnOverlay.current = e.target === e.currentTarget; }}
       onClick={(e) => { if (e.target === e.currentTarget && mouseDownOnOverlay.current) onClose(); }}
     >
-      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] shadow-[0_24px_64px_rgba(0,0,0,0.6)] p-6">
+      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-2xl)] p-6">
         {/* Header */}
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-2.5">

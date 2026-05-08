@@ -110,7 +110,7 @@ export function MessageInfoButton({
 
       {open && (
         <div
-          className={`absolute bottom-full mb-2 w-52 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-20 p-3 ${
+          className={`absolute bottom-full mb-2 w-52 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] z-20 p-3 ${
             isUser ? "left-0" : "right-0"
           }`}
         >

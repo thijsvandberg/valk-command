@@ -229,7 +229,7 @@ export function UserProfilePopover({
       role="menu"
       tabIndex={-1}
       onKeyDown={handleKeyNav}
-      className="fixed w-64 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_var(--color-overlay-subtle)]"
+      className="fixed w-64 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]"
       style={{
         zIndex: 60,
         bottom: pos.bottom,

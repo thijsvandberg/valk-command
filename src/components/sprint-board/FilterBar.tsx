@@ -165,7 +165,7 @@ export function SortDropdown({
       />
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.field}
@@ -345,7 +345,7 @@ export function ColumnToggle({
         className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3),0_0_0_1px_var(--color-overlay-subtle)] overflow-hidden flex flex-col">
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)] overflow-hidden flex flex-col">
           <div className="overflow-y-auto max-h-[70vh] py-1.5">
             <DndContext
               sensors={sensors}
@@ -454,7 +454,7 @@ function SaveViewPopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),0_4px_12px_rgba(0,0,0,0.3)]"
+      className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] p-3 shadow-[var(--shadow-xl)]"
     >
       <p className="mb-2 text-label font-medium text-text-tertiary">
         {isUpdate ? "Update saved view" : "Save current filter view"}

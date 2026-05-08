@@ -161,7 +161,7 @@ export function VersionPicker({
       {/* Dropdown panel */}
       {open && (
         <div
-          className={`absolute top-full z-modal mt-1.5 w-72 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_16px_48px_rgba(0,0,0,0.6),0_4px_12px_rgba(0,0,0,0.3)] ${
+          className={`absolute top-full z-modal mt-1.5 w-72 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-modal)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >

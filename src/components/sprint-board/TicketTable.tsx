@@ -184,6 +184,7 @@ export function TicketTable({
   onJiraStatusChange,
   onIssueTypeChange,
   onTitleChange,
+  onCloseSubtasks,
   onTableKeyDown,
   onReorder,
   sortField,
@@ -225,6 +226,7 @@ export function TicketTable({
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
+  onCloseSubtasks?: (key: string) => Promise<void>;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
   sortField?: SortField;
@@ -512,7 +514,7 @@ export function TicketTable({
         {activeTicket && (
           <table className="w-full border-collapse text-sm">
             <tbody>
-              <tr className="bg-[var(--color-surface-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-lg border border-border-strong">
+              <tr className="bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg border border-border-strong">
                 <td className="w-5 py-2 pl-1" />
                 <td className="py-2 pl-1 pr-1">
                   <div className="flex h-6 w-6 items-center justify-center" />

@@ -527,7 +527,7 @@
   border-radius: 0.5rem;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface-floating);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 

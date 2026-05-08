@@ -12,6 +12,7 @@ import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
+import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import { getBvColor } from "@/types/ticket";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
@@ -48,6 +49,7 @@ export interface TicketRowBaseProps {
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
+  onCloseSubtasks?: (key: string) => Promise<void>;
   editingTitleKey?: string | null;
   onEditingTitleKeyChange?: (key: string | null) => void;
   reviewPopoverKey?: string | null;
@@ -88,6 +90,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
+    onCloseSubtasks,
     editingTitleKey = null,
     onEditingTitleKeyChange,
     reviewPopoverKey = null,
@@ -234,6 +237,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                   />
                 </button>
               )}
+              <OpenSubtasksIndicator
+                ticketKey={ticket.key}
+                jiraStatus={ticket.jiraStatus}
+                openCount={ticket.openSubtaskCount ?? 0}
+                totalCount={ticket.totalSubtaskCount ?? 0}
+                onCloseSubtasks={onCloseSubtasks}
+              />
             </span>
           </td>
         );
@@ -275,7 +285,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                     }
                   }}
                   rows={1}
-                  className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-sm leading-snug text-text-primary shadow-[0_4px_24px_rgba(0,0,0,0.4)] outline-none focus:border-[var(--color-brand-500)]/70"
+                  className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-sm leading-snug text-text-primary shadow-[var(--shadow-lg)] outline-none focus:border-[var(--color-brand-500)]/70"
                 />
                 <button
                   type="button"
@@ -286,7 +296,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                     }
                     onEditingTitleKeyChange?.(null);
                   }}
-                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-border-strong hover:text-text-secondary"
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[var(--shadow-lg)] transition-colors duration-100 hover:border-border-strong hover:text-text-secondary"
                   title="Save"
                 >
                   <Check size={14} strokeWidth={1.5} />
@@ -294,7 +304,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                 <button
                   type="button"
                   onClick={() => onEditingTitleKeyChange?.(null)}
-                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-colors duration-100 hover:border-border-strong hover:text-text-secondary"
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[var(--shadow-lg)] transition-colors duration-100 hover:border-border-strong hover:text-text-secondary"
                   title="Cancel"
                 >
                   <X size={14} strokeWidth={1.5} />

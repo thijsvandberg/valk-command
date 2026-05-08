@@ -184,7 +184,7 @@ export function SprintListModal({
   return (
     <div
       ref={ref}
-      className={`absolute top-full z-50 mt-1.5 w-80 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_var(--color-overlay-subtle)] ${alignLeft ? "left-0" : "right-0"}`}
+      className={`absolute top-full z-50 mt-1.5 w-80 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] ${alignLeft ? "left-0" : "right-0"}`}
       style={{ animation: "sprintListIn 0.15s ease-out" }}
     >
       <div className="flex items-center justify-between border-b border-border-default px-4 pt-3 pb-0">

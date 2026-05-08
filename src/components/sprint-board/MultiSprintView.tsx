@@ -815,7 +815,7 @@ export function MultiSprintView({
 
         {toast && (
           <div
-            className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-text-secondary shadow-[0_4px_24px_rgba(0,0,0,0.3)]"
+            className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-text-secondary shadow-[var(--shadow-md)]"
             style={{ zIndex: "var(--z-dropdown)" }}
           >
             {toast}
@@ -834,7 +834,7 @@ export function MultiSprintView({
             const extraCount = sameColumnChecked.length > 1 ? sameColumnChecked.length - 1 : 0;
             return (
               <div
-                className="rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+                className="rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 shadow-[var(--shadow-lg)]"
                 style={{ opacity: 0.95 }}
               >
                 <div className="flex items-center gap-2">

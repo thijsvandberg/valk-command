@@ -48,7 +48,7 @@ export default function LoginPage() {
   if (accessDenied) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)] px-4">
-        <div className="w-full max-w-sm rounded-xl border border-border-default bg-[var(--color-surface-elevated)] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+        <div className="w-full max-w-sm rounded-xl border border-border-default bg-[var(--color-surface-elevated)] p-8 shadow-[var(--shadow-lg)]">
           <div className="mb-6 text-center">
             <h1 className="font-[var(--font-display)] text-xl font-semibold tracking-[-0.03em] text-text-primary">
               Access denied
@@ -93,7 +93,7 @@ export default function LoginPage() {
             borderRadius: "0.75rem",
           },
           elements: {
-            card: "shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-border-default",
+            card: "shadow-[var(--shadow-lg)] border border-border-default",
             headerTitle: "font-[var(--font-display)] tracking-[-0.03em]",
           },
         }}

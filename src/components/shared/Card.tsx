@@ -4,7 +4,7 @@ const VARIANT_CLASSES = {
   default: "rounded-xl border border-border-strong bg-overlay-subtle",
   subtle: "rounded-xl border border-border-subtle bg-overlay-subtle",
   floating:
-    "rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
+    "rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]",
   dashed: "rounded-xl border border-dashed border-border-strong",
 } as const;
 

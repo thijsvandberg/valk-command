@@ -152,7 +152,7 @@ export function ActivityTable({
 }) {
   return (
     <>
-      <div className="rounded-xl border border-border-default bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
+      <div className="rounded-xl border border-border-default bg-[var(--color-surface-elevated)] overflow-hidden shadow-[var(--shadow-sm)]">
         {/* Header row */}
         <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-border-default bg-overlay-subtle">
           <span />

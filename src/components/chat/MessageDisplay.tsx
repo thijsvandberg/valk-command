@@ -45,7 +45,7 @@ export default function MessageDisplay({ messages, conversationTitle }: MessageD
                 className={`max-w-[85%] rounded-xl px-4 py-3 font-[var(--font-body)] text-sm leading-[1.7] ${
                   msg.role === "user"
                     ? "bg-[var(--color-brand-600)]/20 text-text-primary shadow-[0_2px_12px_rgba(46,145,73,0.1)]"
-                    : "bg-[var(--color-surface-floating)] text-text-primary shadow-[0_2px_12px_rgba(0,0,0,0.15)]"
+                    : "bg-[var(--color-surface-floating)] text-text-primary shadow-[var(--shadow-sm)]"
                 }`}
               >
                 <ReactMarkdown

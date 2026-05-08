@@ -42,7 +42,7 @@ export function StatusFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] py-1">
             {options.map((opt) => (
               <button
                 key={opt.value}
@@ -98,7 +98,7 @@ export function DateRangeFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] py-1">
             {options.map((opt) => (
               <button
                 key={opt.value}
@@ -162,7 +162,7 @@ export function CreatorFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] overflow-hidden">
             {/* Search */}
             <div className="px-2 py-2 border-b border-border-default">
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">
@@ -247,7 +247,7 @@ export function RepoFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] py-1">
             <button
               type="button"
               onClick={() => { onSelect(null); setOpen(false); }}
@@ -355,7 +355,7 @@ export function SprintFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] overflow-hidden">
             {/* Search */}
             <div className="px-2 py-2 border-b border-border-default">
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">

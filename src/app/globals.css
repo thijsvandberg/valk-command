@@ -95,6 +95,15 @@
   --color-hover-list-item: rgba(255, 255, 255, 0.04);
   --color-hover-interactive: rgba(255, 255, 255, 0.06);
 
+  /* Shadow tokens */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 12px 40px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-2xl: 0 16px 48px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-popover: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--color-overlay-subtle);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--color-overlay-subtle);
+
   /* Z-index scale */
   --z-dropdown: 50;
   --z-modal: 60;
@@ -134,6 +143,14 @@
 
   --color-hover-list-item: rgba(0, 0, 0, 0.04);
   --color-hover-interactive: rgba(0, 0, 0, 0.06);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.05);
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.05), 0 0 0 1px var(--color-border-default);
+  --shadow-modal: 0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.05), 0 0 0 1px var(--color-border-default);
 }
 
 /* Smooth theme transition (added temporarily by ThemeProvider on toggle) */

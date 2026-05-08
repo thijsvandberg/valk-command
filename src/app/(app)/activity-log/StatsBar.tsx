@@ -128,7 +128,7 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
       {metrics.map((m) => (
         <div
           key={m.label}
-          className="flex flex-col gap-1 rounded-xl border border-border-default bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+          className="flex flex-col gap-1 rounded-xl border border-border-default bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[var(--shadow-sm)]"
         >
           <span className="text-caption uppercase tracking-widest text-text-muted font-semibold font-[var(--font-body)]">
             {m.label}

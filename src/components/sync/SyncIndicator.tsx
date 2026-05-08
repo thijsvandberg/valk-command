@@ -139,7 +139,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
       {/* Expanded panel */}
       {expanded && (
         <div
-          className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[0_4px_24px_rgba(0,0,0,0.5),0_0_0_1px_var(--color-overlay-subtle)] overflow-hidden"
+          className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] overflow-hidden"
           style={{ width: collapsed ? "240px" : "100%", minWidth: "220px" }}
         >
           <div className="px-3 py-2.5 border-b border-border-default flex items-center justify-between">

@@ -80,7 +80,7 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
         </span>
         {visible && (
           <span
-            className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-text-secondary shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+            className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
               pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
             }`}
           >
@@ -100,7 +100,7 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
           </span>
           {syncVisible && (
             <span
-              className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-text-secondary shadow-[0_4px_16px_rgba(0,0,0,0.5)] ${
+              className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[#1a1d23] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
                 pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
               }`}
             >
@@ -318,7 +318,7 @@ export function NotificationBell() {
           ref={dropdownRef}
           style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: "var(--z-notification)" }}
         >
-          <Card variant="floating" className="w-[360px] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+          <Card variant="floating" className="w-[360px] shadow-[var(--shadow-xl)]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
             <span className="font-[var(--font-display)] text-body font-semibold text-text-secondary">

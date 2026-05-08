@@ -168,6 +168,8 @@ export interface Ticket {
   sprintId?: string;
   jiraUpdatedAt?: string | null;
   removedFromJiraAt?: string | null;
+  openSubtaskCount?: number;
+  totalSubtaskCount?: number;
 }
 
 export interface Sprint {

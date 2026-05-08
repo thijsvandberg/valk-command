@@ -64,7 +64,7 @@ function SortableTab({
         onContextMenu={onContextMenu}
         className={`relative flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
-            ? "bg-overlay-default text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+            ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
             : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default"
         }`}
         style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
@@ -127,7 +127,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
         className={isActive ? "" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
           {GROUP_BY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -234,7 +234,7 @@ export function SprintSlots({
         onClick={onAllClick}
         className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
-            ? "bg-overlay-default text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+            ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
             : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default"
         }`}
         style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
@@ -254,7 +254,7 @@ export function SprintSlots({
             onClick={() => onViewClick?.(view)}
             className={`flex h-7 shrink-0 items-center rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
-                ? "bg-overlay-default text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+                ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
                 : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default"
             }`}
             style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
@@ -316,7 +316,7 @@ export function SprintSlots({
             title="Temporary view -- not pinned"
             className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium cursor-pointer ${
               ephemeralIsActive
-                ? "bg-overlay-default text-text-secondary shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+                ? "bg-overlay-default text-text-secondary shadow-[var(--shadow-sm)]"
                 : "text-text-muted hover:text-text-secondary hover:bg-overlay-subtle"
             }`}
             style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}

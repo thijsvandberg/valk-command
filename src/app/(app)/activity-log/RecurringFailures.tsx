@@ -33,7 +33,7 @@ export function RecurringFailures({
   }
 
   return (
-    <div className="mb-5 rounded-xl border border-amber-400/[0.12] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
+    <div className="mb-5 rounded-xl border border-amber-400/[0.12] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border-subtle bg-amber-400/[0.03]">
         <RepeatIcon className="h-3.5 w-3.5 text-amber-400/60" strokeWidth={1.5} />
         <span className="text-label font-semibold uppercase tracking-wider text-amber-400/60 font-[var(--font-body)]">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketMetadata, ticketLocalEdit, storyVersion } from "@/db/schema";
-import { eq, inArray, asc, isNull, sql } from "drizzle-orm";
+import { ticket, ticketMetadata, ticketLocalEdit, storyVersion, ticketSubtask } from "@/db/schema";
+import { eq, inArray, asc, isNull, sql, and, notInArray } from "drizzle-orm";
 import type { Ticket, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const { result: { rows, allLocalEdits, allVersions }, durationMs } = await timedQuery(
+  const { result: { rows, allLocalEdits, allVersions, subtaskCounts }, durationMs } = await timedQuery(
     `GET /api/tickets${sprintId ? `?sprintId=${sprintId}` : ""}`,
     async () => {
       const mainQuery = db
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         ? db.select({ jiraKey: ticket.jiraKey }).from(ticket).where(eq(ticket.sprintName, sprintId))
         : db.select({ jiraKey: ticket.jiraKey }).from(ticket);
 
-      const [rows, allLocalEdits, allVersions] = await Promise.all([
+      const [rows, allLocalEdits, allVersions, subtaskCounts] = await Promise.all([
         sprintId
           ? mainQuery.where(eq(ticket.sprintName, sprintId)).orderBy(
               // Null ranks go last; ranked tickets are shown in Jira order
@@ -81,9 +81,16 @@ export async function GET(request: Request) {
           contentHash: storyVersion.contentHash,
           createdAt: storyVersion.createdAt,
         }).from(storyVersion).where(inArray(storyVersion.jiraKey, sprintKeySubquery)),
+        db.select({
+          ticketKey: ticketSubtask.ticketKey,
+          total: sql<number>`COUNT(*)`.as("total"),
+          open: sql<number>`SUM(CASE WHEN ${ticketSubtask.status} NOT IN ('DONE', 'DEPRECATED') THEN 1 ELSE 0 END)`.as("open"),
+        }).from(ticketSubtask)
+          .where(inArray(ticketSubtask.ticketKey, sprintKeySubquery))
+          .groupBy(ticketSubtask.ticketKey),
       ]);
 
-      return { rows, allLocalEdits, allVersions };
+      return { rows, allLocalEdits, allVersions, subtaskCounts };
     },
   );
 
@@ -105,6 +112,11 @@ export async function GET(request: Request) {
   for (const [key, versions] of versionsByKey) {
     versions.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     latestHashByKey.set(key, versions[0].contentHash);
+  }
+
+  const subtaskCountByKey = new Map<string, { total: number; open: number }>();
+  for (const row of subtaskCounts) {
+    subtaskCountByKey.set(row.ticketKey, { total: row.total, open: row.open ?? 0 });
   }
 
   const result: Ticket[] = rows.filter(({ t }) => t.type !== "subtask").map(({ t, meta }) => {
@@ -132,6 +144,8 @@ export async function GET(request: Request) {
       sprintId: t.sprintName ?? undefined,
       jiraUpdatedAt: t.jiraUpdatedAt ?? null,
       removedFromJiraAt: t.removedFromJiraAt ?? null,
+      openSubtaskCount: subtaskCountByKey.get(t.jiraKey)?.open ?? 0,
+      totalSubtaskCount: subtaskCountByKey.get(t.jiraKey)?.total ?? 0,
     };
   });
 

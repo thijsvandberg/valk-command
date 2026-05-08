@@ -814,7 +814,7 @@ export default function SprintBoard() {
                   className={headerMenuOpen ? "border-border-strong bg-overlay-strong text-text-secondary" : ""}
                 />
                 {headerMenuOpen && (
-                  <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                  <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[var(--shadow-lg)]">
                     <button
                       type="button"
                       onClick={() => { setAnalyticsVisible((v) => !v); setHeaderMenuOpen(false); }}
@@ -975,7 +975,7 @@ export default function SprintBoard() {
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {boardActiveDragTicket && (
                 <div style={{ opacity: 0.92 }}>
-                  <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[var(--shadow-lg)]">
                     <IssueTypeIcon type={boardActiveDragTicket.type} />
                     <span className="font-mono text-xs text-text-tertiary">{boardActiveDragTicket.key}</span>
                     <span className="max-w-48 truncate text-text-secondary">{boardActiveDragTicket.title}</span>
@@ -1022,7 +1022,7 @@ export default function SprintBoard() {
       })()}
 
       {toast && (
-        <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
+        <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
           <span className="text-sm text-text-secondary">{toast}</span>
         </div>

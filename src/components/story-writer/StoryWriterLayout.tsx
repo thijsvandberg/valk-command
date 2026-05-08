@@ -489,7 +489,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 />
 
                 {showMoreMenu && (
-                  <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                  <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[var(--shadow-lg)]">
                     {writer.session && (
                       <button
                         type="button"
