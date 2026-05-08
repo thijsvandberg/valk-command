@@ -14,30 +14,31 @@
   --text-heading: 18px;
   --text-heading-lg: 24px;
 
-  /* Palette tokens (theme-independent) */
-  --color-brand-50: #e8f1fb;
-  --color-brand-100: #c4dcf5;
-  --color-brand-200: #96c2ed;
-  --color-brand-300: #5ea4e3;
-  --color-brand-400: #3389d8;
-  --color-brand-500: #1a6fc2;
-  --color-brand-600: #155a9e;
-  --color-brand-700: #10447a;
-  --color-brand-800: #0c3259;
-  --color-brand-900: #08223d;
-  --color-brand-950: #051526;
+  /* Palette tokens: Ocean Teal */
+  --color-brand-50: #e6f7f7;
+  --color-brand-100: #b3eae9;
+  --color-brand-200: #6dd4d1;
+  --color-brand-300: #3bbfbe;
+  --color-brand-400: #14a8a3;
+  --color-brand-500: #0e8e88;
+  --color-brand-600: #0a736e;
+  --color-brand-700: #075854;
+  --color-brand-800: #05403d;
+  --color-brand-900: #032c2a;
+  --color-brand-950: #021a19;
 
-  --color-secondary-50: #ecfdf8;
-  --color-secondary-100: #cffaeb;
-  --color-secondary-200: #9ff4d8;
-  --color-secondary-300: #63e9c0;
-  --color-secondary-400: #34d4a5;
-  --color-secondary-500: #18b88a;
-  --color-secondary-600: #0f946e;
-  --color-secondary-700: #0b7358;
-  --color-secondary-800: #095943;
-  --color-secondary-900: #073d2f;
-  --color-secondary-950: #04261d;
+  /* Secondary: Coral */
+  --color-secondary-50: #fef2ef;
+  --color-secondary-100: #fddbd4;
+  --color-secondary-200: #fabcae;
+  --color-secondary-300: #f5a08a;
+  --color-secondary-400: #f0917a;
+  --color-secondary-500: #e67158;
+  --color-secondary-600: #d95840;
+  --color-secondary-700: #c44530;
+  --color-secondary-800: #9a3625;
+  --color-secondary-900: #6e271b;
+  --color-secondary-950: #451912;
 
   --color-warning-50: #fffbeb;
   --color-warning-100: #fef3c7;
@@ -65,16 +66,16 @@
   --color-testing-950: #1a0738;
 
   /* Semantic surface tokens (dark defaults, overridden by [data-theme]) */
-  --color-surface-base: #070b12;
-  --color-surface-elevated: #0c1219;
-  --color-surface-elevated-hover: #11171e;
-  --color-surface-floating: #131c28;
+  --color-surface-base: #070c0e;
+  --color-surface-elevated: #0b1316;
+  --color-surface-elevated-hover: #10191d;
+  --color-surface-floating: #111d22;
 
   /* Semantic text tokens */
-  --color-text-primary: rgba(255, 255, 255, 0.90);
-  --color-text-secondary: rgba(255, 255, 255, 0.60);
-  --color-text-tertiary: rgba(255, 255, 255, 0.40);
-  --color-text-muted: rgba(255, 255, 255, 0.25);
+  --color-text-primary: rgba(255, 255, 255, 0.95);
+  --color-text-secondary: rgba(255, 255, 255, 0.72);
+  --color-text-tertiary: rgba(255, 255, 255, 0.52);
+  --color-text-muted: rgba(255, 255, 255, 0.36);
 
   /* Semantic icon tokens */
   --color-icon-default: rgba(255, 255, 255, 0.50);
@@ -110,15 +111,15 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --color-surface-base: #f5f6f8;
+  --color-surface-base: #f4f8f8;
   --color-surface-elevated: #ffffff;
-  --color-surface-elevated-hover: #f0f1f3;
+  --color-surface-elevated-hover: #eef2f2;
   --color-surface-floating: #ffffff;
 
-  --color-text-primary: rgba(0, 0, 0, 0.87);
-  --color-text-secondary: rgba(0, 0, 0, 0.60);
-  --color-text-tertiary: rgba(0, 0, 0, 0.44);
-  --color-text-muted: rgba(0, 0, 0, 0.28);
+  --color-text-primary: rgba(0, 0, 0, 0.90);
+  --color-text-secondary: rgba(0, 0, 0, 0.66);
+  --color-text-tertiary: rgba(0, 0, 0, 0.50);
+  --color-text-muted: rgba(0, 0, 0, 0.36);
 
   --color-icon-default: rgba(0, 0, 0, 0.55);
   --color-icon-muted: rgba(0, 0, 0, 0.32);
@@ -188,12 +189,12 @@ html.theme-transition *::after {
   font-variant-numeric: tabular-nums;
 }
 .status-count-todo     { background: rgba(100, 116, 139, 0.10); color: var(--color-text-tertiary); }
-.status-count-progress { background: rgba(56, 152, 210, 0.15);  color: #58b4e6; }
+.status-count-progress { background: rgba(14, 142, 136, 0.15);  color: #3bbfbe; }
 .status-count-test     { background: rgba(120, 90, 220, 0.15);  color: #9b7ee8; }
 .status-count-done     { background: rgba(34, 197, 94, 0.18);   color: #4ade80; }
 
 [data-theme="light"] .status-count-todo     { background: rgba(100, 116, 139, 0.08); }
-[data-theme="light"] .status-count-progress { background: rgba(56, 152, 210, 0.10);  color: #1a6fc2; }
+[data-theme="light"] .status-count-progress { background: rgba(14, 142, 136, 0.10);  color: #0a736e; }
 [data-theme="light"] .status-count-test     { background: rgba(120, 90, 220, 0.10);  color: #6d28d9; }
 [data-theme="light"] .status-count-done     { background: rgba(34, 197, 94, 0.10);   color: #16a34a; }
 

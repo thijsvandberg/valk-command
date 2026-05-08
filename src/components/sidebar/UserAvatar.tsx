@@ -37,8 +37,8 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
         <span
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden"
           style={{
-            backgroundColor: hasImage ? "transparent" : "rgba(26, 111, 194, 0.18)",
-            border: hasImage ? "none" : "1px solid rgba(26, 111, 194, 0.25)",
+            backgroundColor: hasImage ? "transparent" : "rgba(14, 142, 136, 0.18)",
+            border: hasImage ? "none" : "1px solid rgba(14, 142, 136, 0.25)",
           }}
         >
           {hasImage ? (

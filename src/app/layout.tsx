@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0c1219",
+  themeColor: "#0b1316",
   colorScheme: "dark light",
 };
 
@@ -51,7 +51,7 @@ export default function RootLayout({
           id="theme-init"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme");if(!t){t=window.matchMedia("(prefers-color-scheme:light)").matches?"light":"dark"}document.documentElement.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f5f6f8":"#0c1219")}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("theme");if(!t){t=window.matchMedia("(prefers-color-scheme:light)").matches?"light":"dark"}document.documentElement.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f4f8f8":"#0b1316")}catch(e){}})();`,
           }}
         />
         <ClerkProvider>

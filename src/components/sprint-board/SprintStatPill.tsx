@@ -30,10 +30,10 @@ export const STATUS_PILL_COLORS: Record<string, StatusPillColor> = {
   "IN PROGRESS": {
     bg: "rgba(56, 152, 210, 0.10)",
     bgActive: "rgba(56, 152, 210, 0.20)",
-    text: "#58b4e6",
+    text: "#3bbfbe",
     textActive: "#7ec8f0",
     ring: "rgba(56, 152, 210, 0.35)",
-    dot: "#58b4e6",
+    dot: "#3bbfbe",
   },
   TEST: {
     bg: "rgba(120, 90, 220, 0.12)",

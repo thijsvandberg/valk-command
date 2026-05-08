@@ -23,7 +23,7 @@ export function EventTimeline({
   const windowStart = now - 24 * 60 * 60 * 1000;
 
   const dotColor = (status: ActivityLogTimelineEntry["status"]) => {
-    if (status === "success") return "#3389d8"; // brand-400
+    if (status === "success") return "#14a8a3"; // brand-400
     if (status === "failed") return "#f87171"; // red-400
     return "#fbbf24"; // amber-400 for running/cancelled
   };

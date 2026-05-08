@@ -19,7 +19,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-[var(--color-brand-400)] shadow-[0_2px_8px_rgba(26,111,194,0.30)]",
+    "bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-[var(--color-brand-400)] shadow-[0_2px_8px_rgba(14,142,136,0.30)]",
   secondary:
     "bg-[var(--color-secondary-500)]/15 text-[var(--color-secondary-300)] border border-[var(--color-secondary-500)]/25 hover:bg-[var(--color-secondary-500)]/25 focus-visible:outline-[var(--color-secondary-400)]",
   soft:

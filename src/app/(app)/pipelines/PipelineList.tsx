@@ -67,7 +67,7 @@ function RunningCard({ run }: { run: PipelineRunPayload }) {
   const isPaused = run.state === "PAUSED";
   return (
     <Card className={`relative overflow-hidden px-4 py-3 ${isPaused ? "border-amber-500/20" : "border-[var(--color-brand-500)]/20"}`}>
-      <div className={`pointer-events-none absolute inset-0 ${isPaused ? "bg-[radial-gradient(ellipse_at_top_left,rgba(251,191,36,0.06),transparent_70%)]" : "bg-[radial-gradient(ellipse_at_top_left,rgba(26,111,194,0.08),transparent_70%)]"}`} />
+      <div className={`pointer-events-none absolute inset-0 ${isPaused ? "bg-[radial-gradient(ellipse_at_top_left,rgba(251,191,36,0.06),transparent_70%)]" : "bg-[radial-gradient(ellipse_at_top_left,rgba(14,142,136,0.08),transparent_70%)]"}`} />
       <div className="relative flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {isPaused ? (

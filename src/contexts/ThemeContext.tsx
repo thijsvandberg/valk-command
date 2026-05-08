@@ -17,8 +17,8 @@ interface ThemeContextValue {
 }
 
 const STORAGE_KEY = "theme";
-const THEME_COLOR_DARK = "#0c1219";
-const THEME_COLOR_LIGHT = "#f5f6f8";
+const THEME_COLOR_DARK = "#0b1316";
+const THEME_COLOR_LIGHT = "#f4f8f8";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 

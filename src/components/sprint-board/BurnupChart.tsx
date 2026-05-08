@@ -17,7 +17,7 @@ const CHART_HEIGHT = 200;
 const PADDING = { top: 16, right: 16, bottom: 32, left: 40 };
 
 const COLORS = {
-  spDone: "#58b4e6",
+  spDone: "#3bbfbe",
   bvDone: "#4ade80",
   scope: "#e05a5a",
   guideline: "var(--color-overlay-strong)",
