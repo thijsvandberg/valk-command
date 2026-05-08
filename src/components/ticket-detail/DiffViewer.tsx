@@ -2,7 +2,7 @@
 
 import type { StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
-import { Info, CloudUpload, Save } from "lucide-react";
+import { Info, CloudUpload, Save, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 
@@ -37,6 +37,7 @@ export interface DiffViewerProps {
   onDiscardLocal: () => void;
   onSaveMerge: () => void;
   onRevertTo: (version: StoryVersion) => void;
+  onPreview: (versionNumber: number) => void;
 }
 
 export function DiffViewer({
@@ -62,6 +63,7 @@ export function DiffViewer({
   onDiscardLocal,
   onSaveMerge,
   onRevertTo,
+  onPreview,
 }: DiffViewerProps) {
   const compareBar = (
     <div className="flex items-center gap-2">
@@ -70,12 +72,28 @@ export function DiffViewer({
         selectedId={compareOld !== null ? String(compareOld) : ""}
         onSelect={(id) => onOldChange(Number(id))}
       />
+      <button
+        onClick={() => compareOld !== null && onPreview(compareOld)}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-muted hover:bg-overlay-default hover:text-text-secondary cursor-pointer"
+        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+        title={`Preview v${compareOld}`}
+      >
+        <Eye size={13} strokeWidth={1.5} />
+      </button>
       <span className="shrink-0 text-xs text-text-muted">vs</span>
       <VersionPicker
         options={newOptions}
         selectedId={compareNew !== null ? String(compareNew) : ""}
         onSelect={(id) => onNewChange(Number(id))}
       />
+      <button
+        onClick={() => compareNew !== null && onPreview(compareNew)}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-muted hover:bg-overlay-default hover:text-text-secondary cursor-pointer"
+        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+        title={`Preview v${compareNew}`}
+      >
+        <Eye size={13} strokeWidth={1.5} />
+      </button>
     </div>
   );
 

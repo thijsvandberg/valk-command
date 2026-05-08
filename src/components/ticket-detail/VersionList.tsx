@@ -1,7 +1,7 @@
 "use client";
 
 import type { StoryVersion } from "@/types/ticket";
-import { ChevronRight, Download } from "lucide-react";
+import { ChevronRight, Download, Eye } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
@@ -18,6 +18,7 @@ export interface VersionListProps {
   importing: boolean;
   importResult: { imported: number; skipped: number; total: number } | null;
   onVersionClick: (versionNumber: number) => void;
+  onPreviewClick: (versionNumber: number) => void;
   onOldChange: (val: number) => void;
   onNewChange: (val: number) => void;
   onImportHistory: () => void;
@@ -33,6 +34,7 @@ export function VersionList({
   importing,
   importResult,
   onVersionClick,
+  onPreviewClick,
   onOldChange,
   onNewChange,
   onImportHistory,
@@ -150,6 +152,17 @@ export function VersionList({
                   {formatVersionDate(version.date)}
                 </div>
               </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPreviewClick(version.versionNumber);
+                }}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-muted hover:bg-overlay-default hover:text-text-secondary cursor-pointer"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                title="Preview version"
+              >
+                <Eye size={13} strokeWidth={1.5} />
+              </button>
               <ChevronRight size={10} strokeWidth={1} className="shrink-0 text-text-muted" />
             </div>
           );

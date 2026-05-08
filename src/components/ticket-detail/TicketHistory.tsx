@@ -7,6 +7,7 @@ import { apiFetch, tickets } from "@/lib/api-client";
 import { parseVersionDate, parseRawVersionData, storyVersionToOption } from "./version-utils";
 import { VersionList } from "./VersionList";
 import { DiffViewer, type DiffStats } from "./DiffViewer";
+import { VersionPreview } from "./VersionPreview";
 
 export interface TicketHistoryProps {
   ticket: Ticket;
@@ -39,12 +40,14 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const [mergeResult, setMergeResult] = useState<string | null>(null);
   const [savingMerge, setSavingMerge] = useState(false);
   const [diffStats, setDiffStats] = useState<DiffStats | null>(null);
+  const [previewVersion, setPreviewVersion] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number; total: number } | null>(null);
 
   useEffect(() => {
     if (resetKey !== undefined) {
       setShowingDiff(false);
+      setPreviewVersion(null);
       setMergeResult(null);
       setDiffStats(null);
     }
@@ -122,12 +125,20 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const isDraftOutdated = !!(draft && jiraCurrent &&
     parseVersionDate(draft.date) < parseVersionDate(jiraCurrent.date));
 
-  // Lazy-load Jira version content when the diff opens; uses ref to avoid fetch loop.
+  // Lazy-load Jira version content when the diff or preview opens; uses ref to avoid fetch loop.
   useEffect(() => {
-    if (!showingDiff || compareOld === null || compareNew === null) return;
+    const neededVersionNumbers: number[] = [];
+
+    if (showingDiff && compareOld !== null && compareNew !== null) {
+      neededVersionNumbers.push(compareOld, compareNew);
+    } else if (previewVersion !== null) {
+      neededVersionNumbers.push(previewVersion);
+    } else {
+      return;
+    }
 
     const needed = ticketVersionsRef.current.filter(
-      (v) => v.id && !v.content && (v.versionNumber === compareOld || v.versionNumber === compareNew),
+      (v) => v.id && !v.content && neededVersionNumbers.includes(v.versionNumber),
     );
     if (needed.length === 0) return;
 
@@ -152,7 +163,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     });
 
     return () => { cancelled = true; };
-  }, [showingDiff, compareOld, compareNew, ticket.key]);
+  }, [showingDiff, compareOld, compareNew, previewVersion, ticket.key]);
 
   // Initialize defaults once versions load
   useEffect(() => {
@@ -197,6 +208,21 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     const prev = sorted[idx + 1];
     setCompareNew(versionNumber);
     setCompareOld(prev?.versionNumber ?? versionNumber);
+    setPreviewVersion(null);
+    setShowingDiff(true);
+  };
+
+  const handlePreviewClick = (versionNumber: number) => {
+    setShowingDiff(false);
+    setPreviewVersion(versionNumber);
+  };
+
+  const handlePreviewOpenDiff = (versionNumber: number) => {
+    const idx = sorted.findIndex((v) => v.versionNumber === versionNumber);
+    const prev = sorted[idx + 1];
+    setCompareNew(versionNumber);
+    setCompareOld(prev?.versionNumber ?? versionNumber);
+    setPreviewVersion(null);
     setShowingDiff(true);
   };
 
@@ -300,6 +326,10 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     () => sorted.filter((v) => v.versionNumber !== compareOld).map(storyVersionToOption),
     [sorted, compareOld],
   );
+  const allVersionOptions = useMemo(
+    () => sorted.map(storyVersionToOption),
+    [sorted],
+  );
 
   if (loading) {
     return (
@@ -330,9 +360,22 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     );
   }
 
+  const previewVersionData = previewVersion !== null
+    ? sorted.find((v) => v.versionNumber === previewVersion) ?? null
+    : null;
+
   return (
     <div className="mt-8">
-      {showingDiff && compareOldVersion && compareNewVersion && compareOld !== compareNew ? (
+      {previewVersion !== null && previewVersionData ? (
+        <VersionPreview
+          version={previewVersionData}
+          versionOptions={allVersionOptions}
+          loadingContent={loadingContent}
+          onVersionChange={(num) => setPreviewVersion(num)}
+          onBack={() => setPreviewVersion(null)}
+          onOpenDiff={handlePreviewOpenDiff}
+        />
+      ) : showingDiff && compareOldVersion && compareNewVersion && compareOld !== compareNew ? (
         <DiffViewer
           compareOldVersion={compareOldVersion}
           compareNewVersion={compareNewVersion}
@@ -356,6 +399,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
           onDiscardLocal={handleDiscardLocal}
           onSaveMerge={handleSaveMerge}
           onRevertTo={handleRevertTo}
+          onPreview={handlePreviewClick}
         />
       ) : (
         <VersionList
@@ -368,6 +412,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
           importing={importing}
           importResult={importResult}
           onVersionClick={handleVersionClick}
+          onPreviewClick={handlePreviewClick}
           onOldChange={handleOldChange}
           onNewChange={handleNewChange}
           onImportHistory={handleImportHistory}
