@@ -56,7 +56,7 @@ function checkRateLimit(
 type RateLimitTier = "sync" | "story-writer" | "workspace" | "read";
 
 const TIER_CONFIG: Record<RateLimitTier, { maxRequests: number; windowMs: number }> = {
-  sync: { maxRequests: 5, windowMs: 60_000 },
+  sync: { maxRequests: 15, windowMs: 60_000 },
   "story-writer": { maxRequests: 10, windowMs: 60_000 },
   workspace: { maxRequests: 10, windowMs: 60_000 },
   read: { maxRequests: 120, windowMs: 60_000 },

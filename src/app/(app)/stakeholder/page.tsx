@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { Users, ChevronLeft, ChevronRight, RefreshCw, Columns2, Sparkles, BookOpen, Check, MoreHorizontal, Copy, CloudDownload, History, X, CloudUpload } from "lucide-react";
@@ -565,6 +566,15 @@ function StakeholderView() {
         apiFetch("/api/jira/sync-sprints", { method: "POST" }),
         apiFetch(`/api/jira/sync-tickets?sprintId=${currentSprint.id}`, { method: "POST" }),
       ]);
+
+      // Backfill closed sprints missing from velocity data
+      const syncedSprintIds = new Set(velocityData?.map((v) => v.sprintId) ?? []);
+      const missingSprints = teamSprints
+        .filter((s) => s.state === "closed" && !syncedSprintIds.has(s.id));
+      for (const sprint of missingSprints) {
+        await apiFetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
+      }
+
       await Promise.all([
         globalMutate(ticketKey),
         globalMutate("/api/jira/sprints"),
@@ -587,9 +597,15 @@ function StakeholderView() {
       .filter((s) => s.state === "closed")
       .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
     if (closedSprints.length === 0) return;
+
+    // Only sync sprints that are missing from velocity data
+    const syncedSprintIds = new Set(velocityData?.map((v) => v.sprintId) ?? []);
+    const missingSprints = closedSprints.filter((s) => !syncedSprintIds.has(s.id));
+    if (missingSprints.length === 0) return;
+
     setIsSyncingHistory(true);
     try {
-      for (const sprint of closedSprints) {
+      for (const sprint of missingSprints) {
         await apiFetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
       }
       await globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
@@ -906,19 +922,19 @@ function StakeholderView() {
         )}
       </div>
 
-      {/* AI analysis drawer — right-side panel */}
-      {aiDrawerOpen && (
+      {/* AI analysis drawer — portaled so overlay covers sidebar */}
+      {aiDrawerOpen && createPortal(
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/30"
+            className="fixed inset-0 z-[200] bg-black/30"
             onClick={() => setAiDrawerOpen(false)}
             aria-hidden
           />
           {/* Panel */}
           <div
             ref={drawerRef}
-            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
+            className="fixed right-0 top-0 bottom-0 z-[201] flex flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
             style={{ width: drawerWidth, maxWidth: "90vw", boxShadow: "-8px 0 32px rgba(0,0,0,0.5)" }}
           >
             {/* Resize handle — drag left edge to resize */}
@@ -995,7 +1011,8 @@ function StakeholderView() {
               })()}
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </>
   );
