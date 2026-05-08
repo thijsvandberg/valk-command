@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Bricolage_Grotesque } from "next/font/google";
+import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -45,14 +46,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
-      <head>
-        <script
+      <body className={`${inter.variable} ${bricolage.variable}`}>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem("theme");if(!t){t=window.matchMedia("(prefers-color-scheme:light)").matches?"light":"dark"}document.documentElement.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f5f6f8":"#0c1219")}catch(e){}})();`,
           }}
         />
-      </head>
-      <body className={`${inter.variable} ${bricolage.variable}`}>
         <ClerkProvider>
           <ThemeProvider>
             <ServiceWorkerRegistrar />
