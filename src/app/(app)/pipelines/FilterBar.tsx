@@ -200,7 +200,7 @@ export function CreatorFilter({
                     }`}
                   >
                     <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
-                      isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
+                      isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-border-strong"
                     }`}>
                       {isChecked && "\u2713"}
                     </span>
@@ -330,7 +330,7 @@ export function SprintFilter({
         }`}
       >
         <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
-          isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
+          isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-border-strong"
         }`}>
           {isChecked && "\u2713"}
         </span>

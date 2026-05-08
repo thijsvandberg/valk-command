@@ -225,7 +225,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
             variant="primary"
             size="lg"
             icon={loading ? (
-              <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white/80 animate-spin" />
+              <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-border-strong border-t-white/80 animate-spin" />
             ) : (
               <Scissors size={13} strokeWidth={2} />
             )}

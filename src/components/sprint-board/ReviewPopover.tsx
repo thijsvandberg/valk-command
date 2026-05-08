@@ -239,7 +239,7 @@ export function ReviewPopover({
                 <ul className="space-y-0.5">
                   {latestReview.suggestions.slice(0, 3).map((s, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-label text-text-tertiary">
-                      <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-white/20" />
+                      <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-overlay-strong" />
                       <span className="line-clamp-1">{s}</span>
                     </li>
                   ))}

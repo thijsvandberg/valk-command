@@ -51,14 +51,14 @@ function VersionPickerItem({
           <img
             src={option.avatarUrl!}
             alt={option.author ?? ""}
-            className="h-8 w-8 rounded-full object-cover opacity-80 ring-1 ring-white/[0.08]"
+            className="h-8 w-8 rounded-full object-cover opacity-80 ring-1 ring-border-strong"
           />
         ) : (
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-full text-caption font-bold tracking-tight ring-1 ${
               isDraft
                 ? "bg-blue-500/10 text-blue-400/80 ring-blue-500/15"
-                : "bg-overlay-default text-text-tertiary ring-white/[0.07]"
+                : "bg-overlay-default text-text-tertiary ring-border-default"
             }`}
           >
             {option.versionNum !== undefined ? `v${option.versionNum}` : "AI"}
@@ -146,7 +146,7 @@ export function VersionPicker({
         }`}
       >
         <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${isDraft ? "bg-blue-400" : "bg-white/30"}`}
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${isDraft ? "bg-blue-400" : "bg-overlay-strong"}`}
         />
         <span className="max-w-[160px] truncate">
           {selected?.label ?? "Select version"}

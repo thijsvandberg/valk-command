@@ -538,7 +538,7 @@ export default function TicketDetailPage({
                 <button
                   type="button"
                   onClick={handleDiscardDraft}
-                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30"
+                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong"
                   style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                 >
                   Accept Jira version

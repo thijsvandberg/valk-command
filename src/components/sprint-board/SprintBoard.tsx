@@ -60,7 +60,7 @@ function SprintDropTile({
       className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-100 ${
         isOver
           ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/12 text-[var(--color-brand-300)]"
-          : "border-border-default bg-overlay-subtle text-text-tertiary hover:border-white/10 hover:text-text-secondary"
+          : "border-border-default bg-overlay-subtle text-text-tertiary hover:border-border-strong hover:text-text-secondary"
       }`}
     >
       <ArrowRight size={10} strokeWidth={1.5} className="shrink-0 opacity-50" />

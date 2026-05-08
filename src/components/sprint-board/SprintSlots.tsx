@@ -73,7 +73,7 @@ function SortableTab({
       >
         {sprint.state === "active" && (
           <span
-            className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-white/20"}`}
+            className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-overlay-strong"}`}
             style={isActive ? { boxShadow: "0 0 4px var(--color-brand-400)" } : undefined}
           />
         )}
@@ -322,7 +322,7 @@ export function SprintSlots({
             style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
           >
             {eSprint.state === "active" && (
-              <span className={`h-1.5 w-1.5 rounded-full ${ephemeralIsActive ? "bg-[var(--color-brand-400)]/60" : "bg-white/15"}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${ephemeralIsActive ? "bg-[var(--color-brand-400)]/60" : "bg-overlay-strong"}`} />
             )}
             <span className="italic">{eSprint.name}</span>
           </button>

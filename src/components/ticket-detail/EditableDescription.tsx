@@ -237,7 +237,7 @@ export function EditableDescription({
                     type="checkbox"
                     checked={overrideConfirmed}
                     onChange={(e) => onOverrideChange?.(e.target.checked)}
-                    className="h-3 w-3 rounded border-white/20 bg-overlay-subtle accent-[var(--color-brand-500)] cursor-pointer"
+                    className="h-3 w-3 rounded border-border-strong bg-overlay-subtle accent-[var(--color-brand-500)] cursor-pointer"
                   />
                   <span className="text-caption text-text-tertiary">Override remote</span>
                 </label>

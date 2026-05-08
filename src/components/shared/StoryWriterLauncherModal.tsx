@@ -589,7 +589,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
             <div>
               {sessionsLoading ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-xs text-text-muted">
-                  <span className="h-3 w-3 rounded-full border-2 border-white/15 border-t-white/40 animate-spin" />
+                  <span className="h-3 w-3 rounded-full border-2 border-border-strong border-t-white/40 animate-spin" />
                   Loading…
                 </div>
               ) : sessions.length === 0 ? (
@@ -753,7 +753,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               <label className="mb-1 block text-label font-medium text-text-tertiary uppercase tracking-wide">Search story</label>
               <div className="relative">
                 {searchLoading && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full border-2 border-white/15 border-t-white/40 animate-spin" />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full border-2 border-border-strong border-t-white/40 animate-spin" />
                 )}
                 <TextInput
                   ref={searchRef}
@@ -826,7 +826,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               variant="primary"
               size="md"
               icon={creating
-                ? <span className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white/80 animate-spin" />
+                ? <span className="h-3 w-3 rounded-full border-2 border-border-strong border-t-white/80 animate-spin" />
                 : <ArrowRight size={12} strokeWidth={2} />
               }
               onClick={handleConfirm}

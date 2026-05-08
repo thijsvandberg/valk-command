@@ -42,7 +42,7 @@ function JobRow({
             className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
               job.enabled
                 ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-white/10 text-text-tertiary"
+                : "bg-overlay-strong text-text-tertiary"
             }`}
           >
             {job.enabled ? "active" : "paused"}

@@ -47,7 +47,7 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
       </div>
 
       {/* Divider between brand and view context */}
-      <div className="relative mx-4 h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.10] to-transparent" />
+      <div className="relative mx-4 h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" />
 
       {/* View context: plain icon + title + meta */}
       <div className="relative flex min-w-0 flex-1 items-center gap-3">
@@ -75,5 +75,5 @@ export function ViewHeaderTitle({ children }: { children: ReactNode }) {
 }
 
 export function ViewHeaderDivider() {
-  return <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/[0.12] to-transparent" />;
+  return <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" />;
 }

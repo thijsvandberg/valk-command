@@ -259,9 +259,9 @@ function renderTable(tableLines: string[], key: string): ReactNode {
 // Renders a code block with optional language label and line numbers
 function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode {
   return (
-    <div key={key} className="my-3 overflow-hidden rounded-xl" style={{ background: "rgba(0,0,0,0.28)", border: "1px solid var(--color-overlay-default)" }}>
+    <div key={key} className="rm-code-block my-3 overflow-hidden rounded-xl" style={{ background: "rgba(0,0,0,0.28)", border: "1px solid var(--color-overlay-default)" }}>
       {/* Header bar */}
-      <div className="flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--color-overlay-default)", background: "var(--color-overlay-subtle)" }}>
+      <div className="rm-code-block-header flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--color-overlay-default)", background: "var(--color-overlay-subtle)" }}>
         <div className="flex gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />

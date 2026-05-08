@@ -148,7 +148,7 @@ export function SprintSelector({
                   className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
                 >
                   <span className="flex items-center gap-2 min-w-0">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/20" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-overlay-strong" />
                     <span className="truncate">{s.name}</span>
                   </span>
                   <span className="ml-3 shrink-0 text-xs text-text-muted">{sprintSecondary(s)}</span>

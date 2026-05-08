@@ -168,7 +168,7 @@ export function DeploySettingsPanel() {
                 )}
               </span>
               <span className={`relative inline-flex items-center h-5 w-8 rounded-full transition-colors duration-150 ${
-                settings.enabled ? "bg-[var(--color-brand-500)]" : "bg-white/10"
+                settings.enabled ? "bg-[var(--color-brand-500)]" : "bg-overlay-strong"
               }`}>
                 <span className={`absolute h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-150 ${
                   settings.enabled ? "translate-x-[14px]" : "translate-x-[3px]"
@@ -187,7 +187,7 @@ export function DeploySettingsPanel() {
                     className="w-full flex items-center gap-2.5 px-4 py-1.5 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150"
                   >
                     <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
-                      on ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-white/15"
+                      on ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-border-strong"
                     }`}>
                       {on && "\u2713"}
                     </span>

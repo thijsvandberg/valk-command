@@ -516,7 +516,7 @@ export function TicketStatusPill({
               {readiness ? (
                 <ReadinessIcon value={readiness} size={iconSize} />
               ) : (
-                <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
               )}
             </button>
             {readinessDropdownOpen && onReadinessChange && (
@@ -540,7 +540,7 @@ export function TicketStatusPill({
   // ---------------------------------------------------------------------------
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ring-1 ring-inset ring-white/[0.06]">
+      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ring-1 ring-inset ring-border-default">
 
         {/* Issue type segment */}
         {issueType && (
@@ -657,7 +657,7 @@ export function TicketStatusPill({
                 {readiness ? (
                   <ReadinessIcon value={readiness} size={iconSize} />
                 ) : (
-                  <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
                 )}
               </button>
               {readinessDropdownOpen && onReadinessChange && (

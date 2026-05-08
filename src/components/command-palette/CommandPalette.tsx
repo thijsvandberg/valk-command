@@ -98,7 +98,7 @@ export function CommandPalette() {
               autoComplete="off"
             />
             {isLoading && (
-              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/10 border-t-white/40" />
+              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-border-strong border-t-white/40" />
             )}
             <kbd className="hidden sm:flex items-center rounded-md border border-border-strong bg-overlay-subtle px-1.5 py-0.5 text-caption font-mono text-text-muted tracking-wide">
               ESC

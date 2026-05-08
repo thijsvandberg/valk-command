@@ -67,10 +67,10 @@ The app is hardcoded to dark mode. All colors use CSS custom properties (`--colo
 - [x] Smooth transition when switching (e.g. `transition: background-color 200ms`)
 
 ### Phase 3: Polish
-- [ ] Verify all views render correctly in light mode (Dashboard, Chat, Sprint Board, Story Writer, Test Center, Refinement, Scheduled Jobs, Stakeholder)
-- [ ] Ensure charts, graphs, and code blocks are legible in both modes
-- [ ] Ensure sufficient contrast ratios (WCAG AA) for text and interactive elements in both modes
-- [ ] Images and icons remain visible in both modes (no white-on-white or black-on-black)
+- [x] Verify all views render correctly in light mode (Dashboard, Chat, Sprint Board, Story Writer, Test Center, Refinement, Scheduled Jobs, Stakeholder)
+- [x] Ensure charts, graphs, and code blocks are legible in both modes
+- [x] Ensure sufficient contrast ratios (WCAG AA) for text and interactive elements in both modes
+- [x] Images and icons remain visible in both modes (no white-on-white or black-on-black)
 
 ## Technical Notes
 

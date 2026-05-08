@@ -257,7 +257,7 @@ export function BurnupChart({
       {/* Loading indicator */}
       {(!data || (data && !data.seeded)) && (
         <div className="absolute right-5 top-0 flex items-center gap-1.5 text-caption text-text-muted">
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white/20" />
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-text-muted" />
           Loading history...
         </div>
       )}

@@ -18,7 +18,7 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2">
-        <div className="h-px w-[180px] animate-pulse rounded bg-white/10" />
+        <div className="h-px w-[180px] animate-pulse rounded bg-overlay-strong" />
       </div>
     );
   }
@@ -83,7 +83,7 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
         {/* Tooltip */}
         {tooltip !== null && activePoint && (
           <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded bg-[#1a1a2e]/95 border border-white/10 px-2 py-1 shadow-lg"
+            className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded bg-[#1a1a2e]/95 border border-border-strong px-2 py-1 shadow-lg"
             style={{
               left: activePoint.x,
               top: activePoint.y - HEIGHT - 4,

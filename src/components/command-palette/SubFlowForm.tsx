@@ -148,7 +148,7 @@ export function SubFlowForm({
           className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-4 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-brand-500)] disabled:opacity-50 transition-colors duration-150 cursor-pointer"
         >
           {subFlow.loading ? (
-            <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white/80 animate-spin" />
+            <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-border-strong border-t-white/80 animate-spin" />
           ) : subFlow.mode === "create" ? (
             <Plus size={13} strokeWidth={2} />
           ) : (

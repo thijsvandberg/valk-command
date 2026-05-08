@@ -79,7 +79,7 @@ function ResizeHandle({
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
     >
-      <div className="absolute right-0 top-1 bottom-1 w-px bg-white/0 group-hover/resize:bg-white/20 transition-colors duration-100" />
+      <div className="absolute right-0 top-1 bottom-1 w-px bg-transparent group-hover/resize:bg-overlay-strong transition-colors duration-100" />
     </div>
   );
 }

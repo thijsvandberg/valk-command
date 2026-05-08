@@ -39,7 +39,7 @@ export default function LoginPage() {
   if (!isLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)]">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-400)]" />
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-default border-t-[var(--color-brand-400)]" />
       </div>
     );
   }
@@ -74,7 +74,7 @@ export default function LoginPage() {
   if (isSignedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)]">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-400)]" />
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-default border-t-[var(--color-brand-400)]" />
       </div>
     );
   }

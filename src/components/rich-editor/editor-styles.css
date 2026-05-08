@@ -134,6 +134,36 @@
   overflow-x: auto;
 }
 
+/* Code blocks: force dark background in light mode so Prism token colors stay legible */
+[data-theme="light"] .description-content pre,
+[data-theme="light"] .rich-editor-wrapper .tiptap .editor-code-block {
+  background: #1e1e2e !important;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="light"] .rm-code-block {
+  background: #1e1e2e !important;
+  border-color: #2a2a3e !important;
+}
+
+[data-theme="light"] .rm-code-block .rm-code-block-header {
+  background: #16161e !important;
+  border-color: #2a2a3e !important;
+}
+
+[data-theme="light"] .rm-code-block .rm-code-block-header span {
+  color: rgba(255, 255, 255, 0.35) !important;
+}
+
+[data-theme="light"] .rm-code-block td {
+  color: rgba(255, 255, 255, 0.45) !important;
+  border-color: #2a2a3e !important;
+}
+
+[data-theme="light"] .rm-code-block .rm-code-content {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
 /* Inline code */
 .description-content code,
 .rich-editor-wrapper .tiptap code {

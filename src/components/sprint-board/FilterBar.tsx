@@ -739,7 +739,7 @@ export function FilterBar({
           if (v === "none") {
             return (
               <span className="flex items-center gap-2">
-                <span className="inline-block h-2 w-2 rounded-full border border-white/20" />
+                <span className="inline-block h-2 w-2 rounded-full border border-border-strong" />
                 No readiness
               </span>
             );

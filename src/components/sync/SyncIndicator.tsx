@@ -78,8 +78,8 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
 function statusDot(status: ActivityLogEntry["status"]) {
   if (status === "success") return "bg-[var(--color-brand-500)]";
   if (status === "failed") return "bg-amber-400";
-  if (status === "cancelled") return "bg-white/30";
-  return "bg-white/20";
+  if (status === "cancelled") return "bg-overlay-strong";
+  return "bg-overlay-strong";
 }
 
 export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
