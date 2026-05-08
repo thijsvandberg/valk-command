@@ -134,12 +134,12 @@ describe("StoryDiff", () => {
     );
 
     // Line numbers hidden by default
-    expect(container.querySelectorAll(".text-white\\/15").length).toBe(0);
+    expect(container.querySelectorAll(".text-text-muted").length).toBe(0);
 
     // Clicking the # toggle reveals them
     const toggle = screen.getByTitle("Show line numbers");
     toggle.click();
     await new Promise((r) => setTimeout(r, 0));
-    expect(container.querySelectorAll(".text-white\\/15").length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".text-text-muted").length).toBeGreaterThan(0);
   });
 });

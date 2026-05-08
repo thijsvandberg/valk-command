@@ -35,6 +35,11 @@ vi.mock("@/components/sync/SyncIndicator", () => ({
   SyncIndicator: () => <div data-testid="sync-indicator" />,
 }));
 
+// Mock ThemeContext to avoid needing ThemeProvider
+vi.mock("@/contexts/ThemeContext", () => ({
+  useTheme: () => ({ theme: "dark", setTheme: vi.fn(), toggleTheme: vi.fn() }),
+}));
+
 import { usePathname } from "next/navigation";
 const mockUsePathname = vi.mocked(usePathname);
 
