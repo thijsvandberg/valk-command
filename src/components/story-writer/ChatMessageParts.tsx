@@ -16,6 +16,8 @@ import {
   Zap,
   Maximize2,
   Check,
+  GitCompare,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -148,6 +150,8 @@ export function ChatMessage({
   onViewDraft,
   onFocusDraft,
   onAcceptDraft,
+  onShowDiff,
+  hasExistingDraft,
   logsTaskId,
   onOpenLogs,
   onStoryKeyClick,
@@ -160,6 +164,8 @@ export function ChatMessage({
   onViewDraft?: (draftId: string) => void;
   onFocusDraft?: (draftId: string) => void;
   onAcceptDraft?: (draftId: string) => void;
+  onShowDiff?: (draftId: string) => void;
+  hasExistingDraft?: boolean;
   logsTaskId?: string | null;
   onOpenLogs?: (taskId: string) => void;
   onStoryKeyClick?: (key: string) => void;
@@ -254,7 +260,7 @@ export function ChatMessage({
   const truncatedContent = isLong ? truncateAtWords(displayContent, TRUNCATE_WORD_COUNT) : displayContent;
 
   return (
-    <div className={`group flex items-end gap-1.5 ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`group flex items-end gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}>
       {isUser && (displayContent || draftId) && (
         <MessageInfoButton
           message={message}
@@ -264,14 +270,20 @@ export function ChatMessage({
         />
       )}
 
+      {!isUser && !draftOnly && (
+        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-500)]/[0.12] self-end mb-0.5">
+          <Sparkles size={12} className="text-[var(--color-brand-400)]" strokeWidth={1.5} />
+        </div>
+      )}
+
       <div
         ref={containerRef}
-        className={`max-w-[85%] rounded-xl text-sm leading-[1.75] ${allTitleSuggestions.length > 0 || draftId ? "w-full" : ""} ${
+        className={`max-w-[75%] rounded-2xl text-sm leading-[1.75] ${allTitleSuggestions.length > 0 || draftId ? "w-full" : ""} ${
           draftOnly
             ? ""
             : isUser
-              ? "px-4 py-3 bg-[var(--color-brand-600)]/15 text-text-primary border border-[var(--color-brand-500)]/15"
-              : "px-4 py-3 bg-overlay-default text-text-primary border border-border-default"
+              ? "px-4 py-3 bg-[var(--color-brand-600)]/[0.18] text-text-primary border border-[var(--color-brand-500)]/[0.18] shadow-sm"
+              : "px-4 py-3 bg-[var(--color-surface-floating)] text-text-primary border border-white/[0.06] shadow-sm"
         }`}
       >
         {displayContent && (
@@ -356,24 +368,36 @@ export function ChatMessage({
                   </div>
                 </div>
                 {onAcceptDraft && draftId && (
-                  <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2">
+                  <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2 flex items-center gap-2">
                     {draftAccepted ? (
                       <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
                         <Check size={12} strokeWidth={2} />
                         Accepted
                       </span>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAcceptDraft(draftId);
-                          setDraftAccepted(true);
-                        }}
-                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
-                      >
-                        <Check size={12} strokeWidth={2} />
-                        Accept draft
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onAcceptDraft(draftId);
+                            setDraftAccepted(true);
+                          }}
+                          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                        >
+                          <Check size={12} strokeWidth={2} />
+                          Accept draft
+                        </button>
+                        {hasExistingDraft && onShowDiff && (
+                          <button
+                            type="button"
+                            onClick={() => onShowDiff(draftId)}
+                            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                          >
+                            <GitCompare size={12} strokeWidth={2} />
+                            View diff
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

@@ -10,12 +10,14 @@ export function EditableTitle({
   serverLocalEdit,
   onLocalEdit,
   onEditingChange,
+  onViewDiff,
 }: {
   ticketKey: string;
   initialTitle: string;
   serverLocalEdit?: { value: string; isDraft: boolean };
   onLocalEdit: (hasEdit: boolean) => void;
   onEditingChange?: (isEditing: boolean) => void;
+  onViewDiff?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   // Persisted local edit - only updated on save, drives the "Locally modified" badge
@@ -131,7 +133,11 @@ export function EditableTitle({
         {displayValue}
       </h1>
       {hasLocalEdit && (
-        <Tag color="brand" className="mt-1 shrink-0">Locally modified</Tag>
+        <Tag
+          color="brand"
+          className={`mt-1 shrink-0${onViewDiff ? " cursor-pointer hover:opacity-80" : ""}`}
+          onClick={onViewDiff}
+        >Locally modified</Tag>
       )}
     </div>
   );

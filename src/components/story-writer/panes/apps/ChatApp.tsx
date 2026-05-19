@@ -49,6 +49,10 @@ export function ChatApp() {
     }
   };
 
+  const handleShowDiff = (_draftId: string) => {
+    pane.openApp("diff");
+  };
+
   const handleFindRelated = async () => {
     await writer.onSend("Find related stories", "find-related");
   };
@@ -140,6 +144,7 @@ export function ChatApp() {
           onViewDraft={handleViewDraft}
           onFocusDraft={handleFocusDraft}
           onAcceptDraft={handleAcceptDraft}
+          onShowDiff={handleShowDiff}
           onOpenLogs={() => setShowLogs(true)}
           onApplyTitle={writer.onTitleChange}
           onApplyType={(type) => writer.onTypeChange(type as IssueType)}

@@ -523,8 +523,8 @@ export default function TicketDetailPage({
           {/* Portal target: full-width editor toolbar mounts here when editing a description */}
           <div id="ticket-toolbar-portal" className="relative z-10 shrink-0" />
 
-          <div className="flex-1 overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
-          <div className={`mx-auto max-w-4xl px-8 ${activeTab === "history" ? "pt-6" : "py-6"}`}>
+          <div className="flex flex-1 flex-col overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
+          <div className={`mx-auto w-full max-w-4xl px-8 ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
 
           {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
@@ -572,6 +572,10 @@ export default function TicketDetailPage({
                 serverLocalEdit={localEdits?.title}
                 onLocalEdit={handleTitleLocalEdit}
                 onEditingChange={setIsTitleEditing}
+                onViewDiff={() => {
+                  setActiveTab("history");
+                  setShowConflictDiff(true);
+                }}
               />
               {ticket.flagged && (
                 <Flag size={16} className="mt-2 shrink-0 text-[#e5534b]" fill="currentColor" strokeWidth={0} />
@@ -608,6 +612,10 @@ export default function TicketDetailPage({
                 showConflictWarning={showConflictWarning}
                 overrideConfirmed={overrideConfirmed}
                 onOverrideChange={setOverrideConfirmed}
+                onViewDiff={() => {
+                  setActiveTab("history");
+                  setShowConflictDiff(true);
+                }}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
@@ -647,6 +655,7 @@ export default function TicketDetailPage({
 
           {activeTab !== "history" && <div className="h-12" />}
         </div>
+          <div id="diff-footer-portal" className="sticky bottom-0 z-10 mt-auto empty:hidden" />
           </div>
         </div>
 

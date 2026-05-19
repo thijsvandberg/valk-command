@@ -96,7 +96,7 @@ const C = {
   deletedWordBg: "var(--color-diff-deleted-word)",
   deletedGutter: "var(--color-diff-deleted-gutter)",
   gutterBg: "var(--color-overlay-subtle)",
-  border: "var(--color-overlay-default)",
+  border: "var(--color-border-strong)",
   modifiedBadge: "var(--color-diff-modified-badge)",
 } as const;
 

@@ -15,6 +15,7 @@ import {
   Target,
   Code2,
   GripHorizontal,
+  Sparkles,
   AlertCircle,
   RotateCcw,
   type LucideIcon,
@@ -55,6 +56,7 @@ interface StoryWriterChatProps {
   onViewDraft?: (draftId: string) => void;
   onFocusDraft?: (draftId: string) => void;
   onAcceptDraft?: (draftId: string) => void;
+  onShowDiff?: (draftId: string) => void;
   onOpenLogs?: (taskId: string) => void;
   onApplyTitle?: (title: string) => void;
   onApplyType?: (type: string) => void;
@@ -133,6 +135,7 @@ export function StoryWriterChat({
   onViewDraft,
   onFocusDraft,
   onAcceptDraft,
+  onShowDiff,
   onOpenLogs,
   onApplyTitle,
   onApplyType,
@@ -316,13 +319,13 @@ export function StoryWriterChat({
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        <div className="space-y-3">
+        <div className="space-y-4">
           {localDraft && <DraftCard content={localDraft} />}
 
           {messages.length === 0 && status === "ready" && (
             <div className="flex flex-col items-center gap-3 py-16">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-overlay-subtle border border-border-default">
-                <FileText size={18} className="text-text-muted" strokeWidth={1.5} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-brand-500)]/[0.08] border border-[var(--color-brand-500)]/[0.12]">
+                <Sparkles size={18} className="text-[var(--color-brand-400)] opacity-60" strokeWidth={1.5} />
               </div>
               <p className="text-xs text-text-muted text-center max-w-[200px]">
                 Start a conversation to improve this story
@@ -338,6 +341,8 @@ export function StoryWriterChat({
                 onViewDraft={onViewDraft}
                 onFocusDraft={onFocusDraft}
                 onAcceptDraft={onAcceptDraft}
+                onShowDiff={onShowDiff}
+                hasExistingDraft={!!localDraft?.trim()}
                 logsTaskId={messageLogsTaskIds[idx]}
                 onOpenLogs={onOpenLogs}
                 onStoryKeyClick={onStoryKeyClick}
@@ -371,9 +376,9 @@ export function StoryWriterChat({
                 </div>
               )}
               {idx === lastAssistantIdx && lastResponseDurationMs != null && (
-                <div className="mt-1 pl-1">
+                <div className="mt-1.5 pl-[34px]">
                   <span className="text-caption text-text-muted select-none">
-                    ✻ Responded in {formatDuration(lastResponseDurationMs)}
+                    Responded in {formatDuration(lastResponseDurationMs)}
                   </span>
                 </div>
               )}
@@ -407,10 +412,13 @@ export function StoryWriterChat({
       </div>
 
       {isStreaming && streamProgress && (
-        <div className="border-t border-border-default px-4 py-2">
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
-            <span className="text-xs text-text-tertiary truncate">
+        <div className="border-t border-border-default px-4 py-2.5">
+          <div className="flex items-center gap-2.5 pl-[34px]">
+            <div className="relative flex size-2 items-center justify-center">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
+            </div>
+            <span className="text-xs text-text-secondary truncate">
               {streamProgress.slice(0, 80)}
             </span>
           </div>
@@ -443,12 +451,9 @@ export function StoryWriterChat({
 
       <div className="shrink-0 border-t border-border-default">
         <div className="px-3 pt-2.5 pb-1.5">
-          <p className="mb-1.5 text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
-            Quick prompts
-          </p>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1.5">
             {quickPrompts.map((s) => (
-              <div key={s.id} className="group flex items-stretch rounded-md border border-border-default bg-overlay-subtle overflow-hidden hover:border-border-strong transition-colors duration-150">
+              <div key={s.id} className="group flex items-stretch rounded-lg border border-border-default bg-overlay-subtle overflow-hidden hover:border-[var(--color-brand-500)]/20 hover:bg-[var(--color-brand-500)]/[0.04] transition-colors duration-150">
                 <button
                   type="button"
                   onClick={() => {
@@ -457,7 +462,7 @@ export function StoryWriterChat({
                     fillInput(s.text);
                   }}
                   disabled={isBusy}
-                  className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1.5 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {s.label}
                 </button>
@@ -476,12 +481,12 @@ export function StoryWriterChat({
         </div>
 
         <div className="px-3 pb-2.5 pt-1">
-          <div className="flex flex-col rounded-xl border border-border-strong bg-overlay-subtle focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
+          <div className="flex flex-col rounded-2xl border border-border-strong bg-[var(--color-surface-elevated)] focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
             <div
               onMouseDown={handleResizeMouseDown}
-              className="flex h-3 cursor-row-resize items-center justify-center opacity-35 hover:opacity-80 transition-opacity duration-150"
+              className="flex h-2.5 cursor-row-resize items-center justify-center opacity-0 hover:opacity-50 transition-opacity duration-150"
             >
-              <GripHorizontal size={12} className="text-text-tertiary" />
+              <div className="h-0.5 w-8 rounded-full bg-text-tertiary" />
             </div>
             <div ref={inputWrapperRef} style={manualInputHeight ? { height: manualInputHeight } : undefined} className={manualInputHeight ? "overflow-hidden" : undefined}>
               <textarea

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { StoryVersion } from "@/types/ticket";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { Info, CloudUpload, Save, Eye } from "lucide-react";
@@ -65,6 +67,11 @@ export function DiffViewer({
   onRevertTo,
   onPreview,
 }: DiffViewerProps) {
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalTarget(document.getElementById("diff-footer-portal"));
+  }, []);
+
   const compareBar = (
     <div className="flex items-center gap-2">
       <VersionPicker
@@ -180,11 +187,10 @@ export function DiffViewer({
         />
       )}
 
-      {/* Sticky combined action footer */}
-      {showFooter && (
+      {/* Action footer: portaled to sit outside max-w container, full-width sticky */}
+      {showFooter && portalTarget && createPortal(
         <div
-          className="sticky bottom-0 -mx-8 mt-4 flex items-center gap-4 border-t border-border-default bg-[var(--color-surface-elevated)]/95 px-8 py-4 backdrop-blur-sm"
-          style={{ boxShadow: "0 -4px 16px var(--color-overlay-strong)" }}
+          className="diff-action-footer flex items-center gap-4 border-t border-border-default bg-[var(--color-surface-elevated)]/95 px-8 py-4 backdrop-blur-sm"
         >
           {showConflictActions && (
             <>
@@ -238,7 +244,8 @@ export function DiffViewer({
               {resolving ? "Reverting..." : `Revert to v${compareOldVersion.versionNumber}`}
             </Button>
           )}
-        </div>
+        </div>,
+        portalTarget,
       )}
     </>
   );
