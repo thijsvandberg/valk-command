@@ -326,20 +326,21 @@ export function ChatMessage({
         )}
         {draftId && (
           <div className={`${displayContent || contentAfter || allTitleSuggestions.length > 0 ? "mt-2.5" : ""} rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]`}>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 px-1.5 py-1.5">
               <button
                 type="button"
                 onClick={() => setDraftExpanded((v) => !v)}
-                className="flex flex-1 items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 rounded-t-lg transition-colors duration-150"
+                className="flex flex-1 items-center gap-1.5 px-2 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer rounded-md hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
               >
-                <FileText size={12} strokeWidth={1.5} />
+                <FileText size={12} strokeWidth={1.5} className="shrink-0" />
                 Draft updated
-                {draftExpanded ? <ChevronUp size={11} className="ml-auto" /> : <ChevronDown size={11} className="ml-auto" />}
+                {draftExpanded ? <ChevronUp size={11} className="ml-auto shrink-0" /> : <ChevronDown size={11} className="ml-auto shrink-0" />}
               </button>
+              <div className="h-4 w-px bg-[var(--color-brand-500)]/10 shrink-0" />
               <button
                 type="button"
                 onClick={() => onViewDraft?.(draftId)}
-                className="px-2.5 py-1.5 text-caption text-[var(--color-brand-400)]/60 cursor-pointer hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-caption font-medium text-[var(--color-brand-400)]/60 cursor-pointer hover:text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
                 title="Open in editor"
               >
                 Open
@@ -347,7 +348,7 @@ export function ChatMessage({
               <button
                 type="button"
                 onClick={() => onFocusDraft?.(draftId)}
-                className="px-2 py-1.5 text-[var(--color-brand-400)]/40 cursor-pointer hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                className="flex items-center justify-center rounded-md size-7 text-[var(--color-brand-400)]/40 cursor-pointer hover:text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
                 title="Focus mode"
               >
                 <Maximize2 size={11} strokeWidth={1.5} />
