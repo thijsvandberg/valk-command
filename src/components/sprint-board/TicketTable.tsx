@@ -451,6 +451,17 @@ export function TicketTable({
     </table>
   );
 
+  const plainTable = (
+    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
+      {theadContent}
+      <tbody>
+        {tickets.map((ticket, ticketIdx) => (
+          <TicketRow key={ticket.key} {...makeRowProps(ticket, ticketIdx)} />
+        ))}
+      </tbody>
+    </table>
+  );
+
   const activeInsertIdx = externalActiveDragId ? tickets.findIndex((t) => t.key === externalActiveDragId) : -1;
   const overInsertIdx = dragOverKey ? tickets.findIndex((t) => t.key === dragOverKey) : -1;
 
@@ -639,7 +650,7 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      {isGrouped ? groupedTable : (enableVirtualization ? virtualizedTable : dndTable)}
+      {isGrouped ? groupedTable : (enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable))}
       {tickets.length === 0 && !isGrouped && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
