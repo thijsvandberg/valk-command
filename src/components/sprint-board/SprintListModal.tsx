@@ -257,7 +257,7 @@ function SprintRow({
   return (
     <button
       type="button"
-      className="flex w-full items-center justify-between rounded-md px-3 py-1 text-[13px] text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="flex w-full items-center justify-between rounded-md px-3 py-1 text-sm text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       onClick={onSelect}
     >
       <span className="flex items-center gap-2 min-w-0">
@@ -269,7 +269,7 @@ function SprintRow({
         {showBadge && <StateBadge state={sprint.state} />}
       </span>
       <span className="ml-2 flex shrink-0 items-center gap-0.5">
-        <span className="mr-0.5 text-[11px] tabular-nums text-text-muted">
+        <span className="mr-0.5 text-xs tabular-nums text-text-muted">
           {dateRange(sprint)}
         </span>
         {showStakeholder && (
