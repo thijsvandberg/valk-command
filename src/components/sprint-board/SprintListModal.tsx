@@ -7,6 +7,7 @@ import { X, Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, Users, ChevronRight
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { extractTeamPrefix } from "@/lib/sprint-utils";
 
 interface JiraSprint {
   id: number;
@@ -72,6 +73,11 @@ function sortByEndDateDesc(list: JiraSprint[]): JiraSprint[] {
   });
 }
 
+function filterByTeam(list: JiraSprint[], team: string | null): JiraSprint[] {
+  if (!team) return list;
+  return list.filter((s) => extractTeamPrefix(s.name) === team);
+}
+
 function getPinnedSection(sprints: JiraSprint[], pinnedIds: Set<string>): JiraSprint[] {
   return sortByState(sprints.filter((s) => pinnedIds.has(String(s.id))));
 }
@@ -97,6 +103,16 @@ function getSearchResults(sprints: JiraSprint[], query: string): JiraSprint[] {
   return sortByState(sprints.filter((s) => s.name.toLowerCase().includes(q)));
 }
 
+function getTeamOptions(sprints: JiraSprint[]): string[] {
+  const teams = new Set<string>();
+  for (const s of sprints) {
+    if (s.hidden) continue;
+    const t = extractTeamPrefix(s.name);
+    if (t) teams.add(t);
+  }
+  return [...teams].sort();
+}
+
 // -- Sub-components -----------------------------------------------------------
 
 function SectionHeader({
@@ -115,7 +131,7 @@ function SectionHeader({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-1.5 px-3 pt-3 pb-1 text-caption font-medium uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary"
+        className="flex w-full items-center gap-1.5 px-3 pt-2.5 pb-0.5 text-caption font-medium uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary"
       >
         <ChevronRight
           size={10}
@@ -129,7 +145,7 @@ function SectionHeader({
   }
 
   return (
-    <div className="px-3 pt-3 pb-1 text-caption font-medium uppercase tracking-widest text-text-muted">
+    <div className="px-3 pt-2.5 pb-0.5 text-caption font-medium uppercase tracking-widest text-text-muted">
       {label}
     </div>
   );
@@ -146,6 +162,39 @@ function StateBadge({ state }: { state: string }) {
     >
       {stateLabel(state)}
     </span>
+  );
+}
+
+function TeamChips({
+  teams,
+  active,
+  onToggle,
+}: {
+  teams: string[];
+  active: string | null;
+  onToggle: (team: string | null) => void;
+}) {
+  if (teams.length <= 1) return null;
+  return (
+    <div className="flex items-center gap-1 px-3 pb-1">
+      {teams.map((t) => {
+        const isActive = active === t;
+        return (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onToggle(isActive ? null : t)}
+            className={`rounded-md px-2 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+              isActive
+                ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
+                : "text-text-muted hover:bg-overlay-subtle hover:text-text-tertiary"
+            }`}
+          >
+            {t}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -244,6 +293,7 @@ export function SprintListModal({
   alignLeft?: boolean;
 }) {
   const [search, setSearch] = useState("");
+  const [teamFilter, setTeamFilter] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncDone, setSyncDone] = useState(false);
@@ -256,16 +306,18 @@ export function SprintListModal({
   const allSprints = useMemo(() => sprints ?? [], [sprints]);
   const isSearching = search.length > 0;
 
-  // Sections for default mode
-  const pinnedSection = useMemo(() => getPinnedSection(allSprints, pinnedIds), [allSprints, pinnedIds]);
-  const activeFutureSection = useMemo(() => getActiveFutureSection(allSprints, pinnedIds), [allSprints, pinnedIds]);
-  const recentClosedSection = useMemo(() => getRecentClosedSection(allSprints, pinnedIds), [allSprints, pinnedIds]);
-  const hiddenSection = useMemo(() => getHiddenSprints(allSprints), [allSprints]);
+  const teamOptions = useMemo(() => getTeamOptions(allSprints), [allSprints]);
 
-  // Flat results for search mode
+  // Sections for default mode (team filter applied)
+  const pinnedSection = useMemo(() => filterByTeam(getPinnedSection(allSprints, pinnedIds), teamFilter), [allSprints, pinnedIds, teamFilter]);
+  const activeFutureSection = useMemo(() => filterByTeam(getActiveFutureSection(allSprints, pinnedIds), teamFilter), [allSprints, pinnedIds, teamFilter]);
+  const recentClosedSection = useMemo(() => filterByTeam(getRecentClosedSection(allSprints, pinnedIds), teamFilter), [allSprints, pinnedIds, teamFilter]);
+  const hiddenSection = useMemo(() => filterByTeam(getHiddenSprints(allSprints), teamFilter), [allSprints, teamFilter]);
+
+  // Flat results for search mode (team filter applied)
   const searchResults = useMemo(
-    () => isSearching ? getSearchResults(allSprints, search) : [],
-    [allSprints, search, isSearching],
+    () => isSearching ? filterByTeam(getSearchResults(allSprints, search), teamFilter) : [],
+    [allSprints, search, isSearching, teamFilter],
   );
 
   // Reset syncDone when search changes
@@ -335,7 +387,7 @@ export function SprintListModal({
   }, [onSelect, onClose]);
 
   const goToStakeholder = useCallback((sprint: JiraSprint) => {
-    const team = sprint.name.match(/^([A-Z]+)[: ]/)?.[1] ?? "";
+    const team = extractTeamPrefix(sprint.name) ?? "";
     router.push(`/stakeholder?team=${team}&sprintId=${sprint.id}`);
     onClose();
   }, [router, onClose]);
@@ -358,7 +410,6 @@ export function SprintListModal({
     );
   }
 
-  // Check if default mode has any content at all
   const hasDefaultContent = pinnedSection.length > 0 || activeFutureSection.length > 0 || recentClosedSection.length > 0;
 
   return (
@@ -367,28 +418,18 @@ export function SprintListModal({
       className={`absolute top-full z-50 mt-1.5 w-96 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] ${alignLeft ? "left-0" : "right-0"}`}
       style={{ animation: "sprintListIn 0.15s ease-out" }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-0">
-        <span className="text-xs font-medium text-text-secondary">Sprint switcher</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          icon={<X className="h-3 w-3" strokeWidth={1.5} />}
-          onClick={onClose}
-          className="text-text-muted"
-        />
-      </div>
-
       {/* Search */}
-      <div className="px-3 pt-2 pb-1">
+      <div className="px-3 pt-3 pb-1.5">
         <TextInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search all sprints..."
+          placeholder="Search sprints..."
           autoFocus
         />
       </div>
+
+      {/* Team filter chips */}
+      <TeamChips teams={teamOptions} active={teamFilter} onToggle={setTeamFilter} />
 
       {/* Content */}
       <div className="max-h-80 overflow-y-auto px-1.5 pb-1.5">
@@ -451,6 +492,12 @@ export function SprintListModal({
               </div>
             )}
 
+            {!hasDefaultContent && allSprints.length > 0 && teamFilter && (
+              <div className="px-3 py-6 text-center text-xs text-text-muted">
+                No sprints for team {teamFilter}.
+              </div>
+            )}
+
             {/* Pinned */}
             {pinnedSection.length > 0 && (
               <>
@@ -487,22 +534,22 @@ export function SprintListModal({
               </>
             )}
 
-            {/* Hidden link */}
+            {/* Hidden sprints */}
             {hiddenSection.length > 0 && (
               <>
+                <div className="mx-3 mt-2 border-t border-border-default" />
                 <button
                   type="button"
                   onClick={() => setHiddenExpanded((v) => !v)}
-                  className="mt-2 flex w-full items-center gap-1.5 px-3 py-1 text-caption text-text-muted cursor-pointer hover:text-text-tertiary"
+                  className="flex w-full items-center gap-1.5 px-3 pt-1.5 pb-0.5 text-caption font-medium uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary"
                 >
-                  <EyeOff size={10} strokeWidth={1.5} className="shrink-0" />
-                  {hiddenSection.length} hidden
                   <ChevronRight
-                    size={9}
+                    size={10}
                     strokeWidth={2}
                     className="shrink-0 transition-transform duration-150"
                     style={{ transform: hiddenExpanded ? "rotate(90deg)" : "rotate(0deg)" }}
                   />
+                  {hiddenSection.length} hidden
                 </button>
                 {hiddenExpanded &&
                   hiddenSection.map((s) =>
@@ -516,7 +563,7 @@ export function SprintListModal({
 
       {/* Footer: sync button (default mode only) */}
       {!isSearching && (
-        <div className="border-t border-border-default px-3 py-2.5">
+        <div className="border-t border-border-default px-3 py-2">
           {syncError && (
             <div className="mb-2 flex items-start gap-2 rounded-md border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">
               <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />
