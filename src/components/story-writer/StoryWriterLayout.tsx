@@ -15,8 +15,10 @@ import {
   MoreHorizontal,
   ArrowUpRight,
   NotebookPen,
+  SendHorizontal,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { mutate as globalMutate } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useNotification } from "@/hooks/useNotification";
@@ -58,6 +60,7 @@ interface StoryWriterLayoutProps {
 }
 
 export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
+  const router = useRouter();
   const writer = useStoryWriter(ticketKey);
   const { notify } = useNotification();
   const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
@@ -250,6 +253,34 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     mutateTicket();
   }, [ticketKey, mutateTicket]);
 
+  const handlePushAndClose = useCallback(async () => {
+    setPushing(true);
+    setPushError(null);
+    try {
+      const result = await writer.pushToJira();
+      if (!result.success) {
+        if (result.conflict) {
+          setPushError(result.contentChanged
+            ? "Jira was updated externally. Review the diff on the ticket detail page."
+            : "Metadata changed in Jira. Try pushing again.");
+        } else {
+          setPushError("Push failed");
+        }
+        return;
+      }
+      setIsDraftDirty(false);
+      setHasLocalSave(false);
+      await writer.deleteSession(true);
+      await globalMutate("/api/story-writer/active-sessions");
+      await handleReadinessChange("ready_to_refine");
+      router.push(`/tickets/${encodeURIComponent(ticketKey)}`);
+    } catch {
+      setPushError("Push failed");
+    } finally {
+      setPushing(false);
+    }
+  }, [writer, handleReadinessChange, router, ticketKey]);
+
   const handleJiraStatusChange = useCallback(async (status: import("@/types/ticket").JiraStatus) => {
     mutateTicket((prev) => prev ? { ...prev, jiraStatus: status } : prev, { revalidate: false });
     try {
@@ -378,6 +409,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       setIsDraftDirty(true);
     },
     onDismissDraft: writer.dismissDraft,
+    onTypeChange: handleTypeChange,
     onCodebaseResearchChange: writer.setCodbaseResearch,
     onModelChange: writer.setModel,
   };
@@ -455,25 +487,25 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 </button>
               )}
 
-              {!isDraftDirty && !hasLocalSave && writer.messages.length > 0 ? (
-                <Button
-                  variant="ghost"
-                  size="md"
-                  icon={<Trash2 size={13} strokeWidth={1.5} />}
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="border-red-500/20 text-red-400/80 hover:bg-red-500/[0.08] hover:text-red-400"
-                >
-                  Delete session
-                </Button>
-              ) : (
+              {hasLocalSave ? (
                 <Button
                   variant="primary"
                   size="md"
                   icon={pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
                   onClick={handlePush}
-                  disabled={pushing || (!isDraftDirty && !hasLocalSave)}
+                  disabled={pushing || isDraftDirty}
                 >
                   Push to Jira
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon={pushing ? <Loader2 size={13} className="animate-spin" /> : <SendHorizontal size={13} strokeWidth={1.5} />}
+                  onClick={handlePushAndClose}
+                  disabled={pushing}
+                >
+                  Push &amp; Close
                 </Button>
               )}
 
@@ -506,6 +538,28 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                     )}
 
                     <div className="mx-2 my-1 h-px bg-overlay-default" />
+
+                    {!hasLocalSave ? (
+                      <button
+                        type="button"
+                        onClick={() => { setShowMoreMenu(false); handlePush(); }}
+                        disabled={pushing || isDraftDirty}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
+                        <span>Push to Jira</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setShowMoreMenu(false); handlePushAndClose(); }}
+                        disabled={pushing || isDraftDirty}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <SendHorizontal size={13} strokeWidth={1.5} className="shrink-0" />
+                        <span>Push &amp; Close</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"

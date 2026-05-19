@@ -145,6 +145,7 @@ export async function GET(
     editState,
     notes: meta?.poNotes ?? "",
     sprintId: t.sprintName ?? undefined,
+    removedFromJiraAt: t.removedFromJiraAt ?? null,
   };
 
   const subtasks: Subtask[] = subtaskRows.map((s) => ({

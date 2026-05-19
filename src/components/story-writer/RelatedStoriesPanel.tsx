@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Link2, Link2Off, ExternalLink, ChevronLeft, Loader2 } from "lucide-react";
+import { Link2, ExternalLink, ChevronLeft, Loader2, SendHorizontal } from "lucide-react";
 import { apiFetch, tickets, jira } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -16,6 +16,8 @@ interface RelatedStoriesPanelProps {
   onClose: () => void;
   selectedKey: string | null;
   onSelectedKeyChange: (key: string | null) => void;
+  onFindRelated?: () => void;
+  onPrefillFindRelated?: () => void;
 }
 
 interface TicketPreview {
@@ -114,9 +116,7 @@ function CandidateCard({
               <Loader2 size={10} className="animate-spin" />
             ) : candidate.isLinked ? (
               <Link2 size={10} strokeWidth={1.5} />
-            ) : (
-              <Link2Off size={10} strokeWidth={1.5} />
-            )}
+            ) : null}
             {candidate.isLinked ? "Linked" : "Link"}
           </button>
         </div>
@@ -270,7 +270,7 @@ function TicketDetail({
   );
 }
 
-export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, onSelectedKeyChange }: RelatedStoriesPanelProps) {
+export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, onSelectedKeyChange, onFindRelated, onPrefillFindRelated }: RelatedStoriesPanelProps) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -287,9 +287,29 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
               <p className="text-body-sm text-text-muted">
                 No related stories found yet.
               </p>
-              <p className="mt-1 text-label text-text-muted">
-                Use the Find Related quick action in the chat.
-              </p>
+              {onFindRelated ? (
+                <div className="mt-3 flex items-stretch rounded-md border border-border-default bg-overlay-subtle overflow-hidden hover:border-border-strong transition-colors duration-150">
+                  <button
+                    type="button"
+                    onClick={onPrefillFindRelated}
+                    className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150"
+                  >
+                    Find related stories
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onFindRelated}
+                    className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                    title="Send immediately"
+                  >
+                    <SendHorizontal size={9} strokeWidth={2} />
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-1 text-label text-text-muted">
+                  Use the Find Related quick action in the chat.
+                </p>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

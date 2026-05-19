@@ -89,15 +89,15 @@ interface InteractiveCallbacks {
 // -----------------------------------------------------------------------
 
 const C = {
-  addedLineBg: "rgba(46, 160, 80, 0.12)",
-  addedWordBg: "rgba(46, 160, 80, 0.35)",
-  addedGutter: "#3fb950",
-  deletedLineBg: "rgba(229, 83, 75, 0.10)",
-  deletedWordBg: "rgba(229, 83, 75, 0.30)",
-  deletedGutter: "#e5534b",
+  addedLineBg: "var(--color-diff-added-line)",
+  addedWordBg: "var(--color-diff-added-word)",
+  addedGutter: "var(--color-diff-added-gutter)",
+  deletedLineBg: "var(--color-diff-deleted-line)",
+  deletedWordBg: "var(--color-diff-deleted-word)",
+  deletedGutter: "var(--color-diff-deleted-gutter)",
   gutterBg: "var(--color-overlay-subtle)",
   border: "var(--color-overlay-default)",
-  modifiedBadge: "#d2a8ff",
+  modifiedBadge: "var(--color-diff-modified-badge)",
 } as const;
 
 // -----------------------------------------------------------------------
@@ -409,9 +409,9 @@ function CollapsedBar({ count, onExpand }: { count: number; onExpand: () => void
 
 const decisionStyles: Record<HunkDecision, { label: string; color: string; bg: string; borderColor: string }> = {
   pending: { label: "", color: "", bg: "var(--color-overlay-subtle)", borderColor: C.border },
-  accept: { label: "Accepted", color: C.addedGutter, bg: "rgba(46, 160, 80, 0.10)", borderColor: "rgba(46, 160, 80, 0.20)" },
-  reject: { label: "Rejected", color: C.deletedGutter, bg: "rgba(229, 83, 75, 0.08)", borderColor: "rgba(229, 83, 75, 0.18)" },
-  custom: { label: "Custom edit", color: C.modifiedBadge, bg: "rgba(210, 168, 255, 0.08)", borderColor: "rgba(210, 168, 255, 0.18)" },
+  accept: { label: "Accepted", color: C.addedGutter, bg: "var(--color-diff-accept-bg)", borderColor: "var(--color-diff-accept-border)" },
+  reject: { label: "Rejected", color: C.deletedGutter, bg: "var(--color-diff-reject-bg)", borderColor: "var(--color-diff-reject-border)" },
+  custom: { label: "Custom edit", color: C.modifiedBadge, bg: "var(--color-diff-accept-bg)", borderColor: "var(--color-diff-accept-border)" },
 };
 
 function HunkActionBar({
@@ -461,7 +461,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onAccept(hunkIndex)}
-              className={`${btnBase} text-text-secondary hover:bg-[rgba(46,160,80,0.12)] hover:text-[${C.addedGutter}]`}
+              className={`${btnBase} text-text-secondary diff-btn-accept`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Accept new version"
             >
@@ -471,7 +471,7 @@ function HunkActionBar({
             <button
               type="button"
               onClick={() => cbs.onReject(hunkIndex)}
-              className={`${btnBase} text-text-secondary hover:bg-[rgba(229,83,75,0.10)] hover:text-[${C.deletedGutter}]`}
+              className={`${btnBase} text-text-secondary diff-btn-reject`}
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Keep old version"
             >

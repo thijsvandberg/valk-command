@@ -32,8 +32,9 @@ export async function POST(request: Request) {
   let sprintId = searchParams.get("sprintId");
 
   // Parse body: either { ticketKeys } for single-ticket mode or { sprintId } for sprint sync.
-  // sprintId is accepted from the body as a fallback because the API client sends it there.
+  // sprintId and strategy are accepted from the body as a fallback because the API client sends them there.
   let ticketKeys: string[] | undefined;
+  let strategy = searchParams.get("strategy") ?? "bulk";
   try {
     const body = await request.json();
     if (body?.ticketKeys !== undefined) {
@@ -45,8 +46,13 @@ export async function POST(request: Request) {
         );
       }
       ticketKeys = parsed.data.ticketKeys;
-    } else if (!sprintId && body?.sprintId) {
-      sprintId = String(body.sprintId);
+    } else {
+      if (!sprintId && body?.sprintId) {
+        sprintId = String(body.sprintId);
+      }
+      if (body?.strategy && typeof body.strategy === "string") {
+        strategy = body.strategy;
+      }
     }
   } catch {
     // No valid JSON body — URL params are the only source
@@ -56,7 +62,7 @@ export async function POST(request: Request) {
     return syncIndividualTickets(ticketKeys, request.signal);
   }
 
-  return syncSprint(sprintId, searchParams.get("strategy") ?? "bulk", request.signal);
+  return syncSprint(sprintId, strategy, request.signal);
 }
 
 async function syncIndividualTickets(ticketKeys: string[], requestSignal?: AbortSignal) {
@@ -181,15 +187,19 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     await db.update(activityLog).set({ scope: sprintId }).where(eq(activityLog.id, logId));
 
     let issues: JiraIssue[];
+    // Complete set of keys Jira reports for this sprint (used for deletion detection)
+    let allJiraKeys: Set<string> | null = null;
 
     if (strategy === "timestamp-first" && jiraClient.isLive) {
-      issues = await fetchTimestampFirst(sprintIdNum, controller.signal);
+      const tsResult = await fetchTimestampFirst(sprintIdNum, controller.signal);
+      issues = tsResult.issues;
+      allJiraKeys = tsResult.allJiraKeys;
     } else {
       issues = await jiraClient.getSprintIssues(sprintIdNum, controller.signal);
     }
 
     const results = [];
-    const jiraKeys = new Set<string>();
+    const jiraKeys = new Set<string>(allJiraKeys ?? []);
     for (let i = 0; i < issues.length; i++) {
       const issue = issues[i];
       jiraKeys.add(issue.key);
@@ -247,8 +257,9 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
             .where(eq(ticket.jiraKey, key));
         } catch (err) {
           if (err instanceof JiraApiError && err.status === 404) {
+            // Keep sprintName so the ticket stays visible in its last sprint view
             await db.update(ticket)
-              .set({ removedFromJiraAt: new Date().toISOString() })
+              .set({ removedFromJiraAt: new Date().toISOString(), sprintName: sprintId })
               .where(eq(ticket.jiraKey, key));
             removedCount++;
           }
@@ -314,12 +325,16 @@ async function updateWatermark(value: string) {
 /**
  * Timestamp-first strategy: lightweight first pass fetches only key+updated,
  * then fetches full data only for issues changed since last local sync.
+ *
+ * Returns both the changed issues (full data) and the complete set of keys
+ * that Jira reports for the sprint, so the caller can detect deletions.
  */
-async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): Promise<JiraIssue[]> {
+async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): Promise<{ issues: JiraIssue[]; allJiraKeys: Set<string> }> {
   const lightweight = await jiraClient.getSprintIssueTimestamps(sprintIdNum, signal);
-  if (lightweight.length === 0) return [];
+  if (lightweight.length === 0) return { issues: [], allJiraKeys: new Set() };
 
-  const allKeys = lightweight.map((item) => item.key);
+  const allJiraKeys = new Set(lightweight.map((item) => item.key));
+  const allKeys = [...allJiraKeys];
   const localTickets = await db
     .select({ jiraKey: ticket.jiraKey, jiraUpdatedAt: ticket.jiraUpdatedAt })
     .from(ticket)
@@ -331,7 +346,8 @@ async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): P
     .filter((item) => localMap.get(item.key) !== item.updated)
     .map((item) => item.key);
 
-  if (changedKeys.length === 0) return [];
+  if (changedKeys.length === 0) return { issues: [], allJiraKeys };
 
-  return jiraClient.getIssuesByKeys(changedKeys, signal);
+  const issues = await jiraClient.getIssuesByKeys(changedKeys, signal);
+  return { issues, allJiraKeys };
 }

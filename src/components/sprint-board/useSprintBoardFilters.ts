@@ -15,6 +15,9 @@ export interface StoredFilters {
   readiness: string[];
   editState: string[];
   issueType: string[];
+  gaps: string[];
+  team: string[];
+  sprint: string[];
 }
 
 export interface StoredSort {
@@ -22,7 +25,7 @@ export interface StoredSort {
   direction: SortDir;
 }
 
-const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [] };
+const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] };
 
 export function useSprintBoardFilters(
   allTickets: Ticket[],
@@ -41,10 +44,7 @@ export function useSprintBoardFilters(
   const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
   const [storedColumns, setStoredColumns] = useLocalStorage<ColumnId[]>("sprint-board-columns", [...DEFAULT_VISIBLE]);
   const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>("sprint-board-saved-views", []);
-  const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
-  const [teamFilter, setTeamFilter] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
-  const [gapsFilter, setGapsFilter] = useState<Set<string>>(new Set());
 
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
@@ -52,6 +52,9 @@ export function useSprintBoardFilters(
   const readinessFilter = useMemo(() => new Set(storedFilters.readiness ?? []), [storedFilters.readiness]);
   const editStateFilter = useMemo(() => new Set(storedFilters.editState ?? []), [storedFilters.editState]);
   const issueTypeFilter = useMemo(() => new Set(storedFilters.issueType ?? []), [storedFilters.issueType]);
+  const gapsFilter = useMemo(() => new Set(storedFilters.gaps ?? []), [storedFilters.gaps]);
+  const teamFilter = useMemo(() => new Set(storedFilters.team ?? []), [storedFilters.team]);
+  const sprintFilter = useMemo(() => new Set(storedFilters.sprint ?? []), [storedFilters.sprint]);
 
   const setStatusFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, status: [...v] }));
@@ -70,6 +73,15 @@ export function useSprintBoardFilters(
   }, [setStoredFilters]);
   const setIssueTypeFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, issueType: [...v] }));
+  }, [setStoredFilters]);
+  const setGapsFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, gaps: [...v] }));
+  }, [setStoredFilters]);
+  const setTeamFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, team: [...v] }));
+  }, [setStoredFilters]);
+  const setSprintFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, sprint: [...v] }));
   }, [setStoredFilters]);
 
   const activeViewId = searchParams.get("view");
@@ -116,9 +128,8 @@ export function useSprintBoardFilters(
     return allTickets.filter((t) => {
       const isRemoved = Boolean(t.removedFromJiraAt);
 
-      // Hide removed tickets unless explicitly filtered for
-      if (isRemoved && !showRemoved) return false;
-      // When filtering for removed, non-removed tickets only show if other filters also match
+      // Deleted tickets always pass through (shown with DELETED badge);
+      // when the "removed" filter is active exclusively, hide non-removed tickets
       if (!isRemoved && editStateFilter.size === 1 && showRemoved) return false;
 
       if (statusFilter.size > 0 && !statusFilter.has(t.jiraStatus)) return false;
@@ -142,7 +153,7 @@ export function useSprintBoardFilters(
         if (gapsFilter.has("no_bv") && t.businessValue != null && t.businessValue >= 1) return false;
       }
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
-      if (isAllView && teamFilter.size > 0) {
+      if (teamFilter.size > 0) {
         const sprintName = t.sprintId ? sprintNameMap?.[t.sprintId] : undefined;
         const prefix = sprintName ? extractTeamPrefix(sprintName) : null;
         if (!prefix || !teamFilter.has(prefix)) return false;
@@ -239,11 +250,13 @@ export function useSprintBoardFilters(
     readiness: [...readinessFilter],
     editState: [...editStateFilter],
     issueType: [...issueTypeFilter],
-  }), [statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter]);
+    gaps: [...gapsFilter],
+    team: [...teamFilter],
+    sprint: [...sprintFilter],
+  }), [statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter, gapsFilter, teamFilter, sprintFilter]);
 
   const resetFilters = useCallback(() => {
-    setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [] });
-    setGapsFilter(new Set());
+    setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] });
   }, [setStoredFilters]);
 
   const handleSaveView = useCallback((title: string) => {
@@ -274,6 +287,9 @@ export function useSprintBoardFilters(
       readiness: view.filters.readiness ?? view.filters.poStatus ?? [],
       editState: view.filters.editState ?? [],
       issueType: view.filters.issueType ?? [],
+      gaps: view.filters.gaps ?? [],
+      team: view.filters.team ?? [],
+      sprint: view.filters.sprint ?? [],
     });
     setStoredSort({ field: view.sort.field, direction: view.sort.direction });
     if (view.columnConfig && onApplyColumnConfig) {

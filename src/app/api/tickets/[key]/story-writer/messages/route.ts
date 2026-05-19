@@ -354,6 +354,7 @@ async function buildFirstMessageBody(
   const contextParts = [];
   if (ticketRow) {
     contextParts.push(`Ticket: ${key} - ${ticketRow.title}`);
+    contextParts.push(`Issue type: ${ticketRow.type ?? "story"}`);
     contextParts.push(`Current description:\n${ticketRow.description ?? "(empty)"}`);
   }
   if (comments.length > 0) {
@@ -381,7 +382,8 @@ async function buildFirstMessageBody(
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
   contextParts.push(
     `${researchFlag}\n\nUser request: ${content}\n\n` +
-    `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.`
+    `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.\n` +
+    `If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag to suggest changing it. Only suggest when it is clearly warranted.`
   );
 
   return {
@@ -411,7 +413,7 @@ function buildFollowUpContent(
       `Output <story-draft> for original and <story-draft slot="target"> for target story.]`;
   }
 
-  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question.]`;
+  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag.]`;
 }
 
 /**

@@ -48,7 +48,7 @@ export function BulkActionBar({
   }, [showStatusDropdown]);
 
   return (
-    <BarContainer borderPosition="top" className="gap-3 bg-[var(--color-brand-600)]/8">
+    <BarContainer borderPosition="top" className="sticky bottom-0 z-20 gap-3 bg-[var(--color-surface-base)]">
       {/* Select all / deselect all checkbox */}
       {onToggleAll && (
         <button

@@ -57,7 +57,10 @@ interface StoryWriterChatProps {
   onAcceptDraft?: (draftId: string) => void;
   onOpenLogs?: (taskId: string) => void;
   onApplyTitle?: (title: string) => void;
+  onApplyType?: (type: string) => void;
   issueType?: IssueType;
+  pendingInput?: string | null;
+  onPendingInputConsumed?: () => void;
 }
 
 const MODEL_OPTIONS = [
@@ -132,7 +135,10 @@ export function StoryWriterChat({
   onAcceptDraft,
   onOpenLogs,
   onApplyTitle,
+  onApplyType,
   issueType = "story",
+  pendingInput,
+  onPendingInputConsumed,
 }: StoryWriterChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
@@ -156,6 +162,14 @@ export function StoryWriterChat({
 
   const isStreaming = status === "streaming" || status === "sending";
   const isBusy = isStreaming || sending;
+
+  useEffect(() => {
+    if (pendingInput && !isBusy) {
+      setInputValue(pendingInput);
+      onPendingInputConsumed?.();
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    }
+  }, [pendingInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lastAssistantIdx = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -328,6 +342,7 @@ export function StoryWriterChat({
                 onOpenLogs={onOpenLogs}
                 onStoryKeyClick={onStoryKeyClick}
                 onApplyTitle={onApplyTitle}
+                onApplyType={onApplyType}
               />
               {msg.role === "user" && msg.status === "failed" && (
                 <div className="flex justify-end mt-1">
@@ -482,7 +497,7 @@ export function StoryWriterChat({
                 onKeyDown={handleKeyDown}
                 placeholder="Describe what to improve..."
                 rows={1}
-                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary placeholder-white/40 focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
+                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
               />
             </div>
             <div className="flex items-center justify-between px-2 pb-2 pt-0.5">

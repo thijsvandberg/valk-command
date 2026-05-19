@@ -65,6 +65,9 @@ export interface SavedView {
     poStatus?: string[];
     editState: string[];
     issueType?: string[];
+    gaps?: string[];
+    team?: string[];
+    sprint?: string[];
   };
   sort: { field: SortField; direction: SortDir };
   columnConfig?: {

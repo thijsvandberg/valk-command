@@ -23,6 +23,14 @@ export function RelatedApp() {
     return () => pane.unregisterToolbar("related");
   }, [pane, count, linkedCount]);
 
+  const handleFindRelated = async () => {
+    await writer.onSend("Find related stories", "find-related");
+  };
+
+  const handlePrefillFindRelated = () => {
+    pane.prefillChat("Find related stories");
+  };
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <RelatedStoriesPanel
@@ -31,6 +39,8 @@ export function RelatedApp() {
         onClose={() => pane.closeApp("related")}
         selectedKey={pane.relatedSelectedKey}
         onSelectedKeyChange={pane.setRelatedSelectedKey}
+        onFindRelated={handleFindRelated}
+        onPrefillFindRelated={handlePrefillFindRelated}
       />
     </div>
   );

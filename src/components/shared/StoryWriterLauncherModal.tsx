@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   X, Plus, BookOpen, NotebookPen, ChevronDown,
@@ -474,6 +475,15 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     if (mode === "existing" && selectedTicket)    { onClose(); router.push(`/tickets/${selectedTicket.key}/write`); }
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const selectedSession = sessions.find((x) => x.ticketKey === selectedSessionKey);
@@ -481,7 +491,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     value: s.ticketKey, label: s.ticketKey, sublabel: s.title,
   }));
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-modal flex items-center justify-center bg-black/55 backdrop-blur-[3px]"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -851,6 +861,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           if (confirmDeleteSessionId) deleteSession(confirmDeleteSessionId);
         }}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

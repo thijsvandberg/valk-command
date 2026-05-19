@@ -59,7 +59,6 @@ export interface TicketRowBaseProps {
   rowStyle?: React.CSSProperties;
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
-  stickyOffsets?: Record<string, number>;
   "data-index"?: number;
 }
 
@@ -100,7 +99,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     rowStyle,
     dragListeners,
     dragAttributes,
-    stickyOffsets,
     "data-index": dataIndex,
   },
   ref
@@ -176,26 +174,15 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const renderCell = (id: ColumnId) => {
     if (!col(id)) return null;
     switch (id) {
-      case "type": {
-        const sl = stickyOffsets?.[id];
+      case "type":
         return (
-          <td
-            key={id}
-            className={`overflow-hidden py-1.5 pr-2${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : ""}`}
-            style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
-          >
+          <td key={id} className="overflow-hidden py-1.5 pr-2">
             <IssueTypeIcon type={ticket.type} />
           </td>
         );
-      }
-      case "key": {
-        const sl = stickyOffsets?.[id];
+      case "key":
         return (
-          <td
-            key={id}
-            className={`py-2 pr-3${sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : ""}`}
-            style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
-          >
+          <td key={id} className="py-2 pr-3">
             <span className="flex items-center gap-1.5">
               <span
                 onPointerDown={(e) => e.stopPropagation()}
@@ -206,17 +193,18 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                   jiraStatus={ticket.jiraStatus}
                   title={ticket.title}
                   issueType={ticket.type}
-                  readiness={readinessMap[ticket.key] ?? null}
-                  onReadinessChange={onReadinessChange ? (r) => onReadinessChange(ticket.key, r) : undefined}
-                  onJiraStatusChange={onJiraStatusChange ? (s) => onJiraStatusChange(ticket.key, s) : undefined}
-                  onIssueTypeChange={onIssueTypeChange ? (t) => onIssueTypeChange(ticket.key, t) : undefined}
+                  readiness={isRemoved ? null : (readinessMap[ticket.key] ?? null)}
+                  onReadinessChange={isRemoved ? undefined : (onReadinessChange ? (r) => onReadinessChange(ticket.key, r) : undefined)}
+                  onJiraStatusChange={isRemoved ? undefined : (onJiraStatusChange ? (s) => onJiraStatusChange(ticket.key, s) : undefined)}
+                  onIssueTypeChange={isRemoved ? undefined : (onIssueTypeChange ? (t) => onIssueTypeChange(ticket.key, t) : undefined)}
                   variant="list"
                   size="lg"
+                  removedFromJira={isRemoved}
                 />
               </span>
-              {ticket.editState === "draft" && <EditStateDot state="draft" />}
-              {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
-              {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
+              {!isRemoved && ticket.editState === "draft" && <EditStateDot state="draft" />}
+              {!isRemoved && ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
+              {!isRemoved && ticket.editState === "conflict" && <EditStateDot state="conflict" />}
               {!preset && (
                 <button
                   type="button"
@@ -247,17 +235,12 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             </span>
           </td>
         );
-      }
-      case "title": {
-        const sl = stickyOffsets?.[id];
-        const stickyBg = sl !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : "";
-
+      case "title":
         if (isEditingTitle) {
           return (
             <td
               key={id}
-              className={`relative max-w-0 py-1.5 pr-3 text-text-primary${stickyBg}`}
-              style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
+              className="relative max-w-0 py-1.5 pr-3 text-text-primary"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
@@ -317,8 +300,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className={`overflow-hidden max-w-0 py-1.5 pr-3 text-text-primary${stickyBg}`}
-            style={sl !== undefined ? { position: "sticky", left: sl, zIndex: 2 } : undefined}
+            className="overflow-hidden max-w-0 py-1.5 pr-3 text-text-primary"
           >
             <div className="flex items-center">
               <span className="min-w-0 truncate">{ticket.title}</span>
@@ -348,7 +330,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             </div>
           </td>
         );
-      }
       case "epic":
         return (
           <td key={id} className="py-1.5 pr-3 overflow-hidden">
@@ -367,7 +348,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           <td key={id} className="py-1.5 pr-3 overflow-hidden">
             {isRemoved ? (
               <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium bg-red-500/10 text-red-400/70">
-                REMOVED
+                DELETED
               </span>
             ) : (
               <span
@@ -536,8 +517,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     >
       {/* Checkbox -- stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
-        className={`cursor-pointer select-none py-1.5 pl-1 pr-1${stickyOffsets?._check !== undefined ? " bg-[var(--color-surface-base)] group-hover/row:bg-[var(--color-surface-elevated)]" : ""}`}
-        style={stickyOffsets?._check !== undefined ? { position: "sticky", left: stickyOffsets._check, zIndex: 2 } : undefined}
+        className="cursor-pointer select-none py-1.5 pl-1 pr-1"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();

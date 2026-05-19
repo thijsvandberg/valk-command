@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { ScrollText } from "lucide-react";
+import type { IssueType } from "@/types/ticket";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { ExecutionLogViewer } from "@/components/story-writer/ExecutionLogViewer";
 import { useWriterContext } from "../WriterContext";
@@ -32,6 +33,11 @@ export function ChatApp() {
     if (content) {
       pane.openDraftPreview(content, label, draftId);
     }
+  };
+
+  const handleAcceptDraft = async (draftId: string) => {
+    await writer.onAcceptDraft(draftId);
+    pane.openApp("editor");
   };
 
   const handleFocusDraft = (draftId: string) => {
@@ -133,10 +139,13 @@ export function ChatApp() {
           draftContentMap={draftContentMap}
           onViewDraft={handleViewDraft}
           onFocusDraft={handleFocusDraft}
-          onAcceptDraft={writer.onAcceptDraft}
+          onAcceptDraft={handleAcceptDraft}
           onOpenLogs={() => setShowLogs(true)}
           onApplyTitle={writer.onTitleChange}
+          onApplyType={(type) => writer.onTypeChange(type as IssueType)}
           issueType={writer.ticketData?.type ?? "story"}
+          pendingInput={pane.pendingChatInput}
+          onPendingInputConsumed={() => pane.consumePendingChatInput()}
         />
       )}
     </div>

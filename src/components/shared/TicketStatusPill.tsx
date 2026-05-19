@@ -67,11 +67,7 @@ function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTy
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[130px] rounded-lg border border-border-default py-1"
-      style={{
-        backgroundColor: "var(--color-surface-floating)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
-      }}
+      className="absolute top-full left-0 z-50 mt-1 min-w-[130px] rounded-lg border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
     >
       {SELECTABLE_TYPES.map((type) => {
         const isActive = type === currentValue;
@@ -149,11 +145,7 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[188px] rounded-lg border border-border-default py-1"
-      style={{
-        backgroundColor: "var(--color-surface-floating)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
-      }}
+      className="absolute top-full left-0 z-50 mt-1 min-w-[188px] rounded-lg border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
     >
       <a
         href={jiraUrl}
@@ -222,11 +214,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[172px] rounded-lg border border-border-default py-1"
-      style={{
-        backgroundColor: "var(--color-surface-floating)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
-      }}
+      className="absolute top-full left-0 z-50 mt-1 min-w-[172px] rounded-lg border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
     >
       {JIRA_STATUS_ORDER.map((status) => {
         const colors = JIRA_STATUS_COLORS[status];
@@ -285,11 +273,7 @@ function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: Readine
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[210px] rounded-lg border border-border-default py-1"
-      style={{
-        backgroundColor: "var(--color-surface-floating)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
-      }}
+      className="absolute top-full left-0 z-50 mt-1 min-w-[210px] rounded-lg border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
     >
       {READINESS_OPTIONS.map((opt) => {
         const isActive = opt.value === currentValue;
@@ -369,6 +353,7 @@ export interface TicketStatusPillProps {
   size?: "sm" | "md" | "lg";
   // "list" strips the outer container and renders segments inline — for use in dense table rows.
   variant?: "list";
+  removedFromJira?: boolean;
 }
 
 export function TicketStatusPill({
@@ -382,6 +367,7 @@ export function TicketStatusPill({
   title,
   size = "md",
   variant,
+  removedFromJira,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -472,32 +458,39 @@ export function TicketStatusPill({
         </div>
 
         {/* Jira status badge */}
-        <div className="relative flex shrink-0">
-          <button
-            ref={jiraStatusBtnRef}
-            type="button"
-            onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-            title={onJiraStatusChange ? "Change status" : jiraStatus}
-            disabled={!onJiraStatusChange}
-            className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold transition-colors duration-150 ${
-              onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
-            }`}
-            style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
-          >
-            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
-            {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
-          </button>
-          {jiraDropdownOpen && onJiraStatusChange && (
-            <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
-              <JiraStatusDropdown
-                currentValue={jiraStatus}
-                onChange={onJiraStatusChange}
-                onClose={() => setJiraDropdownOpen(false)}
-                skipRef={jiraStatusBtnRef}
-              />
-            </DropdownPortal>
-          )}
-        </div>
+        {removedFromJira ? (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold bg-red-500/10 text-red-400/70">
+            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70 bg-red-400/70" />
+            DELETED
+          </span>
+        ) : (
+          <div className="relative flex shrink-0">
+            <button
+              ref={jiraStatusBtnRef}
+              type="button"
+              onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
+              title={onJiraStatusChange ? "Change status" : jiraStatus}
+              disabled={!onJiraStatusChange}
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold transition-colors duration-150 ${
+                onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
+              }`}
+              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
+            >
+              <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
+              {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
+            </button>
+            {jiraDropdownOpen && onJiraStatusChange && (
+              <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
+                <JiraStatusDropdown
+                  currentValue={jiraStatus}
+                  onChange={onJiraStatusChange}
+                  onClose={() => setJiraDropdownOpen(false)}
+                  skipRef={jiraStatusBtnRef}
+                />
+              </DropdownPortal>
+            )}
+          </div>
+        )}
 
         {/* Readiness */}
         {showReadiness && (
@@ -604,37 +597,47 @@ export function TicketStatusPill({
         <span className="w-px self-stretch bg-overlay-default shrink-0" />
 
         {/* Jira status segment */}
-        <div className="relative flex">
-          <button
-            ref={jiraStatusBtnRef}
-            type="button"
-            onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-            title={onJiraStatusChange ? "Change status" : jiraStatus}
-            disabled={!onJiraStatusChange}
-            className={`${px} ${textSize} font-medium transition-colors duration-150 flex items-center gap-1.5 ${
-              onJiraStatusChange
-                ? "cursor-pointer hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                : "cursor-default"
-            } ${showReadiness ? "" : "rounded-r-md"}`}
-            style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
+        {removedFromJira ? (
+          <span
+            className={`${px} ${textSize} font-medium flex items-center gap-1.5 rounded-r-md`}
+            style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "rgba(248,113,113,0.7)" }}
           >
-            {onJiraStatusChange && (
-              <span
-                className="shrink-0 h-1.5 w-1.5 rounded-full opacity-60"
-                style={{ backgroundColor: jiraColors.text }}
+            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: "rgba(248,113,113,0.7)" }} />
+            DELETED
+          </span>
+        ) : (
+          <div className="relative flex">
+            <button
+              ref={jiraStatusBtnRef}
+              type="button"
+              onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
+              title={onJiraStatusChange ? "Change status" : jiraStatus}
+              disabled={!onJiraStatusChange}
+              className={`${px} ${textSize} font-medium transition-colors duration-150 flex items-center gap-1.5 ${
+                onJiraStatusChange
+                  ? "cursor-pointer hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  : "cursor-default"
+              } ${showReadiness ? "" : "rounded-r-md"}`}
+              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
+            >
+              {onJiraStatusChange && (
+                <span
+                  className="shrink-0 h-1.5 w-1.5 rounded-full opacity-60"
+                  style={{ backgroundColor: jiraColors.text }}
+                />
+              )}
+              {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
+            </button>
+            {jiraDropdownOpen && onJiraStatusChange && (
+              <JiraStatusDropdown
+                currentValue={jiraStatus}
+                onChange={onJiraStatusChange}
+                onClose={() => setJiraDropdownOpen(false)}
+                skipRef={jiraStatusBtnRef}
               />
             )}
-            {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
-          </button>
-          {jiraDropdownOpen && onJiraStatusChange && (
-            <JiraStatusDropdown
-              currentValue={jiraStatus}
-              onChange={onJiraStatusChange}
-              onClose={() => setJiraDropdownOpen(false)}
-              skipRef={jiraStatusBtnRef}
-            />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Readiness segment */}
         {showReadiness && (

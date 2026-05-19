@@ -6,7 +6,7 @@ import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateR
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import type { WorkspaceUsage } from "@/hooks/useStoryWriter";
-import type { Ticket } from "@/types/ticket";
+import type { Ticket, IssueType } from "@/types/ticket";
 
 export interface WriterContextValue {
   ticketKey: string;
@@ -38,6 +38,7 @@ export interface WriterContextValue {
   onLinkCandidate: (candidateId: string, isLinked: boolean) => Promise<void>;
   onAcceptDraft: (draftId: string) => Promise<void>;
   onDismissDraft: (draftId: string) => void;
+  onTypeChange: (type: IssueType) => Promise<void>;
   onCodebaseResearchChange: (v: boolean) => void;
   onModelChange: (v: string) => void;
 }

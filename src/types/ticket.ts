@@ -65,9 +65,21 @@ export const EPIC_COLORS: Record<string, { bg: string; text: string }> = {
   "TECH: GENERAL IMP.": { bg: "rgba(160, 90, 200, 0.15)", text: "#a05ac8" },
 };
 
-/** Case-insensitive lookup for epic color, since Jira epic names may vary in casing. */
-export function getEpicColor(epic: string): { bg: string; text: string } | undefined {
-  return EPIC_COLORS[epic] ?? EPIC_COLORS[epic.toUpperCase()];
+function generateEpicColor(epic: string): { bg: string; text: string } {
+  let hash = 0;
+  for (let i = 0; i < epic.length; i++) {
+    hash = epic.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return {
+    bg: `hsla(${hue}, 50%, 50%, 0.12)`,
+    text: `hsl(${hue}, 45%, 48%)`,
+  };
+}
+
+/** Returns a color for any epic. Uses a curated map first, falls back to a deterministic generated color. */
+export function getEpicColor(epic: string): { bg: string; text: string } {
+  return EPIC_COLORS[epic] ?? EPIC_COLORS[epic.toUpperCase()] ?? generateEpicColor(epic);
 }
 
 // Business Value color bands: low (1-2) cool/muted, medium (3-4) neutral/warm, high (5-7) warm/accent

@@ -119,19 +119,19 @@ export function DiffViewer({
               </span>
             )}
             {diffStats.added > 0 && (
-              <span className="flex items-center gap-1" style={{ color: "#3fb950" }}>
+              <span className="flex items-center gap-1" style={{ color: "var(--color-diff-added-gutter)" }}>
                 <span className="font-mono font-semibold">+{diffStats.added}</span>
                 <span className="text-text-tertiary">added</span>
               </span>
             )}
             {diffStats.removed > 0 && (
-              <span className="flex items-center gap-1" style={{ color: "#e5534b" }}>
+              <span className="flex items-center gap-1" style={{ color: "var(--color-diff-deleted-gutter)" }}>
                 <span className="font-mono font-semibold">&minus;{diffStats.removed}</span>
                 <span className="text-text-tertiary">removed</span>
               </span>
             )}
             {diffStats.modified > 0 && (
-              <span className="flex items-center gap-1" style={{ color: "#d2a8ff" }}>
+              <span className="flex items-center gap-1" style={{ color: "var(--color-diff-modified-badge)" }}>
                 <span className="font-mono font-semibold">~{diffStats.modified}</span>
                 <span className="text-text-tertiary">modified</span>
               </span>
@@ -183,8 +183,8 @@ export function DiffViewer({
       {/* Sticky combined action footer */}
       {showFooter && (
         <div
-          className="sticky bottom-0 mt-4 flex items-center gap-4 border-t border-border-default bg-[var(--color-surface-base)]/95 px-0 py-4 backdrop-blur-sm"
-          style={{ boxShadow: "0 -8px 24px rgba(0,0,0,0.20)" }}
+          className="sticky bottom-0 -mx-8 mt-4 flex items-center gap-4 border-t border-border-default bg-[var(--color-surface-elevated)]/95 px-8 py-4 backdrop-blur-sm"
+          style={{ boxShadow: "0 -4px 16px var(--color-overlay-strong)" }}
         >
           {showConflictActions && (
             <>

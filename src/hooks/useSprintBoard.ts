@@ -24,6 +24,8 @@ export function useJiraSprints() {
 
 // Fetches all tickets for a sprint from the local DB.
 // Pass "__all__" to fetch all tickets regardless of sprint.
+// On mount (or sprint change), fires a background timestamp-first sync
+// to pick up remote changes and detect deleted tickets without blocking the UI.
 export function useTickets(sprintId: string | null) {
   const key =
     sprintId === "__all__"
@@ -31,7 +33,26 @@ export function useTickets(sprintId: string | null) {
       : sprintId
       ? `/api/tickets?sprintId=${encodeURIComponent(sprintId)}`
       : null;
-  return useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: false, dedupingInterval: 30000 });
+  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: false, dedupingInterval: 30000 });
+  const { mutate } = swr;
+
+  const syncedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!sprintId || sprintId === "__all__") return;
+    if (syncedRef.current === sprintId) return;
+    syncedRef.current = sprintId;
+
+    let cancelled = false;
+
+    jiraApi.syncTickets({ sprintId, strategy: "timestamp-first" })
+      .then(() => { if (!cancelled) mutate(); })
+      .catch(() => { /* background sync, fail silently */ });
+
+    return () => { cancelled = true; };
+  }, [sprintId, mutate]);
+
+  return swr;
 }
 
 // Fetches full ticket detail with background staleness check.
@@ -55,8 +76,10 @@ export function useTicketDetail(ticketKey: string | null) {
     let cancelled = false;
 
     jiraApi.checkUpdated(ticketKey)
-      .then(async (result) => {
-        if (cancelled || !result?.stale) return;
+      .then(async (result: { stale?: boolean; removed?: boolean } | null) => {
+        if (cancelled) return;
+        if (result?.removed) { mutate(); return; }
+        if (!result?.stale) return;
         await jiraApi.syncTickets({ ticketKeys: [ticketKey] });
         mutate();
       })

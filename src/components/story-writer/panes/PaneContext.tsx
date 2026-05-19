@@ -69,6 +69,10 @@ interface PaneContextValue {
 
   draggedApp: PaneAppId | null;
   setDraggedApp: (app: PaneAppId | null) => void;
+
+  pendingChatInput: string | null;
+  prefillChat: (text: string) => void;
+  consumePendingChatInput: () => string | null;
 }
 
 const PaneContext = createContext<PaneContextValue | null>(null);
@@ -203,6 +207,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
   const [draftPreviewContent, setDraftPreviewContent] = useState<DraftPreviewContent | null>(null);
   const [relatedSelectedKey, setRelatedSelectedKey] = useState<string | null>(null);
   const [draggedApp, setDraggedApp] = useState<PaneAppId | null>(null);
+  const [pendingChatInput, setPendingChatInput] = useState<string | null>(null);
 
   // Refs so chained calls within the same event handler see each other's changes
   const paneVisibleRef = useRef(paneVisible);
@@ -350,6 +355,17 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     setPaneApps((_prev) => ["draft-preview", null, null]);
   }
 
+  function prefillChat(text: string) {
+    setPendingChatInput(text);
+    openApp("chat");
+  }
+
+  function consumePendingChatInput(): string | null {
+    const v = pendingChatInput;
+    if (v !== null) setPendingChatInput(null);
+    return v;
+  }
+
   function openRelated(selectedKey?: string) {
     if (selectedKey !== undefined) setRelatedSelectedKey(selectedKey);
     const targetPane = DEFAULT_PANE["related"];
@@ -391,6 +407,9 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
         setRelatedSelectedKey,
         draggedApp,
         setDraggedApp,
+        pendingChatInput,
+        prefillChat,
+        consumePendingChatInput,
       }}
     >
       {children}

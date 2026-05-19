@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { getBvColor } from "@/types/ticket";
 import { Minus, X } from "lucide-react";
 
@@ -19,25 +20,54 @@ export function BusinessValuePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; flipUp: boolean } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const handleMouseEnter = useCallback(() => setHovered(true), []);
   const handleMouseLeave = useCallback(() => setHovered(false), []);
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const flipUp = rect.bottom + 48 > window.innerHeight;
+    setPos({
+      top: flipUp ? rect.top : rect.bottom + 4,
+      left: align === "left" ? rect.left : rect.right,
+      flipUp,
+    });
+  }, [align]);
+
+  const handleOpen = useCallback(() => {
+    updatePosition();
+    setOpen(true);
+  }, [updatePosition]);
 
   useEffect(() => {
     if (!open) return;
     function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        triggerRef.current?.contains(e.target as Node) ||
+        popoverRef.current?.contains(e.target as Node)
+      ) return;
+      setOpen(false);
     }
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") { setOpen(false); return; }
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= 7) { onChange(num); setOpen(false); return; }
+      if (e.key === "0" || e.key === "-") { onChange(0); setOpen(false); return; }
+      if (e.key === "Backspace" || e.key === "Delete") { onChange(null); setOpen(false); }
     }
+    function handleScroll() { updatePosition(); }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", handleScroll, true);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleScroll, true);
     };
-  }, [open]);
+  }, [open, onChange, updatePosition]);
 
   const isNA = value === 0;
   const color = value != null ? getBvColor(value) : null;
@@ -45,10 +75,11 @@ export function BusinessValuePicker({
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
 
   return (
-    <div ref={ref} className="relative inline-flex justify-center">
+    <>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => open ? setOpen(false) : handleOpen()}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
@@ -62,10 +93,15 @@ export function BusinessValuePicker({
         {displayLabel ?? <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
       </button>
 
-      {open && (
+      {open && pos && createPortal(
         <div
-          className={`absolute top-full z-50 mt-1 rounded-lg border border-border-default p-1.5 ${align === "left" ? "left-0" : "right-0"}`}
+          ref={popoverRef}
+          className="fixed z-[9999] rounded-lg border border-border-default p-1.5"
           style={{
+            top: pos.flipUp ? undefined : pos.top,
+            bottom: pos.flipUp ? window.innerHeight - pos.top + 4 : undefined,
+            left: align === "left" ? pos.left : undefined,
+            right: align === "right" ? window.innerWidth - pos.left : undefined,
             backgroundColor: "var(--color-surface-floating)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
           }}
@@ -119,8 +155,9 @@ export function BusinessValuePicker({
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }

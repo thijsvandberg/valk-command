@@ -134,7 +134,7 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         data-testid="sidebar"
-        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-border-default lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-border-default lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:translate-x-0 ${
           collapsed ? "w-[52px]" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >

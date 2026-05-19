@@ -600,22 +600,29 @@ function StakeholderView() {
 
   async function handleSyncHistory() {
     if (!selectedTeamPrefix || isSyncingHistory) return;
-    const closedSprints = teamSprints
-      .filter((s) => s.state === "closed")
-      .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
-    if (closedSprints.length === 0) return;
-
-    // Only sync sprints that are missing from velocity data
-    const syncedSprintIds = new Set(velocityData?.map((v) => v.sprintId) ?? []);
-    const missingSprints = closedSprints.filter((s) => !syncedSprintIds.has(s.id));
-    if (missingSprints.length === 0) return;
 
     setIsSyncingHistory(true);
     try {
+      // Refresh sprint metadata so closed states are up-to-date
+      await apiFetch("/api/jira/sync-sprints?scope=history", { method: "POST" });
+
+      type FreshSprint = { id: number; name: string; state: string };
+      const freshSprints = await apiFetch<FreshSprint[]>("/api/jira/sprints");
+      const closedSprints = freshSprints
+        .filter((s) => extractTeamPrefix(s.name) === selectedTeamPrefix && s.state === "closed")
+        .sort((a, b) => extractSprintNumber(a.name) - extractSprintNumber(b.name));
+
+      // Only sync sprints that are missing from velocity data
+      const syncedSprintIds = new Set(velocityData?.map((v) => v.sprintId) ?? []);
+      const missingSprints = closedSprints.filter((s) => !syncedSprintIds.has(s.id));
+
       for (const sprint of missingSprints) {
         await apiFetch(`/api/jira/sync-tickets?sprintId=${sprint.id}`, { method: "POST" });
       }
-      await globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`);
+      await Promise.all([
+        globalMutate("/api/jira/sprints"),
+        globalMutate(`/api/velocity?teamPrefix=${encodeURIComponent(selectedTeamPrefix)}&limit=100`),
+      ]);
     } finally {
       setIsSyncingHistory(false);
     }

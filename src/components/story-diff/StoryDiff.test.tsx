@@ -26,9 +26,9 @@ describe("StoryDiff", () => {
       <StoryDiff oldText="the quick brown fox" newText="the slow brown fox" />,
     );
 
-    // Word-level highlight spans have colored backgrounds
+    // Word-level highlight spans have colored backgrounds via CSS var
     const highlighted = container.querySelectorAll(
-      'span[style*="rgba(46, 160, 80"]',
+      'span[style*="--color-diff-added-word"]',
     );
     expect(highlighted.length).toBeGreaterThan(0);
   });

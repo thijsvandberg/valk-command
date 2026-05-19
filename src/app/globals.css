@@ -95,6 +95,19 @@
   --color-hover-list-item: rgba(255, 255, 255, 0.04);
   --color-hover-interactive: rgba(255, 255, 255, 0.06);
 
+  /* Diff tokens */
+  --color-diff-added-line: rgba(46, 160, 80, 0.12);
+  --color-diff-added-word: rgba(46, 160, 80, 0.35);
+  --color-diff-added-gutter: #3fb950;
+  --color-diff-deleted-line: rgba(229, 83, 75, 0.10);
+  --color-diff-deleted-word: rgba(229, 83, 75, 0.30);
+  --color-diff-deleted-gutter: #e5534b;
+  --color-diff-modified-badge: #d2a8ff;
+  --color-diff-accept-bg: rgba(46, 160, 80, 0.10);
+  --color-diff-accept-border: rgba(46, 160, 80, 0.20);
+  --color-diff-reject-bg: rgba(229, 83, 75, 0.08);
+  --color-diff-reject-border: rgba(229, 83, 75, 0.18);
+
   /* Shadow tokens */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -144,6 +157,18 @@
   --color-hover-list-item: rgba(0, 0, 0, 0.04);
   --color-hover-interactive: rgba(0, 0, 0, 0.06);
 
+  --color-diff-added-line: rgba(34, 134, 58, 0.14);
+  --color-diff-added-word: rgba(34, 134, 58, 0.28);
+  --color-diff-added-gutter: #1a7f37;
+  --color-diff-deleted-line: rgba(207, 34, 46, 0.12);
+  --color-diff-deleted-word: rgba(207, 34, 46, 0.25);
+  --color-diff-deleted-gutter: #cf222e;
+  --color-diff-modified-badge: #8250df;
+  --color-diff-accept-bg: rgba(34, 134, 58, 0.10);
+  --color-diff-accept-border: rgba(34, 134, 58, 0.25);
+  --color-diff-reject-bg: rgba(207, 34, 46, 0.08);
+  --color-diff-reject-border: rgba(207, 34, 46, 0.22);
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.05);
@@ -159,6 +184,16 @@ html.theme-transition *,
 html.theme-transition *::before,
 html.theme-transition *::after {
   transition: background-color 200ms ease, color 150ms ease, border-color 200ms ease, box-shadow 200ms ease !important;
+}
+
+/* Diff button hover states (CSS vars can't be used in Tailwind arbitrary hover classes) */
+.diff-btn-accept:hover {
+  background-color: var(--color-diff-added-line);
+  color: var(--color-diff-added-gutter);
+}
+.diff-btn-reject:hover {
+  background-color: var(--color-diff-deleted-line);
+  color: var(--color-diff-deleted-gutter);
 }
 
 @layer base {

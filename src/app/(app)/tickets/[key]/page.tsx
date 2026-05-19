@@ -75,6 +75,7 @@ export default function TicketDetailPage({
     notes: apiData.notes ?? "",
     sprintId: apiData.sprintId,
     businessValue: apiData.businessValue ?? null,
+    removedFromJiraAt: apiData.removedFromJiraAt ?? null,
   } : undefined, [apiData]);
 
   const detail: TicketDetail | undefined = apiData ? {
@@ -450,7 +451,7 @@ export default function TicketDetailPage({
                   iconOnly
                   onClick={handleDeleteSession}
                   disabled={isDeletingSession}
-                  className="!rounded-l-none !rounded-r-md !border-0 !text-[var(--color-brand-400)]/35 hover:!text-red-400/80"
+                  className="!rounded-l-none !rounded-r-md !border-0 !bg-transparent !text-[var(--color-brand-400)]/35 hover:!bg-transparent hover:!text-red-400/80"
                   title="Delete session"
                   aria-label="Delete session"
                   icon={isDeletingSession
@@ -475,13 +476,14 @@ export default function TicketDetailPage({
         <TicketStatusPill
           ticketKey={key}
           jiraStatus={ticket.jiraStatus}
-          readiness={ticket.readiness}
-          onJiraStatusChange={handleJiraStatusChange}
-          onReadinessChange={handleReadinessChange}
+          readiness={ticket.removedFromJiraAt ? null : ticket.readiness}
+          onJiraStatusChange={ticket.removedFromJiraAt ? undefined : handleJiraStatusChange}
+          onReadinessChange={ticket.removedFromJiraAt ? undefined : handleReadinessChange}
           issueType={ticket.type}
-          onIssueTypeChange={handleTypeChange}
+          onIssueTypeChange={ticket.removedFromJiraAt ? undefined : handleTypeChange}
           title={ticket.title}
           size="lg"
+          removedFromJira={Boolean(ticket.removedFromJiraAt)}
         />
         <ViewHeaderDivider />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">

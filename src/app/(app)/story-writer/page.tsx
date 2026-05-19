@@ -60,9 +60,15 @@ function SessionCard({
       {/* Top row: ticket key(s) + badges */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <code className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)]">
+          <a
+            href={`/tickets/${session.ticketKey}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)] hover:underline cursor-pointer"
+          >
             {session.ticketKey}
-          </code>
+          </a>
           {session.issueType && (
             <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary">
               {session.issueType}
@@ -71,9 +77,15 @@ function SessionCard({
           {isSplit && (
             <>
               <Scissors size={9} strokeWidth={2} className="shrink-0 text-violet-400/60" />
-              <code className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)]">
+              <a
+                href={`/tickets/${session.targetTicketKey}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)] hover:underline cursor-pointer"
+              >
                 {session.targetTicketKey}
-              </code>
+              </a>
               <span className="shrink-0 flex items-center gap-1 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/80">
                 Split
               </span>

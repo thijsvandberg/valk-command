@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { TitleSuggestionChips } from "@/components/story-writer/TitleSuggestionChips";
+import { TypeSuggestionChip } from "@/components/story-writer/TypeSuggestionChip";
 
 export const SHOW_MORE_WORD_THRESHOLD = 80;
 export const TRUNCATE_WORD_COUNT = 40;
@@ -151,6 +152,7 @@ export function ChatMessage({
   onOpenLogs,
   onStoryKeyClick,
   onApplyTitle,
+  onApplyType,
 }: {
   message: Message;
   draftId?: string;
@@ -162,10 +164,12 @@ export function ChatMessage({
   onOpenLogs?: (taskId: string) => void;
   onStoryKeyClick?: (key: string) => void;
   onApplyTitle?: (title: string) => void;
+  onApplyType?: (type: string) => void;
 }) {
   const isUser = message.role === "user";
   const [expanded, setExpanded] = useState(false);
   const [draftExpanded, setDraftExpanded] = useState(false);
+  const [draftAccepted, setDraftAccepted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -199,7 +203,17 @@ export function ChatMessage({
     .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
     .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
     .replace(/<summary>[\s\S]*?<\/summary>/g, "")
+    .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
     .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "");
+
+  const typeSuggestion = (() => {
+    if (message.role !== "assistant") return null;
+    const match = message.content.match(/<type-suggestion>([\s\S]*?)<\/type-suggestion>/);
+    if (!match) return null;
+    const suggested = match[1].trim().toLowerCase();
+    const valid = ["story", "bug", "task", "spike"];
+    return valid.includes(suggested) ? suggested : null;
+  })();
 
   // Structured title suggestions (Phase 1 tag format)
   const titleSuggestions = (() => {
@@ -287,6 +301,9 @@ export function ChatMessage({
         {allTitleSuggestions.length > 0 && onApplyTitle && (
           <TitleSuggestionChips titles={allTitleSuggestions} onApply={onApplyTitle} />
         )}
+        {typeSuggestion && onApplyType && (
+          <TypeSuggestionChip type={typeSuggestion} onApply={onApplyType} />
+        )}
         {contentAfter && (
           <div
             onClick={handleContentClick}
@@ -340,14 +357,24 @@ export function ChatMessage({
                 </div>
                 {onAcceptDraft && draftId && (
                   <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => onAcceptDraft(draftId)}
-                      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
-                    >
-                      <Check size={12} strokeWidth={2} />
-                      Accept draft
-                    </button>
+                    {draftAccepted ? (
+                      <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                        <Check size={12} strokeWidth={2} />
+                        Accepted
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onAcceptDraft(draftId);
+                          setDraftAccepted(true);
+                        }}
+                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                      >
+                        <Check size={12} strokeWidth={2} />
+                        Accept draft
+                      </button>
+                    )}
                   </div>
                 )}
               </>
@@ -477,15 +504,15 @@ export function RelatedStoriesInline({
               disabled={linkingId === c.id}
               className={`shrink-0 flex items-center gap-1 rounded border px-1.5 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-150 disabled:opacity-50 ${
                 c.isLinked
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
                   : "border-border-strong text-text-tertiary hover:border-[var(--color-brand-500)]/20 hover:text-[var(--color-brand-400)]"
               }`}
             >
               {linkingId === c.id ? (
                 <Loader2 size={9} className="animate-spin" />
-              ) : (
+              ) : c.isLinked ? (
                 <Link2 size={9} strokeWidth={1.5} />
-              )}
+              ) : null}
               {c.isLinked ? "Linked" : "Link"}
             </button>
           </div>

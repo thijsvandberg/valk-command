@@ -314,7 +314,7 @@ export const jira = {
   syncIncremental: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/jira/sync-incremental", { method: "POST", signal }),
   checkUpdated: (key: string, signal?: AbortSignal) =>
-    apiFetch<{ stale: boolean }>(`/api/jira/check-updated${qs({ key })}`, { signal }),
+    apiFetch<{ stale: boolean; removed?: boolean }>(`/api/jira/check-updated${qs({ key })}`, { signal }),
   health: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/jira/health", { signal }),
   rank: (data: Record<string, unknown>, signal?: AbortSignal) =>

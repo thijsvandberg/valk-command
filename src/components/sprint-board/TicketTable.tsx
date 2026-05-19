@@ -201,6 +201,7 @@ export function TicketTable({
   collapsedGroups,
   onToggleCollapse,
   groupBy,
+  scrollContainerRef,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -247,6 +248,9 @@ export function TicketTable({
   collapsedGroups?: Set<string>;
   onToggleCollapse?: (groupKey: string) => void;
   groupBy?: GroupByOption;
+  // When provided, the table uses this as its scroll container (for shared scroll with analytics).
+  // The table will not apply its own overflow-y; the parent scroll container handles vertical scroll.
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
 }) {
   const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
   const DEFAULT_ORDER: ColumnId[] = useMemo(() => COLUMNS.map((c) => c.id), []);
@@ -256,24 +260,6 @@ export function TicketTable({
   const colW = useCallback((id: string): number | undefined => {
     return columnWidths?.[id] ?? (DEFAULT_COLUMN_WIDTHS[id] || undefined);
   }, [columnWidths]);
-
-  // Compute left-pixel offsets for sticky columns (drag handle, checkbox, type, key, title).
-  // Sticky columns let key/title remain visible during horizontal scroll.
-  const stickyOffsets = useMemo<Record<string, number>>(() => {
-    const CHECK_W = 40; // w-10
-    const offsets: Record<string, number> = { _check: 0 };
-    let offset = CHECK_W;
-    for (const id of effectiveOrder) {
-      if (!col(id)) continue;
-      if (id === "type" || id === "key" || id === "title") {
-        offsets[id] = offset;
-      }
-      if (id === "title") break;
-      const w = colW(id) ?? DEFAULT_COLUMN_WIDTHS[id] ?? 0;
-      offset += w;
-    }
-    return offsets;
-  }, [effectiveOrder, col, colW]);
 
   // Total colspan for group header rows: checkbox + all visible content columns.
   const totalColSpan = useMemo(() => 1 + effectiveOrder.filter((id) => col(id)).length, [effectiveOrder, col]);
@@ -336,13 +322,17 @@ export function TicketTable({
   const ticketIds = tickets.map((t) => t.key);
   const activeTicket = activeDragId ? tickets.find((t) => t.key === activeDragId) : null;
 
+  const effectiveScrollRef = scrollContainerRef ?? tableContainerRef;
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: enableVirtualization ? tickets.length : 0,
-    getScrollElement: () => tableContainerRef.current,
+    getScrollElement: () => effectiveScrollRef.current,
     estimateSize: () => ROW_HEIGHT_ESTIMATE,
     overscan: VIRTUALIZER_OVERSCAN,
     measureElement: (el) => el.getBoundingClientRect().height,
+    // When using an external scroll container, account for content above the table
+    scrollMargin: scrollContainerRef ? (tableContainerRef.current?.offsetTop ?? 0) : 0,
   });
 
   // Reset scroll position when sort or filter changes
@@ -356,7 +346,8 @@ export function TicketTable({
   }
 
   const virtualRows = enableVirtualization ? rowVirtualizer.getVirtualItems() : [];
-  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const scrollMarginValue = scrollContainerRef ? (tableContainerRef.current?.offsetTop ?? 0) : 0;
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start - scrollMarginValue : 0;
   const paddingBottom = virtualRows.length > 0
     ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
     : 0;
@@ -392,8 +383,7 @@ export function TicketTable({
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
-    stickyOffsets,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, stickyOffsets]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
@@ -410,19 +400,13 @@ export function TicketTable({
     // Title is the flex filler when no width is pinned; explicit width when user has resized it.
     const titleW = colW("title");
     const widthStyle = id === "title" ? (titleW ? { width: titleW } : undefined) : { width: colW(id) };
-    const stickyLeft = stickyOffsets[id];
-    const isStickyCol = stickyLeft !== undefined;
-    const fullStyle = isStickyCol
-      ? { ...widthStyle, position: "sticky" as const, left: stickyLeft, zIndex: 12 }
-      : widthStyle;
-    const bgClass = isStickyCol ? " bg-[var(--color-surface-base)]" : "";
 
     if (!label) {
-      return <th key={id} className={`overflow-hidden py-2 pr-2${bgClass}`} style={fullStyle} />;
+      return <th key={id} className="overflow-hidden py-2 pr-2" style={widthStyle} />;
     }
 
     return (
-      <th key={id} className={`group/th relative overflow-hidden py-2 pr-3${isCenter ? " text-center" : ""}${bgClass}`} style={fullStyle}>
+      <th key={id} className={`group/th relative overflow-hidden py-2 pr-3${isCenter ? " text-center" : ""}`} style={widthStyle}>
         {isSortable ? (
           <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-text-secondary${isCenter ? " justify-center w-full" : ""}`}>
             {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
@@ -431,12 +415,12 @@ export function TicketTable({
         {rh(id)}
       </th>
     );
-  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh, stickyOffsets]);
+  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
 
   const theadContent = (
-    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-      <tr className="group/thead h-[44px] border-b border-border-default text-left text-xs font-medium text-text-tertiary">
-        <th className="w-10 py-2 pl-1 pr-1 bg-[var(--color-surface-base)]" style={{ position: "sticky", left: stickyOffsets._check, zIndex: 12 }} />
+    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]" style={{ boxShadow: "inset 0 -1px 0 var(--color-border-default)" }}>
+      <tr className="group/thead h-[44px] text-left text-xs font-medium text-text-tertiary">
+        <th className="w-10 py-2 pl-1 pr-1" />
         {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>
     </thead>
@@ -649,7 +633,9 @@ export function TicketTable({
   return (
     <div
       ref={tableContainerRef}
-      className="flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none"
+      className={scrollContainerRef
+        ? "min-w-0 focus:outline-none"
+        : "flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none"}
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
