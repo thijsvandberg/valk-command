@@ -3,8 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { X, Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, Users, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, Users, ChevronRight, ListFilter } from "lucide-react";
 import { TextInput } from "@/components/shared/TextInput";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { extractTeamPrefix } from "@/lib/sprint-utils";
@@ -140,7 +139,7 @@ function SectionHeader({
       />
       {label}
       {count !== undefined && count > 0 && (
-        <span className="text-[10px] font-normal tabular-nums text-text-muted/60">{count}</span>
+        <span className="font-normal tabular-nums opacity-50">{count}</span>
       )}
     </button>
   );
@@ -160,7 +159,7 @@ function StateBadge({ state }: { state: string }) {
   );
 }
 
-function TeamChips({
+function TeamFilterDropdown({
   teams,
   active,
   onToggle,
@@ -169,26 +168,66 @@ function TeamChips({
   active: string | null;
   onToggle: (team: string | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
   if (teams.length <= 1) return null;
+
   return (
-    <div className="flex items-center gap-1 px-3 pb-1.5">
-      {teams.map((t) => {
-        const isActive = active === t;
-        return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex h-[34px] w-[34px] items-center justify-center rounded-lg border cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          active
+            ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/8 text-[var(--color-brand-400)]"
+            : "border-border-default bg-[var(--color-surface-elevated)] text-text-muted hover:text-text-tertiary hover:border-border-strong"
+        }`}
+        title={active ? `Team: ${active}` : "Filter by team"}
+      >
+        <span className="relative flex items-center justify-center">
+          <ListFilter size={14} strokeWidth={1.5} />
+          {active && (
+            <span className="absolute -top-1 -right-1.5 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-floating)]" />
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-1 w-28 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
           <button
-            key={t}
             type="button"
-            onClick={() => onToggle(isActive ? null : t)}
-            className={`rounded-md border px-1.5 py-px text-[10px] font-semibold cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-              isActive
-                ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                : "border-transparent text-text-muted hover:border-border-default hover:text-text-tertiary"
+            onClick={() => { onToggle(null); setOpen(false); }}
+            className={`flex w-full items-center gap-2 px-3 py-1 text-xs cursor-pointer hover:bg-hover-list-item ${
+              !active ? "text-text-primary font-medium" : "text-text-secondary"
             }`}
           >
-            {t}
+            <span className={`h-1.5 w-1.5 rounded-full ${!active ? "bg-[var(--color-brand-400)]" : "opacity-0"}`} />
+            All teams
           </button>
-        );
-      })}
+          {teams.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => { onToggle(active === t ? null : t); setOpen(false); }}
+              className={`flex w-full items-center gap-2 px-3 py-1 text-xs cursor-pointer hover:bg-hover-list-item ${
+                active === t ? "text-text-primary font-medium" : "text-text-secondary"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${active === t ? "bg-[var(--color-brand-400)]" : "opacity-0"}`} />
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -229,8 +268,8 @@ function SprintRow({
         <span className="truncate">{sprint.name}</span>
         {showBadge && <StateBadge state={sprint.state} />}
       </span>
-      <span className="ml-2 flex shrink-0 items-center gap-1">
-        <span className="text-xs tabular-nums text-text-muted">
+      <span className="ml-2 flex shrink-0 items-center gap-0.5">
+        <span className="mr-0.5 text-[11px] tabular-nums text-text-muted">
           {dateRange(sprint)}
         </span>
         {showStakeholder && (
@@ -302,7 +341,6 @@ export function SprintListModal({
 
   const allSprints = useMemo(() => sprints ?? [], [sprints]);
   const isSearching = search.length > 0;
-
   const teamOptions = useMemo(() => getTeamOptions(allSprints), [allSprints]);
 
   // Sections for default mode (team filter applied)
@@ -317,10 +355,8 @@ export function SprintListModal({
     [allSprints, search, isSearching, teamFilter],
   );
 
-  // Reset syncDone when search changes
   useEffect(() => { setSyncDone(false); }, [search]);
 
-  // Click outside to close
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
@@ -329,7 +365,6 @@ export function SprintListModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  // Escape to close
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -345,10 +380,7 @@ export function SprintListModal({
       newHiddenIds = currentHiddenIds.filter((id) => id !== sprintId);
     } else {
       newHiddenIds = [...currentHiddenIds, sprintId];
-      // Auto-unpin when hiding
-      if (pinnedIds.has(String(sprintId))) {
-        onPin(String(sprintId));
-      }
+      if (pinnedIds.has(String(sprintId))) onPin(String(sprintId));
     }
     await apiFetch("/api/jira/sprints", { method: "PUT", body: { hiddenIds: newHiddenIds } });
     await mutate();
@@ -377,7 +409,6 @@ export function SprintListModal({
     }
   }, [mutate]);
 
-  // Shared row handlers
   const selectSprint = useCallback((sprint: JiraSprint) => {
     onSelect(String(sprint.id), sprint.name);
     onClose();
@@ -415,23 +446,23 @@ export function SprintListModal({
       className={`absolute top-full z-50 mt-1.5 w-96 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] ${alignLeft ? "left-0" : "right-0"}`}
       style={{ animation: "sprintListIn 0.15s ease-out" }}
     >
-      {/* Search */}
-      <div className="px-3 pt-3 pb-1.5">
-        <TextInput
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search sprints..."
-          autoFocus
-        />
+      {/* Search + filter */}
+      <div className="flex items-center gap-1.5 px-3 pt-3 pb-1.5">
+        <div className="min-w-0 flex-1">
+          <TextInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sprints..."
+            inputSize="sm"
+            autoFocus
+          />
+        </div>
+        <TeamFilterDropdown teams={teamOptions} active={teamFilter} onToggle={setTeamFilter} />
       </div>
 
-      {/* Team filter chips */}
-      <TeamChips teams={teamOptions} active={teamFilter} onToggle={setTeamFilter} />
-
       {/* Content */}
-      <div className="max-h-80 overflow-y-auto px-1.5 pb-1.5">
+      <div className="max-h-80 overflow-y-auto px-1.5 pb-1">
         {isSearching ? (
-          /* -- Search mode: flat list across all sprints -- */
           searchResults.length > 0 ? (
             searchResults.map((s) =>
               renderRow(s, {
@@ -441,7 +472,7 @@ export function SprintListModal({
               }),
             )
           ) : (
-            <div className="px-3 py-6 text-center">
+            <div className="px-3 py-5 text-center">
               {syncDone ? (
                 <p className="text-xs text-text-muted">
                   No sprints found in Jira either.
@@ -452,17 +483,11 @@ export function SprintListModal({
                     No sprints match &ldquo;{search}&rdquo;
                   </p>
                   {syncError ? (
-                    <div className="mt-3 flex items-start justify-center gap-2 text-xs text-red-400">
+                    <div className="mt-2 flex items-start justify-center gap-2 text-xs text-red-400">
                       <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />
                       <span>
-                        {syncError}
-                        <button
-                          type="button"
-                          onClick={handleSync}
-                          className="ml-1.5 cursor-pointer text-red-300 underline underline-offset-2 hover:text-red-200"
-                        >
-                          Retry
-                        </button>
+                        {syncError}{" "}
+                        <button type="button" onClick={handleSync} className="cursor-pointer text-red-300 underline underline-offset-2 hover:text-red-200">Retry</button>
                       </span>
                     </div>
                   ) : (
@@ -470,7 +495,7 @@ export function SprintListModal({
                       type="button"
                       onClick={handleSync}
                       disabled={syncing}
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-text-secondary cursor-pointer hover:bg-overlay-subtle hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="mt-2 inline-flex items-center gap-1 text-xs text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} strokeWidth={1.5} />
                       {syncing ? "Syncing..." : "Sync from Jira"}
@@ -481,118 +506,79 @@ export function SprintListModal({
             </div>
           )
         ) : (
-          /* -- Default mode: sectioned view -- */
           <>
             {!hasDefaultContent && allSprints.length === 0 && (
-              <div className="px-3 py-6 text-center text-xs text-text-muted">
+              <div className="px-3 py-5 text-center text-xs text-text-muted">
                 No sprints cached. Sync from Jira to load.
               </div>
             )}
 
             {!hasDefaultContent && allSprints.length > 0 && teamFilter && (
-              <div className="px-3 py-6 text-center text-xs text-text-muted">
+              <div className="px-3 py-5 text-center text-xs text-text-muted">
                 No sprints for team {teamFilter}.
               </div>
             )}
 
-            {/* Pinned */}
             {pinnedSection.length > 0 && (
               <>
-                <SectionHeader
-                  label="Pinned"
-                  count={pinnedSection.length}
-                  collapsed={pinnedCollapsed}
-                  onToggle={() => setPinnedCollapsed((v) => !v)}
-                />
-                {!pinnedCollapsed &&
-                  pinnedSection.map((s) =>
-                    renderRow(s, { showBadge: true, showHide: false, showStakeholder: true }),
-                  )}
+                <SectionHeader label="Pinned" count={pinnedSection.length} collapsed={pinnedCollapsed} onToggle={() => setPinnedCollapsed((v) => !v)} />
+                {!pinnedCollapsed && pinnedSection.map((s) => renderRow(s, { showBadge: true, showHide: false, showStakeholder: true }))}
               </>
             )}
 
-            {/* Active & Future */}
             {activeFutureSection.length > 0 && (
               <>
-                <SectionHeader
-                  label="Active & Future"
-                  count={activeFutureSection.length}
-                  collapsed={activeFutureCollapsed}
-                  onToggle={() => setActiveFutureCollapsed((v) => !v)}
-                />
-                {!activeFutureCollapsed &&
-                  activeFutureSection.map((s) =>
-                    renderRow(s, { showBadge: false, showHide: true, showStakeholder: true }),
-                  )}
+                <SectionHeader label="Active & Future" count={activeFutureSection.length} collapsed={activeFutureCollapsed} onToggle={() => setActiveFutureCollapsed((v) => !v)} />
+                {!activeFutureCollapsed && activeFutureSection.map((s) => renderRow(s, { showBadge: false, showHide: true, showStakeholder: true }))}
               </>
             )}
 
-            {/* Recent closed */}
             {recentClosedSection.length > 0 && (
               <>
-                <SectionHeader
-                  label="Closed"
-                  count={recentClosedSection.length}
-                  collapsed={!closedExpanded}
-                  onToggle={() => setClosedExpanded((v) => !v)}
-                />
-                {closedExpanded &&
-                  recentClosedSection.map((s) =>
-                    renderRow(s, { showBadge: false, showHide: true, showStakeholder: true }),
-                  )}
+                <SectionHeader label="Closed" count={recentClosedSection.length} collapsed={!closedExpanded} onToggle={() => setClosedExpanded((v) => !v)} />
+                {closedExpanded && recentClosedSection.map((s) => renderRow(s, { showBadge: false, showHide: true, showStakeholder: true }))}
               </>
             )}
 
-            {/* Hidden sprints */}
             {hiddenSection.length > 0 && (
               <>
-                <SectionHeader
-                  label="Hidden"
-                  count={hiddenSection.length}
-                  collapsed={!hiddenExpanded}
-                  onToggle={() => setHiddenExpanded((v) => !v)}
-                />
-                {hiddenExpanded &&
-                  hiddenSection.map((s) =>
-                    renderRow(s, { showBadge: true, showHide: true, showStakeholder: false }),
-                  )}
+                <SectionHeader label="Hidden" count={hiddenSection.length} collapsed={!hiddenExpanded} onToggle={() => setHiddenExpanded((v) => !v)} />
+                {hiddenExpanded && hiddenSection.map((s) => renderRow(s, { showBadge: true, showHide: true, showStakeholder: false }))}
               </>
             )}
           </>
         )}
       </div>
 
-      {/* Footer: sync button (default mode only) */}
+      {/* Footer: subtle sync link */}
       {!isSearching && (
-        <div className="border-t border-border-default px-3 py-2">
-          {syncError && (
-            <div className="mb-2 flex items-start gap-2 rounded-md border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">
-              <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />
-              <span className="min-w-0">
-                {syncError}
-                <button
-                  type="button"
-                  onClick={handleSync}
-                  className="ml-1.5 cursor-pointer text-red-300 underline underline-offset-2 hover:text-red-200"
-                >
-                  Retry
-                </button>
-              </span>
-            </div>
+        <div className="flex items-center justify-center border-t border-border-default px-3 py-1.5">
+          {syncError ? (
+            <span className="flex items-center gap-1.5 text-[11px] text-red-400">
+              <AlertCircle size={11} strokeWidth={1.5} />
+              Sync failed
+              <button type="button" onClick={handleSync} className="cursor-pointer underline underline-offset-2 hover:text-red-300">retry</button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {syncDone ? (
+                <>
+                  <Check size={11} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                  <span className="text-[var(--color-brand-400)]">Synced</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={11} strokeWidth={1.5} className={syncing ? "animate-spin" : ""} />
+                  {syncing ? "Syncing..." : "Sync sprints"}
+                </>
+              )}
+            </button>
           )}
-          <Button
-            variant={syncDone ? "soft" : "ghost"}
-            size="md"
-            disabled={syncing}
-            onClick={handleSync}
-            icon={syncDone
-              ? <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
-              : <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} strokeWidth={1.5} />
-            }
-            className="w-full"
-          >
-            {syncDone ? "Synced" : syncing ? "Syncing..." : "Sync sprints"}
-          </Button>
         </div>
       )}
 
