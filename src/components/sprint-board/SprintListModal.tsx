@@ -117,37 +117,32 @@ function getTeamOptions(sprints: JiraSprint[]): string[] {
 
 function SectionHeader({
   label,
-  collapsible,
+  count,
   collapsed,
   onToggle,
 }: {
   label: string;
-  collapsible?: boolean;
-  collapsed?: boolean;
-  onToggle?: () => void;
+  count?: number;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
-  if (collapsible) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-1.5 px-3 pt-2.5 pb-0.5 text-caption font-medium uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary"
-      >
-        <ChevronRight
-          size={10}
-          strokeWidth={2}
-          className="shrink-0 transition-transform duration-150"
-          style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
-        />
-        {label}
-      </button>
-    );
-  }
-
   return (
-    <div className="px-3 pt-2.5 pb-0.5 text-caption font-medium uppercase tracking-widest text-text-muted">
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex w-full items-center gap-1.5 px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary"
+    >
+      <ChevronRight
+        size={9}
+        strokeWidth={2.5}
+        className="shrink-0 transition-transform duration-150"
+        style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+      />
       {label}
-    </div>
+      {count !== undefined && count > 0 && (
+        <span className="text-[10px] font-normal tabular-nums text-text-muted/60">{count}</span>
+      )}
+    </button>
   );
 }
 
@@ -176,7 +171,7 @@ function TeamChips({
 }) {
   if (teams.length <= 1) return null;
   return (
-    <div className="flex items-center gap-1 px-3 pb-1">
+    <div className="flex items-center gap-1 px-3 pb-1.5">
       {teams.map((t) => {
         const isActive = active === t;
         return (
@@ -184,10 +179,10 @@ function TeamChips({
             key={t}
             type="button"
             onClick={() => onToggle(isActive ? null : t)}
-            className={`rounded-md px-2 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+            className={`rounded-md border px-1.5 py-px text-[10px] font-semibold cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
-                ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
-                : "text-text-muted hover:bg-overlay-subtle hover:text-text-tertiary"
+                ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                : "border-transparent text-text-muted hover:border-border-default hover:text-text-tertiary"
             }`}
           >
             {t}
@@ -223,7 +218,7 @@ function SprintRow({
   return (
     <button
       type="button"
-      className="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="flex w-full items-center justify-between rounded-md px-3 py-1 text-[13px] text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       onClick={onSelect}
     >
       <span className="flex items-center gap-2 min-w-0">
@@ -297,6 +292,8 @@ export function SprintListModal({
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncDone, setSyncDone] = useState(false);
+  const [pinnedCollapsed, setPinnedCollapsed] = useState(false);
+  const [activeFutureCollapsed, setActiveFutureCollapsed] = useState(false);
   const [closedExpanded, setClosedExpanded] = useState(false);
   const [hiddenExpanded, setHiddenExpanded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -501,20 +498,32 @@ export function SprintListModal({
             {/* Pinned */}
             {pinnedSection.length > 0 && (
               <>
-                <SectionHeader label="Pinned" />
-                {pinnedSection.map((s) =>
-                  renderRow(s, { showBadge: true, showHide: false, showStakeholder: true }),
-                )}
+                <SectionHeader
+                  label="Pinned"
+                  count={pinnedSection.length}
+                  collapsed={pinnedCollapsed}
+                  onToggle={() => setPinnedCollapsed((v) => !v)}
+                />
+                {!pinnedCollapsed &&
+                  pinnedSection.map((s) =>
+                    renderRow(s, { showBadge: true, showHide: false, showStakeholder: true }),
+                  )}
               </>
             )}
 
             {/* Active & Future */}
             {activeFutureSection.length > 0 && (
               <>
-                <SectionHeader label="Active & Future" />
-                {activeFutureSection.map((s) =>
-                  renderRow(s, { showBadge: false, showHide: true, showStakeholder: true }),
-                )}
+                <SectionHeader
+                  label="Active & Future"
+                  count={activeFutureSection.length}
+                  collapsed={activeFutureCollapsed}
+                  onToggle={() => setActiveFutureCollapsed((v) => !v)}
+                />
+                {!activeFutureCollapsed &&
+                  activeFutureSection.map((s) =>
+                    renderRow(s, { showBadge: false, showHide: true, showStakeholder: true }),
+                  )}
               </>
             )}
 
@@ -522,8 +531,8 @@ export function SprintListModal({
             {recentClosedSection.length > 0 && (
               <>
                 <SectionHeader
-                  label="Recent closed"
-                  collapsible
+                  label="Closed"
+                  count={recentClosedSection.length}
                   collapsed={!closedExpanded}
                   onToggle={() => setClosedExpanded((v) => !v)}
                 />
@@ -537,20 +546,12 @@ export function SprintListModal({
             {/* Hidden sprints */}
             {hiddenSection.length > 0 && (
               <>
-                <div className="mx-3 mt-2 border-t border-border-default" />
-                <button
-                  type="button"
-                  onClick={() => setHiddenExpanded((v) => !v)}
-                  className="flex w-full items-center gap-1.5 px-3 pt-1.5 pb-0.5 text-caption font-medium uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary"
-                >
-                  <ChevronRight
-                    size={10}
-                    strokeWidth={2}
-                    className="shrink-0 transition-transform duration-150"
-                    style={{ transform: hiddenExpanded ? "rotate(90deg)" : "rotate(0deg)" }}
-                  />
-                  {hiddenSection.length} hidden
-                </button>
+                <SectionHeader
+                  label="Hidden"
+                  count={hiddenSection.length}
+                  collapsed={!hiddenExpanded}
+                  onToggle={() => setHiddenExpanded((v) => !v)}
+                />
                 {hiddenExpanded &&
                   hiddenSection.map((s) =>
                     renderRow(s, { showBadge: true, showHide: true, showStakeholder: false }),
