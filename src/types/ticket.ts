@@ -11,7 +11,7 @@ export type TicketReadiness = "drafting" | "waiting_for_feedback" | "ready_to_re
 export const READINESS_CONFIG: Record<TicketReadiness, { label: string; color: string; bg: string }> = {
   drafting:             { label: "Drafting",              color: "#60a5fa", bg: "rgba(96, 165, 250, 0.12)" },
   waiting_for_feedback: { label: "Waiting for Feedback",  color: "#e8a45a", bg: "rgba(232, 164, 90, 0.12)" },
-  ready_to_refine:      { label: "Ready to Refine",       color: "#86efac", bg: "rgba(134, 239, 172, 0.12)" },
+  ready_to_refine:      { label: "Ready to Refine",       color: "#22c55e", bg: "rgba(34, 197, 94, 0.12)" },
   on_hold:              { label: "On Hold",               color: "#9ca3af", bg: "rgba(156, 163, 175, 0.08)" },
 };
 
@@ -55,7 +55,7 @@ export const JIRA_STATUS_COLORS: Record<JiraStatus, { bg: string; text: string }
   "TO DO": { bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8" },
   "IN PROGRESS": { bg: "rgba(56, 152, 210, 0.15)", text: "#58b4e6" },
   TEST: { bg: "rgba(120, 90, 220, 0.15)", text: "#9b7ee8" },
-  DONE: { bg: "rgba(34, 197, 94, 0.15)", text: "#4ade80" },
+  DONE: { bg: "rgba(34, 197, 94, 0.15)", text: "#22c55e" },
   DEPRECATED: { bg: "rgba(120, 160, 120, 0.12)", text: "#7a9a7a" },
 };
 

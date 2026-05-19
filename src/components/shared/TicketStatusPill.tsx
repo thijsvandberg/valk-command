@@ -615,7 +615,7 @@ export function TicketStatusPill({
               disabled={!onJiraStatusChange}
               className={`${px} ${textSize} font-medium transition-colors duration-150 flex items-center gap-1.5 ${
                 onJiraStatusChange
-                  ? "cursor-pointer hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  ? "cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   : "cursor-default"
               } ${showReadiness ? "" : "rounded-r-md"}`}
               style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
