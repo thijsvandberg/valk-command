@@ -187,7 +187,7 @@ function TeamFilterDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-[34px] w-[34px] items-center justify-center rounded-lg border cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`flex h-7 w-7 items-center justify-center rounded-lg border cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           active
             ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/8 text-[var(--color-brand-400)]"
             : "border-border-default bg-[var(--color-surface-elevated)] text-text-muted hover:text-text-tertiary hover:border-border-strong"
