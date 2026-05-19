@@ -157,17 +157,17 @@
   --color-hover-list-item: rgba(0, 0, 0, 0.04);
   --color-hover-interactive: rgba(0, 0, 0, 0.06);
 
-  --color-diff-added-line: rgba(34, 134, 58, 0.14);
-  --color-diff-added-word: rgba(34, 134, 58, 0.28);
+  --color-diff-added-line: #dafbe1;
+  --color-diff-added-word: #aceebb;
   --color-diff-added-gutter: #1a7f37;
-  --color-diff-deleted-line: rgba(207, 34, 46, 0.12);
-  --color-diff-deleted-word: rgba(207, 34, 46, 0.25);
+  --color-diff-deleted-line: #ffebe9;
+  --color-diff-deleted-word: #ffc1ba;
   --color-diff-deleted-gutter: #cf222e;
   --color-diff-modified-badge: #8250df;
-  --color-diff-accept-bg: rgba(34, 134, 58, 0.10);
-  --color-diff-accept-border: rgba(34, 134, 58, 0.25);
-  --color-diff-reject-bg: rgba(207, 34, 46, 0.08);
-  --color-diff-reject-border: rgba(207, 34, 46, 0.22);
+  --color-diff-accept-bg: #dafbe1;
+  --color-diff-accept-border: #aceebb;
+  --color-diff-reject-bg: #ffebe9;
+  --color-diff-reject-border: #ffc1ba;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -184,6 +184,11 @@ html.theme-transition *,
 html.theme-transition *::before,
 html.theme-transition *::after {
   transition: background-color 200ms ease, color 150ms ease, border-color 200ms ease, box-shadow 200ms ease !important;
+}
+
+/* Diff action footer */
+.diff-action-footer {
+  box-shadow: 0 -4px 16px var(--color-overlay-strong);
 }
 
 /* Diff button hover states (CSS vars can't be used in Tailwind arbitrary hover classes) */
