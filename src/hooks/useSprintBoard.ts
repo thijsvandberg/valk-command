@@ -68,6 +68,7 @@ export function useTicketDetail(ticketKey: string | null) {
   const checkedRef = useRef<string | null>(null);
   const { mutate } = swr;
 
+  // Defer the Jira freshness check so it doesn't compete with the initial SWR fetch
   useEffect(() => {
     if (!ticketKey) return;
     if (checkedRef.current === ticketKey) return;
@@ -75,17 +76,19 @@ export function useTicketDetail(ticketKey: string | null) {
 
     let cancelled = false;
 
-    jiraApi.checkUpdated(ticketKey)
-      .then(async (result: { stale?: boolean; removed?: boolean } | null) => {
-        if (cancelled) return;
-        if (result?.removed) { mutate(); return; }
-        if (!result?.stale) return;
-        await jiraApi.syncTickets({ ticketKeys: [ticketKey] });
-        mutate();
-      })
-      .catch(() => { /* background check, fail silently */ });
+    const timer = setTimeout(() => {
+      jiraApi.checkUpdated(ticketKey)
+        .then(async (result: { stale?: boolean; removed?: boolean } | null) => {
+          if (cancelled) return;
+          if (result?.removed) { mutate(); return; }
+          if (!result?.stale) return;
+          await jiraApi.syncTickets({ ticketKeys: [ticketKey] });
+          mutate();
+        })
+        .catch(() => {});
+    }, 3000);
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [ticketKey, mutate]);
 
   return swr;

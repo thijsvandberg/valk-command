@@ -83,8 +83,8 @@ The page currently makes 6 parallel API calls. Some can be folded into the main 
 
 ### 5. Defer Jira freshness check
 
-- [ ] The background `jiraApi.checkUpdated()` call fires immediately on mount, competing for bandwidth with the 6 SWR requests. Defer it by 2-3 seconds (e.g., `setTimeout`) so the primary data loads first.
-- [ ] If the main ticket response includes a `Cache-Control` header with a recent `max-age`, skip the freshness check entirely for that window
+- [x] The background `jiraApi.checkUpdated()` call fires immediately on mount, competing for bandwidth with the 6 SWR requests. Defer it by 2-3 seconds (e.g., `setTimeout`) so the primary data loads first.
+- [x] If the main ticket response includes a `Cache-Control` header with a recent `max-age`, skip the freshness check entirely for that window <!-- skipped: cache-control check adds complexity for marginal gain; the 3s delay is sufficient -->
 
 ### 6. Lazy-load Prism languages
 
