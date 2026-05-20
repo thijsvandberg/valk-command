@@ -42,11 +42,11 @@ Notes: Item #21 already implemented. Duplicate `VIRTUALIZE_THRESHOLD` in `Sprint
 
 ### Phase 2: Memoization and re-render prevention
 
-- [ ] Split `filteredTickets` useMemo (11 dependencies) in `useSprintBoardFilters.ts` into layered memos: status filter -> epic filter -> assignee filter -> search filter -> sort
-- [ ] Split `ActivityProvider` context into `ActivityStatusContext` and `ActivityToastContext` with memoized context values to prevent full-tree re-renders
-- [ ] Lazy-load ticket detail sections: fetch comments, attachments, and linked issues only when their respective tab is active (not in the main `/api/tickets/[key]` response)
-- [ ] Memoize `renderMarkdown()` output using a content-hash cache (WeakMap or wrapper component with useMemo) to avoid re-parsing identical content
-- [ ] Add `React.memo` to `GroupStatBar`, `PreviewPane`, `StatusBadge`, and `SprintAnalytics` components
+- [x] Split `filteredTickets` useMemo (11 dependencies) in `useSprintBoardFilters.ts` into layered memos: status filter -> epic filter -> assignee filter -> search filter -> sort
+- [x] Split `ActivityProvider` context into `ActivityStatusContext` and `ActivityToastContext` with memoized context values to prevent full-tree re-renders
+- [ ] Lazy-load ticket detail sections: fetch comments, attachments, and linked issues only when their respective tab is active (not in the main `/api/tickets/[key]` response) <!-- skipped: comments/attachments/linked issues are all inline in the default "content" tab, not behind separate tabs. Splitting the API response would create a waterfall since all sections are visible immediately. -->
+- [x] Memoize `renderMarkdown()` output using a content-hash cache (WeakMap or wrapper component with useMemo) to avoid re-parsing identical content
+- [x] Add `React.memo` to `GroupStatBar`, `PreviewPane`, `StatusBadge`, and `SprintAnalytics` components
 
 ### Phase 3: Code splitting and bundle optimization
 

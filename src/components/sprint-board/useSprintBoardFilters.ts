@@ -123,51 +123,66 @@ export function useSprintBoardFilters(
     return [...prefixes].sort();
   }, [allTickets, sprintNameMap]);
 
-  const filteredTickets = useMemo(() => {
+  // Layered filter memos: each stage only recalculates when its specific filter changes.
+  // When only the search query changes, only the final search memo reruns.
+  const coreFiltered = useMemo(() => {
     const showRemoved = editStateFilter.has("removed");
     return allTickets.filter((t) => {
       const isRemoved = Boolean(t.removedFromJiraAt);
-
-      // Deleted tickets always pass through (shown with DELETED badge);
-      // when the "removed" filter is active exclusively, hide non-removed tickets
       if (!isRemoved && editStateFilter.size === 1 && showRemoved) return false;
-
       if (statusFilter.size > 0 && !statusFilter.has(t.jiraStatus)) return false;
       if (epicFilter.size > 0 && (!t.epic || !epicFilter.has(t.epic))) return false;
       if (assigneeFilter.size > 0) {
         const name = t.assignee?.name;
         if (!name || !assigneeFilter.has(name)) return false;
       }
-      if (readinessFilter.size > 0) {
-        const current = readinessMap[t.key] ?? null;
-        const matches = current === null ? readinessFilter.has("none") : readinessFilter.has(current);
-        if (!matches) return false;
-      }
       if (editStateFilter.size > 0) {
         const effectiveState = isRemoved ? "removed" : t.editState;
         if (!editStateFilter.has(effectiveState)) return false;
       }
       if (issueTypeFilter.size > 0 && !issueTypeFilter.has(t.type)) return false;
+      return true;
+    });
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, editStateFilter, issueTypeFilter]);
+
+  const metaFiltered = useMemo(() => {
+    if (readinessFilter.size === 0 && gapsFilter.size === 0) return coreFiltered;
+    return coreFiltered.filter((t) => {
+      if (readinessFilter.size > 0) {
+        const current = readinessMap[t.key] ?? null;
+        const matches = current === null ? readinessFilter.has("none") : readinessFilter.has(current);
+        if (!matches) return false;
+      }
       if (gapsFilter.size > 0) {
         if (gapsFilter.has("no_points") && (t.storyPoints != null || t.jiraStatus === "DEPRECATED" || t.type === "spike")) return false;
         if (gapsFilter.has("no_bv") && t.businessValue != null && t.businessValue >= 1) return false;
       }
+      return true;
+    });
+  }, [coreFiltered, readinessFilter, readinessMap, gapsFilter]);
+
+  const scopeFiltered = useMemo(() => {
+    if ((!isAllView || sprintFilter.size === 0) && teamFilter.size === 0) return metaFiltered;
+    return metaFiltered.filter((t) => {
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
       if (teamFilter.size > 0) {
         const sprintName = t.sprintId ? sprintNameMap?.[t.sprintId] : undefined;
         const prefix = sprintName ? extractTeamPrefix(sprintName) : null;
         if (!prefix || !teamFilter.has(prefix)) return false;
       }
-      if (searchQuery.trim().length >= 2) {
-        const q = searchQuery.toLowerCase();
-        const matchesKey = t.key.toLowerCase().includes(q);
-        const matchesTitle = t.title.toLowerCase().includes(q);
-        const matchesAssignee = t.assignee?.name?.toLowerCase().includes(q) ?? false;
-        if (!matchesKey && !matchesTitle && !matchesAssignee) return false;
-      }
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter, readinessMap, isAllView, sprintFilter, teamFilter, sprintNameMap, searchQuery, gapsFilter]);
+  }, [metaFiltered, isAllView, sprintFilter, teamFilter, sprintNameMap]);
+
+  const filteredTickets = useMemo(() => {
+    if (searchQuery.trim().length < 2) return scopeFiltered;
+    const q = searchQuery.toLowerCase();
+    return scopeFiltered.filter((t) => {
+      return t.key.toLowerCase().includes(q)
+        || t.title.toLowerCase().includes(q)
+        || (t.assignee?.name?.toLowerCase().includes(q) ?? false);
+    });
+  }, [scopeFiltered, searchQuery]);
 
   const sortedTickets = useMemo(() => {
     if (sortField === "rank") {

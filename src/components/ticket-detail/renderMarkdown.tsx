@@ -284,7 +284,28 @@ function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode 
   );
 }
 
+// LRU cache for parsed markdown output. Same content always produces
+// the same ReactNode tree, so caching avoids expensive re-parsing
+// when the same descriptions appear across views (board, side panel, detail).
+const MARKDOWN_CACHE_MAX = 100;
+const markdownCache = new Map<string, ReactNode[]>();
+
 export function renderMarkdown(text: string): ReactNode[] {
+  const cached = markdownCache.get(text);
+  if (cached) return cached;
+
+  const result = renderMarkdownUncached(text);
+
+  // Evict oldest entry when cache is full
+  if (markdownCache.size >= MARKDOWN_CACHE_MAX) {
+    const firstKey = markdownCache.keys().next().value;
+    if (firstKey !== undefined) markdownCache.delete(firstKey);
+  }
+  markdownCache.set(text, result);
+  return result;
+}
+
+function renderMarkdownUncached(text: string): ReactNode[] {
   const lines = text.split("\n");
   const elements: ReactNode[] = [];
   let codeBlockLines: string[] | null = null;

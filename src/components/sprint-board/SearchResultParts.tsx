@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Search, ExternalLink, IterationCw, Zap, ChevronRight, MessageSquare, FileText } from "lucide-react";
 import type { FuseResultMatch } from "fuse.js";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
@@ -12,7 +13,7 @@ import { JIRA_STATUS_COLORS } from "@/types/ticket";
 export type SearchMode = "local" | "jira";
 export type FocusedPanel = "list" | "preview";
 
-export function StatusBadge({ status }: { status: string }) {
+export const StatusBadge = memo(function StatusBadge({ status }: { status: string }) {
   const upper = status.toUpperCase();
   const color = JIRA_STATUS_COLORS[upper as keyof typeof JIRA_STATUS_COLORS] ?? { bg: "rgba(148, 163, 184, 0.12)", text: "#94a3b8" };
   return (
@@ -23,7 +24,7 @@ export function StatusBadge({ status }: { status: string }) {
       {upper}
     </span>
   );
-}
+});
 
 export function relativeDate(isoString: string | null): string | null {
   if (!isoString) return null;
@@ -40,7 +41,7 @@ export function relativeDate(isoString: string | null): string | null {
   return `Updated ${Math.floor(months / 12)}y ago`;
 }
 
-export function PreviewPane({
+export const PreviewPane = memo(function PreviewPane({
   result,
   sprintNameMap,
   onClose,
@@ -174,7 +175,7 @@ export function PreviewPane({
       )}
     </div>
   );
-}
+});
 
 // Merges Fuse match index pairs that are within `gap` characters of each other, then drops
 // spans shorter than `minLength`. This removes the scattered single/double-char highlights

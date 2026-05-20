@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
 import type { Ticket, JiraStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { ChevronRight, BarChart2, X } from "lucide-react";
@@ -27,7 +27,7 @@ interface SprintAnalyticsProps {
   sprintId?: string | null;
 }
 
-export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsProps) {
+export const SprintAnalytics = memo(function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsProps) {
   const [expanded, setExpanded] = useState(true);
   const [assigneesExpanded, setAssigneesExpanded] = useState(false);
 
@@ -325,4 +325,4 @@ export function SprintAnalytics({ tickets, onClose, sprintId }: SprintAnalyticsP
       )}
     </div>
   );
-}
+});

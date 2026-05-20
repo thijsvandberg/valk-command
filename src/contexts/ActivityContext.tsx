@@ -23,13 +23,15 @@ export interface Toast {
   entry: ActivityLogEntry;
 }
 
-interface ActivityContextValue {
+// Split into two contexts to prevent toast changes from re-rendering
+// components that only read activity status (and vice versa).
+
+interface ActivityStatusContextValue {
   activityState: ActivityState;
   lastEntry: ActivityLogEntry | null;
   unacknowledgedErrors: ActivityLogEntry[];
   logEntries: ActivityLogEntry[];
   jiraOnline: boolean;
-  toasts: Toast[];
   runningEntries: ActivityLogEntry[];
   incrementalSyncRemaining: number;
   incrementalSyncLastAt: string | null;
@@ -40,17 +42,33 @@ interface ActivityContextValue {
   acknowledgeError: (id: string) => Promise<void>;
   acknowledgeAllErrors: () => Promise<void>;
   retryEntry: (id: string) => Promise<void>;
-  dismissToast: (id: string) => void;
   retryHealth: () => void;
   mutateActivityLog: () => void;
 }
 
-const ActivityContext = createContext<ActivityContextValue | null>(null);
+interface ActivityToastContextValue {
+  toasts: Toast[];
+  dismissToast: (id: string) => void;
+}
 
-export function useActivityContext() {
-  const ctx = useContext(ActivityContext);
-  if (!ctx) throw new Error("useActivityContext must be used within ActivityProvider");
+const ActivityStatusCtx = createContext<ActivityStatusContextValue | null>(null);
+const ActivityToastCtx = createContext<ActivityToastContextValue | null>(null);
+
+export function useActivityStatus() {
+  const ctx = useContext(ActivityStatusCtx);
+  if (!ctx) throw new Error("useActivityStatus must be used within ActivityProvider");
   return ctx;
+}
+
+export function useActivityToasts() {
+  const ctx = useContext(ActivityToastCtx);
+  if (!ctx) throw new Error("useActivityToasts must be used within ActivityProvider");
+  return ctx;
+}
+
+// Backward-compatible combined hook
+export function useActivityContext() {
+  return { ...useActivityStatus(), ...useActivityToasts() };
 }
 
 const fetcher = (url: string) => swrFetcher<ActivityLogEntry[]>(url).catch(() => [] as ActivityLogEntry[]);
@@ -78,7 +96,6 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     "/api/activity-log?limit=20",
     fetcher,
     {
-      // Poll faster when jobs are running, slower when idle
       refreshInterval: (data) => {
         const hasRunning = data?.some((e) => e.status === "running");
         return hasRunning ? 5000 : 30000;
@@ -116,7 +133,6 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     lastSyncCount: incrementalSyncLastCount,
   } = useSchedulerTick(mutateActivityLog);
 
-  // Independent pipeline sync (separate from Jira scheduler)
   usePipelineTick();
 
   const toasts = useMemo(
@@ -151,11 +167,15 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const lastEntry = entries[0] ?? null;
 
-  const unacknowledgedErrors = entries.filter(
-    (e) => e.status === "failed" && !e.acknowledged,
+  const unacknowledgedErrors = useMemo(
+    () => entries.filter((e) => e.status === "failed" && !e.acknowledged),
+    [entries],
   );
 
-  const runningEntries = entries.filter((e) => e.status === "running");
+  const runningEntries = useMemo(
+    () => entries.filter((e) => e.status === "running"),
+    [entries],
+  );
 
   const jiraOnline = health?.ok !== false;
 
@@ -223,31 +243,37 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     mutateHealth();
   }, [mutateHealth]);
 
+  // Memoized context values to prevent unnecessary re-renders
+  const statusValue = useMemo<ActivityStatusContextValue>(() => ({
+    activityState,
+    lastEntry,
+    unacknowledgedErrors,
+    runningEntries,
+    incrementalSyncRemaining,
+    incrementalSyncLastAt,
+    incrementalSyncLastCount,
+    logEntries: entries,
+    jiraOnline,
+    triggerSync,
+    cancelEntry,
+    cancelAllEntries,
+    acknowledgeError,
+    acknowledgeAllErrors,
+    retryEntry,
+    retryHealth,
+    mutateActivityLog,
+  }), [activityState, lastEntry, unacknowledgedErrors, runningEntries, incrementalSyncRemaining, incrementalSyncLastAt, incrementalSyncLastCount, entries, jiraOnline, triggerSync, cancelEntry, cancelAllEntries, acknowledgeError, acknowledgeAllErrors, retryEntry, retryHealth, mutateActivityLog]);
+
+  const toastValue = useMemo<ActivityToastContextValue>(() => ({
+    toasts,
+    dismissToast,
+  }), [toasts, dismissToast]);
+
   return (
-    <ActivityContext.Provider
-      value={{
-        activityState,
-        lastEntry,
-        unacknowledgedErrors,
-        runningEntries,
-        incrementalSyncRemaining,
-        incrementalSyncLastAt,
-        incrementalSyncLastCount,
-        logEntries: entries,
-        jiraOnline,
-        toasts,
-        triggerSync,
-        cancelEntry,
-        cancelAllEntries,
-        acknowledgeError,
-        acknowledgeAllErrors,
-        retryEntry,
-        dismissToast,
-        retryHealth,
-        mutateActivityLog,
-      }}
-    >
-      {children}
-    </ActivityContext.Provider>
+    <ActivityStatusCtx.Provider value={statusValue}>
+      <ActivityToastCtx.Provider value={toastValue}>
+        {children}
+      </ActivityToastCtx.Provider>
+    </ActivityStatusCtx.Provider>
   );
 }

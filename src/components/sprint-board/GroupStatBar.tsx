@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { Ticket } from "@/types/ticket";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
@@ -17,7 +18,7 @@ export interface GroupStatBarProps {
   showDot?: boolean;
 }
 
-export function GroupStatBar({
+export const GroupStatBar = memo(function GroupStatBar({
   tickets,
   label,
   activeCriterion = null,
@@ -128,4 +129,4 @@ export function GroupStatBar({
       )}
     </div>
   );
-}
+});
