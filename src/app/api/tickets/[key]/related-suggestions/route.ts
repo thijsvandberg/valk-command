@@ -134,12 +134,14 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   // Submit find-related skill to workspace
+  const conversationId = `related-${key}-${Date.now()}`;
   interface TaskResponse { id?: string; error?: string }
   const taskResult = await agentFetch<TaskResponse>("/api/tasks", {
     method: "POST",
     body: {
       skill: "find-related",
       args: { args: key },
+      conversationId,
     },
     retries: 2,
     timeout: TASK_TIMEOUT_MS,
