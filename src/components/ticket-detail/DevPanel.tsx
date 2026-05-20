@@ -99,36 +99,28 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
     <div className="rounded-lg border border-border-subtle bg-overlay-subtle p-3">
       {/* Header: title + status */}
       <div className="flex items-start gap-2">
-        <GitPullRequest size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-text-muted" />
+        <GitPullRequest size={13} strokeWidth={1.5} className="mt-0.5 shrink-0 text-text-muted" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-start justify-between gap-1.5">
             <a
               href={pr.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-w-0 truncate text-xs font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "color 0.15s ease" }}
+              className="min-w-0 text-xs font-medium leading-snug text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "color 0.15s ease", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {pr.title}
             </a>
             <span
-              className="shrink-0 rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider"
+              className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider"
               style={{ backgroundColor: style.bg, color: style.text }}
             >
               {pr.status}
             </span>
           </div>
-          {/* Meta line: author, repo, age */}
-          <p className="mt-1 text-label text-text-muted">
-            {pr.author}
-            <span className="text-text-muted"> in </span>
-            <span className="text-text-muted">{pr.repo}</span>
-            {pr.createdAt && (
-              <>
-                <span className="text-text-muted"> · </span>
-                <span className="text-text-muted">{relativeDate(pr.createdAt)}</span>
-              </>
-            )}
+          <p className="mt-1 truncate text-label text-text-muted">
+            {pr.author} in {pr.repo}
+            {pr.createdAt && <> · {relativeDate(pr.createdAt)}</>}
           </p>
         </div>
       </div>
@@ -177,19 +169,19 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
 
       {/* Build statuses */}
       {pr.buildStatuses.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        <div className="mt-2 flex flex-col gap-1">
           {pr.buildStatuses.map((b, i) => (
             <a
               key={`${b.name}-${i}`}
               href={b.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-label text-text-muted cursor-pointer hover:text-text-tertiary"
+              className="flex items-center gap-1.5 text-label text-text-muted cursor-pointer hover:text-text-tertiary"
               style={{ transition: "color 0.15s ease" }}
               title={`${b.name}: ${b.state}`}
             >
               <BuildStateIcon state={b.state} />
-              <span className="max-w-[120px] truncate">{b.name}</span>
+              <span className="min-w-0 truncate">{b.name}</span>
             </a>
           ))}
         </div>
@@ -314,13 +306,15 @@ export function DevPanel({
         aria-expanded={isExpanded}
         className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">
-            Development
-          </h3>
-          <span className="text-caption text-text-muted">
-            {counts.length > 0 ? counts.join(" \u00B7 ") : "(0)"}
-          </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <h3 className="shrink-0 text-label font-semibold uppercase tracking-wider text-text-muted">
+              Development
+            </h3>
+            <span className="truncate text-caption text-text-muted">
+              {counts.length > 0 ? counts.join(" \u00B7 ") : "(0)"}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           {hasData && onExpand && (
