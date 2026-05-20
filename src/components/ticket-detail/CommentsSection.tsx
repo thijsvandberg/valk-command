@@ -143,7 +143,7 @@ export function CommentsSection({
         <div>
           <SectionHeader title="Jira Comments" count={jiraComments.length} />
           <div className="mt-3 space-y-4">
-            {jiraComments.map((comment) => {
+            {[...jiraComments].reverse().map((comment) => {
               const isFlagComment = /flag_on|Flag added|flag_off|Flag removed/i.test(comment.content);
               return (
                 <div
@@ -160,7 +160,7 @@ export function CommentsSection({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
-                      <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString()}</span>
+                      <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}</span>
                       {isFlagComment && (
                         <Flag size={11} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
                       )}
