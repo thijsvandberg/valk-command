@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
-import { ChevronRight, AlertTriangle, Play } from "lucide-react";
+import { ChevronRight, AlertTriangle, Play, Flag, Zap } from "lucide-react";
+import Link from "next/link";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
@@ -271,6 +272,28 @@ export function TicketSidebar({
         }}
       >
 
+        {/* Flagged banner */}
+        {ticket.flagged && (() => {
+          const flagComment = detail?.jiraComments
+            ?.slice()
+            .reverse()
+            .find((c) => c.content.includes("flag_on") || c.content.includes("Flag added"));
+          const flagReason = flagComment?.content
+            ?.replace(/^.*?flag_on\s*Flag added\s*/i, "")
+            ?.trim() || null;
+          return (
+            <div className="mb-4 rounded-lg border border-[#e5534b]/20 bg-[#e5534b]/[0.06] px-3.5 py-3">
+              <div className="flex items-center gap-2">
+                <Flag size={13} strokeWidth={1.5} className="shrink-0 text-[#e5534b]" fill="#e5534b" />
+                <span className="text-xs font-semibold text-[#e5534b]">Flagged</span>
+              </div>
+              {flagReason && (
+                <p className="mt-2 text-xs leading-relaxed text-text-secondary">{flagReason}</p>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Completeness indicator */}
         <div>
           <div className="flex items-center justify-between">
@@ -327,6 +350,25 @@ export function TicketSidebar({
                 );
               })()}
             </DetailRow>
+            {ticket.epic && (
+              <DetailRow label="Epic">
+                {ticket.epicKey ? (
+                  <Link
+                    href={`/tickets/${ticket.epicKey}`}
+                    className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium text-[#9b6cd4] bg-[#9b6cd4]/10 hover:bg-[#9b6cd4]/20 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{ transition: "background-color 0.15s ease" }}
+                  >
+                    <Zap size={10} strokeWidth={2} className="shrink-0" />
+                    <span className="truncate max-w-[140px]">{ticket.epic}</span>
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                    <Zap size={10} strokeWidth={2} className="shrink-0" />
+                    {ticket.epic}
+                  </span>
+                )}
+              </DetailRow>
+            )}
             <DetailRow label="Readiness">
               <div className="flex items-center justify-end gap-2">
                 {readiness && (
