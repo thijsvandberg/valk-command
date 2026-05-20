@@ -147,6 +147,15 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     },
     {
       category: "action",
+      id: "action-keyboard-shortcuts",
+      label: "Keyboard Shortcuts",
+      aliases: ["shortcuts", "keys", "hotkeys", "keybindings"],
+      execute: () => {
+        window.dispatchEvent(new Event("valk:openKeyboardShortcuts"));
+      },
+    },
+    {
+      category: "action",
       id: "action-new-investigation",
       label: "New Investigation",
       aliases: ["investigate", "search code", "code search", "codebase"],

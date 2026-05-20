@@ -97,15 +97,7 @@ export function UserProfilePopover({
         label: "Keyboard shortcuts",
         action: () => {
           onClose();
-          requestAnimationFrame(() => {
-            window.dispatchEvent(
-              new KeyboardEvent("keydown", {
-                key: "k",
-                metaKey: true,
-                bubbles: true,
-              }),
-            );
-          });
+          window.dispatchEvent(new Event("valk:openKeyboardShortcuts"));
         },
       },
       {
