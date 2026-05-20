@@ -689,7 +689,7 @@ export default function TicketDetailPage({
         </div>
 
       <div className="sticky top-0 min-h-full self-stretch overflow-visible">
-        <TicketSidebar ticket={ticket} detail={detail} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} />
+        <TicketSidebar ticket={ticket} detail={detail} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} />
       </div>
       </div>
     </div>

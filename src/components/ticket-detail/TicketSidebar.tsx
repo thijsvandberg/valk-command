@@ -46,11 +46,15 @@ const COMPLETENESS_LABELS: Record<string, string> = {
 export function TicketSidebar({
   ticket,
   detail,
+  collapsed,
+  onCollapsedChange,
   onNavigateToReview,
   onNavigateToDev,
 }: {
   ticket: Ticket;
   detail: TicketDetail | undefined;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
   onNavigateToReview?: () => void;
   onNavigateToDev?: () => void;
 }) {
@@ -58,7 +62,6 @@ export function TicketSidebar({
   const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [poNotes, setPoNotes] = useState(ticket.notes);
-  const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
 
   // Resize state
@@ -85,8 +88,8 @@ export function TicketSidebar({
   }, []);
 
   const handleResizeDoubleClick = useCallback(() => {
-    setCollapsed((c) => !c);
-  }, [setCollapsed]);
+    onCollapsedChange(!collapsed);
+  }, [onCollapsedChange, collapsed]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -122,11 +125,11 @@ export function TicketSidebar({
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.getAttribute("contenteditable")) return;
       e.preventDefault();
-      setCollapsed((c) => !c);
+      onCollapsedChange(!collapsed);
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [setCollapsed]);
+  }, [onCollapsedChange, collapsed]);
 
   const handleReadinessChange = useCallback(async (v: TicketReadiness | null) => {
     setReadiness(v);
@@ -235,7 +238,7 @@ export function TicketSidebar({
             variant="ghost"
             size="md"
             iconOnly
-            onClick={() => setCollapsed(true)}
+            onClick={() => onCollapsedChange(true)}
             className="!text-text-tertiary hover:!text-text-secondary"
             aria-label="Collapse sidebar"
             title="Collapse sidebar  [  "
