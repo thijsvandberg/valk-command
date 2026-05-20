@@ -56,12 +56,12 @@ Currently the ticket detail view shows subtasks and linked issues as read-only l
 - [x] Confirmation before removing a link
 
 ### Phase 4: AI-powered related issue search (interface only)
-- [ ] "Find related" button in the Linked Issues section header
-- [ ] UI shell: loading state, suggestion list layout, empty state
-- [ ] Each suggestion shows: issue key, title, relevance indicator, suggested relation type
-- [ ] "Link" action on each suggestion opens the link dialog pre-filled with that issue and suggested relation
-- [ ] "Dismiss" action to remove a suggestion from the list
-- [ ] Backend integration deferred to BRDG-143 (workspace AI search)
+- [x] "Find related" button in the Linked Issues section header
+- [x] UI shell: loading state, suggestion list layout, empty state
+- [x] Each suggestion shows: issue key, title, relevance indicator, suggested relation type
+- [x] "Link" action on each suggestion opens the link dialog pre-filled with that issue and suggested relation
+- [x] "Dismiss" action to remove a suggestion from the list
+- [x] Backend integration deferred to BRDG-143 (workspace AI search)
 
 ### Phase 5: Polish
 - [ ] Optimistic UI updates for all create/delete/reorder operations

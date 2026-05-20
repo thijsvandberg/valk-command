@@ -10,8 +10,9 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { LinkIssueDialog } from "./LinkIssueDialog";
+import { RelatedIssueSuggestionsPanel, type RelatedSuggestion } from "./RelatedIssueSuggestions";
 import { tickets } from "@/lib/api-client";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Sparkles } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
@@ -24,6 +25,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [linkDialogDefaults, setLinkDialogDefaults] = useState<{ targetKey?: string; relation?: string }>({});
   const [confirmDelete, setConfirmDelete] = useState<LinkedIssue | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete || isDeleting) return;
@@ -53,6 +55,10 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     onMutate();
   }, [onMutate]);
 
+  const handleLinkSuggestion = useCallback((suggestion: RelatedSuggestion) => {
+    openLinkDialog({ targetKey: suggestion.key, relation: suggestion.suggestedRelation });
+  }, [openLinkDialog]);
+
   const grouped = issues.reduce<Record<string, LinkedIssue[]>>((acc, issue) => {
     if (!acc[issue.relation]) acc[issue.relation] = [];
     acc[issue.relation].push(issue);
@@ -65,15 +71,26 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         title="Linked Issues"
         count={issues.length}
         actions={
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Plus size={12} strokeWidth={2} />}
-            onClick={() => openLinkDialog()}
-            aria-label="Link issue"
-          >
-            Link
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Sparkles size={12} strokeWidth={2} />}
+              onClick={() => setShowSuggestions(true)}
+              aria-label="Find related issues"
+            >
+              Find related
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Plus size={12} strokeWidth={2} />}
+              onClick={() => openLinkDialog()}
+              aria-label="Link issue"
+            >
+              Link
+            </Button>
+          </>
         }
       />
 
@@ -119,6 +136,14 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
             </div>
           ))}
         </div>
+      )}
+
+      {showSuggestions && (
+        <RelatedIssueSuggestionsPanel
+          ticketKey={ticketKey}
+          onClose={() => setShowSuggestions(false)}
+          onLinkSuggestion={handleLinkSuggestion}
+        />
       )}
 
       <LinkIssueDialog
