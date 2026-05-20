@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { ticketSubtask } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
 import { randomUUID } from "crypto";
 
@@ -36,11 +37,18 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const projectKey = key.split("-")[0];
 
-  const jiraResult = await jiraClient.createIssue({
-    summary: title,
-    parentKey: key,
-    projectKey,
-  });
+  let jiraResult: { key: string; id: string };
+  try {
+    jiraResult = await jiraClient.createIssue({
+      summary: title,
+      parentKey: key,
+      projectKey,
+    });
+  } catch (err) {
+    logger.error("subtask-create", `Jira create failed for parent ${key}: ${err}`);
+    const message = err instanceof Error ? err.message : "Jira API error";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   await db.insert(ticketSubtask).values({
     id: randomUUID(),

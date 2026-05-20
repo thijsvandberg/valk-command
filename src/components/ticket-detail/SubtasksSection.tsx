@@ -7,9 +7,9 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
-import { Plus, Loader2, GripVertical } from "lucide-react";
+import { ApiError } from "@/lib/api-client";
+import { Loader2, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -92,14 +92,12 @@ function SortableSubtaskRow({ sub, isLast }: { sub: Subtask; isLast: boolean }) 
 
 export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
-  const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<Subtask[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Use localOrder if available (during drag operations), otherwise use prop order
   const orderedSubtasks = localOrder ?? subtasks;
 
   const filtered = filter === "all"
@@ -127,7 +125,6 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
     setLocalOrder(reordered);
 
     const movedKey = active.id as string;
-    // Determine ranking reference
     const rankBefore = newIndex < reordered.length - 1 ? reordered[newIndex + 1].key : undefined;
     const rankAfter = newIndex > 0 && !rankBefore ? reordered[newIndex - 1].key : undefined;
 
@@ -155,11 +152,11 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
     try {
       await tickets.createSubtask(ticketKey, { title });
       setNewTitle("");
-      setShowForm(false);
       setLocalOrder(null);
       onMutate();
     } catch (err) {
-      setError("Failed to create subtask. Check Jira connection.");
+      const detail = err instanceof ApiError ? err.message : "Jira API error";
+      setError(`Failed to create subtask: ${detail}`);
       console.error("Failed to create subtask:", err);
     } finally {
       setIsCreating(false);
@@ -171,45 +168,60 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
       e.preventDefault();
       handleCreate();
     } else if (e.key === "Escape") {
-      setShowForm(false);
       setNewTitle("");
+      inputRef.current?.blur();
     }
   }, [handleCreate]);
 
-  const openForm = useCallback(() => {
-    setShowForm(true);
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, []);
-
-  // DnD only works when showing all subtasks (not filtered)
   const isDndEnabled = filter === "all" && filtered.length > 1;
 
-  const subtaskList = (
-    <div className={`${showForm ? "mt-2" : "mt-3"} overflow-hidden rounded-lg border border-border-default`}>
-      {filtered.map((sub, idx) => (
-        isDndEnabled ? (
-          <SortableSubtaskRow key={sub.key} sub={sub} isLast={idx === filtered.length - 1} />
-        ) : (
-          <div
-            key={sub.key}
-            className={`group flex items-center gap-3 px-3 py-2.5 ${
-              idx < filtered.length - 1 ? "border-b border-border-subtle" : ""
-            }`}
-          >
-            <IssueTypeIcon type={sub.type} size={14} />
-            <Link
-              href={`/tickets/${sub.key}`}
-              className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {sub.key}
-            </Link>
-            <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
-            <StatusBadge status={sub.jiraStatus} />
-            <Avatar assignee={sub.assignee} size={22} />
-          </div>
-        )
-      ))}
+  const subtaskRows = filtered.map((sub, idx) => (
+    isDndEnabled ? (
+      <SortableSubtaskRow key={sub.key} sub={sub} isLast={idx === filtered.length - 1} />
+    ) : (
+      <div
+        key={sub.key}
+        className={`group flex items-center gap-3 px-3 py-2.5 ${
+          idx < filtered.length - 1 ? "border-b border-border-subtle" : ""
+        }`}
+      >
+        <IssueTypeIcon type={sub.type} size={14} />
+        <Link
+          href={`/tickets/${sub.key}`}
+          className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {sub.key}
+        </Link>
+        <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
+        <StatusBadge status={sub.jiraStatus} />
+        <Avatar assignee={sub.assignee} size={22} />
+      </div>
+    )
+  ));
+
+  // Always-visible inline input row at the bottom of the list
+  const inlineInput = (
+    <div className={`flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}>
+      <IssueTypeIcon type="subtask" size={14} />
+      <input
+        ref={inputRef}
+        type="text"
+        value={newTitle}
+        onChange={(e) => { setNewTitle(e.target.value); setError(null); }}
+        onKeyDown={handleKeyDown}
+        placeholder="Create subtask..."
+        disabled={isCreating}
+        className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none disabled:opacity-50"
+      />
+      {isCreating && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
+    </div>
+  );
+
+  const listContent = (
+    <div className="mt-3 overflow-hidden rounded-lg border border-border-default">
+      {subtaskRows}
+      {inlineInput}
     </div>
   );
 
@@ -219,17 +231,6 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
         title="Subtasks"
         count={filter === "all" ? subtasks.length : undefined}
         countLabel={countLabel}
-        actions={
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Plus size={12} strokeWidth={2} />}
-            onClick={openForm}
-            aria-label="Add subtask"
-          >
-            Add
-          </Button>
-        }
       />
 
       {/* Status filter chips */}
@@ -255,58 +256,27 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
         </div>
       )}
 
-      {/* Inline creation form */}
-      {showForm && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-3 py-2">
-          <IssueTypeIcon type="subtask" size={14} />
-          <input
-            ref={inputRef}
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Subtask title..."
-            disabled={isCreating}
-            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none disabled:opacity-50"
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleCreate}
-            disabled={!newTitle.trim() || isCreating}
-            icon={isCreating ? <Loader2 size={11} className="animate-spin" /> : undefined}
-          >
-            Create
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setShowForm(false); setNewTitle(""); }}
-            disabled={isCreating}
-          >
-            Cancel
-          </Button>
-        </div>
-      )}
-
       {error && (
         <p className="mt-2 text-xs text-red-400/80">{error}</p>
       )}
 
-      {/* Subtask list */}
-      {filtered.length > 0 ? (
-        isDndEnabled ? (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={filtered.map((s) => s.key)} strategy={verticalListSortingStrategy}>
-              {subtaskList}
-            </SortableContext>
-          </DndContext>
-        ) : subtaskList
+      {/* Subtask list + inline input */}
+      {filtered.length > 0 && isDndEnabled ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filtered.map((s) => s.key)} strategy={verticalListSortingStrategy}>
+            {listContent}
+          </SortableContext>
+        </DndContext>
+      ) : filtered.length > 0 ? (
+        listContent
       ) : subtasks.length > 0 ? (
-        <p className="mt-3 text-sm text-text-muted">No subtasks matching this filter</p>
-      ) : !showForm ? (
-        <p className="mt-3 text-sm text-text-muted">No subtasks</p>
-      ) : null}
+        <>
+          <p className="mt-3 text-sm text-text-muted">No subtasks matching this filter</p>
+          {listContent}
+        </>
+      ) : (
+        listContent
+      )}
     </div>
   );
 }
