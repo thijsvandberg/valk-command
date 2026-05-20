@@ -296,8 +296,29 @@ export function TicketSidebar({
             .reverse()
             .find((c) => c.content.includes("flag_on") || c.content.includes("Flag added"));
           const displayReason = flagComment?.content
-            ?.replace(/^.*?flag_on\s*Flag added\s*/i, "")
+            ?.replace(/^:?flag_on:?\s*Flag added\s*/i, "")
             ?.trim() || null;
+
+          // Render text with paragraph breaks and clickable links
+          function renderFlagContent(text: string) {
+            const paragraphs = text.split(/\n{2,}/);
+            return paragraphs.map((para, i) => {
+              // Convert markdown links [text](url) and bare URLs to clickable links
+              const parts = para.split(/(\[.*?\]\(.*?\)|https?:\/\/\S+)/g);
+              const elements = parts.map((part, j) => {
+                const mdLink = part.match(/^\[(.*?)\]\((.*?)\)$/);
+                if (mdLink) {
+                  return <a key={j} href={mdLink[2]} target="_blank" rel="noopener noreferrer" className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 hover:decoration-[var(--color-brand-400)]" style={{ transition: "text-decoration-color 0.15s ease" }}>{mdLink[1]}</a>;
+                }
+                if (/^https?:\/\/\S+$/.test(part)) {
+                  return <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 hover:decoration-[var(--color-brand-400)] break-all" style={{ transition: "text-decoration-color 0.15s ease" }}>{part}</a>;
+                }
+                return part;
+              });
+              return <p key={i} className={i > 0 ? "mt-2" : ""}>{elements}</p>;
+            });
+          }
+
           return (
             <div className="mb-4 rounded-lg border border-[#e5534b]/20 bg-[#e5534b]/[0.06] px-3.5 py-3">
               <div className="flex items-center gap-2">
@@ -305,7 +326,9 @@ export function TicketSidebar({
                 <span className="text-xs font-semibold text-[#e5534b]">Flagged</span>
               </div>
               {displayReason && (
-                <p className="mt-2 text-xs leading-relaxed text-text-secondary">{displayReason}</p>
+                <div className="mt-2 text-xs leading-relaxed text-text-secondary">
+                  {renderFlagContent(displayReason)}
+                </div>
               )}
             </div>
           );
