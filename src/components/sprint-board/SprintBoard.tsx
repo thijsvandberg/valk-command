@@ -269,7 +269,7 @@ export default function SprintBoard() {
   const testCount = allTickets.filter((t) => t.jiraStatus === "TEST").length;
   const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
   const totalPoints = allTickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0);
-  const noPointsCount = allTickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED").length;
+  const noPointsCount = allTickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike").length;
   const deprecatedWithSp = allTickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
   const bvScoredTickets = allTickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvScoredTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
@@ -842,12 +842,11 @@ export default function SprintBoard() {
       {pageTitle}
       <div className="flex min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
-        {(isAllView || activeSprint || f.activeView) && (
-          <ViewHeader
-            icon={isAllView ? <LayoutGrid size={15} strokeWidth={1.5} className="text-text-tertiary" />
-              : f.activeView ? <Bookmark size={15} strokeWidth={1.5} className="text-text-tertiary" fill="currentColor" />
-              : <CalendarRange size={15} strokeWidth={1.5} className="text-text-tertiary" />}
-            actions={<>
+        <ViewHeader
+          icon={isAllView ? <LayoutGrid size={15} strokeWidth={1.5} className="text-text-tertiary" />
+            : f.activeView ? <Bookmark size={15} strokeWidth={1.5} className="text-text-tertiary" fill="currentColor" />
+            : <CalendarRange size={15} strokeWidth={1.5} className="text-text-tertiary" />}
+          actions={<>
               {!isAllView && !f.activeView && activeSprint && (
                 <Button
                   variant="secondary"
@@ -941,10 +940,10 @@ export default function SprintBoard() {
               </div>
             </>}
           >
-            <ViewHeaderTitle>
-              {isAllView ? "All tickets" : f.activeView ? f.activeView.title : activeSprint!.name}
-            </ViewHeaderTitle>
-            {!ticketsLoading && (
+          <ViewHeaderTitle>
+            {isAllView ? "All tickets" : f.activeView ? f.activeView.title : activeSprint ? activeSprint.name : "Sprint Board"}
+          </ViewHeaderTitle>
+          {!ticketsLoading && (isAllView || activeSprint || f.activeView) && (
               <>
                 <ViewHeaderDivider />
                 <div className="flex items-center gap-1.5 text-xs tabular-nums">
@@ -1057,8 +1056,7 @@ export default function SprintBoard() {
                 )}
               </>
             )}
-          </ViewHeader>
-        )}
+        </ViewHeader>
 
         {/* Sprint board body -- optionally wrapped in a parent DndContext for Jira rank DnD */}
         {jiraRankDndEnabled ? (
@@ -1093,25 +1091,53 @@ export default function SprintBoard() {
             {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
 
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
-              {boardActiveDragTicket && (
-                <div style={{ opacity: 0.92 }}>
-                  <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 text-sm shadow-[var(--shadow-lg)]">
-                    <IssueTypeIcon type={boardActiveDragTicket.type} />
-                    <span className="font-mono text-xs text-text-tertiary">{boardActiveDragTicket.key}</span>
-                    <span className="max-w-48 truncate text-text-secondary">{boardActiveDragTicket.title}</span>
-                    {boardDraggedKeys.length > 1 && (
-                      <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-caption text-[var(--color-brand-300)]">
-                        +{boardDraggedKeys.length - 1}
-                      </span>
+              {boardActiveDragTicket && (() => {
+                const isMulti = boardDraggedKeys.length > 1;
+                const draggedTickets = isMulti
+                  ? boardDraggedKeys.map((k) => tickets.find((t) => t.key === k)).filter(Boolean)
+                  : [boardActiveDragTicket];
+                return (
+                  <div style={{ opacity: 0.92 }} className="inline-block w-max">
+                    <div className="relative">
+                      {/* Stacked cards behind the main card */}
+                      {isMulti && (
+                        <>
+                          <div className="absolute inset-0 translate-y-1.5 translate-x-1.5 rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.4 }} />
+                          <div className="absolute inset-0 translate-y-[5px] translate-x-[5px] rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.2 }} />
+                        </>
+                      )}
+                      {/* Main card */}
+                      <div className={`relative rounded-lg border bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] ${isMulti ? "border-[var(--color-brand-500)]/30" : "border-[var(--color-brand-500)]/20"}`}>
+                        {/* Count badge */}
+                        {isMulti && (
+                          <div className="absolute -top-2.5 -right-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1.5 text-[11px] font-semibold text-white shadow-sm">
+                            {boardDraggedKeys.length}
+                          </div>
+                        )}
+                        <div className="px-3 py-2 space-y-0.5">
+                          {draggedTickets.slice(0, 5).map((t) => (
+                            <div key={t!.key} className="flex items-center gap-2 text-sm">
+                              <IssueTypeIcon type={t!.type} />
+                              <span className="font-mono text-xs text-text-tertiary">{t!.key}</span>
+                              <span className="max-w-52 truncate text-text-secondary">{t!.title}</span>
+                            </div>
+                          ))}
+                          {draggedTickets.length > 5 && (
+                            <div className="text-xs text-text-muted pl-0.5">
+                              and {draggedTickets.length - 5} more...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {boardDragTargetSprintId && (
+                      <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-label text-[var(--color-brand-300)]">
+                        Move to {sprintNameMap[boardDragTargetSprintId] ?? boardDragTargetSprintId}
+                      </div>
                     )}
                   </div>
-                  {boardDragTargetSprintId && (
-                    <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-label text-[var(--color-brand-300)]">
-                      Move to {sprintNameMap[boardDragTargetSprintId] ?? boardDragTargetSprintId}
-                    </div>
-                  )}
-                </div>
-              )}
+                );
+              })()}
             </DragOverlay>
           </DndContext>
         ) : (
