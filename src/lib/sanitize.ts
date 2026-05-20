@@ -1,4 +1,5 @@
 import DOMPurify from "isomorphic-dompurify";
+import { SANITIZE_HTML_OPTIONS } from "./sanitize-html-config";
 
 /**
  * Sanitize HTML/markdown content before database storage.
@@ -6,22 +7,7 @@ import DOMPurify from "isomorphic-dompurify";
  * while stripping dangerous tags and attributes.
  */
 export function sanitizeHtml(dirty: string): string {
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS: [
-      "h1", "h2", "h3", "h4", "h5", "h6",
-      "p", "br", "hr",
-      "ul", "ol", "li",
-      "strong", "b", "em", "i", "u", "s", "del",
-      "a", "code", "pre", "blockquote",
-      "table", "thead", "tbody", "tr", "th", "td",
-      "img", "span", "div", "sup", "sub",
-    ],
-    ALLOWED_ATTR: [
-      "href", "src", "alt", "title", "class",
-      "target", "rel", "colspan", "rowspan",
-    ],
-    ALLOW_DATA_ATTR: false,
-  });
+  return DOMPurify.sanitize(dirty, SANITIZE_HTML_OPTIONS);
 }
 
 /**

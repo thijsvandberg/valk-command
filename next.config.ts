@@ -26,15 +26,14 @@ const securityHeaders = [
     value: "max-age=31536000; includeSubDomains",
   },
   {
-    // Report-only mode: logs violations without blocking
-    key: "Content-Security-Policy-Report-Only",
+    key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net https://*.atlassian.com https://*.atl-paas.net",
+      "img-src 'self' data: https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net https://*.atlassian.com https://*.atl-paas.net https://img.clerk.com",
       "font-src 'self'",
-      "connect-src 'self'",
+      "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

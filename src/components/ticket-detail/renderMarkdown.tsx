@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
+import { sanitizePrismOutput } from "@/lib/sanitize-client";
 
 const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|ogg)$/i;
 function isVideoAttachment(altOrSrc: string): boolean {
@@ -291,7 +292,7 @@ function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode 
                 <td
                   className="rm-code-content py-0 pl-4 pr-6 font-mono text-[0.8125rem] leading-[1.6rem]"
                   style={{ color: "var(--color-text-secondary)", whiteSpace: "pre" }}
-                  dangerouslySetInnerHTML={{ __html: highlightCodeLine(codeLine, lang) || "\u00a0" }}
+                  dangerouslySetInnerHTML={{ __html: sanitizePrismOutput(highlightCodeLine(codeLine, lang) || "\u00a0") }}
                 />
               </tr>
             ))}

@@ -48,7 +48,7 @@ export function DeployNotifier() {
         body: n.message,
         tag: `deploy-${n.id}`,
         onClick: () => {
-          if (n.jiraKey) {
+          if (n.jiraKey && /^[A-Z][A-Z0-9_]+-\d+$/.test(n.jiraKey)) {
             window.location.href = `/tickets/${n.jiraKey}`;
           }
         },

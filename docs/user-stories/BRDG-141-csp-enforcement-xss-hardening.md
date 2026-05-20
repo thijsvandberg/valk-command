@@ -9,6 +9,18 @@ As the PO, I want the Content Security Policy enforced (not just report-only) an
 
 The audit found: CSP is in report-only mode (violations are logged but not blocked), `script-src` allows `unsafe-inline`, and two `dangerouslySetInnerHTML` usages lack client-side re-sanitization.
 
+## Implementation Plan
+
+1. **Move theme init to external script** (`public/theme-init.js`) and remove `dangerouslySetInnerHTML` from layout.tsx. This eliminates the only inline script, enabling `unsafe-inline` removal.
+2. **Enforce CSP** in next.config.ts: change `Report-Only` to enforced, remove `unsafe-inline` from `script-src`, add Clerk domains to `connect-src` and `script-src`.
+3. **Create shared sanitize config** (`src/lib/sanitize-html-config.ts`) and client-safe sanitizer (`src/lib/sanitize-client.ts`). Refactor `sanitize.ts` to use shared config.
+4. **Add client-side re-sanitization**: ConfluencePagesSection.tsx (bodyHtml) and renderMarkdown.tsx (Prism output).
+5. **Validate redirect targets** in DeployNotifier.tsx with Jira key regex.
+6. **Add Cache-Control headers** to ~20 GET routes returning user-specific data.
+7. **Verify**: build, dev server, Clerk auth flows, theme switching, confluence preview, code highlighting.
+
+Key risks: Clerk CSP compatibility (may need additional domains), `style-src 'unsafe-inline'` stays (required for dev mode HMR and runtime style attributes).
+
 ## Acceptance Criteria
 
 ### Enforce Content Security Policy

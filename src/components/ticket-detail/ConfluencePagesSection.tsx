@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { sanitizeHtmlClient } from "@/lib/sanitize-client";
 import {
   BookOpen,
   Plus,
@@ -102,8 +103,7 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
       {/* Rendered HTML preview */}
       <div
         className="confluence-preview text-xs leading-relaxed text-text-secondary"
-        /* Sanitized server-side before reaching here */
-        dangerouslySetInnerHTML={{ __html: data.bodyHtml }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtmlClient(data.bodyHtml) }}
       />
 
       {data.truncated && (
