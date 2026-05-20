@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   await db.insert(activityLog).values({
     id: logId,
-    type: "epic-sync",
+    type: "ticket-sync",
     scope: "all-epics",
     status: "running",
     startedAt,
