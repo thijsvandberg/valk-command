@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { TicketDetail } from "@/types/ticket";
-import { Trash2 } from "lucide-react";
+import { Trash2, Flag } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
@@ -143,23 +143,33 @@ export function CommentsSection({
         <div>
           <SectionHeader title="Jira Comments" count={jiraComments.length} />
           <div className="mt-3 space-y-4">
-            {jiraComments.map((comment) => (
-              <div key={comment.id} className="flex gap-3">
+            {jiraComments.map((comment) => {
+              const isFlagComment = /flag_on|Flag added|flag_off|Flag removed/i.test(comment.content);
+              return (
                 <div
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
-                  style={{ backgroundColor: comment.authorColor }}
+                  key={comment.id}
+                  id={`jira-comment-${comment.id}`}
+                  className={`flex gap-3 ${isFlagComment ? "rounded-lg border-l-[3px] border-l-[#e5534b] bg-[#e5534b]/[0.04] py-3 pr-3 pl-2.5" : ""}`}
                 >
-                  {comment.authorInitials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
-                    <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString()}</span>
+                  <div
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
+                    style={{ backgroundColor: comment.authorColor }}
+                  >
+                    {comment.authorInitials}
                   </div>
-                  <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
+                      <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString()}</span>
+                      {isFlagComment && (
+                        <Flag size={11} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
+                      )}
+                    </div>
+                    <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

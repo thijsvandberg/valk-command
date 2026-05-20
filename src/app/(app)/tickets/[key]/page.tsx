@@ -420,9 +420,21 @@ export default function TicketDetailPage({
               </nav>
             )}
             {isFlagged && (
-              <Tooltip content="This ticket is flagged">
+              <Tooltip content="Click to scroll to flag comment">
                 <button
-                  onClick={handleUnflag}
+                  onClick={() => {
+                    const flagComment = detail?.jiraComments
+                      ?.slice().reverse()
+                      .find((c) => /flag_on|Flag added/i.test(c.content));
+                    if (flagComment) {
+                      const el = document.getElementById(`jira-comment-${flagComment.id}`);
+                      if (el) {
+                        el.scrollIntoView({ behavior: "smooth", block: "center" });
+                        el.classList.add("ring-2", "ring-[#e5534b]/40");
+                        setTimeout(() => el.classList.remove("ring-2", "ring-[#e5534b]/40"), 2000);
+                      }
+                    }
+                  }}
                   className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[#e5534b]/25 bg-[#e5534b]/10 px-2 py-0.5 text-[11px] font-semibold text-[#e5534b] hover:bg-[#e5534b]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e5534b]/40 active:scale-[0.97]"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 >
@@ -470,19 +482,6 @@ export default function TicketDetailPage({
                 }
               />
             </Tooltip>
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
-              onClick={handleCopyLink}
-              title="Copy title and Jira link"
-              aria-label="Copy title and Jira link"
-              icon={
-                linkCopied
-                  ? <Check size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-                  : <Copy size={14} strokeWidth={1.5} />
-              }
-            />
             <div className="relative">
               <Button
                 variant="ghost"
@@ -491,10 +490,33 @@ export default function TicketDetailPage({
                 onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                 title="More actions"
                 aria-label="More actions"
-                icon={<MoreHorizontal size={14} strokeWidth={1.5} />}
+                icon={isRefreshing
+                  ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                  : <MoreHorizontal size={14} strokeWidth={1.5} />
+                }
               />
               <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
-                <div className="min-w-[180px] py-1">
+                <div className="min-w-[220px] py-1">
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); handleCopyLink(); }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    style={{ transition: "background-color 0.1s ease" }}
+                  >
+                    {linkCopied
+                      ? <Check size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                      : <Copy size={13} strokeWidth={1.5} className="text-text-muted" />
+                    }
+                    {linkCopied ? "Copied!" : "Copy title and Jira link"}
+                  </button>
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); handleRefreshFromJira(); }}
+                    disabled={isRefreshing}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ transition: "background-color 0.1s ease" }}
+                  >
+                    <CloudDownload size={13} strokeWidth={1.5} className="text-text-muted" />
+                    Pull from Jira
+                  </button>
                   {!isFlagged ? (
                     <button
                       onClick={() => { setMoreMenuOpen(false); setShowFlagDialog(true); }}
@@ -517,16 +539,6 @@ export default function TicketDetailPage({
                 </div>
               </Popover>
             </div>
-            <Button
-              variant="secondary"
-              size="md"
-              iconOnly
-              onClick={handleRefreshFromJira}
-              disabled={isRefreshing}
-              title={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
-              aria-label={isRefreshing ? "Pulling from Jira..." : "Pull from Jira"}
-              icon={<CloudDownload size={15} strokeWidth={1.5} className={isRefreshing ? "animate-spin" : ""} />}
-            />
             {hasActiveSession ? (
               <div
                 className="group/session flex h-7 items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
