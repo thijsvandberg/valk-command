@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/jira/check-updated?key=VPL-123
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ stale: false, removed: true, key });
     }
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    logger.error("jira", "Failed to check issue freshness", message);
+    return NextResponse.json({ error: "Failed to check issue freshness" }, { status: 502 });
   }
 }

@@ -5,6 +5,7 @@ import { inArray } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/jira/move-sprint
@@ -45,7 +46,8 @@ export async function POST(request: Request) {
     await jiraClient.moveToSprint(issueKeys, sprintIdNum);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    logger.error("jira", "Failed to move issues", message);
+    return NextResponse.json({ ok: false, error: "Failed to move issues" }, { status: 500 });
   }
 
   // Update local sprint assignment

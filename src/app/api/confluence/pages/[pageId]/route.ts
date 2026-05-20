@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { confluenceClient } from "@/lib/confluence-client";
+import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import DOMPurify from "isomorphic-dompurify";
 
@@ -140,6 +141,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ...base, bodyHtml: html, truncated });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    logger.error("confluence-pages", "Failed to fetch page", message);
+    return NextResponse.json({ error: "Failed to fetch page" }, { status: 502 });
   }
 }

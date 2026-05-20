@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const SETTING_KEY = "saved_searches";
 const MAX_SAVED = 10;
@@ -79,6 +80,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ searches });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("settings", "Failed to save searches", message);
+    return NextResponse.json({ error: "Failed to save searches" }, { status: 500 });
   }
 }

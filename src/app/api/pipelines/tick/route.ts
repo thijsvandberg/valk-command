@@ -57,7 +57,7 @@ async function runPipelineSync(): Promise<Record<string, unknown>> {
     return { ran: true, ...result, prSync };
   } catch (err) {
     logger.error("pipeline-tick", "sync failed:", err);
-    return { error: err instanceof Error ? err.message : "Unknown error" };
+    return { error: "Pipeline tick failed" };
   } finally {
     running = false;
   }

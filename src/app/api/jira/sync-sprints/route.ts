@@ -6,6 +6,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 interface StoredSprint {
   id: number;
@@ -130,7 +131,8 @@ export async function POST(request: NextRequest) {
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    logger.error("jira", "Sprint sync failed", message);
+    return NextResponse.json({ ok: false, error: "Sprint sync failed" }, { status: 500 });
   } finally {
     clearTimeout(routeTimeout);
     unregisterSync(logId);

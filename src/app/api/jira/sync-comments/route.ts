@@ -6,6 +6,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/jira/sync-comments?key=VPL-12345
@@ -94,7 +95,8 @@ export async function POST(request: Request) {
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    logger.error("jira", "Comment sync failed", message);
+    return NextResponse.json({ ok: false, error: "Comment sync failed" }, { status: 500 });
   } finally {
     unregisterSync(logId);
   }

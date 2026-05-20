@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/jira/assign
@@ -38,7 +39,8 @@ export async function POST(request: Request) {
     await jiraClient.assignIssue(issueKey, accountId ?? null);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    logger.error("jira", "Failed to assign issue", message);
+    return NextResponse.json({ ok: false, error: "Failed to assign issue" }, { status: 500 });
   }
 
   // Update local assignee (DB stores just the display name string)

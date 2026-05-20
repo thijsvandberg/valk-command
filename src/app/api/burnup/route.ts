@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { normalizeStatus } from "@/lib/upsert-issue";
 import { jiraClient } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 export interface BurnupDataPoint {
   date: string;
@@ -280,6 +281,7 @@ export async function GET(request: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("burnup", "Failed to compute burnup:", message);
+    return NextResponse.json({ error: "Failed to compute burnup" }, { status: 500 });
   }
 }

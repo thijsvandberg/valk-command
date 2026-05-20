@@ -103,6 +103,6 @@ describe("GET /api/confluence/search", () => {
     const res = await GET(makeRequest("?q=test") as never);
     expect(res.status).toBe(502);
     const data = await res.json();
-    expect(data.error).toMatch(/Confluence API 500/);
+    expect(data.error).toBe("Confluence search failed");
   });
 });

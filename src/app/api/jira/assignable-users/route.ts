@@ -1,23 +1,33 @@
 import { NextResponse } from "next/server";
-import { jiraClient } from "@/lib/jira-client";
-import { applyRateLimit } from "@/lib/rate-limiter";
+import { db } from "@/db";
+import { ticket } from "@/db/schema";
+import { isNotNull, sql } from "drizzle-orm";
 
 /**
  * GET /api/jira/assignable-users
  *
- * Returns users assignable to the configured Jira project.
+ * Returns distinct assignees from local ticket data.
+ * Uses already-synced data instead of calling the Jira API directly.
  */
 export async function GET() {
-  const limited = applyRateLimit("sync");
-  if (limited) return limited;
-
-  const projectKey = process.env.JIRA_PROJECT_KEY;
-  if (!projectKey) {
-    return NextResponse.json({ users: [] });
-  }
-
   try {
-    const users = await jiraClient.getAssignableUsers(projectKey);
+    const rows = await db
+      .selectDistinct({ assignee: ticket.assignee })
+      .from(ticket)
+      .where(isNotNull(ticket.assignee))
+      .orderBy(sql`${ticket.assignee} COLLATE NOCASE`);
+
+    const users = rows
+      .map((r) => r.assignee)
+      .filter((name): name is string => Boolean(name?.trim()))
+      .map((name) => {
+        const parts = name.trim().split(/\s+/);
+        const initials = parts.length === 1
+          ? parts[0].slice(0, 2).toUpperCase()
+          : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return { accountId: name, displayName: name, avatarUrl: null, initials };
+      });
+
     return NextResponse.json({ users });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

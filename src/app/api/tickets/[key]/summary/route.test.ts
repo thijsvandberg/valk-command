@@ -125,6 +125,6 @@ describe("PUT /api/tickets/[key]/summary", () => {
 
     expect(response.status).toBe(200);
     expect(data.title).toBe("New title");
-    expect(data.jiraWarning).toBe("Jira unavailable");
+    expect(data.jiraWarning).toBe("Jira update failed");
   });
 });

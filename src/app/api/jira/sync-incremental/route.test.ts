@@ -226,7 +226,7 @@ describe("POST /api/jira/sync-incremental", () => {
     const data = await res.json();
 
     expect(data.ok).toBe(false);
-    expect(data.error).toBe("Jira unreachable");
+    expect(data.error).toBe("Incremental sync failed");
 
     // Cooldown should be reset (epoch) so next poll is not blocked
     const cooldown = testDb

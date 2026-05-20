@@ -5,6 +5,7 @@ import { eq, asc } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/jira/rank
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
     await jiraClient.rankIssues(issueKeys, rankBeforeKey, rankAfterKey);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    logger.error("jira", "Failed to rank issues", message);
+    return NextResponse.json({ ok: false, error: "Failed to rank issues" }, { status: 500 });
   }
 
   // Update local jiraRank values for the sprint.

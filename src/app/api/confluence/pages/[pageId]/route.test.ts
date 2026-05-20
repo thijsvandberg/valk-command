@@ -128,6 +128,6 @@ describe("GET /api/confluence/pages/[pageId]", () => {
     const res = await callGET("42");
     expect(res.status).toBe(502);
     const data = await res.json();
-    expect(data.error).toMatch(/Confluence API 404/);
+    expect(data.error).toBe("Failed to fetch page");
   });
 });

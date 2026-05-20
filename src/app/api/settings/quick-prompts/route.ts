@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 export type QuickPrompt = {
   id: string;
@@ -146,6 +147,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ prompts });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("settings", "Failed to save prompts", message);
+    return NextResponse.json({ error: "Failed to save prompts" }, { status: 500 });
   }
 }

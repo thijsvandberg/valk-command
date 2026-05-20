@@ -10,6 +10,7 @@ import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 
@@ -147,7 +148,8 @@ async function syncIndividualTickets(ticketKeys: string[], requestSignal?: Abort
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("jira", "Ticket sync failed", message);
+    return NextResponse.json({ error: "Ticket sync failed" }, { status: 500 });
   } finally {
     unregisterSync(logId);
   }
@@ -329,7 +331,8 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("jira", "Ticket sync failed", message);
+    return NextResponse.json({ error: "Ticket sync failed" }, { status: 500 });
   } finally {
     unregisterSync(logId);
   }

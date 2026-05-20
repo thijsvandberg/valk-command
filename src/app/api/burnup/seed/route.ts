@@ -7,6 +7,7 @@ import { normalizeStatus } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/burnup/seed?sprintId=X
@@ -306,6 +307,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ seeded: true, changeCount });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("burnup-seed", "Failed to seed burnup data:", message);
+    return NextResponse.json({ error: "Failed to seed burnup data" }, { status: 500 });
   }
 }

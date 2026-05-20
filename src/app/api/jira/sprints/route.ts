@@ -4,6 +4,7 @@ import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 async function getHiddenIds(): Promise<Set<string>> {
   const row = await db.query.appSetting.findFirst({
@@ -69,7 +70,8 @@ export async function GET() {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("jira", "Failed to load sprints", message);
+    return NextResponse.json({ error: "Failed to load sprints" }, { status: 500 });
   }
 }
 
@@ -98,6 +100,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ ok: true, count: hiddenIds.length });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("jira", "Failed to load sprints", message);
+    return NextResponse.json({ error: "Failed to load sprints" }, { status: 500 });
   }
 }

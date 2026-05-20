@@ -9,6 +9,7 @@ import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 const COOLDOWN_KEY = "jira_sync_last_run";
@@ -150,7 +151,8 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
     }
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    logger.error("jira", "Incremental sync failed", message);
+    return NextResponse.json({ ok: false, error: "Incremental sync failed" }, { status: 500 });
   } finally {
     unregisterSync(syncId);
   }

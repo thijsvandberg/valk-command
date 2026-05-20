@@ -54,7 +54,7 @@ describe("GET /api/confluence/health", () => {
     expect(data).toEqual({
       ok: false,
       live: false,
-      error: "Connection refused",
+      error: "Confluence health check failed",
     });
   });
 });

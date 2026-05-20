@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { confluenceClient } from "@/lib/confluence-client";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/confluence/health
@@ -20,6 +21,7 @@ export async function GET() {
     return NextResponse.json({ ok: true, live: true, user: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, live: false, error: message });
+    logger.error("confluence-health", "Health check failed", message);
+    return NextResponse.json({ ok: false, live: false, error: "Confluence health check failed" });
   }
 }

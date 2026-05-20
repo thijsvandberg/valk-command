@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { confluenceClient } from "@/lib/confluence-client";
+import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
 const VALID_MODES = ["title", "text", "cql"] as const;
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    logger.error("confluence-search", "Search failed", message);
+    return NextResponse.json({ error: "Confluence search failed" }, { status: 502 });
   }
 }

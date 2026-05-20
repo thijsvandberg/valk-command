@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 const SETTING_KEY = "sprint_board_column_widths";
 
@@ -56,6 +57,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ widths });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("settings", "Failed to save column widths", message);
+    return NextResponse.json({ error: "Failed to save column widths" }, { status: 500 });
   }
 }

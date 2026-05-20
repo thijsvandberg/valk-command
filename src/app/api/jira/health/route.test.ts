@@ -28,7 +28,7 @@ describe("GET /api/jira/health", () => {
     vi.clearAllMocks();
     // Reset to default live state
     Object.defineProperty(jiraClient, "isLive", { value: true, writable: true });
-    vi.mocked(jiraClient.checkHealth).mockResolvedValue({ displayName: "Test User" });
+    vi.mocked(jiraClient.checkHealth).mockResolvedValue({ displayName: "Test User", emailAddress: "test@example.com" });
   });
 
   it("returns not-ok when jiraClient.isLive is false", async () => {
@@ -51,7 +51,7 @@ describe("GET /api/jira/health", () => {
     expect(response.status).toBe(200);
     expect(data.ok).toBe(true);
     expect(data.live).toBe(true);
-    expect(data.user).toEqual({ displayName: "Test User" });
+    expect(data.user).toEqual({ displayName: "Test User", emailAddress: "test@example.com" });
   });
 
   it("returns error when checkHealth throws", async () => {
@@ -65,7 +65,7 @@ describe("GET /api/jira/health", () => {
     expect(response.status).toBe(200);
     expect(data.ok).toBe(false);
     expect(data.live).toBe(false);
-    expect(data.error).toBe("Connection refused");
+    expect(data.error).toBe("Jira health check failed");
   });
 
   it("reports cachedDataAvailable when sprint data exists in DB", async () => {

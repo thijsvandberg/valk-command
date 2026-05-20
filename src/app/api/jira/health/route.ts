@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { jiraClient } from "@/lib/jira-client";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/jira/health
@@ -28,13 +29,14 @@ export async function GET() {
     return NextResponse.json({ ok: true, live: true, user: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error("jira", "Jira health check failed", message);
     const cached = await db.query.appSetting.findFirst({
       where: (row, { eq }) => eq(row.key, "jira_sprints"),
     });
     return NextResponse.json({
       ok: false,
       live: false,
-      error: message,
+      error: "Jira health check failed",
       cachedDataAvailable: Boolean(cached),
     });
   }

@@ -57,5 +57,5 @@ export async function PUT(request: Request, { params }: RouteContext) {
     summary: `Changed status to ${status}${jiraError ? " (Bridge only — Jira transition unavailable)" : ""}`,
   });
 
-  return NextResponse.json({ status, ...(jiraError ? { jiraWarning: jiraError } : {}) });
+  return NextResponse.json({ status, ...(jiraError ? { jiraWarning: "Jira update failed" } : {}) });
 }

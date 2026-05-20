@@ -61,7 +61,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     results.push({
       key: sub.subtaskKey,
       success: !jiraError,
-      ...(jiraError ? { error: jiraError } : {}),
+      ...(jiraError ? { error: "Jira update failed" } : {}),
     });
   }
 
