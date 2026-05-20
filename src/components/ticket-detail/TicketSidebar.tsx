@@ -3,8 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
-import { ChevronRight, AlertTriangle, Play, Flag, Zap } from "lucide-react";
-import Link from "next/link";
+import { ChevronRight, AlertTriangle, Play, Flag } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
@@ -14,6 +13,8 @@ import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { EpicPicker } from "@/components/shared/EpicPicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -64,6 +65,8 @@ export function TicketSidebar({
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [poNotes, setPoNotes] = useState(ticket.notes);
   const [assignee, setAssignee] = useState(ticket.assignee);
+  const [epicName, setEpicName] = useState<string | null>(ticket.epic);
+  const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
 
   // Resize state
@@ -198,6 +201,20 @@ export function TicketSidebar({
       setAssignee(prev);
     }
   }, [ticket.key, assignee]);
+
+  const handleEpicChange = useCallback(async (epic: EpicOption | null) => {
+    const prevName = epicName;
+    const prevKey = epicKey;
+    setEpicName(epic?.name ?? null);
+    setEpicKey(epic?.key ?? null);
+    try {
+      await tickets.updateEpic(ticket.key, epic?.key ?? null);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setEpicName(prevName);
+      setEpicKey(prevKey);
+    }
+  }, [ticket.key, epicName, epicKey]);
 
   const handleNotesChange = useCallback(async (notes: string) => {
     setPoNotes(notes);
@@ -350,23 +367,13 @@ export function TicketSidebar({
                 );
               })()}
             </DetailRow>
-            {ticket.epic && (
+            {ticket.type !== "epic" && (
               <DetailRow label="Epic">
-                {ticket.epicKey ? (
-                  <Link
-                    href={`/tickets/${ticket.epicKey}`}
-                    className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium text-[#9b6cd4] bg-[#9b6cd4]/10 hover:bg-[#9b6cd4]/20 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    style={{ transition: "background-color 0.15s ease" }}
-                  >
-                    <Zap size={10} strokeWidth={2} className="shrink-0" />
-                    <span className="truncate max-w-[140px]">{ticket.epic}</span>
-                  </Link>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
-                    <Zap size={10} strokeWidth={2} className="shrink-0" />
-                    {ticket.epic}
-                  </span>
-                )}
+                <EpicPicker
+                  value={epicKey ? { key: epicKey, name: epicName ?? epicKey } : null}
+                  onChange={handleEpicChange}
+                  align="right"
+                />
               </DetailRow>
             )}
             <DetailRow label="Readiness">

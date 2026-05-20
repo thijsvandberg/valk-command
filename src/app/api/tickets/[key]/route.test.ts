@@ -228,3 +228,152 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     expect(response.status).toBe(400);
   });
 });
+
+describe("PATCH /api/tickets/[key] - epic", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    cache.flush();
+    vi.clearAllMocks();
+  });
+
+  it("sets epic in the database when epicKey provided", async () => {
+    seedTicket(testDb, "VPL-300");
+    // Seed the epic ticket so the name can be resolved
+    testDb.insert(ticket).values({ jiraKey: "VPL-50", title: "My Epic", status: "TO DO" }).run();
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-300", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ epicKey: "VPL-50" }),
+      }),
+      makeParams("VPL-300"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.epicKey).toBe("VPL-50");
+    expect(data.epic).toBe("My Epic");
+
+    // Verify persisted via GET
+    cache.flush();
+    const getRes = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-300"),
+      makeParams("VPL-300"),
+    );
+    const getData = await getRes.json();
+    expect(getData.epicKey).toBe("VPL-50");
+    expect(getData.epic).toBe("My Epic");
+  });
+
+  it("calls jiraClient.updateIssue with parent key", async () => {
+    seedTicket(testDb, "VPL-301");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-301", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ epicKey: "VPL-50" }),
+      }),
+      makeParams("VPL-301"),
+    );
+
+    expect(jiraClient.updateIssue).toHaveBeenCalledWith(
+      "VPL-301",
+      { parent: { key: "VPL-50" } },
+    );
+  });
+
+  it("removes epic when epicKey is null", async () => {
+    // Seed a ticket that already has an epic
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-302",
+      title: "Ticket with epic",
+      status: "TO DO",
+      epic: "Old Epic",
+      epicKey: "VPL-10",
+    }).run();
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-302", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ epicKey: null }),
+      }),
+      makeParams("VPL-302"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.epicKey).toBeNull();
+    expect(data.epic).toBeNull();
+  });
+
+  it("calls jiraClient.updateIssue with null parent on removal", async () => {
+    seedTicket(testDb, "VPL-303");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-303", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ epicKey: null }),
+      }),
+      makeParams("VPL-303"),
+    );
+
+    expect(jiraClient.updateIssue).toHaveBeenCalledWith(
+      "VPL-303",
+      { parent: null },
+    );
+  });
+
+  it("returns 400 for invalid epicKey type", async () => {
+    seedTicket(testDb, "VPL-304");
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-304", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ epicKey: 123 }),
+      }),
+      makeParams("VPL-304"),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 for empty string epicKey", async () => {
+    seedTicket(testDb, "VPL-305");
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-305", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ epicKey: "" }),
+      }),
+      makeParams("VPL-305"),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("falls back to epicKey as name when epic not found locally", async () => {
+    seedTicket(testDb, "VPL-306");
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-306", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ epicKey: "VPL-999" }),
+      }),
+      makeParams("VPL-306"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.epicKey).toBe("VPL-999");
+    expect(data.epic).toBe("VPL-999");
+  });
+});

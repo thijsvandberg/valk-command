@@ -116,4 +116,26 @@ describe("GET /api/search/jira", () => {
     const body = await res.json();
     expect(body.error).toBe("Search failed");
   });
+
+  it("includes issuetype filter in JQL when provided", async () => {
+    (jiraClient.searchIssues as Mock).mockResolvedValueOnce([]);
+
+    await GET(makeRequest({ issuetype: "Epic" }));
+
+    expect(jiraClient.searchIssues).toHaveBeenCalledOnce();
+    const [jql] = (jiraClient.searchIssues as Mock).mock.calls[0];
+    expect(jql).toContain('issuetype = "Epic"');
+    expect(jql).not.toContain("text ~");
+  });
+
+  it("combines issuetype and text query in JQL", async () => {
+    (jiraClient.searchIssues as Mock).mockResolvedValueOnce([]);
+
+    await GET(makeRequest({ issuetype: "Epic", q: "platform" }));
+
+    expect(jiraClient.searchIssues).toHaveBeenCalledOnce();
+    const [jql] = (jiraClient.searchIssues as Mock).mock.calls[0];
+    expect(jql).toContain('issuetype = "Epic"');
+    expect(jql).toContain('text ~ "platform"');
+  });
 });

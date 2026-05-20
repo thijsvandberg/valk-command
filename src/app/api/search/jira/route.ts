@@ -20,8 +20,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
   const jqlOverride = searchParams.get("jql") ?? "";
+  const issuetype = searchParams.get("issuetype") ?? "";
 
-  if (!q.trim() && !jqlOverride.trim()) {
+  if (!q.trim() && !jqlOverride.trim() && !issuetype.trim()) {
     return NextResponse.json({ issues: [] });
   }
 
@@ -38,9 +39,15 @@ export async function GET(request: Request) {
 
   try {
     const cfg = { projectKey: env.JIRA_PROJECT_KEY };
-    const jql = jqlOverride.trim()
-      ? jqlOverride.trim()
-      : `project = ${cfg.projectKey} AND text ~ "${q.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
+    let jql: string;
+    if (jqlOverride.trim()) {
+      jql = jqlOverride.trim();
+    } else {
+      const parts = [`project = ${cfg.projectKey}`];
+      if (issuetype.trim()) parts.push(`issuetype = "${issuetype.trim()}"`);
+      if (q.trim()) parts.push(`text ~ "${q.replace(/"/g, '\\"')}"`);
+      jql = `${parts.join(" AND ")} ORDER BY updated DESC`;
+    }
 
     const jiraIssues = await jiraClient.searchIssues(jql, undefined, 25, signal);
 

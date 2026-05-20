@@ -309,6 +309,34 @@ export async function PATCH(
     result.storyPoints = spValue;
   }
 
+  // Handle epic change
+  if (body.epicKey !== undefined) {
+    const rawEpic = body.epicKey;
+    if (rawEpic !== null && (typeof rawEpic !== "string" || !rawEpic.trim())) {
+      return NextResponse.json({ error: "epicKey must be null or a non-empty string" }, { status: 400 });
+    }
+
+    const epicKey = rawEpic as string | null;
+    let epicName: string | null = null;
+
+    if (epicKey) {
+      const epicTicket = await db.query.ticket.findFirst({
+        where: (row, { eq: eqFn }) => eqFn(row.jiraKey, epicKey),
+      });
+      epicName = epicTicket?.title ?? epicKey;
+    }
+
+    await db.update(ticket).set({ epic: epicName, epicKey }).where(eq(ticket.jiraKey, key));
+
+    jiraClient.updateIssue(key, { parent: epicKey ? { key: epicKey } : null }).catch((err: unknown) => {
+      logger.error("ticket-detail", `PATCH Jira epic sync failed for ${key}:`, err);
+    });
+
+    await logActivity({ type: "metadata-update", scope: key, summary: `Changed epic to ${epicKey ?? "none"}` });
+    result.epic = epicName;
+    result.epicKey = epicKey;
+  }
+
   if (Object.keys(result).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
