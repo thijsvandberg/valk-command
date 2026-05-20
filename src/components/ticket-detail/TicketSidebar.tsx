@@ -3,9 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
-import { PanelRightOpen, AlertTriangle, Play } from "lucide-react";
+import { ChevronRight, AlertTriangle, Play } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
-import { Button } from "@/components/ui/Button";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
@@ -224,6 +223,18 @@ export function TicketSidebar({
       {/* Left edge line */}
       <div className="absolute top-0 left-0 h-full w-px bg-border-default" />
 
+      {/* Collapse button on left edge */}
+      <button
+        type="button"
+        onClick={() => onCollapsedChange(true)}
+        className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer opacity-0 hover:opacity-100 hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        style={{ transition: "opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease" }}
+        aria-label="Collapse sidebar"
+        title="Collapse sidebar  [  "
+      >
+        <ChevronRight className="h-3 w-3" strokeWidth={2} />
+      </button>
+
       {/* Sidebar content */}
       <div
         className="h-full overflow-y-auto bg-[var(--color-surface-elevated)] py-4 pr-5 pl-5"
@@ -232,19 +243,6 @@ export function TicketSidebar({
           transition: isDragging ? "none" : "opacity 150ms ease",
         }}
       >
-        {/* Header with collapse button */}
-        <div className="mb-4 flex items-center justify-end">
-          <Button
-            variant="ghost"
-            size="md"
-            iconOnly
-            onClick={() => onCollapsedChange(true)}
-            className="!text-text-tertiary hover:!text-text-secondary"
-            aria-label="Collapse sidebar"
-            title="Collapse sidebar  [  "
-            icon={<PanelRightOpen className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />}
-          />
-        </div>
 
         {/* Completeness indicator */}
         <div>
