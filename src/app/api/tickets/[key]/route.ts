@@ -337,6 +337,38 @@ export async function PATCH(
     result.epicKey = epicKey;
   }
 
+  // Handle flagged toggle
+  if (body.flagged !== undefined) {
+    if (typeof body.flagged !== "boolean") {
+      return NextResponse.json({ error: "flagged must be a boolean" }, { status: 400 });
+    }
+
+    const newFlagged = body.flagged;
+    const flagReason = typeof body.flagReason === "string" ? body.flagReason.trim().slice(0, 2000) : "";
+
+    await db.update(ticket).set({ flagged: newFlagged }).where(eq(ticket.jiraKey, key));
+
+    // Sync to Jira: update flag field + add comment
+    (async () => {
+      try {
+        await jiraClient.updateIssue(key, { flagged: newFlagged });
+      } catch (err) {
+        logger.error("ticket-detail", `PATCH Jira flag sync failed for ${key}:`, err);
+      }
+      try {
+        const commentText = newFlagged
+          ? flagReason ? `flag_on Flag added\n\n${flagReason}` : "flag_on Flag added"
+          : "flag_off Flag removed";
+        await jiraClient.addComment(key, commentText);
+      } catch (err) {
+        logger.error("ticket-detail", `PATCH Jira flag comment failed for ${key}:`, err);
+      }
+    })();
+
+    await logActivity({ type: "metadata-update", scope: key, summary: newFlagged ? "Flagged ticket" : "Unflagged ticket" });
+    result.flagged = newFlagged;
+  }
+
   if (Object.keys(result).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }

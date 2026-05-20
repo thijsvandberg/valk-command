@@ -603,6 +603,33 @@ export class JiraClient {
   }
 
   /**
+   * Add a comment to an issue.
+   * REST API v3 requires ADF (Atlassian Document Format) for comment body.
+   */
+  async addComment(key: string, bodyText: string, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    const paragraphs = bodyText.split("\n\n").map((block) => ({
+      type: "paragraph" as const,
+      content: [{ type: "text" as const, text: block }],
+    }));
+
+    await jiraPost<unknown>(
+      `/rest/api/3/issue/${key}/comment`,
+      {
+        body: {
+          type: "doc",
+          version: 1,
+          content: paragraphs,
+        },
+      },
+      signal,
+    );
+  }
+
+  /**
    * Fetch attachments for an issue.
    */
   async getAttachments(key: string, signal?: AbortSignal): Promise<JiraAttachment[]> {

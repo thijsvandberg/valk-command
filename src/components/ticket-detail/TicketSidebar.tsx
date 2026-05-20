@@ -21,6 +21,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -68,6 +69,9 @@ export function TicketSidebar({
   const [epicName, setEpicName] = useState<string | null>(ticket.epic);
   const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
+  const [isFlagged, setIsFlagged] = useState(ticket.flagged);
+  const [showFlagDialog, setShowFlagDialog] = useState(false);
+  const [flagReasonInput, setFlagReasonInput] = useState("");
 
   // Resize state
   const [sidebarWidth, setSidebarWidth] = useLocalStorage(SIDEBAR_WIDTH_KEY, DEFAULT_SIDEBAR_WIDTH);
@@ -225,6 +229,29 @@ export function TicketSidebar({
     }
   }, [ticket.key]);
 
+  const handleFlag = useCallback(async () => {
+    const reason = flagReasonInput.trim();
+    setIsFlagged(true);
+    setShowFlagDialog(false);
+    setFlagReasonInput("");
+    try {
+      await tickets.toggleFlag(ticket.key, true, reason || undefined);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setIsFlagged(false);
+    }
+  }, [ticket.key, flagReasonInput]);
+
+  const handleUnflag = useCallback(async () => {
+    setIsFlagged(false);
+    try {
+      await tickets.toggleFlag(ticket.key, false);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setIsFlagged(true);
+    }
+  }, [ticket.key]);
+
   const description = detail?.description ?? "";
   const hasDescription = description.trim().length > 20;
   const hasAcceptanceCriteria = /acceptance\s*criteria/i.test(description);
@@ -289,13 +316,13 @@ export function TicketSidebar({
         }}
       >
 
-        {/* Flagged banner */}
-        {ticket.flagged && (() => {
+        {/* Flagged banner with unflag toggle */}
+        {isFlagged && (() => {
           const flagComment = detail?.jiraComments
             ?.slice()
             .reverse()
             .find((c) => c.content.includes("flag_on") || c.content.includes("Flag added"));
-          const flagReason = flagComment?.content
+          const displayReason = flagComment?.content
             ?.replace(/^.*?flag_on\s*Flag added\s*/i, "")
             ?.trim() || null;
           return (
@@ -303,13 +330,32 @@ export function TicketSidebar({
               <div className="flex items-center gap-2">
                 <Flag size={13} strokeWidth={1.5} className="shrink-0 text-[#e5534b]" fill="#e5534b" />
                 <span className="text-xs font-semibold text-[#e5534b]">Flagged</span>
+                <button
+                  onClick={handleUnflag}
+                  className="ml-auto cursor-pointer rounded px-1.5 py-0.5 text-[10px] font-medium text-[#e5534b]/70 hover:bg-[#e5534b]/10 hover:text-[#e5534b] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#e5534b]/40 active:scale-[0.97]"
+                  style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
+                >
+                  Unflag
+                </button>
               </div>
-              {flagReason && (
-                <p className="mt-2 text-xs leading-relaxed text-text-secondary">{flagReason}</p>
+              {displayReason && (
+                <p className="mt-2 text-xs leading-relaxed text-text-secondary">{displayReason}</p>
               )}
             </div>
           );
         })()}
+
+        {/* Flag action when not flagged */}
+        {!isFlagged && (
+          <button
+            onClick={() => setShowFlagDialog(true)}
+            className="mb-4 flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-default px-3.5 py-2.5 text-xs text-text-muted hover:border-[#e5534b]/30 hover:bg-[#e5534b]/[0.04] hover:text-[#e5534b] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#e5534b]/40 active:scale-[0.99]"
+            style={{ transition: "color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease" }}
+          >
+            <Flag size={13} strokeWidth={1.5} className="shrink-0" />
+            <span className="font-medium">Flag this ticket</span>
+          </button>
+        )}
 
         {/* Completeness indicator */}
         <div>
@@ -541,6 +587,27 @@ export function TicketSidebar({
         {/* Development panel */}
         <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={onNavigateToDev} />
       </div>
+
+      {/* Flag dialog */}
+      <ConfirmDialog
+        open={showFlagDialog}
+        onClose={() => { setShowFlagDialog(false); setFlagReasonInput(""); }}
+        title="Flag this ticket"
+        description="Add an optional reason for flagging. This will be synced to Jira as a comment."
+        confirmLabel="Flag"
+        confirmVariant="destructive"
+        onConfirm={handleFlag}
+        extra={
+          <textarea
+            value={flagReasonInput}
+            onChange={(e) => setFlagReasonInput(e.target.value)}
+            placeholder="Reason (optional)..."
+            rows={3}
+            maxLength={2000}
+            className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-xs leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
+          />
+        }
+      />
     </div>
   );
 }

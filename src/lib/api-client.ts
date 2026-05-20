@@ -126,6 +126,8 @@ export const tickets = {
     apiFetch<{ storyPoints: number | null }>(`/api/tickets/${enc(key)}`, { method: "PATCH", body: { storyPoints }, signal }),
   updateEpic: (key: string, epicKey: string | null, signal?: AbortSignal) =>
     apiFetch<{ epic: string | null; epicKey: string | null }>(`/api/tickets/${enc(key)}`, { method: "PATCH", body: { epicKey }, signal }),
+  toggleFlag: (key: string, flagged: boolean, flagReason?: string, signal?: AbortSignal) =>
+    apiFetch<{ flagged: boolean }>(`/api/tickets/${enc(key)}`, { method: "PATCH", body: { flagged, ...(flagReason ? { flagReason } : {}) }, signal }),
 
   getMetadata: (key: string, signal?: AbortSignal) =>
     apiFetch<Record<string, unknown>>(`/api/tickets/${enc(key)}/metadata`, { signal }),
