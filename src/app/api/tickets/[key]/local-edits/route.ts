@@ -32,6 +32,9 @@ export async function PUT(
   }
 }
 
+// navigator.sendBeacon always sends POST
+export const POST = PUT;
+
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ key: string }> },

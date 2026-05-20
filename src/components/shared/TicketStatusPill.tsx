@@ -314,13 +314,20 @@ function DropdownPortal({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; openUp: boolean } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setPos({ top: rect.bottom + 4, left: rect.left });
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < 200;
+    setPos({
+      top: openUp ? rect.top : rect.bottom + 4,
+      left: rect.left,
+      openUp,
+    });
 
     const close = () => onClose();
     window.addEventListener("scroll", close, { capture: true, passive: true });
@@ -329,8 +336,22 @@ function DropdownPortal({
 
   if (!pos || typeof document === "undefined") return null;
 
+  // The children (dropdown components) use `absolute top-full mt-1` for
+  // non-portal (inline) usage. The [&>*] selector resets that positioning
+  // so the portal container fully controls placement.
   return createPortal(
-    <div style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}>
+    <div
+      ref={contentRef}
+      style={{
+        position: "fixed",
+        left: pos.left,
+        zIndex: 9999,
+        ...(pos.openUp
+          ? { bottom: window.innerHeight - pos.top + 4 }
+          : { top: pos.top }),
+      }}
+      className="[&>*]:!static [&>*]:!mt-0"
+    >
       {children}
     </div>,
     document.body,
@@ -554,12 +575,14 @@ export function TicketStatusPill({
                 <IssueTypeIcon type={issueType} size={iconSize} />
               </button>
               {issueTypeDropdownOpen && onIssueTypeChange && (
-                <IssueTypeDropdown
-                  currentValue={issueType}
-                  onChange={onIssueTypeChange}
-                  onClose={() => setIssueTypeDropdownOpen(false)}
-                  skipRef={issueTypeBtnRef}
-                />
+                <DropdownPortal triggerRef={issueTypeBtnRef} onClose={() => setIssueTypeDropdownOpen(false)}>
+                  <IssueTypeDropdown
+                    currentValue={issueType}
+                    onChange={onIssueTypeChange}
+                    onClose={() => setIssueTypeDropdownOpen(false)}
+                    skipRef={issueTypeBtnRef}
+                  />
+                </DropdownPortal>
               )}
             </div>
             <span className="w-px self-stretch bg-overlay-default shrink-0" />
@@ -583,13 +606,15 @@ export function TicketStatusPill({
             {ticketKey}
           </a>
           {keyDropdownOpen && (
-            <KeyDropdown
-              jiraUrl={jiraUrl}
-              ticketKey={ticketKey}
-              title={title}
-              onClose={() => setKeyDropdownOpen(false)}
-              skipRef={keyLinkRef}
-            />
+            <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
+              <KeyDropdown
+                jiraUrl={jiraUrl}
+                ticketKey={ticketKey}
+                title={title}
+                onClose={() => setKeyDropdownOpen(false)}
+                skipRef={keyLinkRef}
+              />
+            </DropdownPortal>
           )}
         </div>
 
@@ -629,12 +654,14 @@ export function TicketStatusPill({
               {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
             </button>
             {jiraDropdownOpen && onJiraStatusChange && (
-              <JiraStatusDropdown
-                currentValue={jiraStatus}
-                onChange={onJiraStatusChange}
-                onClose={() => setJiraDropdownOpen(false)}
-                skipRef={jiraStatusBtnRef}
-              />
+              <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
+                <JiraStatusDropdown
+                  currentValue={jiraStatus}
+                  onChange={onJiraStatusChange}
+                  onClose={() => setJiraDropdownOpen(false)}
+                  skipRef={jiraStatusBtnRef}
+                />
+              </DropdownPortal>
             )}
           </div>
         )}
@@ -664,12 +691,14 @@ export function TicketStatusPill({
                 )}
               </button>
               {readinessDropdownOpen && onReadinessChange && (
-                <ReadinessDropdown
-                  currentValue={readiness ?? null}
-                  onChange={onReadinessChange}
-                  onClose={() => setReadinessDropdownOpen(false)}
-                  skipRef={readinessBtnRef}
-                />
+                <DropdownPortal triggerRef={readinessBtnRef} onClose={() => setReadinessDropdownOpen(false)}>
+                  <ReadinessDropdown
+                    currentValue={readiness ?? null}
+                    onChange={onReadinessChange}
+                    onClose={() => setReadinessDropdownOpen(false)}
+                    skipRef={readinessBtnRef}
+                  />
+                </DropdownPortal>
               )}
             </div>
           </>

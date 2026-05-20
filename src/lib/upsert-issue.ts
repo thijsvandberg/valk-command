@@ -136,7 +136,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     labels: fields.labels.length > 0 ? JSON.stringify(fields.labels) : null,
     priority,
     components: componentsJson,
-    jiraRank: jiraRank ?? null,
+    ...(jiraRank !== undefined ? { jiraRank } : {}),
     jiraCreatedAt: fields.created ?? null,
     jiraUpdatedAt: fields.updated ?? null,
     lastSyncedAt: now,

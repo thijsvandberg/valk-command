@@ -33,7 +33,7 @@ export function useTickets(sprintId: string | null) {
       : sprintId
       ? `/api/tickets?sprintId=${encodeURIComponent(sprintId)}`
       : null;
-  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: false, dedupingInterval: 30000 });
+  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: true, dedupingInterval: 5000, refreshInterval: 15000 });
   const { mutate } = swr;
 
   const syncedRef = useRef<string | null>(null);

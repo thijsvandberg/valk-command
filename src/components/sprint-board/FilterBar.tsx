@@ -87,16 +87,16 @@ export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[]
   { id: "title", label: "Title" },
   { id: "epic", label: "Epic" },
   { id: "sprint", label: "Sprint" },
-  { id: "points", label: "Points" },
-  { id: "assignee", label: "Assignee" },
   { id: "flagged", label: "Flagged" },
-  { id: "quality", label: "Quality Score (QS)" },
+  { id: "points", label: "Points" },
   { id: "bv", label: "Business Value (BV)" },
   { id: "notes", label: "Notes" },
   { id: "pipeline", label: "Pipeline" },
+  { id: "assignee", label: "Assignee" },
+  { id: "quality", label: "Quality Score (QS)" },
 ];
 
-export const DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "epic", "points", "assignee", "flagged", "quality", "bv", "notes", "pipeline"];
+export const DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "epic", "flagged", "points", "bv", "notes", "pipeline", "assignee", "quality"];
 
 export type ColumnPreset = "full" | "compact";
 

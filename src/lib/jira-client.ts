@@ -642,7 +642,7 @@ export class JiraClient {
       return [];
     }
 
-    const jql = `sprint = ${sprintId}`;
+    const jql = `sprint = ${sprintId} ORDER BY rank ASC`;
     let all: Array<{ key: string; updated: string }> = [];
     let pageToken: string | undefined;
 

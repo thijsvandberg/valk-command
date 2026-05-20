@@ -351,8 +351,10 @@ export default function SprintBoard() {
   const navigateToSprint = useCallback((sprintId: string) => {
     f.resetFilters();
     if (f.activeViewId) {
-      // Leaving a saved view — restore default column config so the sprint view
-      // doesn't inherit the view's custom column selection.
+      // Leaving a saved view — restore default sort and column config so the
+      // sprint view doesn't inherit the view's custom settings.
+      f.setSortField("rank");
+      f.setSortDir("asc");
       resetToDefaults();
     }
     const params = new URLSearchParams(searchParams.toString());

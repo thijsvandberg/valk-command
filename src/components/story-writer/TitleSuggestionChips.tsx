@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Type } from "lucide-react";
 
 interface TitleSuggestionChipsProps {
   titles: string[];
@@ -19,44 +19,59 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
   };
 
   return (
-    <div className="mt-1 space-y-0.5">
-      {titles.map((title, i) => {
-        const isSelected = selected === title;
-        return (
-          <div
-            key={title}
-            className={[
-              "group flex items-center gap-2.5 rounded-md px-1 py-0.5 -mx-1 transition-colors duration-150",
-              isSelected ? "bg-[var(--color-brand-500)]/[0.07]" : "hover:bg-overlay-subtle",
-            ].join(" ")}
-          >
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-              {isSelected
-                ? <Check size={10} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
-                : <span className="font-mono text-label tabular-nums text-text-muted select-none">{i + 1}</span>}
-            </span>
-            <span className={[
-              "flex-1 leading-[1.75]",
-              isSelected ? "text-text-primary" : "text-text-secondary",
-            ].join(" ")}>
-              {title}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleApply(title)}
-              disabled={isSelected}
-              className={[
-                "shrink-0 text-label font-medium cursor-pointer transition-colors duration-150",
+    <div className="mt-3 rounded-lg border border-border-default overflow-hidden">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default">
+        <Type size={10} strokeWidth={1.5} className="text-text-muted" />
+        <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
+          Title suggestions
+        </span>
+      </div>
+      <div className="divide-y divide-border-subtle">
+        {titles.map((title, i) => {
+          const isSelected = selected === title;
+          return (
+            <div
+              key={title}
+              className={`group flex items-center gap-3 px-3 py-2 transition-colors duration-150 ${
                 isSelected
-                  ? "text-[var(--color-brand-400)]/60 pointer-events-none"
-                  : "text-text-muted hover:text-[var(--color-brand-400)] group-hover:text-text-tertiary",
-              ].join(" ")}
+                  ? "bg-[var(--color-brand-500)]/[0.06]"
+                  : "hover:bg-overlay-subtle"
+              }`}
             >
-              {isSelected ? "Applied" : "Use"}
-            </button>
-          </div>
-        );
-      })}
+              <span
+                className={`flex size-5 shrink-0 items-center justify-center rounded-full text-caption font-medium transition-colors duration-150 ${
+                  isSelected
+                    ? "bg-[var(--color-brand-500)]/[0.15] text-[var(--color-brand-500)]"
+                    : "bg-overlay-default text-text-muted"
+                }`}
+              >
+                {isSelected
+                  ? <Check size={10} strokeWidth={2.5} />
+                  : <span className="tabular-nums">{i + 1}</span>}
+              </span>
+              <span
+                className={`flex-1 text-body-sm leading-[1.6] ${
+                  isSelected ? "text-text-primary" : "text-text-secondary"
+                }`}
+              >
+                {title}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleApply(title)}
+                disabled={isSelected}
+                className={`shrink-0 rounded-md px-2.5 py-1 text-caption font-medium cursor-pointer transition-colors duration-150 ${
+                  isSelected
+                    ? "bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)] pointer-events-none"
+                    : "text-text-muted border border-border-default hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08]"
+                }`}
+              >
+                {isSelected ? "Applied" : "Use"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

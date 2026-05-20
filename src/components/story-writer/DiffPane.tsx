@@ -29,6 +29,7 @@ export interface StoredVersionRow {
 
 export interface DiffPaneProps {
   baseSnapshot: string;
+  baseLabel?: string;
   rightVersions: RightVersion[];
   diffNewId: string;
   diffViewMode: DiffViewMode;
@@ -48,6 +49,7 @@ export interface DiffPaneProps {
 
 export function DiffPane({
   baseSnapshot,
+  baseLabel = "Current",
   rightVersions,
   diffNewId,
   diffViewMode,
@@ -177,7 +179,7 @@ export function DiffPane({
                 key={`${diffNewId}-${snapshotKey}`}
                 oldText={baseSnapshot}
                 newText={selected.content}
-                oldLabel="Current"
+                oldLabel={baseLabel}
                 newLabel={selected.label}
                 interactive
                 pendingIsOld

@@ -49,8 +49,8 @@ export function ChatApp() {
     }
   };
 
-  const handleShowDiff = (_draftId: string) => {
-    pane.openApp("diff");
+  const handleShowDiff = (draftId: string) => {
+    pane.openDiffForDraft(draftId);
   };
 
   const handleFindRelated = async () => {

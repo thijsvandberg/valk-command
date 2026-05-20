@@ -517,7 +517,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
       }}
       className={`group/row border-b border-border-subtle border-l-2 transition-colors duration-100 ${
-        dragListeners ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+        dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
       } ${
         isSelected
           ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"

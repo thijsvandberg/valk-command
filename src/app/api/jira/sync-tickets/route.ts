@@ -189,11 +189,14 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     let issues: JiraIssue[];
     // Complete set of keys Jira reports for this sprint (used for deletion detection)
     let allJiraKeys: Set<string> | null = null;
+    // When using timestamp-first, rankMap holds the correct rank for ALL sprint issues
+    let rankMap: Map<string, number> | null = null;
 
     if (strategy === "timestamp-first" && jiraClient.isLive) {
       const tsResult = await fetchTimestampFirst(sprintIdNum, controller.signal);
       issues = tsResult.issues;
       allJiraKeys = tsResult.allJiraKeys;
+      rankMap = tsResult.rankMap;
     } else {
       issues = await jiraClient.getSprintIssues(sprintIdNum, controller.signal);
     }
@@ -203,8 +206,22 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     for (let i = 0; i < issues.length; i++) {
       const issue = issues[i];
       jiraKeys.add(issue.key);
-      const info = await upsertIssue(issue, sprintId, controller.signal, i);
+      // For timestamp-first, use the rank from the full lightweight fetch;
+      // for full fetch, issues are already ordered by rank so index is correct.
+      const rank = rankMap ? rankMap.get(issue.key) ?? i : i;
+      const info = await upsertIssue(issue, sprintId, controller.signal, rank);
       results.push(info);
+    }
+
+    // When using timestamp-first, also update ranks for unchanged tickets
+    // since Jira's rank order may have changed without updating the ticket itself.
+    if (rankMap) {
+      const changedKeys = new Set(issues.map((iss) => iss.key));
+      for (const [key, rank] of rankMap) {
+        if (!changedKeys.has(key)) {
+          await db.update(ticket).set({ jiraRank: rank }).where(eq(ticket.jiraKey, key));
+        }
+      }
     }
 
     // Clear sprint assignment for tickets no longer in this sprint
@@ -329,11 +346,13 @@ async function updateWatermark(value: string) {
  * Returns both the changed issues (full data) and the complete set of keys
  * that Jira reports for the sprint, so the caller can detect deletions.
  */
-async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): Promise<{ issues: JiraIssue[]; allJiraKeys: Set<string> }> {
+async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): Promise<{ issues: JiraIssue[]; allJiraKeys: Set<string>; rankMap: Map<string, number> }> {
   const lightweight = await jiraClient.getSprintIssueTimestamps(sprintIdNum, signal);
-  if (lightweight.length === 0) return { issues: [], allJiraKeys: new Set() };
+  if (lightweight.length === 0) return { issues: [], allJiraKeys: new Set(), rankMap: new Map() };
 
   const allJiraKeys = new Set(lightweight.map((item) => item.key));
+  // lightweight is ordered by rank; build a rank map for all sprint issues
+  const rankMap = new Map(lightweight.map((item, idx) => [item.key, idx]));
   const allKeys = [...allJiraKeys];
   const localTickets = await db
     .select({ jiraKey: ticket.jiraKey, jiraUpdatedAt: ticket.jiraUpdatedAt })
@@ -346,8 +365,8 @@ async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): P
     .filter((item) => localMap.get(item.key) !== item.updated)
     .map((item) => item.key);
 
-  if (changedKeys.length === 0) return { issues: [], allJiraKeys };
+  if (changedKeys.length === 0) return { issues: [], allJiraKeys, rankMap };
 
   const issues = await jiraClient.getIssuesByKeys(changedKeys, signal);
-  return { issues, allJiraKeys };
+  return { issues, allJiraKeys, rankMap };
 }

@@ -210,7 +210,7 @@ export default function StoryWriterLandingPage() {
       </ViewHeader>
 
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className="max-w-3xl">
+        <div className="max-w-5xl">
           {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
 
           <div className="flex items-center justify-between mb-5">

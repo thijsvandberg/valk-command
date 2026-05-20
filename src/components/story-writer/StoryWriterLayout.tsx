@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   NotebookPen,
   SendHorizontal,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -76,6 +77,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const [pushError, setPushError] = useState<string | null>(null);
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [hasLocalSave, setHasLocalSave] = useState(false);
+  const [hasPushed, setHasPushed] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editVersionRef = useRef(0);
@@ -177,6 +179,12 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     }, 2000);
   }, [writer]);
 
+  const handleReadinessChange = useCallback(async (v: import("@/types/ticket").TicketReadiness | null) => {
+    setLocalReadiness(v);
+    await tickets.updateMetadata(ticketKey, { readiness: v });
+    mutateTicket();
+  }, [ticketKey, mutateTicket]);
+
   const handlePush = useCallback(async () => {
     setPushing(true);
     setPushError(null);
@@ -186,6 +194,8 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
       if (result.success) {
         if (editVersionRef.current === versionAtPush) setIsDraftDirty(false);
         setHasLocalSave(false);
+        setHasPushed(true);
+        handleReadinessChange("ready_to_refine");
       } else if (result.conflict) {
         setPushError(result.contentChanged
           ? "Jira was updated externally. Review the diff on the ticket detail page."
@@ -196,7 +206,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     } finally {
       setPushing(false);
     }
-  }, [writer]);
+  }, [writer, handleReadinessChange]);
 
   const handleDelete = useCallback(async (deleteConversation: boolean) => {
     await writer.deleteSession(deleteConversation);
@@ -206,6 +216,10 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     setShowDeleteConfirm(false);
     setShowRefinePrompt(true);
   }, [writer]);
+
+  const handleCloseAfterPush = useCallback(() => {
+    window.history.back();
+  }, []);
 
   const handleDraftChange = useCallback((content: string) => {
     editVersionRef.current += 1;
@@ -246,12 +260,6 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     }
     writer.updateTargetLocalTitle(title);
   }, [writer, showSaved]);
-
-  const handleReadinessChange = useCallback(async (v: import("@/types/ticket").TicketReadiness | null) => {
-    setLocalReadiness(v);
-    await tickets.updateMetadata(ticketKey, { readiness: v });
-    mutateTicket();
-  }, [ticketKey, mutateTicket]);
 
   const handlePushAndClose = useCallback(async () => {
     setPushing(true);
@@ -497,6 +505,15 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 >
                   Push to Jira
                 </Button>
+              ) : hasPushed ? (
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon={<LogOut size={13} strokeWidth={1.5} />}
+                  onClick={handleCloseAfterPush}
+                >
+                  Close
+                </Button>
               ) : (
                 <Button
                   variant="primary"
@@ -539,17 +556,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
 
                     <div className="mx-2 my-1 h-px bg-overlay-default" />
 
-                    {!hasLocalSave ? (
-                      <button
-                        type="button"
-                        onClick={() => { setShowMoreMenu(false); handlePush(); }}
-                        disabled={pushing || isDraftDirty}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
-                        <span>Push to Jira</span>
-                      </button>
-                    ) : (
+                    {hasLocalSave ? (
                       <button
                         type="button"
                         onClick={() => { setShowMoreMenu(false); handlePushAndClose(); }}
@@ -558,6 +565,25 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                       >
                         <SendHorizontal size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Push &amp; Close</span>
+                      </button>
+                    ) : hasPushed ? (
+                      <button
+                        type="button"
+                        onClick={() => { setShowMoreMenu(false); handleCloseAfterPush(); }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                      >
+                        <LogOut size={13} strokeWidth={1.5} className="shrink-0" />
+                        <span>Close</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setShowMoreMenu(false); handlePush(); }}
+                        disabled={pushing || isDraftDirty}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
+                        <span>Push to Jira</span>
                       </button>
                     )}
 

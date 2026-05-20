@@ -278,12 +278,14 @@ export function ChatMessage({
 
       <div
         ref={containerRef}
-        className={`max-w-[75%] rounded-2xl text-sm leading-[1.75] ${allTitleSuggestions.length > 0 || draftId ? "w-full" : ""} ${
+        className={`text-sm leading-[1.75] ${
+          allTitleSuggestions.length > 0 || draftId ? "max-w-[92%]" : isUser ? "max-w-[70%]" : "max-w-[75%]"
+        } ${
           draftOnly
             ? ""
             : isUser
-              ? "px-4 py-3 bg-[var(--color-brand-600)]/[0.18] text-text-primary border border-[var(--color-brand-500)]/[0.18] shadow-sm"
-              : "px-4 py-3 bg-[var(--color-surface-floating)] text-text-primary border border-white/[0.06] shadow-sm"
+              ? "px-4 py-3 rounded-2xl rounded-br-lg bg-[var(--color-brand-600)]/[0.18] text-text-primary border border-[var(--color-brand-500)]/[0.18] shadow-sm"
+              : "px-4 py-3 rounded-2xl rounded-bl-lg bg-[var(--color-surface-floating)] text-text-primary border border-border-default shadow-sm"
         }`}
       >
         {displayContent && (
@@ -298,13 +300,9 @@ export function ChatMessage({
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className={`flex items-center gap-1 text-label cursor-pointer transition-colors duration-150 ${
-                  expanded
-                    ? "mt-1 text-text-tertiary hover:text-text-secondary"
-                    : "mt-1 text-text-tertiary hover:text-text-secondary"
-                }`}
+                className="mt-2 inline-flex items-center gap-1 rounded-full border border-border-default bg-overlay-subtle px-2.5 py-0.5 text-label text-text-tertiary cursor-pointer hover:text-text-secondary hover:border-border-strong hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-150"
               >
-                {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                 {expanded ? "Show less" : "Show more"}
               </button>
             )}

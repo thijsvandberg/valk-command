@@ -23,9 +23,26 @@ export function DiffApp() {
   const [selectedDraftIdx, setSelectedDraftIdx] = useState(0);
   const [diffBaseSnapshot, setDiffBaseSnapshot] = useState(writer.session?.localDraft ?? "");
   const [snapshotKey, setSnapshotKey] = useState(0);
+  const [baseVersionId, setBaseVersionId] = useState<string>("editor");
 
   const localDraftRef = useRef(writer.session?.localDraft ?? "");
   useEffect(() => { localDraftRef.current = writer.session?.localDraft ?? ""; }, [writer.session?.localDraft]);
+
+  // When opened from chat "View diff" button, switch to diff mode for the requested draft
+  const { pendingDiffDraftId } = pane;
+  useEffect(() => {
+    if (!pendingDiffDraftId) return;
+    pane.consumePendingDiffDraftId();
+    setDiffViewMode("diff");
+    const versionId = `ai-${pendingDiffDraftId}`;
+    setExplicitDiffId(versionId);
+    setDiffHunkStates({});
+    setDiffBaseSnapshot(localDraftRef.current);
+    setSnapshotKey((k) => k + 1);
+    const idx = writer.aiDrafts.findIndex((d) => d.id === pendingDiffDraftId);
+    if (idx >= 0) setSelectedDraftIdx(idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDiffDraftId]);
 
   const rightVersions = useMemo<RightVersion[]>(() => {
     const versions: RightVersion[] = [];
@@ -81,6 +98,26 @@ export function DiffApp() {
     return versions;
   }, [writer.baseDescription, writer.aiDrafts, versionsData]);
 
+  const baseVersionOptions = useMemo<RightVersion[]>(() => [
+    {
+      id: "editor",
+      label: "Editor",
+      content: "",
+      title: "Editor (current)",
+      tag: "draft",
+    },
+    ...rightVersions,
+  ], [rightVersions]);
+
+  const effectiveBaseSnapshot = useMemo(() => {
+    if (baseVersionId === "editor") return diffBaseSnapshot;
+    const baseVersion = rightVersions.find((v) => v.id === baseVersionId);
+    return baseVersion?.content ?? diffBaseSnapshot;
+  }, [baseVersionId, rightVersions, diffBaseSnapshot]);
+
+  const baseSelected = baseVersionOptions.find((v) => v.id === baseVersionId);
+  const baseLabel = baseSelected?.label ?? "Editor";
+
   // Derive current diffNewId: use explicit selection or fall back to latest AI draft / first version
   const diffNewId = useMemo(() => {
     if (explicitDiffId && rightVersions.some((v) => v.id === explicitDiffId)) return explicitDiffId;
@@ -88,6 +125,15 @@ export function DiffApp() {
     const latestAi = [...rightVersions].reverse().find((v) => v.isDraft);
     return latestAi?.id ?? rightVersions[0].id;
   }, [explicitDiffId, rightVersions]);
+
+  const handleBaseIdChange = useCallback((id: string) => {
+    setBaseVersionId(id);
+    setDiffHunkStates({});
+    if (id === "editor") {
+      setDiffBaseSnapshot(localDraftRef.current);
+    }
+    setSnapshotKey((k) => k + 1);
+  }, []);
 
   const handleDiffNewIdChange = useCallback(
     (id: string) => {
@@ -133,15 +179,19 @@ export function DiffApp() {
   );
 
   const selected = rightVersions.find((v) => v.id === diffNewId);
-  const contextLabel = selected?.label ?? "";
 
-  // Register toolbar with version picker + diff/preview toggle
+  // Register toolbar with base + target version pickers and diff/preview toggle
   useEffect(() => {
     pane.registerToolbar("diff", {
       label: "Diff",
-      contextLabel,
       actions: (
         <div className="flex items-center gap-2">
+          <VersionPicker
+            options={baseVersionOptions}
+            selectedId={baseVersionId}
+            onSelect={handleBaseIdChange}
+          />
+          <span className="text-caption text-text-muted select-none">vs</span>
           <VersionPicker
             options={rightVersions}
             selectedId={diffNewId}
@@ -174,12 +224,13 @@ export function DiffApp() {
       ),
     });
     return () => pane.unregisterToolbar("diff");
-  }, [pane, contextLabel, rightVersions, diffNewId, diffViewMode, handleDiffNewIdChange]);
+  }, [pane, baseVersionOptions, baseVersionId, handleBaseIdChange, rightVersions, diffNewId, diffViewMode, handleDiffNewIdChange]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <DiffPane
-        baseSnapshot={diffBaseSnapshot}
+        baseSnapshot={effectiveBaseSnapshot}
+        baseLabel={baseLabel}
         rightVersions={rightVersions}
         diffNewId={diffNewId}
         diffViewMode={diffViewMode}

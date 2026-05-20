@@ -56,7 +56,7 @@ export function AppToolbar() {
         return (
           <div
             key={paneIdx}
-            className="flex min-w-0 shrink-0 overflow-hidden"
+            className="flex min-w-0 shrink-0 overflow-x-clip"
             style={{ width: widthStyle }}
           >
             {/* Divider between panes */}

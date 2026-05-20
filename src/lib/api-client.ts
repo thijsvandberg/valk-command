@@ -143,7 +143,7 @@ export const tickets = {
   getLocalEdits: (key: string, signal?: AbortSignal) =>
     apiFetch<unknown>(`/api/tickets/${enc(key)}/local-edits`, { signal }),
   saveLocalEdit: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
-    apiFetch<unknown>(`/api/tickets/${enc(key)}/local-edits`, { method: "POST", body: data, signal }),
+    apiFetch<unknown>(`/api/tickets/${enc(key)}/local-edits`, { method: "PUT", body: data, signal }),
 
   getVersions: (key: string, signal?: AbortSignal) =>
     apiFetch<StoryVersion[]>(`/api/tickets/${enc(key)}/versions`, { signal }),
