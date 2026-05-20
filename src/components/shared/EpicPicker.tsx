@@ -35,11 +35,13 @@ export function EpicPicker({
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Always fetch so data is ready when picker opens
   const { data: epics, mutate } = useSWR<EpicListItem[]>(
-    open ? "/api/epics" : null,
+    "/api/epics",
     swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
+  const hasSyncedRef = useRef(false);
 
   const filtered = useMemo(() => {
     if (!epics) return [];
@@ -84,6 +86,15 @@ export function EpicPicker({
       setSyncing(false);
     }
   }, [mutate]);
+
+  // Auto-sync from Jira on first open when the local list is empty
+  useEffect(() => {
+    if (!open || hasSyncedRef.current || syncing) return;
+    if (epics && epics.length === 0) {
+      hasSyncedRef.current = true;
+      handleSync();
+    }
+  }, [open, epics, syncing, handleSync]);
 
   // Click outside, escape, scroll handlers
   useEffect(() => {
