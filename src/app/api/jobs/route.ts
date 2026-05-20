@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { scheduledJob } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { isValidCron } from "@/lib/cron";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET() {
   const result = await db.select().from(scheduledJob).limit(100);
@@ -10,6 +11,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   let body: Record<string, unknown>;
   try {
     body = await request.json();

@@ -6,6 +6,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import { safeJsonParse } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 async function getHiddenIds(): Promise<Set<string>> {
   const row = await db.query.appSetting.findFirst({
@@ -83,6 +84,9 @@ export async function GET() {
  * Body: { hiddenIds: number[] }
  */
 export async function PUT(request: NextRequest) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const hiddenIds: number[] = body.hiddenIds ?? [];

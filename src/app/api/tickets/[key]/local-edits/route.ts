@@ -4,6 +4,7 @@ import * as ticketService from "@/services/ticket-service";
 import type { UpsertLocalEditInput } from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
 import { cache } from "@/lib/cache";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET(
   _request: Request,
@@ -20,6 +21,9 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
@@ -44,6 +48,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
@@ -57,6 +64,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

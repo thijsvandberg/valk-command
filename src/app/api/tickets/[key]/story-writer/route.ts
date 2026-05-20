@@ -7,6 +7,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const patchSessionSchema = z.object({
   localDraft: z.string().optional(),
@@ -92,6 +93,9 @@ export async function GET(request: Request, { params }: RouteContext) {
 }
 
 export async function POST(_request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
@@ -201,6 +205,9 @@ export async function POST(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
@@ -292,6 +299,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 }
 
 export async function DELETE(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

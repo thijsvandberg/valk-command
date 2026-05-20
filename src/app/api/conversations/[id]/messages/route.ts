@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { message } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { validatePathParam } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const VALID_ROLES = ["user", "assistant"] as const;
 
@@ -10,6 +11,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { id } = await params;
   const invalid = validatePathParam(id);
   if (invalid) return invalid;

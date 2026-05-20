@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { followedSprint } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const followSprintSchema = z.object({
   sprintName: z.string().min(1).max(200),
@@ -16,6 +17,9 @@ export async function GET() {
 
 // POST /api/followed-sprints - follow a sprint (idempotent)
 export async function POST(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -40,6 +44,9 @@ export async function POST(request: Request) {
 
 // DELETE /api/followed-sprints - unfollow a sprint
 export async function DELETE(request: Request) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const url = new URL(request.url);
   const sprintName = url.searchParams.get("sprintName");
   if (!sprintName) {

@@ -3,11 +3,15 @@ import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { poComment } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ key: string; id: string }> },
 ) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { key, id } = await params;
   const invalidKey = validatePathParam(key);
   if (invalidKey) return invalidKey;

@@ -8,6 +8,7 @@ import { env } from "@/lib/env";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -47,6 +48,9 @@ function parseRelatedStories(output: string): RelatedStoryItem[] {
  * Replaces any previous candidates for this session.
  */
 export async function POST(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
@@ -138,6 +142,9 @@ export async function POST(request: Request, { params }: RouteContext) {
  * When unlinking, removes that ticketLink entry.
  */
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

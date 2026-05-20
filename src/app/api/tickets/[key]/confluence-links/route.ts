@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { ticketConfluenceLink } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteParams = { params: Promise<{ key: string }> };
 
@@ -30,6 +31,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
  * Body: { pageId, pageTitle, pageUrl, lastModifiedAt?, lastModifiedBy?, source? }
  */
 export async function POST(req: NextRequest, { params }: RouteParams) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
@@ -74,6 +78,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
  * Unlinks a Confluence page. Body: { linkId }
  */
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

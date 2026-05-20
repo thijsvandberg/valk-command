@@ -9,6 +9,7 @@ import {
   NOTIFICATION_PREFS_KEY,
   getPreferences,
 } from "@/lib/notification-preferences";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
 
@@ -21,6 +22,9 @@ const preferencesBodySchema = z.object({
 });
 
 export async function PUT(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = preferencesBodySchema.safeParse(body);

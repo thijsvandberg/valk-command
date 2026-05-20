@@ -281,6 +281,9 @@ export async function POST(request: Request, { params }: RouteContext) {
 }
 
 export async function DELETE(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

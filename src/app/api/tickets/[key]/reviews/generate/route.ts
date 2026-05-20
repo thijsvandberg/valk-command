@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { agentFetch } from "@/lib/agent-fetch";
 import { logActivity } from "@/lib/activity-logger";
 import { captureReviewGeneration } from "@/lib/review-capture";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 /**
  * POST /api/tickets/[key]/reviews/generate
@@ -18,6 +19,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

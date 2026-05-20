@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -17,6 +18,9 @@ type RouteContext = { params: Promise<{ key: string }> };
  * inserts a minimal local record, and creates bidirectional ticketLink rows.
  */
 export async function POST(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

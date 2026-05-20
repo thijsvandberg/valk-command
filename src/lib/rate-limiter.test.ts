@@ -55,6 +55,48 @@ describe("rate-limiter", () => {
     });
   });
 
+  describe("write tier", () => {
+    it("allows up to 30 requests", () => {
+      for (let i = 0; i < 30; i++) {
+        expect(applyRateLimit("write")).toBeNull();
+      }
+      const result = applyRateLimit("write");
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(429);
+    });
+
+    it("includes Retry-After header on 429", () => {
+      for (let i = 0; i < 30; i++) applyRateLimit("write");
+      const result = applyRateLimit("write")!;
+      expect(result.headers.get("Retry-After")).toBeTruthy();
+      expect(Number(result.headers.get("Retry-After"))).toBeGreaterThan(0);
+    });
+
+    it("includes error message in body", async () => {
+      for (let i = 0; i < 30; i++) applyRateLimit("write");
+      const result = applyRateLimit("write")!;
+      const body = await result.json();
+      expect(body.error).toMatch(/too many requests/i);
+    });
+  });
+
+  describe("delete tier", () => {
+    it("allows up to 15 requests", () => {
+      for (let i = 0; i < 15; i++) {
+        expect(applyRateLimit("delete")).toBeNull();
+      }
+      const result = applyRateLimit("delete");
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(429);
+    });
+
+    it("uses separate bucket from write tier", () => {
+      for (let i = 0; i < 30; i++) applyRateLimit("write");
+      expect(applyRateLimit("write")!.status).toBe(429);
+      expect(applyRateLimit("delete")).toBeNull();
+    });
+  });
+
   describe("outbound tracking", () => {
     it("tracks outbound calls", () => {
       trackOutboundCall("jira");

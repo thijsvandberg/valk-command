@@ -5,6 +5,7 @@ import { storyVersion } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { createHash } from "crypto";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 function contentHash(description: string): string {
   const text = `${JSON.stringify(description)}|`;
@@ -15,6 +16,9 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

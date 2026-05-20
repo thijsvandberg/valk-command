@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { followedTicket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const followTicketSchema = z.object({
   ticketKey: z.string().min(1).max(100),
@@ -17,6 +18,9 @@ export async function GET() {
 
 // POST /api/followed-tickets - follow a ticket (idempotent)
 export async function POST(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -45,6 +49,9 @@ export async function POST(request: Request) {
 
 // DELETE /api/followed-tickets - unfollow a ticket
 export async function DELETE(request: Request) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const url = new URL(request.url);
   const ticketKey = url.searchParams.get("ticketKey");
   if (!ticketKey) {

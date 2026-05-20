@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { conversation, message, storyWriterSession } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { validatePathParam } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET(
   _request: Request,
@@ -39,6 +40,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { id } = await params;
   const invalid = validatePathParam(id);
   if (invalid) return invalid;
@@ -83,6 +87,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { id } = await params;
   const invalid = validatePathParam(id);
   if (invalid) return invalid;

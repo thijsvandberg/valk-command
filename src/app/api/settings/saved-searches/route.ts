@@ -4,6 +4,7 @@ import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const SETTING_KEY = "saved_searches";
 const MAX_SAVED = 10;
@@ -59,6 +60,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = bodySchema.safeParse(body);

@@ -4,6 +4,7 @@ import { scheduledJob } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { isValidCron } from "@/lib/cron";
 import { validatePathParam } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET(
   _request: Request,
@@ -28,6 +29,9 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { id } = await params;
   const invalid = validatePathParam(id);
   if (invalid) return invalid;
@@ -102,6 +106,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { id } = await params;
   const invalid = validatePathParam(id);
   if (invalid) return invalid;

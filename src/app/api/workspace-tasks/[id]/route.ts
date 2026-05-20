@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { agentFetch } from "@/lib/agent-fetch";
 import { validatePathParam } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET(
   _request: Request,
@@ -26,6 +27,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { id } = await params;
   const invalid = validatePathParam(id);
   if (invalid) return invalid;

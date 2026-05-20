@@ -5,6 +5,7 @@ import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { safeJsonParse } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const SETTING_KEY = "sprint_board_column_config";
 
@@ -37,6 +38,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   try {
     let body: unknown;
     try {

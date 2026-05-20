@@ -6,11 +6,15 @@ import { eq } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
 import { parseBriefingOutput } from "@/lib/stakeholder-data";
 import { validatePathParam } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { id } = await params;
   const invalid = validatePathParam(id);
   if (invalid) return invalid;

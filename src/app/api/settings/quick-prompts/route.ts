@@ -4,6 +4,7 @@ import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export type QuickPrompt = {
   id: string;
@@ -125,6 +126,9 @@ const quickPromptsBodySchema = z.object({
 });
 
 export async function PUT(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = quickPromptsBodySchema.safeParse(body);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 const SETTINGS_KEY = "deploy-notification-settings";
 
@@ -35,6 +36,9 @@ export async function GET() {
 
 // PUT /api/pipelines/deploy-settings
 export async function PUT(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const body = await request.json() as DeployNotificationSettings;
 
   const existing = db.select().from(appSetting).where(eq(appSetting.key, SETTINGS_KEY)).get();

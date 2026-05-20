@@ -6,6 +6,7 @@ import {
   setSubscribedTeams,
   getAvailableTeams,
 } from "@/lib/subscribed-teams";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET() {
   return NextResponse.json({
@@ -19,6 +20,9 @@ const bodySchema = z.object({
 });
 
 export async function PUT(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = bodySchema.safeParse(body);

@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

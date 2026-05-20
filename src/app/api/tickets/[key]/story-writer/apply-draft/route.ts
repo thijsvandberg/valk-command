@@ -9,6 +9,7 @@ import { agentFetch } from "@/lib/agent-fetch";
 import { createOrUpdateNotification } from "@/lib/notifications";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -17,6 +18,9 @@ type RouteContext = { params: Promise<{ key: string }> };
  * Never auto-applies to localDraft; the user explicitly accepts/merges.
  */
 export async function POST(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
@@ -167,6 +171,9 @@ async function fetchAndStoreExecutionLog(
  * DELETE: dismiss a specific AI draft by ID (query param ?draftId=xxx)
  */
 export async function DELETE(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

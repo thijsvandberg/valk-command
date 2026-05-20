@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { storyWriterSession, ticket, message } from "@/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export interface ActiveSession {
   sessionId: string;
@@ -66,6 +67,9 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get("sessionId");
   if (!sessionId) return NextResponse.json({ error: "sessionId required" }, { status: 400 });

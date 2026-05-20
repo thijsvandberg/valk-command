@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { conversation } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { preparedConversationList } from "@/db/prepared";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET() {
   // Story writer conversations (relatedTicket is set) are only shown once the user
@@ -13,6 +14,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   let body: Record<string, string | null>;
   try {
     body = await request.json();

@@ -10,6 +10,7 @@ import { cache } from "@/lib/cache";
 import { jiraClient, STORY_POINTS_FIELD } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 function userInitials(name: string): string {
   return name
@@ -241,6 +242,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

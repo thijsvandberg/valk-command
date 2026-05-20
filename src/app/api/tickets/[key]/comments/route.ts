@@ -5,6 +5,7 @@ import { poComment } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { preparedPoComments, preparedJiraComments } from "@/db/prepared";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET(
   _request: Request,
@@ -24,6 +25,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;

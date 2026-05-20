@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sprintSlot } from "@/db/schema";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET() {
   const slots = await db.select().from(sprintSlot).orderBy(sprintSlot.slotIndex).limit(50);
@@ -8,6 +9,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();

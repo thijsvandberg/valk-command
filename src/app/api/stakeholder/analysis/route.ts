@@ -4,6 +4,7 @@ import { stakeholderAnalysis, conversation, message } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { eq, desc, and } from "drizzle-orm";
 import { agentFetch } from "@/lib/agent-fetch";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -26,6 +27,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -117,6 +121,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const limited = applyRateLimit("delete");
+  if (limited) return limited;
+
   // Delete all analyses for a sprint (cleanup)
   const { searchParams } = new URL(request.url);
   const sprintIdParam = searchParams.get("sprintId");

@@ -7,6 +7,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
+import { applyRateLimit } from "@/lib/rate-limiter";
 import type { JiraStatus } from "@/types/ticket";
 
 type RouteContext = { params: Promise<{ key: string }> };
@@ -14,6 +15,9 @@ type RouteContext = { params: Promise<{ key: string }> };
 const CLOSED_STATUSES: JiraStatus[] = ["DONE", "DEPRECATED"];
 
 export async function POST(_request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
