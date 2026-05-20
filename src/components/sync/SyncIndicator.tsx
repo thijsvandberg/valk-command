@@ -71,6 +71,7 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
     "bulk-action": "Bulk action",
     "story-writer": "Story writer",
     "incremental-sync": "Incremental sync",
+    "epic-sync": "Epic sync",
   };
   return labels[type] ?? type;
 }

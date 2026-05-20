@@ -20,7 +20,7 @@ const STORY_POINTS_FIELD = "customfield_11909";
 const ACCEPTANCE_CRITERIA_FIELD = "customfield_10034";
 
 // Fields to request when fetching full issue data
-const ISSUE_FIELDS = [
+export const ISSUE_FIELDS = [
   "summary", "issuetype", "status", "priority", "assignee", "reporter",
   "labels", "parent", STORY_POINTS_FIELD, SPRINT_FIELD, "flagged",
   "description", "created", "updated", ACCEPTANCE_CRITERIA_FIELD, "components",

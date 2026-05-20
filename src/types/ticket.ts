@@ -244,7 +244,7 @@ export interface StoredReview {
 export type ActivityLogType =
   | "sprint-sync" | "ticket-sync" | "single-ticket" | "comment-sync"
   | "review" | "metadata-update" | "local-edit" | "push-to-jira" | "bulk-action"
-  | "story-writer" | "incremental-sync";
+  | "story-writer" | "incremental-sync" | "epic-sync";
 
 export interface ActivityLogEntry {
   id: string;

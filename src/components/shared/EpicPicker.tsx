@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Check, Search, ChevronDown, Zap, X } from "lucide-react";
-import { apiFetch } from "@/lib/api-client";
+import { Check, Search, ChevronDown, Zap, X, RefreshCw } from "lucide-react";
+import useSWR from "swr";
+import { apiFetch, swrFetcher } from "@/lib/api-client";
 
 export interface EpicOption {
   key: string;
   name: string;
 }
 
-interface JiraSearchResponse {
-  issues: Array<{
-    key: string;
-    summary: string;
-    status: string;
-  }>;
+interface EpicListItem {
+  key: string;
+  name: string;
+  status: string;
+  childCount: number;
 }
 
 export function EpicPicker({
@@ -29,14 +29,26 @@ export function EpicPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<EpicOption[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; flipUp: boolean } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const abortRef = useRef<AbortController | undefined>(undefined);
+
+  const { data: epics, mutate } = useSWR<EpicListItem[]>(
+    open ? "/api/epics" : null,
+    swrFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
+  );
+
+  const filtered = useMemo(() => {
+    if (!epics) return [];
+    if (!query.trim()) return epics;
+    const q = query.toLowerCase();
+    return epics.filter(
+      (e) => e.name.toLowerCase().includes(q) || e.key.toLowerCase().includes(q),
+    );
+  }, [epics, query]);
 
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
@@ -49,53 +61,29 @@ export function EpicPicker({
     });
   }, [align]);
 
-  const fetchEpics = useCallback(async (q: string) => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ issuetype: "Epic" });
-      if (q.trim()) params.set("q", q.trim());
-      const data = await apiFetch<JiraSearchResponse>(
-        `/api/search/jira?${params.toString()}`,
-        { signal: controller.signal },
-      );
-      if (!controller.signal.aborted) {
-        setResults(data.issues.map((i) => ({ key: i.key, name: i.summary })));
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      if (!controller.signal.aborted) setResults([]);
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }, []);
-
   const handleOpen = useCallback(() => {
     updatePosition();
     setOpen(true);
     setQuery("");
-    setResults([]);
-    fetchEpics("");
     requestAnimationFrame(() => searchRef.current?.focus());
-  }, [updatePosition, fetchEpics]);
+  }, [updatePosition]);
 
   const handleClose = useCallback(() => {
     setOpen(false);
     setQuery("");
-    setResults([]);
-    abortRef.current?.abort();
   }, []);
 
-  // Debounced search on query change
-  useEffect(() => {
-    if (!open) return;
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchEpics(query), 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [query, open, fetchEpics]);
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      await apiFetch("/api/jira/sync-epics", { method: "POST" });
+      await mutate();
+    } catch {
+      // Sync failure is non-critical
+    } finally {
+      setSyncing(false);
+    }
+  }, [mutate]);
 
   // Click outside, escape, scroll handlers
   useEffect(() => {
@@ -160,7 +148,7 @@ export function EpicPicker({
             boxShadow: "0 4px 16px rgba(0,0,0,0.20), 0 1px 4px rgba(0,0,0,0.10)",
           }}
         >
-          {/* Search */}
+          {/* Search + sync */}
           <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
             <Search size={12} strokeWidth={1.5} className="shrink-0 text-text-muted" />
             <input
@@ -171,10 +159,24 @@ export function EpicPicker({
               placeholder="Search epics..."
               className="flex-1 bg-transparent text-xs text-text-secondary placeholder:text-text-muted focus:outline-none"
             />
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={syncing}
+              title="Sync epics from Jira"
+              className="shrink-0 rounded p-0.5 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40"
+              style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
+            >
+              <RefreshCw
+                size={11}
+                strokeWidth={1.5}
+                className={syncing ? "animate-spin" : ""}
+              />
+            </button>
           </div>
 
           {/* Options */}
-          <div className="max-h-[220px] overflow-y-auto py-1">
+          <div className="max-h-[280px] overflow-y-auto py-1">
             {/* Remove epic option */}
             {!query.trim() && value && (
               <button
@@ -189,23 +191,23 @@ export function EpicPicker({
               </button>
             )}
 
-            {loading && results.length === 0 && (
+            {!epics && (
               <p className="px-3 py-2 text-xs text-text-muted">Loading...</p>
             )}
 
-            {!loading && results.length === 0 && (
+            {epics && filtered.length === 0 && (
               <p className="px-3 py-2 text-xs text-text-muted">
                 {query.trim() ? "No epics found" : "No epics available"}
               </p>
             )}
 
-            {results.map((epic) => {
+            {filtered.map((epic) => {
               const isSelected = epic.key === value?.key;
               return (
                 <button
                   key={epic.key}
                   type="button"
-                  onClick={() => { onChange(epic); handleClose(); }}
+                  onClick={() => { onChange({ key: epic.key, name: epic.name }); handleClose(); }}
                   className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
                 >
                   <span className="flex w-4 items-center justify-center shrink-0 text-[#9b6cd4]">
