@@ -48,13 +48,13 @@ describe("GroupStatBar", () => {
   it("renders no-points count for unpointed tickets", () => {
     render(<GroupStatBar tickets={TICKETS} />);
     // VPL-3 and VPL-5 have no points
-    expect(screen.getByText("2 no pts")).toBeTruthy();
+    expect(screen.getByText("2 no SP")).toBeTruthy();
   });
 
   it("hides points total when all tickets are unpointed", () => {
     const noPointTickets = TICKETS.map((t) => ({ ...t, storyPoints: null }));
     render(<GroupStatBar tickets={noPointTickets} />);
-    // "X pts" (just the total) should not appear; "X no pts" is still shown
+    // "X pts" (just the total) should not appear; "X no SP" is still shown
     expect(screen.queryByText(/^\d+ pts$/)).toBeNull();
   });
 
@@ -95,7 +95,7 @@ describe("GroupStatBar", () => {
         onFilterChange={onFilterChange}
       />,
     );
-    fireEvent.click(screen.getByText("2 no pts"));
+    fireEvent.click(screen.getByText("2 no SP"));
     expect(onFilterChange).toHaveBeenCalledWith(null);
   });
 
