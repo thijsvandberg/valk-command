@@ -62,9 +62,9 @@ Plus background: `jiraApi.checkUpdated(key)` calls Jira REST API (500ms-2s).
 
 The page currently makes 6 parallel API calls. Some can be folded into the main ticket response to reduce round-trips.
 
-- [ ] Include `reviewCount` and `currentVersionHash` in the main `/api/tickets/[key]` response (avoids separate `/reviews` call just for the tab badge count)
-- [ ] Include `versionCount` in the main response (avoids separate `/versions?metaOnly=true` call)
-- [ ] This reduces initial API calls from 6 to 4
+- [x] Include `reviewCount` and `currentVersionHash` in the main `/api/tickets/[key]` response (avoids separate `/reviews` call just for the tab badge count)
+- [x] Include `versionCount` in the main response (avoids separate `/versions?metaOnly=true` call)
+- [x] This reduces initial API calls from 6 to 5 (useTicketReviews still needed for full review data in sidebar)
 
 ### 2. Fix N+1 parent ticket query
 

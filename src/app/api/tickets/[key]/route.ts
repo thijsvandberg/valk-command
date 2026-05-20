@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticket, ticketLocalEdit, jiraComment, ticketSubtask } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { ticket, ticketLocalEdit, jiraComment, ticketSubtask, storedReview, storyVersion } from "@/db/schema";
+import { eq, sql, count } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
@@ -68,7 +68,7 @@ export async function GET(
 
     if (!t) return null;
 
-    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRows] = await Promise.all([
+    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRows, reviewCountRows, versionCountRows] = await Promise.all([
       db.query.ticketMetadata.findFirst({
         where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
       }),
@@ -101,20 +101,24 @@ export async function GET(
         .innerJoin(ticket, eq(ticket.jiraKey, ticketSubtask.ticketKey))
         .where(eq(ticketSubtask.subtaskKey, key))
         .limit(1),
+      // Review count for tab badge (avoids separate /reviews API call)
+      db.select({ value: count() }).from(storedReview).where(eq(storedReview.ticketKey, key)),
+      // Version count for tab badge (avoids separate /versions?metaOnly=true API call)
+      db.select({ value: count() }).from(storyVersion).where(eq(storyVersion.jiraKey, key)),
     ]);
 
     const parentTicket = parentRows.length > 0
       ? { key: parentRows[0].ticketKey, title: parentRows[0].title }
       : null;
 
-    return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket };
+    return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows };
   });
 
   if (!queryData) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket } = queryData;
+  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows } = queryData;
 
   const attachments: Attachment[] = attachmentRows.map((a) => ({
     id: a.id,
@@ -227,6 +231,9 @@ export async function GET(
     ...ticketBase,
     ...detail,
     localEdits: localEditMap,
+    reviewCount: reviewCountRows[0]?.value ?? 0,
+    versionCount: versionCountRows[0]?.value ?? 0,
+    currentVersionHash: latestVersion?.contentHash ?? null,
   };
 
   cache.set(cacheKey, responseBody, 60_000);

@@ -23,7 +23,7 @@ import {
   Check,
   PanelRightClose,
 } from "lucide-react";
-import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
@@ -191,10 +191,9 @@ export default function TicketDetailPage({
   }, [ticket, key]);
 
   const { data: reviewData } = useTicketReviews(key);
-  const reviewCount = reviewData?.reviews?.length ?? 0;
+  const reviewCount = (apiData as Record<string, unknown> | undefined)?.reviewCount as number ?? reviewData?.reviews?.length ?? 0;
 
-  const { data: versionMeta } = useTicketVersionCount(key);
-  const versionCount = versionMeta?.length ?? 0;
+  const versionCount = (apiData as Record<string, unknown> | undefined)?.versionCount as number ?? 0;
 
   const { data: activeSessions, mutate: mutateActiveSessions } = useActiveWriterSessions();
   const hasActiveSession = activeSessions?.some((s) => s.ticketKey === key) ?? false;
