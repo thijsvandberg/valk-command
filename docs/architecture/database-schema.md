@@ -494,7 +494,28 @@ conversation (1) --- (*) story_writer_session
 story_writer_session (1) --- (*) story_writer_draft
 story_writer_session (1) --- (*) story_writer_execution_log
 story_writer_session (1) --- (*) related_story_candidate
+ticket (1) --- (*) related_suggestion_cache
 ```
+
+#### `related_suggestion_cache`
+
+Cached AI-suggested related issues for the ticket detail view. Independent of story writer sessions. Reuses the workspace `find-related` skill. Cache is TTL-based (30 min) and invalidated when links are created/deleted.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `ticket_key` | text FK -> ticket | Cascade delete |
+| `suggested_key` | text | Related ticket key |
+| `score` | real | Relevance score (0-1) |
+| `title` | text | |
+| `issue_type` | text | |
+| `status` | text | |
+| `jira_url` | text | |
+| `reason` | text | One-sentence rationale |
+| `suggested_relation` | text | Default "relates to" |
+| `created_at` | text | Used for TTL check |
+
+Indexed on `ticket_key`.
 
 ## Conventions
 

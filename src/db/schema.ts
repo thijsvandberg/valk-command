@@ -577,6 +577,29 @@ export const ticketScopeChange = sqliteTable("ticket_scope_change", {
   index("ticket_scope_change_sprint_idx").on(table.sprintName, table.changedAt),
 ]);
 
+// Cached AI-suggested related issues for the ticket detail view (independent of story writer sessions)
+export const relatedSuggestionCache = sqliteTable("related_suggestion_cache", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey, { onDelete: "cascade" }),
+  suggestedKey: text("suggested_key").notNull(),
+  score: real("score").notNull(),
+  title: text("title").notNull(),
+  issueType: text("issue_type"),
+  status: text("status").notNull(),
+  jiraUrl: text("jira_url"),
+  reason: text("reason"),
+  suggestedRelation: text("suggested_relation").notNull().default("relates to"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("related_suggestion_cache_ticket_key_idx").on(table.ticketKey),
+]);
+
+export type RelatedSuggestionCacheRow = typeof relatedSuggestionCache.$inferSelect;
+
 export type TicketConfluenceLink = typeof ticketConfluenceLink.$inferSelect;
 export type NewTicketConfluenceLink = typeof ticketConfluenceLink.$inferInsert;
 

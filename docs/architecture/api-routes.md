@@ -56,6 +56,9 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]/pull-from-jira` | POST | Force refresh single ticket from Jira |
 | `/api/tickets/[key]/push-to-jira` | POST | Push local edits to Jira |
 | `/api/tickets/[key]/dev-info` | GET | Bitbucket development info (branches, PRs, pipelines) |
+| `/api/tickets/[key]/related-suggestions` | GET | Return cached AI-suggested related issues |
+| `/api/tickets/[key]/related-suggestions` | POST | Discover related issues via workspace `find-related` skill (cached 30 min) |
+| `/api/tickets/[key]/related-suggestions` | DELETE | Clear cached suggestions for this ticket |
 
 ## Story Writer
 

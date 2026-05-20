@@ -167,6 +167,7 @@ export interface JiraComment {
 export interface TicketDetail {
   description: string;
   reporter: Assignee | null;
+  parent: { key: string; title: string } | null;
   labels: string[];
   components: string[];
   priority: "Highest" | "High" | "Medium" | "Low" | "Lowest";
@@ -239,6 +240,20 @@ export interface StoredReview {
   dimensions: { key: string; label: string; score: number; feedback: string }[];
   summary: string;
   suggestions: string[];
+}
+
+export interface RelatedSuggestionResponse {
+  id: string;
+  ticketKey: string;
+  suggestedKey: string;
+  score: number;
+  title: string;
+  issueType: string | null;
+  status: string;
+  jiraUrl: string | null;
+  reason: string | null;
+  suggestedRelation: string;
+  createdAt: string;
 }
 
 export type ActivityLogType =

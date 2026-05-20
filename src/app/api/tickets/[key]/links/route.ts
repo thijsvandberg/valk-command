@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticketLink } from "@/db/schema";
+import { ticketLink, relatedSuggestionCache } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
@@ -100,6 +100,9 @@ export async function POST(request: Request, { params }: RouteContext) {
   cache.invalidate(`/api/tickets/${targetKey}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
 
+  // Invalidate AI-suggested related issues cache so the linked issue is excluded next time
+  await db.delete(relatedSuggestionCache).where(eq(relatedSuggestionCache.ticketKey, key));
+
   await logActivity({
     type: "metadata-update",
     scope: key,
@@ -154,6 +157,9 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(`/api/tickets/${linkedKey}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
+
+  // Invalidate AI-suggested related issues cache so removed link can appear as suggestion again
+  await db.delete(relatedSuggestionCache).where(eq(relatedSuggestionCache.ticketKey, key));
 
   await logActivity({
     type: "metadata-update",

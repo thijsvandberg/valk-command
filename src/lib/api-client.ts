@@ -1,7 +1,7 @@
 // Centralized internal API client for all /api/* calls.
 // Replaces scattered fetch() patterns with typed, consistent error handling.
 
-import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview } from "@/types/ticket";
+import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview, RelatedSuggestionResponse } from "@/types/ticket";
 import type { Conversation, ConversationType, Message } from "@/types/chat";
 
 // ---------------------------------------------------------------------------
@@ -201,6 +201,14 @@ export const tickets = {
     apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "POST", body: data, signal }),
   deleteLink: (key: string, data: { jiraLinkId?: string; linkedKey: string }, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/links`, { method: "DELETE", body: data, signal }),
+
+  // Related suggestions (AI-powered)
+  getRelatedSuggestions: (key: string, signal?: AbortSignal) =>
+    apiFetch<{ suggestions: RelatedSuggestionResponse[]; cachedAt: string | null }>(`/api/tickets/${enc(key)}/related-suggestions`, { signal }),
+  findRelatedSuggestions: (key: string, signal?: AbortSignal) =>
+    apiFetch<{ suggestions: RelatedSuggestionResponse[]; cached: boolean }>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "POST", signal }),
+  clearRelatedSuggestions: (key: string, signal?: AbortSignal) =>
+    apiFetch<void>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "DELETE", signal }),
 
   // Ticket search (for autocomplete)
   searchForLink: (query: string, excludeKey?: string, signal?: AbortSignal) =>
