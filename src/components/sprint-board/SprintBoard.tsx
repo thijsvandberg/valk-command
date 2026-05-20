@@ -15,7 +15,7 @@ import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
-import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
+import { prefetchTicketList, prefetchTicketPage, setRouterPrefetch, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
@@ -150,6 +150,7 @@ export default function SprintBoard() {
   const sprints = useMemo(() => mapJiraSprints(rawJiraSprints), [rawJiraSprints]);
   const searchParams = useSearchParams();
   const router = useRouter();
+  setRouterPrefetch((url) => router.prefetch(url));
 
   const [slotSprints, setSlotSprints] = useState<string[]>([]);
   const isAllView = searchParams.get("sprint") === "__all__";
@@ -342,7 +343,7 @@ export default function SprintBoard() {
   // Prefetch first 5 ticket details for instant side panel opens
   useEffect(() => {
     if (!allTickets || allTickets.length === 0) return;
-    allTickets.slice(0, 5).forEach((t) => prefetchTicketDetail(t.key));
+    allTickets.slice(0, 5).forEach((t) => prefetchTicketPage(t.key));
     return () => cancelAllPrefetches();
   }, [allTickets]);
 

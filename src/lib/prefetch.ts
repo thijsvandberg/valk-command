@@ -39,6 +39,17 @@ export function prefetchTicketDetail(key: string): void {
   prefetchUrl(`/api/tickets/${encodeURIComponent(key)}`);
 }
 
+// Prefetch the Next.js page chunk for a ticket so the JS bundle is ready on navigation
+let routerPrefetchFn: ((url: string) => void) | null = null;
+export function setRouterPrefetch(fn: (url: string) => void): void {
+  routerPrefetchFn = fn;
+}
+
+export function prefetchTicketPage(key: string): void {
+  prefetchTicketDetail(key);
+  routerPrefetchFn?.(`/tickets/${key}`);
+}
+
 export function prefetchTicketList(sprintId: string): void {
   prefetchUrl(`/api/tickets?sprintId=${encodeURIComponent(sprintId)}`);
 }

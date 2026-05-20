@@ -10,7 +10,7 @@ import { QualityBadge, getJiraUrl } from "./TicketTableCells";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { useTicketDetail, useTicketVersions } from "@/hooks/useSprintBoard";
-import { prefetchTicketDetail } from "@/lib/prefetch";
+import { prefetchTicketPage } from "@/lib/prefetch";
 import { CloudSync, ExternalLink, SquareArrowOutUpRight, ArrowUpRight, Maximize2, Minimize2, X, AlertCircle, ChevronRight, History, CheckSquare, MessageSquare, Check, Link2, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { jira } from "@/lib/api-client";
@@ -109,8 +109,8 @@ export function SidePanel({
 
   // Prefetch adjacent ticket details when this panel opens
   useEffect(() => {
-    if (adjacentKeys?.prev) prefetchTicketDetail(adjacentKeys.prev);
-    if (adjacentKeys?.next) prefetchTicketDetail(adjacentKeys.next);
+    if (adjacentKeys?.prev) prefetchTicketPage(adjacentKeys.prev);
+    if (adjacentKeys?.next) prefetchTicketPage(adjacentKeys.next);
   }, [adjacentKeys]);
 
   const handleSyncTicket = useCallback(async () => {

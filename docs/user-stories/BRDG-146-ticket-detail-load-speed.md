@@ -94,8 +94,8 @@ The page currently makes 6 parallel API calls. Some can be folded into the main 
 
 ### 7. Add prefetch hint from sprint board
 
-- [ ] When hovering a ticket row in the sprint board, the prefetch already fires for `/api/tickets/[key]`. Verify this cache is shared with SWR so opening in a new tab benefits from it.
-- [ ] Consider adding `<link rel="prefetch">` for the ticket page chunk when hovering, so the JS bundle is also pre-loaded
+- [x] When hovering a ticket row in the sprint board, the prefetch already fires for `/api/tickets/[key]`. Verify this cache is shared with SWR so opening in a new tab benefits from it.
+- [x] Consider adding `<link rel="prefetch">` for the ticket page chunk when hovering, so the JS bundle is also pre-loaded (implemented via router.prefetch in prefetchTicketPage)
 
 ## Testing
 

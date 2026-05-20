@@ -19,7 +19,7 @@ import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
-import { prefetchTicketDetail } from "@/lib/prefetch";
+import { prefetchTicketPage } from "@/lib/prefetch";
 
 const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
 
@@ -144,7 +144,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
 
   const handleMouseEnter = useCallback(() => {
     prefetchTimerRef.current = setTimeout(() => {
-      prefetchTicketDetail(ticket.key);
+      prefetchTicketPage(ticket.key);
     }, 200);
   }, [ticket.key]);
 
