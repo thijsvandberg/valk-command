@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { storyWriterSession, storyWriterDraft, storyWriterExecutionLog, message } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
@@ -17,6 +18,8 @@ type RouteContext = { params: Promise<{ key: string }> };
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let body: Record<string, unknown>;
   try {
@@ -165,6 +168,8 @@ async function fetchAndStoreExecutionLog(
  */
 export async function DELETE(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const url = new URL(request.url);
   const draftId = url.searchParams.get("draftId");
 

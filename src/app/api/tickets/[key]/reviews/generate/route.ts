@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { agentFetch } from "@/lib/agent-fetch";
 import { logActivity } from "@/lib/activity-logger";
@@ -18,6 +19,8 @@ export async function POST(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const t = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),

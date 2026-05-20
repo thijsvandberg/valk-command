@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -11,6 +12,8 @@ type RouteContext = { params: Promise<{ key: string }> };
 
 export async function PUT(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let body: { title?: string } = {};
   try {

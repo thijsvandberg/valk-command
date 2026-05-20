@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { validatePathParam } from "@/lib/api-validation";
 
 /**
  * GET /api/attachments/[id]
@@ -15,6 +16,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const att = await db.query.ticketAttachment.findFirst({
     where: (a, { eq }) => eq(a.id, id),

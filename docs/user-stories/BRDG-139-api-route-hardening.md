@@ -1,6 +1,6 @@
 # BRDG-139: API Route Hardening (Error Handling + Input Validation)
 
-**Status:** Open
+**Status:** Done
 **Priority:** High
 
 ## Description
@@ -28,9 +28,9 @@ The security audit found: error messages leaking internal details, missing input
 - [x] Affected routes include: `settings/quick-prompts`, `settings/saved-searches`, and any other route returning raw Error.message
 
 ### Path parameter validation
-- [ ] Add a shared utility (e.g., `validatePathParam(value: string, maxLength?: number)`) that rejects params longer than 255 characters
-- [ ] Apply to all dynamic route segments: `[id]`, `[key]`, `[pageId]`, etc.
-- [ ] Return 400 with a generic "Invalid parameter" message for violations
+- [x] Add a shared utility (e.g., `validatePathParam(value: string, maxLength?: number)`) that rejects params longer than 255 characters
+- [x] Apply to all dynamic route segments: `[id]`, `[key]`, `[pageId]`, etc. <!-- 38 route files, 62 handlers total -->
+- [x] Return 400 with a generic "Invalid parameter" message for violations
 
 ### Date format validation in search
 - [x] In `src/app/api/search/local/route.ts`, validate the `custom:from..to` date range format

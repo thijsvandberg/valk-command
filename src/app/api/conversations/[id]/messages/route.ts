@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { message } from "@/db/schema";
 import { randomUUID } from "crypto";
+import { validatePathParam } from "@/lib/api-validation";
 
 const VALID_ROLES = ["user", "assistant"] as const;
 
@@ -10,6 +11,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const conv = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),

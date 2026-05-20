@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
@@ -253,6 +254,8 @@ export async function GET(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const cacheKey = `/api/tickets/${key}/dev-info`;
   const cached = cache.get(cacheKey);

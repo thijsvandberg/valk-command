@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticketAttachment } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,6 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const attachments = await db
     .select()

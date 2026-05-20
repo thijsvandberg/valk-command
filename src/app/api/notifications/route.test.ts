@@ -15,8 +15,15 @@ vi.mock("@/lib/notifications", () => ({
   createNotification: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
+
+const mockGetSubscribedTeams = vi.fn().mockReturnValue([]);
+vi.mock("@/lib/subscribed-teams", () => ({
+  getSubscribedTeams: (...args: unknown[]) => mockGetSubscribedTeams(...args),
+}));
+
 import { GET, POST, PATCH, DELETE } from "./route";
-import { alert } from "@/db/schema";
+import { alert, ticket, sprintNameCache } from "@/db/schema";
 
 function makeRequest(method: string, body?: unknown, search?: string): Request {
   const url = `http://localhost:3100/api/notifications${search ?? ""}`;
@@ -78,6 +85,58 @@ describe("GET /api/notifications", () => {
     const response = await GET(makeRequest("GET", undefined, "?limit=2"));
     const data = await response.json();
     expect(data.notifications).toHaveLength(2);
+  });
+
+  it("returns subscribedUnreadCount equal to unreadCount when no teams subscribed", async () => {
+    mockGetSubscribedTeams.mockReturnValue([]);
+    insertAlert("a1", false);
+    insertAlert("a2", false);
+
+    const response = await GET(makeRequest("GET"));
+    const data = await response.json();
+    expect(data.subscribedUnreadCount).toBe(2);
+    expect(data.subscribedTeams).toEqual([]);
+  });
+
+  it("returns subscribedUnreadCount scoped to subscribed teams", async () => {
+    mockGetSubscribedTeams.mockReturnValue(["BT"]);
+
+    // Set up sprint name cache
+    testDb.insert(sprintNameCache).values([
+      { sprintId: "sprint-bt", displayName: "BT: 137" },
+      { sprintId: "sprint-ht", displayName: "HT: 42" },
+    ]).run();
+
+    // Create tickets in different sprints
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-100", title: "BT ticket", sprintName: "sprint-bt", type: "Story", status: "In Progress", priority: "Medium" },
+      { jiraKey: "VPL-200", title: "HT ticket", sprintName: "sprint-ht", type: "Story", status: "In Progress", priority: "Medium" },
+    ]).run();
+
+    // Create unread alerts for both teams
+    testDb.insert(alert).values([
+      { id: "a1", type: "pr", jiraKey: "VPL-100", message: "PR for BT", read: false, createdAt: new Date().toISOString() },
+      { id: "a2", type: "pr", jiraKey: "VPL-200", message: "PR for HT", read: false, createdAt: new Date().toISOString() },
+    ]).run();
+
+    const response = await GET(makeRequest("GET"));
+    const data = await response.json();
+    expect(data.unreadCount).toBe(2);
+    expect(data.subscribedUnreadCount).toBe(1);
+    expect(data.subscribedTeams).toEqual(["BT"]);
+  });
+
+  it("counts teamless notifications as subscribed", async () => {
+    mockGetSubscribedTeams.mockReturnValue(["BT"]);
+
+    // Alert without jiraKey (system notification)
+    testDb.insert(alert).values({
+      id: "a1", type: "system", message: "System alert", read: false, createdAt: new Date().toISOString(),
+    }).run();
+
+    const response = await GET(makeRequest("GET"));
+    const data = await response.json();
+    expect(data.subscribedUnreadCount).toBe(1);
   });
 });
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { detectConfluenceUrls } from "@/lib/confluence-url-detector";
 import { confluenceClient } from "@/lib/confluence-client";
@@ -16,6 +17,8 @@ type RouteParams = { params: Promise<{ key: string }> };
  */
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const baseUrl = env.CONFLUENCE_BASE_URL || env.JIRA_BASE_URL;
   if (!baseUrl) {

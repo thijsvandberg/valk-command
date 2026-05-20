@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { poComment } from "@/db/schema";
 import { randomUUID } from "crypto";
@@ -10,6 +11,8 @@ export async function GET(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const poComments = preparedPoComments({ key });
   const jiraComments = preparedJiraComments({ key });
@@ -22,6 +25,8 @@ export async function POST(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let body: Record<string, unknown>;
   try {

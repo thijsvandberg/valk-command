@@ -4,13 +4,15 @@ import { storedReview, ticketMetadata, storyVersion, activityLog } from "@/db/sc
 import { eq, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
-import { safeJsonParse } from "@/lib/api-validation";
+import { safeJsonParse, validatePathParam } from "@/lib/api-validation";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const [rows, latestVersion] = await Promise.all([
     db.select().from(storedReview).where(eq(storedReview.ticketKey, key)).orderBy(desc(storedReview.createdAt)),
@@ -44,6 +46,8 @@ export async function POST(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const t = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),

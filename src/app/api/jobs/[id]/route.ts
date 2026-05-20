@@ -3,12 +3,15 @@ import { db } from "@/db";
 import { scheduledJob } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { isValidCron } from "@/lib/cron";
+import { validatePathParam } from "@/lib/api-validation";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const job = await db.query.scheduledJob.findFirst({
     where: (j, { eq }) => eq(j.id, id),
@@ -26,6 +29,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const job = await db.query.scheduledJob.findFirst({
     where: (j, { eq }) => eq(j.id, id),
@@ -98,6 +103,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const job = await db.query.scheduledJob.findFirst({
     where: (j, { eq }) => eq(j.id, id),

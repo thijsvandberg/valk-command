@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runTaskNow } from "@/lib/scheduler";
 import { registerScheduledTasks } from "@/lib/scheduled-tasks";
 import { runIndependentTaskNow } from "@/lib/task-registry";
+import { validatePathParam } from "@/lib/api-validation";
 
 // Ensure all tasks are registered
 registerScheduledTasks();
@@ -17,6 +18,8 @@ export async function POST(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
+  const invalid = validatePathParam(name);
+  if (invalid) return invalid;
 
   // Force-import independent task routes so they register themselves
   await import("@/app/api/pipelines/tick/route");

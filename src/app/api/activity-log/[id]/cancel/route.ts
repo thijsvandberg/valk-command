@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { activityLog } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { abortSync } from "@/lib/sync-abort";
+import { validatePathParam } from "@/lib/api-validation";
 
 /**
  * POST /api/activity-log/:id/cancel
@@ -16,6 +17,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const entry = await db.query.activityLog.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.id, id),

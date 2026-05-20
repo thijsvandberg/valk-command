@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { conversation, message, storyWriterSession } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { validatePathParam } from "@/lib/api-validation";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const conv = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),
@@ -37,6 +40,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
+
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -78,6 +84,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const conv = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),

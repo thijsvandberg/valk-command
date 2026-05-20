@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticketConfluenceLink } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -13,6 +14,8 @@ type RouteParams = { params: Promise<{ key: string }> };
  */
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const links = await db.query.ticketConfluenceLink.findMany({
     where: (row, { eq }) => eq(row.ticketKey, key),
     orderBy: (row, { asc }) => [asc(row.createdAt)],
@@ -28,6 +31,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
  */
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const body = await req.json() as {
     pageId: string;
     pageTitle: string;
@@ -70,6 +75,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const body = await req.json() as { linkId: string };
 
   if (!body.linkId) {

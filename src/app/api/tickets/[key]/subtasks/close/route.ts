@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticket, ticketSubtask } from "@/db/schema";
 import { eq, and, notInArray } from "drizzle-orm";
@@ -14,6 +15,8 @@ const CLOSED_STATUSES: JiraStatus[] = ["DONE", "DEPRECATED"];
 
 export async function POST(_request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const t = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),

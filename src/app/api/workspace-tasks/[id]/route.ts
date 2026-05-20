@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { agentFetch } from "@/lib/agent-fetch";
+import { validatePathParam } from "@/lib/api-validation";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const result = await agentFetch(`/api/tasks/${id}`);
 
@@ -24,6 +27,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const result = await agentFetch(`/api/tasks/${id}`, {
     method: "DELETE",

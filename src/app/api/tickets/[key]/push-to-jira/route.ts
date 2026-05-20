@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
 
@@ -7,6 +8,8 @@ export async function POST(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let force = false;
   try {

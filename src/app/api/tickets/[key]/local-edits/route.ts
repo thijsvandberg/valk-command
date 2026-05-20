@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import * as ticketService from "@/services/ticket-service";
 import type { UpsertLocalEditInput } from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
@@ -9,6 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const edits = await ticketService.getLocalEdits(key);
   return NextResponse.json(edits);
 }
@@ -18,6 +21,8 @@ export async function PUT(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -40,6 +45,8 @@ export async function DELETE(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const draftsOnly = new URL(request.url).searchParams.get("draftsOnly") === "true";
   await ticketService.deleteLocalEdits(key, { draftsOnly });
   cache.invalidate(`/api/tickets/${key}`);
@@ -51,6 +58,8 @@ export async function PATCH(
   { params }: { params: Promise<{ key: string }> },
 ) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   let body: Record<string, unknown> = {};
   try { body = await request.json(); } catch { /* no body is fine */ }
 

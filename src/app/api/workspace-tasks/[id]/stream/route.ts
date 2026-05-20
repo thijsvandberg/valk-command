@@ -1,4 +1,5 @@
 import { agentFetchStream } from "@/lib/agent-fetch";
+import { validatePathParam } from "@/lib/api-validation";
 
 const INACTIVITY_TIMEOUT_MS = 60_000;
 
@@ -7,6 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const invalid = validatePathParam(id);
+  if (invalid) return invalid;
 
   const result = await agentFetchStream(`/api/tasks/${id}/stream`);
 

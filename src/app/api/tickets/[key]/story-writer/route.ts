@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { z } from "zod";
 import { db } from "@/db";
 import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit, relatedStoryCandidate } from "@/db/schema";
@@ -21,6 +22,8 @@ type RouteContext = { params: Promise<{ key: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const { searchParams } = new URL(request.url);
   const draftsOnly = searchParams.get("draftsOnly") === "true";
 
@@ -90,6 +93,8 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function POST(_request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   try {
     const ticketRow = await db
@@ -197,6 +202,8 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let rawBody: unknown;
   try {
@@ -286,6 +293,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const url = new URL(request.url);
   const deleteConversation = url.searchParams.get("deleteConversation") === "true";
 

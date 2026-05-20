@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { storyWriterSession, relatedStoryCandidate, ticketLink } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -47,6 +48,8 @@ function parseRelatedStories(output: string): RelatedStoryItem[] {
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let body: Record<string, unknown>;
   try {
@@ -136,6 +139,8 @@ export async function POST(request: Request, { params }: RouteContext) {
  */
 export async function PATCH(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let body: Record<string, unknown>;
   try {
@@ -272,6 +277,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
  */
 export async function GET(_request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   const session = await db
     .select()

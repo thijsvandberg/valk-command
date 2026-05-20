@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -36,6 +37,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (limited) return limited;
 
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
 
   let body: Record<string, unknown>;
   try {
@@ -279,6 +282,8 @@ export async function POST(request: Request, { params }: RouteContext) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
   const url = new URL(request.url);
   const failedOnly = url.searchParams.get("failed") === "true";
 
