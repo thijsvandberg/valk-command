@@ -86,6 +86,7 @@ export default function TicketDetailPage({
   const detail: TicketDetail | undefined = apiData ? {
     description: apiData.description ?? "",
     reporter: apiData.reporter ?? null,
+    parent: apiData.parent ?? null,
     labels: apiData.labels ?? [],
     components: apiData.components ?? [],
     priority: apiData.priority ?? "Medium",
@@ -327,39 +328,112 @@ export default function TicketDetailPage({
 
   if (ticketLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={32} strokeWidth={2} className="animate-spin text-text-muted" />
-          <span className="text-sm text-text-tertiary">Loading ticket...</span>
+      <>
+        {pageTitle}
+        <div className="flex h-full flex-col">
+          <ViewHeader>
+            <div className="h-5 w-16 animate-pulse rounded bg-overlay-strong" />
+            <ViewHeaderDivider />
+            <div className="h-5 w-48 animate-pulse rounded bg-overlay-strong" />
+          </ViewHeader>
+
+          <div className="flex flex-1 overflow-hidden">
+            <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
+              <div className="border-b border-border-default">
+                <div className="mx-auto flex h-[44px] max-w-4xl items-center gap-4 px-8">
+                  {["w-16", "w-14", "w-14", "w-20", "w-24"].map((w, i) => (
+                    <div key={i} className={`h-3.5 ${w} animate-pulse rounded bg-overlay-strong`} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <div className="mx-auto w-full max-w-4xl px-8 py-6">
+                  <div className="mt-3 space-y-3">
+                    <div className="h-7 w-3/4 animate-pulse rounded bg-overlay-strong" />
+                    <div className="h-4 w-1/3 animate-pulse rounded bg-overlay-default" />
+                  </div>
+                  <div className="mt-8 space-y-2.5">
+                    <div className="h-3.5 w-full animate-pulse rounded bg-overlay-default" />
+                    <div className="h-3.5 w-5/6 animate-pulse rounded bg-overlay-default" />
+                    <div className="h-3.5 w-4/6 animate-pulse rounded bg-overlay-default" />
+                    <div className="h-3.5 w-full animate-pulse rounded bg-overlay-default" />
+                    <div className="h-3.5 w-2/3 animate-pulse rounded bg-overlay-default" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="w-[320px] shrink-0 border-l border-border-default bg-[var(--color-surface-chrome)]">
+              <div className="p-5 space-y-5">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-3 w-16 animate-pulse rounded bg-overlay-strong" />
+                    <div className="h-4 w-24 animate-pulse rounded bg-overlay-default" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!ticket) {
     if (jiraCheckState === "idle" || jiraCheckState === "checking") {
       return (
-        <div className="flex h-full items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 size={32} strokeWidth={2} className="animate-spin text-text-muted" />
-            <span className="text-sm text-text-tertiary">Checking Jira...</span>
+        <>
+          {pageTitle}
+          <div className="flex h-full flex-col">
+            <ViewHeader>
+              <div className="h-5 w-16 animate-pulse rounded bg-overlay-strong" />
+              <ViewHeaderDivider />
+              <div className="h-5 w-48 animate-pulse rounded bg-overlay-strong" />
+            </ViewHeader>
+
+            <div className="flex flex-1 overflow-hidden">
+              <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
+                <div className="border-b border-border-default">
+                  <div className="mx-auto flex h-[44px] max-w-4xl items-center gap-4 px-8">
+                    {["w-16", "w-14", "w-14", "w-20", "w-24"].map((w, i) => (
+                      <div key={i} className={`h-3.5 ${w} animate-pulse rounded bg-overlay-strong`} />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 size={32} strokeWidth={2} className="animate-spin text-text-muted" />
+                    <span className="text-sm text-text-tertiary">Checking Jira...</span>
+                  </div>
+                </div>
+              </div>
+              <div className="w-[320px] shrink-0 border-l border-border-default bg-[var(--color-surface-chrome)]" />
+            </div>
           </div>
-        </div>
+        </>
       );
     }
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <h1 className="font-[var(--font-display)] text-2xl font-semibold text-text-primary">Ticket not found</h1>
-          <p className="mt-2 text-sm text-text-tertiary">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
-          <Link
-            href="/sprint-board"
-            className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-          >
-            Back to Sprint Board
-          </Link>
+      <>
+        {pageTitle}
+        <div className="flex h-full flex-col">
+          <ViewHeader>
+            <span className="text-sm font-medium text-text-tertiary">{key}</span>
+          </ViewHeader>
+
+          <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
+              <h1 className="font-[var(--font-display)] text-2xl font-semibold text-text-primary">Ticket not found</h1>
+              <p className="mt-2 text-sm text-text-tertiary">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
+              <Link
+                href="/sprint-board"
+                className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+              >
+                Back to Sprint Board
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -816,7 +890,7 @@ export default function TicketDetailPage({
         </div>
 
       <div className="sticky top-0 min-h-full self-stretch overflow-visible">
-        <TicketSidebar ticket={ticket} detail={detail} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} />
+        <TicketSidebar ticket={ticket} detail={detail} reviewData={reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} onReadinessChange={handleReadinessChange} />
       </div>
       </div>
     </div>

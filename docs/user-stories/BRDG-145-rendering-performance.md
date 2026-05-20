@@ -80,9 +80,9 @@ d) Verify no regressions:
 
 ### 4. Deduplicate useTicketReviews (Ticket Detail)
 
-- [ ] Remove `useTicketReviews()` call from TicketSidebar
-- [ ] Pass `reviewData` as a prop from the parent page to TicketSidebar
-- [ ] Verify review quality score and "outdated review" indicator still work in the sidebar
+- [x] Remove `useTicketReviews()` call from TicketSidebar
+- [x] Pass `reviewData` as a prop from the parent page to TicketSidebar
+- [x] Verify review quality score and "outdated review" indicator still work in the sidebar
 
 ### 5. Memoize status counts (Sprint Board)
 

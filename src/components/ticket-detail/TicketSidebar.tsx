@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
-import { ChevronRight, AlertTriangle, Play } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, AlertTriangle, Play, ArrowUpRight } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
@@ -16,7 +17,7 @@ import { AssigneePicker } from "@/components/shared/AssigneePicker";
 import { EpicPicker } from "@/components/shared/EpicPicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { Tooltip } from "@/components/shared/Tooltip";
-import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
+import { useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
@@ -48,19 +49,23 @@ const COMPLETENESS_LABELS: Record<string, string> = {
 export function TicketSidebar({
   ticket,
   detail,
+  reviewData,
   collapsed,
   onCollapsedChange,
   onNavigateToReview,
   onNavigateToDev,
+  onReadinessChange,
 }: {
   ticket: Ticket;
   detail: TicketDetail | undefined;
+  reviewData?: { reviews: { storyVersionHash?: string | null; overallScore: number }[]; currentVersionHash: string | null } | undefined;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onNavigateToReview?: () => void;
   onNavigateToDev?: () => void;
+  onReadinessChange?: (v: TicketReadiness | null) => void;
 }) {
-  const [readiness, setReadiness] = useState<TicketReadiness | null>(ticket.readiness);
+  const readiness = ticket.readiness;
   const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [poNotes, setPoNotes] = useState(ticket.notes);
@@ -76,7 +81,6 @@ export function TicketSidebar({
 
   const { data: sprints } = useJiraSprints();
 
-  const { data: reviewData } = useTicketReviews(ticket.key);
   const { data: devInfo, isLoading: devInfoLoading } = useDevInfo(ticket.key);
   const latestReview = reviewData?.reviews?.[0] ?? null;
   const currentVersionHash = reviewData?.currentVersionHash ?? null;
@@ -136,14 +140,9 @@ export function TicketSidebar({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onCollapsedChange, collapsed]);
 
-  const handleReadinessChange = useCallback(async (v: TicketReadiness | null) => {
-    setReadiness(v);
-    try {
-      await tickets.updateMetadata(ticket.key, { readiness: v });
-    } catch (err) {
-      console.error("Operation failed:", err);
-    }
-  }, [ticket.key]);
+  const handleReadinessChange = useCallback((v: TicketReadiness | null) => {
+    onReadinessChange?.(v);
+  }, [onReadinessChange]);
 
   const handleBusinessValueChange = useCallback(async (v: number | null) => {
     setBusinessValue(v);
@@ -345,6 +344,19 @@ export function TicketSidebar({
                 );
               })()}
             </DetailRow>
+            {detail?.parent && (
+              <DetailRow label="Parent">
+                <Link
+                  href={`/tickets/${detail.parent.key}`}
+                  className="group/parent inline-flex items-center gap-1 text-[var(--color-brand-600)] hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] cursor-pointer"
+                  style={{ transition: "color 0.15s ease" }}
+                  title={`${detail.parent.key}: ${detail.parent.title}`}
+                >
+                  <span className="truncate max-w-[180px]">{detail.parent.key}</span>
+                  <ArrowUpRight size={12} strokeWidth={2} className="shrink-0 opacity-0 group-hover/parent:opacity-100" style={{ transition: "opacity 0.15s ease" }} />
+                </Link>
+              </DetailRow>
+            )}
             {ticket.type !== "epic" && (
               <DetailRow label="Epic">
                 <EpicPicker
@@ -356,14 +368,12 @@ export function TicketSidebar({
             )}
             <DetailRow label="Readiness">
               <div className="flex items-center justify-end gap-2">
-                {readiness && (
-                  <span
-                    className="text-xs"
-                    style={{ color: readinessCfg?.color ?? "var(--color-text-muted)" }}
-                  >
-                    {readinessCfg?.label}
-                  </span>
-                )}
+                <span
+                  className="text-xs"
+                  style={{ color: readinessCfg?.color ?? "var(--color-text-muted)" }}
+                >
+                  {readinessCfg?.label ?? "Ready for Development"}
+                </span>
                 <ReadinessCell value={readiness} onChange={handleReadinessChange} align="right" />
               </div>
             </DetailRow>
