@@ -263,24 +263,32 @@ export default function SprintBoard() {
   }, [activeSprintName, isSprintFollowed]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
   const selected = tickets.find((t) => t.key === selectedTicket);
-  const todoCount = allTickets.filter((t) => t.jiraStatus === "TO DO").length;
-  const inProgressCount = allTickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
-  const testCount = allTickets.filter((t) => t.jiraStatus === "TEST").length;
-  const doneCount = allTickets.filter((t) => t.jiraStatus === "DONE").length;
-  const totalPoints = allTickets.reduce((sum, t) => sum + (t.storyPoints || 0), 0);
-  const noPointsCount = allTickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike").length;
-  const deprecatedWithSp = allTickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
-  const bvScoredTickets = allTickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
-  const bvTotal = bvScoredTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
-  const bvAvg = bvScoredTickets.length > 0 ? (bvTotal / bvScoredTickets.length).toFixed(1) : null;
-  const statusStats = useMemo(() => {
+  const { todoCount, inProgressCount, testCount, doneCount, totalPoints, noPointsCount, deprecatedWithSp, bvTotal, bvScoredCount, bvAvg, statusStats } = useMemo(() => {
+    let todo = 0, inProg = 0, test = 0, done = 0, pts = 0, noPts = 0, deprSp = 0, bvT = 0, bvC = 0;
     const stats: Record<string, { sp: number; bv: number }> = {};
     for (const t of allTickets) {
+      if (t.jiraStatus === "TO DO") todo++;
+      else if (t.jiraStatus === "IN PROGRESS") inProg++;
+      else if (t.jiraStatus === "TEST") test++;
+      else if (t.jiraStatus === "DONE") done++;
+      pts += t.storyPoints || 0;
+      if (t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike") noPts++;
+      if (t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0) deprSp++;
+      if (t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED") {
+        bvT += t.businessValue;
+        bvC++;
+      }
       const s = stats[t.jiraStatus] ?? (stats[t.jiraStatus] = { sp: 0, bv: 0 });
       s.sp += t.storyPoints ?? 0;
       s.bv += t.businessValue ?? 0;
     }
-    return stats;
+    return {
+      todoCount: todo, inProgressCount: inProg, testCount: test, doneCount: done,
+      totalPoints: pts, noPointsCount: noPts, deprecatedWithSp: deprSp,
+      bvTotal: bvT, bvScoredCount: bvC,
+      bvAvg: bvC > 0 ? (bvT / bvC).toFixed(1) : null,
+      statusStats: stats,
+    };
   }, [allTickets]);
   // Sprint working days for active sprint time indicator
   const sprintWorkDays = useMemo(() => {
@@ -986,7 +994,7 @@ export default function SprintBoard() {
                           <span className="text-text-tertiary">Story Points</span>
                           <span><span className="font-semibold text-text-primary">{totalPoints}</span>{allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length > 0 && <span className="text-text-muted ml-1">avg {(totalPoints / allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length).toFixed(1)}</span>}</span>
                         </div>
-                        {bvScoredTickets.length > 0 && (
+                        {bvScoredCount > 0 && (
                           <div className="flex items-baseline justify-between gap-4">
                             <span className="text-text-tertiary">Business Value</span>
                             <span><span className="font-semibold text-text-primary">{bvTotal}</span>{bvAvg && <span className="text-text-muted ml-1">avg {bvAvg}</span>}</span>

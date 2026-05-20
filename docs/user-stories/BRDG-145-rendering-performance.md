@@ -86,7 +86,7 @@ d) Verify no regressions:
 
 ### 5. Memoize status counts (Sprint Board)
 
-- [ ] Replace the 5 separate `.filter()` calls in SprintBoard with a single `useMemo` pass:
+- [x] Replace the 5 separate `.filter()` calls in SprintBoard with a single `useMemo` pass:
   ```
   const statusCounts = useMemo(() => {
     const counts = { todo: 0, inProgress: 0, test: 0, done: 0, points: 0 };
@@ -98,7 +98,7 @@ d) Verify no regressions:
     return counts;
   }, [allTickets]);
   ```
-- [ ] Ensure the dependency array is correct (only `allTickets` reference)
+- [x] Ensure the dependency array is correct (only `allTickets` reference)
 
 ## Testing
 
