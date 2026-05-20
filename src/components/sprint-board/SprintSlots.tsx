@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ChevronDown, ChevronUp, RefreshCw, LayoutGrid, Layers } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, RefreshCw, LayoutGrid, Layers } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -165,6 +165,7 @@ export function SprintSlots({
   ephemeralIsActive = false,
   onEphemeralClick,
   filtersCollapsed = false,
+  activeFilterCount = 0,
   onToggleFilters,
   savedViews = [],
   activeViewId = null,
@@ -197,6 +198,7 @@ export function SprintSlots({
   ephemeralIsActive?: boolean;
   onEphemeralClick?: () => void;
   filtersCollapsed?: boolean;
+  activeFilterCount?: number;
   onToggleFilters?: () => void;
   savedViews?: SavedView[];
   activeViewId?: string | null;
@@ -392,20 +394,24 @@ export function SprintSlots({
           />
         )}
 
-        {/* Toggle filter bar + analytics visibility */}
+        {/* Toggle filter bar visibility */}
         {onToggleFilters && (
           <Button
-            variant="ghost"
+            variant={filtersCollapsed && activeFilterCount > 0 ? "soft" : "ghost"}
             size="md"
             iconOnly
             onClick={onToggleFilters}
             title={filtersCollapsed ? "Show filters" : "Hide filters"}
             aria-label={filtersCollapsed ? "Show filters" : "Hide filters"}
             icon={
-              filtersCollapsed
-                ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
-                : <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <span className="relative flex items-center justify-center">
+                <ListFilter className="h-3.5 w-3.5" strokeWidth={1.5} />
+                {filtersCollapsed && activeFilterCount > 0 && (
+                  <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
+                )}
+              </span>
             }
+            className={!filtersCollapsed || activeFilterCount > 0 ? "" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
           />
         )}
       </div>

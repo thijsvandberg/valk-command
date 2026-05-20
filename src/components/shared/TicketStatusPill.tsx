@@ -471,10 +471,10 @@ export function TicketStatusPill({
               onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
               title={onJiraStatusChange ? "Change status" : jiraStatus}
               disabled={!onJiraStatusChange}
-              className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold transition-colors duration-150 ${
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
                 onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
               }`}
-              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
+              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: 0.85 }}
             >
               <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
               {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}

@@ -149,7 +149,7 @@ export function useSprintBoardFilters(
       }
       if (issueTypeFilter.size > 0 && !issueTypeFilter.has(t.type)) return false;
       if (gapsFilter.size > 0) {
-        if (gapsFilter.has("no_points") && t.storyPoints) return false;
+        if (gapsFilter.has("no_points") && (t.storyPoints != null || t.jiraStatus === "DEPRECATED")) return false;
         if (gapsFilter.has("no_bv") && t.businessValue != null && t.businessValue >= 1) return false;
       }
       if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;

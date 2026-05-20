@@ -126,6 +126,19 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
       body: JSON.stringify({ ticketKeys: [key] }),
     });
 
+    // Jira's API may return stale data immediately after a write (eventual
+    // consistency). Overwrite the local mirror with the values we just pushed
+    // so the ticket detail page always shows the correct content.
+    const directUpdates: Record<string, unknown> = {};
+    for (const edit of localEdits) {
+      if (edit.field === "title") directUpdates.title = edit.localValue;
+      else if (edit.field === "description") directUpdates.description = edit.localValue;
+    }
+    if (Object.keys(directUpdates).length > 0) {
+      await db.update(ticket).set(directUpdates).where(eq(ticket.jiraKey, key));
+      cache.invalidate(`/api/tickets/${key}`);
+    }
+
     const postPushVersion = await db.query.storyVersion.findFirst({
       where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
       orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],

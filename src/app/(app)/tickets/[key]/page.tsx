@@ -339,9 +339,18 @@ export default function TicketDetailPage({
       <ViewHeader
         actions={
           <div className="flex shrink-0 items-center gap-2">
-            {(ticketSprintId || ticket.epic) && (
+            {((ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic") && (
               <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
-                {ticketSprintId && (
+                {ticket.type === "epic" && (
+                  <span
+                    className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
+                    style={{ backgroundColor: "rgba(155,108,212,0.12)", color: "#9b6cd4", border: "1px solid rgba(155,108,212,0.25)" }}
+                  >
+                    <Zap size={11} strokeWidth={2} />
+                    Epic
+                  </span>
+                )}
+                {ticketSprintId && ticket.type !== "epic" && (
                   <Tooltip content={ticketSprintLabel || "Sprint"}>
                     <Link
                       href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
@@ -372,7 +381,7 @@ export default function TicketDetailPage({
                 )}
               </nav>
             )}
-            {(ticketSprintId || ticket.epic) && (
+            {((ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic") && (
               <div className="h-5 w-px shrink-0 bg-overlay-default" />
             )}
             {showPushButton && (

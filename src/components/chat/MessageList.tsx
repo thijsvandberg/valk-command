@@ -243,7 +243,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
             return (
               <div key={message.id} className="flex justify-start">
                 <div
-                  className={`w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""}`}
+                  className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""}`}
                   data-testid="message-investigation"
                 >
                   <MessageContent content={message.content} />
@@ -260,8 +260,8 @@ export default function MessageList({ messages, loading, error }: MessageListPro
               <div
                 className={`max-w-[80%] overflow-x-auto rounded-xl px-4 py-3 text-sm leading-[1.7] font-[var(--font-body)] ${
                   message.role === "user"
-                    ? "bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.18)]"
-                    : "bg-[var(--color-surface-floating)] text-text-primary border border-border-default"
+                    ? "chat-bubble-user bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.18)]"
+                    : "chat-bubble-assistant bg-[var(--color-surface-floating)] text-text-primary border border-border-default"
                 } ${isSending ? "opacity-60" : ""}`}
                 data-testid={`message-${message.role}`}
               >

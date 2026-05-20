@@ -62,7 +62,7 @@ export default function InvestigationInput({
   };
 
   return (
-    <div className="border-t border-border-default px-6 py-4" data-testid="investigation-input">
+    <div className="chat-input-bar border-t border-border-default px-6 py-4" data-testid="investigation-input">
       <div className="mx-auto max-w-3xl space-y-3">
         {/* Input row with toggle inline */}
         <div className="flex items-end gap-3">

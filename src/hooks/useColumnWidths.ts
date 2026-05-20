@@ -11,7 +11,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   type: 32,
   key: 96,
   title: 360,
-  epic: 144,
+  epic: 180,
   jiraStatus: 112,
   sprint: 144,
   points: 48,

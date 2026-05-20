@@ -128,7 +128,7 @@ function DroppableSprintColumn({
         if (activeCriterion === "in-progress") return t.jiraStatus === "IN PROGRESS";
         if (activeCriterion === "test") return t.jiraStatus === "TEST";
         if (activeCriterion === "done") return t.jiraStatus === "DONE";
-        if (activeCriterion === "unpointed") return !t.storyPoints;
+        if (activeCriterion === "unpointed") return t.storyPoints == null && t.jiraStatus !== "DEPRECATED";
         return true;
       });
     }

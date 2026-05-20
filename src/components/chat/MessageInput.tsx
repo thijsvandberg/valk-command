@@ -48,7 +48,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
   };
 
   return (
-    <div className="border-t border-border-default px-6 py-4" data-testid="message-input">
+    <div className="chat-input-bar border-t border-border-default px-6 py-4" data-testid="message-input">
       <div className="mx-auto flex max-w-3xl items-end gap-3">
         <textarea
           ref={textareaRef}

@@ -119,7 +119,7 @@ export async function GET(request: Request) {
     subtaskCountByKey.set(row.ticketKey, { total: row.total, open: row.open ?? 0 });
   }
 
-  const result: Ticket[] = rows.filter(({ t }) => t.type !== "subtask").map(({ t, meta }) => {
+  const result: Ticket[] = rows.filter(({ t }) => t.type !== "subtask" && t.type !== "epic").map(({ t, meta }) => {
     const edits = editsByKey.get(t.jiraKey) ?? [];
     const latestHash = latestHashByKey.get(t.jiraKey) ?? null;
     const editState: TicketEditState = computeTicketEditState(edits, latestHash);

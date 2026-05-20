@@ -1,17 +1,17 @@
-import { User } from "lucide-react";
 import type { Assignee } from "@/types/ticket";
 
 export function Avatar({ assignee, size = 24 }: { assignee: Assignee | null; size?: number }) {
-  const iconSize = size * 0.55;
-
   if (!assignee) {
     return (
       <div
-        className="flex items-center justify-center rounded-full border border-border-default bg-overlay-subtle"
-        style={{ width: size, height: size }}
-      >
-        <User className="text-text-muted" style={{ width: iconSize, height: iconSize }} strokeWidth={1.5} />
-      </div>
+        className="rounded-full"
+        style={{
+          width: size,
+          height: size,
+          border: "1.5px dashed var(--color-border-default)",
+          opacity: 0.5,
+        }}
+      />
     );
   }
   return (

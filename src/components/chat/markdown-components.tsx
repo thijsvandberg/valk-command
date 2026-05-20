@@ -33,7 +33,7 @@ export const markdownComponents: Components = {
   ),
   em: ({ children }) => <em className="italic text-text-secondary">{children}</em>,
   code: ({ children }) => (
-    <code className="rounded bg-overlay-default px-1.5 py-0.5 font-mono text-xs text-[var(--color-brand-300)]">
+    <code className="rounded bg-[var(--color-code-bg)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-code-inline)]">
       {children}
     </code>
   ),

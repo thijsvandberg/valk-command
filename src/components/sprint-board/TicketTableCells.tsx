@@ -6,6 +6,7 @@ import { PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
 import { Minus, Sparkles, Pencil, CircleDot, Check, Pause, Clock } from "lucide-react";
 import { ReviewPopover } from "@/components/sprint-board/ReviewPopover";
+import { Tooltip } from "@/components/shared/Tooltip";
 
 type EditState = "draft" | "local_edits" | "conflict";
 
@@ -33,39 +34,19 @@ export const EDIT_STATE_CONFIG: Record<EditState, { dotClass: string; accent: st
 export function EditStateDot({ state }: { state: EditState }) {
   const cfg = EDIT_STATE_CONFIG[state];
   return (
-    <span className="group/dot relative inline-flex cursor-default">
-      <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />
-      <span
-        className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-3 w-48 -translate-x-1/2 opacity-0 transition-opacity duration-150 group-hover/dot:opacity-100"
-        role="tooltip"
-      >
-        {/* Arrow */}
-        <span
-          className="absolute -bottom-[5px] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45"
-          style={{
-            backgroundColor: "rgb(22,22,34)",
-            borderRight: "1px solid var(--color-overlay-default)",
-            borderBottom: "1px solid var(--color-overlay-default)",
-          }}
-        />
-        {/* Panel */}
-        <span
-          className="font-sans relative flex flex-col overflow-hidden rounded-lg"
-          style={{
-            backgroundColor: "rgb(22,22,34)",
-            border: "1px solid var(--color-overlay-default)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.3)",
-          }}
-        >
-          {/* Accent top bar */}
-          <span className="h-[2px] w-full shrink-0" style={{ backgroundColor: cfg.accent, opacity: 0.6 }} />
-          <span className="flex flex-col gap-1 px-3 py-2.5">
-            <span className="text-label font-semibold tracking-wide text-text-primary">{cfg.label}</span>
-            <span className="text-[10.5px] leading-relaxed text-text-tertiary">{cfg.description}</span>
-          </span>
+    <Tooltip
+      delay={300}
+      content={
+        <span className="flex flex-col gap-1" style={{ maxWidth: 210 }}>
+          <span className="text-[13px] font-semibold text-text-primary">{cfg.label}</span>
+          <span className="text-[12px] leading-relaxed text-text-tertiary">{cfg.description}</span>
         </span>
+      }
+    >
+      <span className="inline-flex cursor-default">
+        <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />
       </span>
-    </span>
+    </Tooltip>
   );
 }
 
@@ -96,7 +77,7 @@ export function QualityBadge({
   }
 
   const content = score === null ? (
-    <span className="text-text-muted leading-none">--</span>
+    <span className="inline-block h-[3px] w-[3px] rounded-full bg-[var(--color-text-muted)]/40 leading-none" />
   ) : (
     <span
       className="inline-flex items-center gap-1.5 tabular-nums leading-none"

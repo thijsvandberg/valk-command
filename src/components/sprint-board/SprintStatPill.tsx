@@ -112,9 +112,10 @@ interface StatPillProps extends BaseProps {
   variant?: StatPillVariant;
   active?: boolean;
   onClick?: (e: React.MouseEvent) => void;
+  title?: string;
 }
 
-export function StatPill({ size = "md", variant = "default", active, onClick, className = "", children }: StatPillProps) {
+export function StatPill({ size = "md", variant = "default", active, onClick, title, className = "", children }: StatPillProps) {
   const s = SIZE[size];
   const v = STAT_VARIANT_STYLE[variant];
   const isInteractive = !!onClick;
@@ -131,7 +132,7 @@ export function StatPill({ size = "md", variant = "default", active, onClick, cl
 
   if (!isInteractive) {
     return (
-      <span className={`${base} ${className}`} style={style}>
+      <span className={`${base} ${className}`} style={style} title={title}>
         {children}
       </span>
     );
@@ -143,6 +144,7 @@ export function StatPill({ size = "md", variant = "default", active, onClick, cl
       onClick={onClick}
       className={`${base} cursor-pointer transition-colors duration-100 ${className}`}
       style={style}
+      title={title}
     >
       {children}
     </span>

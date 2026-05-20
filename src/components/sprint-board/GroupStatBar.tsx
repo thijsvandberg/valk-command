@@ -34,7 +34,8 @@ export function GroupStatBar({
   const inProgressCount = tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
   const testCount = tickets.filter((t) => t.jiraStatus === "TEST").length;
   const doneCount = tickets.filter((t) => t.jiraStatus === "DONE").length;
-  const noPointsCount = tickets.filter((t) => t.storyPoints == null).length;
+  const noPointsCount = tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED").length;
+  const deprecatedWithSp = tickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
 
   const isCollapsible = onToggleCollapse !== undefined;
 
@@ -67,8 +68,18 @@ export function GroupStatBar({
           variant="warning"
           active={activeCriterion === "unpointed"}
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
+          title={`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without story point estimate (excludes deprecated and N/A)`}
         >
-          {noPointsCount} no pts
+          {noPointsCount} no SP
+        </StatPill>
+      )}
+      {deprecatedWithSp > 0 && (
+        <StatPill
+          size="sm"
+          variant="warning"
+          title={`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket still has" : "tickets still have"} story points assigned`}
+        >
+          {deprecatedWithSp} DEPR with SP
         </StatPill>
       )}
       {todoCount > 0 && (

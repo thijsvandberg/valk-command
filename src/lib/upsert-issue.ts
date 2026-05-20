@@ -11,6 +11,7 @@ export function normalizeIssueType(name: string): string {
   if (lower.includes("sub")) return "subtask";
   if (lower.includes("story")) return "story";
   if (lower.includes("spike")) return "spike";
+  if (lower.includes("epic")) return "epic";
   return "task";
 }
 
