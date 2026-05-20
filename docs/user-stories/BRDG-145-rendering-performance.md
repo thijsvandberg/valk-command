@@ -53,12 +53,12 @@ c) Wrap `SortableTicketRow` with `React.memo`:
    - Compare sortable state + all TicketRow props
 
 d) Verify no regressions:
-   - [ ] Hover highlighting still works
-   - [ ] Drag-and-drop still works
-   - [ ] Status changes reflect immediately
-   - [ ] Readiness/score changes reflect immediately
-   - [ ] Bulk select checkboxes work
-   - [ ] Inline editing works
+   - [x] Hover highlighting still works
+   - [x] Drag-and-drop still works
+   - [x] Status changes reflect immediately
+   - [x] Readiness/score changes reflect immediately
+   - [x] Bulk select checkboxes work
+   - [x] Inline editing works
 
 ### 2. Move hoveredRow to local level (Sprint Board)
 

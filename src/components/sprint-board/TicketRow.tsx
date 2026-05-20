@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useRef, useCallback, useState, useEffect } from "react";
+import { forwardRef, memo, useRef, useCallback, useState, useEffect, useMemo } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar";
@@ -62,7 +62,7 @@ export interface TicketRowBaseProps {
   "data-index"?: number;
 }
 
-export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(function TicketRow(
+export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps>(function TicketRow(
   {
     ticket,
     ticketIdx,
@@ -558,9 +558,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
 
     </tr>
   );
-});
+}));
 
-export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "dragListeners" | "dragAttributes" | "data-index"> & {
+export const SortableTicketRow = memo(function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "dragListeners" | "dragAttributes" | "data-index"> & {
   sortableData?: Record<string, unknown>;
 }) {
   const {
@@ -575,9 +575,7 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
     data: props.sortableData ?? { sprintId: props.ticket.sprintId },
   });
 
-  const rowStyle: React.CSSProperties = {
-    // When dragging, freeze the placeholder at its original position.
-    // The DragOverlay handles pointer tracking; the placeholder must not jump.
+  const rowStyle = useMemo<React.CSSProperties>(() => ({
     transform: isDragging ? undefined : CSS.Transform.toString(transform) || undefined,
     transition: isDragging ? undefined : transition ?? undefined,
     ...(isDragging ? {
@@ -585,7 +583,7 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
       outline: "1px dashed var(--color-overlay-strong)",
       outlineOffset: "-1px",
     } : {}),
-  };
+  }), [isDragging, transform, transition]);
 
   const { sortableData: _, ...rowProps } = props;
 
@@ -598,4 +596,4 @@ export function SortableTicketRow(props: Omit<TicketRowBaseProps, "rowStyle" | "
       dragAttributes={attributes}
     />
   );
-}
+});

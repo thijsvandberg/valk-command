@@ -33,6 +33,11 @@ import { DEFAULT_COLUMN_WIDTHS } from "@/hooks/useColumnWidths";
 
 export { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl };
 
+// Stable defaults for optional props, avoids creating new references on each render
+const EMPTY_STRING_MAP: Record<string, string> = {};
+const EMPTY_READINESS_MAP: Record<string, TicketReadiness | null> = {};
+const NOOP = () => {};
+
 // -- Resize handle for column headers --
 
 function ResizeHandle({
@@ -365,14 +370,14 @@ export function TicketTable({
     someChecked,
     isDragActive: activeDragId !== null,
     col,
-    sprintNameMap: sprintNameMap ?? {},
+    sprintNameMap: sprintNameMap ?? EMPTY_STRING_MAP,
     poStatuses,
-    readinessMap: readinessMap ?? {},
+    readinessMap: readinessMap ?? EMPTY_READINESS_MAP,
     selectedTicket,
     onSelectTicket,
     onCheckboxClick: handleCheckboxClick,
     onPoStatusChange,
-    onReadinessChange: onReadinessChange ?? (() => {}),
+    onReadinessChange: onReadinessChange ?? NOOP,
     onBusinessValueChange,
     onStoryPointsChange,
     onJiraStatusChange,
