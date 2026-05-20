@@ -28,7 +28,6 @@ export interface TicketRowBaseProps {
   ticket: Ticket;
   ticketIdx: number;
   isChecked: boolean;
-  isHovered?: boolean;
   isSelected: boolean;
   isFocused?: boolean;
   isInflight?: boolean;
@@ -41,8 +40,6 @@ export interface TicketRowBaseProps {
   poStatuses?: Record<string, POStatus>;
   readinessMap?: Record<string, TicketReadiness | null>;
   selectedTicket: string | null;
-  onHoverRow?: (key: string | null) => void;
-  onLeaveRow?: () => void;
   onSelectTicket: (key: string | null) => void;
   onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
   onPoStatusChange?: (key: string, status: POStatus) => void;
@@ -70,7 +67,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     ticket,
     ticketIdx,
     isChecked,
-    isHovered = false,
     isSelected,
     isFocused = false,
     isInflight = false,
@@ -82,8 +78,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     poStatuses = {},
     readinessMap = {},
     selectedTicket,
-    onHoverRow,
-    onLeaveRow,
     onSelectTicket,
     onCheckboxClick,
     onPoStatusChange,
@@ -140,8 +134,8 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const { data: healthMap } = usePipelineHealth();
   const health = healthMap?.[ticket.key];
 
-  // Suppress hover-based UI (checkbox, drag handle) on non-active rows during any drag.
-  const showCheckbox = isChecked || (isHovered && !isDragActive) || someChecked;
+  // Checkbox always visible when checked or when any row is checked (bulk mode)
+  const showCheckbox = isChecked || someChecked;
   const isRemoved = Boolean(ticket.removedFromJiraAt);
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
@@ -149,19 +143,17 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = useCallback(() => {
-    onHoverRow?.(ticket.key);
     prefetchTimerRef.current = setTimeout(() => {
       prefetchTicketDetail(ticket.key);
     }, 200);
-  }, [ticket.key, onHoverRow]);
+  }, [ticket.key]);
 
   const handleMouseLeave = useCallback(() => {
     if (prefetchTimerRef.current) {
       clearTimeout(prefetchTimerRef.current);
       prefetchTimerRef.current = null;
     }
-    onLeaveRow?.();
-  }, [onLeaveRow]);
+  }, []);
 
   const insertLineShadow = insertLine === "above"
     ? "inset 0 2px 0 var(--color-brand-500)"
@@ -236,13 +228,6 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
                   </button>
                 </Tooltip>
               )}
-              <OpenSubtasksIndicator
-                ticketKey={ticket.key}
-                jiraStatus={ticket.jiraStatus}
-                openCount={ticket.openSubtaskCount ?? 0}
-                totalCount={ticket.totalSubtaskCount ?? 0}
-                onCloseSubtasks={onCloseSubtasks}
-              />
             </span>
           </td>
         );
@@ -313,7 +298,14 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
             key={id}
             className="overflow-hidden max-w-0 py-2 pr-3 text-text-primary"
           >
-            <div className="flex items-center">
+            <div className="flex items-center gap-1.5">
+              <OpenSubtasksIndicator
+                ticketKey={ticket.key}
+                jiraStatus={ticket.jiraStatus}
+                openCount={ticket.openSubtaskCount ?? 0}
+                totalCount={ticket.totalSubtaskCount ?? 0}
+                onCloseSubtasks={onCloseSubtasks}
+              />
               <span className="min-w-0 truncate">{ticket.title}</span>
               {onTitleChange && (
                 <button
@@ -529,11 +521,9 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       } ${
         isSelected
           ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
-          : isHovered
-          ? ticket.flagged ? "bg-[rgba(229,83,75,0.08)] border-l-transparent" : "bg-overlay-subtle border-l-[var(--color-brand-400)]/25"
           : ticket.flagged
-          ? "bg-[rgba(229,83,75,0.06)] border-l-transparent"
-          : "border-l-transparent"
+          ? "bg-[rgba(229,83,75,0.06)] border-l-transparent hover:bg-[rgba(229,83,75,0.08)]"
+          : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
       } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
       {...dragListeners}
       {...dragAttributes}
@@ -549,12 +539,11 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
       >
         <div className="flex items-center justify-center">
           <span
-            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
+            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border transition-[opacity,background-color] duration-150 ease-in-out ${
               isChecked
                 ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
                 : "border-border-strong bg-overlay-subtle"
-            }`}
-            style={{ opacity: showCheckbox ? 1 : 0, transition: "opacity 0.15s ease, background-color 0.15s ease" }}
+            } ${showCheckbox ? "opacity-100" : `opacity-0 ${!isDragActive ? "group-hover/row:opacity-100" : ""}`}`}
           >
             {isChecked && (
               <svg width="8" height="8" viewBox="0 0 8 8" fill="none">

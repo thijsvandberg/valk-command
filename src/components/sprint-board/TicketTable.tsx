@@ -170,7 +170,6 @@ export function TicketTable({
   tickets,
   checkedTickets,
   selectedTicket,
-  hoveredRow,
   focusedTicketIdx,
   someChecked,
   allChecked,
@@ -183,8 +182,6 @@ export function TicketTable({
   onRangeCheck,
   onToggleAll,
   onSelectTicket,
-  onHoverRow,
-  onLeaveRow,
   onPoStatusChange,
   onReadinessChange,
   onBusinessValueChange,
@@ -214,7 +211,6 @@ export function TicketTable({
   tickets: Ticket[];
   checkedTickets: Set<string>;
   selectedTicket: string | null;
-  hoveredRow: string | null;
   focusedTicketIdx: number;
   someChecked: boolean;
   allChecked: boolean;
@@ -227,8 +223,6 @@ export function TicketTable({
   onRangeCheck: (keys: string[], checked: boolean) => void;
   onToggleAll: () => void;
   onSelectTicket: (key: string | null) => void;
-  onHoverRow: (key: string | null) => void;
-  onLeaveRow: () => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
@@ -365,7 +359,6 @@ export function TicketTable({
     ticket,
     ticketIdx,
     isChecked: checkedTickets.has(ticket.key),
-    isHovered: hoveredRow === ticket.key,
     isSelected: selectedTicket === ticket.key,
     isFocused: focusedTicketIdx === ticketIdx,
     isInflight: inflightKeys?.has(ticket.key) ?? false,
@@ -376,8 +369,6 @@ export function TicketTable({
     poStatuses,
     readinessMap: readinessMap ?? {},
     selectedTicket,
-    onHoverRow,
-    onLeaveRow,
     onSelectTicket,
     onCheckboxClick: handleCheckboxClick,
     onPoStatusChange,
@@ -393,7 +384,7 @@ export function TicketTable({
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
