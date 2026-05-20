@@ -6,6 +6,7 @@ import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/Fil
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { ArrowUp, ArrowDown, ArrowUpDown, Sheet } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
@@ -106,7 +107,7 @@ function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; tota
 }
 
 const VIRTUALIZE_THRESHOLD = 80;
-const ROW_HEIGHT_ESTIMATE = 32;
+const ROW_HEIGHT_ESTIMATE = 36;
 const VIRTUALIZER_OVERSCAN = 20;
 // Below this width the table scrolls horizontally rather than continuing to compress columns.
 // Chosen between 1024-1200px as a clean breakpoint for typical PO workstation widths.
@@ -152,8 +153,14 @@ function defaultSortDir(field: SortField): SortDir {
 
 const HEADER_LABELS: Record<ColumnId, string> = {
   type: "", key: "Key", title: "Title", epic: "Epic",
-  jiraStatus: "Status", sprint: "Sprint", points: "Pts", assignee: "",
+  jiraStatus: "Status", sprint: "Sprint", points: "SP", assignee: "",
   flagged: "", poStatus: "RDY", quality: "QS", bv: "BV", notes: "", pipeline: "",
+};
+
+const HEADER_TOOLTIPS: Partial<Record<ColumnId, string>> = {
+  points: "Story Points",
+  quality: "Quality Score",
+  bv: "Business Value",
 };
 
 const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality", "bv"]);
@@ -181,6 +188,7 @@ export function TicketTable({
   onPoStatusChange,
   onReadinessChange,
   onBusinessValueChange,
+  onStoryPointsChange,
   onJiraStatusChange,
   onIssueTypeChange,
   onTitleChange,
@@ -224,6 +232,7 @@ export function TicketTable({
   onPoStatusChange: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
+  onStoryPointsChange?: (key: string, value: number | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -374,6 +383,7 @@ export function TicketTable({
     onPoStatusChange,
     onReadinessChange: onReadinessChange ?? (() => {}),
     onBusinessValueChange,
+    onStoryPointsChange,
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
@@ -383,7 +393,7 @@ export function TicketTable({
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
-  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
+  }), [checkedTickets, hoveredRow, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onHoverRow, onLeaveRow, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
@@ -397,6 +407,7 @@ export function TicketTable({
     const label = HEADER_LABELS[id];
     const isSortable = SORTABLE_COLUMNS.has(id);
     const isCenter = CENTER_COLUMNS.has(id);
+    const tooltip = HEADER_TOOLTIPS[id];
     // Title is the flex filler when no width is pinned; explicit width when user has resized it.
     const titleW = colW("title");
     const widthStyle = id === "title" ? (titleW ? { width: titleW } : undefined) : { width: colW(id) };
@@ -405,21 +416,23 @@ export function TicketTable({
       return <th key={id} className="overflow-hidden py-2 pr-2" style={widthStyle} />;
     }
 
+    const headerContent = isSortable ? (
+      <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-text-secondary${isCenter ? " justify-center w-full" : ""}`}>
+        {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
+      </button>
+    ) : label;
+
     return (
-      <th key={id} className={`group/th relative overflow-hidden py-2 pr-3${isCenter ? " text-center" : ""}`} style={widthStyle}>
-        {isSortable ? (
-          <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-text-secondary${isCenter ? " justify-center w-full" : ""}`}>
-            {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-          </button>
-        ) : label}
+      <th key={id} className={`group/th relative overflow-hidden py-2${isCenter ? " px-1 text-center" : " pr-3"}`} style={widthStyle}>
+        {tooltip ? <Tooltip content={tooltip}>{headerContent}</Tooltip> : headerContent}
         {rh(id)}
       </th>
     );
   }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
 
   const theadContent = (
-    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]" style={{ boxShadow: "inset 0 -1px 0 var(--color-border-default)" }}>
-      <tr className="group/thead h-[44px] text-left text-xs font-medium text-text-tertiary">
+    <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]" style={{ boxShadow: "inset 0 -1px 0 var(--color-border-strong)" }}>
+      <tr className="group/thead h-[44px] text-left text-[11px] uppercase tracking-wider font-medium text-text-muted">
         <th className="w-10 py-2 pl-1 pr-1" />
         {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>

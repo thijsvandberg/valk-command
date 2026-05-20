@@ -99,6 +99,26 @@ export function getBvColor(value: number): { text: string; bg: string } {
   return BV_COLORS[value] ?? BV_COLORS[4];
 }
 
+// Story Point color bands: low effort cool/muted, high effort warm/accent
+// 0 = not applicable (N/A), excluded from totals
+export const SP_COLORS: Record<number, { text: string; bg: string }> = {
+  0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
+  1: { text: "#5a8a6e", bg: "rgba(90, 138, 110, 0.10)" },
+  2: { text: "#6a9a6a", bg: "rgba(106, 154, 106, 0.10)" },
+  3: { text: "#8a9a50", bg: "rgba(138, 154, 80, 0.10)" },
+  5: { text: "#b89040", bg: "rgba(184, 144, 64, 0.12)" },
+  8: { text: "#c87040", bg: "rgba(200, 112, 64, 0.14)" },
+};
+
+export function getSpColor(value: number): { text: string; bg: string } {
+  if (value <= 0) return SP_COLORS[0];
+  if (value <= 1) return SP_COLORS[1];
+  if (value <= 2) return SP_COLORS[2];
+  if (value <= 3) return SP_COLORS[3];
+  if (value <= 5) return SP_COLORS[5];
+  return SP_COLORS[8];
+}
+
 export interface Assignee {
   name: string;
   initials: string;

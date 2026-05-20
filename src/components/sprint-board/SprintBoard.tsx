@@ -14,7 +14,7 @@ import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLaunche
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
+import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill } from "@/components/sprint-board/SprintStatPill";
@@ -488,6 +488,10 @@ export default function SprintBoard() {
 
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
     saveTicketMetadata(key, { businessValue: value });
+  }, []);
+
+  const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
+    saveStoryPoints(key, value);
   }, []);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
@@ -990,7 +994,7 @@ export default function SprintBoard() {
               {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
               {!ticketsLoading && (
-                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} />
+                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onStoryPointsChange={handleStoryPointsChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={boardActiveDragId} dragOverKey={boardOverId} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} />
               )}
             </div>
 
@@ -1033,7 +1037,7 @@ export default function SprintBoard() {
 
               {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
 
-              {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onReorder={f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} />}
+              {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} hoveredRow={hoveredRow} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onHoverRow={setHoveredRow} onLeaveRow={() => setHoveredRow(null)} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onStoryPointsChange={handleStoryPointsChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onReorder={f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} />}
             </div>
 
             {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}

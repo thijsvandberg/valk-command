@@ -34,7 +34,7 @@ export function GroupStatBar({
   const inProgressCount = tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
   const testCount = tickets.filter((t) => t.jiraStatus === "TEST").length;
   const doneCount = tickets.filter((t) => t.jiraStatus === "DONE").length;
-  const noPointsCount = tickets.filter((t) => !t.storyPoints).length;
+  const noPointsCount = tickets.filter((t) => t.storyPoints == null).length;
 
   const isCollapsible = onToggleCollapse !== undefined;
 

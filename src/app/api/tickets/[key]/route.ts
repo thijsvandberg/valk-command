@@ -6,7 +6,7 @@ import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadi
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
-import { jiraClient } from "@/lib/jira-client";
+import { jiraClient, STORY_POINTS_FIELD } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 
@@ -254,33 +254,57 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.type || !VALID_ISSUE_TYPES.includes(body.type as IssueType)) {
-    return NextResponse.json(
-      { error: `type must be one of: ${VALID_ISSUE_TYPES.join(", ")}` },
-      { status: 400 },
-    );
+  const result: Record<string, unknown> = {};
+
+  // Handle issue type change
+  if (body.type !== undefined) {
+    if (!VALID_ISSUE_TYPES.includes(body.type as IssueType)) {
+      return NextResponse.json(
+        { error: `type must be one of: ${VALID_ISSUE_TYPES.join(", ")}` },
+        { status: 400 },
+      );
+    }
+
+    const newType = body.type as IssueType;
+    await db.update(ticket).set({ type: newType }).where(eq(ticket.jiraKey, key));
+
+    const jiraName = JIRA_TYPE_NAMES[newType];
+    if (jiraName) {
+      jiraClient.updateIssue(key, { issuetype: { name: jiraName } }).catch((err: unknown) => {
+        logger.error("ticket-detail", `PATCH Jira type sync failed for ${key}:`, err);
+      });
+    }
+
+    await logActivity({ type: "metadata-update", scope: key, summary: `Changed issue type to ${newType}` });
+    result.type = newType;
   }
 
-  const newType = body.type as IssueType;
+  // Handle story points change
+  if (body.storyPoints !== undefined) {
+    const raw = body.storyPoints;
+    if (raw !== null && (typeof raw !== "number" || raw < 0)) {
+      return NextResponse.json({ error: "storyPoints must be null or a non-negative number" }, { status: 400 });
+    }
 
-  await db.update(ticket).set({ type: newType }).where(eq(ticket.jiraKey, key));
+    const spValue = raw as number | null;
+    await db.update(ticket).set({ storyPoints: spValue }).where(eq(ticket.jiraKey, key));
 
-  // Sync to Jira in the background; failure does not block the response
-  const jiraName = JIRA_TYPE_NAMES[newType];
-  if (jiraName) {
-    jiraClient.updateIssue(key, { issuetype: { name: jiraName } }).catch((err: unknown) => {
-      logger.error("ticket-detail", `PATCH Jira type sync failed for ${key}:`, err);
+    // Push to Jira: value 0 (N/A) is a Bridge-only concept, send null to Jira
+    const jiraValue = spValue != null && spValue > 0 ? spValue : null;
+    jiraClient.updateIssue(key, { [STORY_POINTS_FIELD]: jiraValue }).catch((err: unknown) => {
+      logger.error("ticket-detail", `PATCH Jira SP sync failed for ${key}:`, err);
     });
+
+    await logActivity({ type: "metadata-update", scope: key, summary: `Changed story points to ${spValue ?? "unset"}` });
+    result.storyPoints = spValue;
+  }
+
+  if (Object.keys(result).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
 
-  await logActivity({
-    type: "metadata-update",
-    scope: key,
-    summary: `Changed issue type to ${newType}`,
-  });
-
-  return NextResponse.json({ type: newType });
+  return NextResponse.json(result);
 }

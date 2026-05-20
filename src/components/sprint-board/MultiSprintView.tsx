@@ -12,7 +12,7 @@ import { SprintSelector } from "./SprintSelector";
 import { SortableTicketRow } from "./TicketRow";
 import { BulkActionBar } from "./BulkActionBar";
 import { COLUMN_PRESETS } from "./FilterBar";
-import { saveTicketMetadata } from "./sprint-board-utils";
+import { saveTicketMetadata, saveStoryPoints } from "./sprint-board-utils";
 import { getJiraUrl } from "./TicketTableCells";
 import { CalendarRange, RefreshCw, X, Columns2, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -53,7 +53,7 @@ const compareCollisionDetection: CollisionDetection = (args) => {
 
 // Header labels for compact preset columns
 const COMPACT_HEADER_LABELS: Record<string, string> = {
-  key: "Key", title: "Title", points: "Pts", assignee: "",
+  key: "Key", title: "Title", points: "SP", assignee: "",
 };
 
 // --- Droppable sprint column ---
@@ -81,6 +81,7 @@ function DroppableSprintColumn({
   readinessMap,
   onReadinessChange,
   onBusinessValueChange,
+  onStoryPointsChange,
   onJiraStatusChange,
   onIssueTypeChange,
 }: {
@@ -106,6 +107,7 @@ function DroppableSprintColumn({
   readinessMap: Record<string, TicketReadiness | null>;
   onReadinessChange: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
+  onStoryPointsChange?: (key: string, value: number | null) => void;
   onJiraStatusChange: (key: string, status: JiraStatus) => void;
   onIssueTypeChange: (key: string, type: IssueType) => void;
 }) {
@@ -309,6 +311,7 @@ function DroppableSprintColumn({
                     readinessMap={readinessMap}
                     onReadinessChange={onReadinessChange}
                     onBusinessValueChange={onBusinessValueChange}
+                    onStoryPointsChange={onStoryPointsChange}
                     onJiraStatusChange={onJiraStatusChange}
                     onIssueTypeChange={onIssueTypeChange}
                     insertLine={insertLine}
@@ -404,6 +407,10 @@ export function MultiSprintView({
 
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
     saveTicketMetadata(key, { businessValue: value });
+  }, []);
+
+  const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
+    saveStoryPoints(key, value);
   }, []);
 
   const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
@@ -750,6 +757,7 @@ export function MultiSprintView({
               readinessMap={readinessMap}
               onReadinessChange={handleReadinessChange}
               onBusinessValueChange={handleBusinessValueChange}
+              onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
             />
@@ -782,6 +790,7 @@ export function MultiSprintView({
               readinessMap={readinessMap}
               onReadinessChange={handleReadinessChange}
               onBusinessValueChange={handleBusinessValueChange}
+              onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
             />

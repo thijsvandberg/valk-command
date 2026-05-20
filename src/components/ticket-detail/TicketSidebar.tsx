@@ -10,6 +10,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
@@ -40,6 +41,7 @@ export function TicketSidebar({
 }) {
   const [readiness, setReadiness] = useState<TicketReadiness | null>(ticket.readiness);
   const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
+  const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [poNotes, setPoNotes] = useState(ticket.notes);
   const [collapsed, setCollapsed] = useLocalStorage("ticket-sidebar-collapsed", false);
 
@@ -72,6 +74,17 @@ export function TicketSidebar({
     }
   }, [ticket.key]);
 
+  const handleStoryPointsChange = useCallback(async (v: number | null) => {
+    const prev = storyPoints;
+    setStoryPoints(v);
+    try {
+      await tickets.updateStoryPoints(ticket.key, v);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setStoryPoints(prev);
+    }
+  }, [ticket.key, storyPoints]);
+
   const handleNotesChange = useCallback(async (notes: string) => {
     setPoNotes(notes);
     try {
@@ -84,7 +97,7 @@ export function TicketSidebar({
   const description = detail?.description ?? "";
   const hasDescription = description.trim().length > 20;
   const hasAcceptanceCriteria = /acceptance\s*criteria/i.test(description);
-  const hasPoints = ticket.storyPoints !== null;
+  const hasPoints = storyPoints !== null;
   const hasBV = businessValue !== null;
   const hasReview = ticket.qualityScore !== null;
   const completenessChecks = [
@@ -178,7 +191,11 @@ export function TicketSidebar({
                 })()}
               </DetailRow>
               <DetailRow label="Points">
-                <span className="tabular-nums">{ticket.storyPoints ?? "--"}</span>
+                <StoryPointPicker
+                  value={storyPoints}
+                  onChange={handleStoryPointsChange}
+                  align="left"
+                />
               </DetailRow>
               {sprintName && (
                 <DetailRow label="Sprint">

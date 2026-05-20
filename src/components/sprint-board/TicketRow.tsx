@@ -15,6 +15,7 @@ import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-bo
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import { getBvColor } from "@/types/ticket";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { prefetchTicketDetail } from "@/lib/prefetch";
@@ -46,6 +47,7 @@ export interface TicketRowBaseProps {
   onPoStatusChange?: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
+  onStoryPointsChange?: (key: string, value: number | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -86,6 +88,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     onPoStatusChange,
     onReadinessChange,
     onBusinessValueChange,
+    onStoryPointsChange,
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
@@ -176,13 +179,13 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     switch (id) {
       case "type":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-2">
+          <td key={id} className="overflow-hidden py-2 pr-2">
             <IssueTypeIcon type={ticket.type} />
           </td>
         );
       case "key":
         return (
-          <td key={id} className="py-2 pr-3">
+          <td key={id} className="py-2 pr-3" style={{ fontVariantNumeric: "tabular-nums" }}>
             <span className="flex items-center gap-1.5">
               <span
                 onPointerDown={(e) => e.stopPropagation()}
@@ -240,7 +243,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
           return (
             <td
               key={id}
-              className="relative max-w-0 py-1.5 pr-3 text-text-primary"
+              className="relative max-w-0 py-2 pr-3 text-text-primary"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
@@ -300,7 +303,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className="overflow-hidden max-w-0 py-1.5 pr-3 text-text-primary"
+            className="overflow-hidden max-w-0 py-2 pr-3 text-text-primary"
           >
             <div className="flex items-center">
               <span className="min-w-0 truncate">{ticket.title}</span>
@@ -332,11 +335,11 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "epic":
         return (
-          <td key={id} className="py-1.5 pr-3 overflow-hidden">
+          <td key={id} className="py-2 pr-3 overflow-hidden">
             {epicColor && (
               <span
-                className="inline-flex items-center max-w-full truncate whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium"
-                style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
+                className="inline-flex items-center max-w-full truncate whitespace-nowrap rounded-[3px] border-l-2 pl-1.5 pr-2 py-0.5 text-[10.5px] tracking-wide font-medium"
+                style={{ backgroundColor: epicColor.bg, color: epicColor.text, borderLeftColor: epicColor.text }}
               >
                 {ticket.epic}
               </span>
@@ -345,7 +348,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "jiraStatus":
         return (
-          <td key={id} className="py-1.5 pr-3 overflow-hidden">
+          <td key={id} className="py-2 pr-3 overflow-hidden">
             {isRemoved ? (
               <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium bg-red-500/10 text-red-400/70">
                 DELETED
@@ -362,27 +365,36 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "sprint":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3 text-xs text-text-tertiary truncate">
+          <td key={id} className="overflow-hidden py-2 pr-3 text-xs text-text-tertiary truncate">
             {ticket.sprintId
               ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId)
-              : <span className="text-text-muted">&#8212;</span>}
+              : <span className="inline-block h-[3px] w-[3px] rounded-full bg-[var(--color-text-muted)]/40 align-middle" />}
           </td>
         );
       case "points":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3 text-center text-xs tabular-nums text-text-tertiary">
-            {ticket.storyPoints ?? "-"}
+          <td
+            key={id}
+            className="py-2 pr-3 text-center"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <StoryPointPicker
+              value={ticket.storyPoints}
+              onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
+              subtle
+            />
           </td>
         );
       case "assignee":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-3">
+          <td key={id} className="overflow-hidden py-2 pr-3">
             <Avatar assignee={ticket.assignee} size={18} />
           </td>
         );
       case "flagged":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-2">
+          <td key={id} className="overflow-hidden py-2 pr-2">
             {ticket.flagged && <Flag className="h-3.5 w-3.5 text-[#e5534b]" fill="currentColor" strokeWidth={0} />}
           </td>
         );
@@ -390,7 +402,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className="overflow-hidden py-1.5 pr-2 text-center"
+            className="overflow-hidden py-2 pr-2 text-center"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
@@ -405,7 +417,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className="overflow-hidden py-1.5 pr-3 text-xs tabular-nums leading-none"
+            className="overflow-hidden py-2 pr-3 text-xs tabular-nums leading-none"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
@@ -421,7 +433,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         return (
           <td
             key={id}
-            className="py-1.5 pr-3 text-center"
+            className="py-2 pr-3 text-center"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
@@ -434,7 +446,7 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         );
       case "notes":
         return (
-          <td key={id} className="overflow-hidden py-1.5 pr-2">
+          <td key={id} className="overflow-hidden py-2 pr-2">
             {ticket.notes && (
               <span title={ticket.notes}>
                 <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
@@ -490,7 +502,10 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
     <tr
       ref={ref}
       data-index={dataIndex}
-      style={{ ...style, ...(isEditingTitle ? { position: "relative" as const, zIndex: 5 } : {}) }}
+      style={{
+        ...style,
+        ...(isEditingTitle ? { position: "relative" as const, zIndex: 5 } : {}),
+      }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={(e) => {
@@ -501,23 +516,23 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
       }}
-      className={`group/row border-b border-border-subtle transition-colors duration-100 ${
+      className={`group/row border-b border-border-subtle border-l-2 transition-colors duration-100 ${
         dragListeners ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
       } ${
         isSelected
-          ? "bg-[var(--color-brand-600)]/12 border-l-2 border-l-[var(--color-brand-500)]"
+          ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
           : isHovered
-          ? ticket.flagged ? "bg-[rgba(229,83,75,0.08)]" : "bg-overlay-subtle"
+          ? ticket.flagged ? "bg-[rgba(229,83,75,0.08)] border-l-transparent" : "bg-overlay-subtle border-l-[var(--color-brand-400)]/25"
           : ticket.flagged
-          ? "bg-[rgba(229,83,75,0.06)]"
-          : ""
+          ? "bg-[rgba(229,83,75,0.06)] border-l-transparent"
+          : "border-l-transparent"
       } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
       {...dragListeners}
       {...dragAttributes}
     >
       {/* Checkbox -- stops pointer propagation so drag sensor never activates on checkbox interaction */}
       <td
-        className="cursor-pointer select-none py-1.5 pl-1 pr-1"
+        className="cursor-pointer select-none py-2 pl-1 pr-1"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();

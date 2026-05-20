@@ -82,6 +82,32 @@ export async function saveTicketMetadata(
   }
 }
 
+export async function saveStoryPoints(
+  jiraKey: string,
+  storyPoints: number | null,
+): Promise<boolean> {
+  // Optimistically update SWR caches
+  globalMutate(
+    (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
+    (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? { ...t, storyPoints } : t),
+    { revalidate: false },
+  );
+  globalMutate(
+    `/api/tickets/${encodeURIComponent(jiraKey)}`,
+    (current: Record<string, unknown> | undefined) => current ? { ...current, storyPoints } : current,
+    { revalidate: false },
+  );
+
+  try {
+    await ticketsApi.updateStoryPoints(jiraKey, storyPoints);
+    return true;
+  } catch (err) {
+    console.error("Failed to save story points:", err);
+    globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets"), undefined, { revalidate: true });
+    return false;
+  }
+}
+
 export async function bulkReviewStories(keys: string[]): Promise<void> {
   for (const key of keys) {
     try {

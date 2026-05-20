@@ -122,6 +122,8 @@ export const tickets = {
     apiFetch<Ticket & TicketDetail>(`/api/tickets/${enc(key)}`, { signal }),
   update: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<Ticket>(`/api/tickets/${enc(key)}`, { method: "PUT", body: data, signal }),
+  updateStoryPoints: (key: string, storyPoints: number | null, signal?: AbortSignal) =>
+    apiFetch<{ storyPoints: number | null }>(`/api/tickets/${enc(key)}`, { method: "PATCH", body: { storyPoints }, signal }),
 
   getMetadata: (key: string, signal?: AbortSignal) =>
     apiFetch<Record<string, unknown>>(`/api/tickets/${enc(key)}/metadata`, { signal }),
