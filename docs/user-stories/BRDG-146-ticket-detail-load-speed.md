@@ -44,6 +44,18 @@ Plus background: `jiraApi.checkUpdated(key)` calls Jira REST API (500ms-2s).
 - Highlight runs synchronously per code block
 - Only relevant when Content tab is active and description contains code
 
+## Implementation Plan
+
+**Order: 3 > 4 > 5 > 2 > 1 > 7 > 6** (low-risk items first, complex last)
+
+1. **Memoize detail (AC #3):** Wrap `detail` in `useMemo([apiData])` in page.tsx. Zero risk.
+2. **Trim metadata (AC #4):** Remove `metadata: meta ?? null` from API response body. Update tests.
+3. **Defer Jira check (AC #5):** Add 3s `setTimeout` in `useTicketDetail` before `checkUpdated`. Clear on cleanup.
+4. **Fix N+1 (AC #2):** Replace sequential parent lookup with a joined query (ticketSubtask + ticket) inside the existing `Promise.all`.
+5. **Consolidate API calls (AC #1):** Add `reviewCount`, `versionCount`, `currentVersionHash` to main `/api/tickets/[key]` response. Remove `useTicketVersionCount` from page. Read counts from `apiData`.
+6. **Prefetch hints (AC #7):** Add `router.prefetch('/tickets/${key}')` alongside `prefetchTicketDetail` in TicketRow hover handler.
+7. **Lazy Prism (AC #6):** Replace 20 static Prism imports with dynamic loader. Fallback to unhighlighted on first render, re-render when loaded.
+
 ## Acceptance Criteria
 
 ### 1. Consolidate API calls on page load
@@ -62,7 +74,7 @@ The page currently makes 6 parallel API calls. Some can be folded into the main 
 
 ### 3. Memoize `detail` object
 
-- [ ] Wrap the `detail` derivation (page.tsx line 108) in `useMemo([apiData])` to prevent unnecessary re-renders of child components (AttachmentsSection, SubtasksSection, CommentsSection, etc.)
+- [x] Wrap the `detail` derivation (page.tsx line 108) in `useMemo([apiData])` to prevent unnecessary re-renders of child components (AttachmentsSection, SubtasksSection, CommentsSection, etc.)
 
 ### 4. Trim API response payload
 

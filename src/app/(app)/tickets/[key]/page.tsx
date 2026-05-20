@@ -105,7 +105,7 @@ export default function TicketDetailPage({
     removedFromJiraAt: apiData.removedFromJiraAt ?? null,
   } : undefined, [apiData]);
 
-  const detail: TicketDetail | undefined = apiData ? {
+  const detail: TicketDetail | undefined = useMemo(() => apiData ? {
     description: apiData.description ?? "",
     reporter: apiData.reporter ?? null,
     parent: apiData.parent ?? null,
@@ -119,7 +119,7 @@ export default function TicketDetailPage({
     linkedIssues: apiData.linkedIssues ?? [],
     jiraComments: apiData.jiraComments ?? [],
     epicChildren: apiData.epicChildren ?? [],
-  } : undefined;
+  } : undefined, [apiData]);
 
   // Local edits are now included in the API response to avoid flicker
   const localEdits: Record<string, { value: string; isDraft: boolean }> | undefined = (apiData as Record<string, unknown> | undefined)?.localEdits as Record<string, { value: string; isDraft: boolean }> | undefined;
