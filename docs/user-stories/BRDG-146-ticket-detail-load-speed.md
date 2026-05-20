@@ -68,9 +68,9 @@ The page currently makes 6 parallel API calls. Some can be folded into the main 
 
 ### 2. Fix N+1 parent ticket query
 
-- [ ] When a ticket is a subtask, the parent ticket title is fetched in a sequential query after the main `Promise.all`. Move the parent ticket info into the initial query by joining or batching.
-- [ ] Option A: Include the parent lookup as a subquery in the `Promise.all`, then resolve the title in-memory
-- [ ] Option B: Use a join to fetch parent title alongside the subtask relationship query
+- [x] When a ticket is a subtask, the parent ticket title is fetched in a sequential query after the main `Promise.all`. Move the parent ticket info into the initial query by joining or batching.
+- [x] Option A: Include the parent lookup as a subquery in the `Promise.all`, then resolve the title in-memory
+- [x] Option B: Use a join to fetch parent title alongside the subtask relationship query (chosen: innerJoin ticketSubtask + ticket)
 
 ### 3. Memoize `detail` object
 

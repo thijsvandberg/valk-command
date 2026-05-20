@@ -68,7 +68,7 @@ export async function GET(
 
     if (!t) return null;
 
-    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRow] = await Promise.all([
+    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRows] = await Promise.all([
       db.query.ticketMetadata.findFirst({
         where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
       }),
@@ -93,20 +93,19 @@ export async function GET(
         where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
         orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
       }),
-      // Reverse lookup: find parent ticket if this is a subtask
-      db.query.ticketSubtask.findFirst({
-        where: (s, { eq: eqFn }) => eqFn(s.subtaskKey, key),
-      }),
+      // Reverse lookup: find parent ticket if this is a subtask (joined to get title in one query)
+      db.select({
+        ticketKey: ticketSubtask.ticketKey,
+        title: ticket.title,
+      }).from(ticketSubtask)
+        .innerJoin(ticket, eq(ticket.jiraKey, ticketSubtask.ticketKey))
+        .where(eq(ticketSubtask.subtaskKey, key))
+        .limit(1),
     ]);
 
-    // If this ticket is a subtask, resolve the parent ticket's title
-    let parentTicket: { key: string; title: string } | null = null;
-    if (parentRow) {
-      const pt = await db.query.ticket.findFirst({
-        where: (row, { eq: eqFn }) => eqFn(row.jiraKey, parentRow.ticketKey),
-      });
-      parentTicket = { key: parentRow.ticketKey, title: pt?.title ?? parentRow.ticketKey };
-    }
+    const parentTicket = parentRows.length > 0
+      ? { key: parentRows[0].ticketKey, title: parentRows[0].title }
+      : null;
 
     return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket };
   });
