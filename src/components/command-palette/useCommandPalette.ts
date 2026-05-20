@@ -78,15 +78,6 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return match ? match[1].toUpperCase() : null;
   }, [pathname]);
 
-  /* ---- Sidebar toggle helper ---- */
-  const toggleSidebar = useCallback(() => {
-    try {
-      const current = localStorage.getItem("sidebar-collapsed") === "true";
-      localStorage.setItem("sidebar-collapsed", String(!current));
-      window.dispatchEvent(new Event("storage"));
-    } catch { /* noop */ }
-  }, []);
-
   /* ---- Actions (static, but depend on callbacks) ---- */
   const actions: ActionResult[] = useMemo(() => [
     {
@@ -116,13 +107,6 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         const conv = await conversationsApi.create({ title: "New conversation" });
         router.push(`/chat?id=${conv.id}`);
       },
-    },
-    {
-      category: "action",
-      id: "action-toggle-sidebar",
-      label: "Toggle Sidebar",
-      aliases: ["collapse", "expand", "menu"],
-      execute: toggleSidebar,
     },
     {
       category: "action",
@@ -164,7 +148,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         router.push(`/chat/${conv.id}`);
       },
     },
-  ], [router, toggleSidebar, currentWriterKey]);
+  ], [router, currentWriterKey]);
 
   const actionFuse = useMemo(
     () => new Fuse(actions, {

@@ -418,7 +418,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
     <PaneProvider ticketKey={ticketKey} initialEditorOpen={initialEditorOpen}>
       <WriterProvider value={writerContextValue}>
         <SplitModeSync />
-        <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
+        <div className="flex h-full flex-col">
           {/* Action bar — unchanged */}
           <ViewHeader
             className="shrink-0"

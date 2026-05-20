@@ -2,20 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useSyncExternalStore, useCallback } from "react";
+import { useState, useRef } from "react";
 import {
-  LayoutGrid,
   MessageCircle,
   KanbanSquare,
   GitBranch,
-  FlaskConical,
   SlidersHorizontal,
   NotebookPen,
   Users,
   Menu,
   X,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { Button } from "@/components/ui/Button";
@@ -24,19 +20,14 @@ import { UserProfilePopover } from "@/components/sidebar/UserProfilePopover";
 
 const navItems = [
   {
-    label: "Dashboard",
-    href: "/",
-    icon: <LayoutGrid className="h-5 w-5" strokeWidth={1.5} />,
+    label: "Sprint Board",
+    href: "/sprint-board",
+    icon: <KanbanSquare className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Chat",
     href: "/chat",
     icon: <MessageCircle className="h-5 w-5" strokeWidth={1.5} />,
-  },
-  {
-    label: "Sprint Board",
-    href: "/sprint-board",
-    icon: <KanbanSquare className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Story Writer",
@@ -47,11 +38,6 @@ const navItems = [
     label: "Pipelines",
     href: "/pipelines",
     icon: <GitBranch className="h-5 w-5" strokeWidth={1.5} />,
-  },
-  {
-    label: "Test Center",
-    href: "/test-center",
-    icon: <FlaskConical className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Refinement",
@@ -65,47 +51,14 @@ const navItems = [
   },
 ];
 
-const STORAGE_KEY = "sidebar-collapsed";
-
-function subscribeToStorage(callback: () => void) {
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
-}
-
-function getCollapsedSnapshot(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function getCollapsedServerSnapshot(): boolean {
-  return false;
-}
-
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const collapsed = useSyncExternalStore(
-    subscribeToStorage,
-    getCollapsedSnapshot,
-    getCollapsedServerSnapshot,
-  );
-
-  const toggleCollapsed = useCallback(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, String(!collapsed));
-      window.dispatchEvent(new Event("storage"));
-    } catch { /* noop */ }
-  }, [collapsed]);
-
   function isActive(href: string) {
-    if (href === "/") return pathname === "/";
-    if (href === "/sprint-board") return pathname.startsWith("/sprint-board");
+    if (href === "/sprint-board") return pathname === "/" || pathname.startsWith("/sprint-board");
     if (href === "/story-writer") return pathname.startsWith("/story-writer") || pathname.endsWith("/write");
     return pathname.startsWith(href);
   }
@@ -134,9 +87,9 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         data-testid="sidebar"
-        className={`fixed top-0 left-0 z-50 flex h-full flex-col bg-[var(--color-surface-elevated)] border-r border-border-default lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:translate-x-0 ${
-          collapsed ? "w-[52px]" : "w-64"
-        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 z-50 flex h-full w-[52px] flex-col bg-[var(--color-surface-elevated)] border-r border-border-default lg:border-r-0 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         {/* Mobile header */}
         <div className="flex items-center justify-end py-2.5 px-3 lg:hidden">
@@ -151,7 +104,7 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-1.5" : "px-3"}`} aria-label="Main navigation">
+        <nav className="flex-1 overflow-y-auto px-1.5" aria-label="Main navigation">
           <ul className="flex flex-col gap-1 pt-3">
             {navItems.map((item) => {
               const active = isActive(item.href);
@@ -161,20 +114,17 @@ export default function Sidebar() {
                     href={item.href}
                     prefetch={true}
                     onClick={() => setMobileOpen(false)}
-                    className={`group flex items-center ${collapsed ? "justify-center" : "gap-3"} rounded-lg ${collapsed ? "px-0 py-2.5" : "px-3 py-2.5"} text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    className={`group flex items-center justify-center rounded-lg px-0 py-2.5 text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       active
                         ? "bg-[var(--color-brand-600)]/12 text-[var(--color-brand-300)]"
                         : "text-text-secondary hover:bg-hover-list-item hover:text-text-primary active:bg-overlay-default"
                     }`}
                     aria-current={active ? "page" : undefined}
-                    title={collapsed ? item.label : undefined}
+                    title={item.label}
                   >
                     <span className={`shrink-0 ${active ? "text-[var(--color-brand-400)]" : "text-text-tertiary group-hover:text-text-secondary"}`}>
                       {item.icon}
                     </span>
-                    {!collapsed && (
-                      <span className="font-[var(--font-body)]">{item.label}</span>
-                    )}
                   </Link>
                 </li>
               );
@@ -182,25 +132,14 @@ export default function Sidebar() {
           </ul>
         </nav>
 
-        {/* Bottom: sync + profile + collapse toggle */}
-        <div className={`flex flex-col border-t border-border-subtle pt-2 pb-3 gap-2 ${collapsed ? "px-1.5" : "px-3"}`}>
-          <div className={`flex items-center ${collapsed ? "flex-col gap-2" : "justify-between"}`}>
-            <SyncIndicator collapsed={collapsed} />
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-hover-list-item hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed
-                ? <ChevronRight size={14} strokeWidth={1.5} />
-                : <ChevronLeft size={14} strokeWidth={1.5} />
-              }
-            </button>
+        {/* Bottom: sync + profile */}
+        <div className="flex flex-col border-t border-border-subtle pt-2 pb-3 gap-2 px-1.5">
+          <div className="flex items-center flex-col gap-2">
+            <SyncIndicator collapsed={true} />
           </div>
           <UserAvatar
             ref={profileTriggerRef}
-            collapsed={collapsed}
+            collapsed={true}
             onClick={() => setProfileOpen((prev) => !prev)}
             open={profileOpen}
           />

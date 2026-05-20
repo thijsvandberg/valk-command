@@ -17,11 +17,12 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
-import { StatPill, StatusPill } from "@/components/sprint-board/SprintStatPill";
+import { StatPill, StatusPill, StatusCount, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle } from "lucide-react";
+import { Tooltip } from "@/components/shared/Tooltip";
 import {
   DndContext,
   DragOverlay,
@@ -259,6 +260,15 @@ export default function SprintBoard() {
   const bvScoredTickets = allTickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvScoredTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
   const bvAvg = bvScoredTickets.length > 0 ? (bvTotal / bvScoredTickets.length).toFixed(1) : null;
+  const statusStats = useMemo(() => {
+    const stats: Record<string, { sp: number; bv: number }> = {};
+    for (const t of allTickets) {
+      const s = stats[t.jiraStatus] ?? (stats[t.jiraStatus] = { sp: 0, bv: 0 });
+      s.sp += t.storyPoints ?? 0;
+      s.bv += t.businessValue ?? 0;
+    }
+    return stats;
+  }, [allTickets]);
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
 
@@ -923,65 +933,109 @@ export default function SprintBoard() {
             {!ticketsLoading && (
               <>
                 <ViewHeaderDivider />
-                <div className="flex items-center gap-1.5">
-                  <StatPill size="md" variant="default">
-                    {f.hasActiveFilters ? `${tickets.length.toLocaleString("nl-NL")}/${allTickets.length.toLocaleString("nl-NL")}` : allTickets.length.toLocaleString("nl-NL")} items
-                  </StatPill>
+                <div className="flex items-center gap-1.5 text-xs tabular-nums">
+                  <span className="text-text-secondary">{f.hasActiveFilters ? `${tickets.length.toLocaleString("nl-NL")}/${allTickets.length.toLocaleString("nl-NL")}` : allTickets.length.toLocaleString("nl-NL")} items</span>
                   {!isAllView && !f.activeView && totalPoints > 0 && (
-                    <StatPill size="md" variant="dim">{totalPoints} pts</StatPill>
-                  )}
-                  {!isAllView && !f.activeView && bvScoredTickets.length > 0 && (
-                    <StatPill size="md" variant="dim">BV: {bvTotal}{bvAvg ? ` avg ${bvAvg}` : ""}</StatPill>
-                  )}
-                  {!isAllView && !f.activeView && noPointsCount > 0 && (
-                    <StatPill
-                      size="md"
-                      variant="warning"
-                      active={f.gapsFilter.has("no_points")}
-                      onClick={() => {
-                        const next = new Set(f.gapsFilter);
-                        if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
-                        f.setGapsFilter(next);
-                      }}
-                      title={`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without story point estimate (excludes deprecated and N/A)`}
-                    >
-                      {noPointsCount} no SP
-                    </StatPill>
-                  )}
-                  {!isAllView && !f.activeView && deprecatedWithSp > 0 && (
-                    <StatPill
-                      size="md"
-                      variant="warning"
-                      title={`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket still has" : "tickets still have"} story points assigned`}
-                    >
-                      {deprecatedWithSp} DEPR with SP
-                    </StatPill>
+                    <>
+                      <span className="text-text-muted">|</span>
+                      <Tooltip content={
+                        <div className="flex flex-col gap-1.5 tabular-nums text-[12px]">
+                          <div className="flex items-baseline justify-between gap-4">
+                            <span className="text-text-tertiary">Story Points</span>
+                            <span><span className="font-semibold text-text-primary">{totalPoints}</span>{allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length > 0 && <span className="text-text-muted ml-1">avg {(totalPoints / allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length).toFixed(1)}</span>}</span>
+                          </div>
+                          {bvScoredTickets.length > 0 && (
+                            <div className="flex items-baseline justify-between gap-4">
+                              <span className="text-text-tertiary">Business Value</span>
+                              <span><span className="font-semibold text-text-primary">{bvTotal}</span>{bvAvg && <span className="text-text-muted ml-1">avg {bvAvg}</span>}</span>
+                            </div>
+                          )}
+                          {noPointsCount > 0 && (
+                            <div className="flex items-center gap-1.5 pt-0.5 border-t border-border-subtle">
+                              <AlertTriangle size={10} strokeWidth={2} className="text-amber-400 shrink-0" />
+                              <span className="text-amber-400">{noPointsCount} without estimate</span>
+                            </div>
+                          )}
+                        </div>
+                      }>
+                        <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-0.5">
+                            <span className="font-semibold text-text-primary">{totalPoints}</span>
+                            <span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span>
+                          </span>
+                          {bvScoredTickets.length > 0 && (
+                            <>
+                              <span className="text-text-muted/50">/</span>
+                              <span className="flex items-center gap-0.5">
+                                <span className="font-semibold text-text-primary">{bvTotal}</span>
+                                <span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span>
+                              </span>
+                            </>
+                          )}
+                          {noPointsCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = new Set(f.gapsFilter);
+                                if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
+                                f.setGapsFilter(next);
+                              }}
+                              className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-all duration-150 ${
+                                f.gapsFilter.has("no_points")
+                                  ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_rgba(234,179,8,0.3)]"
+                                  : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
+                              }`}
+                              title={`${noPointsCount} without estimate`}
+                            >
+                              <AlertTriangle size={10} strokeWidth={2.5} />
+                            </button>
+                          )}
+                        </span>
+                      </Tooltip>
+                    </>
                   )}
                 </div>
                 {!isAllView && !f.activeView && (
                   <>
                     <ViewHeaderDivider />
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       {(["TO DO", "IN PROGRESS", "TEST", "DONE"] as const).map((status) => {
                         const count = status === "TO DO" ? todoCount : status === "IN PROGRESS" ? inProgressCount : status === "TEST" ? testCount : doneCount;
                         if (count === 0 && status === "TEST") return null;
                         const active = f.statusFilter.has(status);
                         const dimmed = f.statusFilter.size > 0 && !active;
+                        const ss = statusStats[status];
                         return (
-                          <StatusPill
-                            key={status}
-                            size="md"
-                            colorKey={status}
-                            label={status}
-                            count={count}
-                            active={active}
-                            dimmed={dimmed}
-                            onClick={() => {
-                              const next = new Set(f.statusFilter);
-                              if (active) next.delete(status); else next.add(status);
-                              f.setStatusFilter(next);
-                            }}
-                          />
+                          <Tooltip key={status} content={
+                            <div className="flex flex-col gap-1 tabular-nums text-[12px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: STATUS_PILL_COLORS[status]?.dot ?? STATUS_PILL_COLORS[status]?.text ?? "#94a3b8" }} />
+                                <span className="font-semibold text-text-primary">{status}</span>
+                              </div>
+                              <div className="flex items-baseline gap-2 text-text-secondary">
+                                <span>{count} items</span>
+                                {ss && ss.sp > 0 && (
+                                  <span className="flex items-center gap-0.5"><span className="font-semibold text-text-primary">{ss.sp}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span></span>
+                                )}
+                                {ss && ss.bv > 0 && (
+                                  <span className="flex items-center gap-0.5"><span className="font-semibold text-text-primary">{ss.bv}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span></span>
+                                )}
+                              </div>
+                            </div>
+                          }>
+                            <StatusCount
+                              colorKey={status}
+                              label={status}
+                              count={count}
+                              active={active}
+                              dimmed={dimmed}
+                              onClick={() => {
+                                const next = new Set(f.statusFilter);
+                                if (active) next.delete(status); else next.add(status);
+                                f.setStatusFilter(next);
+                              }}
+                            />
+                          </Tooltip>
                         );
                       })}
                     </div>
@@ -1001,13 +1055,13 @@ export default function SprintBoard() {
             onDragOver={handleBoardDragOver}
             onDragEnd={handleBoardDragEnd}
           >
-            <div className="relative">
+            <div className="relative bg-[var(--color-surface-toolbar)]">
               <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} />
               {boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
             </div>
 
             {!barsCollapsed && (
-              <div className="border-b border-border-default">
+              <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
                 <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
               </div>
             )}
@@ -1048,10 +1102,12 @@ export default function SprintBoard() {
           </DndContext>
         ) : (
           <>
-            <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} />
+            <div className="bg-[var(--color-surface-toolbar)]">
+              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} />
+            </div>
 
             {!barsCollapsed && (
-              <div className="border-b border-border-default">
+              <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
                 <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
               </div>
             )}

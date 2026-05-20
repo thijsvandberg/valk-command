@@ -49,16 +49,14 @@ describe("Sidebar", () => {
     expect(screen.getByTestId("sidebar")).toBeInTheDocument();
   });
 
-  it("renders all 8 navigation items", () => {
+  it("renders all 6 navigation items as icon-only links with titles", () => {
     render(<Sidebar />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
-    expect(screen.getByText("Chat")).toBeInTheDocument();
-    expect(screen.getByText("Sprint Board")).toBeInTheDocument();
-    expect(screen.getByText("Test Center")).toBeInTheDocument();
-    expect(screen.getByText("Refinement")).toBeInTheDocument();
-    expect(screen.getByText("Stakeholder")).toBeInTheDocument();
-    expect(screen.getByText("Story Writer")).toBeInTheDocument();
-    expect(screen.getByText("Pipelines")).toBeInTheDocument();
+    expect(screen.getByTitle("Sprint Board")).toBeInTheDocument();
+    expect(screen.getByTitle("Chat")).toBeInTheDocument();
+    expect(screen.getByTitle("Story Writer")).toBeInTheDocument();
+    expect(screen.getByTitle("Pipelines")).toBeInTheDocument();
+    expect(screen.getByTitle("Refinement")).toBeInTheDocument();
+    expect(screen.getByTitle("Stakeholder")).toBeInTheDocument();
   });
 
   it("all navigation links point to correct routes", () => {
@@ -67,12 +65,10 @@ describe("Sidebar", () => {
     const links = nav.querySelectorAll("a");
     const hrefs = Array.from(links).map((l) => l.getAttribute("href"));
     expect(hrefs).toEqual([
-      "/",
-      "/chat",
       "/sprint-board",
+      "/chat",
       "/story-writer",
       "/pipelines",
-      "/test-center",
       "/refinement",
       "/stakeholder",
     ]);
@@ -81,17 +77,17 @@ describe("Sidebar", () => {
   it("highlights the active route with aria-current", () => {
     mockUsePathname.mockReturnValue("/chat");
     render(<Sidebar />);
-    const chatLink = screen.getByText("Chat").closest("a");
+    const chatLink = screen.getByTitle("Chat");
     expect(chatLink).toHaveAttribute("aria-current", "page");
-    const dashboardLink = screen.getByText("Dashboard").closest("a");
-    expect(dashboardLink).not.toHaveAttribute("aria-current");
+    const sprintLink = screen.getByTitle("Sprint Board");
+    expect(sprintLink).not.toHaveAttribute("aria-current");
   });
 
-  it("highlights Dashboard when pathname is /", () => {
+  it("highlights Sprint Board when pathname is /", () => {
     mockUsePathname.mockReturnValue("/");
     render(<Sidebar />);
-    const dashboardLink = screen.getByText("Dashboard").closest("a");
-    expect(dashboardLink).toHaveAttribute("aria-current", "page");
+    const sprintLink = screen.getByTitle("Sprint Board");
+    expect(sprintLink).toHaveAttribute("aria-current", "page");
   });
 
   it("opens and closes on mobile toggle", () => {
@@ -117,7 +113,6 @@ describe("Sidebar", () => {
     const avatarButton = screen.getByLabelText("User menu");
     expect(avatarButton).toBeInTheDocument();
     expect(screen.getByText("TU")).toBeInTheDocument();
-    expect(screen.getByText("Test")).toBeInTheDocument();
   });
 
   it("opens profile popover on avatar click", () => {

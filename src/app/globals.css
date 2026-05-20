@@ -69,6 +69,8 @@
   --color-surface-base: #070c0e;
   --color-surface-elevated: #0b1316;
   --color-surface-elevated-hover: #10191d;
+  --color-surface-chrome: #0b1316;
+  --color-surface-toolbar: #0b1316;
   --color-surface-floating: #111d22;
 
   /* Semantic text tokens */
@@ -142,6 +144,8 @@
   --color-surface-base: #f4f8f8;
   --color-surface-elevated: #ffffff;
   --color-surface-elevated-hover: #eef2f2;
+  --color-surface-chrome: #e0edec;
+  --color-surface-toolbar: #eef4f3;
   --color-surface-floating: #ffffff;
 
   --color-text-primary: rgba(0, 0, 0, 0.90);
@@ -156,9 +160,9 @@
   --color-overlay-default: rgba(0, 0, 0, 0.06);
   --color-overlay-strong: rgba(0, 0, 0, 0.09);
 
-  --color-border-subtle: rgba(0, 0, 0, 0.06);
-  --color-border-default: rgba(0, 0, 0, 0.10);
-  --color-border-strong: rgba(0, 0, 0, 0.14);
+  --color-border-subtle: rgba(0, 0, 0, 0.03);
+  --color-border-default: rgba(0, 0, 0, 0.08);
+  --color-border-strong: rgba(0, 0, 0, 0.12);
 
   --color-hover-list-item: rgba(0, 0, 0, 0.04);
   --color-hover-interactive: rgba(0, 0, 0, 0.06);
@@ -185,8 +189,8 @@
 
   --color-code-inline: #075854;
   --color-code-bg: #e8f5f4;
-  --color-ambient-glow-1: #b3eae9;
-  --color-ambient-glow-2: #e6f7f7;
+  --color-ambient-glow-1: #e6f7f7;
+  --color-ambient-glow-2: #f0faf9;
 }
 
 /* Smooth theme transition (added temporarily by ThemeProvider on toggle) */

@@ -151,6 +151,52 @@ export function StatPill({ size = "md", variant = "default", active, onClick, ti
   );
 }
 
+// ── Status count (compact Jira-style) ────────────────────────────────────
+// Small colored number badge for the header bar. Renders just the count
+// with a subtle colored bg. Full status label appears in a title tooltip.
+
+interface StatusCountProps {
+  colorKey: string;
+  label: string;
+  count: number;
+  active?: boolean;
+  dimmed?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+}
+
+export function StatusCount({
+  colorKey,
+  label,
+  count,
+  active = false,
+  dimmed = false,
+  onClick,
+}: StatusCountProps) {
+  const colors = STATUS_PILL_COLORS[colorKey] ?? STATUS_PILL_COLORS["TO DO"];
+
+  const style: React.CSSProperties = active
+    ? {
+        backgroundColor: colors.bgActive,
+        color: colors.textActive,
+        boxShadow: `0 0 0 1.5px ${colors.ring}, 0 1px 3px ${colors.ring}`,
+      }
+    : {
+        backgroundColor: dimmed ? "var(--color-overlay-subtle)" : colors.bg,
+        color: dimmed ? "var(--color-text-muted)" : colors.text,
+      };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded px-1.5 text-[11px] font-semibold tabular-nums shrink-0 select-none cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+      style={style}
+    >
+      {count}
+    </button>
+  );
+}
+
 // ── Status pill ────────────────────────────────────────────────────────────
 // Colored chip for Jira statuses. Shows a dot when showDot is true.
 // Pass onClick to make it a filter toggle (active = currently selected).

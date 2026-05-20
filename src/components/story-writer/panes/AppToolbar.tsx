@@ -42,7 +42,7 @@ export function AppToolbar() {
   const totalExtraW = expandSlots.length * EXPAND_SLOT_W;
 
   return (
-    <div className="relative z-10 flex h-[44px] shrink-0 border-b border-border-default bg-[var(--color-surface-base)]">
+    <div className="relative z-10 flex h-[44px] shrink-0 border-b border-border-default bg-[var(--color-surface-toolbar)]">
       {visiblePaneIndices.map((paneIdx, visPos) => {
         const activeApp = pane.paneApps[paneIdx] ?? null;
         const toolbar = activeApp ? pane.toolbars[activeApp] : null;

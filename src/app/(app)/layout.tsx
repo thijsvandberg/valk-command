@@ -24,7 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Sidebar + content below the header */}
         <div className="flex flex-1 min-h-0">
           <Sidebar />
-          <main id="main-content" className="flex-1 overflow-auto isolate">
+          <main id="main-content" className="flex-1 overflow-auto isolate bg-[var(--color-surface-elevated)]">
             {children}
           </main>
         </div>

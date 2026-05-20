@@ -104,9 +104,8 @@ describe("CommandPalette", () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: "k", metaKey: true });
     });
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
-    expect(screen.getByText("Chat")).toBeInTheDocument();
     expect(screen.getByText("Sprint Board")).toBeInTheDocument();
+    expect(screen.getByText("Chat")).toBeInTheDocument();
   });
 
   it("shows action results by default when open", async () => {
@@ -116,7 +115,6 @@ describe("CommandPalette", () => {
     });
     expect(screen.getByText("Sync Jira")).toBeInTheDocument();
     expect(screen.getByText("New Conversation")).toBeInTheDocument();
-    expect(screen.getByText("Toggle Sidebar")).toBeInTheDocument();
   });
 
   it("shows New Story action by default when open", async () => {
@@ -151,19 +149,18 @@ describe("CommandPalette", () => {
     });
 
     const input = screen.getByPlaceholderText(/search pages/i);
-    // Filter to Dashboard specifically so index 0 is predictable
     await act(async () => {
-      fireEvent.change(input, { target: { value: "dashboard" } });
+      fireEvent.change(input, { target: { value: "refinement" } });
     });
     await waitFor(() => {
-      expect(screen.getByText("Dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Refinement")).toBeInTheDocument();
     });
     await act(async () => {
       fireEvent.keyDown(input, { key: "Enter" });
     });
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/");
+      expect(mockPush).toHaveBeenCalledWith("/refinement");
     }, { timeout: 300 });
   });
 
@@ -174,14 +171,13 @@ describe("CommandPalette", () => {
     });
 
     const input = screen.getByPlaceholderText(/search pages/i);
-    // Filter to pages only to get a predictable list (Dashboard → Chat)
     await act(async () => {
-      fireEvent.change(input, { target: { value: "dashboard" } });
+      fireEvent.change(input, { target: { value: "refinement" } });
     });
     await waitFor(() => {
-      expect(screen.getByText("Dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Refinement")).toBeInTheDocument();
     });
-    // index 0 = Dashboard; move down to next result and press Enter
+    // index 0 = Refinement; move down to next result and press Enter
     await act(async () => {
       fireEvent.keyDown(input, { key: "ArrowDown" });
     });
@@ -189,7 +185,7 @@ describe("CommandPalette", () => {
       fireEvent.keyDown(input, { key: "Enter" });
     });
 
-    // ArrowDown moved away from Dashboard; whatever the next result is was opened
+    // ArrowDown moved away from Refinement; whatever the next result is was opened
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalled();
     }, { timeout: 300 });

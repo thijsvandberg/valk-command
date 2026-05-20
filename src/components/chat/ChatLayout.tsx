@@ -247,11 +247,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   return (
     <>
       {pageTitle}
-      <div className="noise-overlay relative flex flex-col h-full overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute top-[-20%] left-[15%] h-[600px] w-[600px] rounded-full bg-[radial-gradient(circle,var(--color-ambient-glow-1)_0%,transparent_70%)] opacity-30" />
-        <div className="absolute bottom-[-10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,var(--color-ambient-glow-2)_0%,transparent_70%)] opacity-50" />
-      </div>
+      <div className="relative flex flex-col h-full overflow-hidden">
 
       <ViewHeader
         icon={headerIcon}

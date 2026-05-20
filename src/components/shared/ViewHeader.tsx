@@ -28,7 +28,7 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
   if (!target) return null;
 
   return createPortal(
-    <div className={`relative flex items-center justify-between border-b border-border-strong bg-[var(--color-surface-elevated)]/95 px-5 py-3.5${className ? ` ${className}` : ""}`}>
+    <div className={`relative flex items-center justify-between border-b border-border-strong bg-[var(--color-surface-chrome)] px-5 py-3.5${className ? ` ${className}` : ""}`}>
       {/* Top accent gradient */}
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(14,142,136,0.35)] to-transparent" />
       {/* Left glow */}

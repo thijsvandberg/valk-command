@@ -65,7 +65,7 @@ export function ApplicationListBar() {
   };
 
   return (
-    <BarContainer padding="compact" className="gap-1 bg-[var(--color-surface-base)]">
+    <BarContainer padding="compact" className="gap-1 bg-[var(--color-surface-toolbar)]">
       {/* App list */}
       <div className="flex min-w-0 flex-1 items-center gap-1 xl:gap-2">
         {visibleApps.map((app) => {
