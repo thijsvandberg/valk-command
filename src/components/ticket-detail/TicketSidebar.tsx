@@ -8,10 +8,11 @@ import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
-import { ReadinessCell, ReadinessIcon } from "@/components/shared/ReadinessCell";
+import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SprintPicker } from "@/components/shared/SprintPicker";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { useTicketReviews, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -61,6 +62,7 @@ export function TicketSidebar({
   const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [poNotes, setPoNotes] = useState(ticket.notes);
+  const [assignee, setAssignee] = useState(ticket.assignee);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
 
   // Resize state
@@ -170,6 +172,31 @@ export function TicketSidebar({
       setCurrentSprintId(prev);
     }
   }, [ticket.key, currentSprintId]);
+
+  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+    const prev = assignee;
+    if (user) {
+      const name = user.displayName;
+      const parts = name.trim().split(/\s+/);
+      const initials = parts.length === 1 ? parts[0].slice(0, 2).toUpperCase() : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      const hue = ((hash % 360) + 360) % 360;
+      setAssignee({ name, initials, color: `hsl(${hue}, 55%, 50%)` });
+    } else {
+      setAssignee(null);
+    }
+    try {
+      await jira.assign({
+        issueKey: ticket.key,
+        accountId: user?.accountId ?? null,
+        name: user?.displayName ?? null,
+      });
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setAssignee(prev);
+    }
+  }, [ticket.key, assignee]);
 
   const handleNotesChange = useCallback(async (notes: string) => {
     setPoNotes(notes);
@@ -380,10 +407,11 @@ export function TicketSidebar({
               </button>
             </div>
             <DetailRow label="Assignee">
-              <div className="flex items-center justify-end gap-2">
-                <span className="truncate">{ticket.assignee?.name ?? "Unassigned"}</span>
-                <Avatar assignee={ticket.assignee} size={20} />
-              </div>
+              <AssigneePicker
+                value={assignee}
+                onChange={handleAssigneeChange}
+                align="right"
+              />
             </DetailRow>
             {detail?.reporter && (
               <DetailRow label="Reporter">

@@ -323,6 +323,8 @@ export const jira = {
     apiFetch<unknown>("/api/jira/rank", { method: "POST", body: data, signal }),
   moveSprint: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/jira/move-sprint", { method: "POST", body: data, signal }),
+  assign: (data: Record<string, unknown>, signal?: AbortSignal) =>
+    apiFetch<unknown>("/api/jira/assign", { method: "POST", body: data, signal }),
 };
 
 // ---------------------------------------------------------------------------
@@ -411,6 +413,7 @@ export const settings = {
   quickPromptsUrl: () => "/api/settings/quick-prompts" as const,
   savedSearchesUrl: () => "/api/settings/saved-searches" as const,
   notificationPrefsUrl: () => "/api/settings/notification-preferences" as const,
+  subscribedTeamsUrl: () => "/api/settings/subscribed-teams" as const,
 
   // -- Actions --
   getColumnWidths: (signal?: AbortSignal) =>
@@ -437,6 +440,11 @@ export const settings = {
     apiFetch<unknown>("/api/settings/notification-preferences", { signal }),
   saveNotificationPrefs: (data: unknown, signal?: AbortSignal) =>
     apiFetch<void>("/api/settings/notification-preferences", { method: "PUT", body: data, signal }),
+
+  getSubscribedTeams: (signal?: AbortSignal) =>
+    apiFetch<{ teams: string[]; available: string[] }>("/api/settings/subscribed-teams", { signal }),
+  saveSubscribedTeams: (teams: string[], signal?: AbortSignal) =>
+    apiFetch<{ teams: string[]; available: string[] }>("/api/settings/subscribed-teams", { method: "PUT", body: { teams }, signal }),
 };
 
 // ---------------------------------------------------------------------------

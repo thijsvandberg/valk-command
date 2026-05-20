@@ -793,6 +793,39 @@ export class JiraClient {
   }
 
   /**
+   * Assign an issue to a user (by accountId) or unassign (null).
+   */
+  async assignIssue(key: string, accountId: string | null, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    await jiraPut(`/rest/api/3/issue/${key}/assignee`, { accountId }, signal);
+  }
+
+  /**
+   * Get users assignable to issues in a given project.
+   */
+  async getAssignableUsers(projectKey: string, signal?: AbortSignal): Promise<{ accountId: string; displayName: string; avatarUrl: string | null }[]> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const data = await jiraFetch<{ accountId: string; displayName: string; avatarUrls?: Record<string, string> }[]>(
+      `/rest/api/3/user/assignable/search?project=${encodeURIComponent(projectKey)}&maxResults=100`,
+      signal,
+    );
+
+    return data
+      .filter((u) => u.accountId && u.displayName)
+      .map((u) => ({
+        accountId: u.accountId,
+        displayName: u.displayName,
+        avatarUrl: u.avatarUrls?.["48x48"] ?? null,
+      }));
+  }
+
+  /**
    * Create a new issue in Jira. Returns the new issue key and id.
    */
   async createIssue(params: {
