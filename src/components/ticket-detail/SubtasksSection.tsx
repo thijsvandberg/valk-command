@@ -96,16 +96,22 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<Subtask[] | null>(null);
+  const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const orderedSubtasks = localOrder ?? subtasks;
+  // Merge server subtasks with locally added ones (that haven't appeared in server data yet)
+  const mergedSubtasks = [
+    ...subtasks,
+    ...locallyAdded.filter((la) => !subtasks.some((s) => s.key === la.key)),
+  ];
+  const orderedSubtasks = localOrder ?? mergedSubtasks;
 
   const filtered = filter === "all"
     ? orderedSubtasks
     : orderedSubtasks.filter((s) => s.jiraStatus === filter);
 
-  const countLabel = filter !== "all" && subtasks.length > 0
-    ? `${filtered.length} of ${subtasks.length}`
+  const countLabel = filter !== "all" && mergedSubtasks.length > 0
+    ? `${filtered.length} of ${mergedSubtasks.length}`
     : undefined;
 
   const sensors = useSensors(
@@ -150,11 +156,12 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
     setIsCreating(true);
     setError(null);
     try {
-      await tickets.createSubtask(ticketKey, { title });
+      const created = await tickets.createSubtask(ticketKey, { title });
+      // Show immediately via local state
+      setLocallyAdded((prev) => [...prev, created]);
       setNewTitle("");
       setLocalOrder(null);
       onMutate();
-      // Keep focus on input so you can create the next one immediately
       requestAnimationFrame(() => inputRef.current?.focus());
     } catch (err) {
       const detail = err instanceof ApiError ? err.message : "Jira API error";
@@ -231,12 +238,12 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
     <div className="mt-8">
       <SectionHeader
         title="Subtasks"
-        count={filter === "all" ? subtasks.length : undefined}
+        count={filter === "all" ? mergedSubtasks.length : undefined}
         countLabel={countLabel}
       />
 
       {/* Status filter chips */}
-      {subtasks.length > 0 && (
+      {mergedSubtasks.length > 0 && (
         <div className="mt-3 flex items-center gap-1.5">
           {FILTER_OPTIONS.map((opt) => {
             const isActive = filter === opt.value;
@@ -271,7 +278,7 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
         </DndContext>
       ) : filtered.length > 0 ? (
         listContent
-      ) : subtasks.length > 0 ? (
+      ) : mergedSubtasks.length > 0 ? (
         <>
           <p className="mt-3 text-sm text-text-muted">No subtasks matching this filter</p>
           {listContent}
