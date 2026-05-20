@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticket, ticketLocalEdit } from "@/db/schema";
+import { ticket, ticketLocalEdit, jiraComment } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
@@ -348,7 +348,21 @@ export async function PATCH(
 
     await db.update(ticket).set({ flagged: newFlagged }).where(eq(ticket.jiraKey, key));
 
-    // Sync to Jira: update flag field + optional comment
+    const flagType = newFlagged ? "flag_on" as const : "flag_off" as const;
+
+    // Insert comment locally (before response) so it shows immediately
+    if (flagReason) {
+      const flagLabel = newFlagged ? "Flag added" : "Flag removed";
+      await db.insert(jiraComment).values({
+        id: `jc-local-${Date.now()}`,
+        ticketKey: key,
+        authorName: "Bridge",
+        content: `:${flagType}: ${flagLabel}\n\n${flagReason}`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    // Sync to Jira asynchronously
     (async () => {
       try {
         await jiraClient.updateIssue(key, {
@@ -357,10 +371,9 @@ export async function PATCH(
       } catch (err) {
         logger.error("ticket-detail", `PATCH Jira flag sync failed for ${key}:`, err);
       }
-      // Only post a comment if there's a reason provided
       if (flagReason) {
         try {
-          await jiraClient.addFlagComment(key, newFlagged ? "flag_on" : "flag_off", flagReason);
+          await jiraClient.addFlagComment(key, flagType, flagReason);
         } catch (err) {
           logger.error("ticket-detail", `PATCH Jira flag comment failed for ${key}:`, err);
         }
