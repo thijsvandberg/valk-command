@@ -276,18 +276,20 @@ export function SprintSlots({
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-[var(--color-surface-base)] to-transparent" />
         )}
       <div ref={scrollRef} className="flex min-w-0 flex-1 h-full items-stretch gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {/* All tab -- pill outline style to distinguish from sprint tabs */}
+      {/* All tab -- filled pill, no border, brand-tinted bg */}
       <button
         type="button"
         onClick={onAllClick}
-        className={`group relative flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`group relative flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
-            ? "border-[var(--color-brand-400)]/30 text-[var(--color-brand-400)]"
-            : "border-[var(--color-brand-400)]/15 text-text-tertiary hover:text-text-secondary hover:border-[var(--color-brand-400)]/30"
+            ? "text-[var(--color-brand-400)]"
+            : "text-[var(--color-brand-400)]/70 hover:text-[var(--color-brand-400)]"
         }`}
         style={{
-          transition: "color 120ms, border-color 150ms",
-          backgroundColor: allActive ? "color-mix(in srgb, var(--color-brand-400) 5%, transparent)" : undefined,
+          transition: "color 120ms, background-color 150ms",
+          backgroundColor: allActive
+            ? "color-mix(in srgb, var(--color-brand-400) 18%, transparent)"
+            : "color-mix(in srgb, var(--color-brand-400) 12%, transparent)",
         }}
         title="Show all tickets across sprints"
       >
