@@ -55,7 +55,7 @@ export function Tooltip({ content, children, delay = 400 }: TooltipProps) {
       </span>
       {visible && position && typeof document !== "undefined" && createPortal(
         <div
-          className="pointer-events-none fixed max-w-xs whitespace-nowrap rounded-lg border border-border-strong px-3 py-2 text-[13px] leading-relaxed normal-case tracking-normal font-normal text-text-primary"
+          className="pointer-events-none fixed w-max max-w-xs rounded-lg border border-border-strong px-3 py-2 text-[13px] leading-relaxed normal-case tracking-normal font-normal text-text-primary"
           style={{
             top: position.flipUp ? undefined : position.top,
             bottom: position.flipUp ? window.innerHeight - position.top : undefined,
