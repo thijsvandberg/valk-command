@@ -205,7 +205,7 @@ export function TicketSidebar({
   return (
     <div
       ref={sidebarRef}
-      className="relative shrink-0"
+      className="group/sidebar relative shrink-0"
       style={{
         width: clampedWidth,
         height: "100%",
@@ -227,7 +227,7 @@ export function TicketSidebar({
       <button
         type="button"
         onClick={() => onCollapsedChange(true)}
-        className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer opacity-0 hover:opacity-100 hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer opacity-0 group-hover/sidebar:opacity-100 hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease" }}
         aria-label="Collapse sidebar"
         title="Collapse sidebar  [  "
@@ -313,7 +313,7 @@ export function TicketSidebar({
                 <ReadinessCell value={readiness} onChange={handleReadinessChange} align="right" />
               </div>
             </DetailRow>
-            <DetailRow label="Points">
+            <DetailRow label="Story Points">
               <StoryPointPicker
                 value={storyPoints}
                 onChange={handleStoryPointsChange}
