@@ -168,7 +168,7 @@ export function StoryWriterChat({
 
   useEffect(() => {
     if (pendingInput && !isBusy) {
-      setInputValue(pendingInput);
+      setInputValue(pendingInput); // eslint-disable-line react-hooks/set-state-in-effect -- consume pending input on arrival
       onPendingInputConsumed?.();
       requestAnimationFrame(() => textareaRef.current?.focus());
     }
