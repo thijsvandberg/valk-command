@@ -33,6 +33,13 @@ export async function GET(req: NextRequest) {
   }
   const mode = rawMode as SearchMode;
 
+  if (mode === "cql" && q.length > 1000) {
+    return NextResponse.json(
+      { error: "CQL query too long (max 1000 characters)" },
+      { status: 400 },
+    );
+  }
+
   const space = sp.get("space")?.trim() || undefined;
 
   if (!confluenceClient.isLive) {

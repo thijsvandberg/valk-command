@@ -4,6 +4,7 @@ import { storedReview, ticketMetadata, storyVersion, activityLog } from "@/db/sc
 import { eq, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
+import { safeJsonParse } from "@/lib/api-validation";
 
 export async function GET(
   _request: Request,
@@ -27,9 +28,9 @@ export async function GET(
     storyVersionHash: r.storyVersionHash,
     storyVersionNumber: r.storyVersionNumber,
     overallScore: r.overallScore,
-    dimensions: JSON.parse(r.dimensions),
+    dimensions: safeJsonParse(r.dimensions, [], "reviews"),
     summary: r.summary,
-    suggestions: JSON.parse(r.suggestions),
+    suggestions: safeJsonParse(r.suggestions, [], "reviews"),
   }));
 
   return NextResponse.json({

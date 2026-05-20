@@ -5,6 +5,7 @@ import { cache } from "@/lib/cache";
 import { desc, eq, inArray, and, or, like, isNull } from "drizzle-orm";
 import { syncPipelines, isPipelineConfigured } from "@/lib/pipeline-sync";
 import { logger } from "@/lib/logger";
+import { safeJsonParse, escapeLikePattern } from "@/lib/api-validation";
 
 export interface PipelineRunPayload {
   id: string;
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
     const keys = sprintTickets.split(",").map((k) => k.trim()).filter(Boolean);
     if (keys.length > 0) {
       // Match on primary ticketKey OR any key inside the ticketKeys JSON array
-      const ticketKeysConds = keys.map((k) => like(pipelineRun.ticketKeys, `%"${k}"%`));
+      const ticketKeysConds = keys.map((k) => like(pipelineRun.ticketKeys, `%"${escapeLikePattern(k)}"%`));
       conditions.push(or(inArray(pipelineRun.ticketKey, keys), ...ticketKeysConds)!);
     }
   }
@@ -101,13 +102,13 @@ export async function GET(request: Request) {
     prUrl: r.prUrl ?? null,
     prTitle: r.prTitle ?? null,
     prAuthor: r.prAuthor ?? null,
-    ticketKeys: r.ticketKeys ? JSON.parse(r.ticketKeys) : null,
+    ticketKeys: safeJsonParse<string[] | null>(r.ticketKeys, null, "pipelines"),
   }));
 
   // Include sync status: watermark + last tick result
   const watermarkRow = db.select().from(appSetting).where(eq(appSetting.key, "pipeline_sync:watermark")).get();
   const lastResultRow = db.select().from(appSetting).where(eq(appSetting.key, "pipeline_sync:last_result")).get();
-  const lastResult = lastResultRow ? JSON.parse(lastResultRow.value) : null;
+  const lastResult = safeJsonParse<Record<string, unknown> | null>(lastResultRow?.value, null, "pipelines");
 
   const syncStatus = {
     watermark: watermarkRow?.value ?? null,

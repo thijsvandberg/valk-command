@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { alert, ticket, sprintNameCache } from "@/db/schema";
-import { desc, eq, sql, and, inArray } from "drizzle-orm";
+import { desc, eq, sql, and, inArray, like, or, isNull } from "drizzle-orm";
 import { createNotification } from "@/lib/notifications";
+import { getSubscribedTeams } from "@/lib/subscribed-teams";
+import { escapeLikePattern } from "@/lib/api-validation";
 
 const createNotificationSchema = z.object({
   type: z.string().min(1).max(100),
@@ -60,9 +62,35 @@ export async function GET(request: Request) {
     .from(alert)
     .get();
 
+  const subscribedTeams = getSubscribedTeams();
+
+  // When teams are subscribed, count unread only for those teams.
+  // Notifications without a team (no jiraKey / no sprint) always count.
+  let subscribedUnreadCount = unreadCount?.count ?? 0;
+  if (subscribedTeams.length > 0) {
+    const teamMatches = subscribedTeams.map((t) => like(sprintNameCache.displayName, `${escapeLikePattern(t)}: %`));
+    const result = db
+      .select({ count: sql<number>`count(*)` })
+      .from(alert)
+      .leftJoin(ticket, eq(alert.jiraKey, ticket.jiraKey))
+      .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId))
+      .where(and(
+        eq(alert.read, false),
+        or(
+          isNull(alert.jiraKey),
+          isNull(sprintNameCache.displayName),
+          ...teamMatches,
+        ),
+      ))
+      .get();
+    subscribedUnreadCount = result?.count ?? 0;
+  }
+
   return NextResponse.json({
     notifications: rows,
     unreadCount: unreadCount?.count ?? 0,
+    subscribedUnreadCount,
+    subscribedTeams,
     totalCount: totalCount?.count ?? 0,
   });
 }

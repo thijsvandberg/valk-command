@@ -10,6 +10,7 @@ import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { safeJsonParse } from "@/lib/api-validation";
 
 const WATERMARK_KEY = "jira_sync_watermark";
 const COOLDOWN_KEY = "jira_sync_last_run";
@@ -42,7 +43,7 @@ export async function POST() {
       const lastResultRow = await db.query.appSetting.findFirst({
         where: (row, { eq: eqFn }) => eqFn(row.key, LAST_RESULT_KEY),
       });
-      const lastResult = lastResultRow ? JSON.parse(lastResultRow.value) : {};
+      const lastResult = safeJsonParse<Record<string, unknown>>(lastResultRow?.value, {}, "sync-incremental");
       return NextResponse.json({
         ok: true,
         skipped: true,

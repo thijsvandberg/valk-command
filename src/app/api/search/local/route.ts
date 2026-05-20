@@ -230,6 +230,15 @@ export async function GET(request: Request) {
   const sprintFilter = (searchParams.get("sprint") ?? "").split(",").filter(Boolean);
   const dateRange = searchParams.get("dateRange");
 
+  if (dateRange?.startsWith("custom:")) {
+    const range = dateRange.slice(7);
+    const [from, to] = range.split("..");
+    const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+    if ((from && !isoDate.test(from)) || (to && !isoDate.test(to))) {
+      return NextResponse.json({ error: "Invalid date range format" }, { status: 400 });
+    }
+  }
+
   const hasFilters = statusFilter.length > 0 || poStatusFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
 
   if (q.trim().length < 2) {

@@ -33,22 +33,22 @@ The security audit found: error messages leaking internal details, missing input
 - [ ] Return 400 with a generic "Invalid parameter" message for violations
 
 ### Date format validation in search
-- [ ] In `src/app/api/search/local/route.ts`, validate the `custom:from..to` date range format
-- [ ] Reject non-ISO date strings with a 400 response
-- [ ] Ensure NaN date comparisons cannot silently bypass filtering
+- [x] In `src/app/api/search/local/route.ts`, validate the `custom:from..to` date range format
+- [x] Reject non-ISO date strings with a 400 response
+- [x] Ensure NaN date comparisons cannot silently bypass filtering
 
 ### CQL query length limit
-- [ ] In `src/app/api/confluence/search/route.ts`, enforce a maximum CQL query length (e.g., 1000 chars) when `mode=cql`
-- [ ] Return 400 for oversized queries
+- [x] In `src/app/api/confluence/search/route.ts`, enforce a maximum CQL query length (e.g., 1000 chars) when `mode=cql`
+- [x] Return 400 for oversized queries
 
 ### Safe JSON.parse for stored data
-- [ ] Wrap all `JSON.parse()` calls on database-stored strings in try-catch
-- [ ] Affected: `src/app/api/pipelines/route.ts` (ticketKeys, lastResult), and any other route parsing stored JSON
-- [ ] Log a warning on parse failure, return a safe fallback (null or empty array)
+- [x] Wrap all `JSON.parse()` calls on database-stored strings in try-catch
+- [x] Affected: `src/app/api/pipelines/route.ts` (ticketKeys, lastResult), and any other route parsing stored JSON
+- [x] Log a warning on parse failure, return a safe fallback (null or empty array)
 
 ### SQL wildcard escaping
-- [ ] In `src/app/api/pipelines/route.ts`, escape `%` and `_` in user-provided values used in `like()` queries
-- [ ] Create a shared `escapeLikePattern(value: string)` utility if needed
+- [x] In `src/app/api/pipelines/route.ts`, escape `%` and `_` in user-provided values used in `like()` queries
+- [x] Create a shared `escapeLikePattern(value: string)` utility if needed
 
 ## Technical Notes
 

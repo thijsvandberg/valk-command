@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { safeJsonParse } from "@/lib/api-validation";
 
 const SETTING_KEY = "sprint_board_column_config";
 
@@ -25,7 +26,7 @@ export async function GET() {
     if (!row) {
       return NextResponse.json({ order: null, visible: null });
     }
-    const parsed = JSON.parse(row.value) as ColumnConfig;
+    const parsed = safeJsonParse<ColumnConfig>(row.value, { order: [], visible: [] }, "column-config");
     return NextResponse.json({
       order: parsed.order ?? null,
       visible: parsed.visible ?? null,
@@ -58,9 +59,7 @@ export async function PUT(request: Request) {
       where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
     });
 
-    const current: ColumnConfig = existing
-      ? JSON.parse(existing.value)
-      : { order: [], visible: [] };
+    const current: ColumnConfig = safeJsonParse(existing?.value, { order: [], visible: [] }, "column-config");
 
     if (order !== undefined) current.order = order;
     if (visible !== undefined) current.visible = visible;

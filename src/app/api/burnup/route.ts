@@ -6,6 +6,7 @@ import { normalizeStatus } from "@/lib/upsert-issue";
 import { jiraClient } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { safeJsonParse } from "@/lib/api-validation";
 
 export interface BurnupDataPoint {
   date: string;
@@ -57,9 +58,9 @@ export async function GET(request: Request) {
     let sprintEnd: string | null = null;
 
     if (sprintRow) {
-      const sprints = JSON.parse(sprintRow.value) as Array<{
+      const sprints = safeJsonParse<Array<{
         id: number; startDate: string | null; endDate: string | null;
-      }>;
+      }>>(sprintRow.value, [], "burnup");
       const sprint = sprints.find((s) => String(s.id) === sprintId);
       if (sprint) {
         sprintStart = sprint.startDate ?? null;

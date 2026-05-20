@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { safeJsonParse } from "@/lib/api-validation";
 
 async function getHiddenIds(): Promise<Set<string>> {
   const row = await db.query.appSetting.findFirst({
@@ -45,7 +46,7 @@ export async function GET() {
     let sprints: Array<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null }>;
 
     if (sprintRow) {
-      sprints = JSON.parse(sprintRow.value);
+      sprints = safeJsonParse(sprintRow.value, [], "jira-sprints");
     } else {
       const fetched = await jiraClient.getSprints();
       sprints = fetched.map((s) => ({

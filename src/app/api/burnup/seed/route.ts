@@ -8,6 +8,7 @@ import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { safeJsonParse } from "@/lib/api-validation";
 
 /**
  * POST /api/burnup/seed?sprintId=X
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     let sprintName: string | null = null;
     let sprintStartDate: string | null = null;
     if (sprintRow) {
-      const sprints = JSON.parse(sprintRow.value) as Array<{ id: number; name: string; startDate: string | null }>;
+      const sprints = safeJsonParse<Array<{ id: number; name: string; startDate: string | null }>>(sprintRow.value, [], "burnup-seed");
       const s = sprints.find((sp) => String(sp.id) === sprintId);
       if (s) {
         sprintName = s.name;
