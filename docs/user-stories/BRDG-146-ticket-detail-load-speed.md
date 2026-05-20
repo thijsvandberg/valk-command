@@ -88,9 +88,9 @@ The page currently makes 6 parallel API calls. Some can be folded into the main 
 
 ### 6. Lazy-load Prism languages
 
-- [ ] Instead of importing all 18 Prism languages at module level in `renderMarkdown.tsx`, detect which languages are actually present in the markdown content and load only those via dynamic `import()`
-- [ ] Fallback: if a language is not loaded yet, show the code block without highlighting, then re-render once loaded
-- [ ] This reduces the initial bundle by ~15-20 KB (gzipped)
+- [x] Instead of importing all 18 Prism languages at module level in `renderMarkdown.tsx`, detect which languages are actually present in the markdown content and load only those via dynamic `import()`
+- [x] Fallback: if a language is not loaded yet, show the code block without highlighting, then re-render once loaded
+- [x] This reduces the initial bundle by ~15-20 KB (gzipped)
 
 ### 7. Add prefetch hint from sprint board
 

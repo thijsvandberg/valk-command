@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { apiFetch, tickets } from "@/lib/api-client";
 import { renderMarkdown } from "./renderMarkdown";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
+import { usePrismLanguages } from "@/hooks/usePrismLanguages";
 
 /** Resolve attachment placeholders in a local edit value. */
 export function resolveLocalValue(
@@ -84,6 +85,7 @@ export function EditableDescription({
 
   const hasLocalEdit = localValue !== null;
   const value = localValue ?? initialDescription;
+  usePrismLanguages(value);
 
   // Call onEditingChange synchronously so the parent hides the title header
   // in the same React render as the editor mounting — prevents a one-frame layout bounce.

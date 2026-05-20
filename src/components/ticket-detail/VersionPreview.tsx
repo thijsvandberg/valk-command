@@ -8,6 +8,7 @@ import { Tag } from "@/components/shared/Tag";
 import { VersionPicker, type VersionOption } from "@/components/shared/VersionPicker";
 import { renderMarkdown } from "./renderMarkdown";
 import { formatVersionDate } from "./version-utils";
+import { usePrismLanguages } from "@/hooks/usePrismLanguages";
 
 export interface VersionPreviewProps {
   version: StoryVersion;
@@ -26,6 +27,7 @@ export function VersionPreview({
   onBack,
   onOpenDiff,
 }: VersionPreviewProps) {
+  usePrismLanguages(version.content);
   const isFirst = version.versionNumber === 1;
   const title =
     version.label === "draft"

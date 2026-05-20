@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { TicketDetail } from "@/types/ticket";
 import { Trash2, Flag } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
 import { renderMarkdown } from "./renderMarkdown";
+import { usePrismLanguages } from "@/hooks/usePrismLanguages";
 
 export function CommentsSection({
   ticketKey,
@@ -18,6 +19,9 @@ export function CommentsSection({
   const [poComments, setPoComments] = useState<Array<{ id: string; author: string; content: string; createdAt: string }>>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const allCommentText = useMemo(() => jiraComments.map((c) => c.content).join("\n"), [jiraComments]);
+  usePrismLanguages(allCommentText);
 
   useEffect(() => {
     async function loadComments() {
