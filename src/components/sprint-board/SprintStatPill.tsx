@@ -281,26 +281,22 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
 
   return (
     <div className="flex items-center gap-3 select-none" style={{ height: CONTAINER_H }}>
-      {/* Stats: items | SP / BV -- hidden on narrow screens */}
-      <div className="hidden xl:flex items-center gap-1.5 text-xs tabular-nums">
-        <span className="text-text-secondary">{props.totalItems} items</span>
+      {/* Stats: items + SP/BV chips -- hidden on narrow screens */}
+      <div className="hidden xl:flex items-center gap-2 text-xs tabular-nums">
+        <span className="text-text-tertiary">{props.totalItems} <span className="text-[10px]">items</span></span>
         {props.totalSp > 0 && (
-          <>
-            <span className="text-text-muted">|</span>
-            <span className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
               <span className="font-semibold text-text-primary">{props.totalSp}</span>
-              <span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span>
+              <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">SP</span>
             </span>
             {props.totalBv > 0 && (
-              <>
-                <span className="text-text-muted/50">/</span>
-                <span className="flex items-center gap-0.5">
-                  <span className="font-semibold text-text-primary">{props.totalBv}</span>
-                  <span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span>
-                </span>
-              </>
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+                <span className="font-semibold text-text-primary">{props.totalBv}</span>
+                <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">BV</span>
+              </span>
             )}
-          </>
+          </div>
         )}
       </div>
 
