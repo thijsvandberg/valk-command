@@ -43,7 +43,6 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
                   alt={att.filename}
                   width={300}
                   height={96}
-                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (

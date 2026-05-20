@@ -33,7 +33,7 @@ export function useTickets(sprintId: string | null) {
       : sprintId
       ? `/api/tickets?sprintId=${encodeURIComponent(sprintId)}`
       : null;
-  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: true, dedupingInterval: 5000, refreshInterval: 15000 });
+  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: true, dedupingInterval: 15000, refreshInterval: 60000 });
   const { mutate } = swr;
 
   const syncedRef = useRef<string | null>(null);
@@ -191,10 +191,9 @@ export function useTicketReviews(ticketKey: string | null) {
     }) => {
       if (!ticketKey) return null;
       const saved = await ticketsApi.createReview(ticketKey, review) as StoredReview;
-      // Revalidate reviews list and ticket data (qualityScore updated on server)
+      // Revalidate reviews list and ticket detail (qualityScore updated on server)
       swr.mutate();
       globalMutate(ticketsApi.detailUrl(ticketKey));
-      globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
       return saved;
     },
     [ticketKey, swr],
@@ -206,7 +205,6 @@ export function useTicketReviews(ticketKey: string | null) {
       await ticketsApi.deleteReview(ticketKey, reviewId);
       swr.mutate();
       globalMutate(ticketsApi.detailUrl(ticketKey));
-      globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
       return true;
     },
     [ticketKey, swr],

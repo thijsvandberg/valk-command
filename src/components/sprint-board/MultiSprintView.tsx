@@ -390,6 +390,11 @@ export function MultiSprintView({
     return leftTickets.some((t) => t.key === key) ? mutateLeft : mutateRight;
   }, [leftTickets, mutateLeft, mutateRight]);
 
+  const getListKeyForTicket = useCallback((key: string) => {
+    const sprintId = leftTickets.some((t) => t.key === key) ? leftSprint : rightSprint;
+    return `/api/tickets?sprintId=${encodeURIComponent(sprintId)}`;
+  }, [leftTickets, leftSprint, rightSprint]);
+
   const handleTitleChange = useCallback(async (key: string, title: string) => {
     const inLeft = leftTickets.some((t) => t.key === key);
     const sourceTickets = inLeft ? leftTickets : rightTickets;
@@ -406,20 +411,20 @@ export function MultiSprintView({
   }, [leftTickets, rightTickets, mutateLeft, mutateRight]);
 
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
-    saveTicketMetadata(key, { businessValue: value });
-  }, []);
+    saveTicketMetadata(key, { businessValue: value }, getListKeyForTicket(key));
+  }, [getListKeyForTicket]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
-    saveStoryPoints(key, value);
-  }, []);
+    saveStoryPoints(key, value, getListKeyForTicket(key));
+  }, [getListKeyForTicket]);
 
   const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
     const prev = readinessMap[key];
     setReadinessMap((m) => ({ ...m, [key]: readiness }));
-    saveTicketMetadata(key, { readiness }).then((ok) => {
+    saveTicketMetadata(key, { readiness }, getListKeyForTicket(key)).then((ok) => {
       if (!ok) setReadinessMap((m) => ({ ...m, [key]: prev }));
     });
-  }, [readinessMap]);
+  }, [readinessMap, getListKeyForTicket]);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
     const mutate = getMutateForKey(key);

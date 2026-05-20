@@ -12,6 +12,14 @@ export default function AppError({
 }) {
   useEffect(() => {
     console.error("[app error]", error);
+
+    // Hide sidebar when error is shown
+    const sidebar = document.querySelector<HTMLElement>("[data-testid='sidebar']");
+    if (sidebar) sidebar.style.display = "none";
+
+    return () => {
+      if (sidebar) sidebar.style.display = "";
+    };
   }, [error]);
 
   return (

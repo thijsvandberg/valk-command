@@ -28,6 +28,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { TicketRow, SortableTicketRow } from "@/components/sprint-board/TicketRow";
+import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth } from "@/hooks/usePipelines";
 import { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { DEFAULT_COLUMN_WIDTHS } from "@/hooks/useColumnWidths";
 
@@ -111,7 +112,7 @@ function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; tota
   );
 }
 
-const VIRTUALIZE_THRESHOLD = 80;
+const VIRTUALIZE_THRESHOLD = 40;
 const ROW_HEIGHT_ESTIMATE = 36;
 const VIRTUALIZER_OVERSCAN = 20;
 // Below this width the table scrolls horizontally rather than continuing to compress columns.
@@ -265,6 +266,12 @@ export function TicketTable({
   const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+  // Hoisted pipeline/follow hooks: fetched once instead of per-row
+  const { data: followedKeys } = useFollowedTickets();
+  const { follow: followTicket, unfollow: unfollowTicket } = useFollowTicket();
+  const { data: lastDeployedMap } = useLastDeployed();
+  const { data: healthMap } = usePipelineHealth();
+
   const colW = useCallback((id: string): number | undefined => {
     return columnWidths?.[id] ?? (DEFAULT_COLUMN_WIDTHS[id] || undefined);
   }, [columnWidths]);
@@ -373,6 +380,11 @@ export function TicketTable({
     sprintNameMap: sprintNameMap ?? EMPTY_STRING_MAP,
     poStatuses,
     readinessMap: readinessMap ?? EMPTY_READINESS_MAP,
+    followedKeys,
+    followTicket,
+    unfollowTicket,
+    lastDeployedMap,
+    healthMap,
     selectedTicket,
     onSelectTicket,
     onCheckboxClick: handleCheckboxClick,
@@ -389,7 +401,7 @@ export function TicketTable({
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     columnOrder: effectiveOrder,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth

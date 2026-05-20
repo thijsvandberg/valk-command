@@ -15,7 +15,7 @@ import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
-import { prefetchTicketList, prefetchTicketPage, setRouterPrefetch, cancelAllPrefetches } from "@/lib/prefetch";
+import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
@@ -214,6 +214,14 @@ export default function SprintBoard() {
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
 
+  // SWR key for the active ticket list, used for targeted optimistic mutations
+  const activeListKey = useMemo(() => {
+    if (!activeSprintId) return null;
+    return activeSprintId === "__all__"
+      ? "/api/tickets"
+      : `/api/tickets?sprintId=${encodeURIComponent(activeSprintId)}`;
+  }, [activeSprintId]);
+
   const { widths: columnWidths, setColumnWidth, resetColumnWidth } = useColumnWidths();
   const { order: columnOrder, visible: columnVisible, setColumnOrder, toggleColumn, resetTo, resetToDefaults } = useColumnConfig();
   const f = useSprintBoardFilters(allTickets, readinessMap, isAllView, poPriorityOrder, columnVisible, columnOrder, resetTo, sprintNameMap);
@@ -340,12 +348,8 @@ export default function SprintBoard() {
     if (nextSlot) prefetchTicketList(nextSlot);
   }, [activeSlot, slotSprints, isAllView]);
 
-  // Prefetch first 5 ticket details for instant side panel opens
-  useEffect(() => {
-    if (!allTickets || allTickets.length === 0) return;
-    allTickets.slice(0, 5).forEach((t) => prefetchTicketPage(t.key));
-    return () => cancelAllPrefetches();
-  }, [allTickets]);
+  // Ticket detail prefetching is deferred to mouse-enter intent on individual rows
+  // (see TicketRow onMouseEnter) rather than eagerly prefetching on mount.
 
   useEffect(() => { return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }; }, []);
 
@@ -431,7 +435,7 @@ export default function SprintBoard() {
     const prevReadiness = Object.fromEntries(keys.map((k) => [k, readinessMap[k]]));
     setReadinessMap((prev) => { const next = { ...prev }; keys.forEach((k) => { next[k] = readiness; }); return next; });
     setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.add(k)); return next; });
-    const results = await Promise.all(keys.map((k) => saveTicketMetadata(k, { readiness })));
+    const results = await Promise.all(keys.map((k) => saveTicketMetadata(k, { readiness }, activeListKey)));
     setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.delete(k)); return next; });
     const failedCount = results.filter((ok) => !ok).length;
     if (failedCount > 0) {
@@ -440,7 +444,7 @@ export default function SprintBoard() {
     } else {
       showToast(`Readiness set for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
     }
-  }, [checkedTickets, readinessMap, showToast]);
+  }, [checkedTickets, readinessMap, showToast, activeListKey]);
 
   const handleBulkRefresh = useCallback(async () => {
     setBulkRefreshing(true);
@@ -509,7 +513,7 @@ export default function SprintBoard() {
   // Jira-rank DnD:
   // - Single sprint view: enabled when sorted by rank, within virtualization threshold.
   // - All view: enabled when grouped by sprint + sorted by rank (cross-group = sprint move).
-  const VIRTUALIZE_THRESHOLD = 80;
+  const VIRTUALIZE_THRESHOLD = 40;
   const jiraRankDndEnabled = (
     f.sortField === "rank" &&
     !f.activeViewId &&
@@ -528,7 +532,7 @@ export default function SprintBoard() {
     const prevStatus = poStatuses[key];
     setPoStatuses((prev) => ({ ...prev, [key]: status }));
     setInflightKeys((prev) => new Set(prev).add(key));
-    saveTicketMetadata(key, { poStatus: status }).then((ok) => {
+    saveTicketMetadata(key, { poStatus: status }, activeListKey).then((ok) => {
       setInflightKeys((prev) => { const next = new Set(prev); next.delete(key); return next; });
       if (!ok) {
         setPoStatuses((prev) => ({ ...prev, [key]: prevStatus }));
@@ -537,13 +541,13 @@ export default function SprintBoard() {
         toastTimerRef.current = setTimeout(() => setToast(null), 5000);
       }
     });
-  }, [poStatuses]);
+  }, [poStatuses, activeListKey]);
 
   const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
     const prev = readinessMap[key];
     setReadinessMap((m) => ({ ...m, [key]: readiness }));
     setInflightKeys((s) => new Set(s).add(key));
-    saveTicketMetadata(key, { readiness }).then((ok) => {
+    saveTicketMetadata(key, { readiness }, activeListKey).then((ok) => {
       setInflightKeys((s) => { const next = new Set(s); next.delete(key); return next; });
       if (!ok) {
         setReadinessMap((m) => ({ ...m, [key]: prev }));
@@ -552,15 +556,15 @@ export default function SprintBoard() {
         toastTimerRef.current = setTimeout(() => setToast(null), 5000);
       }
     });
-  }, [readinessMap]);
+  }, [readinessMap, activeListKey]);
 
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
-    saveTicketMetadata(key, { businessValue: value });
-  }, []);
+    saveTicketMetadata(key, { businessValue: value }, activeListKey);
+  }, [activeListKey]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
-    saveStoryPoints(key, value);
-  }, []);
+    saveStoryPoints(key, value, activeListKey);
+  }, [activeListKey]);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
     const prev = apiTickets?.find((t) => t.key === key)?.jiraStatus;
@@ -1224,7 +1228,7 @@ export default function SprintBoard() {
       {selected && (() => {
         const idx = tickets.findIndex((t) => t.key === selected.key);
         const adjacentKeys = { prev: idx > 0 ? tickets[idx - 1].key : null, next: idx < tickets.length - 1 ? tickets[idx + 1].key : null };
-        return <SidePanel ticket={selected} poStatus={poStatuses[selected.key] ?? null} readiness={readinessMap[selected.key] ?? null} onPoStatusChange={(v) => handlePoStatusChange(selected.key, v)} onReadinessChange={(v) => handleReadinessChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} adjacentKeys={adjacentKeys} />;
+        return <SidePanel ticket={selected} poStatus={poStatuses[selected.key] ?? null} readiness={readinessMap[selected.key] ?? null} onPoStatusChange={(v) => handlePoStatusChange(selected.key, v)} onReadinessChange={(v) => handleReadinessChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} adjacentKeys={adjacentKeys} />;
       })()}
 
       {toast && (

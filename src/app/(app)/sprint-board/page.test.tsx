@@ -4,7 +4,7 @@ import SprintBoardPage from "./page";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), prefetch: vi.fn() }),
 }));
 
 // Stable references to prevent infinite re-render loops in useEffect deps

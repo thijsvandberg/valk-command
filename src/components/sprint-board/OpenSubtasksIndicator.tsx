@@ -2,8 +2,14 @@
 
 import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, CheckCheck, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCheck, Loader2, Circle, CircleCheckBig } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
+
+interface SubtaskItem {
+  key: string;
+  title: string;
+  status: string;
+}
 
 interface OpenSubtasksIndicatorProps {
   ticketKey: string;
@@ -12,6 +18,8 @@ interface OpenSubtasksIndicatorProps {
   totalCount: number;
   onCloseSubtasks?: (key: string) => Promise<void>;
 }
+
+const DONE_STATUSES = new Set(["DONE", "DEPRECATED", "Done", "Closed"]);
 
 function IndicatorPopover({
   ticketKey,
@@ -31,12 +39,14 @@ function IndicatorPopover({
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; flipped: boolean } | null>(null);
   const [closing, setClosing] = useState(false);
+  const [subtasks, setSubtasks] = useState<SubtaskItem[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useLayoutEffect(() => {
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const POPOVER_HEIGHT = 140;
+    const POPOVER_HEIGHT = 300;
     const spaceBelow = window.innerHeight - rect.bottom;
     const flipped = spaceBelow < POPOVER_HEIGHT + 12;
     setPos({
@@ -45,6 +55,19 @@ function IndicatorPopover({
       flipped,
     });
   }, [triggerRef]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tickets/${encodeURIComponent(ticketKey)}/subtasks`)
+      .then((r) => r.json())
+      .then((data: SubtaskItem[]) => {
+        if (!cancelled) setSubtasks(data);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => { cancelled = true; };
+  }, [ticketKey]);
 
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
@@ -56,7 +79,8 @@ function IndicatorPopover({
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    function handleScroll() {
+    function handleScroll(e: Event) {
+      if (ref.current?.contains(e.target as Node)) return;
       onClose();
     }
     document.addEventListener("mousedown", handleOutsideClick);
@@ -82,7 +106,8 @@ function IndicatorPopover({
 
   if (!pos || typeof document === "undefined") return null;
 
-  const doneCount = totalCount - openCount;
+  const openSubtasks = subtasks?.filter((s) => !DONE_STATUSES.has(s.status)) ?? [];
+  const closedSubtasks = subtasks?.filter((s) => DONE_STATUSES.has(s.status)) ?? [];
 
   return createPortal(
     <div
@@ -96,40 +121,71 @@ function IndicatorPopover({
       }}
     >
       <div
-        className="min-w-[220px] max-w-[280px] rounded-lg border border-border-strong overflow-hidden"
+        className="min-w-[260px] max-w-[340px] rounded-lg border border-border-strong overflow-hidden"
         style={{
           backgroundColor: "var(--color-surface-floating)",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.10), 0 8px 32px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)",
         }}
       >
         {/* Header */}
         <div className="px-3 pt-2.5 pb-2 border-b border-border-subtle">
-          <div className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-            <AlertTriangle size={12} strokeWidth={1.75} className="text-amber-400/80 shrink-0" />
-            <span>{openCount} open subtask{openCount !== 1 ? "s" : ""}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-medium text-text-secondary">
+              <AlertTriangle size={12} strokeWidth={1.75} className="text-amber-400/80 shrink-0" />
+              <span>{openCount} of {totalCount} subtasks open</span>
+            </div>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="px-3 pt-2 pb-1.5">
-          <div className="flex items-center justify-between text-[10px] text-text-muted mb-1">
-            <span>{doneCount} / {totalCount} done</span>
-            <span>{Math.round((doneCount / totalCount) * 100)}%</span>
-          </div>
-          <div className="h-1 w-full rounded-full bg-overlay-default overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${(doneCount / totalCount) * 100}%`,
-                background: "linear-gradient(90deg, var(--color-brand-600), var(--color-brand-400))",
-              }}
-            />
-          </div>
+        {/* Subtask list */}
+        <div className="max-h-[240px] overflow-y-auto">
+          {!subtasks && !loadError && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 size={14} strokeWidth={1.75} className="animate-spin text-text-muted" />
+            </div>
+          )}
+
+          {loadError && (
+            <div className="px-3 py-3 text-xs text-text-muted">
+              Failed to load subtasks
+            </div>
+          )}
+
+          {subtasks && (
+            <div className="py-1">
+              {/* Open subtasks */}
+              {openSubtasks.map((sub) => (
+                <div key={sub.key} className="flex items-start gap-2 px-3 py-1.5">
+                  <Circle size={12} strokeWidth={1.5} className="text-amber-400/70 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <span className="text-xs text-text-primary leading-snug line-clamp-2">{sub.title}</span>
+                    <span className="block text-[10px] text-text-muted mt-0.5">{sub.key} · {sub.status}</span>
+                  </div>
+                </div>
+              ))}
+
+              {/* Divider between open and closed */}
+              {openSubtasks.length > 0 && closedSubtasks.length > 0 && (
+                <div className="mx-3 my-1 border-t border-border-subtle" />
+              )}
+
+              {/* Closed subtasks */}
+              {closedSubtasks.map((sub) => (
+                <div key={sub.key} className="flex items-start gap-2 px-3 py-1.5 opacity-50">
+                  <CircleCheckBig size={12} strokeWidth={1.5} className="text-green-400/70 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <span className="text-xs text-text-primary leading-snug line-clamp-2">{sub.title}</span>
+                    <span className="block text-[10px] text-text-muted mt-0.5">{sub.key}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Close button */}
         {onCloseSubtasks && (
-          <div className="px-2 pb-2 pt-1">
+          <div className="px-2 pb-2 pt-1 border-t border-border-subtle">
             <button
               type="button"
               onClick={handleClose}
@@ -180,11 +236,11 @@ export function OpenSubtasksIndicator({
           setPopoverOpen((o) => !o);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/10 text-amber-400/80 hover:bg-amber-500/18 hover:text-amber-300 active:bg-amber-500/25"
+        className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/10 text-amber-400/80 hover:bg-amber-500/18 hover:text-amber-300 active:bg-amber-500/25"
         title={`${openCount} of ${totalCount} subtasks still open`}
       >
         <AlertTriangle size={10} strokeWidth={1.75} className="shrink-0" />
-        <span>{openCount}/{totalCount}</span>
+        <span>{openCount}</span>
       </button>
       {popoverOpen && (
         <IndicatorPopover

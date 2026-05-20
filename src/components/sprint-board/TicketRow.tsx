@@ -8,7 +8,7 @@ import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X } from "lucide-react";
-import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth } from "@/hooks/usePipelines";
+import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
@@ -39,6 +39,12 @@ export interface TicketRowBaseProps {
   sprintNameMap?: Record<string, string>;
   poStatuses?: Record<string, POStatus>;
   readinessMap?: Record<string, TicketReadiness | null>;
+  // Pipeline/follow data hoisted from per-row hooks to table level
+  followedKeys?: string[];
+  followTicket?: (key: string) => void;
+  unfollowTicket?: (key: string) => void;
+  lastDeployedMap?: Record<string, LastDeployedInfo>;
+  healthMap?: Record<string, PipelineHealthEntry>;
   selectedTicket: string | null;
   onSelectTicket: (key: string | null) => void;
   onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
@@ -77,6 +83,11 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     sprintNameMap = {},
     poStatuses = {},
     readinessMap = {},
+    followedKeys,
+    followTicket: follow,
+    unfollowTicket: unfollow,
+    lastDeployedMap,
+    healthMap,
     selectedTicket,
     onSelectTicket,
     onCheckboxClick,
@@ -126,12 +137,8 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     el.style.height = `${el.scrollHeight}px`;
   }, []);
 
-  const { data: followedKeys } = useFollowedTickets();
-  const { follow, unfollow } = useFollowTicket();
   const isFollowed = followedKeys?.includes(ticket.key) ?? false;
-  const { data: lastDeployedMap } = useLastDeployed();
   const lastDeploy = lastDeployedMap?.[ticket.key];
-  const { data: healthMap } = usePipelineHealth();
   const health = healthMap?.[ticket.key];
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
@@ -214,7 +221,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
-                      isFollowed ? unfollow(ticket.key) : follow(ticket.key);
+                      isFollowed ? unfollow?.(ticket.key) : follow?.(ticket.key);
                     }}
                     className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
                       isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"

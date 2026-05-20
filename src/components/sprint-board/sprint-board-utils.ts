@@ -39,8 +39,8 @@ export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) 
 export async function saveTicketMetadata(
   jiraKey: string,
   updates: { readiness?: TicketReadiness | null; poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null; businessValue?: number | null },
+  activeListKey?: string | null,
 ): Promise<boolean> {
-  // Optimistically update SWR cache for ticket lists and detail
   const updateTicket = (ticket: Ticket): Ticket => {
     const patched = { ...ticket };
     if (updates.readiness !== undefined) patched.readiness = updates.readiness;
@@ -51,15 +51,18 @@ export async function saveTicketMetadata(
     return patched;
   };
 
-  // Optimistically update ticket list caches
+  const detailKey = `/api/tickets/${encodeURIComponent(jiraKey)}`;
+
+  // Optimistically update only the active ticket list (not all sprint lists)
+  if (activeListKey) {
+    globalMutate(
+      activeListKey,
+      (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? updateTicket(t) : t),
+      { revalidate: false },
+    );
+  }
   globalMutate(
-    (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
-    (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? updateTicket(t) : t),
-    { revalidate: false },
-  );
-  // Optimistically update ticket detail cache
-  globalMutate(
-    `/api/tickets/${encodeURIComponent(jiraKey)}`,
+    detailKey,
     (current: Record<string, unknown> | undefined) => current ? {
       ...current,
       ...(updates.readiness !== undefined ? { readiness: updates.readiness } : {}),
@@ -76,8 +79,8 @@ export async function saveTicketMetadata(
     return true;
   } catch (err) {
     console.error("Failed to save ticket metadata:", err);
-    // Revalidate to roll back optimistic updates
-    globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets"), undefined, { revalidate: true });
+    if (activeListKey) globalMutate(activeListKey);
+    globalMutate(detailKey);
     return false;
   }
 }
@@ -85,15 +88,19 @@ export async function saveTicketMetadata(
 export async function saveStoryPoints(
   jiraKey: string,
   storyPoints: number | null,
+  activeListKey?: string | null,
 ): Promise<boolean> {
-  // Optimistically update SWR caches
+  const detailKey = `/api/tickets/${encodeURIComponent(jiraKey)}`;
+
+  if (activeListKey) {
+    globalMutate(
+      activeListKey,
+      (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? { ...t, storyPoints } : t),
+      { revalidate: false },
+    );
+  }
   globalMutate(
-    (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
-    (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? { ...t, storyPoints } : t),
-    { revalidate: false },
-  );
-  globalMutate(
-    `/api/tickets/${encodeURIComponent(jiraKey)}`,
+    detailKey,
     (current: Record<string, unknown> | undefined) => current ? { ...current, storyPoints } : current,
     { revalidate: false },
   );
@@ -103,7 +110,8 @@ export async function saveStoryPoints(
     return true;
   } catch (err) {
     console.error("Failed to save story points:", err);
-    globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets"), undefined, { revalidate: true });
+    if (activeListKey) globalMutate(activeListKey);
+    globalMutate(detailKey);
     return false;
   }
 }

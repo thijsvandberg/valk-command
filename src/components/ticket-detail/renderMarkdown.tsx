@@ -99,6 +99,7 @@ function inlineFormat(text: string): ReactNode {
               key={i++}
               src={src}
               alt={alt}
+              loading="lazy"
               className="my-1 max-w-full rounded-lg border border-border-default"
               style={{ maxHeight: "480px", objectFit: "contain" }}
             />,
@@ -661,6 +662,7 @@ export function renderMarkdown(text: string): ReactNode[] {
             <img
               src={mediaSrc}
               alt={mediaAlt}
+              loading="lazy"
               className="max-w-full rounded-lg border border-border-default"
               style={{ maxHeight: "600px", objectFit: "contain" }}
             />

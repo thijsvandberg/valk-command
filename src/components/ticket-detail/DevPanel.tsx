@@ -318,15 +318,17 @@ export function DevPanel({
         </div>
         <div className="flex items-center gap-1">
           {hasData && onExpand && (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
               onClick={(e) => { e.stopPropagation(); onExpand(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onExpand(); } }}
               className="rounded p-0.5 text-text-muted cursor-pointer hover:text-text-tertiary hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
               title="Open in full view"
             >
               <Maximize2 size={11} strokeWidth={1.5} />
-            </button>
+            </span>
           )}
           <ChevronDown
             size={12}
