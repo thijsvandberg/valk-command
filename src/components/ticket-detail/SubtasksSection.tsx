@@ -95,6 +95,7 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<Subtask[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -139,6 +140,7 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
       });
       onMutate();
     } catch (err) {
+      setError("Failed to reorder. Jira ranking may be unavailable.");
       console.error("Failed to rank subtasks:", err);
       setLocalOrder(null);
     }
@@ -149,6 +151,7 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
     if (!title || isCreating) return;
 
     setIsCreating(true);
+    setError(null);
     try {
       await tickets.createSubtask(ticketKey, { title });
       setNewTitle("");
@@ -156,6 +159,7 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
       setLocalOrder(null);
       onMutate();
     } catch (err) {
+      setError("Failed to create subtask. Check Jira connection.");
       console.error("Failed to create subtask:", err);
     } finally {
       setIsCreating(false);
@@ -283,6 +287,10 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
             Cancel
           </Button>
         </div>
+      )}
+
+      {error && (
+        <p className="mt-2 text-xs text-red-400/80">{error}</p>
       )}
 
       {/* Subtask list */}

@@ -64,11 +64,11 @@ Currently the ticket detail view shows subtasks and linked issues as read-only l
 - [x] Backend integration deferred to BRDG-143 (workspace AI search)
 
 ### Phase 5: Polish
-- [ ] Optimistic UI updates for all create/delete/reorder operations
-- [ ] Error handling with toast notifications for failed Jira operations
-- [ ] Loading states for Jira API calls
-- [ ] Keyboard navigation in autocomplete and dialogs
-- [ ] ESC to close dialogs/forms
+- [x] Optimistic UI updates for all create/delete/reorder operations
+- [x] Error handling with toast notifications for failed Jira operations
+- [x] Loading states for Jira API calls
+- [x] Keyboard navigation in autocomplete and dialogs
+- [x] ESC to close dialogs/forms
 
 ## Technical Notes
 

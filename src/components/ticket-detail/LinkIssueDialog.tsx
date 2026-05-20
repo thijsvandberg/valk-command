@@ -48,6 +48,7 @@ export function LinkIssueDialog({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -62,6 +63,7 @@ export function LinkIssueDialog({
       setResults([]);
       setHighlightIndex(-1);
       setShowResults(false);
+      setSubmitError(null);
       requestAnimationFrame(() => searchRef.current?.focus());
     }
   }, [open, defaultRelation, defaultTargetKey]);
@@ -105,6 +107,7 @@ export function LinkIssueDialog({
     if (!targetKey || isSubmitting) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await tickets.createLink(ticketKey, {
         targetKey,
@@ -112,6 +115,7 @@ export function LinkIssueDialog({
       });
       onLinked();
     } catch (err) {
+      setSubmitError("Failed to create link. Check that the issue key is valid.");
       console.error("Failed to create link:", err);
     } finally {
       setIsSubmitting(false);
@@ -228,6 +232,10 @@ export function LinkIssueDialog({
             </div>
           )}
         </div>
+
+        {submitError && (
+          <p className="mt-3 text-xs text-red-400/80">{submitError}</p>
+        )}
 
         {/* Actions */}
         <div className="mt-5 flex items-center justify-end gap-2">
