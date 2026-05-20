@@ -93,7 +93,6 @@ function SortableSubtaskRow({ sub, isLast }: { sub: Subtask; isLast: boolean }) 
 export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [newTitle, setNewTitle] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<Subtask[] | null>(null);
   const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
@@ -149,28 +148,41 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
     }
   }, [orderedSubtasks, ticketKey, onMutate]);
 
-  const handleCreate = useCallback(async () => {
+  const handleCreate = useCallback(() => {
     const title = newTitle.trim();
-    if (!title || isCreating) return;
+    if (!title) return;
 
-    setIsCreating(true);
+    // Optimistically add a placeholder row and clear input immediately
+    const placeholderKey = `pending-${Date.now()}`;
+    const placeholder: Subtask = {
+      key: placeholderKey,
+      title,
+      type: "subtask",
+      jiraStatus: "TO DO",
+      assignee: null,
+    };
+    setLocallyAdded((prev) => [...prev, placeholder]);
+    setNewTitle("");
     setError(null);
-    try {
-      const created = await tickets.createSubtask(ticketKey, { title });
-      // Show immediately via local state
-      setLocallyAdded((prev) => [...prev, created]);
-      setNewTitle("");
-      setLocalOrder(null);
-      onMutate();
-      requestAnimationFrame(() => inputRef.current?.focus());
-    } catch (err) {
-      const detail = err instanceof ApiError ? err.message : "Jira API error";
-      setError(`Failed to create subtask: ${detail}`);
-      console.error("Failed to create subtask:", err);
-    } finally {
-      setIsCreating(false);
-    }
-  }, [newTitle, isCreating, ticketKey, onMutate]);
+    setLocalOrder(null);
+
+    // Create in background
+    tickets.createSubtask(ticketKey, { title })
+      .then((created) => {
+        // Replace placeholder with real subtask
+        setLocallyAdded((prev) =>
+          prev.map((s) => s.key === placeholderKey ? created : s),
+        );
+        onMutate();
+      })
+      .catch((err) => {
+        // Remove placeholder on failure
+        setLocallyAdded((prev) => prev.filter((s) => s.key !== placeholderKey));
+        const detail = err instanceof ApiError ? err.message : "Jira API error";
+        setError(`Failed to create subtask: ${detail}`);
+        console.error("Failed to create subtask:", err);
+      });
+  }, [newTitle, ticketKey, onMutate]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -184,30 +196,38 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
 
   const isDndEnabled = filter === "all" && filtered.length > 1;
 
-  const subtaskRows = filtered.map((sub, idx) => (
-    isDndEnabled ? (
-      <SortableSubtaskRow key={sub.key} sub={sub} isLast={idx === filtered.length - 1} />
-    ) : (
+  const subtaskRows = filtered.map((sub, idx) => {
+    const isPending = sub.key.startsWith("pending-");
+    if (isDndEnabled && !isPending) {
+      return <SortableSubtaskRow key={sub.key} sub={sub} isLast={idx === filtered.length - 1} />;
+    }
+    return (
       <div
         key={sub.key}
         className={`group flex items-center gap-3 px-3 py-2.5 ${
           idx < filtered.length - 1 ? "border-b border-border-subtle" : ""
-        }`}
+        } ${isPending ? "opacity-50" : ""}`}
       >
         <IssueTypeIcon type={sub.type} size={14} />
-        <Link
-          href={`/tickets/${sub.key}`}
-          className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {sub.key}
-        </Link>
+        {isPending ? (
+          <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
+            <Loader2 size={10} className="animate-spin" />
+          </span>
+        ) : (
+          <Link
+            href={`/tickets/${sub.key}`}
+            className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {sub.key}
+          </Link>
+        )}
         <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
         <StatusBadge status={sub.jiraStatus} />
         <Avatar assignee={sub.assignee} size={22} />
       </div>
-    )
-  ));
+    );
+  });
 
   // Always-visible inline input row at the bottom of the list
   const inlineInput = (
@@ -220,10 +240,8 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
         onChange={(e) => { setNewTitle(e.target.value); setError(null); }}
         onKeyDown={handleKeyDown}
         placeholder="Create subtask..."
-        disabled={isCreating}
-        className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none disabled:opacity-50"
+        className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
       />
-      {isCreating && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
     </div>
   );
 

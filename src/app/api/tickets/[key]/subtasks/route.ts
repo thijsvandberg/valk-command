@@ -10,6 +10,27 @@ import { randomUUID } from "crypto";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
+export async function GET(
+  _request: Request,
+  { params }: RouteContext,
+) {
+  const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
+
+  const rows = await db.query.ticketSubtask.findMany({
+    where: (s, { eq: eqFn }) => eqFn(s.ticketKey, key),
+  });
+
+  const subtasks = rows.map((r) => ({
+    key: r.subtaskKey,
+    title: r.title,
+    status: r.status,
+  }));
+
+  return NextResponse.json(subtasks);
+}
+
 export async function POST(request: Request, { params }: RouteContext) {
   const { key } = await params;
   const invalid = validatePathParam(key);
@@ -55,7 +76,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     ticketKey: key,
     subtaskKey: jiraResult.key,
     title,
-    type: "Sub-task",
+    type: "subtask",
     status: "TO DO",
     assignee: null,
     assigneeAvatar: null,
