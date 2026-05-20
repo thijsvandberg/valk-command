@@ -174,7 +174,7 @@ export default function SprintBoard() {
   const [focusedTicketIdx, setFocusedTicketIdx] = useState<number>(-1);
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   const [readinessMap, setReadinessMap] = useState<Record<string, TicketReadiness | null>>({});
-  const [poPriorityOrder, setPoPriorityOrder] = useLocalStorage<string[] | null>("sprint-board-po-priority", null);
+  const [poPriorityMap, setPoPriorityMap] = useLocalStorage<Record<string, string[]>>("sprint-board-po-priority-map", {});
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [barsCollapsed, setBarsCollapsed] = useLocalStorage("sprint-bars-collapsed", false);
   const [analyticsVisible, setAnalyticsVisible] = useLocalStorage("sprint-analytics-visible", false);
@@ -197,6 +197,20 @@ export default function SprintBoard() {
   }, [sprints]);
 
   const activeSprintId = (isAllView || searchParams.get("view")) ? "__all__" : ephemeralIsActive ? ephemeralSprintId! : slotSprints[activeSlot];
+
+  const poPriorityOrder = activeSprintId ? (poPriorityMap[activeSprintId] ?? null) : null;
+  const setPoPriorityOrder = useCallback((order: string[] | null) => {
+    if (!activeSprintId) return;
+    setPoPriorityMap((prev) => {
+      if (order === null) {
+        const next = { ...prev };
+        delete next[activeSprintId];
+        return next;
+      }
+      return { ...prev, [activeSprintId]: order };
+    });
+  }, [activeSprintId, setPoPriorityMap]);
+
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
 
@@ -476,7 +490,7 @@ export default function SprintBoard() {
   );
 
   const boardSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
   );
 
