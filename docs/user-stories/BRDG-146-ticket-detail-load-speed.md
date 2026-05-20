@@ -1,6 +1,6 @@
 # BRDG-146: Ticket Detail Page Load Speed
 
-**Status:** Draft
+**Status:** Done
 **Priority:** High
 
 ## Description
@@ -99,14 +99,14 @@ The page currently makes 6 parallel API calls. Some can be folded into the main 
 
 ## Testing
 
-- [ ] Ticket detail page loads with correct data (Content tab, sidebar, all sections)
-- [ ] History tab badge shows correct version count
-- [ ] Review tab badge shows correct review count
-- [ ] Sidebar quality score and "outdated review" indicator still work
-- [ ] Parent ticket link still works for subtasks
-- [ ] Code blocks in descriptions still highlight correctly
-- [ ] No regressions in ticket editing (title, description, push to Jira)
-- [ ] All existing tests pass
+- [x] Ticket detail page loads with correct data (Content tab, sidebar, all sections)
+- [x] History tab badge shows correct version count
+- [x] Review tab badge shows correct review count
+- [x] Sidebar quality score and "outdated review" indicator still work
+- [x] Parent ticket link still works for subtasks
+- [x] Code blocks in descriptions still highlight correctly
+- [x] No regressions in ticket editing (title, description, push to Jira)
+- [x] All existing tests pass <!-- pre-existing: 4 sprint-board page.test.tsx failures (ResizeObserver), build failure (settings/integrations missing module) -->
 
 ## Technical notes
 

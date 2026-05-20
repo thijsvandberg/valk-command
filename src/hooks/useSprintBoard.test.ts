@@ -194,15 +194,15 @@ describe("useTicketDetail", () => {
 
     renderHook(() => useTicketDetail("BRDG-101"), { wrapper: swrWrapper });
 
-    // Wait for the background staleness check and sync to fire
+    // Wait for the deferred (3s) background staleness check and sync to fire
     await waitFor(() => {
       const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => {
         const arg = c[0];
         return typeof arg === "string" ? arg : arg.toString();
       });
       expect(calls).toContain("/api/jira/sync-tickets");
-    });
-  });
+    }, { timeout: 8000 });
+  }, 10000);
 });
 
 // ---------------------------------------------------------------------------
