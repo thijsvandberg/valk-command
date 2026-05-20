@@ -907,25 +907,41 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    const body = {
-      fields: {
-        project: { key: params.projectKey ?? "VPL" },
-        summary: params.summary,
-        issuetype: { name: params.issueType ?? (params.parentKey ? "Sub-task" : "Story") },
-        ...(params.description ? { description: params.description } : {}),
-        // Sprint field requires a plain integer for Jira Cloud (not wrapped in {id})
-        ...(params.sprintId ? { [SPRINT_FIELD]: parseInt(params.sprintId, 10) } : {}),
-        ...(params.parentKey ? { parent: { key: params.parentKey } } : {}),
-      },
+    const issueTypeName = params.issueType ?? (params.parentKey ? "Sub-task" : "Story");
+    const baseFields = {
+      project: { key: params.projectKey ?? "VPL" },
+      summary: params.summary,
+      ...(params.description ? { description: params.description } : {}),
+      ...(params.sprintId ? { [SPRINT_FIELD]: parseInt(params.sprintId, 10) } : {}),
+      ...(params.parentKey ? { parent: { key: params.parentKey } } : {}),
     };
 
-    const result = await jiraPost<{ id: string; key: string }>(
+    let body = { fields: { ...baseFields, issuetype: { name: issueTypeName } } };
+
+    let result: { id: string; key: string };
+    try {
+      result = await jiraPost<{ id: string; key: string }>(
+        "/rest/api/3/issue",
+        body,
+        signal,
+      );
+      return { key: result.key, id: result.id };
+    } catch (err) {
+      // Jira Cloud next-gen projects use "Subtask" instead of "Sub-task"
+      if (err instanceof JiraApiError && err.status === 400 && issueTypeName === "Sub-task") {
+        body = { fields: { ...baseFields, issuetype: { name: "Subtask" } } };
+      } else {
+        throw err;
+      }
+    }
+
+    const result2 = await jiraPost<{ id: string; key: string }>(
       "/rest/api/3/issue",
       body,
       signal,
     );
 
-    return { key: result.key, id: result.id };
+    return { key: result2.key, id: result2.id };
   }
 
   /**

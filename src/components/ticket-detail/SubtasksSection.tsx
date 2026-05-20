@@ -154,6 +154,8 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
       setNewTitle("");
       setLocalOrder(null);
       onMutate();
+      // Keep focus on input so you can create the next one immediately
+      requestAnimationFrame(() => inputRef.current?.focus());
     } catch (err) {
       const detail = err instanceof ApiError ? err.message : "Jira API error";
       setError(`Failed to create subtask: ${detail}`);
