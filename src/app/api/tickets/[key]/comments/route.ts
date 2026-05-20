@@ -18,7 +18,9 @@ export async function GET(
   const poComments = preparedPoComments({ key });
   const jiraComments = preparedJiraComments({ key });
 
-  return NextResponse.json({ poComments, jiraComments });
+  return NextResponse.json({ poComments, jiraComments }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 export async function POST(

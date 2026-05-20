@@ -63,7 +63,9 @@ export async function GET(request: Request) {
 
   const includeStats = searchParams.get("include") === "stats";
   if (!includeStats) {
-    return NextResponse.json(rows);
+    return NextResponse.json(rows, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 
   // Compute date boundaries
@@ -99,5 +101,7 @@ export async function GET(request: Request) {
     sevenDaysAgoPeriodRows,
   );
 
-  return NextResponse.json({ entries: rows, stats });
+  return NextResponse.json({ entries: rows, stats }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }

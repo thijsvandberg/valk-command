@@ -12,7 +12,9 @@ const followSprintSchema = z.object({
 // GET /api/followed-sprints - list all followed sprint names
 export async function GET() {
   const rows = db.select().from(followedSprint).all();
-  return NextResponse.json(rows.map((r) => r.sprintName));
+  return NextResponse.json(rows.map((r) => r.sprintName), {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 // POST /api/followed-sprints - follow a sprint (idempotent)

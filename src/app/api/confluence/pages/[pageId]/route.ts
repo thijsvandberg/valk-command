@@ -137,11 +137,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     if (format === "text") {
       const { text, truncated } = htmlToText(sanitized, maxWords);
-      return NextResponse.json({ ...base, bodyText: text, truncated });
+      return NextResponse.json({ ...base, bodyText: text, truncated }, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
     }
 
     const { html, truncated } = truncateHtml(sanitized, maxWords);
-    return NextResponse.json({ ...base, bodyHtml: html, truncated });
+    return NextResponse.json({ ...base, bodyHtml: html, truncated }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("confluence-pages", "Failed to fetch page", message);

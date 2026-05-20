@@ -22,7 +22,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const baseUrl = env.CONFLUENCE_BASE_URL || env.JIRA_BASE_URL;
   if (!baseUrl) {
-    return NextResponse.json({ mentions: [] });
+    return NextResponse.json({ mentions: [] }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 
   // Load ticket description + all comments
@@ -57,7 +59,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   const detected = detectConfluenceUrls(allText, baseUrl);
 
   if (detected.length === 0) {
-    return NextResponse.json({ mentions: [] });
+    return NextResponse.json({ mentions: [] }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 
   // Filter out already-linked pages
@@ -68,7 +72,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   const unlinked = detected.filter((d) => !linkedIds.has(d.pageId));
 
   if (unlinked.length === 0) {
-    return NextResponse.json({ mentions: [] });
+    return NextResponse.json({ mentions: [] }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 
   // Resolve metadata for up to 5 pages (avoid bulk-fetching)
@@ -80,6 +86,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
         url: d.url,
         source: "description" as const,
       })),
+    }, {
+      headers: { "Cache-Control": "private, no-store" },
     });
   }
 
@@ -100,5 +108,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     .filter((r): r is PromiseFulfilledResult<{ pageId: string; title: string; url: string; source: "description" }> => r.status === "fulfilled")
     .map((r) => r.value);
 
-  return NextResponse.json({ mentions });
+  return NextResponse.json({ mentions }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }

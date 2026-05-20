@@ -13,7 +13,9 @@ const followTicketSchema = z.object({
 // GET /api/followed-tickets - list all followed ticket keys
 export async function GET() {
   const rows = db.select().from(followedTicket).limit(500).all();
-  return NextResponse.json(rows.map((r) => r.ticketKey));
+  return NextResponse.json(rows.map((r) => r.ticketKey), {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 // POST /api/followed-tickets - follow a ticket (idempotent)

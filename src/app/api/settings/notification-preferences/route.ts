@@ -14,7 +14,9 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 export type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
 
 export async function GET() {
-  return NextResponse.json({ preferences: getPreferences() });
+  return NextResponse.json({ preferences: getPreferences() }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 const preferencesBodySchema = z.object({

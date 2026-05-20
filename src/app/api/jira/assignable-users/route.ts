@@ -28,7 +28,9 @@ export async function GET() {
         return { accountId: name, displayName: name, avatarUrl: null, initials };
       });
 
-    return NextResponse.json({ users });
+    return NextResponse.json({ users }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ users: [], error: message }, { status: 500 });

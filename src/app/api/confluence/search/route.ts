@@ -55,7 +55,9 @@ export async function GET(req: NextRequest) {
     } else {
       results = await confluenceClient.searchPages(q, space);
     }
-    return NextResponse.json({ results });
+    return NextResponse.json({ results }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("confluence-search", "Search failed", message);

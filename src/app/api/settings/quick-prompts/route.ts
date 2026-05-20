@@ -106,11 +106,17 @@ export async function GET() {
       where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
     });
     if (!row) {
-      return NextResponse.json({ prompts: DEFAULT_PROMPTS });
+      return NextResponse.json({ prompts: DEFAULT_PROMPTS }, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
     }
-    return NextResponse.json({ prompts: JSON.parse(row.value) as QuickPromptsConfig });
+    return NextResponse.json({ prompts: JSON.parse(row.value) as QuickPromptsConfig }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch {
-    return NextResponse.json({ prompts: DEFAULT_PROMPTS });
+    return NextResponse.json({ prompts: DEFAULT_PROMPTS }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }
 

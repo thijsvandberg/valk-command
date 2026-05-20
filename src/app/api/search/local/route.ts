@@ -242,7 +242,9 @@ export async function GET(request: Request) {
   const hasFilters = statusFilter.length > 0 || poStatusFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
 
   if (q.trim().length < 2) {
-    return NextResponse.json({ groups: { tickets: [], conversations: [], comments: [] }, results: [] });
+    return NextResponse.json({ groups: { tickets: [], conversations: [], comments: [] }, results: [] }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 
   try {
@@ -388,6 +390,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       groups: { tickets, conversations, comments },
       results: tickets,
+    }, {
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch (err) {
     logger.error("search-local", "GET failed", err);

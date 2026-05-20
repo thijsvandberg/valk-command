@@ -25,15 +25,21 @@ export async function GET() {
       where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
     });
     if (!row) {
-      return NextResponse.json({ order: null, visible: null });
+      return NextResponse.json({ order: null, visible: null }, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
     }
     const parsed = safeJsonParse<ColumnConfig>(row.value, { order: [], visible: [] }, "column-config");
     return NextResponse.json({
       order: parsed.order ?? null,
       visible: parsed.visible ?? null,
+    }, {
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch {
-    return NextResponse.json({ order: null, visible: null });
+    return NextResponse.json({ order: null, visible: null }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }
 

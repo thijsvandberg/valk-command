@@ -23,11 +23,17 @@ export async function GET() {
       where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
     });
     if (!row) {
-      return NextResponse.json({ widths: {} });
+      return NextResponse.json({ widths: {} }, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
     }
-    return NextResponse.json({ widths: JSON.parse(row.value) as ColumnWidths });
+    return NextResponse.json({ widths: JSON.parse(row.value) as ColumnWidths }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch {
-    return NextResponse.json({ widths: {} });
+    return NextResponse.json({ widths: {} }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }
 

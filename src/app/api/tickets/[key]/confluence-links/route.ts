@@ -21,7 +21,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     where: (row, { eq }) => eq(row.ticketKey, key),
     orderBy: (row, { asc }) => [asc(row.createdAt)],
   });
-  return NextResponse.json({ links });
+  return NextResponse.json({ links }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 /**

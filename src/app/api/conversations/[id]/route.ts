@@ -33,6 +33,8 @@ export async function GET(
   return NextResponse.json({
     ...conv,
     messages: conversationMessages,
+  }, {
+    headers: { "Cache-Control": "private, no-store" },
   });
 }
 

@@ -51,11 +51,17 @@ export async function GET() {
       where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
     });
     if (!row) {
-      return NextResponse.json({ searches: [] });
+      return NextResponse.json({ searches: [] }, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
     }
-    return NextResponse.json({ searches: JSON.parse(row.value) as SavedSearch[] });
+    return NextResponse.json({ searches: JSON.parse(row.value) as SavedSearch[] }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch {
-    return NextResponse.json({ searches: [] });
+    return NextResponse.json({ searches: [] }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }
 

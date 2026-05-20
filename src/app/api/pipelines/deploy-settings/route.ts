@@ -26,11 +26,17 @@ const DEFAULTS: DeployNotificationSettings = {
 // GET /api/pipelines/deploy-settings
 export async function GET() {
   const row = db.select().from(appSetting).where(eq(appSetting.key, SETTINGS_KEY)).get();
-  if (!row) return NextResponse.json(DEFAULTS);
+  if (!row) return NextResponse.json(DEFAULTS, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
   try {
-    return NextResponse.json(JSON.parse(row.value));
+    return NextResponse.json(JSON.parse(row.value), {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch {
-    return NextResponse.json(DEFAULTS);
+    return NextResponse.json(DEFAULTS, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }
 

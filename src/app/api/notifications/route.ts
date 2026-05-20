@@ -93,6 +93,8 @@ export async function GET(request: Request) {
     subscribedUnreadCount,
     subscribedTeams,
     totalCount: totalCount?.count ?? 0,
+  }, {
+    headers: { "Cache-Control": "private, no-store" },
   });
 }
 

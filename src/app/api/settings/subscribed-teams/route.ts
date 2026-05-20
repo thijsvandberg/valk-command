@@ -12,6 +12,8 @@ export async function GET() {
   return NextResponse.json({
     teams: getSubscribedTeams(),
     available: getAvailableTeams(),
+  }, {
+    headers: { "Cache-Control": "private, no-store" },
   });
 }
 

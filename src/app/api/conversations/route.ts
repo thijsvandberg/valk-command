@@ -10,7 +10,9 @@ export async function GET() {
   // has actually sent a message. Conversations without relatedTicket (regular chat)
   // are always shown.
   const result = preparedConversationList();
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 export async function POST(request: Request) {
