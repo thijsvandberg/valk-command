@@ -87,14 +87,12 @@ export function EpicPicker({
     }
   }, [mutate]);
 
-  // Auto-sync from Jira on first open when the local list is empty
+  // Auto-sync from Jira once per session on first open
   useEffect(() => {
     if (!open || hasSyncedRef.current || syncing) return;
-    if (epics && epics.length === 0) {
-      hasSyncedRef.current = true;
-      handleSync();
-    }
-  }, [open, epics, syncing, handleSync]);
+    hasSyncedRef.current = true;
+    handleSync();
+  }, [open, syncing, handleSync]);
 
   // Click outside, escape, scroll handlers
   useEffect(() => {
