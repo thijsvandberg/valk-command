@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { alert } from "@/db/schema";
+import { alert, followedTicket, followedSprint, ticket } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { getPreferences, type NotificationCategory } from "@/lib/notification-preferences";
@@ -11,11 +11,37 @@ interface CreateNotificationOptions {
   // ISO timestamp of the actual event (e.g. when a PR was merged in Bitbucket).
   // When provided and older than createdAt, the UI shows a late-sync indicator.
   eventAt?: string;
+  // When true, skip the followed-ticket/sprint check (e.g. production deploys).
+  skipFollowCheck?: boolean;
 }
 
 function isCategoryEnabled(category: NotificationCategory): boolean {
   const prefs = getPreferences();
   return prefs[category] ?? true;
+}
+
+// Checks if a ticket is followed directly or via its sprint.
+// By default returns true when nothing is followed (backward-compatible).
+// Pass requireExplicit=true to require an actual follow entry (used for UAT deployments).
+export function isTicketFollowed(jiraKey: string, requireExplicit = false): boolean {
+  const totalFollowedTickets = db.select({ ticketKey: followedTicket.ticketKey }).from(followedTicket).all();
+  const totalFollowedSprints = db.select({ sprintName: followedSprint.sprintName }).from(followedSprint).all();
+
+  if (totalFollowedTickets.length === 0 && totalFollowedSprints.length === 0) return !requireExplicit;
+
+  if (totalFollowedTickets.some((r) => r.ticketKey === jiraKey)) return true;
+
+  if (totalFollowedSprints.length > 0) {
+    const ticketRow = db.select({ sprintName: ticket.sprintName })
+      .from(ticket)
+      .where(eq(ticket.jiraKey, jiraKey))
+      .get();
+    if (ticketRow?.sprintName) {
+      return totalFollowedSprints.some((r) => r.sprintName === ticketRow.sprintName);
+    }
+  }
+
+  return false;
 }
 
 export function createNotification(
@@ -24,6 +50,7 @@ export function createNotification(
   options: CreateNotificationOptions = {},
 ): void {
   if (options.category && !isCategoryEnabled(options.category)) return;
+  if (options.jiraKey && !options.skipFollowCheck && !isTicketFollowed(options.jiraKey)) return;
 
   db.insert(alert).values({
     id: randomUUID(),

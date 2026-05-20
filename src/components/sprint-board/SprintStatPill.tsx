@@ -197,6 +197,199 @@ export function StatusCount({
   );
 }
 
+// ── Sprint completion bar ─────────────────────────────────────────────────
+// Compact header widget for active sprints. Shows a progress bar with
+// switchable modes (SP / BV / Items) and sprint time progress.
+
+import { useState } from "react";
+
+export type CompletionMode = "sp" | "bv" | "items";
+
+export interface SprintCompletionBarProps {
+  // Per-status values
+  doneSp: number;
+  testSp: number;
+  inProgressSp: number;
+  totalSp: number;
+  doneBv: number;
+  testBv: number;
+  inProgressBv: number;
+  totalBv: number;
+  doneItems: number;
+  testItems: number;
+  inProgressItems: number;
+  totalItems: number;
+  // Sprint time
+  workingDaysRemaining: number | null;
+  totalWorkingDays: number | null;
+}
+
+function pct(n: number, total: number): number {
+  return total > 0 ? (n / total) * 100 : 0;
+}
+
+export function SprintCompletionBar(props: SprintCompletionBarProps) {
+  const [mode, setMode] = useState<CompletionMode>("sp");
+
+  const { workingDaysRemaining, totalWorkingDays } = props;
+
+  // Pick values based on mode
+  const done = mode === "sp" ? props.doneSp : mode === "bv" ? props.doneBv : props.doneItems;
+  const test = mode === "sp" ? props.testSp : mode === "bv" ? props.testBv : props.testItems;
+  const prog = mode === "sp" ? props.inProgressSp : mode === "bv" ? props.inProgressBv : props.inProgressItems;
+  const total = mode === "sp" ? props.totalSp : mode === "bv" ? props.totalBv : props.totalItems;
+
+  const donePct = pct(done, total);
+  const testPct = pct(test, total);
+  const progPct = pct(prog, total);
+  const completePct = Math.round(donePct);
+
+  const label = mode === "sp" ? "SP" : mode === "bv" ? "BV" : "";
+
+  // Sprint time progress
+  const daysElapsed = totalWorkingDays != null && workingDaysRemaining != null ? totalWorkingDays - workingDaysRemaining : null;
+  const timePct = totalWorkingDays != null && totalWorkingDays > 0 && daysElapsed != null ? Math.round((daysElapsed / totalWorkingDays) * 100) : null;
+
+  if (total <= 0 && mode !== "items") return null;
+
+  const modes: { key: CompletionMode; label: string }[] = [
+    { key: "sp", label: "SP" },
+    { key: "bv", label: "BV" },
+    { key: "items", label: "#" },
+  ];
+
+  // Segment legend entries (only non-zero)
+  const segments: { key: string; value: number; color: string }[] = [];
+  if (done > 0) segments.push({ key: "done", value: done, color: STATUS_PILL_COLORS.DONE.dot ?? STATUS_PILL_COLORS.DONE.text });
+  if (test > 0) segments.push({ key: "test", value: test, color: STATUS_PILL_COLORS.TEST.dot ?? STATUS_PILL_COLORS.TEST.text });
+  if (prog > 0) segments.push({ key: "prog", value: prog, color: STATUS_PILL_COLORS["IN PROGRESS"].dot ?? STATUS_PILL_COLORS["IN PROGRESS"].text });
+
+  const doneColor = STATUS_PILL_COLORS.DONE.dot ?? STATUS_PILL_COLORS.DONE.text;
+  const testColor = STATUS_PILL_COLORS.TEST.dot ?? STATUS_PILL_COLORS.TEST.text;
+  const progColor = STATUS_PILL_COLORS["IN PROGRESS"].dot ?? STATUS_PILL_COLORS["IN PROGRESS"].text;
+
+  const BAR_W = 200;
+  const TIME_W = 90;
+
+  const hasTime = workingDaysRemaining != null && totalWorkingDays != null && totalWorkingDays > 0 && daysElapsed != null;
+
+  // The bar visually centers in the header row. Labels hang below the bar,
+  // so the bar itself must sit slightly below geometric center to look centered.
+  const CONTAINER_H = 30;
+  const BAR_TOP = 12;
+  const LABEL_TOP = BAR_TOP + 9;
+
+  return (
+    <div className="flex items-center gap-3 select-none" style={{ height: CONTAINER_H }}>
+      {/* Stats: items | SP / BV -- hidden on narrow screens */}
+      <div className="hidden xl:flex items-center gap-1.5 text-xs tabular-nums">
+        <span className="text-text-secondary">{props.totalItems} items</span>
+        {props.totalSp > 0 && (
+          <>
+            <span className="text-text-muted">|</span>
+            <span className="flex items-center gap-0.5">
+              <span className="font-semibold text-text-primary">{props.totalSp}</span>
+              <span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span>
+            </span>
+            {props.totalBv > 0 && (
+              <>
+                <span className="text-text-muted/50">/</span>
+                <span className="flex items-center gap-0.5">
+                  <span className="font-semibold text-text-primary">{props.totalBv}</span>
+                  <span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span>
+                </span>
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Mode toggle */}
+      <div className="flex items-center rounded h-[18px] overflow-hidden" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+        {modes.map((m) => (
+          <button
+            key={m.key}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setMode(m.key); }}
+            className="px-1.5 h-full text-[9px] font-semibold uppercase tracking-wide cursor-pointer transition-colors duration-100"
+            style={{
+              color: mode === m.key ? "var(--color-text-primary)" : "var(--color-text-muted)",
+              backgroundColor: mode === m.key ? "var(--color-overlay-strong)" : "transparent",
+            }}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Progress bar with counts below */}
+      <div className="relative self-stretch" style={{ width: BAR_W }}>
+        <div className="absolute left-0 right-0 h-[5px] overflow-hidden rounded-full" style={{ top: BAR_TOP, backgroundColor: "var(--color-overlay-default)" }}>
+          <div
+            className="absolute inset-y-0 left-0 rounded-l-full transition-[width] duration-500 ease-out"
+            style={{ width: `${donePct}%`, backgroundColor: doneColor }}
+          />
+          {test > 0 && (
+            <div
+              className="absolute inset-y-0 transition-[width,left] duration-500 ease-out"
+              style={{ left: `${donePct}%`, width: `${testPct}%`, backgroundColor: testColor, opacity: 0.7 }}
+            />
+          )}
+          {prog > 0 && (
+            <div
+              className="absolute inset-y-0 transition-[width,left] duration-500 ease-out"
+              style={{ left: `${donePct + testPct}%`, width: `${progPct}%`, backgroundColor: progColor, opacity: 0.5 }}
+            />
+          )}
+        </div>
+        {/* Counts positioned under their segments */}
+        <div className="absolute left-0 right-0 text-[9px] tabular-nums text-text-muted leading-none" style={{ top: LABEL_TOP }}>
+          {done > 0 && (
+            <span className="absolute flex items-center gap-0.5" style={{ left: `${donePct / 2}%`, transform: "translateX(-50%)" }}>
+              <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: doneColor }} />
+              <span>{done}</span>
+            </span>
+          )}
+          {test > 0 && (
+            <span className="absolute flex items-center gap-0.5" style={{ left: `${donePct + testPct / 2}%`, transform: "translateX(-50%)" }}>
+              <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: testColor, opacity: 0.7 }} />
+              <span>{test}</span>
+            </span>
+          )}
+          {prog > 0 && (
+            <span className="absolute flex items-center gap-0.5" style={{ left: `${donePct + testPct + progPct / 2}%`, transform: "translateX(-50%)" }}>
+              <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: progColor, opacity: 0.5 }} />
+              <span>{prog}</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Percentage */}
+      <span className="text-[10px] font-medium tabular-nums text-text-tertiary">{completePct}%</span>
+
+      {/* Time bar + label, hidden on narrow screens */}
+      {hasTime && (
+        <div className="relative self-stretch pl-2 border-l border-border-subtle hidden lg:block" style={{ width: TIME_W }}>
+          <div className="absolute left-[9px] right-0 h-[5px] overflow-hidden rounded-full" style={{ top: BAR_TOP, backgroundColor: "var(--color-overlay-default)" }}>
+            <div
+              className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
+              style={{
+                width: `${timePct}%`,
+                backgroundColor: workingDaysRemaining! <= 2 ? "rgba(234,179,8,0.55)" : "var(--color-text-muted)",
+                opacity: 0.4,
+              }}
+            />
+          </div>
+          <span className={`absolute text-[10px] tabular-nums whitespace-nowrap leading-none ${workingDaysRemaining! <= 2 ? "text-amber-400/70" : "text-text-muted"}`} style={{ top: LABEL_TOP, left: 9 }}>
+            {workingDaysRemaining === 0 ? "last day" : `day ${daysElapsed}/${totalWorkingDays}`}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Status pill ────────────────────────────────────────────────────────────
 // Colored chip for Jira statuses. Shows a dot when showDot is true.
 // Pass onClick to make it a filter toggle (active = currently selected).

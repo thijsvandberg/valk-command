@@ -1,9 +1,9 @@
 import "server-only";
 import { db } from "@/db";
-import { pipelineRun, alert, ticketMetadata, appSetting, followedTicket, followedSprint, ticket } from "@/db/schema";
+import { pipelineRun, alert, ticketMetadata, appSetting } from "@/db/schema";
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, isTicketFollowed } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
 
@@ -572,26 +572,6 @@ async function runDeployDetectionForStateChanges(stateChanges: StateChangeEntry[
   );
 }
 
-function isDeploymentFollowed(ticketKey: string): boolean {
-  const isTicketFollowed = !!db.select({ ticketKey: followedTicket.ticketKey })
-    .from(followedTicket)
-    .where(eq(followedTicket.ticketKey, ticketKey))
-    .get();
-  if (isTicketFollowed) return true;
-
-  const ticketRow = db.select({ sprintName: ticket.sprintName })
-    .from(ticket)
-    .where(eq(ticket.jiraKey, ticketKey))
-    .get();
-
-  if (!ticketRow?.sprintName) return false;
-
-  return !!db.select({ sprintName: followedSprint.sprintName })
-    .from(followedSprint)
-    .where(eq(followedSprint.sprintName, ticketRow.sprintName))
-    .get();
-}
-
 export function processStateChanges(stateChanges: StateChangeEntry[]) {
   if (stateChanges.length === 0) return;
 
@@ -609,13 +589,13 @@ export function processStateChanges(stateChanges: StateChangeEntry[]) {
     const eventAt = run.completedAt ?? run.createdAt;
     if (run.isDeployment) {
       if (!run.ticketKey || !run.environment) continue;
-      // Non-production deployments (UAT, Staging, Test) only notify when the ticket
-      // or its sprint is explicitly followed — production always notifies.
-      if (run.environmentType !== "Production" && !isDeploymentFollowed(run.ticketKey)) continue;
+      // Non-production deployments require an explicit follow (ticket or sprint).
+      // Production always notifies.
+      if (run.environmentType !== "Production" && !isTicketFollowed(run.ticketKey, true)) continue;
       const message = finalState === "SUCCESSFUL"
         ? `Deployed ${run.ticketKey} to ${run.environment}`
         : `Deployment to ${run.environment} failed for ${run.ticketKey}`;
-      createNotification("deployment", message, { category: "deployment", jiraKey: run.ticketKey, linkUrl: run.pipelineUrl ?? undefined, eventAt });
+      createNotification("deployment", message, { category: "deployment", jiraKey: run.ticketKey, linkUrl: run.pipelineUrl ?? undefined, eventAt, skipFollowCheck: true });
     } else {
       // Only notify on failures — successful pipeline completions are too noisy
       if (finalState === "SUCCESSFUL") continue;
@@ -656,6 +636,21 @@ export function processPRNotifications(candidates: PrCandidate[]) {
 
 // -- Direct PR sync (polls Bitbucket PR API for open + recently merged PRs) --
 
+const PR_SYNC_WATERMARK_KEY = "pr_sync:watermark";
+
+function getPrSyncWatermark(): string | null {
+  return db.select().from(appSetting).where(eq(appSetting.key, PR_SYNC_WATERMARK_KEY)).get()?.value ?? null;
+}
+
+function setPrSyncWatermark(value: string) {
+  const existing = db.select().from(appSetting).where(eq(appSetting.key, PR_SYNC_WATERMARK_KEY)).get();
+  if (existing) {
+    db.update(appSetting).set({ value }).where(eq(appSetting.key, PR_SYNC_WATERMARK_KEY)).run();
+  } else {
+    db.insert(appSetting).values({ key: PR_SYNC_WATERMARK_KEY, value }).run();
+  }
+}
+
 interface BbPullRequest {
   id: number;
   title: string;
@@ -684,8 +679,10 @@ export async function syncPullRequests(): Promise<PrSyncResult> {
   }
 
   const cfg = getBitbucketConfig();
+  const watermark = getPrSyncWatermark();
   let newOpened = 0;
   let newMerged = 0;
+  let newestTimestamp = watermark;
 
   const repoResults = await Promise.all(
     cfg.repoSlugs.map(async (repoSlug) => {
@@ -701,6 +698,8 @@ export async function syncPullRequests(): Promise<PrSyncResult> {
     for (const pr of openPrs) {
       const prUrl = pr.links?.html?.href;
       if (!prUrl || !pr.title) continue;
+      // Skip PRs created before the watermark
+      if (watermark && pr.created_on && pr.created_on <= watermark) continue;
 
       const exists = db.select({ id: alert.id })
         .from(alert)
@@ -717,11 +716,17 @@ export async function syncPullRequests(): Promise<PrSyncResult> {
         });
         newOpened++;
       }
+
+      if (pr.created_on && (!newestTimestamp || pr.created_on > newestTimestamp)) {
+        newestTimestamp = pr.created_on;
+      }
     }
 
     for (const pr of mergedPrs) {
       const prUrl = pr.links?.html?.href;
       if (!prUrl || !pr.title) continue;
+      // Skip PRs merged before the watermark
+      if (watermark && pr.updated_on && pr.updated_on <= watermark) continue;
 
       const mergedLinkUrl = `${prUrl}#merged`;
       const exists = db.select({ id: alert.id })
@@ -739,7 +744,18 @@ export async function syncPullRequests(): Promise<PrSyncResult> {
         });
         newMerged++;
       }
+
+      if (pr.updated_on && (!newestTimestamp || pr.updated_on > newestTimestamp)) {
+        newestTimestamp = pr.updated_on;
+      }
     }
+  }
+
+  // On first run (no watermark), set watermark to now so only future PRs are notified
+  if (!watermark) {
+    setPrSyncWatermark(new Date().toISOString());
+  } else if (newestTimestamp && newestTimestamp > watermark) {
+    setPrSyncWatermark(newestTimestamp);
   }
 
   return { newOpened, newMerged };

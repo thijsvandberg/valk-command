@@ -1,7 +1,7 @@
 "use client";
 
 import { useNotification } from "@/hooks/useNotification";
-import { Bell, BellOff, ShieldCheck, ShieldX, GitBranch, Rocket, GitPullRequest, RefreshCw, BookOpen, Info, Zap, Bot, Timer } from "lucide-react";
+import { Bell, BellOff, ShieldCheck, ShieldX, GitBranch, Rocket, GitPullRequest, RefreshCw, BookOpen, Info, Zap, Bot, Timer, Users } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, settings } from "@/lib/api-client";
 import type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
@@ -81,7 +81,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
       onClick={() => onChange(!enabled)}
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
         enabled
-          ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/30"
+          ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)]"
           : "border-border-strong bg-overlay-default"
       }`}
     >
@@ -103,7 +103,15 @@ export default function NotificationsPage() {
     { revalidateOnFocus: false },
   );
 
+  const { data: teamsData, mutate: mutateTeams } = useSWR<{ teams: string[]; available: string[] }>(
+    "/api/settings/subscribed-teams",
+    swrFetcher,
+    { revalidateOnFocus: false },
+  );
+
   const preferences = data?.preferences;
+  const subscribedTeams = teamsData?.teams ?? [];
+  const availableTeams = teamsData?.available ?? [];
 
   const permissionGranted = permission === "granted";
   const permissionDenied = permission === "denied";
@@ -118,6 +126,19 @@ export default function NotificationsPage() {
     } else {
       setEnabled(false);
     }
+  };
+
+  const handleTeamToggle = async (team: string, value: boolean) => {
+    const updated = value
+      ? [...subscribedTeams, team]
+      : subscribedTeams.filter((t) => t !== team);
+    await mutateTeams(
+      async () => {
+        const result = await settings.saveSubscribedTeams(updated);
+        return result;
+      },
+      { optimisticData: { teams: updated, available: availableTeams }, rollbackOnError: true },
+    );
   };
 
   const handleCategoryToggle = async (category: NotificationCategory, value: boolean) => {
@@ -163,7 +184,7 @@ export default function NotificationsPage() {
             disabled={permissionDenied}
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
               enabled
-                ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/30"
+                ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)]"
                 : "border-border-strong bg-overlay-default"
             }`}
           >
@@ -206,6 +227,38 @@ export default function NotificationsPage() {
           so you can multitask without watching the tab.
         </p>
       </div>
+
+      {availableTeams.length > 0 && (
+        <>
+          <h2 className="mb-5 mt-10 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+            Subscribed Teams
+          </h2>
+
+          <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-overlay-subtle overflow-hidden">
+            {availableTeams.map((team) => {
+              const isSubscribed = subscribedTeams.includes(team);
+              return (
+                <div key={team} className="flex items-center justify-between px-4 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <span className={isSubscribed ? "text-[var(--color-brand-400)]" : "text-text-muted"}>
+                      <Users size={14} strokeWidth={1.5} />
+                    </span>
+                    <p className="text-sm font-medium text-text-secondary">{team}</p>
+                  </div>
+                  <Toggle
+                    enabled={isSubscribed}
+                    onChange={(v) => handleTeamToggle(team, v)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="mt-4 text-label leading-relaxed text-text-muted">
+            Only subscribed teams count toward the notification badge. Unsubscribed teams are still visible in the notification panel but filtered out by default.
+          </p>
+        </>
+      )}
 
       <h2 className="mb-5 mt-10 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
         Notification Categories

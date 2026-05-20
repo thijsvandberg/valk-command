@@ -167,6 +167,8 @@ interface NotificationResponse {
     linkUrl: string | null;
   }>;
   unreadCount: number;
+  subscribedUnreadCount: number;
+  subscribedTeams: string[];
   totalCount: number;
 }
 
@@ -221,6 +223,8 @@ export function useNotifications(limit = 50) {
     ...swr,
     notifications: swr.data?.notifications ?? [],
     unreadCount: swr.data?.unreadCount ?? 0,
+    subscribedUnreadCount: swr.data?.subscribedUnreadCount ?? 0,
+    subscribedTeams: swr.data?.subscribedTeams ?? [],
     totalCount: swr.data?.totalCount ?? 0,
     markRead,
     markAllRead,

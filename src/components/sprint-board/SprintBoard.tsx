@@ -17,7 +17,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
-import { StatPill, StatusPill, StatusCount, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
+import { StatPill, StatusPill, StatusCount, SprintCompletionBar, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
@@ -283,6 +283,26 @@ export default function SprintBoard() {
     }
     return stats;
   }, [allTickets]);
+  // Sprint working days for active sprint time indicator
+  const sprintWorkDays = useMemo(() => {
+    if (!activeSprint || activeSprint.state !== "active" || !activeSprint.startDate || !activeSprint.endDate) return { remaining: null, total: null };
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const start = new Date(activeSprint.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(activeSprint.endDate);
+    end.setHours(0, 0, 0, 0);
+    let total = 0;
+    const d1 = new Date(start);
+    while (d1 <= end) { if (d1.getDay() !== 0 && d1.getDay() !== 6) total++; d1.setDate(d1.getDate() + 1); }
+    let remaining = 0;
+    if (end >= now) {
+      const d2 = new Date(now);
+      while (d2 <= end) { if (d2.getDay() !== 0 && d2.getDay() !== 6) remaining++; d2.setDate(d2.getDate() + 1); }
+    }
+    return { remaining, total };
+  }, [activeSprint]);
+
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
 
@@ -334,7 +354,7 @@ export default function SprintBoard() {
   }, []);
 
   useEffect(() => {
-    function onOpenSearch() { setSearchModalOpen(true); }
+    function onOpenSearch(e: Event) { e.preventDefault(); setSearchModalOpen(true); }
     window.addEventListener("valk:openSearch", onOpenSearch);
     return () => { window.removeEventListener("valk:openSearch", onOpenSearch); };
   }, []);
@@ -944,73 +964,135 @@ export default function SprintBoard() {
           >
           <ViewHeaderTitle>
             {isAllView ? "All tickets" : f.activeView ? f.activeView.title : activeSprint ? activeSprint.name : "Sprint Board"}
+            {activeSprint?.state === "active" && (
+              <span className="relative ml-2 inline-flex h-2 w-2 shrink-0 translate-y-[-1px]">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-secondary-400)] opacity-40" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-secondary-400)]" />
+              </span>
+            )}
           </ViewHeaderTitle>
           {!ticketsLoading && (isAllView || activeSprint || f.activeView) && (
               <>
-                <ViewHeaderDivider />
-                <div className="flex items-center gap-1.5 text-xs tabular-nums">
-                  <span className="text-text-secondary">{f.hasActiveFilters ? `${tickets.length.toLocaleString("nl-NL")}/${allTickets.length.toLocaleString("nl-NL")}` : allTickets.length.toLocaleString("nl-NL")} items</span>
-                  {!isAllView && !f.activeView && totalPoints > 0 && (
-                    <>
-                      <span className="text-text-muted">|</span>
-                      <Tooltip content={
-                        <div className="flex flex-col gap-1.5 tabular-nums text-[12px]">
-                          <div className="flex items-baseline justify-between gap-4">
-                            <span className="text-text-tertiary">Story Points</span>
-                            <span><span className="font-semibold text-text-primary">{totalPoints}</span>{allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length > 0 && <span className="text-text-muted ml-1">avg {(totalPoints / allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length).toFixed(1)}</span>}</span>
-                          </div>
-                          {bvScoredTickets.length > 0 && (
-                            <div className="flex items-baseline justify-between gap-4">
-                              <span className="text-text-tertiary">Business Value</span>
-                              <span><span className="font-semibold text-text-primary">{bvTotal}</span>{bvAvg && <span className="text-text-muted ml-1">avg {bvAvg}</span>}</span>
-                            </div>
-                          )}
-                          {noPointsCount > 0 && (
-                            <div className="flex items-center gap-1.5 pt-0.5 border-t border-border-subtle">
-                              <AlertTriangle size={10} strokeWidth={2} className="text-amber-400 shrink-0" />
-                              <span className="text-amber-400">{noPointsCount} without estimate</span>
-                            </div>
-                          )}
+                {/* Active sprint: unified completion bar replaces separate stats + bar */}
+                {!isAllView && !f.activeView && activeSprint?.state === "active" ? (
+                  <>
+                    <ViewHeaderDivider />
+                    <Tooltip content={
+                      <div className="flex flex-col gap-1.5 tabular-nums text-[12px]">
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className="text-text-tertiary">Items</span>
+                          <span className="font-semibold text-text-primary">{allTickets.length}</span>
                         </div>
-                      }>
-                        <span className="flex items-center gap-1">
-                          <span className="flex items-center gap-0.5">
-                            <span className="font-semibold text-text-primary">{totalPoints}</span>
-                            <span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span>
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className="text-text-tertiary">Story Points</span>
+                          <span><span className="font-semibold text-text-primary">{totalPoints}</span>{allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length > 0 && <span className="text-text-muted ml-1">avg {(totalPoints / allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length).toFixed(1)}</span>}</span>
+                        </div>
+                        {bvScoredTickets.length > 0 && (
+                          <div className="flex items-baseline justify-between gap-4">
+                            <span className="text-text-tertiary">Business Value</span>
+                            <span><span className="font-semibold text-text-primary">{bvTotal}</span>{bvAvg && <span className="text-text-muted ml-1">avg {bvAvg}</span>}</span>
+                          </div>
+                        )}
+                        {noPointsCount > 0 && (
+                          <div className="flex items-center gap-1.5 pt-0.5 border-t border-border-subtle">
+                            <AlertTriangle size={10} strokeWidth={2} className="text-amber-400 shrink-0" />
+                            <span className="text-amber-400">{noPointsCount} without estimate</span>
+                          </div>
+                        )}
+                        <div className="border-t border-border-subtle pt-1 mt-0.5">
+                          {(["DONE", "TEST", "IN PROGRESS", "TO DO"] as const).map((status) => {
+                            const ss = statusStats[status];
+                            const count = status === "TO DO" ? todoCount : status === "IN PROGRESS" ? inProgressCount : status === "TEST" ? testCount : doneCount;
+                            if (count === 0) return null;
+                            const colors = STATUS_PILL_COLORS[status];
+                            return (
+                              <div key={status} className="flex items-center justify-between gap-4 py-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: colors?.dot ?? colors?.text ?? "#94a3b8" }} />
+                                  <span className="text-text-secondary">{status}</span>
+                                </div>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="font-semibold text-text-primary">{count}</span>
+                                  {ss && ss.sp > 0 && (
+                                    <span className="flex items-center gap-0.5"><span className="text-text-tertiary">{ss.sp}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span></span>
+                                  )}
+                                  {ss && ss.bv > 0 && (
+                                    <span className="flex items-center gap-0.5"><span className="text-text-tertiary">{ss.bv}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span></span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    }>
+                      <div>
+                        <SprintCompletionBar
+                          doneSp={statusStats["DONE"]?.sp ?? 0}
+                          testSp={statusStats["TEST"]?.sp ?? 0}
+                          inProgressSp={statusStats["IN PROGRESS"]?.sp ?? 0}
+                          totalSp={totalPoints}
+                          doneBv={statusStats["DONE"]?.bv ?? 0}
+                          testBv={statusStats["TEST"]?.bv ?? 0}
+                          inProgressBv={statusStats["IN PROGRESS"]?.bv ?? 0}
+                          totalBv={bvTotal}
+                          doneItems={doneCount}
+                          testItems={testCount}
+                          inProgressItems={inProgressCount}
+                          totalItems={allTickets.length}
+                          workingDaysRemaining={sprintWorkDays.remaining}
+                          totalWorkingDays={sprintWorkDays.total}
+                        />
+                      </div>
+                    </Tooltip>
+                    {noPointsCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = new Set(f.gapsFilter);
+                          if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
+                          f.setGapsFilter(next);
+                        }}
+                        className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-all duration-150 ${
+                          f.gapsFilter.has("no_points")
+                            ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_rgba(234,179,8,0.3)]"
+                            : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
+                        }`}
+                        title={`${noPointsCount} without estimate`}
+                      >
+                        <AlertTriangle size={10} strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <ViewHeaderDivider />
+                    <div className="flex items-center gap-1.5 text-xs tabular-nums">
+                      <span className="text-text-secondary">{f.hasActiveFilters ? `${tickets.length.toLocaleString("nl-NL")}/${allTickets.length.toLocaleString("nl-NL")}` : allTickets.length.toLocaleString("nl-NL")} items</span>
+                      {!isAllView && !f.activeView && totalPoints > 0 && (
+                        <>
+                          <span className="text-text-muted">|</span>
+                          <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-0.5">
+                              <span className="font-semibold text-text-primary">{totalPoints}</span>
+                              <span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span>
+                            </span>
+                            {bvScoredTickets.length > 0 && (
+                              <>
+                                <span className="text-text-muted/50">/</span>
+                                <span className="flex items-center gap-0.5">
+                                  <span className="font-semibold text-text-primary">{bvTotal}</span>
+                                  <span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span>
+                                </span>
+                              </>
+                            )}
                           </span>
-                          {bvScoredTickets.length > 0 && (
-                            <>
-                              <span className="text-text-muted/50">/</span>
-                              <span className="flex items-center gap-0.5">
-                                <span className="font-semibold text-text-primary">{bvTotal}</span>
-                                <span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span>
-                              </span>
-                            </>
-                          )}
-                          {noPointsCount > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = new Set(f.gapsFilter);
-                                if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
-                                f.setGapsFilter(next);
-                              }}
-                              className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-all duration-150 ${
-                                f.gapsFilter.has("no_points")
-                                  ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_rgba(234,179,8,0.3)]"
-                                  : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
-                              }`}
-                              title={`${noPointsCount} without estimate`}
-                            >
-                              <AlertTriangle size={10} strokeWidth={2.5} />
-                            </button>
-                          )}
-                        </span>
-                      </Tooltip>
-                    </>
-                  )}
-                </div>
-                {!isAllView && !f.activeView && (
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+                {!isAllView && !f.activeView && activeSprint?.state !== "active" && (
                   <>
                     <ViewHeaderDivider />
                     <div className="flex items-center gap-1">
@@ -1019,38 +1101,20 @@ export default function SprintBoard() {
                         if (count === 0 && status === "TEST") return null;
                         const active = f.statusFilter.has(status);
                         const dimmed = f.statusFilter.size > 0 && !active;
-                        const ss = statusStats[status];
                         return (
-                          <Tooltip key={status} content={
-                            <div className="flex flex-col gap-1 tabular-nums text-[12px]">
-                              <div className="flex items-center gap-1.5">
-                                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: STATUS_PILL_COLORS[status]?.dot ?? STATUS_PILL_COLORS[status]?.text ?? "#94a3b8" }} />
-                                <span className="font-semibold text-text-primary">{status}</span>
-                              </div>
-                              <div className="flex items-baseline gap-2 text-text-secondary">
-                                <span>{count} items</span>
-                                {ss && ss.sp > 0 && (
-                                  <span className="flex items-center gap-0.5"><span className="font-semibold text-text-primary">{ss.sp}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span></span>
-                                )}
-                                {ss && ss.bv > 0 && (
-                                  <span className="flex items-center gap-0.5"><span className="font-semibold text-text-primary">{ss.bv}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span></span>
-                                )}
-                              </div>
-                            </div>
-                          }>
-                            <StatusCount
-                              colorKey={status}
-                              label={status}
-                              count={count}
-                              active={active}
-                              dimmed={dimmed}
-                              onClick={() => {
-                                const next = new Set(f.statusFilter);
-                                if (active) next.delete(status); else next.add(status);
-                                f.setStatusFilter(next);
-                              }}
-                            />
-                          </Tooltip>
+                          <StatusCount
+                            key={status}
+                            colorKey={status}
+                            label={status}
+                            count={count}
+                            active={active}
+                            dimmed={dimmed}
+                            onClick={() => {
+                              const next = new Set(f.statusFilter);
+                              if (active) next.delete(status); else next.add(status);
+                              f.setStatusFilter(next);
+                            }}
+                          />
                         );
                       })}
                     </div>

@@ -10,11 +10,16 @@ export function GlobalSearch() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "k" || e.key === "K")) {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "k" || e.key === "K" || e.code === "KeyK")) {
         e.preventDefault();
         e.stopPropagation();
         window.dispatchEvent(new Event("valk:closePalette"));
-        setOpen((prev) => !prev);
+        // Let page-level handlers (e.g. SprintBoard) claim the event first
+        const searchEvent = new Event("valk:openSearch", { cancelable: true });
+        const claimed = !window.dispatchEvent(searchEvent);
+        if (!claimed) {
+          setOpen((prev) => !prev);
+        }
       }
     }
     window.addEventListener("keydown", onKeyDown, { capture: true });

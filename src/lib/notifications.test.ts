@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { alert } from "@/db/schema";
+import { alert, followedTicket, followedSprint, ticket } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -28,7 +28,7 @@ vi.mock("@/lib/notification-preferences", () => ({
   }),
 }));
 
-import { createNotification, createOrUpdateNotification } from "./notifications";
+import { createNotification, createOrUpdateNotification, isTicketFollowed } from "./notifications";
 import { getPreferences } from "@/lib/notification-preferences";
 
 describe("createNotification", () => {
@@ -129,5 +129,98 @@ describe("createOrUpdateNotification", () => {
 
     const rows = testDb.select().from(alert).all();
     expect(rows).toHaveLength(2);
+  });
+});
+
+describe("isTicketFollowed", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("returns true when nothing is followed (backward compatible)", () => {
+    expect(isTicketFollowed("VPL-100")).toBe(true);
+  });
+
+  it("returns false with requireExplicit when nothing is followed", () => {
+    expect(isTicketFollowed("VPL-100", true)).toBe(false);
+  });
+
+  it("returns true when the ticket is directly followed", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-100" }).run();
+    expect(isTicketFollowed("VPL-100")).toBe(true);
+  });
+
+  it("returns false when other tickets are followed but not this one", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-200" }).run();
+    expect(isTicketFollowed("VPL-100")).toBe(false);
+  });
+
+  it("returns true when the ticket's sprint is followed", () => {
+    testDb.insert(followedSprint).values({ sprintName: "sprint-bt-137" }).run();
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-100", title: "Test", sprintName: "sprint-bt-137",
+      type: "Story", status: "In Progress", priority: "Medium",
+    }).run();
+
+    expect(isTicketFollowed("VPL-100")).toBe(true);
+  });
+
+  it("returns false when ticket's sprint is not followed", () => {
+    testDb.insert(followedSprint).values({ sprintName: "sprint-ht-42" }).run();
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-100", title: "Test", sprintName: "sprint-bt-137",
+      type: "Story", status: "In Progress", priority: "Medium",
+    }).run();
+
+    expect(isTicketFollowed("VPL-100")).toBe(false);
+  });
+});
+
+describe("createNotification with follow check", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.resetAllMocks();
+    vi.mocked(getPreferences).mockReturnValue({
+      general: true, pipeline: true, deployment: true, pr: true,
+      sync: true, "story-writer": true, system: true, agent: true, scheduler: true,
+    });
+  });
+
+  it("skips notification for unfollowed ticket when follows exist", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-200" }).run();
+
+    createNotification("pr", "PR opened", { category: "pr", jiraKey: "VPL-100" });
+
+    const rows = testDb.select().from(alert).all();
+    expect(rows).toHaveLength(0);
+  });
+
+  it("creates notification for followed ticket", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-100" }).run();
+
+    createNotification("pr", "PR opened", { category: "pr", jiraKey: "VPL-100" });
+
+    const rows = testDb.select().from(alert).all();
+    expect(rows).toHaveLength(1);
+  });
+
+  it("creates notification when skipFollowCheck is true", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-200" }).run();
+
+    createNotification("deployment", "Deployed to prod", {
+      category: "deployment", jiraKey: "VPL-100", skipFollowCheck: true,
+    });
+
+    const rows = testDb.select().from(alert).all();
+    expect(rows).toHaveLength(1);
+  });
+
+  it("always creates notifications without jiraKey", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-200" }).run();
+
+    createNotification("system", "System alert", { category: "system" });
+
+    const rows = testDb.select().from(alert).all();
+    expect(rows).toHaveLength(1);
   });
 });

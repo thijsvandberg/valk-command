@@ -80,7 +80,7 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
         </span>
         {visible && (
           <span
-            className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
+            className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
               pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
             }`}
           >
@@ -100,7 +100,7 @@ function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string |
           </span>
           {syncVisible && (
             <span
-              className={`pointer-events-none absolute left-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
+              className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
                 pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
               }`}
             >
@@ -182,11 +182,14 @@ function extractTeamPrefix(sprintName: string | null): string | null {
 }
 
 export function NotificationBell() {
-  const { notifications, unreadCount, totalCount, markRead, markAllRead, clearRead, dismissOne, markFilteredRead, clearFiltered } = useNotifications(50);
+  const { notifications, unreadCount, subscribedUnreadCount, subscribedTeams, totalCount, markRead, markAllRead, clearRead, dismissOne, markFilteredRead, clearFiltered } = useNotifications(50);
   const [open, setOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const [activeType, setActiveType] = useState<string | null>(null);
-  const [activeTeam, setActiveTeam] = useState<string | null>(null);
+  const [activeTeams, setActiveTeams] = useState<Set<string> | null>(null);
+
+  const hasSubscriptions = subscribedTeams.length > 0;
+  const badgeCount = hasSubscriptions ? subscribedUnreadCount : unreadCount;
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -200,10 +203,16 @@ export function NotificationBell() {
   }, []);
 
   function handleToggle() {
-    if (!open) computePos();
+    if (!open) {
+      computePos();
+      // Default team filter to subscribed teams when opening
+      if (hasSubscriptions) {
+        setActiveTeams(new Set(subscribedTeams));
+      }
+    }
     if (open) {
       setActiveType(null);
-      setActiveTeam(null);
+      setActiveTeams(null);
     }
     setOpen((v) => !v);
   }
@@ -218,7 +227,7 @@ export function NotificationBell() {
       ) {
         setOpen(false);
         setActiveType(null);
-        setActiveTeam(null);
+        setActiveTeams(null);
       }
     }
     function handleResize() { computePos(); }
@@ -232,7 +241,7 @@ export function NotificationBell() {
 
   // Derive per-type counts, per-team counts, and the filtered list from loaded notifications.
   // effectiveType/Team auto-clears when the active filter type or team has no more notifications.
-  const { typeCounts, teamCounts, filteredNotifications, filteredUnreadIds, filteredReadIds, effectiveType, effectiveTeam } = useMemo(() => {
+  const { typeCounts, teamCounts, filteredNotifications, filteredUnreadIds, filteredReadIds, effectiveType, effectiveTeams } = useMemo(() => {
     const typeCounts = new Map<string, { total: number; unread: number }>();
     const teamCounts = new Map<string, { total: number; unread: number }>();
 
@@ -251,15 +260,19 @@ export function NotificationBell() {
       }
     }
 
-    // If the active filter type/team has been fully cleared, treat it as inactive
     const effectiveType = activeType && typeCounts.has(activeType) ? activeType : null;
-    const effectiveTeam = activeTeam && teamCounts.has(activeTeam) ? activeTeam : null;
+    // Multi-select team filter: prune to teams that still have notifications
+    let effectiveTeams: Set<string> | null = null;
+    if (activeTeams) {
+      const pruned = new Set([...activeTeams].filter((t) => teamCounts.has(t)));
+      if (pruned.size > 0) effectiveTeams = pruned;
+    }
 
     const filtered = notifications.filter((n) => {
       if (effectiveType && n.type !== effectiveType) return false;
-      if (effectiveTeam) {
+      if (effectiveTeams) {
         const team = extractTeamPrefix(n.sprintName);
-        if (team !== effectiveTeam) return false;
+        if (!team || !effectiveTeams.has(team)) return false;
       }
       return true;
     });
@@ -271,11 +284,11 @@ export function NotificationBell() {
       filteredUnreadIds: filtered.filter((n) => !n.read).map((n) => n.id),
       filteredReadIds: filtered.filter((n) => n.read).map((n) => n.id),
       effectiveType,
-      effectiveTeam,
+      effectiveTeams,
     };
-  }, [notifications, activeType, activeTeam]);
+  }, [notifications, activeType, activeTeams]);
 
-  const hasFilter = effectiveType !== null || effectiveTeam !== null;
+  const hasFilter = effectiveType !== null || effectiveTeams !== null;
 
   function handleMarkAllRead() {
     if (hasFilter) markFilteredRead(filteredUnreadIds);
@@ -298,14 +311,14 @@ export function NotificationBell() {
         size="md"
         iconOnly
         onClick={handleToggle}
-        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        aria-label={`Notifications${badgeCount > 0 ? ` (${badgeCount} unread)` : ""}`}
         className="relative border-0 bg-transparent"
         icon={
           <>
             <Bell size={16} strokeWidth={1.5} />
-            {unreadCount > 0 && (
+            {badgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-caption font-bold text-white tabular-nums shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
-                {unreadCount > 9 ? "9+" : unreadCount}
+                {badgeCount > 9 ? "9+" : badgeCount}
               </span>
             )}
           </>
@@ -386,16 +399,24 @@ export function NotificationBell() {
                 <span className="mx-1 h-3.5 w-px shrink-0 bg-overlay-strong" />
               )}
 
-              {/* Team chips */}
+              {/* Team chips (multi-select) */}
               {teamCounts.size > 1 && [...teamCounts.entries()].map(([team, { unread }]) => {
-                const isActive = effectiveTeam === team;
+                const isActive = effectiveTeams?.has(team) ?? false;
+                const isSubscribed = subscribedTeams.includes(team);
                 return (
                   <button
                     key={team}
                     type="button"
-                    onClick={() => setActiveTeam(isActive ? null : team)}
+                    onClick={() => {
+                      setActiveTeams((prev) => {
+                        const next = new Set(prev ?? []);
+                        if (next.has(team)) next.delete(team);
+                        else next.add(team);
+                        return next.size > 0 ? next : null;
+                      });
+                    }}
                     aria-pressed={isActive}
-                    aria-label={`Team ${team}${unread > 0 ? `: ${unread} unread` : ""}`}
+                    aria-label={`Team ${team}${unread > 0 ? `: ${unread} unread` : ""}${isSubscribed ? " (subscribed)" : ""}`}
                     className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
                       isActive
                         ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)] ring-1 ring-inset ring-[var(--color-brand-500)]/25"

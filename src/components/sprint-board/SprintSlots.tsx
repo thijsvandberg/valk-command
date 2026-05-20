@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, RefreshCw, LayoutGrid, Layers } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -57,27 +57,35 @@ function SortableTab({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative flex items-center">
+    <div ref={setNodeRef} style={style} className="relative flex h-full items-stretch">
       <button
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className={`relative flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`group relative flex items-center gap-1.5 px-2.5 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
-            ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
-            : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default"
+            ? "text-text-primary"
+            : "text-text-tertiary hover:text-text-secondary"
         }`}
-        style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
+        style={{ transition: "color 120ms" }}
         {...attributes}
         {...listeners}
       >
         {sprint.state === "active" && (
           <span
-            className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-overlay-strong"}`}
-            style={isActive ? { boxShadow: "0 0 4px var(--color-brand-400)" } : undefined}
+            className={`h-[7px] w-[7px] rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-overlay-strong"}`}
+            style={isActive ? { boxShadow: "0 0 5px color-mix(in srgb, var(--color-brand-400) 50%, transparent)" } : undefined}
           />
         )}
         {sprint.name}
+        {/* Active underline */}
+        {isActive && (
+          <span className="absolute bottom-0 left-1.5 right-1.5 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
+        )}
+        {/* Hover underline preview */}
+        {!isActive && (
+          <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
+        )}
       </button>
     </div>
   );
@@ -145,6 +153,32 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
       )}
     </div>
   );
+}
+
+// -- Scroll overflow detection for fade indicators --
+
+function useScrollOverflow(ref: React.RefObject<HTMLElement | null>) {
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const check = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, [ref]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", check); ro.disconnect(); };
+  }, [ref, check]);
+
+  return { canScrollLeft, canScrollRight };
 }
 
 export function SprintSlots({
@@ -219,6 +253,9 @@ export function SprintSlots({
     useSensor(KeyboardSensor),
   );
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { canScrollLeft, canScrollRight } = useScrollOverflow(scrollRef);
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (over && active.id !== over.id) {
@@ -228,25 +265,36 @@ export function SprintSlots({
 
   return (
     <BarContainer>
-      {/* Scrollable tab area */}
-      <div className="flex min-w-0 flex-1 items-center gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {/* All tab -- always first, visually distinct with icon */}
+      {/* Scrollable tab area with fade indicators */}
+      <div className="relative flex min-w-0 flex-1 h-full items-stretch">
+        {/* Left fade */}
+        {canScrollLeft && (
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-[var(--color-surface-base)] to-transparent" />
+        )}
+        {/* Right fade */}
+        {canScrollRight && (
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-[var(--color-surface-base)] to-transparent" />
+        )}
+      <div ref={scrollRef} className="flex min-w-0 flex-1 h-full items-stretch gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* All tab -- pill outline style to distinguish from sprint tabs */}
       <button
         type="button"
         onClick={onAllClick}
-        className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`group relative flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
-            ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
-            : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default"
+            ? "border-[var(--color-brand-400)]/30 text-[var(--color-brand-400)]"
+            : "border-[var(--color-brand-400)]/15 text-text-tertiary hover:text-text-secondary hover:border-[var(--color-brand-400)]/30"
         }`}
-        style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
+        style={{
+          transition: "color 120ms, border-color 150ms",
+          backgroundColor: allActive ? "color-mix(in srgb, var(--color-brand-400) 5%, transparent)" : undefined,
+        }}
         title="Show all tickets across sprints"
       >
-        <LayoutGrid className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
         All
       </button>
 
-      {/* Saved view tabs */}
+      {/* Saved view tabs -- pill outline style to group with "All" */}
       {savedViews.length > 0 && savedViews.map((view) => {
         const isActive = activeViewId === view.id;
         return (
@@ -254,12 +302,15 @@ export function SprintSlots({
             key={view.id}
             type="button"
             onClick={() => onViewClick?.(view)}
-            className={`flex h-7 shrink-0 items-center rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            className={`group relative flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
-                ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
-                : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default"
+                ? "border-border-strong text-text-primary"
+                : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong"
             }`}
-            style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
+            style={{
+              transition: "color 120ms, border-color 150ms",
+              backgroundColor: isActive ? "color-mix(in srgb, var(--color-text-primary) 4%, transparent)" : undefined,
+            }}
           >
             {view.title}
           </button>
@@ -267,7 +318,7 @@ export function SprintSlots({
       })}
 
       {/* Divider between All/saved views and sprint tabs */}
-      <span className="mx-1 self-center"><BarDivider /></span>
+      <span className="mx-1 flex items-center self-center"><BarDivider /></span>
 
       <DndContext
         sensors={sensors}
@@ -283,7 +334,7 @@ export function SprintSlots({
             if (!sprint) return null;
             const isActive = !activeViewId && idx === activeSlot;
             return (
-              <div key={sprintId} className="relative shrink-0">
+              <div key={sprintId} className="relative shrink-0 flex h-full items-stretch">
                 <SortableTab
                   sprintId={sprintId}
                   sprint={sprint}
@@ -316,23 +367,30 @@ export function SprintSlots({
             type="button"
             onClick={onEphemeralClick}
             title="Temporary view -- not pinned"
-            className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium cursor-pointer ${
+            className={`group relative flex shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium cursor-pointer ${
               ephemeralIsActive
-                ? "bg-overlay-default text-text-secondary shadow-[var(--shadow-sm)]"
-                : "text-text-muted hover:text-text-secondary hover:bg-overlay-subtle"
+                ? "text-text-secondary"
+                : "text-text-muted hover:text-text-secondary"
             }`}
-            style={{ transition: "color 120ms, background-color 120ms, box-shadow 120ms" }}
+            style={{ transition: "color 120ms" }}
           >
             {eSprint.state === "active" && (
-              <span className={`h-1.5 w-1.5 rounded-full ${ephemeralIsActive ? "bg-[var(--color-brand-400)]/60" : "bg-overlay-strong"}`} />
+              <span className={`h-[7px] w-[7px] rounded-full ${ephemeralIsActive ? "bg-[var(--color-brand-400)]/60" : "bg-overlay-strong"}`} />
             )}
             <span className="italic">{eSprint.name}</span>
+            {ephemeralIsActive && (
+              <span className="absolute bottom-0 left-1.5 right-1.5 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-50" />
+            )}
+            {!ephemeralIsActive && (
+              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
+            )}
           </button>
         );
       })()}
-      </div>
+      </div>{/* end scrollable inner */}
+      </div>{/* end scroll wrapper */}
 
-      {/* Right side: active sort label + icon group */}
+      {/* Right side: icon group */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
         {/* Active sort label — shown to the left of the icon group */}
         {sortField && sortField !== "rank" && sortDir && onSortChange && (

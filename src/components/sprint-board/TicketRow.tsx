@@ -12,6 +12,7 @@ import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge, POStatusCell } from "@/components/sprint-board/TicketTableCells";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import { getBvColor } from "@/types/ticket";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
@@ -209,24 +210,31 @@ export const TicketRow = forwardRef<HTMLTableRowElement, TicketRowBaseProps>(fun
               {!isRemoved && ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
               {!isRemoved && ticket.editState === "conflict" && <EditStateDot state="conflict" />}
               {!preset && (
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    isFollowed ? unfollow(ticket.key) : follow(ticket.key);
-                  }}
-                  className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
-                    isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"
-                  }`}
-                  title={isFollowed ? "Unfollow" : "Follow for notifications"}
+                <Tooltip
+                  content={isFollowed
+                    ? "Following. Click to unfollow."
+                    : "Follow for PR, pipeline, and deployment notifications."
+                  }
+                  delay={600}
                 >
-                  <Star
-                    size={11}
-                    strokeWidth={1.5}
-                    className={isFollowed ? "text-amber-400 fill-amber-400" : "text-text-tertiary"}
-                  />
-                </button>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      isFollowed ? unfollow(ticket.key) : follow(ticket.key);
+                    }}
+                    className={`shrink-0 cursor-pointer transition-opacity duration-150 ${
+                      isFollowed ? "opacity-100" : "opacity-0 group-hover/row:opacity-40 hover:!opacity-100"
+                    }`}
+                  >
+                    <Star
+                      size={11}
+                      strokeWidth={1.5}
+                      className={isFollowed ? "text-amber-400 fill-amber-400" : "text-text-tertiary"}
+                    />
+                  </button>
+                </Tooltip>
               )}
               <OpenSubtasksIndicator
                 ticketKey={ticket.key}

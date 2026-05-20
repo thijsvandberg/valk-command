@@ -72,7 +72,7 @@ describe("usePipelines", () => {
   it("returns pipeline data when available", async () => {
     vi.useRealTimers();
     const mockRuns = [
-      { uuid: "1", state: "SUCCESSFUL", repoSlug: "my-repo" },
+      { id: "1", state: "SUCCESSFUL", repoSlug: "my-repo" },
     ];
     mockFetcher.mockResolvedValue({
       runs: mockRuns,
@@ -84,7 +84,7 @@ describe("usePipelines", () => {
     });
 
     await waitFor(() => expect(result.current.runs).toHaveLength(1));
-    expect(result.current.runs[0].uuid).toBe("1");
+    expect(result.current.runs[0].id).toBe("1");
   });
 
   it("passes filter params to SWR key", async () => {
