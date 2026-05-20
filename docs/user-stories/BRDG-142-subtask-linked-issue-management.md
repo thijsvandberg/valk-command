@@ -32,14 +32,14 @@ Currently the ticket detail view shows subtasks and linked issues as read-only l
 - [x] Empty state per filter ("No subtasks matching this filter")
 
 ### Phase 2: Subtask drag-and-drop reordering
-- [ ] Subtasks can be reordered via drag-and-drop
-- [ ] New order is persisted to Jira (Jira subtask ranking API)
-- [ ] Optimistic reorder in the UI, rollback on Jira error
-- [ ] Drag handle visible on hover for each subtask row
+- [x] Subtasks can be reordered via drag-and-drop
+- [x] New order is persisted to Jira (Jira subtask ranking API)
+- [x] Optimistic reorder in the UI, rollback on Jira error
+- [x] Drag handle visible on hover for each subtask row
 
 ### Phase 3: Linked issue management
-- [ ] "Link issue" button in the Linked Issues section header
-- [ ] Link dialog/popover with:
+- [x] "Link issue" button in the Linked Issues section header
+- [x] Link dialog/popover with:
   - Relation type dropdown with all Jira link types, "Relates to" selected by default:
     - **Relates to** / relates to
     - **Blocks** / is blocked by
@@ -49,11 +49,11 @@ Currently the ticket detail view shows subtasks and linked issues as read-only l
     - **Duplicates** / is duplicated by
     - **Is duplicated by** / duplicates
   - Issue picker with autocomplete (search by key or title across all synced tickets)
-- [ ] Creating a link pushes to Jira via the existing `createIssueLink` API
-- [ ] Link appears in the grouped list immediately after creation
-- [ ] Remove link action (icon button) on each linked issue row
-- [ ] Removing a link deletes via Jira API and removes from local DB
-- [ ] Confirmation before removing a link
+- [x] Creating a link pushes to Jira via the existing `createIssueLink` API
+- [x] Link appears in the grouped list immediately after creation
+- [x] Remove link action (icon button) on each linked issue row
+- [x] Removing a link deletes via Jira API and removes from local DB
+- [x] Confirmation before removing a link
 
 ### Phase 4: AI-powered related issue search (interface only)
 - [ ] "Find related" button in the Linked Issues section header
