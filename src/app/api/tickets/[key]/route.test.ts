@@ -14,7 +14,10 @@ vi.mock("@/db", () => ({
 }));
 
 vi.mock("@/lib/jira-client", () => ({
-  jiraClient: { updateIssue: vi.fn().mockResolvedValue(undefined) },
+  jiraClient: {
+    updateIssue: vi.fn().mockResolvedValue(undefined),
+    addComment: vi.fn().mockResolvedValue(undefined),
+  },
   STORY_POINTS_FIELD: "customfield_11909",
 }));
 
@@ -375,5 +378,140 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     expect(response.status).toBe(200);
     expect(data.epicKey).toBe("VPL-999");
     expect(data.epic).toBe("VPL-999");
+  });
+});
+
+describe("PATCH /api/tickets/[key] - flagged", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    cache.flush();
+    vi.clearAllMocks();
+  });
+
+  it("flags a ticket and persists to database", async () => {
+    seedTicket(testDb, "VPL-400");
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-400", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: true }),
+      }),
+      makeParams("VPL-400"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.flagged).toBe(true);
+
+    // Verify persisted via GET
+    cache.flush();
+    const getRes = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-400"),
+      makeParams("VPL-400"),
+    );
+    const getData = await getRes.json();
+    expect(getData.flagged).toBe(true);
+  });
+
+  it("unflags a ticket", async () => {
+    // Seed a flagged ticket
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-401",
+      title: "Flagged ticket",
+      status: "TO DO",
+      flagged: true,
+    }).run();
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-401", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: false }),
+      }),
+      makeParams("VPL-401"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.flagged).toBe(false);
+  });
+
+  it("calls jiraClient.updateIssue and addComment when flagging", async () => {
+    seedTicket(testDb, "VPL-402");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-402", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: true, flagReason: "Blocked by API" }),
+      }),
+      makeParams("VPL-402"),
+    );
+
+    // Async Jira sync fires in background IIFE, give it a tick
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-402", { flagged: true });
+    expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-402", "flag_on Flag added\n\nBlocked by API");
+  });
+
+  it("calls jiraClient.addComment with unflag message when unflagging", async () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-403",
+      title: "Flagged ticket",
+      status: "TO DO",
+      flagged: true,
+    }).run();
+
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-403", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: false }),
+      }),
+      makeParams("VPL-403"),
+    );
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-403", { flagged: false });
+    expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-403", "flag_off Flag removed");
+  });
+
+  it("flags without reason when flagReason not provided", async () => {
+    seedTicket(testDb, "VPL-404");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-404", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: true }),
+      }),
+      makeParams("VPL-404"),
+    );
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-404", "flag_on Flag added");
+  });
+
+  it("returns 400 when flagged is not a boolean", async () => {
+    seedTicket(testDb, "VPL-405");
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-405", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: "yes" }),
+      }),
+      makeParams("VPL-405"),
+    );
+
+    expect(response.status).toBe(400);
   });
 });
