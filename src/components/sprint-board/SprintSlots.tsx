@@ -282,8 +282,8 @@ export function SprintSlots({
         onClick={onAllClick}
         className={`group relative flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
-            ? "text-[var(--color-brand-400)]"
-            : "text-[var(--color-brand-400)]/70 hover:text-[var(--color-brand-400)]"
+            ? "text-[var(--color-brand-600)]"
+            : "text-[var(--color-brand-500)] hover:text-[var(--color-brand-600)]"
         }`}
         style={{
           transition: "color 120ms, background-color 150ms",
