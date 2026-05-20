@@ -240,6 +240,7 @@ export function registerScheduledTasks() {
   defineTask(
     "incremental-sync",
     "Jira Incremental Sync",
+    "Syncs recently updated tickets from Jira using watermark-based incremental fetching. Processes up to 50 tickets per run and creates notifications for changes.",
     150_000,
     runIncrementalSync,
   );
@@ -247,6 +248,7 @@ export function registerScheduledTasks() {
   defineTask(
     "cleanup-removed-tickets",
     "Cleanup Removed Tickets",
+    "Permanently deletes tickets removed from Jira more than 7 days ago, including all related data (comments, metadata, attachments, reviews).",
     24 * 60 * 60 * 1000,
     cleanupRemovedTickets,
   );
@@ -254,6 +256,7 @@ export function registerScheduledTasks() {
   defineTask(
     "cleanup-activity-log",
     "Activity Log Cleanup",
+    "Marks stale running entries as failed after 5 minutes, removes entries older than 7 days, and caps the log at 200 entries.",
     5 * 60 * 1000,
     cleanupActivityLog,
   );
@@ -261,6 +264,7 @@ export function registerScheduledTasks() {
   defineTask(
     "cleanup-notifications",
     "Notification Cleanup",
+    "Removes read and unread notifications older than 30 days to keep the notification list manageable.",
     60 * 60 * 1000,
     cleanupOldNotifications,
   );

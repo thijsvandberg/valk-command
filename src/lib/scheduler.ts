@@ -27,6 +27,8 @@ export interface ScheduledTaskDef {
   name: string;
   /** Human-readable label for the settings UI */
   label: string;
+  /** Short description of what this task does */
+  description: string;
   /** Interval between runs in milliseconds */
   intervalMs: number;
   /** The work to perform */
@@ -38,6 +40,7 @@ export interface ScheduledTaskDef {
 export interface TaskStatus {
   name: string;
   label: string;
+  description: string;
   intervalMs: number;
   enabled: boolean;
   lastRunAt: string | null;
@@ -59,17 +62,19 @@ const tasks: ScheduledTaskDef[] = [];
 export function defineTask(
   name: string,
   label: string,
+  description: string,
   intervalMs: number,
   handler: () => Promise<TaskResult>,
 ) {
   const existing = tasks.find((t) => t.name === name);
   if (existing) {
     existing.label = label;
+    existing.description = description;
     existing.intervalMs = intervalMs;
     existing.handler = handler;
     return;
   }
-  tasks.push({ name, label, intervalMs, handler, enabled: true });
+  tasks.push({ name, label, description, intervalMs, handler, enabled: true });
 }
 
 export function getRegisteredTasks(): ScheduledTaskDef[] {
@@ -191,6 +196,7 @@ export async function getTaskStatuses(): Promise<TaskStatus[]> {
     statuses.push({
       name: task.name,
       label: task.label,
+      description: task.description,
       intervalMs: task.intervalMs,
       enabled: task.enabled,
       lastRunAt: lastRunRow?.value ?? null,

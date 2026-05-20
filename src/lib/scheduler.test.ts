@@ -35,7 +35,7 @@ describe("scheduler", () => {
   describe("defineTask", () => {
     it("registers a new task", () => {
       const name = uniqueName();
-      defineTask(name, "Test Label", 60_000, async () => ({}));
+      defineTask(name, "Test Label", "Test description", 60_000, async () => ({}));
       const tasks = getRegisteredTasks();
       const found = tasks.find((t) => t.name === name);
       expect(found).toBeDefined();
@@ -46,8 +46,8 @@ describe("scheduler", () => {
 
     it("updates existing task when called with same name", () => {
       const name = uniqueName();
-      defineTask(name, "Original", 10_000, async () => ({}));
-      defineTask(name, "Updated", 20_000, async () => ({ updated: true }));
+      defineTask(name, "Original", "Desc", 10_000, async () => ({}));
+      defineTask(name, "Updated", "Updated desc", 20_000, async () => ({ updated: true }));
       const tasks = getRegisteredTasks();
       const matches = tasks.filter((t) => t.name === name);
       expect(matches).toHaveLength(1);
@@ -59,7 +59,7 @@ describe("scheduler", () => {
   describe("getRegisteredTasks", () => {
     it("returns an array of registered tasks", () => {
       const name = uniqueName();
-      defineTask(name, "Label", 1000, async () => ({}));
+      defineTask(name, "Label", "Desc", 1000, async () => ({}));
       const result = getRegisteredTasks();
       expect(Array.isArray(result)).toBe(true);
       const found = result.find((t) => t.name === name);
@@ -72,7 +72,7 @@ describe("scheduler", () => {
       const name = uniqueName();
       const handler = vi.fn().mockResolvedValue({ done: true });
       // intervalMs = 0 means it is always overdue
-      defineTask(name, "Overdue Task", 0, handler);
+      defineTask(name, "Overdue Task", "Desc", 0, handler);
 
       const result = await tick();
 
@@ -85,7 +85,7 @@ describe("scheduler", () => {
       const name = uniqueName();
       const handler = vi.fn().mockResolvedValue({});
       // Very large interval so the task is never overdue
-      defineTask(name, "Far-future Task", 999_999_999, handler);
+      defineTask(name, "Far-future Task", "Desc", 999_999_999, handler);
 
       // Set last_run to right now so elapsed is nearly 0
       testDb.insert(appSetting).values({
@@ -101,7 +101,7 @@ describe("scheduler", () => {
 
     it("persists lastRun after running a task", async () => {
       const name = uniqueName();
-      defineTask(name, "Persist Test", 0, async () => ({ persisted: true }));
+      defineTask(name, "Persist Test", "Desc", 0, async () => ({ persisted: true }));
 
       await tick();
 
@@ -113,7 +113,7 @@ describe("scheduler", () => {
     it("handles task handler errors gracefully and notifies", async () => {
       const name = uniqueName();
       vi.mocked(createNotification).mockImplementation(() => undefined);
-      defineTask(name, "Failing Task", 0, async () => {
+      defineTask(name, "Failing Task", "Desc", 0, async () => {
         throw new Error("task exploded");
       });
 
@@ -135,7 +135,7 @@ describe("scheduler", () => {
         resolveHandler = res;
       });
 
-      defineTask(name, "Blocking Task", 0, async () => {
+      defineTask(name, "Blocking Task", "Desc", 0, async () => {
         await blockingPromise;
         return {};
       });

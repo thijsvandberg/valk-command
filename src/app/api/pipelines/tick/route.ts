@@ -67,6 +67,7 @@ async function runPipelineSync(): Promise<Record<string, unknown>> {
 registerIndependentTask({
   name: "pipeline-sync",
   label: "Bitbucket Pipeline Sync",
+  description: "Fetches pipeline runs and pull requests from configured Bitbucket repositories. Detects deployments, state changes, and notifies on failures and successful deployments.",
   intervalMs: INTERVAL_MS,
   lastRunKey: LAST_RUN_KEY,
   lastResultKey: LAST_RESULT_KEY,

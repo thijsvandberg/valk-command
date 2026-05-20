@@ -14,6 +14,7 @@ import { eq } from "drizzle-orm";
 export interface IndependentTaskStatus {
   name: string;
   label: string;
+  description: string;
   intervalMs: number;
   enabled: boolean;
   lastRunAt: string | null;
@@ -23,6 +24,7 @@ export interface IndependentTaskStatus {
 interface TaskRegistration {
   name: string;
   label: string;
+  description: string;
   intervalMs: number;
   lastRunKey: string;
   lastResultKey: string;
@@ -70,6 +72,7 @@ export function getIndependentTaskStatuses(): IndependentTaskStatus[] {
     return {
       name: task.name,
       label: task.label,
+      description: task.description,
       intervalMs: task.intervalMs,
       enabled: true,
       lastRunAt: lastRunRow?.value ?? null,

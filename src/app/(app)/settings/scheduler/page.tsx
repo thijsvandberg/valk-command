@@ -7,6 +7,7 @@ import { Clock, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Play } from "lu
 interface TaskStatus {
   name: string;
   label: string;
+  description: string;
   intervalMs: number;
   enabled: boolean;
   lastRunAt: string | null;
@@ -142,7 +143,7 @@ export default function SchedulerPage() {
                 key={task.name}
                 className="rounded-xl border border-border-default bg-overlay-subtle p-4"
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2.5">
                     <Clock size={13} strokeWidth={1.5} className="text-text-tertiary" />
                     <span className="text-sm font-medium text-text-primary">{task.label}</span>
@@ -172,6 +173,12 @@ export default function SchedulerPage() {
                     </button>
                   </div>
                 </div>
+
+                {task.description && (
+                  <p className="text-xs text-text-tertiary mb-3 ml-[23px] leading-[1.5]">
+                    {task.description}
+                  </p>
+                )}
 
                 <div className="flex items-center gap-4 text-xs">
                   {task.lastRunAt ? (
