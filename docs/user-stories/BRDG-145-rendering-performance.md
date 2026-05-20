@@ -69,14 +69,14 @@ d) Verify no regressions:
 
 ### 3. Lazy load tab content (Ticket Detail)
 
-- [ ] Convert tab content imports to `React.lazy` + `dynamic()` (Next.js):
+- [x] Convert tab content imports to `React.lazy` + `dynamic()` (Next.js):
   - TicketHistory
   - TicketReview
   - TicketRefinement
   - TicketDevelopment
-- [ ] Only mount the active tab component; unmount inactive tabs (or use a keep-alive pattern if tab switch latency is noticeable)
-- [ ] Add a lightweight Suspense fallback (skeleton or spinner) for first tab load
-- [ ] The default "Content" tab must remain eagerly loaded (it is the most viewed)
+- [x] Only mount the active tab component; unmount inactive tabs (or use a keep-alive pattern if tab switch latency is noticeable)
+- [x] Add a lightweight Suspense fallback (skeleton or spinner) for first tab load
+- [x] The default "Content" tab must remain eagerly loaded (it is the most viewed)
 
 ### 4. Deduplicate useTicketReviews (Ticket Detail)
 

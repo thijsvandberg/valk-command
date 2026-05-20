@@ -38,11 +38,33 @@ import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { LinkedIssuesSection } from "@/components/ticket-detail/LinkedIssuesSection";
 import { EpicChildrenSection } from "@/components/ticket-detail/EpicChildrenSection";
 import { CommentsSection } from "@/components/ticket-detail/CommentsSection";
-import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
-import { TicketReview } from "@/components/ticket-detail/TicketReview";
-import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
 import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
-import { TicketDevelopment } from "@/components/ticket-detail/TicketDevelopment";
+import dynamic from "next/dynamic";
+
+function TabLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 size={20} strokeWidth={1.5} className="animate-spin text-text-muted" />
+    </div>
+  );
+}
+
+const TicketHistory = dynamic(
+  () => import("@/components/ticket-detail/TicketHistory").then((m) => ({ default: m.TicketHistory })),
+  { loading: TabLoadingFallback },
+);
+const TicketReview = dynamic(
+  () => import("@/components/ticket-detail/TicketReview").then((m) => ({ default: m.TicketReview })),
+  { loading: TabLoadingFallback },
+);
+const TicketRefinement = dynamic(
+  () => import("@/components/ticket-detail/TicketRefinement").then((m) => ({ default: m.TicketRefinement })),
+  { loading: TabLoadingFallback },
+);
+const TicketDevelopment = dynamic(
+  () => import("@/components/ticket-detail/TicketDevelopment").then((m) => ({ default: m.TicketDevelopment })),
+  { loading: TabLoadingFallback },
+);
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
