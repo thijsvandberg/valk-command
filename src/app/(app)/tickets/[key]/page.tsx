@@ -14,6 +14,7 @@ import {
   Flag,
   Loader2,
   AlertTriangle,
+  MoreHorizontal,
   NotebookPen,
   Zap,
   IterationCw,
@@ -45,6 +46,8 @@ import { TicketDevelopment } from "@/components/ticket-detail/TicketDevelopment"
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
+import { Popover } from "@/components/shared/Popover";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -203,6 +206,11 @@ export default function TicketDetailPage({
   const [pushError, setPushError] = useState<string | null>(null);
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [draftDiscardKey, setDraftDiscardKey] = useState(0);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [showFlagDialog, setShowFlagDialog] = useState(false);
+  const [flagReasonInput, setFlagReasonInput] = useState("");
+  const [flagOverride, setFlagOverride] = useState<boolean | null>(null);
+  const isFlagged = flagOverride ?? ticket?.flagged ?? false;
 
 
   const handleTitleLocalEdit = useCallback((has: boolean) => setHasLocalTitleEdit(has), []);
@@ -283,6 +291,33 @@ export default function TicketDetailPage({
       console.error("Failed to refresh from Jira:", err);
     } finally {
       setIsRefreshing(false);
+    }
+  }, [key, mutateTicket]);
+
+  const handleFlag = useCallback(async () => {
+    const reason = flagReasonInput.trim();
+    setFlagOverride(true);
+    setShowFlagDialog(false);
+    setFlagReasonInput("");
+    try {
+      await tickets.toggleFlag(key, true, reason || undefined);
+      await mutateTicket();
+      setFlagOverride(null);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setFlagOverride(null);
+    }
+  }, [key, flagReasonInput, mutateTicket]);
+
+  const handleUnflag = useCallback(async () => {
+    setFlagOverride(false);
+    try {
+      await tickets.toggleFlag(key, false);
+      await mutateTicket();
+      setFlagOverride(null);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setFlagOverride(null);
     }
   }, [key, mutateTicket]);
 
@@ -384,7 +419,19 @@ export default function TicketDetailPage({
                 )}
               </nav>
             )}
-            {((ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic") && (
+            {isFlagged && (
+              <Tooltip content="This ticket is flagged">
+                <button
+                  onClick={handleUnflag}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[#e5534b]/25 bg-[#e5534b]/10 px-2 py-0.5 text-[11px] font-semibold text-[#e5534b] hover:bg-[#e5534b]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e5534b]/40 active:scale-[0.97]"
+                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                >
+                  <Flag size={11} strokeWidth={1.5} fill="#e5534b" />
+                  Flagged
+                </button>
+              </Tooltip>
+            )}
+            {((ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic" || isFlagged) && (
               <div className="h-5 w-px shrink-0 bg-overlay-default" />
             )}
             {showPushButton && (
@@ -436,6 +483,40 @@ export default function TicketDetailPage({
                   : <Copy size={14} strokeWidth={1.5} />
               }
             />
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                title="More actions"
+                aria-label="More actions"
+                icon={<MoreHorizontal size={14} strokeWidth={1.5} />}
+              />
+              <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
+                <div className="min-w-[180px] py-1">
+                  {!isFlagged ? (
+                    <button
+                      onClick={() => { setMoreMenuOpen(false); setShowFlagDialog(true); }}
+                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                      style={{ transition: "background-color 0.1s ease" }}
+                    >
+                      <Flag size={13} strokeWidth={1.5} className="text-text-muted" />
+                      Flag this ticket
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setMoreMenuOpen(false); handleUnflag(); }}
+                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                      style={{ transition: "background-color 0.1s ease" }}
+                    >
+                      <Flag size={13} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
+                      Remove flag
+                    </button>
+                  )}
+                </div>
+              </Popover>
+            </div>
             <Button
               variant="secondary"
               size="md"
@@ -698,6 +779,25 @@ export default function TicketDetailPage({
       open={searchOpen}
       onClose={() => setSearchOpen(false)}
       onSelectTicket={() => {}}
+    />
+    <ConfirmDialog
+      open={showFlagDialog}
+      onClose={() => { setShowFlagDialog(false); setFlagReasonInput(""); }}
+      title="Flag this ticket"
+      description="Add an optional reason for flagging. This will be synced to Jira as a comment."
+      confirmLabel="Flag"
+      confirmVariant="destructive"
+      onConfirm={handleFlag}
+      extra={
+        <textarea
+          value={flagReasonInput}
+          onChange={(e) => setFlagReasonInput(e.target.value)}
+          placeholder="Reason (optional)..."
+          rows={3}
+          maxLength={2000}
+          className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-xs leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
+        />
+      }
     />
     </>
   );

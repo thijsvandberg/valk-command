@@ -25,6 +25,7 @@ vi.mock("@/lib/jira-client", () => ({
   extractStoryPoints: () => null,
   extractEpicLink: () => null,
   extractAcceptanceCriteria: () => null,
+  FLAGGED_FIELD: "customfield_10002",
 }));
 
 vi.mock("@/lib/adf-to-markdown", () => ({

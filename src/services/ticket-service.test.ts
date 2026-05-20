@@ -21,6 +21,7 @@ vi.mock("@/lib/jira-client", () => ({
     getIssue: vi.fn(),
     updateIssue: vi.fn(),
   },
+  FLAGGED_FIELD: "customfield_10002",
   JiraApiError: class JiraApiError extends Error {
     status: number;
     statusText: string;
