@@ -145,6 +145,7 @@ export interface Subtask {
 }
 
 export interface LinkedIssue {
+  jiraLinkId?: string;
   relation: string;
   key: string;
   title: string;

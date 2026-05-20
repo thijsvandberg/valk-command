@@ -185,6 +185,22 @@ export const tickets = {
 
   confluenceMentionsUrl: (key: string) =>
     `/api/tickets/${enc(key)}/confluence-mentions`,
+
+  // Subtasks
+  createSubtask: (key: string, data: { title: string }, signal?: AbortSignal) =>
+    apiFetch<import("@/types/ticket").Subtask>(`/api/tickets/${enc(key)}/subtasks`, { method: "POST", body: data, signal }),
+  rankSubtasks: (key: string, data: { orderedKeys: string[]; movedKey: string; rankBefore?: string; rankAfter?: string }, signal?: AbortSignal) =>
+    apiFetch<void>(`/api/tickets/${enc(key)}/subtasks/rank`, { method: "POST", body: data, signal }),
+
+  // Issue links
+  createLink: (key: string, data: { targetKey: string; relation: string }, signal?: AbortSignal) =>
+    apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "POST", body: data, signal }),
+  deleteLink: (key: string, data: { jiraLinkId?: string; linkedKey: string }, signal?: AbortSignal) =>
+    apiFetch<void>(`/api/tickets/${enc(key)}/links`, { method: "DELETE", body: data, signal }),
+
+  // Ticket search (for autocomplete)
+  searchForLink: (query: string, excludeKey?: string, signal?: AbortSignal) =>
+    apiFetch<Array<{ key: string; title: string; type: string; status: string }>>(`/api/tickets/search${qs({ q: query, exclude: excludeKey })}`, { signal }),
 };
 
 // ---------------------------------------------------------------------------

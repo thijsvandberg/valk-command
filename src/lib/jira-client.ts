@@ -834,6 +834,7 @@ export class JiraClient {
     issueType?: string;
     projectKey?: string;
     sprintId?: string;
+    parentKey?: string;
   }, signal?: AbortSignal): Promise<{ key: string; id: string }> {
     if (!isConfigured()) {
       throw new Error("Jira is not configured");
@@ -843,10 +844,11 @@ export class JiraClient {
       fields: {
         project: { key: params.projectKey ?? "VPL" },
         summary: params.summary,
-        issuetype: { name: params.issueType ?? "Story" },
+        issuetype: { name: params.issueType ?? (params.parentKey ? "Sub-task" : "Story") },
         ...(params.description ? { description: params.description } : {}),
         // Sprint field requires a plain integer for Jira Cloud (not wrapped in {id})
         ...(params.sprintId ? { [SPRINT_FIELD]: parseInt(params.sprintId, 10) } : {}),
+        ...(params.parentKey ? { parent: { key: params.parentKey } } : {}),
       },
     };
 

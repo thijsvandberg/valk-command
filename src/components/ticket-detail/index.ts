@@ -3,6 +3,7 @@ export { EditableDescription } from "./EditableDescription";
 export { AttachmentsSection } from "./AttachmentsSection";
 export { SubtasksSection } from "./SubtasksSection";
 export { LinkedIssuesSection } from "./LinkedIssuesSection";
+export { LinkIssueDialog } from "./LinkIssueDialog";
 export { EpicChildrenSection } from "./EpicChildrenSection";
 export { CommentsSection } from "./CommentsSection";
 export { TicketHistory } from "./TicketHistory";

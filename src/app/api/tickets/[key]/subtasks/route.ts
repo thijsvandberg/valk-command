@@ -1,0 +1,72 @@
+import { NextResponse } from "next/server";
+import { validatePathParam } from "@/lib/api-validation";
+import { db } from "@/db";
+import { ticketSubtask } from "@/db/schema";
+import { jiraClient } from "@/lib/jira-client";
+import { logActivity } from "@/lib/activity-logger";
+import { cache } from "@/lib/cache";
+import { randomUUID } from "crypto";
+
+type RouteContext = { params: Promise<{ key: string }> };
+
+export async function POST(request: Request, { params }: RouteContext) {
+  const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
+
+  const t = await db.query.ticket.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+  });
+
+  if (!t) {
+    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+  }
+
+  let body: { title?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const title = body.title?.trim();
+  if (!title) {
+    return NextResponse.json({ error: "title is required" }, { status: 400 });
+  }
+
+  const projectKey = key.split("-")[0];
+
+  const jiraResult = await jiraClient.createIssue({
+    summary: title,
+    parentKey: key,
+    projectKey,
+  });
+
+  await db.insert(ticketSubtask).values({
+    id: randomUUID(),
+    ticketKey: key,
+    subtaskKey: jiraResult.key,
+    title,
+    type: "Sub-task",
+    status: "TO DO",
+    assignee: null,
+    assigneeAvatar: null,
+  });
+
+  cache.invalidate(`/api/tickets/${key}`);
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
+
+  await logActivity({
+    type: "metadata-update",
+    scope: key,
+    summary: `Created subtask ${jiraResult.key}: ${title}`,
+  });
+
+  return NextResponse.json({
+    key: jiraResult.key,
+    title,
+    type: "subtask",
+    jiraStatus: "TO DO",
+    assignee: null,
+  });
+}

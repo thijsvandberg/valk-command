@@ -160,6 +160,7 @@ export async function GET(
   }));
 
   const linkedIssues: LinkedIssue[] = linkRows.map((l) => ({
+    jiraLinkId: l.jiraLinkId ?? undefined,
     relation: l.relation,
     key: l.linkedKey,
     title: l.title,

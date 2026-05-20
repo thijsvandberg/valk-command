@@ -650,8 +650,8 @@ export default function TicketDetailPage({
               {ticket?.type === "epic"
                 ? detail && <EpicChildrenSection items={detail.epicChildren} />
                 : <>
-                    {detail && <SubtasksSection subtasks={detail.subtasks} />}
-                    {detail && <LinkedIssuesSection issues={detail.linkedIssues} />}
+                    {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={key} onMutate={() => mutateTicket()} />}
+                    {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={key} onMutate={() => mutateTicket()} />}
                   </>
               }
               <CommentsSection
