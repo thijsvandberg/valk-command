@@ -78,8 +78,8 @@ The page currently makes 6 parallel API calls. Some can be folded into the main 
 
 ### 4. Trim API response payload
 
-- [ ] Remove the full `metadata` object from the `/api/tickets/[key]` response. The relevant metadata fields (readiness, poStatus, qualityScore, businessValue, poNotes) are already spread into the top-level response.
-- [ ] This saves ~1-2 KB per response and avoids leaking internal metadata
+- [x] Remove the full `metadata` object from the `/api/tickets/[key]` response. The relevant metadata fields (readiness, poStatus, qualityScore, businessValue, poNotes) are already spread into the top-level response.
+- [x] This saves ~1-2 KB per response and avoids leaking internal metadata
 
 ### 5. Defer Jira freshness check
 

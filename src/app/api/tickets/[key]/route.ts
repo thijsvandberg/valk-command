@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticket, ticketLocalEdit, jiraComment } from "@/db/schema";
+import { ticket, ticketLocalEdit, jiraComment, ticketSubtask } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
@@ -68,7 +68,7 @@ export async function GET(
 
     if (!t) return null;
 
-    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion] = await Promise.all([
+    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRow] = await Promise.all([
       db.query.ticketMetadata.findFirst({
         where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
       }),
@@ -93,16 +93,29 @@ export async function GET(
         where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
         orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
       }),
+      // Reverse lookup: find parent ticket if this is a subtask
+      db.query.ticketSubtask.findFirst({
+        where: (s, { eq: eqFn }) => eqFn(s.subtaskKey, key),
+      }),
     ]);
 
-    return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion };
+    // If this ticket is a subtask, resolve the parent ticket's title
+    let parentTicket: { key: string; title: string } | null = null;
+    if (parentRow) {
+      const pt = await db.query.ticket.findFirst({
+        where: (row, { eq: eqFn }) => eqFn(row.jiraKey, parentRow.ticketKey),
+      });
+      parentTicket = { key: parentRow.ticketKey, title: pt?.title ?? parentRow.ticketKey };
+    }
+
+    return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket };
   });
 
   if (!queryData) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion } = queryData;
+  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket } = queryData;
 
   const attachments: Attachment[] = attachmentRows.map((a) => ({
     id: a.id,
@@ -192,6 +205,7 @@ export async function GET(
   const detail: TicketDetail = {
     description,
     reporter: buildAssignee(t.reporter),
+    parent: parentTicket,
     labels,
     components,
     priority: (t.priority ?? "Medium") as TicketDetail["priority"],
@@ -213,7 +227,6 @@ export async function GET(
   const responseBody = {
     ...ticketBase,
     ...detail,
-    metadata: meta ?? null,
     localEdits: localEditMap,
   };
 

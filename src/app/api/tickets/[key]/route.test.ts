@@ -92,11 +92,8 @@ describe("GET /api/tickets/[key]", () => {
     );
     const data = await response.json();
 
-    // New shape: poStatus is flattened into the ticket object, metadata still included separately
     expect(data.poStatus).toBe("Draft");
     expect(data.qualityScore).toBe(60);
-    expect(data.metadata).not.toBeNull();
-    expect(data.metadata.poStatus).toBe("Draft");
   });
 });
 
