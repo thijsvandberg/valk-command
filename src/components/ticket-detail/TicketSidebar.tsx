@@ -194,10 +194,9 @@ export function TicketSidebar({
                 <StoryPointPicker
                   value={storyPoints}
                   onChange={handleStoryPointsChange}
-                  align="left"
                 />
               </DetailRow>
-              {sprintName && (
+              {sprintName && ticket.type !== "epic" && (
                 <DetailRow label="Sprint">
                   <span className="truncate">{sprintName}</span>
                 </DetailRow>
