@@ -165,7 +165,13 @@ export function CommentsSection({
                         <Flag size={11} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
                       )}
                     </div>
-                    <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
+                    <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">
+                      {renderMarkdown(
+                        isFlagComment
+                          ? comment.content.replace(/^:?flag_on:?\s*Flag added\s*/i, "").replace(/^:?flag_off:?\s*Flag removed\s*/i, "").trim()
+                          : comment.content
+                      )}
+                    </div>
                   </div>
                 </div>
               );

@@ -699,9 +699,6 @@ export default function TicketDetailPage({
                   setShowConflictDiff(true);
                 }}
               />
-              {ticket.flagged && (
-                <Flag size={16} className="mt-2 shrink-0 text-[#e5534b]" fill="currentColor" strokeWidth={0} />
-              )}
             </div>
 
             {/* Metadata strip */}
@@ -716,6 +713,43 @@ export default function TicketDetailPage({
 
           </div>
           )}
+
+          {/* Flagged banner in main content */}
+          {activeTab === "content" && isFlagged && (() => {
+            const flagComment = detail?.jiraComments
+              ?.slice().reverse()
+              .find((c) => /flag_on|Flag added/i.test(c.content));
+            const flagReason = flagComment?.content
+              ?.replace(/^:?flag_on:?\s*Flag added\s*/i, "")
+              ?.trim() || null;
+            return (
+              <div className="mt-4 rounded-lg border border-[#e5534b]/20 bg-[#e5534b]/[0.04] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Flag size={14} strokeWidth={1.5} className="shrink-0 text-[#e5534b]" fill="#e5534b" />
+                  <span className="text-sm font-semibold text-[#e5534b]">Flagged</span>
+                  {flagComment && (
+                    <span className="text-xs text-text-muted">
+                      by {flagComment.authorName}, {new Date(flagComment.createdAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+                {flagReason && (
+                  <div className="mt-2 text-sm leading-relaxed text-text-secondary">
+                    {flagReason.split(/\n{2,}/).map((para, i) => {
+                      const parts = para.split(/(\[.*?\]\(.*?\)|https?:\/\/\S+)/g);
+                      const elements = parts.map((part, j) => {
+                        const mdLink = part.match(/^\[(.*?)\]\((.*?)\)$/);
+                        if (mdLink) return <a key={j} href={mdLink[2]} target="_blank" rel="noopener noreferrer" className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 hover:decoration-[var(--color-brand-400)]">{mdLink[1]}</a>;
+                        if (/^https?:\/\/\S+$/.test(part)) return <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 hover:decoration-[var(--color-brand-400)] break-all">{part}</a>;
+                        return part;
+                      });
+                      return <p key={i} className={i > 0 ? "mt-2" : ""}>{elements}</p>;
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {activeTab === "content" && (
             <>
