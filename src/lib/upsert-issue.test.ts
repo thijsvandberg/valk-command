@@ -19,6 +19,7 @@ vi.mock("@/lib/jira-client", () => ({
   extractStoryPoints: vi.fn().mockReturnValue(null),
   extractEpicLink: vi.fn().mockReturnValue(null),
   extractAcceptanceCriteria: vi.fn().mockReturnValue(null),
+  FLAGGED_FIELD: "customfield_10002",
 }));
 
 vi.mock("@/lib/adf-to-markdown", () => ({
@@ -40,7 +41,7 @@ function makeIssue(overrides: Partial<JiraIssue["fields"]> = {}): JiraIssue {
       reporter: null,
       priority: undefined,
       labels: [],
-      flagged: false,
+      customfield_10002: null,
       description: null,
       created: "2024-01-01T00:00:00.000Z",
       updated: "2024-01-01T00:00:00.000Z",

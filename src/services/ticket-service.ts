@@ -3,7 +3,7 @@ import { ticket, ticketLocalEdit, ticketMetadata, storyVersion } from "@/db/sche
 import type { TicketLocalEdit, TicketMetadata } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
-import { jiraClient, JiraApiError } from "@/lib/jira-client";
+import { jiraClient, JiraApiError, FLAGGED_FIELD } from "@/lib/jira-client";
 import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { logActivity } from "@/lib/activity-logger";
@@ -215,6 +215,14 @@ export async function pullFromJira(key: string): Promise<{ description: string; 
     typeof fields.description === "string"
       ? fields.description
       : adfToMarkdown(fields.description);
+
+  // Sync flagged + title from the full Jira response
+  const rawFlagged = (fields as unknown as Record<string, unknown>)[FLAGGED_FIELD];
+  const isFlagged = Array.isArray(rawFlagged) ? rawFlagged.length > 0 : Boolean(rawFlagged);
+  await db.update(ticket).set({
+    flagged: isFlagged,
+    title: fields.summary,
+  }).where(eq(ticket.jiraKey, key));
 
   return { description: description ?? "", title: fields.summary ?? "" };
 }

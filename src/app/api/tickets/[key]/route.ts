@@ -7,7 +7,7 @@ import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadi
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
-import { jiraClient, STORY_POINTS_FIELD } from "@/lib/jira-client";
+import { jiraClient, STORY_POINTS_FIELD, FLAGGED_FIELD } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -351,7 +351,9 @@ export async function PATCH(
     // Sync to Jira: update flag field + add comment
     (async () => {
       try {
-        await jiraClient.updateIssue(key, { flagged: newFlagged });
+        await jiraClient.updateIssue(key, {
+          [FLAGGED_FIELD]: newFlagged ? [{ value: "Impediment" }] : [],
+        });
       } catch (err) {
         logger.error("ticket-detail", `PATCH Jira flag sync failed for ${key}:`, err);
       }

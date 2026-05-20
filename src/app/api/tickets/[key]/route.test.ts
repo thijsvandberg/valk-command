@@ -19,6 +19,7 @@ vi.mock("@/lib/jira-client", () => ({
     addComment: vi.fn().mockResolvedValue(undefined),
   },
   STORY_POINTS_FIELD: "customfield_11909",
+  FLAGGED_FIELD: "customfield_10002",
 }));
 
 vi.mock("@/lib/activity-logger", () => ({
@@ -453,7 +454,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     // Async Jira sync fires in background IIFE, give it a tick
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-402", { flagged: true });
+    expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-402", { customfield_10002: [{ value: "Impediment" }] });
     expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-402", "flag_on Flag added\n\nBlocked by API");
   });
 
@@ -478,7 +479,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-403", { flagged: false });
+    expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-403", { customfield_10002: [] });
     expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-403", "flag_off Flag removed");
   });
 

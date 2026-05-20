@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange } from "@/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
-import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
 
@@ -127,7 +127,10 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     assigneeAvatar,
     epic: epicValue,
     epicKey: epicKeyValue,
-    flagged: Boolean(fields.flagged),
+    flagged: (() => {
+      const raw = (fields as unknown as Record<string, unknown>)[FLAGGED_FIELD];
+      return Array.isArray(raw) ? raw.length > 0 : Boolean(raw);
+    })(),
     reporter: reporterName,
     description: descriptionMarkdown || null,
     acceptanceCriteria: ac,
@@ -291,7 +294,10 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     type: normalizeIssueType(fields.issuetype.name),
     epic: epicValue,
     epicKey: epicKeyValue,
-    flagged: Boolean(fields.flagged),
+    flagged: (() => {
+      const raw = (fields as unknown as Record<string, unknown>)[FLAGGED_FIELD];
+      return Array.isArray(raw) ? raw.length > 0 : Boolean(raw);
+    })(),
     assigneeColor: assigneeName ? userColor(assigneeName) : null,
   };
 }

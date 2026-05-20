@@ -18,11 +18,12 @@ import { trackOutboundCall, isOutboundLimitApproaching } from "@/lib/rate-limite
 const SPRINT_FIELD = "customfield_10007";
 const STORY_POINTS_FIELD = "customfield_11909";
 const ACCEPTANCE_CRITERIA_FIELD = "customfield_10034";
+const FLAGGED_FIELD = "customfield_10002";
 
 // Fields to request when fetching full issue data
 export const ISSUE_FIELDS = [
   "summary", "issuetype", "status", "priority", "assignee", "reporter",
-  "labels", "parent", STORY_POINTS_FIELD, SPRINT_FIELD, "flagged",
+  "labels", "parent", STORY_POINTS_FIELD, SPRINT_FIELD, FLAGGED_FIELD,
   "description", "created", "updated", ACCEPTANCE_CRITERIA_FIELD, "components",
   "attachment", "subtasks", "issuelinks", "comment",
 ].join(",");
@@ -68,7 +69,7 @@ export interface JiraIssueFields {
   [key: `customfield_${string}`]: unknown;
   // Modern Jira hierarchy: stories/tasks are children of epics via parent
   parent?: { id: string; key: string; fields: { summary: string; issuetype?: { name: string } } } | null;
-  flagged?: boolean;
+  // Flag field is customfield_10002, accessed via FLAGGED_FIELD constant
   description?: unknown;
   created: string;
   updated: string;
@@ -1165,7 +1166,7 @@ export function filterSprintChanges(entries: ChangelogEntry[]): SprintFieldChang
 }
 
 // Re-export field constants for use in sync routes
-export { SPRINT_FIELD, STORY_POINTS_FIELD, ACCEPTANCE_CRITERIA_FIELD };
+export { SPRINT_FIELD, STORY_POINTS_FIELD, ACCEPTANCE_CRITERIA_FIELD, FLAGGED_FIELD };
 
 // Singleton for convenience
 export const jiraClient = new JiraClient();
