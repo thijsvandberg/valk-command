@@ -30,6 +30,12 @@ export const KEYBOARD_SHORTCUTS: ShortcutGroup[] = [
     ],
   },
   {
+    scope: "Ticket Detail",
+    shortcuts: [
+      { keys: ["["], action: "Toggle sidebar" },
+    ],
+  },
+  {
     scope: "Pipelines",
     shortcuts: [
       { keys: ["R"], action: "Refresh pipelines" },

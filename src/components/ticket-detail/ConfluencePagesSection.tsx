@@ -269,13 +269,16 @@ function MentionedPagesSection({
 
 export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
   const { data, mutate } = useTicketConfluenceLinks(ticketKey);
-  const [expanded, setExpanded] = useState(true);
+  const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [expandedPageId, setExpandedPageId] = useState<string | null>(null);
   const searchAnchorRef = useRef<HTMLDivElement>(null);
 
   const links = data?.links ?? [];
   const linkedPageIds = new Set(links.map((l) => l.pageId));
+
+  // Collapse by default when empty, expand when has content
+  const expanded = userExpanded ?? (links.length > 0);
 
   const handleSelect = useCallback(async (result: ConfluenceSearchResult) => {
     setShowSearch(false);
@@ -325,7 +328,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
       {/* Section header */}
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => setUserExpanded(!expanded)}
         aria-expanded={expanded}
         className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
@@ -333,11 +336,9 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
           <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">
             Confluence
           </h3>
-          {links.length > 0 && (
-            <span className="text-caption text-text-muted">
-              {links.length} page{links.length !== 1 ? "s" : ""}
-            </span>
-          )}
+          <span className="text-caption text-text-muted">
+            ({links.length})
+          </span>
         </div>
         <ChevronDown
           size={12}

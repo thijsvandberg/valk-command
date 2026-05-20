@@ -20,6 +20,7 @@ import {
   Trash2,
   Star,
   Check,
+  PanelRightClose,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions, useTicketVersionCount } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
@@ -39,13 +40,14 @@ import { CommentsSection } from "@/components/ticket-detail/CommentsSection";
 import { TicketHistory } from "@/components/ticket-detail/TicketHistory";
 import { TicketReview } from "@/components/ticket-detail/TicketReview";
 import { TicketRefinement } from "@/components/ticket-detail/TicketRefinement";
-import { TicketSidebar } from "@/components/ticket-detail/TicketSidebar";
+import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
 import { TicketDevelopment } from "@/components/ticket-detail/TicketDevelopment";
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 
 export default function TicketDetailPage({
@@ -195,6 +197,7 @@ export default function TicketDetailPage({
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
 
   const [isPushing, setIsPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -399,21 +402,27 @@ export default function TicketDetailPage({
                 Push to Jira
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
-              onClick={() => isFollowed ? unfollow(key) : follow(key)}
-              title={isFollowed ? "Unfollow ticket" : "Follow ticket for notifications"}
-              aria-label={isFollowed ? "Unfollow ticket" : "Follow ticket for notifications"}
-              icon={
-                <Star
-                  size={14}
-                  strokeWidth={1.5}
-                  className={isFollowed ? "text-amber-400 fill-amber-400" : ""}
-                />
+            <Tooltip
+              content={isFollowed
+                ? "Following this ticket. You will receive PR, pipeline, deployment, and story writer notifications for it. Click to unfollow."
+                : "Follow this ticket to receive notifications about PRs, pipelines, deployments, and story writer updates."
               }
-            />
+            >
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                onClick={() => isFollowed ? unfollow(key) : follow(key)}
+                aria-label={isFollowed ? "Unfollow ticket" : "Follow ticket"}
+                icon={
+                  <Star
+                    size={14}
+                    strokeWidth={1.5}
+                    className={isFollowed ? "text-amber-400 fill-amber-400" : ""}
+                  />
+                }
+              />
+            </Tooltip>
             <Button
               variant="ghost"
               size="md"
@@ -478,6 +487,17 @@ export default function TicketDetailPage({
                 <NotebookPen size={13} strokeWidth={1.5} />
                 Story writer
               </Link>
+            )}
+            {sidebarCollapsed && (
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                onClick={() => setSidebarCollapsed(false)}
+                aria-label="Open sidebar"
+                title="Open sidebar  [  "
+                icon={<PanelRightClose size={14} strokeWidth={1.5} />}
+              />
             )}
           </div>
         }

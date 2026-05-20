@@ -318,11 +318,9 @@ export function DevPanel({
           <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">
             Development
           </h3>
-          {counts.length > 0 && (
-            <span className="text-caption text-text-muted">
-              {counts.join(" \u00B7 ")}
-            </span>
-          )}
+          <span className="text-caption text-text-muted">
+            {counts.length > 0 ? counts.join(" \u00B7 ") : "(0)"}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           {hasData && onExpand && (
