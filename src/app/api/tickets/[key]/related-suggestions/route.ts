@@ -14,7 +14,8 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 type RouteContext = { params: Promise<{ key: string }> };
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const TASK_TIMEOUT_MS = 30_000;
+const SUBMIT_TIMEOUT_MS = 30_000;
+const STREAM_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes for the AI to search all tickets
 const MAX_SUGGESTIONS = 10;
 
 /**
@@ -144,7 +145,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       conversationId,
     },
     retries: 2,
-    timeout: TASK_TIMEOUT_MS,
+    timeout: SUBMIT_TIMEOUT_MS,
   });
 
   if (!taskResult.ok) {
@@ -166,7 +167,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   // Read the SSE stream server-side until we get the result
   const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), TASK_TIMEOUT_MS);
+  const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
 
   let output: string;
   try {
@@ -196,7 +197,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     if (message.includes("abort")) {
       return NextResponse.json(
-        { error: "Workspace did not respond within 30 seconds" },
+        { error: "Workspace did not respond in time" },
         { status: 504 },
       );
     }
