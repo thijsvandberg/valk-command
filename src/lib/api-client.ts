@@ -206,7 +206,9 @@ export const tickets = {
   getRelatedSuggestions: (key: string, signal?: AbortSignal) =>
     apiFetch<{ suggestions: RelatedSuggestionResponse[]; cachedAt: string | null }>(`/api/tickets/${enc(key)}/related-suggestions`, { signal }),
   findRelatedSuggestions: (key: string, signal?: AbortSignal) =>
-    apiFetch<{ suggestions: RelatedSuggestionResponse[]; cached: boolean }>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "POST", signal }),
+    apiFetch<{ suggestions?: RelatedSuggestionResponse[]; taskId?: string; streamUrl?: string; cached: boolean }>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "POST", signal }),
+  applyRelatedSuggestions: (key: string, data: { output: string }, signal?: AbortSignal) =>
+    apiFetch<{ suggestions: RelatedSuggestionResponse[] }>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "PUT", body: data, signal }),
   clearRelatedSuggestions: (key: string, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "DELETE", signal }),
 

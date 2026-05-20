@@ -5,6 +5,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Button } from "@/components/ui/Button";
 import { Sparkles, X, Link as LinkIcon, Loader2, AlertCircle } from "lucide-react";
 import { tickets } from "@/lib/api-client";
+import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
 import type { IssueType, RelatedSuggestionResponse } from "@/types/ticket";
 
 export interface RelatedSuggestion {
@@ -42,28 +43,102 @@ export function RelatedIssueSuggestionsPanel({
   const [suggestions, setSuggestions] = useState<RelatedSuggestion[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [progressText, setProgressText] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    const controller = new AbortController();
-    abortRef.current = controller;
+    cancelledRef.current = false;
 
-    tickets
-      .findRelatedSuggestions(ticketKey, controller.signal)
-      .then((data) => {
-        if (controller.signal.aborted) return;
-        setSuggestions(data.suggestions.map(toSuggestion));
+    async function discover() {
+      try {
+        const data = await tickets.findRelatedSuggestions(ticketKey);
+        if (cancelledRef.current) return;
+
+        // Cached result returned immediately
+        if (data.cached && data.suggestions) {
+          setSuggestions(data.suggestions.map(toSuggestion));
+          setHasSearched(true);
+          setIsLoading(false);
+          return;
+        }
+
+        // Task submitted, stream progress
+        if (data.taskId && data.streamUrl) {
+          setProgressText("Starting search...");
+
+          const es = new EventSource(data.streamUrl);
+          eventSourceRef.current = es;
+
+          attachTaskStreamListeners(es, {
+            onProgress: (message) => {
+              if (!cancelledRef.current) setProgressText(message);
+            },
+            onToolCall: (tool) => {
+              const cleanName = tool.replace("mcp__jira__", "").replace("mcp__", "");
+              if (!cancelledRef.current) setProgressText(`Using ${cleanName}...`);
+            },
+            onResult: async (resultData) => {
+              es.close();
+              eventSourceRef.current = null;
+              if (cancelledRef.current) return;
+
+              setProgressText("Processing results...");
+
+              const output = (resultData.output as string) ?? "";
+              try {
+                const parsed = await tickets.applyRelatedSuggestions(ticketKey, { output });
+                if (cancelledRef.current) return;
+                setSuggestions(parsed.suggestions.map(toSuggestion));
+              } catch (err) {
+                if (cancelledRef.current) return;
+                setError(err instanceof Error ? err.message : "Failed to process results");
+              }
+              setHasSearched(true);
+              setIsLoading(false);
+              setProgressText(null);
+            },
+            onStructuredError: (message) => {
+              es.close();
+              eventSourceRef.current = null;
+              if (cancelledRef.current) return;
+              setError(message);
+              setHasSearched(true);
+              setIsLoading(false);
+              setProgressText(null);
+            },
+            onNetworkError: () => {
+              es.close();
+              eventSourceRef.current = null;
+              if (cancelledRef.current) return;
+              setError("Connection to workspace lost");
+              setHasSearched(true);
+              setIsLoading(false);
+              setProgressText(null);
+            },
+          });
+
+          return;
+        }
+
+        // Unexpected response shape
         setHasSearched(true);
         setIsLoading(false);
-      })
-      .catch((err) => {
-        if (controller.signal.aborted) return;
+      } catch (err) {
+        if (cancelledRef.current) return;
         setError(err instanceof Error ? err.message : "Failed to find related issues");
         setHasSearched(true);
         setIsLoading(false);
-      });
+      }
+    }
 
-    return () => controller.abort();
+    discover();
+
+    return () => {
+      cancelledRef.current = true;
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
   }, [ticketKey]);
 
   const handleDismiss = useCallback((key: string) => {
@@ -91,7 +166,9 @@ export function RelatedIssueSuggestionsPanel({
         {isLoading ? (
           <div className="flex items-center gap-2 py-3">
             <Loader2 size={14} className="animate-spin text-text-muted" />
-            <span className="text-xs text-text-muted">Analyzing ticket for related issues...</span>
+            <span className="text-xs text-text-muted">
+              {progressText ?? "Analyzing ticket for related issues..."}
+            </span>
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 py-3">

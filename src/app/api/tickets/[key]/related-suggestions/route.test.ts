@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -29,11 +29,7 @@ vi.mock("@/lib/agent-fetch", () => ({
   agentFetch: (...args: unknown[]) => mockAgentFetch(...args),
 }));
 
-// Mock global fetch for SSE stream reading and background sync
-const mockFetch = vi.fn();
-const originalFetch = globalThis.fetch;
-
-import { GET, POST, DELETE } from "./route";
+import { GET, POST, PUT, DELETE } from "./route";
 
 function makeParams(key: string) {
   return { params: Promise.resolve({ key }) };
@@ -43,6 +39,14 @@ function postRequest(key: string): Request {
   return new Request(`http://localhost:3100/api/tickets/${key}/related-suggestions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+function putRequest(key: string, body: unknown): Request {
+  return new Request(`http://localhost:3100/api/tickets/${key}/related-suggestions`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 }
 
@@ -89,17 +93,6 @@ function seedCache(ticketKey: string, suggestedKey: string, score: number) {
   }).run();
 }
 
-function createSSEStream(output: string): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  const ssePayload = `event:result\ndata:${JSON.stringify({ output })}\n\n`;
-  return new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(ssePayload));
-      controller.close();
-    },
-  });
-}
-
 describe("GET /api/tickets/[key]/related-suggestions", () => {
   beforeEach(() => {
     testDb = createTestDb();
@@ -129,11 +122,6 @@ describe("POST /api/tickets/[key]/related-suggestions", () => {
   beforeEach(() => {
     testDb = createTestDb();
     vi.clearAllMocks();
-    globalThis.fetch = mockFetch;
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
   });
 
   it("returns 404 for non-existent ticket", async () => {
@@ -152,13 +140,8 @@ describe("POST /api/tickets/[key]/related-suggestions", () => {
     expect(mockAgentFetch).not.toHaveBeenCalled();
   });
 
-  it("calls workspace and parses results", async () => {
+  it("submits workspace task and returns taskId", async () => {
     seedTicket("VPL-100");
-
-    const workspaceOutput = `<related-stories>[
-      {"key":"VPL-200","score":0.9,"title":"Related story","status":"TO DO","reason":"Shared auth module"},
-      {"key":"VPL-300","score":0.7,"title":"Another story","status":"IN PROGRESS","type":"bug","reason":"Same component"}
-    ]</related-stories>`;
 
     mockAgentFetch.mockResolvedValueOnce({
       ok: true,
@@ -167,127 +150,12 @@ describe("POST /api/tickets/[key]/related-suggestions", () => {
       retryCount: 0,
     });
 
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/api/tasks/task-1/stream")) {
-        return Promise.resolve({
-          ok: true,
-          body: createSSEStream(workspaceOutput),
-        });
-      }
-      // Background sync call
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-
     const res = await POST(postRequest("VPL-100"), makeParams("VPL-100"));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const data = await res.json();
     expect(data.cached).toBe(false);
-    expect(data.suggestions).toHaveLength(2);
-    expect(data.suggestions[0].suggestedKey).toBe("VPL-200");
-    expect(data.suggestions[0].score).toBe(0.9);
-    expect(data.suggestions[0].reason).toBe("Shared auth module");
-    expect(data.suggestions[1].suggestedKey).toBe("VPL-300");
-
-    // Verify results are cached
-    const cached = testDb.select().from(relatedSuggestionCache)
-      .where(eq(relatedSuggestionCache.ticketKey, "VPL-100")).all();
-    expect(cached).toHaveLength(2);
-  });
-
-  it("deduplicates against existing links", async () => {
-    seedTicket("VPL-100");
-    seedLink("VPL-100", "VPL-200");
-
-    const workspaceOutput = `<related-stories>[
-      {"key":"VPL-200","score":0.9,"title":"Already linked","status":"TO DO"},
-      {"key":"VPL-300","score":0.7,"title":"New suggestion","status":"IN PROGRESS"}
-    ]</related-stories>`;
-
-    mockAgentFetch.mockResolvedValueOnce({
-      ok: true,
-      data: { id: "task-2" },
-      status: 200,
-      retryCount: 0,
-    });
-
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/api/tasks/task-2/stream")) {
-        return Promise.resolve({
-          ok: true,
-          body: createSSEStream(workspaceOutput),
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-
-    const res = await POST(postRequest("VPL-100"), makeParams("VPL-100"));
-    const data = await res.json();
-    expect(data.suggestions).toHaveLength(1);
-    expect(data.suggestions[0].suggestedKey).toBe("VPL-300");
-  });
-
-  it("excludes the ticket itself from results", async () => {
-    seedTicket("VPL-100");
-
-    const workspaceOutput = `<related-stories>[
-      {"key":"VPL-100","score":1.0,"title":"Self-reference","status":"TO DO"},
-      {"key":"VPL-200","score":0.8,"title":"Actual match","status":"TO DO"}
-    ]</related-stories>`;
-
-    mockAgentFetch.mockResolvedValueOnce({
-      ok: true,
-      data: { id: "task-3" },
-      status: 200,
-      retryCount: 0,
-    });
-
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/api/tasks/task-3/stream")) {
-        return Promise.resolve({
-          ok: true,
-          body: createSSEStream(workspaceOutput),
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-
-    const res = await POST(postRequest("VPL-100"), makeParams("VPL-100"));
-    const data = await res.json();
-    expect(data.suggestions).toHaveLength(1);
-    expect(data.suggestions[0].suggestedKey).toBe("VPL-200");
-  });
-
-  it("caps results at 10", async () => {
-    seedTicket("VPL-100");
-
-    const items = Array.from({ length: 15 }, (_, i) => ({
-      key: `VPL-${200 + i}`,
-      score: 0.9 - i * 0.05,
-      title: `Story ${i}`,
-      status: "TO DO",
-    }));
-    const workspaceOutput = `<related-stories>${JSON.stringify(items)}</related-stories>`;
-
-    mockAgentFetch.mockResolvedValueOnce({
-      ok: true,
-      data: { id: "task-4" },
-      status: 200,
-      retryCount: 0,
-    });
-
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/api/tasks/task-4/stream")) {
-        return Promise.resolve({
-          ok: true,
-          body: createSSEStream(workspaceOutput),
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-
-    const res = await POST(postRequest("VPL-100"), makeParams("VPL-100"));
-    const data = await res.json();
-    expect(data.suggestions).toHaveLength(10);
+    expect(data.taskId).toBe("task-1");
+    expect(data.streamUrl).toBe("/api/workspace-tasks/task-1/stream");
   });
 
   it("returns 502 when workspace task submission fails", async () => {
@@ -302,6 +170,95 @@ describe("POST /api/tickets/[key]/related-suggestions", () => {
 
     const res = await POST(postRequest("VPL-100"), makeParams("VPL-100"));
     expect(res.status).toBe(502);
+  });
+});
+
+describe("PUT /api/tickets/[key]/related-suggestions", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.clearAllMocks();
+  });
+
+  it("parses output and caches suggestions", async () => {
+    seedTicket("VPL-100");
+
+    const output = `<related-stories>[
+      {"key":"VPL-200","score":0.9,"title":"Related story","status":"TO DO","reason":"Shared auth module"},
+      {"key":"VPL-300","score":0.7,"title":"Another story","status":"IN PROGRESS","type":"bug","reason":"Same component"}
+    ]</related-stories>`;
+
+    const res = await PUT(putRequest("VPL-100", { output }), makeParams("VPL-100"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.suggestions).toHaveLength(2);
+    expect(data.suggestions[0].suggestedKey).toBe("VPL-200");
+    expect(data.suggestions[0].score).toBe(0.9);
+    expect(data.suggestions[0].reason).toBe("Shared auth module");
+
+    const cached = testDb.select().from(relatedSuggestionCache)
+      .where(eq(relatedSuggestionCache.ticketKey, "VPL-100")).all();
+    expect(cached).toHaveLength(2);
+  });
+
+  it("deduplicates against existing links", async () => {
+    seedTicket("VPL-100");
+    seedLink("VPL-100", "VPL-200");
+
+    const output = `<related-stories>[
+      {"key":"VPL-200","score":0.9,"title":"Already linked","status":"TO DO"},
+      {"key":"VPL-300","score":0.7,"title":"New suggestion","status":"IN PROGRESS"}
+    ]</related-stories>`;
+
+    const res = await PUT(putRequest("VPL-100", { output }), makeParams("VPL-100"));
+    const data = await res.json();
+    expect(data.suggestions).toHaveLength(1);
+    expect(data.suggestions[0].suggestedKey).toBe("VPL-300");
+  });
+
+  it("excludes the ticket itself from results", async () => {
+    seedTicket("VPL-100");
+
+    const output = `<related-stories>[
+      {"key":"VPL-100","score":1.0,"title":"Self-reference","status":"TO DO"},
+      {"key":"VPL-200","score":0.8,"title":"Actual match","status":"TO DO"}
+    ]</related-stories>`;
+
+    const res = await PUT(putRequest("VPL-100", { output }), makeParams("VPL-100"));
+    const data = await res.json();
+    expect(data.suggestions).toHaveLength(1);
+    expect(data.suggestions[0].suggestedKey).toBe("VPL-200");
+  });
+
+  it("caps results at 10", async () => {
+    seedTicket("VPL-100");
+
+    const items = Array.from({ length: 15 }, (_, i) => ({
+      key: `VPL-${200 + i}`,
+      score: 0.9 - i * 0.05,
+      title: `Story ${i}`,
+      status: "TO DO",
+    }));
+    const output = `<related-stories>${JSON.stringify(items)}</related-stories>`;
+
+    const res = await PUT(putRequest("VPL-100", { output }), makeParams("VPL-100"));
+    const data = await res.json();
+    expect(data.suggestions).toHaveLength(10);
+  });
+
+  it("returns 400 when output is missing", async () => {
+    const res = await PUT(putRequest("VPL-100", {}), makeParams("VPL-100"));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns empty suggestions for output without related-stories block", async () => {
+    seedTicket("VPL-100");
+
+    const res = await PUT(
+      putRequest("VPL-100", { output: "No related stories found" }),
+      makeParams("VPL-100"),
+    );
+    const data = await res.json();
+    expect(data.suggestions).toHaveLength(0);
   });
 });
 

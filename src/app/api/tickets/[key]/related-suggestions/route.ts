@@ -5,7 +5,6 @@ import { relatedSuggestionCache, ticket, ticketLink } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { agentFetch } from "@/lib/agent-fetch";
-import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
 import { parseRelatedStories } from "@/lib/parse-related-stories";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -15,69 +14,7 @@ type RouteContext = { params: Promise<{ key: string }> };
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const SUBMIT_TIMEOUT_MS = 30_000;
-const STREAM_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes for the AI to search all tickets
 const MAX_SUGGESTIONS = 10;
-
-/**
- * Parses SSE events from a ReadableStream until we get a "result" or "error" event.
- * Returns the output string on success, or throws on error/timeout.
- */
-async function readTaskResult(
-  body: ReadableStream<Uint8Array>,
-  signal: AbortSignal,
-): Promise<string> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let currentEvent = "message";
-
-  try {
-    while (true) {
-      if (signal.aborted) throw new Error("Request aborted");
-
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        if (line.startsWith("event:")) {
-          currentEvent = line.slice(6).trim();
-        } else if (line.startsWith("data:")) {
-          const data = line.slice(5).trim();
-
-          if (currentEvent === "result") {
-            try {
-              const parsed = JSON.parse(data) as { output?: string };
-              return parsed.output ?? data;
-            } catch {
-              return data;
-            }
-          }
-
-          if (currentEvent === "error") {
-            let message = "Task failed";
-            try {
-              const parsed = JSON.parse(data) as { message?: string };
-              message = parsed.message ?? message;
-            } catch { /* use default */ }
-            throw new Error(message);
-          }
-
-          currentEvent = "message";
-        } else if (line === "") {
-          currentEvent = "message";
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  throw new Error("Stream ended without result");
-}
 
 /**
  * GET: return cached related suggestions for this ticket.
@@ -99,10 +36,12 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 /**
- * POST: discover related issues via the workspace find-related skill.
- * Returns cached results if they are fresh (< 30 min). Otherwise submits
- * a workspace task, reads the SSE stream server-side, parses, deduplicates,
- * caches, and returns.
+ * POST: start discovering related issues via the workspace find-related skill.
+ *
+ * Returns cached results immediately if fresh (< 30 min).
+ * Otherwise submits a workspace task and returns { taskId, streamUrl }
+ * so the client can stream progress via EventSource.
+ * When the task completes, the client calls PUT with the output to parse + cache.
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("write");
@@ -112,7 +51,6 @@ export async function POST(request: Request, { params }: RouteContext) {
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  // Check if the ticket exists
   const ticketRow = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
   });
@@ -134,7 +72,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
   }
 
-  // Submit find-related skill to workspace
+  // Submit find-related skill to workspace and return immediately
   const conversationId = `related-${key}-${Date.now()}`;
   interface TaskResponse { id?: string; error?: string }
   const taskResult = await agentFetch<TaskResponse>("/api/tasks", {
@@ -165,46 +103,35 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "No task ID returned" }, { status: 502 });
   }
 
-  // Read the SSE stream server-side until we get the result
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
+  return NextResponse.json({
+    taskId,
+    streamUrl: `/api/workspace-tasks/${taskId}/stream`,
+    cached: false,
+  }, { status: 202 });
+}
 
-  let output: string;
+/**
+ * PUT: parse completed workspace output, deduplicate, cache, and return suggestions.
+ * Called by the client after the task stream emits a "result" event.
+ */
+export async function PUT(request: Request, { params }: RouteContext) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
+  const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
+
+  let body: Record<string, unknown>;
   try {
-    const headers = agentHeaders();
-    delete headers["Content-Type"];
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-    const streamRes = await fetch(agentUrl(`/api/tasks/${taskId}/stream`), {
-      headers,
-      signal: abortController.signal,
-    });
-
-    if (!streamRes.ok || !streamRes.body) {
-      return NextResponse.json(
-        { error: `Stream failed: HTTP ${streamRes.status}` },
-        { status: 502 },
-      );
-    }
-
-    output = await readTaskResult(streamRes.body, abortController.signal);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    logger.error("related-suggestions", "failed to read task result", {
-      ticketKey: key,
-      taskId,
-      error: message,
-    });
-
-    if (message.includes("abort")) {
-      return NextResponse.json(
-        { error: "Workspace did not respond in time" },
-        { status: 504 },
-      );
-    }
-
-    return NextResponse.json({ error: message }, { status: 502 });
-  } finally {
-    clearTimeout(timeout);
+  const output = typeof body.output === "string" ? body.output : "";
+  if (!output) {
+    return NextResponse.json({ error: "output is required" }, { status: 400 });
   }
 
   // Parse the workspace output
@@ -265,7 +192,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     .where(eq(relatedSuggestionCache.ticketKey, key))
     .all();
 
-  return NextResponse.json({ suggestions: result, cached: false });
+  return NextResponse.json({ suggestions: result });
 }
 
 /**
