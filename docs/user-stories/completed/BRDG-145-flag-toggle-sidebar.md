@@ -1,6 +1,6 @@
 # BRDG-145: Flag Toggle with Comment in Sidebar
 
-**Status:** Draft
+**Status:** Done
 **Priority:** Medium
 **Depends on:** BRDG-137
 
