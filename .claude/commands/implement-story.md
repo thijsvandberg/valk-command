@@ -31,10 +31,15 @@ The Plan subagent cannot write files. After it returns the plan, **you** (the ma
 For each checkbox in the story:
 
 1. Implement the change
-2. Mark the checkbox as done `[x]` in the `.md` file
-3. Run `npm run lint`, `npm run typecheck`
-4. Fix any failures before moving to the next checkbox
-5. **Commit per logical unit** using conventional commits (`feat:`, `fix:`, `chore:`)
+2. **Write tests** for the change if relevant:
+   - New UI components: render states, user interactions, keyboard support
+   - New/modified API endpoints: happy path, error cases, edge cases
+   - New utility functions: unit tests for all input variants
+   - Update existing tests that break due to your changes
+3. Mark the checkbox as done `[x]` in the `.md` file
+4. Run `npm run lint`, `npm run typecheck`
+5. Fix any failures before moving to the next checkbox
+6. **Commit per logical unit** using conventional commits (`feat:`, `fix:`, `chore:`)
 
 If a checkbox is unclear or ambiguous: **skip it**, annotate it inline in the `.md` file with `<!-- skipped: <reason> -->`, continue with the rest.
 
