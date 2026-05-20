@@ -8,7 +8,7 @@ import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
 import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
-import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
+import { BarContainer } from "@/components/shared/BarContainer";
 import {
   DndContext,
   closestCenter,
@@ -318,9 +318,6 @@ export function SprintSlots({
           </button>
         );
       })}
-
-      {/* Divider between All/saved views and sprint tabs */}
-      <span className="mx-1 flex items-center self-center"><BarDivider /></span>
 
       <DndContext
         sensors={sensors}
