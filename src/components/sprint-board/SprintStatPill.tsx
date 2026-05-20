@@ -197,6 +197,38 @@ export function StatusCount({
   );
 }
 
+// ── Sprint stats chips ───────────────────────────────────────────────────
+// Shared component showing "X items [Y SP] [Z BV]" with pill styling.
+
+interface SprintStatsProps {
+  totalItems: number;
+  totalSp: number;
+  totalBv: number;
+  className?: string;
+}
+
+export function SprintStats({ totalItems, totalSp, totalBv, className = "" }: SprintStatsProps) {
+  return (
+    <div className={`flex items-center gap-2 text-xs tabular-nums ${className}`}>
+      <span className="text-text-tertiary">{totalItems} <span className="text-[10px]">items</span></span>
+      {totalSp > 0 && (
+        <div className="flex items-center gap-1">
+          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+            <span className="font-semibold text-text-primary">{totalSp}</span>
+            <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">SP</span>
+          </span>
+          {totalBv > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+              <span className="font-semibold text-text-primary">{totalBv}</span>
+              <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">BV</span>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Sprint completion bar ─────────────────────────────────────────────────
 // Compact header widget for active sprints. Shows a progress bar with
 // switchable modes (SP / BV / Items) and sprint time progress.
@@ -282,23 +314,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
   return (
     <div className="flex items-center gap-3 select-none" style={{ height: CONTAINER_H }}>
       {/* Stats: items + SP/BV chips -- hidden on narrow screens */}
-      <div className="hidden xl:flex items-center gap-2 text-xs tabular-nums">
-        <span className="text-text-tertiary">{props.totalItems} <span className="text-[10px]">items</span></span>
-        {props.totalSp > 0 && (
-          <div className="flex items-center gap-1">
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
-              <span className="font-semibold text-text-primary">{props.totalSp}</span>
-              <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">SP</span>
-            </span>
-            {props.totalBv > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
-                <span className="font-semibold text-text-primary">{props.totalBv}</span>
-                <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">BV</span>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      <SprintStats totalItems={props.totalItems} totalSp={props.totalSp} totalBv={props.totalBv} className="hidden xl:flex" />
 
       {/* Mode toggle */}
       <div className="flex items-center rounded h-[18px] overflow-hidden" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>

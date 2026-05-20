@@ -17,7 +17,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, prefetchTicketDetail, cancelAllPrefetches } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
-import { StatPill, StatusPill, StatusCount, SprintCompletionBar, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
+import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
@@ -1067,29 +1067,11 @@ export default function SprintBoard() {
                 ) : (
                   <>
                     <ViewHeaderDivider />
-                    <div className="flex items-center gap-1.5 text-xs tabular-nums">
-                      <span className="text-text-secondary">{f.hasActiveFilters ? `${tickets.length.toLocaleString("nl-NL")}/${allTickets.length.toLocaleString("nl-NL")}` : allTickets.length.toLocaleString("nl-NL")} items</span>
-                      {!isAllView && !f.activeView && totalPoints > 0 && (
-                        <>
-                          <span className="text-text-muted">|</span>
-                          <span className="flex items-center gap-1">
-                            <span className="flex items-center gap-0.5">
-                              <span className="font-semibold text-text-primary">{totalPoints}</span>
-                              <span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span>
-                            </span>
-                            {bvScoredTickets.length > 0 && (
-                              <>
-                                <span className="text-text-muted/50">/</span>
-                                <span className="flex items-center gap-0.5">
-                                  <span className="font-semibold text-text-primary">{bvTotal}</span>
-                                  <span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span>
-                                </span>
-                              </>
-                            )}
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    <SprintStats
+                      totalItems={f.hasActiveFilters ? tickets.length : allTickets.length}
+                      totalSp={!isAllView && !f.activeView ? totalPoints : 0}
+                      totalBv={!isAllView && !f.activeView ? bvTotal : 0}
+                    />
                   </>
                 )}
                 {!isAllView && !f.activeView && activeSprint?.state !== "active" && (
