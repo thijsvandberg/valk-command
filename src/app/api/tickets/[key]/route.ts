@@ -348,7 +348,7 @@ export async function PATCH(
 
     await db.update(ticket).set({ flagged: newFlagged }).where(eq(ticket.jiraKey, key));
 
-    // Sync to Jira: update flag field + add comment
+    // Sync to Jira: update flag field + optional comment
     (async () => {
       try {
         await jiraClient.updateIssue(key, {
@@ -357,13 +357,13 @@ export async function PATCH(
       } catch (err) {
         logger.error("ticket-detail", `PATCH Jira flag sync failed for ${key}:`, err);
       }
-      try {
-        const commentText = newFlagged
-          ? flagReason ? `flag_on Flag added\n\n${flagReason}` : "flag_on Flag added"
-          : "flag_off Flag removed";
-        await jiraClient.addComment(key, commentText);
-      } catch (err) {
-        logger.error("ticket-detail", `PATCH Jira flag comment failed for ${key}:`, err);
+      // Only post a comment if there's a reason provided
+      if (flagReason) {
+        try {
+          await jiraClient.addFlagComment(key, newFlagged ? "flag_on" : "flag_off", flagReason);
+        } catch (err) {
+          logger.error("ticket-detail", `PATCH Jira flag comment failed for ${key}:`, err);
+        }
       }
     })();
 

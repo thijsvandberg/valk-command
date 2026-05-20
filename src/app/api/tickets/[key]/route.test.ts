@@ -17,6 +17,7 @@ vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     updateIssue: vi.fn().mockResolvedValue(undefined),
     addComment: vi.fn().mockResolvedValue(undefined),
+    addFlagComment: vi.fn().mockResolvedValue(undefined),
   },
   STORY_POINTS_FIELD: "customfield_11909",
   FLAGGED_FIELD: "customfield_10002",
@@ -438,7 +439,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     expect(data.flagged).toBe(false);
   });
 
-  it("calls jiraClient.updateIssue and addComment when flagging", async () => {
+  it("calls addFlagComment with reason when flagging with reason", async () => {
     seedTicket(testDb, "VPL-402");
     const { jiraClient } = await import("@/lib/jira-client");
 
@@ -455,10 +456,10 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-402", { customfield_10002: [{ value: "Impediment" }] });
-    expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-402", "flag_on Flag added\n\nBlocked by API");
+    expect(jiraClient.addFlagComment).toHaveBeenCalledWith("VPL-402", "flag_on", "Blocked by API");
   });
 
-  it("calls jiraClient.addComment with unflag message when unflagging", async () => {
+  it("does not post a comment when unflagging without reason", async () => {
     testDb.insert(ticket).values({
       jiraKey: "VPL-403",
       title: "Flagged ticket",
@@ -480,10 +481,10 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(jiraClient.updateIssue).toHaveBeenCalledWith("VPL-403", { customfield_10002: [] });
-    expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-403", "flag_off Flag removed");
+    expect(jiraClient.addFlagComment).not.toHaveBeenCalled();
   });
 
-  it("flags without reason when flagReason not provided", async () => {
+  it("does not post a comment when flagging without reason", async () => {
     seedTicket(testDb, "VPL-404");
     const { jiraClient } = await import("@/lib/jira-client");
 
@@ -498,7 +499,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(jiraClient.addComment).toHaveBeenCalledWith("VPL-404", "flag_on Flag added");
+    expect(jiraClient.addFlagComment).not.toHaveBeenCalled();
   });
 
   it("returns 400 when flagged is not a boolean", async () => {

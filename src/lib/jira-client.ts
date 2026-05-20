@@ -631,6 +631,45 @@ export class JiraClient {
   }
 
   /**
+   * Add a flag comment with proper Jira ADF emoji formatting.
+   * Matches Jira's native flag comment format with :flag_on:/:flag_off: emoji.
+   */
+  async addFlagComment(key: string, flagType: "flag_on" | "flag_off", reason: string, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    const label = flagType === "flag_on" ? "Flag added" : "Flag removed";
+    const emojiParagraph = {
+      type: "paragraph" as const,
+      content: [
+        {
+          type: "emoji" as const,
+          attrs: { shortName: `:${flagType}:`, id: `atlassian-${flagType}`, text: `:${flagType}:` },
+        },
+        { type: "text" as const, text: ` ${label}` },
+      ],
+    };
+
+    const reasonParagraphs = reason.split("\n\n").map((block) => ({
+      type: "paragraph" as const,
+      content: [{ type: "text" as const, text: block }],
+    }));
+
+    await jiraPost<unknown>(
+      `/rest/api/3/issue/${key}/comment`,
+      {
+        body: {
+          type: "doc",
+          version: 1,
+          content: [emojiParagraph, ...reasonParagraphs],
+        },
+      },
+      signal,
+    );
+  }
+
+  /**
    * Fetch attachments for an issue.
    */
   async getAttachments(key: string, signal?: AbortSignal): Promise<JiraAttachment[]> {
