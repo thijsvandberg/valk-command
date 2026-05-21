@@ -37,6 +37,41 @@ function fmtWeekday(input: string): string {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
+// Persist suggestion task so it survives navigation
+interface StoredGoalTask {
+  taskId: string;
+  suggestion: string | null;
+  timestamp: number;
+}
+
+const STORAGE_PREFIX = "sprint-goal-task-";
+const MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
+function getStoredTask(sprintId: string): StoredGoalTask | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + sprintId);
+    if (!raw) return null;
+    const parsed: StoredGoalTask = JSON.parse(raw);
+    if (Date.now() - parsed.timestamp > MAX_AGE_MS) {
+      localStorage.removeItem(STORAGE_PREFIX + sprintId);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setStoredTask(sprintId: string, task: StoredGoalTask) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + sprintId, JSON.stringify(task));
+  } catch { /* quota exceeded */ }
+}
+
+function clearStoredTask(sprintId: string) {
+  try { localStorage.removeItem(STORAGE_PREFIX + sprintId); } catch { /* ok */ }
+}
+
 export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintEditModalProps) {
   const [startDate, setStartDate] = useState(toInputDateTime(sprint.startDate));
   const [endDate, setEndDate] = useState(toInputDateTime(sprint.endDate));
@@ -46,10 +81,88 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const restoredRef = useRef(false);
+
+  // On mount: restore a previous suggestion or reconnect to a running task
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    const stored = getStoredTask(sprint.id);
+    if (!stored) return;
+
+    if (stored.suggestion) {
+      setSuggestion(stored.suggestion);
+      return;
+    }
+
+    // Task was started but no result yet - check its status
+    setSuggesting(true);
+    workspaceTasks.get(stored.taskId)
+      .then((data) => {
+        const task = data as { status?: string; output?: string };
+        if (task.status === "completed" && task.output) {
+          setSuggestion(task.output);
+          setSuggesting(false);
+          setStoredTask(sprint.id, { ...stored, suggestion: task.output });
+        } else if (task.status === "running") {
+          reconnectStream(stored.taskId);
+        } else {
+          setSuggesting(false);
+          clearStoredTask(sprint.id);
+        }
+      })
+      .catch(() => {
+        setSuggesting(false);
+        clearStoredTask(sprint.id);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => { abortRef.current?.abort(); };
   }, []);
+
+  function connectStream(taskId: string, onResult: (text: string) => void) {
+    const streamUrl = workspaceTasks.streamUrl(taskId);
+    const eventSource = new EventSource(streamUrl);
+
+    eventSource.addEventListener("result", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        const text = data.output ?? data.text ?? "";
+        if (text) onResult(text);
+      } catch { /* ignore */ }
+    });
+
+    eventSource.addEventListener("progress", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.text) onResult(data.text);
+      } catch { /* ignore */ }
+    });
+
+    eventSource.addEventListener("done", () => {
+      eventSource.close();
+      setSuggesting(false);
+    });
+
+    eventSource.addEventListener("error", () => {
+      eventSource.close();
+      setSuggesting(false);
+    });
+
+    return eventSource;
+  }
+
+  function reconnectStream(taskId: string) {
+    const es = connectStream(taskId, (text) => {
+      setSuggestion(text);
+      setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: Date.now() });
+    });
+
+    abortRef.current?.signal.addEventListener("abort", () => es.close());
+  }
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -107,44 +220,16 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
         },
       }, controller.signal);
 
-      const streamUrl = workspaceTasks.streamUrl(taskId);
-      const eventSource = new EventSource(streamUrl);
-      let result = "";
+      // Persist so suggestion survives navigation
+      setStoredTask(sprint.id, { taskId, suggestion: null, timestamp: Date.now() });
 
-      eventSource.addEventListener("result", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          result = data.output ?? data.text ?? "";
-          setSuggestion(result);
-        } catch { /* ignore */ }
-      });
-
-      eventSource.addEventListener("progress", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (data.text) {
-            result = data.text;
-            setSuggestion(result);
-          }
-        } catch { /* ignore */ }
-      });
-
-      eventSource.addEventListener("done", () => {
-        eventSource.close();
-        setSuggesting(false);
-      });
-
-      eventSource.addEventListener("error", () => {
-        eventSource.close();
-        setSuggesting(false);
-        if (!result) {
-          setSuggestion(null);
-          showToast("Failed to generate goal suggestion");
-        }
+      const es = connectStream(taskId, (text) => {
+        setSuggestion(text);
+        setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: Date.now() });
       });
 
       controller.signal.addEventListener("abort", () => {
-        eventSource.close();
+        es.close();
         setSuggesting(false);
       });
     } catch (err) {
@@ -154,21 +239,23 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
         : "Could not generate suggestion. Is the workspace running?";
       showToast(msg);
     }
-  }, [sprint.name, tickets, showToast]);
+  }, [sprint.id, sprint.name, tickets, showToast]);
 
   const handleAcceptSuggestion = useCallback(() => {
     if (suggestion) {
       setGoal(suggestion);
       setSuggestion(null);
+      clearStoredTask(sprint.id);
       textareaRef.current?.focus();
     }
-  }, [suggestion]);
+  }, [suggestion, sprint.id]);
 
   const handleDismissSuggestion = useCallback(() => {
     setSuggestion(null);
+    clearStoredTask(sprint.id);
     abortRef.current?.abort();
     setSuggesting(false);
-  }, []);
+  }, [sprint.id]);
 
   return (
     <Modal open onClose={onClose} aria-label="Edit sprint details">
