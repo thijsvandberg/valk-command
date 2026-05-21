@@ -1020,8 +1020,26 @@ export default function SprintBoard() {
                     {statsPopoverOpen && (
                       <SprintStatsPopover
                         allTickets={allTickets}
+                        sprintName={activeSprint?.name}
+                        workingDaysRemaining={sprintWorkDays.remaining}
+                        totalWorkingDays={sprintWorkDays.total}
                         onClose={() => setStatsPopoverOpen(false)}
                         anchorRef={completionBarRef}
+                        onFilterStatus={(status) => {
+                          const next = new Set(f.statusFilter);
+                          if (next.has(status)) next.delete(status); else next.add(status);
+                          f.setStatusFilter(next);
+                        }}
+                        onFilterType={(type) => {
+                          const next = new Set(f.issueTypeFilter);
+                          if (next.has(type)) next.delete(type); else next.add(type);
+                          f.setIssueTypeFilter(next);
+                        }}
+                        onFilterEpic={(epic) => {
+                          const next = new Set(f.epicFilter);
+                          if (next.has(epic)) next.delete(epic); else next.add(epic);
+                          f.setEpicFilter(next);
+                        }}
                       />
                     )}
                     {noPointsCount > 0 && (

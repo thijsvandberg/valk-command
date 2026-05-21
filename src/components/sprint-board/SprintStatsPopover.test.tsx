@@ -154,4 +154,59 @@ describe("SprintStatsPopover", () => {
     expect(screen.getByText("story")).toBeTruthy();
     expect(screen.queryByText("task")).toBeNull();
   });
+
+  it("shows sprint name when provided", () => {
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} sprintName="BT: 137" />);
+
+    expect(screen.getByText("BT: 137")).toBeTruthy();
+    expect(screen.queryByText("Sprint Statistics")).toBeNull();
+  });
+
+  it("shows remaining days when provided", () => {
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} workingDaysRemaining={3} totalWorkingDays={10} />);
+
+    expect(screen.getByText("3 days left")).toBeTruthy();
+  });
+
+  it("shows last day indicator", () => {
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} workingDaysRemaining={0} totalWorkingDays={10} />);
+
+    expect(screen.getByText("Last day")).toBeTruthy();
+  });
+
+  it("calls onFilterStatus and onClose when clicking a status row", () => {
+    const onClose = vi.fn();
+    const onFilterStatus = vi.fn();
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} onFilterStatus={onFilterStatus} />);
+
+    fireEvent.click(screen.getByText("Done"));
+    expect(onFilterStatus).toHaveBeenCalledWith("DONE");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("calls onFilterType and onClose when clicking a type row", () => {
+    const onClose = vi.fn();
+    const onFilterType = vi.fn();
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} onFilterType={onFilterType} />);
+
+    fireEvent.click(screen.getByText("story"));
+    expect(onFilterType).toHaveBeenCalledWith("story");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("calls onFilterEpic and onClose when clicking an epic row", () => {
+    const onClose = vi.fn();
+    const onFilterEpic = vi.fn();
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} onFilterEpic={onFilterEpic} />);
+
+    fireEvent.click(screen.getByText("Auth"));
+    expect(onFilterEpic).toHaveBeenCalledWith("Auth");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
 });
