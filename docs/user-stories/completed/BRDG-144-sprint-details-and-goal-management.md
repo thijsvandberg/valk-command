@@ -1,6 +1,6 @@
 # BRDG-144: Sprint Details and Goal Management
 
-**Status:** Bridge Complete (VRW skill pending)
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -54,9 +54,9 @@ The sprint name in the header should reveal dates and goal on click/hover. An ed
 - [x] Handle Jira permission errors gracefully (read-only boards)
 
 ### Phase 4: VRW workspace skill
-- [ ] New workspace skill `/suggest-sprint-goal` in VRW <!-- skipped: VRW skill must be created in the valk-remote-workspace repo, out of scope for this codebase -->
-- [ ] Skill input: sprint name, list of ticket summaries with epic/type/SP <!-- skipped: depends on VRW skill above -->
-- [ ] Skill output: a concise sprint goal (1-2 sentences) capturing the sprint's theme <!-- skipped: depends on VRW skill above -->
+- [x] New workspace skill `/suggest-sprint-goal` in VRW
+- [x] Skill input: sprint name, list of ticket summaries with epic/type/SP
+- [x] Skill output: a concise sprint goal (1-2 sentences) capturing the sprint's theme
 - [x] Bridge API route `POST /api/sprints/[id]/suggest-goal` that invokes the workspace skill
 - [x] Streaming response so the UI can show the suggestion as it generates
 

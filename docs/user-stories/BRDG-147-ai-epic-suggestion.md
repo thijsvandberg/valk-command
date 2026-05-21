@@ -1,0 +1,125 @@
+# BRDG-147: AI Epic Suggestion in Epic Picker
+
+**Status:** Not Started
+**Priority:** Medium
+
+## Description
+
+As a Product Owner, I want the epic picker in the ticket sidebar to suggest the most relevant epic using AI, so that I can quickly and consistently link tickets to the right epic without manually scanning the full list.
+
+## Context
+
+The epic picker (`EpicPicker.tsx`) currently shows a flat list of all epics with search. For a growing backlog, manually finding the right epic is slow and error-prone. By storing a short summary per epic locally and sending those summaries (along with the ticket context) to VRW, we can get a ranked AI suggestion in seconds.
+
+## Acceptance Criteria
+
+### Phase 1: Epic Summaries Storage
+
+- [ ] Add a `summary` text column to the `ticket` table (nullable, used primarily for epics)
+- [ ] Create a migration for the new column
+- [ ] Extend `GET /api/epics` response to include the `summary` field per epic
+- [ ] Add `PATCH /api/epics/[key]/summary` endpoint for manually editing a summary
+
+### Phase 2: AI Summary Generation (VRW)
+
+- [ ] Create a `summarize-epics` skill in VRW that generates a 1-2 sentence summary per epic
+  - Input: list of epic keys (or "all" for a full refresh)
+  - Per epic: reads title, description, and child ticket titles from Jira
+  - Output: JSON array of `{ key, summary }` pairs
+- [ ] Create a skill prompt file `.claude/skills/summarize-epics.md` in VRW
+- [ ] Add `POST /api/epics/generate-summaries` endpoint in valk-command that:
+  - Triggers the `summarize-epics` skill via the workspace task system
+  - Streams progress back to the client
+  - On completion, upserts summaries into the local DB
+- [ ] Add a "Refresh summaries" button in a suitable location (e.g., Sprint Board settings or epic management)
+
+### Phase 3: AI Epic Suggestion (VRW)
+
+- [ ] Create a `suggest-epic` skill in VRW
+  - Input: ticket key, title, description/acceptance criteria, and the full epic summary list
+  - Output: JSON with top 3 suggested epics, each with a `key`, `name`, `confidence` (high/medium/low), and a short `reason`
+  - The skill prompt should instruct the model to match based on domain, scope, and thematic fit
+- [ ] Create a skill prompt file `.claude/skills/suggest-epic.md` in VRW
+- [ ] Register both new skills in VRW's `src/skills.ts` with appropriate tools and timeouts
+
+### Phase 4: Frontend Integration
+
+- [ ] Add a "Suggest epic" button (sparkle/wand icon) to the `EpicPicker` popover header
+- [ ] On click: call `POST /api/tickets/[key]/suggest-epic` which:
+  - Gathers ticket context (title, description, acceptance criteria)
+  - Loads all epic summaries from local DB
+  - Sends both to VRW via the `suggest-epic` skill
+- [ ] Show a loading state in the picker while the suggestion streams
+- [ ] Display suggestions as a highlighted section at the top of the epic list:
+  - Each suggestion shows the epic name, confidence indicator, and short reason
+  - Clicking a suggestion selects it as the epic (same as normal selection)
+- [ ] Suggestions should dismiss/hide when the user starts typing in the search field
+
+### Phase 5: Summary Staleness Detection
+
+- [ ] Track `summaryUpdatedAt` timestamp per epic (new column or reuse existing updated fields)
+- [ ] During epic sync (`POST /api/jira/sync-epics`), compare the Jira `updated` timestamp with `summaryUpdatedAt`
+- [ ] If an epic was updated in Jira since its last summary generation, mark it as stale
+- [ ] Show a subtle indicator in the epic management UI when summaries are stale
+- [ ] Optionally: auto-trigger summary regeneration for stale epics after a sync (configurable)
+
+## Technical Notes
+
+### Database Changes
+- New column on `ticket` table: `summary TEXT` (nullable)
+- New column on `ticket` table: `summaryUpdatedAt INTEGER` (nullable, epoch ms)
+- Single migration file for both columns
+
+### VRW Skills
+
+**`summarize-epics`** skill:
+- Tools: `BASE_TOOLS` + `JIRA_READ_TOOLS`
+- Timeout: 5 minutes (may need to read many epics)
+- Output format: `json`
+- Prompt strategy: for each epic, read title + description + child ticket titles, produce a concise domain-focused summary (max 2 sentences, ~150 chars)
+
+**`suggest-epic`** skill:
+- Tools: `BASE_TOOLS` (no Jira needed, summaries are passed in args)
+- Timeout: 90 seconds (lightweight matching task)
+- Output format: `json`
+- Prompt strategy: given the ticket context and epic summaries, rank epics by relevance. Return top 3 with confidence and reasoning.
+
+### Epic Summary Content Guidelines
+Summaries should capture:
+- The domain/area the epic covers (e.g., "Authentication and session management")
+- The goal or outcome (e.g., "Migrate to OAuth2 for all API consumers")
+- NOT status, dates, or sprint info (those change too often)
+
+### API Response Shape
+
+```typescript
+// GET /api/epics (extended)
+interface EpicListItem {
+  key: string;
+  name: string;
+  status: string;
+  childCount: number;
+  summary: string | null;       // New
+  summaryStale: boolean;        // New
+}
+
+// POST /api/tickets/[key]/suggest-epic response (after VRW completes)
+interface EpicSuggestion {
+  key: string;
+  name: string;
+  confidence: "high" | "medium" | "low";
+  reason: string;               // 1 sentence why this epic fits
+}
+```
+
+### Performance Considerations
+- Epic summaries are sent as a single string blob in VRW args (~2-5KB for 30-50 epics). This is well within prompt limits.
+- The `suggest-epic` skill should be fast (no Jira lookups, no file reads) since all context is passed in args.
+- Summary generation is heavier but runs infrequently (on-demand or after major syncs).
+
+## Out of Scope (for now)
+
+- Auto-suggesting epic on ticket creation (could be a follow-up)
+- Suggesting creation of a NEW epic if none fit well
+- Bulk re-assignment of tickets to suggested epics
+- Summary generation triggered by Jira webhooks (manual/on-sync only for now)
