@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { mutate as globalMutate } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
+import { useDraftSync } from "@/hooks/useDraftSync";
 import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -62,6 +63,8 @@ interface StoryWriterLayoutProps {
 
 export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
   const router = useRouter();
+  const draftSync = useDraftSync(ticketKey);
+  const isDraft = ticketKey.startsWith("DRAFT-");
   const writer = useStoryWriter(ticketKey);
   const { notify } = useNotification();
   const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
@@ -495,7 +498,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 </button>
               )}
 
-              {hasLocalSave ? (
+              {!isDraft && (hasLocalSave ? (
                 <Button
                   variant="primary"
                   size="md"
@@ -524,7 +527,7 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                 >
                   Push &amp; Close
                 </Button>
-              )}
+              ))}
 
               <div ref={moreMenuRef} className="relative">
                 <Button
@@ -554,67 +557,71 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
                       </button>
                     )}
 
-                    <div className="mx-2 my-1 h-px bg-overlay-default" />
+                    {!isDraft && (
+                      <>
+                        <div className="mx-2 my-1 h-px bg-overlay-default" />
 
-                    {hasLocalSave ? (
-                      <button
-                        type="button"
-                        onClick={() => { setShowMoreMenu(false); handlePushAndClose(); }}
-                        disabled={pushing || isDraftDirty}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <SendHorizontal size={13} strokeWidth={1.5} className="shrink-0" />
-                        <span>Push &amp; Close</span>
-                      </button>
-                    ) : hasPushed ? (
-                      <button
-                        type="button"
-                        onClick={() => { setShowMoreMenu(false); handleCloseAfterPush(); }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
-                      >
-                        <LogOut size={13} strokeWidth={1.5} className="shrink-0" />
-                        <span>Close</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setShowMoreMenu(false); handlePush(); }}
-                        disabled={pushing || isDraftDirty}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
-                        <span>Push to Jira</span>
-                      </button>
+                        {hasLocalSave ? (
+                          <button
+                            type="button"
+                            onClick={() => { setShowMoreMenu(false); handlePushAndClose(); }}
+                            disabled={pushing || isDraftDirty}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <SendHorizontal size={13} strokeWidth={1.5} className="shrink-0" />
+                            <span>Push &amp; Close</span>
+                          </button>
+                        ) : hasPushed ? (
+                          <button
+                            type="button"
+                            onClick={() => { setShowMoreMenu(false); handleCloseAfterPush(); }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                          >
+                            <LogOut size={13} strokeWidth={1.5} className="shrink-0" />
+                            <span>Close</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setShowMoreMenu(false); handlePush(); }}
+                            disabled={pushing || isDraftDirty}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
+                            <span>Push to Jira</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => { handlePullFromJira().finally(() => setShowMoreMenu(false)); }}
+                          disabled={pulling}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {pulling ? <Loader2 size={13} className="animate-spin shrink-0" /> : <CloudDownload size={13} strokeWidth={1.5} className="shrink-0" />}
+                          <span>{targetTicketKey && splitModeVisible ? "Pull both from Jira" : "Pull from Jira"}</span>
+                        </button>
+
+                        <div className="mx-2 my-1 h-px bg-overlay-default" />
+
+                        {targetTicketKey && splitModeVisible && (
+                          <p className="px-3 pt-1 pb-0.5 text-caption font-medium uppercase tracking-wider text-text-muted">
+                            Source: {ticketKey}
+                          </p>
+                        )}
+
+                        <a
+                          href={`{getJiraUrl(ticketKey)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setShowMoreMenu(false)}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                        >
+                          <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
+                          <span>Open in Jira</span>
+                        </a>
+                      </>
                     )}
-
-                    <button
-                      type="button"
-                      onClick={() => { handlePullFromJira().finally(() => setShowMoreMenu(false)); }}
-                      disabled={pulling}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {pulling ? <Loader2 size={13} className="animate-spin shrink-0" /> : <CloudDownload size={13} strokeWidth={1.5} className="shrink-0" />}
-                      <span>{targetTicketKey && splitModeVisible ? "Pull both from Jira" : "Pull from Jira"}</span>
-                    </button>
-
-                    <div className="mx-2 my-1 h-px bg-overlay-default" />
-
-                    {targetTicketKey && splitModeVisible && (
-                      <p className="px-3 pt-1 pb-0.5 text-caption font-medium uppercase tracking-wider text-text-muted">
-                        Source: {ticketKey}
-                      </p>
-                    )}
-
-                    <a
-                      href={`{getJiraUrl(ticketKey)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setShowMoreMenu(false)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
-                    >
-                      <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
-                      <span>Open in Jira</span>
-                    </a>
 
                     <Link
                       href={`/tickets/${ticketKey}`}
@@ -694,17 +701,24 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               const status = (ticketData.jiraStatus ?? "TO DO") as import("@/types/ticket").JiraStatus;
               return (
                 <>
-                  <TicketStatusPill
-                    ticketKey={ticketKey}
-                    jiraStatus={status}
-                    readiness={localReadiness}
-                    onJiraStatusChange={handleJiraStatusChange}
-                    onReadinessChange={handleReadinessChange}
-                    issueType={ticketData.type}
-                    onIssueTypeChange={handleTypeChange}
-                    title={writer.session?.localTitle ?? ticketData.title}
-                    size="lg"
-                  />
+                  {isDraft && draftSync.syncStatus === "pending" ? (
+                    <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2.5 py-1 text-label font-medium text-text-tertiary">
+                      <span className="h-2 w-2 rounded-full bg-amber-400/60 animate-pulse" />
+                      Syncing to Jira...
+                    </span>
+                  ) : (
+                    <TicketStatusPill
+                      ticketKey={ticketKey}
+                      jiraStatus={status}
+                      readiness={localReadiness}
+                      onJiraStatusChange={handleJiraStatusChange}
+                      onReadinessChange={handleReadinessChange}
+                      issueType={ticketData.type}
+                      onIssueTypeChange={handleTypeChange}
+                      title={writer.session?.localTitle ?? ticketData.title}
+                      size="lg"
+                    />
+                  )}
                   <ViewHeaderDivider />
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
                     {writer.session?.localTitle ?? ticketData.title}
@@ -718,6 +732,20 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
           {pushError && (
             <div className="border-b border-red-500/20 bg-red-500/[0.04] px-4 py-2 text-xs text-red-400">
               {pushError}
+            </div>
+          )}
+
+          {/* Draft sync error */}
+          {draftSync.syncStatus === "error" && (
+            <div className="flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-xs text-amber-400">
+              <span className="flex-1">Failed to create in Jira: {draftSync.error}. Your draft is saved locally.</span>
+              <button
+                type="button"
+                onClick={draftSync.retry}
+                className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
+              >
+                Retry
+              </button>
             </div>
           )}
 

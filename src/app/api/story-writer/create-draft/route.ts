@@ -4,11 +4,11 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { logActivity } from "@/lib/activity-logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { syncDraftToJira } from "@/lib/draft-sync";
 
 /**
  * Creates a local-only draft ticket with a temporary DRAFT-xxx key.
- * No Jira API call is made; the caller navigates immediately.
- * Background Jira sync is triggered separately.
+ * No Jira API call blocks the response. Jira creation runs in the background.
  */
 export async function POST(request: Request) {
   const limited = applyRateLimit("story-writer");
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
   }
 
   const issueType = body.issueType ?? "story";
+  const sprintId = body.sprintId;
   const draftKey = `DRAFT-${randomUUID().slice(0, 8)}`;
 
   await Promise.all([
@@ -47,10 +48,13 @@ export async function POST(request: Request) {
     }),
   ]);
 
+  // Fire background Jira sync (non-blocking)
+  syncDraftToJira(draftKey, { title, sprintId, issueType }).catch(() => {});
+
   return NextResponse.json({
     key: draftKey,
     title,
     issueType,
-    sprintId: body.sprintId ?? null,
+    sprintId: sprintId ?? null,
   }, { status: 201 });
 }

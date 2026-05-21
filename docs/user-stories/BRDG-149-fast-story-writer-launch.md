@@ -57,13 +57,13 @@ The modal closes and the story writer opens near-instantly. Jira issue creation 
 - [x] User can start typing their story description immediately after the modal closes
 
 ### Phase 2: Background Jira sync
-- [ ] After the local draft is created, fire the Jira issue creation in the background (non-blocking)
-- [ ] When the Jira API responds with the real key (e.g., `BRDG-250`):
+- [x] After the local draft is created, fire the Jira issue creation in the background (non-blocking)
+- [x] When the Jira API responds with the real key (e.g., `BRDG-250`):
   - Update the local ticket record: replace `DRAFT-xxx` with the real Jira key
   - Update the `storyWriterSession`, `ticketMetadata`, and `conversation` records to use the real key
   - Update the URL from `/tickets/DRAFT-xxx/write` to `/tickets/BRDG-250/write` (use `router.replace`)
-- [ ] Show a subtle indicator in the story writer header while the Jira key is pending (e.g., pulsing placeholder instead of the ticket key)
-- [ ] Once the real key arrives, display it in the header with a brief transition
+- [x] Show a subtle indicator in the story writer header while the Jira key is pending (e.g., pulsing placeholder instead of the ticket key)
+- [x] Once the real key arrives, display it in the header with a brief transition
 
 ### Phase 3: Error handling
 - [ ] If Jira creation fails, show an inline error banner in the story writer (not a blocking modal)
