@@ -139,9 +139,12 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
         eventSource.close();
         setSuggesting(false);
       });
-    } catch {
+    } catch (err) {
       setSuggesting(false);
-      showToast("Failed to start goal suggestion");
+      const msg = err instanceof Error && err.message.includes("unreachable")
+        ? "Workspace is not reachable"
+        : "Could not generate suggestion. Is the workspace running?";
+      showToast(msg);
     }
   }, [sprint.name, tickets, showToast]);
 

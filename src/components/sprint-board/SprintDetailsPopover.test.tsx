@@ -30,7 +30,7 @@ describe("SprintDetailsPopover", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("shows sprint dates and goal when open", () => {
+  it("shows sprint goal when open", () => {
     render(
       <SprintDetailsPopover
         sprint={makeSprint()}
@@ -40,9 +40,8 @@ describe("SprintDetailsPopover", () => {
       />,
     );
 
-    expect(screen.getByText("Sprint details")).toBeInTheDocument();
     expect(screen.getByText("Deliver authentication module")).toBeInTheDocument();
-    expect(screen.getByText("Edit")).toBeInTheDocument();
+    expect(screen.getByText("Edit details")).toBeInTheDocument();
   });
 
   it("shows placeholder when no goal is set", () => {
@@ -55,7 +54,7 @@ describe("SprintDetailsPopover", () => {
       />,
     );
 
-    expect(screen.getByText("No goal set")).toBeInTheDocument();
+    expect(screen.getByText("No sprint goal set")).toBeInTheDocument();
   });
 
   it("calls onEdit and onClose when edit button is clicked", () => {
@@ -71,7 +70,7 @@ describe("SprintDetailsPopover", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Edit"));
+    fireEvent.click(screen.getByText("Edit details"));
     expect(onClose).toHaveBeenCalled();
     expect(onEdit).toHaveBeenCalled();
   });
