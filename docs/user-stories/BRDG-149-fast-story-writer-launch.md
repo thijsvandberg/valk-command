@@ -33,6 +33,21 @@ Currently, clicking "Create & open" in the StoryWriterLauncherModal blocks on a 
 
 The modal closes and the story writer opens near-instantly. Jira issue creation happens in the background. The user can start writing their story description immediately, with the Jira key appearing once available.
 
+## Implementation Plan
+
+1. **Phase 4 first (quick win)**: Parallelize the 3 sequential DB inserts in `POST /api/story-writer/create` with `Promise.all`.
+2. **New API route `POST /api/story-writer/create-draft`**: Creates a local-only ticket with `DRAFT-{uuid}` key and `status: "DRAFTING"`. No Jira call. Returns the draft key immediately.
+3. **Add `createDraft` to api-client**: New method in the `storyWriter` namespace.
+4. **Update `handleCreateNew` in StoryWriterLauncherModal**: Call `createDraft` instead of `createViaGlobal`, navigate to `/tickets/DRAFT-xxx/write` immediately.
+5. **Update command palette**: Same pattern as step 4.
+6. **Skip Jira freshness check for draft keys**: In `useTicketDetail`, skip `jiraApi.checkUpdated()` when key starts with `DRAFT-`.
+7. **New API route `POST /api/story-writer/finalize-draft`**: Accepts `{draftKey, realKey}`. In a transaction: insert new ticket row with real key, update `ticketMetadata`, `storyWriterSession`, `conversation.relatedTicket`, set old draft ticket `status: "REPLACED"`.
+8. **Server-side background sync**: The `create-draft` route fires `jiraClient.createIssue()` in a detached promise after responding. On success, calls the finalize logic internally. On failure, marks ticket as `DRAFT_FAILED`.
+9. **New hook `useDraftSync`**: Polls `GET /api/story-writer/draft-status?key=DRAFT-xxx`. Returns `{syncStatus, realKey, error, retry}`. When synced, calls `router.replace()`.
+10. **New API route `GET /api/story-writer/draft-status`**: Returns `{status: "pending"|"synced"|"error", realKey?, error?}` by checking the ticket table.
+11. **Integrate `useDraftSync` into StoryWriterLayout**: Show pulsing placeholder while pending, error banner on failure, retry button.
+12. **Hide Jira-specific actions for draft keys**: Conditionally hide "Open in Jira", "Pull from Jira", "Push to Jira" when key starts with `DRAFT-`.
+
 ## Acceptance Criteria
 
 ### Phase 1: Optimistic navigation with local draft
@@ -57,8 +72,8 @@ The modal closes and the story writer opens near-instantly. Jira issue creation 
 - [ ] If the user closes the story writer before Jira creation completes, the background task still finishes and updates the record
 
 ### Phase 4: Parallelize remaining DB operations
-- [ ] In the create API route, run the 3 DB operations (`ticket`, `ticketMetadata`, `logActivity`) with `Promise.all` instead of sequentially
-- [ ] Same pattern for the session creation route where applicable
+- [x] In the create API route, run the 3 DB operations (`ticket`, `ticketMetadata`, `logActivity`) with `Promise.all` instead of sequentially
+- [x] Same pattern for the session creation route where applicable <!-- already parallelized with Promise.all on line 144 -->
 
 ## Technical Notes
 

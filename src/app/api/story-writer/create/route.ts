@@ -46,23 +46,23 @@ export async function POST(request: Request) {
     );
   }
 
-  await db.insert(ticket).values({
-    jiraKey: newKey,
-    title,
-    type: issueType,
-    status: "TO DO",
-  });
-
-  await db.insert(ticketMetadata).values({
-    jiraKey: newKey,
-    readiness: "drafting",
-  });
-
-  await logActivity({
-    type: "story-writer",
-    scope: newKey,
-    summary: `Created new story: ${newKey} — ${title}`,
-  });
+  await Promise.all([
+    db.insert(ticket).values({
+      jiraKey: newKey,
+      title,
+      type: issueType,
+      status: "TO DO",
+    }),
+    db.insert(ticketMetadata).values({
+      jiraKey: newKey,
+      readiness: "drafting",
+    }),
+    logActivity({
+      type: "story-writer",
+      scope: newKey,
+      summary: `Created new story: ${newKey} — ${title}`,
+    }),
+  ]);
 
   return NextResponse.json({ key: newKey }, { status: 201 });
 }
