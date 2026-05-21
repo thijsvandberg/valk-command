@@ -6,7 +6,9 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { apiFetch, tickets } from "@/lib/api-client";
 import { parseVersionDate, parseRawVersionData, storyVersionToOption } from "./version-utils";
 import { VersionList } from "./VersionList";
-import { DiffViewer, type DiffStats } from "./DiffViewer";
+import type { DiffStats } from "./DiffViewer";
+import dynamic from "next/dynamic";
+const DiffViewer = dynamic(() => import("./DiffViewer").then((m) => ({ default: m.DiffViewer })), { ssr: false });
 import { VersionPreview } from "./VersionPreview";
 
 export interface TicketHistoryProps {

@@ -53,6 +53,8 @@ const nextConfig: NextConfig = {
       "@tiptap/extension-link",
       "@tiptap/extension-table",
       "@tiptap/extension-text-style",
+      "lucide-react",
+      "fuse.js",
     ],
   },
   async headers() {

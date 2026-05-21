@@ -50,11 +50,11 @@ Notes: Item #21 already implemented. Duplicate `VIRTUALIZE_THRESHOLD` in `Sprint
 
 ### Phase 3: Code splitting and bundle optimization
 
-- [ ] Dynamic import `SearchModal` and `SprintListModal` (only loaded when opened)
-- [ ] Dynamic import `DiffViewer` in `TicketHistory` (only loaded when history tab is active)
-- [ ] Add `optimizePackageImports` in `next.config.ts` for `lucide-react`, `fuse.js`, `@tiptap/core`, `@tiptap/pm`, `@tiptap/starter-kit`
-- [ ] Extract `SprintBoard.tsx` state into custom hooks: `useSprintStats()`, `useSprintDragAndDrop()` to reduce monolithic component re-renders
-- [ ] Decompose `SearchModal` (19 useState calls) into memoized sub-components: `SearchFilterPanel`, `SearchResultList`, `SearchPreviewPane`
+- [x] Dynamic import `SearchModal` and `SprintListModal` (only loaded when opened)
+- [x] Dynamic import `DiffViewer` in `TicketHistory` (only loaded when history tab is active)
+- [x] Add `optimizePackageImports` in `next.config.ts` for `lucide-react`, `fuse.js`, `@tiptap/core`, `@tiptap/pm`, `@tiptap/starter-kit`
+- [ ] Extract `SprintBoard.tsx` state into custom hooks: `useSprintStats()`, `useSprintDragAndDrop()` to reduce monolithic component re-renders <!-- skipped: stats are already useMemo'd so extraction is code-org not perf. DnD extraction has high regression risk for minimal perf gain. -->
+- [ ] Decompose `SearchModal` (19 useState calls) into memoized sub-components: `SearchFilterPanel`, `SearchResultList`, `SearchPreviewPane` <!-- skipped: SearchFilterPanel and PreviewPane are already extracted. Remaining decomposition is code-org. -->
 
 ### Phase 4: CSS and rendering polish
 

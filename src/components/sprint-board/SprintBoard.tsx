@@ -9,7 +9,8 @@ import { TicketTable } from "@/components/sprint-board/TicketTable";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
-import { SearchModal } from "@/components/sprint-board/SearchModal";
+import dynamic from "next/dynamic";
+const SearchModal = dynamic(() => import("@/components/sprint-board/SearchModal").then((m) => ({ default: m.SearchModal })), { ssr: false });
 import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLauncherModal";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -137,7 +138,7 @@ const boardCollisionDetection: CollisionDetection = (args) => {
   return closestCenter({ ...args, droppableContainers: ticketContainers });
 };
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { SprintListModal } from "@/components/sprint-board/SprintListModal";
+const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/shared/LoadingState";
