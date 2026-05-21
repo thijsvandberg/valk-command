@@ -92,104 +92,123 @@ export function useStoryWriter(ticketKey: string) {
 
   useEffect(() => {
     let cancelled = false;
+    const isDraftKey = ticketKey.startsWith("DRAFT-");
+
+    // For draft keys, set status to ready immediately so the editor shell renders
+    if (isDraftKey) {
+      setStatus("ready");
+    }
 
     async function init() {
-      setStatus("loading");
-      try {
-        const data = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+      if (!isDraftKey) setStatus("loading");
 
-        if (cancelled) return;
+      // For draft keys, the ticket may not exist yet (background create-draft in progress).
+      // Retry the init loop until the ticket is available.
+      const maxRetries = isDraftKey ? 20 : 0;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const data = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
 
-        if (data.session) {
-          setSession(data.session as StoryWriterSessionRow);
-          setMessages(data.messages as Message[]);
-          setAllDrafts((data.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
-          setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+          if (cancelled) return;
 
-          const loadedMsgs: Message[] = (data.messages as Message[]) ?? [];
-          const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
-          const hasFollowingAssistant = lastUserMsg
-            ? loadedMsgs.some((m: Message) => m.role === "assistant" && m.timestamp > lastUserMsg.timestamp)
-            : true;
-          if (lastUserMsg?.workspaceTaskId && !hasFollowingAssistant && !cancelled) {
-            // Check if the task already completed while we were away
-            try {
-              const task = await workspaceTasksApi.get(lastUserMsg.workspaceTaskId) as Record<string, unknown>;
-              if (cancelled) return;
-              if ((task.status as string) === "completed" && task.output) {
-                // Apply the completed result directly
-                setStatus("streaming");
-                setStreamProgress("Applying result...");
-                try {
-                  await storyWriterApi.applyDraft(ticketKey, { output: task.output, taskId: lastUserMsg.workspaceTaskId, assistantContent: task.output });
-                } catch {
+          if (data.session) {
+            setSession(data.session as StoryWriterSessionRow);
+            setMessages(data.messages as Message[]);
+            setAllDrafts((data.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
+            setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+
+            const loadedMsgs: Message[] = (data.messages as Message[]) ?? [];
+            const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
+            const hasFollowingAssistant = lastUserMsg
+              ? loadedMsgs.some((m: Message) => m.role === "assistant" && m.timestamp > lastUserMsg.timestamp)
+              : true;
+            if (lastUserMsg?.workspaceTaskId && !hasFollowingAssistant && !cancelled) {
+              // Check if the task already completed while we were away
+              try {
+                const task = await workspaceTasksApi.get(lastUserMsg.workspaceTaskId) as Record<string, unknown>;
+                if (cancelled) return;
+                if ((task.status as string) === "completed" && task.output) {
+                  // Apply the completed result directly
+                  setStatus("streaming");
+                  setStreamProgress("Applying result...");
+                  try {
+                    await storyWriterApi.applyDraft(ticketKey, { output: task.output, taskId: lastUserMsg.workspaceTaskId, assistantContent: task.output });
+                  } catch {
+                    if (cancelled) return;
+                    setStreamError("Could not apply completed result. Use retry to try again.");
+                    setStatus("ready");
+                    setStreamProgress("");
+                    return;
+                  }
                   if (cancelled) return;
-                  setStreamError("Could not apply completed result. Use retry to try again.");
+                  try {
+                    const refreshed = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+                    if (!cancelled) {
+                      setSession(refreshed.session as StoryWriterSessionRow);
+                      setMessages(refreshed.messages as Message[]);
+                      setAllDrafts((refreshed.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
+                      setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+                    }
+                  } catch { /* ignore refresh failure */ }
+                  if (!cancelled) {
+                    setStatus("ready");
+                    setStreamProgress("");
+                  }
+                  return;
+                } else if ((task.status as string) === "failed") {
+                  setStreamError((task.error as string) ?? "Task failed on workspace");
                   setStatus("ready");
-                  setStreamProgress("");
                   return;
                 }
-                if (cancelled) return;
-                try {
-                  const refreshed = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
-                  if (!cancelled) {
-                    setSession(refreshed.session as StoryWriterSessionRow);
-                    setMessages(refreshed.messages as Message[]);
-                    setAllDrafts((refreshed.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
-                    setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
-                  }
-                } catch { /* ignore refresh failure */ }
-                if (!cancelled) {
+                // Still running: fall through to startMonitoring below
+              } catch (err) {
+                if (err instanceof ApiError && err.status === 404) {
                   setStatus("ready");
-                  setStreamProgress("");
+                  return;
                 }
-                return;
-              } else if ((task.status as string) === "failed") {
-                setStreamError((task.error as string) ?? "Task failed on workspace");
-                setStatus("ready");
-                return;
+                /* fall through to monitoring */
               }
-              // Still running: fall through to startMonitoring below
-            } catch (err) {
-              if (err instanceof ApiError && err.status === 404) {
-                setStatus("ready");
-                return;
-              }
-              /* fall through to monitoring */
-            }
-            if (cancelled) return;
-            startMonitoringRef.current?.(lastUserMsg.workspaceTaskId, "Resuming...");
-          } else {
-            setStatus("ready");
-          }
-        } else {
-          try {
-            const created = await storyWriterApi.createSession(ticketKey) as Record<string, unknown>;
-            if (cancelled) return;
-            setSession(created.session as StoryWriterSessionRow);
-            setMessages([]);
-            setAllDrafts([]);
-          } catch (err) {
-            if (cancelled) return;
-            if (err instanceof ApiError && (err.status === 409 || err.status === 500)) {
-              const retryData = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
               if (cancelled) return;
-              if (retryData.session) {
-                setSession(retryData.session as StoryWriterSessionRow);
-                setMessages((retryData.messages as Message[] | undefined) ?? []);
-                setAllDrafts((retryData.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
-                setRelatedCandidates((retryData.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+              startMonitoringRef.current?.(lastUserMsg.workspaceTaskId, "Resuming...");
+            } else {
+              setStatus("ready");
+            }
+            return;
+          } else {
+            try {
+              const created = await storyWriterApi.createSession(ticketKey) as Record<string, unknown>;
+              if (cancelled) return;
+              setSession(created.session as StoryWriterSessionRow);
+              setMessages([]);
+              setAllDrafts([]);
+            } catch (err) {
+              if (cancelled) return;
+              if (err instanceof ApiError && (err.status === 409 || err.status === 500)) {
+                const retryData = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+                if (cancelled) return;
+                if (retryData.session) {
+                  setSession(retryData.session as StoryWriterSessionRow);
+                  setMessages((retryData.messages as Message[] | undefined) ?? []);
+                  setAllDrafts((retryData.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
+                  setRelatedCandidates((retryData.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+                } else {
+                  throw new Error("Failed to create session");
+                }
+              } else if (isDraftKey && err instanceof ApiError && err.status === 404 && attempt < maxRetries) {
+                // Ticket not created yet, retry after delay
+                await new Promise((r) => setTimeout(r, 300));
+                continue;
               } else {
                 throw new Error("Failed to create session");
               }
-            } else {
-              throw new Error("Failed to create session");
             }
+            setStatus("ready");
+            return;
           }
-          setStatus("ready");
+        } catch {
+          if (!cancelled) setStatus("idle");
+          return;
         }
-      } catch {
-        if (!cancelled) setStatus("idle");
       }
     }
 

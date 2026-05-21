@@ -59,9 +59,11 @@ function SplitModeSync() {
 
 interface StoryWriterLayoutProps {
   ticketKey: string;
+  draftTitle?: string;
+  draftType?: string;
 }
 
-export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
+export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWriterLayoutProps) {
   const router = useRouter();
   const draftSync = useDraftSync(ticketKey);
   const isDraft = ticketKey.startsWith("DRAFT-");
@@ -697,31 +699,54 @@ export function StoryWriterLayout({ ticketKey }: StoryWriterLayoutProps) {
               </div>
             </>}
           >
-            {ticketData && (() => {
-              const status = (ticketData.jiraStatus ?? "TO DO") as import("@/types/ticket").JiraStatus;
-              return (
-                <>
-                  {isDraft && draftSync.syncStatus === "pending" ? (
+            {(() => {
+              const displayTitle = writer.session?.localTitle ?? ticketData?.title ?? draftTitle ?? ticketKey;
+              const displayType = ticketData?.type ?? draftType;
+
+              if (isDraft && draftSync.syncStatus === "pending") {
+                return (
+                  <>
                     <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2.5 py-1 text-label font-medium text-text-tertiary">
                       <span className="h-2 w-2 rounded-full bg-amber-400/60 animate-pulse" />
                       Syncing to Jira...
                     </span>
-                  ) : (
-                    <TicketStatusPill
-                      ticketKey={ticketKey}
-                      jiraStatus={status}
-                      readiness={localReadiness}
-                      onJiraStatusChange={handleJiraStatusChange}
-                      onReadinessChange={handleReadinessChange}
-                      issueType={ticketData.type}
-                      onIssueTypeChange={handleTypeChange}
-                      title={writer.session?.localTitle ?? ticketData.title}
-                      size="lg"
-                    />
-                  )}
+                    <ViewHeaderDivider />
+                    <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
+                      {displayTitle}
+                    </span>
+                  </>
+                );
+              }
+
+              if (!ticketData) {
+                return (
+                  <>
+                    {displayType && <IssueTypeIcon type={displayType} size={14} />}
+                    <ViewHeaderDivider />
+                    <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
+                      {displayTitle}
+                    </span>
+                  </>
+                );
+              }
+
+              const status = (ticketData.jiraStatus ?? "TO DO") as import("@/types/ticket").JiraStatus;
+              return (
+                <>
+                  <TicketStatusPill
+                    ticketKey={ticketKey}
+                    jiraStatus={status}
+                    readiness={localReadiness}
+                    onJiraStatusChange={handleJiraStatusChange}
+                    onReadinessChange={handleReadinessChange}
+                    issueType={ticketData.type}
+                    onIssueTypeChange={handleTypeChange}
+                    title={displayTitle}
+                    size="lg"
+                  />
                   <ViewHeaderDivider />
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
-                    {writer.session?.localTitle ?? ticketData.title}
+                    {displayTitle}
                   </span>
                 </>
               );

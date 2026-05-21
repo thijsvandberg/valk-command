@@ -476,15 +476,15 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, error: "Title is required" } : prev);
         return;
       }
-      setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: true, error: null } : prev);
-      try {
-        const result = await storyWriter.createDraft({ title, sprintId: subFlow.sprintId || undefined }) as { key: string };
-        router.push(`/tickets/${result.key}/write`);
-        handleClose();
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Something went wrong";
-        setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: false, error: msg } : prev);
-      }
+      const draftKey = `DRAFT-${crypto.randomUUID().slice(0, 8)}`;
+      const params = new URLSearchParams({ title });
+      router.push(`/tickets/${draftKey}/write?${params.toString()}`);
+      handleClose();
+
+      // Fire draft creation in background (non-blocking)
+      storyWriter.createDraft({
+        title, sprintId: subFlow.sprintId || undefined, draftKey,
+      }).catch(() => {});
     } else {
       const key = subFlow.existingKey.trim().toUpperCase();
       if (!key) {

@@ -434,18 +434,21 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     }
   };
 
-  const handleCreateNew = async () => {
+  const handleCreateNew = () => {
     const title = newTitle.trim();
     if (!title) { setCreateError("Enter a story title"); return; }
-    setCreateError(null); setCreating(true);
-    try {
-      const { key } = await storyWriter.createDraft({ title, sprintId: selectedSprintId || undefined, issueType }) as { key: string };
-      onClose(); router.push(`/tickets/${key}/write`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      setCreateError(msg);
-    }
-    finally { setCreating(false); }
+    setCreateError(null);
+
+    // Generate draft key client-side and navigate instantly
+    const draftKey = `DRAFT-${crypto.randomUUID().slice(0, 8)}`;
+    const params = new URLSearchParams({ title, type: issueType });
+    onClose();
+    router.push(`/tickets/${draftKey}/write?${params.toString()}`);
+
+    // Fire draft creation in background (non-blocking)
+    storyWriter.createDraft({
+      title, sprintId: selectedSprintId || undefined, issueType, draftKey,
+    }).catch(() => {});
   };
 
   const deleteSession = async (sessionId: string) => {

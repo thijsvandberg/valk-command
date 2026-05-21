@@ -437,7 +437,9 @@ describe("CommandPalette", () => {
     });
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-200/write");
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/tickets\/DRAFT-[a-f0-9]+\/write\?title=New\+feature$/),
+      );
     });
   });
 

@@ -7,14 +7,15 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { syncDraftToJira } from "@/lib/draft-sync";
 
 /**
- * Creates a local-only draft ticket with a temporary DRAFT-xxx key.
- * No Jira API call blocks the response. Jira creation runs in the background.
+ * Creates a local-only draft ticket with a DRAFT-xxx key.
+ * Accepts an optional client-provided draftKey for instant navigation.
+ * Jira creation runs in the background.
  */
 export async function POST(request: Request) {
   const limited = applyRateLimit("story-writer");
   if (limited) return limited;
 
-  let body: { title?: string; sprintId?: string; issueType?: string } = {};
+  let body: { title?: string; sprintId?: string; issueType?: string; draftKey?: string } = {};
   try {
     body = await request.json();
   } catch {
@@ -28,7 +29,9 @@ export async function POST(request: Request) {
 
   const issueType = body.issueType ?? "story";
   const sprintId = body.sprintId;
-  const draftKey = `DRAFT-${randomUUID().slice(0, 8)}`;
+  const draftKey = body.draftKey?.startsWith("DRAFT-")
+    ? body.draftKey
+    : `DRAFT-${randomUUID().slice(0, 8)}`;
 
   await Promise.all([
     db.insert(ticket).values({
