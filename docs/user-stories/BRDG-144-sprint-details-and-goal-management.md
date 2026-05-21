@@ -48,10 +48,10 @@ The sprint name in the header should reveal dates and goal on click/hover. An ed
 - [ ] Success toast on save; error toast on failure
 
 ### Phase 3: Jira sync
-- [ ] New API route `PUT /api/jira/sprints/[id]` that proxies updates to the Jira Agile API
-- [ ] Supported fields: `startDate`, `endDate`, `goal`
-- [ ] After successful Jira update, refresh the local sprint cache
-- [ ] Handle Jira permission errors gracefully (read-only boards)
+- [x] New API route `PUT /api/jira/sprints/[id]` that proxies updates to the Jira Agile API
+- [x] Supported fields: `startDate`, `endDate`, `goal`
+- [x] After successful Jira update, refresh the local sprint cache
+- [x] Handle Jira permission errors gracefully (read-only boards)
 
 ### Phase 4: VRW workspace skill
 - [ ] New workspace skill `/suggest-sprint-goal` in VRW

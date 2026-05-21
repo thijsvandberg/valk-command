@@ -80,10 +80,17 @@ export interface JiraIssueFields {
   comment?: { total: number; comments: JiraComment[] };
 }
 
+export interface JiraChangelogEntry {
+  author: { displayName: string; avatarUrls?: Record<string, string> };
+  created: string;
+  items: Array<{ field: string; fromString?: string; toString?: string }>;
+}
+
 export interface JiraIssue {
   id: string;
   key: string;
   fields: JiraIssueFields;
+  changelog?: { histories: JiraChangelogEntry[] };
 }
 
 export interface JiraSearchResponse {
@@ -385,6 +392,33 @@ async function jiraPost<T>(path: string, body: unknown, signal?: AbortSignal): P
   }
 }
 
+async function jiraPostNoContent(path: string, body: unknown, signal?: AbortSignal): Promise<void> {
+  const cfg = getConfig();
+  const url = `${cfg.baseUrl}${path}`;
+  const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
+
+  const [timeoutSignal, cleanup] = makeTimeoutSignal(signal);
+  try {
+    return await withRetry(
+      () => fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: timeoutSignal,
+      }),
+      async () => {},
+      path,
+      timeoutSignal,
+    );
+  } finally {
+    cleanup();
+  }
+}
+
 async function jiraPut(path: string, body: unknown, signal?: AbortSignal): Promise<void> {
   const cfg = getConfig();
   const url = `${cfg.baseUrl}${path}`;
@@ -467,6 +501,22 @@ export function extractEpicLink(fields: JiraIssueFields): { name: string; key: s
 export function extractAcceptanceCriteria(fields: JiraIssueFields): string | null {
   const val = fields[ACCEPTANCE_CRITERIA_FIELD as `customfield_${string}`];
   return typeof val === "string" ? val : null;
+}
+
+/**
+ * Extract the most recent changelog author from an issue's inline changelog.
+ * Use this instead of a separate getLastChangeAuthor() call when the issue
+ * was fetched with expand=changelog.
+ */
+export function extractLastChangeAuthor(issue: JiraIssue): { name: string; avatar: string | null } | null {
+  const histories = issue.changelog?.histories;
+  if (!histories || histories.length === 0) return null;
+  const latest = histories[0]; // Jira returns histories newest-first
+  if (!latest?.author) return null;
+  return {
+    name: latest.author.displayName,
+    avatar: latest.author.avatarUrls?.["48x48"] ?? null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -730,19 +780,20 @@ export class JiraClient {
   /**
    * Fetch full issue data for a specific set of keys (used by timestamp-first strategy).
    */
-  async getIssuesByKeys(keys: string[], signal?: AbortSignal): Promise<JiraIssue[]> {
+  async getIssuesByKeys(keys: string[], signal?: AbortSignal, expandChangelog = false): Promise<JiraIssue[]> {
     if (!isConfigured()) {
       return [];
     }
 
     const jql = `key in (${keys.join(",")})`;
+    const expand = expandChangelog ? "&expand=changelog" : "";
     let all: JiraIssue[] = [];
     let pageToken: string | undefined;
 
     while (true) {
       const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
       const result = await jiraFetch<JiraSearchResponse>(
-        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${ISSUE_FIELDS}&maxResults=100${tokenParam}`,
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${ISSUE_FIELDS}&maxResults=100${expand}${tokenParam}`,
         signal,
       );
       all = all.concat(result.issues);
@@ -857,6 +908,22 @@ export class JiraClient {
     for (const key of issueKeys) {
       await this.updateIssue(key, { [SPRINT_FIELD]: sprintId }, signal);
     }
+  }
+
+  /**
+   * Update sprint metadata (goal, dates) via the Jira Agile API.
+   * Uses PUT /rest/agile/1.0/sprint/{sprintId}.
+   */
+  async updateSprint(
+    sprintId: number,
+    fields: { goal?: string; startDate?: string; endDate?: string },
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, fields, signal);
   }
 
   /**
@@ -1003,7 +1070,8 @@ export class JiraClient {
   async createIssueLink(sourceKey: string, targetKey: string, linkType = "Relates"): Promise<void> {
     if (!isConfigured()) return;
 
-    await jiraPost<void>("/rest/api/3/issueLink", {
+    // Jira returns 201 with no body, so use jiraPostNoContent to avoid JSON parse errors
+    await jiraPostNoContent("/rest/api/3/issueLink", {
       type: { name: linkType },
       inwardIssue: { key: sourceKey },
       outwardIssue: { key: targetKey },

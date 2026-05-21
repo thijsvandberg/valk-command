@@ -355,6 +355,8 @@ export const jira = {
     apiFetch<unknown>("/api/jira/move-sprint", { method: "POST", body: data, signal }),
   assign: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/jira/assign", { method: "POST", body: data, signal }),
+  updateSprint: (sprintId: string, data: { goal?: string; startDate?: string; endDate?: string }, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>(`/api/jira/sprints/${encodeURIComponent(sprintId)}`, { method: "PUT", body: data, signal }),
 };
 
 // ---------------------------------------------------------------------------
