@@ -1,6 +1,6 @@
 # BRDG-148: Sprint Stats Popup
 
-**Status:** Draft
+**Status:** Done
 **Priority:** Low
 
 ## Description
