@@ -6,13 +6,14 @@ import type { TicketDetail, LinkedIssue, IssueType } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { StatusBadge as SearchStatusBadge } from "@/components/sprint-board/SearchResultParts";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { LinkIssueDialog } from "./LinkIssueDialog";
 import { RelatedIssueSuggestionsPanel, type RelatedSuggestion } from "./RelatedIssueSuggestions";
 import { tickets } from "@/lib/api-client";
-import { X, Sparkles, Loader2, Link2 } from "lucide-react";
+import { X, Sparkles, Loader2, Link2, Cloud } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
@@ -25,6 +26,7 @@ interface InlineSearchResult {
   title: string;
   type: string;
   status: string;
+  source?: "local" | "jira";
 }
 
 export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssuesSectionProps) {
@@ -77,25 +79,54 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     openLinkDialog({ targetKey: suggestion.key, relation: suggestion.suggestedRelation });
   }, [openLinkDialog]);
 
-  // Inline search
+  // Inline search with two-phase Jira fallback
+  const inlineJiraDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const inlineAbortRef = useRef<AbortController | null>(null);
+  const [inlineSearchingJira, setInlineSearchingJira] = useState(false);
+
   const doInlineSearch = useCallback((q: string) => {
     if (inlineDebounceRef.current) clearTimeout(inlineDebounceRef.current);
+    if (inlineJiraDebounceRef.current) clearTimeout(inlineJiraDebounceRef.current);
+    if (inlineAbortRef.current) inlineAbortRef.current.abort();
+
     if (q.length < 2) {
       setInlineResults([]);
       setInlineShowResults(false);
+      setInlineSearchingJira(false);
       return;
     }
     setInlineSearching(true);
     inlineDebounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      inlineAbortRef.current = controller;
       try {
-        const data = await tickets.searchForLink(q, ticketKey);
+        const data = await tickets.searchForLink(q, ticketKey, controller.signal);
+        if (controller.signal.aborted) return;
         setInlineResults(data);
         setInlineShowResults(true);
         setInlineHighlight(-1);
-      } catch {
-        setInlineResults([]);
-      } finally {
         setInlineSearching(false);
+
+        if (data.length < 5) {
+          setInlineSearchingJira(true);
+          inlineJiraDebounceRef.current = setTimeout(async () => {
+            try {
+              const fullData = await tickets.searchForLinkWithJira(q, ticketKey, controller.signal);
+              if (controller.signal.aborted) return;
+              setInlineResults(fullData);
+              setInlineHighlight(-1);
+            } catch {
+              // Keep local results
+            } finally {
+              setInlineSearchingJira(false);
+            }
+          }, 300);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setInlineResults([]);
+          setInlineSearching(false);
+        }
       }
     }, 250);
   }, [ticketKey]);
@@ -269,23 +300,46 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
           />
           {inlineSearching && <Loader2 size={13} className="shrink-0 animate-spin text-text-muted" />}
           {inlineShowResults && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+            <div
+              className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
+              style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+            >
               {inlineResults.length > 0 ? inlineResults.map((r, idx) => (
                 <button
                   key={r.key}
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); handleInlineLink(r); }}
-                  className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100 ${
-                    idx === inlineHighlight ? "bg-overlay-strong" : "hover:bg-overlay-default"
-                  }`}
+                  onMouseEnter={() => setInlineHighlight(idx)}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
+                  style={{
+                    borderLeft: idx === inlineHighlight ? "2px solid var(--color-brand-400)" : "2px solid transparent",
+                    backgroundColor: idx === inlineHighlight ? "var(--color-overlay-subtle)" : undefined,
+                    transition: "background-color 80ms, border-color 80ms",
+                  }}
                 >
                   <IssueTypeIcon type={r.type as IssueType} size={13} />
                   <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
                   <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{r.title}</span>
+                  <SearchStatusBadge status={r.status} />
+                  {r.source === "jira" && (
+                    <span
+                      className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                      style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "rgba(147, 197, 253, 0.8)" }}
+                    >
+                      <Cloud size={9} strokeWidth={2} />
+                      Jira
+                    </span>
+                  )}
                 </button>
-              )) : (
+              )) : !inlineSearching ? (
                 <div className="px-3 py-2.5 text-xs text-text-muted">
                   No issues found for &ldquo;{inlineQuery}&rdquo;
+                </div>
+              ) : null}
+              {inlineSearchingJira && (
+                <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
+                  <Loader2 size={11} className="animate-spin text-text-muted" />
+                  <span className="text-[11px] text-text-muted">Searching Jira...</span>
                 </div>
               )}
             </div>

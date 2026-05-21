@@ -12,13 +12,17 @@ vi.mock("next/link", () => ({
 
 // Mock api-client
 const mockSearchForLink = vi.fn();
+const mockSearchForLinkWithJira = vi.fn();
 const mockCreateLink = vi.fn();
 const mockDeleteLink = vi.fn();
+const mockRecentLinks = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   tickets: {
     searchForLink: (...args: unknown[]) => mockSearchForLink(...args),
+    searchForLinkWithJira: (...args: unknown[]) => mockSearchForLinkWithJira(...args),
     createLink: (...args: unknown[]) => mockCreateLink(...args),
     deleteLink: (...args: unknown[]) => mockDeleteLink(...args),
+    recentLinks: (...args: unknown[]) => mockRecentLinks(...args),
   },
 }));
 
@@ -50,6 +54,8 @@ function renderSection(issues: LinkedIssue[] = []) {
 describe("LinkedIssuesSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRecentLinks.mockResolvedValue([]);
+    mockSearchForLinkWithJira.mockResolvedValue([]);
   });
 
   it("renders inline input placeholder when no issues exist", () => {
@@ -73,7 +79,7 @@ describe("LinkedIssuesSection", () => {
     fireEvent.change(input, { target: { value: "VPL" } });
 
     await waitFor(() => {
-      expect(mockSearchForLink).toHaveBeenCalledWith("VPL", "VPL-1");
+      expect(mockSearchForLink).toHaveBeenCalledWith("VPL", "VPL-1", expect.any(AbortSignal));
     });
 
     await waitFor(() => {
@@ -154,7 +160,7 @@ describe("LinkedIssuesSection", () => {
     });
 
     await waitFor(() => {
-      expect(mockSearchForLink).toHaveBeenCalledWith("VPL-999", "VPL-1");
+      expect(mockSearchForLink).toHaveBeenCalledWith("VPL-999", "VPL-1", expect.any(AbortSignal));
     });
   });
 
