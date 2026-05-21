@@ -68,29 +68,173 @@ const COMPARE_COL_WIDTHS: Record<ColumnId, number | undefined> = {
 };
 
 const COMPARE_LS_KEY = "bridge:compare-columns";
+const COMPARE_SPLIT_LS_KEY = "bridge:compare-split";
 const COMPARE_DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "points", "assignee"];
 const COMPARE_DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
+const COMPARE_MIN_COL_WIDTH = 28;
 
-function loadCompareColumns(): { visible: ColumnId[]; order: ColumnId[] } {
+interface CompareColState {
+  visible: ColumnId[];
+  order: ColumnId[];
+  widths: Partial<Record<ColumnId, number>>;
+}
+
+function loadCompareColumns(): CompareColState {
   try {
     const raw = localStorage.getItem(COMPARE_LS_KEY);
     if (raw) {
-      const data = JSON.parse(raw) as { visible?: string[]; order?: string[] };
+      const data = JSON.parse(raw) as { visible?: string[]; order?: string[]; widths?: Record<string, number> };
       const validIds = new Set<string>(COLUMNS.map((c) => c.id));
       const visible = (data.visible ?? COMPARE_DEFAULT_VISIBLE).filter((id) => validIds.has(id)) as ColumnId[];
       const savedOrder = (data.order ?? []).filter((id) => validIds.has(id)) as ColumnId[];
       const savedSet = new Set(savedOrder);
       const order = [...savedOrder, ...COMPARE_DEFAULT_ORDER.filter((id) => !savedSet.has(id))];
-      return { visible, order };
+      const widths: Partial<Record<ColumnId, number>> = {};
+      if (data.widths) {
+        for (const [k, v] of Object.entries(data.widths)) {
+          if (validIds.has(k) && typeof v === "number") widths[k as ColumnId] = v;
+        }
+      }
+      return { visible, order, widths };
     }
   } catch { /* ignore */ }
-  return { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER };
+  return { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER, widths: {} };
 }
 
-function saveCompareColumns(visible: ColumnId[], order: ColumnId[]) {
+function saveCompareColumns(state: CompareColState) {
   try {
-    localStorage.setItem(COMPARE_LS_KEY, JSON.stringify({ visible, order }));
+    localStorage.setItem(COMPARE_LS_KEY, JSON.stringify(state));
   } catch { /* ignore */ }
+}
+
+function loadSplitRatio(): number {
+  try {
+    const raw = localStorage.getItem(COMPARE_SPLIT_LS_KEY);
+    if (raw) {
+      const v = parseFloat(raw);
+      if (v >= 0.2 && v <= 0.8) return v;
+    }
+  } catch { /* ignore */ }
+  return 0.5;
+}
+
+function saveSplitRatio(ratio: number) {
+  try {
+    localStorage.setItem(COMPARE_SPLIT_LS_KEY, String(ratio));
+  } catch { /* ignore */ }
+}
+
+// --- Column resize handle ---
+
+function ColumnResizeHandle({
+  colId,
+  onResize,
+  onReset,
+}: {
+  colId: ColumnId;
+  onResize: (id: ColumnId, width: number) => void;
+  onReset: (id: ColumnId) => void;
+}) {
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const th = (e.target as HTMLElement).closest("th");
+      if (!th) return;
+      const startX = e.clientX;
+      const startWidth = th.offsetWidth;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const newWidth = Math.max(COMPARE_MIN_COL_WIDTH, startWidth + ev.clientX - startX);
+        onResize(colId, newWidth);
+      };
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [colId, onResize],
+  );
+
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onReset(colId);
+    },
+    [colId, onReset],
+  );
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
+      className="absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize opacity-0 hover:opacity-100"
+      style={{ background: "var(--color-brand-500)", opacity: undefined }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.3"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0"; }}
+    />
+  );
+}
+
+// --- Pane divider (resizable left/right split) ---
+
+function PaneDivider({
+  splitContainerRef,
+  onRatioChange,
+}: {
+  splitContainerRef: React.RefObject<HTMLDivElement | null>;
+  onRatioChange: (ratio: number) => void;
+}) {
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const container = splitContainerRef.current;
+      if (!container) return;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const rect = container.getBoundingClientRect();
+        const raw = (ev.clientX - rect.left) / rect.width;
+        const clamped = Math.min(0.8, Math.max(0.2, raw));
+        onRatioChange(clamped);
+      };
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [splitContainerRef, onRatioChange],
+  );
+
+  const handleDoubleClick = useCallback(() => {
+    onRatioChange(0.5);
+    saveSplitRatio(0.5);
+  }, [onRatioChange]);
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
+      className="group/divider relative z-30 w-px shrink-0 cursor-col-resize bg-overlay-default"
+    >
+      {/* Wider hit area */}
+      <div className="absolute inset-y-0 -left-[3px] -right-[3px]" />
+      {/* Visual indicator on hover */}
+      <div className="absolute inset-y-0 left-0 w-px bg-[var(--color-brand-500)] opacity-0 group-hover/divider:opacity-40" style={{ transition: "opacity 120ms" }} />
+    </div>
+  );
 }
 
 // --- Droppable sprint column ---
@@ -123,6 +267,10 @@ function DroppableSprintColumn({
   onIssueTypeChange,
   visibleColumns,
   columnOrder,
+  columnWidths,
+  onColumnResize,
+  onColumnResizeReset,
+  paneFlex,
 }: {
   columnId: "left" | "right";
   sprintId: string;
@@ -151,6 +299,10 @@ function DroppableSprintColumn({
   onIssueTypeChange: (key: string, type: IssueType) => void;
   visibleColumns: Set<ColumnId>;
   columnOrder: ColumnId[];
+  columnWidths: Partial<Record<ColumnId, number>>;
+  onColumnResize: (id: ColumnId, width: number) => void;
+  onColumnResizeReset: (id: ColumnId) => void;
+  paneFlex?: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
@@ -207,10 +359,10 @@ function DroppableSprintColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-w-0 flex-1 flex-col overflow-hidden ${
+      className={`flex min-w-0 flex-col overflow-hidden ${
         isOver ? "ring-1 ring-inset ring-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/[0.015]" : ""
       }`}
-      style={{ transition: "background-color 0.15s ease" }}
+      style={{ transition: "background-color 0.15s ease", flex: paneFlex ?? 1 }}
     >
       {/* Column header - z-20 beats the sticky thead's z-10, keeping dropdown on top */}
       <div className="relative z-20 flex h-[44px] shrink-0 items-center gap-2 border-b border-border-default bg-[var(--color-surface-elevated)] px-3">
@@ -302,9 +454,10 @@ function DroppableSprintColumn({
           <table className="w-full table-fixed border-collapse">
             <colgroup>
               <col style={{ width: 36 }} />
-              {activeOrder.map((colId) => (
-                <col key={colId} style={COMPARE_COL_WIDTHS[colId] ? { width: COMPARE_COL_WIDTHS[colId] } : undefined} />
-              ))}
+              {activeOrder.map((colId) => {
+                const w = columnWidths[colId] ?? COMPARE_COL_WIDTHS[colId];
+                return <col key={colId} style={w ? { width: w } : undefined} />;
+              })}
             </colgroup>
             <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
               <tr className="h-[44px] border-b border-border-subtle text-left">
@@ -312,12 +465,18 @@ function DroppableSprintColumn({
                 {activeOrder.map((colId) => {
                   const label = COMPARE_HEADER_LABELS[colId] ?? "";
                   const isCenter = colId === "points" || colId === "bv";
-                  return label ? (
-                    <th key={colId} className={`py-2 pr-2 text-xs font-medium text-text-muted${isCenter ? " text-center" : ""}`}>
-                      {label}
+                  return (
+                    <th
+                      key={colId}
+                      className={`relative py-2 pr-2 text-xs font-medium text-text-muted select-none${isCenter ? " text-center" : ""}`}
+                    >
+                      {label || "\u00A0"}
+                      <ColumnResizeHandle
+                        colId={colId}
+                        onResize={onColumnResize}
+                        onReset={onColumnResizeReset}
+                      />
                     </th>
-                  ) : (
-                    <th key={colId} className="py-2 pr-1" />
                   );
                 })}
               </tr>
@@ -445,13 +604,19 @@ export function MultiSprintView({
   const [compareColState, setCompareColState] = useState(() => loadCompareColumns());
   const compareVisible = useMemo(() => new Set(compareColState.visible), [compareColState.visible]);
   const compareOrder = compareColState.order;
+  const compareWidths = compareColState.widths;
+
+  const persistColState = useCallback((next: CompareColState) => {
+    setCompareColState(next);
+    saveCompareColumns(next);
+  }, []);
 
   const handleCompareColumnToggle = useCallback((id: ColumnId, show: boolean) => {
     setCompareColState((prev) => {
-      const next = show
-        ? { visible: [...prev.visible, id], order: prev.order.includes(id) ? prev.order : [...prev.order, id] }
-        : { visible: prev.visible.filter((c) => c !== id), order: prev.order };
-      saveCompareColumns(next.visible, next.order);
+      const next: CompareColState = show
+        ? { ...prev, visible: [...prev.visible, id], order: prev.order.includes(id) ? prev.order : [...prev.order, id] }
+        : { ...prev, visible: prev.visible.filter((c) => c !== id) };
+      saveCompareColumns(next);
       return next;
     });
   }, []);
@@ -464,17 +629,37 @@ export function MultiSprintView({
       const next = [...prev.order];
       next.splice(oldIdx, 1);
       next.splice(newIdx, 0, activeId);
-      const result = { visible: prev.visible, order: next };
-      saveCompareColumns(result.visible, result.order);
+      const result: CompareColState = { ...prev, order: next };
+      saveCompareColumns(result);
       return result;
     });
   }, []);
 
   const handleCompareColumnReset = useCallback(() => {
-    const result = { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER };
-    setCompareColState(result);
-    saveCompareColumns(result.visible, result.order);
+    const result: CompareColState = { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER, widths: {} };
+    persistColState(result);
+  }, [persistColState]);
+
+  const handleColumnResize = useCallback((id: ColumnId, width: number) => {
+    setCompareColState((prev) => {
+      const next: CompareColState = { ...prev, widths: { ...prev.widths, [id]: Math.round(width) } };
+      saveCompareColumns(next);
+      return next;
+    });
   }, []);
+
+  const handleColumnResizeReset = useCallback((id: ColumnId) => {
+    setCompareColState((prev) => {
+      const { [id]: _, ...rest } = prev.widths;
+      const next: CompareColState = { ...prev, widths: rest };
+      saveCompareColumns(next);
+      return next;
+    });
+  }, []);
+
+  // Pane split ratio
+  const [splitRatio, setSplitRatio] = useState(() => loadSplitRatio());
+  const splitContainerRef = useRef<HTMLDivElement>(null);
 
   const getMutateForKey = useCallback((key: string) => {
     return leftTickets.some((t) => t.key === key) ? mutateLeft : mutateRight;
@@ -832,7 +1017,7 @@ export function MultiSprintView({
 
         {/* Content */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex min-w-0 flex-1 overflow-hidden">
+          <div ref={splitContainerRef} className="flex min-w-0 flex-1 overflow-hidden">
             <DroppableSprintColumn
               columnId="left"
               sprintId={leftSprint}
@@ -866,8 +1051,15 @@ export function MultiSprintView({
               onIssueTypeChange={handleIssueTypeChange}
               visibleColumns={compareVisible}
               columnOrder={compareOrder}
+              columnWidths={compareWidths}
+              onColumnResize={handleColumnResize}
+              onColumnResizeReset={handleColumnResizeReset}
+              paneFlex={splitRatio}
             />
-            <div className="w-px shrink-0 bg-overlay-default" />
+            <PaneDivider
+              splitContainerRef={splitContainerRef}
+              onRatioChange={(r) => { setSplitRatio(r); saveSplitRatio(r); }}
+            />
             <DroppableSprintColumn
               columnId="right"
               sprintId={rightSprint}
@@ -901,6 +1093,10 @@ export function MultiSprintView({
               onIssueTypeChange={handleIssueTypeChange}
               visibleColumns={compareVisible}
               columnOrder={compareOrder}
+              columnWidths={compareWidths}
+              onColumnResize={handleColumnResize}
+              onColumnResizeReset={handleColumnResizeReset}
+              paneFlex={1 - splitRatio}
             />
           </div>
 

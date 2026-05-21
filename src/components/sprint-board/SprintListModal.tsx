@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, Users, ChevronRight, ListFilter } from "lucide-react";
 import { TextInput } from "@/components/shared/TextInput";
 import { apiFetch, ApiError } from "@/lib/api-client";
@@ -319,15 +321,17 @@ export function SprintListModal({
   onPin,
   pinnedIds,
   alignLeft,
+  portalAnchor,
 }: {
   onClose: () => void;
   onSelect: (sprintId: string, sprintName: string) => void;
   onPin: (sprintId: string) => void;
   pinnedIds: Set<string>;
   alignLeft?: boolean;
+  portalAnchor?: { top: number; right: number };
 }) {
   const [search, setSearch] = useState("");
-  const [teamFilter, setTeamFilter] = useState<string | null>(null);
+  const [teamFilter, setTeamFilter] = useLocalStorage<string | null>("sprint-list-team-filter", null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncDone, setSyncDone] = useState(false);
@@ -440,11 +444,16 @@ export function SprintListModal({
 
   const hasDefaultContent = pinnedSection.length > 0 || activeFutureSection.length > 0 || recentClosedSection.length > 0;
 
-  return (
+  const content = (
     <div
       ref={ref}
-      className={`absolute top-full z-50 mt-1.5 w-96 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] ${alignLeft ? "left-0" : "right-0"}`}
-      style={{ animation: "sprintListIn 0.15s ease-out" }}
+      className={portalAnchor ? "fixed z-[9999] w-96 rounded-lg border border-border-strong bg-[var(--color-surface-floating)]" : `absolute top-full z-50 mt-1.5 w-96 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] ${alignLeft ? "left-0" : "right-0"}`}
+      style={portalAnchor ? {
+        top: portalAnchor.top,
+        right: portalAnchor.right,
+        boxShadow: "0 4px 24px rgba(0,0,0,0.22), 0 1px 6px rgba(0,0,0,0.12)",
+        animation: "sprintListIn 0.15s ease-out",
+      } : { animation: "sprintListIn 0.15s ease-out" }}
     >
       {/* Search + filter */}
       <div className="flex items-center gap-1.5 px-3 pt-3 pb-1.5">
@@ -590,4 +599,6 @@ export function SprintListModal({
       `}</style>
     </div>
   );
+
+  return portalAnchor ? createPortal(content, document.body) : content;
 }

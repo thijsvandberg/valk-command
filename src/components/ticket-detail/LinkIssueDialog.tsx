@@ -5,7 +5,7 @@ import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { tickets } from "@/lib/api-client";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, ChevronDown, Check } from "lucide-react";
 import type { IssueType } from "@/types/ticket";
 
 const RELATION_OPTIONS = [
@@ -51,6 +51,8 @@ export function LinkIssueDialog({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [showResults, setShowResults] = useState(false);
+  const [relationOpen, setRelationOpen] = useState(false);
+  const relationRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -63,10 +65,21 @@ export function LinkIssueDialog({
       setResults([]);
       setHighlightIndex(-1);
       setShowResults(false);
+      setRelationOpen(false);
       setSubmitError(null);
       requestAnimationFrame(() => searchRef.current?.focus());
     }
   }, [open, defaultRelation, defaultTargetKey]);
+
+  // Close relation dropdown on click outside
+  useEffect(() => {
+    if (!relationOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (!relationRef.current?.contains(e.target as Node)) setRelationOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [relationOpen]);
 
   const doSearch = useCallback((q: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -91,9 +104,12 @@ export function LinkIssueDialog({
   }, [ticketKey]);
 
   const handleQueryChange = useCallback((value: string) => {
-    setQuery(value);
+    // Extract issue key from Jira URLs (e.g. https://xxx.atlassian.net/browse/VPL-43728)
+    const urlMatch = value.match(/atlassian\.net\/browse\/([A-Z][A-Z0-9]+-\d+)/i);
+    const cleaned = urlMatch ? urlMatch[1].toUpperCase() : value;
+    setQuery(cleaned);
     setSelected(null);
-    doSearch(value);
+    doSearch(cleaned);
   }, [doSearch]);
 
   const handleSelect = useCallback((result: SearchResult) => {
@@ -103,7 +119,9 @@ export function LinkIssueDialog({
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    const targetKey = selected?.key ?? query.trim();
+    const raw = selected?.key ?? query.trim();
+    const urlMatch = raw.match(/atlassian\.net\/browse\/([A-Z][A-Z0-9]+-\d+)/i);
+    const targetKey = urlMatch ? urlMatch[1].toUpperCase() : raw;
     if (!targetKey || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -164,17 +182,43 @@ export function LinkIssueDialog({
           <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-text-muted">
             Relation type
           </label>
-          <select
-            value={relation}
-            onChange={(e) => setRelation(e.target.value)}
-            className="w-full cursor-pointer rounded-lg border border-border-default bg-[var(--color-surface-default)] px-3 py-1.5 text-sm text-text-primary outline-none focus:border-[var(--color-brand-500)]/50 focus:ring-1 focus:ring-[var(--color-brand-500)]/25"
-          >
-            {RELATION_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <div ref={relationRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setRelationOpen((v) => !v)}
+              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-border-default bg-[var(--color-surface-default)] px-3 py-1.5 text-sm text-text-primary outline-none hover:border-border-strong focus-visible:border-[var(--color-brand-500)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/25"
+              style={{ transition: "border-color 120ms" }}
+            >
+              <span>{RELATION_OPTIONS.find((o) => o.value === relation)?.label ?? relation}</span>
+              <ChevronDown
+                size={14}
+                className={`shrink-0 text-text-muted ${relationOpen ? "rotate-180" : ""}`}
+                style={{ transition: "transform 150ms" }}
+              />
+            </button>
+            {relationOpen && (
+              <div className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+                {RELATION_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setRelation(opt.value); setRelationOpen(false); }}
+                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors duration-100 ${
+                      opt.value === relation
+                        ? "bg-overlay-default text-text-primary"
+                        : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
+                    }`}
+                  >
+                    <Check
+                      size={13}
+                      className={`shrink-0 ${opt.value === relation ? "text-[var(--color-brand-400)]" : "invisible"}`}
+                    />
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Issue search */}
@@ -203,9 +247,9 @@ export function LinkIssueDialog({
             />
 
             {/* Search results dropdown */}
-            {showResults && results.length > 0 && (
+            {showResults && (
               <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
-                {results.map((r, idx) => (
+                {results.length > 0 ? results.map((r, idx) => (
                   <button
                     key={r.key}
                     type="button"
@@ -220,7 +264,11 @@ export function LinkIssueDialog({
                     <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
                     <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{r.title}</span>
                   </button>
-                ))}
+                )) : (
+                  <div className="px-3 py-2.5 text-xs text-text-muted">
+                    No issues found for &ldquo;{query}&rdquo;
+                  </div>
+                )}
               </div>
             )}
           </div>

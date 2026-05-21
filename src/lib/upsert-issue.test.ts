@@ -19,6 +19,7 @@ vi.mock("@/lib/jira-client", () => ({
   extractStoryPoints: vi.fn().mockReturnValue(null),
   extractEpicLink: vi.fn().mockReturnValue(null),
   extractAcceptanceCriteria: vi.fn().mockReturnValue(null),
+  extractLastChangeAuthor: vi.fn().mockReturnValue(null),
   FLAGGED_FIELD: "customfield_10002",
 }));
 

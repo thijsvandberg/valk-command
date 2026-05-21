@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
@@ -12,12 +12,12 @@ import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
-import { SprintPicker } from "@/components/shared/SprintPicker";
+import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { AssigneePicker } from "@/components/shared/AssigneePicker";
 import { EpicPicker } from "@/components/shared/EpicPicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { Tooltip } from "@/components/shared/Tooltip";
-import { useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
+import { useJiraSprints, useSprintSlots, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
@@ -26,9 +26,18 @@ import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 py-1.5">
       <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
       <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
+    </div>
+  );
+}
+
+function CompactField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg bg-overlay-subtle px-3 py-2">
+      <div className="text-caption text-text-muted">{label}</div>
+      <div className="mt-0.5 text-sm text-text-secondary">{children}</div>
     </div>
   );
 }
@@ -80,6 +89,15 @@ export function TicketSidebar({
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const { data: sprints } = useJiraSprints();
+  const { data: sprintSlots } = useSprintSlots();
+  const [sprintModalOpen, setSprintModalOpen] = useState(false);
+  const sprintTriggerRef = useRef<HTMLButtonElement>(null);
+  const [sprintModalPos, setSprintModalPos] = useState<{ top: number; right: number } | null>(null);
+
+  const pinnedSprintIds = useMemo(() => {
+    if (!sprintSlots) return new Set<string>();
+    return new Set(sprintSlots.map((s) => s.sprintId));
+  }, [sprintSlots]);
 
   const { data: devInfo, isLoading: devInfoLoading } = useDevInfo(ticket.key);
   const latestReview = reviewData?.reviews?.[0] ?? null;
@@ -175,6 +193,18 @@ export function TicketSidebar({
       setCurrentSprintId(prev);
     }
   }, [ticket.key, currentSprintId]);
+
+  const handleSprintModalSelect = useCallback((sprintId: string) => {
+    handleSprintChange(sprintId);
+  }, [handleSprintChange]);
+
+  const handleOpenSprintModal = useCallback(() => {
+    if (sprintTriggerRef.current) {
+      const rect = sprintTriggerRef.current.getBoundingClientRect();
+      setSprintModalPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setSprintModalOpen(true);
+  }, []);
 
   const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
     const prev = assignee;
@@ -327,10 +357,11 @@ export function TicketSidebar({
         {/* Divider */}
         <div className="my-4 h-px bg-border-subtle" />
 
-        {/* Details section */}
-        <div>
-          <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">Details</h3>
-          <div className="mt-2 divide-y divide-border-subtle">
+        {/* Details */}
+        <div className="space-y-4">
+
+          {/* Status & Flow */}
+          <div>
             <DetailRow label="Status">
               {(() => {
                 const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
@@ -381,72 +412,97 @@ export function TicketSidebar({
                 <ReadinessCell value={readiness} onChange={handleReadinessChange} align="right" />
               </div>
             </DetailRow>
-            <DetailRow label="Story Points">
-              <StoryPointPicker
-                value={storyPoints}
-                onChange={handleStoryPointsChange}
-              />
-            </DetailRow>
             {ticket.type !== "epic" && (
-              <DetailRow label="Sprint">
-                {sprints ? (
-                  <SprintPicker
-                    value={currentSprintId}
-                    sprints={sprints}
-                    onChange={handleSprintChange}
-                    align="right"
-                  />
-                ) : (
-                  <span className="text-text-muted">-</span>
-                )}
+              <DetailRow label="Epic">
+                <EpicPicker
+                  value={epicKey ? { key: epicKey, name: epicName ?? epicKey } : null}
+                  onChange={handleEpicChange}
+                  align="right"
+                />
               </DetailRow>
             )}
-            <DetailRow label="Business Value">
-              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" />
-            </DetailRow>
-            {/* Quality score */}
-            <div className="py-2.5">
-              <button
-                type="button"
-                onClick={onNavigateToReview}
-                className="w-full cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                title="View review details"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="shrink-0 text-xs text-text-tertiary">Quality</span>
-                  <div className="flex items-center gap-1.5">
-                    {ticket.qualityScore !== null ? (
-                      <>
-                        <QualityBadge score={ticket.qualityScore} />
-                        {isReviewOutdated && (
-                          <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
-                        )}
-                      </>
-                    ) : (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-md bg-overlay-subtle px-2 py-0.5 text-xs text-text-muted hover:bg-overlay-default hover:text-text-secondary"
-                        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-                      >
-                        <Play size={9} strokeWidth={2} className="shrink-0" />
-                        Run review
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {ticket.qualityScore !== null && (
-                  <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-overlay-default">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${ticket.qualityScore}%`,
-                        backgroundColor: ticket.qualityScore < 60 ? "#e5534b" : ticket.qualityScore < 75 ? "#ea8744" : ticket.qualityScore < 90 ? "#eab308" : "#4aaa60",
-                        transition: "width 0.4s ease",
-                      }}
+            {ticket.type !== "epic" && (
+              <DetailRow label="Sprint">
+                <div className="relative">
+                  <button
+                    ref={sprintTriggerRef}
+                    type="button"
+                    onClick={() => sprintModalOpen ? setSprintModalOpen(false) : handleOpenSprintModal()}
+                    title={currentSprintId ? `Sprint: ${sprints?.find((s) => String(s.id) === currentSprintId)?.name ?? currentSprintId}` : "No sprint"}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 -mr-2 text-sm text-text-secondary cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+                    style={{ transition: "background-color 0.15s ease" }}
+                  >
+                    <span className="truncate">{sprints?.find((s) => String(s.id) === currentSprintId)?.name ?? "None"}</span>
+                  </button>
+                  {sprintModalOpen && sprintModalPos && (
+                    <SprintListModal
+                      onClose={() => setSprintModalOpen(false)}
+                      onSelect={handleSprintModalSelect}
+                      onPin={() => {}}
+                      pinnedIds={pinnedSprintIds}
+                      portalAnchor={sprintModalPos}
                     />
-                  </div>
-                )}
-              </button>
+                  )}
+                </div>
+              </DetailRow>
+            )}
+          </div>
+
+          {/* Sizing */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <CompactField label="Story Points">
+                <StoryPointPicker
+                  value={storyPoints}
+                  onChange={handleStoryPointsChange}
+                />
+              </CompactField>
+              <CompactField label="Business Value">
+                <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" />
+              </CompactField>
             </div>
+            <button
+              type="button"
+              onClick={onNavigateToReview}
+              className="w-full cursor-pointer text-left rounded-lg bg-overlay-subtle px-3 py-2 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "background-color 0.15s ease" }}
+              title="View review details"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-caption text-text-muted">Quality</span>
+                <div className="flex items-center gap-1.5">
+                  {ticket.qualityScore !== null ? (
+                    <>
+                      <QualityBadge score={ticket.qualityScore} />
+                      {isReviewOutdated && (
+                        <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
+                      )}
+                    </>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                      <Play size={9} strokeWidth={2} className="shrink-0" />
+                      Run review
+                    </span>
+                  )}
+                </div>
+              </div>
+              {ticket.qualityScore !== null && (
+                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-overlay-default">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${ticket.qualityScore}%`,
+                      backgroundColor: ticket.qualityScore < 60 ? "#e5534b" : ticket.qualityScore < 75 ? "#ea8744" : ticket.qualityScore < 90 ? "#eab308" : "#4aaa60",
+                      transition: "width 0.4s ease",
+                    }}
+                  />
+                </div>
+              )}
+            </button>
+          </div>
+
+          {/* People */}
+          <div>
             <DetailRow label="Assignee">
               <AssigneePicker
                 value={assignee}
@@ -461,6 +517,24 @@ export function TicketSidebar({
                   <Avatar assignee={detail.reporter} size={20} />
                 </div>
               </DetailRow>
+            )}
+          </div>
+
+          {/* Timestamps & Meta */}
+          <div className="space-y-2">
+            {detail && (
+              <div className="grid grid-cols-2 gap-2">
+                <CompactField label="Created">
+                  <Tooltip content={formatAbsoluteDate(detail.createdAt)}>
+                    <span>{relativeDate(detail.createdAt)}</span>
+                  </Tooltip>
+                </CompactField>
+                <CompactField label="Updated">
+                  <Tooltip content={formatAbsoluteDate(detail.updatedAt)}>
+                    <span>{relativeDate(detail.updatedAt)}</span>
+                  </Tooltip>
+                </CompactField>
+              </div>
             )}
             {detail?.labels && detail.labels.length > 0 && (
               <DetailRow label="Labels">
@@ -479,20 +553,6 @@ export function TicketSidebar({
                   ))}
                 </div>
               </DetailRow>
-            )}
-            {detail && (
-              <>
-                <DetailRow label="Created">
-                  <Tooltip content={formatAbsoluteDate(detail.createdAt)}>
-                    <span>{relativeDate(detail.createdAt)}</span>
-                  </Tooltip>
-                </DetailRow>
-                <DetailRow label="Updated">
-                  <Tooltip content={formatAbsoluteDate(detail.updatedAt)}>
-                    <span>{relativeDate(detail.updatedAt)}</span>
-                  </Tooltip>
-                </DetailRow>
-              </>
             )}
           </div>
         </div>

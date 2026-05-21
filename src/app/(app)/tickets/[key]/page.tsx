@@ -39,6 +39,7 @@ import { LinkedIssuesSection } from "@/components/ticket-detail/LinkedIssuesSect
 import { EpicChildrenSection } from "@/components/ticket-detail/EpicChildrenSection";
 import { CommentsSection } from "@/components/ticket-detail/CommentsSection";
 import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
+import { TicketPreviewPanel } from "@/components/ticket-detail/TicketPreviewPanel";
 import dynamic from "next/dynamic";
 
 function TabLoadingFallback() {
@@ -223,6 +224,7 @@ export default function TicketDetailPage({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
+  const [previewTicketKey, setPreviewTicketKey] = useState<string | null>(null);
 
   const [isPushing, setIsPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -870,9 +872,9 @@ export default function TicketDetailPage({
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
-                ? detail && <EpicChildrenSection items={detail.epicChildren} />
+                ? detail && <EpicChildrenSection items={detail.epicChildren} onSelectTicket={setPreviewTicketKey} />
                 : <>
-                    {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={key} onMutate={() => mutateTicket()} />}
+                    {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={key} onMutate={() => mutateTicket()} onSelectTicket={setPreviewTicketKey} />}
                     {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={key} onMutate={() => mutateTicket()} />}
                   </>
               }
@@ -940,6 +942,12 @@ export default function TicketDetailPage({
         />
       }
     />
+    {previewTicketKey && (
+      <TicketPreviewPanel
+        ticketKey={previewTicketKey}
+        onClose={() => setPreviewTicketKey(null)}
+      />
+    )}
     </>
   );
 }

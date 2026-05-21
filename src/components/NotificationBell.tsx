@@ -184,7 +184,7 @@ function extractTeamPrefix(sprintName: string | null): string | null {
 export function NotificationBell() {
   const { notifications, unreadCount, subscribedUnreadCount, subscribedTeams, totalCount, markRead, markAllRead, clearRead, dismissOne, markFilteredRead, clearFiltered } = useNotifications(50);
   const [open, setOpen] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const [activeType, setActiveType] = useState<string | null>(null);
   const [activeTeams, setActiveTeams] = useState<Set<string> | null>(null);
 
@@ -193,12 +193,17 @@ export function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const DROPDOWN_WIDTH = 360;
+
   const computePos = useCallback(() => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
+    // Align right edge of dropdown with right edge of button, but clamp so it stays on-screen
+    const idealLeft = rect.right - DROPDOWN_WIDTH;
+    const clampedLeft = Math.max(8, Math.min(idealLeft, window.innerWidth - DROPDOWN_WIDTH - 8));
     setDropdownPos({
       top: rect.bottom + 8,
-      right: window.innerWidth - rect.right,
+      left: clampedLeft,
     });
   }, []);
 
@@ -329,7 +334,7 @@ export function NotificationBell() {
       {open && dropdownPos && createPortal(
         <div
           ref={dropdownRef}
-          style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: "var(--z-notification)" }}
+          style={{ position: "fixed", top: dropdownPos.top, left: dropdownPos.left, zIndex: "var(--z-notification)" }}
         >
           <Card variant="floating" className="w-[360px] shadow-[var(--shadow-xl)]">
           {/* Header */}

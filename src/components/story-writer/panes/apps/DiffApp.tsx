@@ -13,6 +13,7 @@ import { usePaneContext } from "../PaneContext";
 export function DiffApp() {
   const writer = useWriterContext();
   const pane = usePaneContext();
+  const { registerToolbar, unregisterToolbar } = pane;
 
   const { data: versionsData } = useTicketVersions(writer.ticketKey);
 
@@ -182,7 +183,7 @@ export function DiffApp() {
 
   // Register toolbar with base + target version pickers and diff/preview toggle
   useEffect(() => {
-    pane.registerToolbar("diff", {
+    registerToolbar("diff", {
       label: "Diff",
       actions: (
         <div className="flex items-center gap-2">
@@ -223,8 +224,8 @@ export function DiffApp() {
         </div>
       ),
     });
-    return () => pane.unregisterToolbar("diff");
-  }, [pane, baseVersionOptions, baseVersionId, handleBaseIdChange, rightVersions, diffNewId, diffViewMode, handleDiffNewIdChange]);
+    return () => unregisterToolbar("diff");
+  }, [registerToolbar, unregisterToolbar, baseVersionOptions, baseVersionId, handleBaseIdChange, rightVersions, diffNewId, diffViewMode, handleDiffNewIdChange]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

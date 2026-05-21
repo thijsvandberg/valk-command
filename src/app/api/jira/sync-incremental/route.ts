@@ -100,7 +100,7 @@ export async function POST() {
     const remaining = totalStale - batch.length;
 
     const staleKeys = batch.map((item) => item.key);
-    const issues = await jiraClient.getIssuesByKeys(staleKeys, controller.signal);
+    const issues = await jiraClient.getIssuesByKeys(staleKeys, controller.signal, true);
 
     issues.sort((a, b) => (a.fields.updated ?? "").localeCompare(b.fields.updated ?? ""));
 

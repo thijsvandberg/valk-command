@@ -319,7 +319,7 @@ export function StoryWriterChat({
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        <div className="space-y-4">
+        <div className="mx-auto max-w-4xl space-y-4">
           {localDraft && <DraftCard content={localDraft} />}
 
           {messages.length === 0 && status === "ready" && (

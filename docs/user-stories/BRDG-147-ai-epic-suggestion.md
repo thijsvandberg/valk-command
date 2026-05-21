@@ -67,11 +67,11 @@ The epic picker (`EpicPicker.tsx`) currently shows a flat list of all epics with
 
 ### Phase 5: Summary Staleness Detection
 
-- [ ] Track `summaryUpdatedAt` timestamp per epic (new column or reuse existing updated fields)
-- [ ] During epic sync (`POST /api/jira/sync-epics`), compare the Jira `updated` timestamp with `summaryUpdatedAt`
-- [ ] If an epic was updated in Jira since its last summary generation, mark it as stale
-- [ ] Show a subtle indicator in the epic management UI when summaries are stale
-- [ ] Optionally: auto-trigger summary regeneration for stale epics after a sync (configurable)
+- [x] Track `summaryUpdatedAt` timestamp per epic (new column or reuse existing updated fields)
+- [x] During epic sync (`POST /api/jira/sync-epics`), compare the Jira `updated` timestamp with `summaryUpdatedAt`
+- [x] If an epic was updated in Jira since its last summary generation, mark it as stale
+- [x] Show a subtle indicator in the epic management UI when summaries are stale
+- [ ] Optionally: auto-trigger summary regeneration for stale epics after a sync (configurable) <!-- skipped: marked as optional, can be added as follow-up if needed -->
 
 ## Technical Notes
 

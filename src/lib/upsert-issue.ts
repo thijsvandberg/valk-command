@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange } from "@/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
-import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
 
@@ -81,10 +81,12 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     orderBy: (sv, { desc }) => [desc(sv.createdAt)],
   });
 
-  // HTTP call: fetch change author outside the transaction to avoid holding the write lock
+  // Determine who made the latest change. Prefer inline changelog (from expand=changelog)
+  // to avoid an extra API call per issue. Fall back to a separate fetch only when
+  // the issue was fetched without changelog expansion (e.g. single-issue views).
   const needsNewVersion = !latestVersion || latestVersion.contentHash !== hash;
   const changeAuthor = needsNewVersion && latestVersion
-    ? await jiraClient.getLastChangeAuthor(issue.key, _signal)
+    ? (extractLastChangeAuthor(issue) ?? await jiraClient.getLastChangeAuthor(issue.key, _signal))
     : null;
 
   const attachments: JiraAttachment[] = issue.fields.attachment ?? [];
@@ -214,7 +216,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
       }
     }
 
-    // Subtasks: replace all
+    // Subtasks: replace all in ticketSubtask + upsert minimal ticket records
     tx.delete(ticketSubtask).where(eq(ticketSubtask.ticketKey, issue.key)).run();
     const subtasks = fields.subtasks ?? [];
     for (const sub of subtasks) {
@@ -228,6 +230,24 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
         assignee: sub.fields.assignee?.displayName ?? null,
         assigneeAvatar: sub.fields.assignee?.avatarUrls?.["48x48"] ?? null,
       }).run();
+
+      // Also ensure the subtask exists as a ticket row so /tickets/[key] works
+      const subExists = tx.select({ jiraKey: ticket.jiraKey }).from(ticket).where(eq(ticket.jiraKey, sub.key)).get();
+      const subData = {
+        title: sub.fields.summary,
+        type: normalizeIssueType(sub.fields.issuetype.name),
+        status: normalizeStatus(sub.fields.status.name),
+        assignee: sub.fields.assignee?.displayName ?? null,
+        assigneeAvatar: sub.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+        sprintName,
+        lastSyncedAt: now,
+      };
+      if (subExists) {
+        tx.update(ticket).set(subData).where(eq(ticket.jiraKey, sub.key)).run();
+      } else {
+        tx.insert(ticket).values({ jiraKey: sub.key, ...subData }).run();
+        tx.insert(ticketMetadata).values({ jiraKey: sub.key }).run();
+      }
     }
 
     // Links: delete Jira-sourced, then upsert

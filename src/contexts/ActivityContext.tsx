@@ -5,6 +5,7 @@ import {
   useContext,
   useCallback,
   useEffect,
+  useRef,
   useState,
   useMemo,
   type ReactNode,
@@ -107,6 +108,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           setInitialized(true);
           return;
         }
+        const isHidden = typeof document !== "undefined" && document.hidden;
         const newToasts: Toast[] = [];
         setKnownIds((prev) => {
           const next = new Set(prev);
@@ -114,7 +116,10 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
             if (entry.status === "running") continue;
             if (next.has(entry.id)) continue;
             next.add(entry.id);
-            newToasts.push({ id: entry.id, entry });
+            // Don't show toasts for syncs that completed while the tab was hidden
+            if (!isHidden) {
+              newToasts.push({ id: entry.id, entry });
+            }
           }
           return next;
         });
@@ -140,16 +145,18 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     [toastEntries, dismissedIds],
   );
 
+  const timedToastIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const successToasts = toasts.filter((t) => t.entry.status === "success");
-    if (successToasts.length === 0) return;
-
-    const timers = successToasts.map((t) =>
+    const newSuccessToasts = toasts.filter(
+      (t) => t.entry.status === "success" && !timedToastIds.current.has(t.id),
+    );
+    for (const t of newSuccessToasts) {
+      timedToastIds.current.add(t.id);
       setTimeout(() => {
         setDismissedIds((prev) => new Set([...prev, t.id]));
-      }, 3000),
-    );
-    return () => timers.forEach(clearTimeout);
+        timedToastIds.current.delete(t.id);
+      }, 3000);
+    }
   }, [toasts]);
 
   const entries = useMemo(() => logEntries ?? [], [logEntries]);

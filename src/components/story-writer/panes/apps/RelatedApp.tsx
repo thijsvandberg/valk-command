@@ -8,6 +8,7 @@ import { usePaneContext } from "../PaneContext";
 export function RelatedApp() {
   const writer = useWriterContext();
   const pane = usePaneContext();
+  const { registerToolbar, unregisterToolbar } = pane;
 
   const count = writer.relatedCandidates.length;
   const linkedCount = writer.relatedCandidates.filter((c) => c.isLinked).length;
@@ -16,12 +17,12 @@ export function RelatedApp() {
     const parts: string[] = [];
     if (count > 0) parts.push(`${count}`);
     if (linkedCount > 0) parts.push(`${linkedCount} linked`);
-    pane.registerToolbar("related", {
+    registerToolbar("related", {
       label: "Related stories",
       contextLabel: parts.length > 0 ? parts.join(" · ") : undefined,
     });
-    return () => pane.unregisterToolbar("related");
-  }, [pane, count, linkedCount]);
+    return () => unregisterToolbar("related");
+  }, [registerToolbar, unregisterToolbar, count, linkedCount]);
 
   const handleFindRelated = async () => {
     await writer.onSend("Find related stories", "find-related");

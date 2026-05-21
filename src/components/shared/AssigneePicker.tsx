@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Check, Search, ChevronDown, UserX } from "lucide-react";
+import { Check, Search, UserX } from "lucide-react";
 import { Avatar } from "@/components/shared/Avatar";
 import type { Assignee } from "@/types/ticket";
 import useSWR from "swr";
@@ -107,17 +107,11 @@ export function AssigneePicker({
         type="button"
         onClick={() => open ? handleClose() : handleOpen()}
         title={value ? `Assignee: ${value.name}` : "Unassigned"}
-        className="group/assignee inline-flex items-center gap-2 rounded-md px-1.5 py-0.5 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+        className="inline-flex items-center gap-2 rounded-lg px-2 py-1 -mr-2 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
         style={{ transition: "background-color 0.15s ease" }}
       >
         <span className="truncate text-sm text-text-secondary">{value?.name ?? "Unassigned"}</span>
         <Avatar assignee={value} size={20} />
-        <ChevronDown
-          size={10}
-          strokeWidth={2}
-          className="shrink-0 text-text-muted opacity-0 group-hover/assignee:opacity-100"
-          style={{ transition: "opacity 0.15s ease" }}
-        />
       </button>
 
       {open && pos && createPortal(

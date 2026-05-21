@@ -66,10 +66,10 @@ The modal closes and the story writer opens near-instantly. Jira issue creation 
 - [x] Once the real key arrives, display it in the header with a brief transition
 
 ### Phase 3: Error handling
-- [ ] If Jira creation fails, show an inline error banner in the story writer (not a blocking modal)
-- [ ] Provide a "Retry" action in the banner to re-attempt Jira creation
-- [ ] The user's draft content is preserved regardless of Jira sync status
-- [ ] If the user closes the story writer before Jira creation completes, the background task still finishes and updates the record
+- [x] If Jira creation fails, show an inline error banner in the story writer (not a blocking modal)
+- [x] Provide a "Retry" action in the banner to re-attempt Jira creation
+- [x] The user's draft content is preserved regardless of Jira sync status
+- [x] If the user closes the story writer before Jira creation completes, the background task still finishes and updates the record
 
 ### Phase 4: Parallelize remaining DB operations
 - [x] In the create API route, run the 3 DB operations (`ticket`, `ticketMetadata`, `logActivity`) with `Promise.all` instead of sequentially

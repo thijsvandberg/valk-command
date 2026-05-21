@@ -7,7 +7,8 @@ import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadi
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
-import { jiraClient, STORY_POINTS_FIELD, FLAGGED_FIELD } from "@/lib/jira-client";
+import { jiraClient, STORY_POINTS_FIELD, FLAGGED_FIELD, extractSprint } from "@/lib/jira-client";
+import { upsertIssue } from "@/lib/upsert-issue";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -63,7 +64,7 @@ export async function GET(
 
   // All 12 queries run in a single parallel batch to eliminate the sequential
   // findFirst -> Promise.all waterfall. The ticket lookup is index #0.
-  const { result: queryData, durationMs } = await timedQuery(`GET /api/tickets/${key}`, async () => {
+  let { result: queryData, durationMs } = await timedQuery(`GET /api/tickets/${key}`, async () => {
     const [t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRows, reviewCountRows, versionCountRows] = await Promise.all([
       db.query.ticket.findFirst({
         where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
@@ -113,7 +114,44 @@ export async function GET(
   });
 
   if (!queryData) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    // On-demand fetch: try to pull the issue from Jira and store it locally
+    try {
+      const jiraIssue = await jiraClient.getIssue(key);
+      const sprint = extractSprint(jiraIssue.fields);
+      await upsertIssue(jiraIssue, sprint?.name ?? "__on_demand__");
+
+      // Re-run the same query now that the ticket exists locally
+      const { result: retryData } = await timedQuery(`GET /api/tickets/${key} (after Jira fetch)`, async () => {
+        const [t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRows, reviewCountRows, versionCountRows] = await Promise.all([
+          db.query.ticket.findFirst({ where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key) }),
+          db.query.ticketMetadata.findFirst({ where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key) }),
+          db.query.ticketAttachment.findMany({ where: (a, { eq: eqFn }) => eqFn(a.ticketKey, key) }),
+          db.query.jiraComment.findMany({ where: (c, { eq: eqFn }) => eqFn(c.ticketKey, key), orderBy: (c, { asc }) => [asc(c.createdAt)] }),
+          db.query.ticketSubtask.findMany({ where: (s, { eq: eqFn }) => eqFn(s.ticketKey, key) }),
+          db.query.ticketLink.findMany({ where: (l, { eq: eqFn }) => eqFn(l.ticketKey, key) }),
+          db.query.ticket.findMany({ where: (row, { eq: eqFn }) => eqFn(row.epicKey, key) }),
+          db.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.ticketKey, key)),
+          db.query.storyVersion.findFirst({ where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key), orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)] }),
+          db.select({ ticketKey: ticketSubtask.ticketKey, title: ticket.title }).from(ticketSubtask).innerJoin(ticket, eq(ticket.jiraKey, ticketSubtask.ticketKey)).where(eq(ticketSubtask.subtaskKey, key)).limit(1),
+          db.select({ value: count() }).from(storedReview).where(eq(storedReview.ticketKey, key)),
+          db.select({ value: count() }).from(storyVersion).where(eq(storyVersion.jiraKey, key)),
+        ]);
+        if (!t) return null;
+        const parentTicket = parentRows.length > 0 ? { key: parentRows[0].ticketKey, title: parentRows[0].title } : null;
+        return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows };
+      });
+
+      if (retryData) {
+        // Reassign queryData so the rest of the handler can use it
+        queryData = retryData;
+      }
+    } catch (err) {
+      logger.warn("ticket-detail", `On-demand Jira fetch failed for ${key}:`, err);
+    }
+
+    if (!queryData) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
   }
 
   const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows } = queryData;

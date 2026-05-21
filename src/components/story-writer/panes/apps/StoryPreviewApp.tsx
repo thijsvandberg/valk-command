@@ -8,16 +8,17 @@ import { usePaneContext } from "../PaneContext";
 export function StoryPreviewApp() {
   const writer = useWriterContext();
   const pane = usePaneContext();
+  const { registerToolbar, unregisterToolbar } = pane;
 
   const title = writer.session?.localTitle ?? writer.ticketData?.title ?? "";
   const content = writer.session?.localDraft ?? "";
 
   useEffect(() => {
-    pane.registerToolbar("story-preview", {
+    registerToolbar("story-preview", {
       label: "Story preview",
     });
-    return () => pane.unregisterToolbar("story-preview");
-  }, [pane]);
+    return () => unregisterToolbar("story-preview");
+  }, [registerToolbar, unregisterToolbar]);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-4">

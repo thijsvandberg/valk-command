@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { like, or, ne, and } from "drizzle-orm";
+import { jiraClient } from "@/lib/jira-client";
+
+const JIRA_KEY_RE = /^[A-Z][A-Z0-9]+-\d+$/i;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
     conditions.push(ne(ticket.jiraKey, exclude));
   }
 
-  const results = await db
+  const localResults = await db
     .select({
       key: ticket.jiraKey,
       title: ticket.title,
@@ -35,5 +38,40 @@ export async function GET(request: Request) {
     .where(and(...conditions))
     .limit(15);
 
-  return NextResponse.json(results);
+  if (localResults.length > 0) {
+    return NextResponse.json(localResults);
+  }
+
+  // Fallback to Jira when local DB has no matches
+  try {
+    if (JIRA_KEY_RE.test(q)) {
+      const issue = await jiraClient.getIssue(q.toUpperCase());
+      if (issue && (!exclude || issue.key !== exclude)) {
+        return NextResponse.json([{
+          key: issue.key,
+          title: issue.fields.summary,
+          type: issue.fields.issuetype?.name?.toLowerCase() ?? "task",
+          status: issue.fields.status?.name ?? "To Do",
+        }]);
+      }
+    } else {
+      const jql = `text ~ "${q.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
+      const issues = await jiraClient.searchIssues(jql, ["summary", "status", "issuetype"], 10);
+      const mapped = issues
+        .filter((i) => i.key !== exclude)
+        .map((i) => ({
+          key: i.key,
+          title: i.fields.summary,
+          type: i.fields.issuetype?.name?.toLowerCase() ?? "task",
+          status: i.fields.status?.name ?? "To Do",
+        }));
+      if (mapped.length > 0) {
+        return NextResponse.json(mapped);
+      }
+    }
+  } catch {
+    // Jira unavailable, return empty
+  }
+
+  return NextResponse.json([]);
 }

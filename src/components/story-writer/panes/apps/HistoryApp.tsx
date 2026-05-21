@@ -7,12 +7,12 @@ import { usePaneContext } from "../PaneContext";
 
 export function HistoryApp() {
   const writer = useWriterContext();
-  const pane = usePaneContext();
+  const { registerToolbar, unregisterToolbar } = usePaneContext();
 
   useEffect(() => {
-    pane.registerToolbar("history", { label: "History" });
-    return () => pane.unregisterToolbar("history");
-  }, [pane]);
+    registerToolbar("history", { label: "History" });
+    return () => unregisterToolbar("history");
+  }, [registerToolbar, unregisterToolbar]);
 
   if (!writer.ticketData) {
     return (

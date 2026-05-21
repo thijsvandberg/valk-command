@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import Link from "next/link";
 import type { TicketDetail, JiraStatus, Subtask } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
@@ -9,7 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { Loader2, GripVertical } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -39,9 +38,18 @@ interface SubtasksSectionProps {
   subtasks: TicketDetail["subtasks"];
   ticketKey: string;
   onMutate: () => void;
+  onSelectTicket?: (key: string) => void;
 }
 
-function SortableSubtaskRow({ sub, isLast }: { sub: Subtask; isLast: boolean }) {
+function SortableSubtaskRow({
+  sub,
+  isLast,
+  onSelect,
+}: {
+  sub: Subtask;
+  isLast: boolean;
+  onSelect?: (key: string) => void;
+}) {
   const {
     attributes,
     listeners,
@@ -58,31 +66,44 @@ function SortableSubtaskRow({ sub, isLast }: { sub: Subtask; isLast: boolean }) 
     position: "relative" as const,
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (!onSelect) return;
+    if (e.metaKey || e.ctrlKey) {
+      window.open(`/tickets/${sub.key}`, "_blank");
+      return;
+    }
+    e.preventDefault();
+    onSelect(sub.key);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`group flex items-center gap-3 px-3 py-2.5 ${
-        isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""
-      } ${!isLast && !isDragging ? "border-b border-border-subtle" : ""}`}
+        onSelect ? "cursor-pointer hover:bg-overlay-subtle" : ""
+      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""} ${
+        !isLast && !isDragging ? "border-b border-border-subtle" : ""
+      }`}
+      onClick={handleClick}
+      {...attributes}
+      {...listeners}
     >
-      <button
-        type="button"
-        className="cursor-grab touch-none rounded p-0.5 text-text-muted opacity-0 transition-opacity duration-150 hover:text-text-secondary group-hover:opacity-100 active:cursor-grabbing"
-        aria-label="Drag to reorder"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical size={13} strokeWidth={1.5} />
-      </button>
       <IssueTypeIcon type={sub.type} size={14} />
-      <Link
-        href={`/tickets/${sub.key}`}
-        className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-        onClick={(e) => e.stopPropagation()}
+      <span
+        className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)]"
+        onClick={(e) => {
+          if (!onSelect) return;
+          e.stopPropagation();
+          if (e.metaKey || e.ctrlKey) {
+            window.open(`/tickets/${sub.key}`, "_blank");
+          } else {
+            onSelect(sub.key);
+          }
+        }}
       >
         {sub.key}
-      </Link>
+      </span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
       <StatusBadge status={sub.jiraStatus} />
       <Avatar assignee={sub.assignee} size={22} />
@@ -90,7 +111,7 @@ function SortableSubtaskRow({ sub, isLast }: { sub: Subtask; isLast: boolean }) 
   );
 }
 
-export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSectionProps) {
+export function SubtasksSection({ subtasks, ticketKey, onMutate, onSelectTicket }: SubtasksSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [newTitle, setNewTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -109,9 +130,13 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
     ? orderedSubtasks
     : orderedSubtasks.filter((s) => s.jiraStatus === filter);
 
-  const countLabel = filter !== "all" && mergedSubtasks.length > 0
-    ? `${filtered.length} of ${mergedSubtasks.length}`
-    : undefined;
+  // Counts per status for filter chips
+  const statusCounts = {
+    all: mergedSubtasks.length,
+    "TO DO": mergedSubtasks.filter((s) => s.jiraStatus === "TO DO").length,
+    "IN PROGRESS": mergedSubtasks.filter((s) => s.jiraStatus === "IN PROGRESS").length,
+    DONE: mergedSubtasks.filter((s) => s.jiraStatus === "DONE").length,
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -199,14 +224,30 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
   const subtaskRows = filtered.map((sub, idx) => {
     const isPending = sub.key.startsWith("pending-");
     if (isDndEnabled && !isPending) {
-      return <SortableSubtaskRow key={sub.key} sub={sub} isLast={idx === filtered.length - 1} />;
+      return (
+        <SortableSubtaskRow
+          key={sub.key}
+          sub={sub}
+          isLast={idx === filtered.length - 1}
+          onSelect={onSelectTicket}
+        />
+      );
     }
     return (
       <div
         key={sub.key}
         className={`group flex items-center gap-3 px-3 py-2.5 ${
-          idx < filtered.length - 1 ? "border-b border-border-subtle" : ""
-        } ${isPending ? "opacity-50" : ""}`}
+          onSelectTicket && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
+        } ${idx < filtered.length - 1 ? "border-b border-border-subtle" : ""} ${
+          isPending ? "opacity-50" : ""
+        }`}
+        onClick={!isPending && onSelectTicket ? (e) => {
+          if (e.metaKey || e.ctrlKey) {
+            window.open(`/tickets/${sub.key}`, "_blank");
+            return;
+          }
+          onSelectTicket(sub.key);
+        } : undefined}
       >
         <IssueTypeIcon type={sub.type} size={14} />
         {isPending ? (
@@ -214,13 +255,9 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
             <Loader2 size={10} className="animate-spin" />
           </span>
         ) : (
-          <Link
-            href={`/tickets/${sub.key}`}
-            className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <span className="font-mono text-xs text-[var(--color-brand-400)]">
             {sub.key}
-          </Link>
+          </span>
         )}
         <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
         <StatusBadge status={sub.jiraStatus} />
@@ -231,7 +268,10 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
 
   // Always-visible inline input row at the bottom of the list
   const inlineInput = (
-    <div className={`flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}>
+    <div
+      className={`flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      onClick={(e) => e.stopPropagation()}
+    >
       <IssueTypeIcon type="subtask" size={14} />
       <input
         ref={inputRef}
@@ -257,26 +297,31 @@ export function SubtasksSection({ subtasks, ticketKey, onMutate }: SubtasksSecti
       <SectionHeader
         title="Subtasks"
         count={filter === "all" ? mergedSubtasks.length : undefined}
-        countLabel={countLabel}
+        countLabel={filter !== "all" && mergedSubtasks.length > 0 ? `${filtered.length} of ${mergedSubtasks.length}` : undefined}
       />
 
       {/* Status filter chips */}
       {mergedSubtasks.length > 0 && (
-        <div className="mt-3 flex items-center gap-1.5">
+        <div className="mt-3 flex items-center gap-0.5 rounded-lg bg-overlay-subtle p-0.5">
           {FILTER_OPTIONS.map((opt) => {
             const isActive = filter === opt.value;
+            const count = statusCounts[opt.value as keyof typeof statusCounts] ?? 0;
+            if (opt.value !== "all" && count === 0) return null;
             return (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setFilter(opt.value)}
-                className={`cursor-pointer rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                className={`cursor-pointer flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                   isActive
-                    ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/25"
-                    : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-default border border-transparent"
+                    ? "bg-[var(--color-surface-elevated)] text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+                    : "text-text-tertiary hover:text-text-secondary"
                 }`}
               >
                 {opt.label}
+                <span className={`tabular-nums text-[10px] ${isActive ? "text-text-secondary" : "text-text-muted"}`}>
+                  {count}
+                </span>
               </button>
             );
           })}

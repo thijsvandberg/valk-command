@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { RefreshCw, CheckCircle2, AlertTriangle, ChevronUp, Square, CloudDownload, CheckCheck } from "lucide-react";
 import { useActivityContext, type ActivityState } from "@/contexts/ActivityContext";
 import type { ActivityLogEntry } from "@/types/ticket";
@@ -87,28 +88,49 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
   const { activityState, lastEntry, unacknowledgedErrors, runningEntries, logEntries, incrementalSyncRemaining, incrementalSyncLastAt, incrementalSyncLastCount, cancelEntry, cancelAllEntries } = useActivityContext();
   const recentEntries = logEntries.slice(0, 8);
   const [expanded, setExpanded] = useState(false);
+  const [panelPos, setPanelPos] = useState<{ bottom: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const computePos = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const width = collapsed ? 240 : Math.max(rect.width, 220);
+    setPanelPos({
+      bottom: window.innerHeight - rect.top + 6,
+      left: Math.max(8, rect.left),
+      width,
+    });
+  }, [collapsed]);
 
   useEffect(() => {
     if (!expanded) return;
     function handleClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+        panelRef.current && !panelRef.current.contains(e.target as Node)
+      ) {
         setExpanded(false);
       }
     }
+    function handleResize() { computePos(); }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [expanded]);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [expanded, computePos]);
 
   const errorCount = unacknowledgedErrors.length;
   const hasChecked = incrementalSyncLastAt !== null;
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative" ref={triggerRef}>
       {/* Trigger button */}
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => { if (!expanded) computePos(); setExpanded((v) => !v); }}
         className={`flex items-center ${collapsed ? "justify-center h-8 w-8" : "gap-2.5 px-3 py-2 w-full"} rounded-lg text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default transition-colors duration-150`}
         aria-label="Activity status"
         title={collapsed ? stateLabel(activityState, incrementalSyncRemaining, hasChecked) : undefined}
@@ -137,11 +159,12 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
         )}
       </button>
 
-      {/* Expanded panel */}
-      {expanded && (
+      {/* Expanded panel — portal to escape sidebar stacking context */}
+      {expanded && panelPos && createPortal(
         <div
-          className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] overflow-hidden"
-          style={{ width: collapsed ? "240px" : "100%", minWidth: "220px" }}
+          ref={panelRef}
+          className="rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] overflow-hidden"
+          style={{ position: "fixed", bottom: panelPos.bottom, left: panelPos.left, width: panelPos.width, zIndex: "var(--z-notification)" }}
         >
           <div className="px-3 py-2.5 border-b border-border-default flex items-center justify-between">
             <span className="text-label font-semibold tracking-wide uppercase text-text-tertiary font-[var(--font-body)]">
@@ -248,7 +271,8 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
           >
             View full activity log
           </a>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

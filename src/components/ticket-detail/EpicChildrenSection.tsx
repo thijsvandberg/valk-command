@@ -1,13 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import type { TicketDetail } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 
-export function EpicChildrenSection({ items }: { items: TicketDetail["epicChildren"] }) {
+export function EpicChildrenSection({
+  items,
+  onSelectTicket,
+}: {
+  items: TicketDetail["epicChildren"];
+  onSelectTicket?: (key: string) => void;
+}) {
   if (items.length === 0) {
     return (
       <div className="mt-8">
@@ -25,17 +30,20 @@ export function EpicChildrenSection({ items }: { items: TicketDetail["epicChildr
           <div
             key={child.key}
             className={`flex items-center gap-3 px-3 py-2.5 ${
-              idx < items.length - 1 ? "border-b border-border-subtle" : ""
-            }`}
+              onSelectTicket ? "cursor-pointer hover:bg-overlay-subtle" : ""
+            } ${idx < items.length - 1 ? "border-b border-border-subtle" : ""}`}
+            onClick={onSelectTicket ? (e) => {
+              if (e.metaKey || e.ctrlKey) {
+                window.open(`/tickets/${child.key}`, "_blank");
+                return;
+              }
+              onSelectTicket(child.key);
+            } : undefined}
           >
             <IssueTypeIcon type={child.type} size={14} />
-            <Link
-              href={`/tickets/${child.key}`}
-              className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <span className="font-mono text-xs text-[var(--color-brand-400)]">
               {child.key}
-            </Link>
+            </span>
             <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{child.title}</span>
             <StatusBadge status={child.jiraStatus} />
             <Avatar assignee={child.assignee} size={22} />

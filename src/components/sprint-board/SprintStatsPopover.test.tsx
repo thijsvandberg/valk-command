@@ -3,6 +3,15 @@ import { describe, it, expect, vi } from "vitest";
 import { SprintStatsPopover } from "./SprintStatsPopover";
 import type { Ticket } from "@/types/ticket";
 
+vi.mock("swr", () => ({
+  __esModule: true,
+  default: () => ({ data: undefined, isLoading: false }),
+}));
+
+vi.mock("@/hooks/useSprintBoard", () => ({
+  useJiraSprints: () => ({ data: [] }),
+}));
+
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
     key: "VPL-1",
@@ -47,9 +56,9 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} />);
 
-    expect(screen.getByText("Sprint Statistics")).toBeTruthy();
+    // Sprint selector button shows "Sprint Statistics" when no sprintName
+    expect(screen.getByRole("button", { name: /Sprint Statistics/i })).toBeTruthy();
     expect(screen.getByText("Items")).toBeTruthy();
-    // Items card contains the count
     const itemsCard = screen.getByText("Items").closest(".rounded-lg")!;
     expect(itemsCard.textContent).toContain("5");
     expect(screen.getByText("Story Points")).toBeTruthy();
@@ -94,7 +103,6 @@ describe("SprintStatsPopover", () => {
 
     const epicSection = screen.getByText("By Epic").parentElement!;
     const epicNames = Array.from(epicSection.querySelectorAll(".truncate")).map((el) => el.textContent);
-    // Auth has 3+5+1=9 SP, Payments has 2 SP, No Epic has 0 SP
     expect(epicNames).toEqual(["Auth", "Payments", "No Epic"]);
   });
 
@@ -110,7 +118,6 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} />);
 
-    // VPL-4 has no story points and is not a spike
     expect(screen.getByText("1 ticket without estimate")).toBeTruthy();
   });
 
@@ -128,7 +135,6 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     const { container } = render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
 
-    // The backdrop is the first fixed div (z-40)
     const backdrop = container.querySelector(".fixed.inset-0")!;
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledOnce();
@@ -139,7 +145,7 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
 
-    const popover = screen.getByText("Sprint Statistics").closest("div.fixed.z-50")!;
+    const popover = screen.getByRole("button", { name: /Sprint Statistics/i }).closest("div.fixed.z-50")!;
     fireEvent.click(popover);
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -152,7 +158,6 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={tickets} onClose={vi.fn()} anchorRef={anchorRef} />);
 
-    // Type section should only show "story", not "task"
     expect(screen.getByText("story")).toBeTruthy();
     expect(screen.queryByText("task")).toBeNull();
   });
@@ -161,8 +166,7 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} sprintName="BT: 137" />);
 
-    expect(screen.getByText("BT: 137")).toBeTruthy();
-    expect(screen.queryByText("Sprint Statistics")).toBeNull();
+    expect(screen.getByRole("button", { name: /BT: 137/i })).toBeTruthy();
   });
 
   it("shows remaining days when provided", () => {
@@ -217,9 +221,29 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} onFilterEpic={onFilterEpic} />);
 
-    // "No Epic" should not be a button
     const noEpicText = screen.getByText("No Epic");
     fireEvent.click(noEpicText);
     expect(onFilterEpic).not.toHaveBeenCalled();
+  });
+
+  it("renders stakeholder link when sprintId is provided", () => {
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} sprintId="123" />);
+
+    const link = screen.getByText("Stakeholder View").closest("a")!;
+    expect(link).toBeTruthy();
+    expect(link.getAttribute("href")).toContain("/stakeholder");
+    expect(link.getAttribute("href")).toContain("sprintId=123");
+    expect(link.getAttribute("target")).toBe("_blank");
+  });
+
+  it("renders sprint selector dropdown", () => {
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} sprintName="BT: 137" />);
+
+    const selectorBtn = screen.getByRole("button", { name: /BT: 137/i });
+    expect(selectorBtn).toBeTruthy();
+    // Clicking opens the dropdown (it will be empty since sprints mock returns [])
+    fireEvent.click(selectorBtn);
   });
 });

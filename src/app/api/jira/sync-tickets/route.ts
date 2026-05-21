@@ -370,6 +370,6 @@ async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): P
 
   if (changedKeys.length === 0) return { issues: [], allJiraKeys, rankMap };
 
-  const issues = await jiraClient.getIssuesByKeys(changedKeys, signal);
+  const issues = await jiraClient.getIssuesByKeys(changedKeys, signal, true);
   return { issues, allJiraKeys, rankMap };
 }
