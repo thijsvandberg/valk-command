@@ -196,7 +196,7 @@ export function useStoryWriter(ticketKey: string) {
                 }
               } else if (isDraftKey && err instanceof ApiError && err.status === 404 && attempt < maxRetries) {
                 // Ticket not created yet, retry after delay
-                await new Promise((r) => setTimeout(r, 300));
+                await new Promise((r) => setTimeout(r, 100));
                 continue;
               } else {
                 throw new Error("Failed to create session");
