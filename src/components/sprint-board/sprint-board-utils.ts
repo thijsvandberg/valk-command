@@ -2,7 +2,7 @@ import type { POStatus, TicketReadiness, Sprint, Ticket } from "@/types/ticket";
 import { mutate as globalMutate } from "swr";
 import { apiFetch, tickets as ticketsApi, workspaceTasks } from "@/lib/api-client";
 
-export function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null }[] | undefined): Sprint[] {
+export function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal?: string | null }[] | undefined): Sprint[] {
   if (!raw) return [];
   return raw.map((s) => {
     let dateRange = "";
@@ -13,7 +13,7 @@ export function mapJiraSprints(raw: { id: number; name: string; state: string; s
     const state = s.state === "active" ? "active" as const
       : s.state === "closed" ? "closed" as const
       : "future" as const;
-    return { id: String(s.id), name: s.name, dateRange, state, ticketCount: 0, startDate: s.startDate ?? null, endDate: s.endDate ?? null };
+    return { id: String(s.id), name: s.name, dateRange, state, ticketCount: 0, startDate: s.startDate ?? null, endDate: s.endDate ?? null, goal: s.goal ?? null };
   });
 }
 

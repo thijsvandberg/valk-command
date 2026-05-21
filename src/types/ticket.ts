@@ -214,6 +214,7 @@ export interface Sprint {
   ticketCount: number;
   startDate?: string | null;
   endDate?: string | null;
+  goal?: string | null;
 }
 
 export interface StoryVersion {

@@ -20,6 +20,7 @@ import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
+import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
@@ -184,6 +185,8 @@ export default function SprintBoard() {
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [sprintsModalOpen, setSprintsModalOpen] = useState(false);
   const [statsPopoverOpen, setStatsPopoverOpen] = useState(false);
+  const [detailsPopoverOpen, setDetailsPopoverOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const completionBarRef = useRef<HTMLDivElement>(null);
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
@@ -978,12 +981,33 @@ export default function SprintBoard() {
             </>}
           >
           <ViewHeaderTitle>
-            {isAllView ? "All tickets" : f.activeView ? f.activeView.title : activeSprint ? activeSprint.name : "Sprint Board"}
-            {activeSprint?.state === "active" && (
-              <span className="relative ml-2 inline-flex h-2 w-2 shrink-0 translate-y-[-1px]">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-secondary-400)] opacity-40" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-secondary-400)]" />
+            {!isAllView && !f.activeView && activeSprint ? (
+              <span className="relative inline-flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setDetailsPopoverOpen((v) => !v)}
+                  className="cursor-pointer rounded-md px-1 -mx-1 transition-colors duration-100
+                    hover:bg-overlay-default active:bg-overlay-strong"
+                >
+                  {activeSprint.name}
+                </button>
+                {activeSprint.state === "active" && (
+                  <span className="relative ml-2 inline-flex h-2 w-2 shrink-0 translate-y-[-1px]">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-secondary-400)] opacity-40" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-secondary-400)]" />
+                  </span>
+                )}
+                <SprintDetailsPopover
+                  sprint={activeSprint}
+                  open={detailsPopoverOpen}
+                  onClose={() => setDetailsPopoverOpen(false)}
+                  onEdit={() => setEditModalOpen(true)}
+                />
               </span>
+            ) : (
+              <>
+                {isAllView ? "All tickets" : f.activeView ? f.activeView.title : "Sprint Board"}
+              </>
             )}
           </ViewHeaderTitle>
           {!ticketsLoading && (isAllView || activeSprint || f.activeView) && (
@@ -1017,28 +1041,6 @@ export default function SprintBoard() {
                         totalWorkingDays={sprintWorkDays.total}
                       />
                     </div>
-                    {statsPopoverOpen && (
-                      <SprintStatsPopover
-                        allTickets={allTickets}
-                        sprintName={activeSprint?.name}
-                        workingDaysRemaining={sprintWorkDays.remaining}
-                        totalWorkingDays={sprintWorkDays.total}
-                        onClose={() => setStatsPopoverOpen(false)}
-                        anchorRef={completionBarRef}
-                        onFilterStatus={(status) => {
-                          f.resetFilters();
-                          f.setStatusFilter(new Set([status]));
-                        }}
-                        onFilterType={(type) => {
-                          f.resetFilters();
-                          f.setIssueTypeFilter(new Set([type]));
-                        }}
-                        onFilterEpic={(epic) => {
-                          f.resetFilters();
-                          f.setEpicFilter(new Set([epic]));
-                        }}
-                      />
-                    )}
                     {noPointsCount > 0 && (
                       <button
                         type="button"
@@ -1094,9 +1096,40 @@ export default function SprintBoard() {
                         );
                       })}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setStatsPopoverOpen(true)}
+                      className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
+                      title="Sprint statistics"
+                    >
+                      <BarChart2 size={13} strokeWidth={1.5} />
+                    </button>
                   </>
                 )}
               </>
+            )}
+            {statsPopoverOpen && (
+              <SprintStatsPopover
+                allTickets={allTickets}
+                sprintId={activeSprintId}
+                sprintName={activeSprint?.name}
+                workingDaysRemaining={sprintWorkDays.remaining}
+                totalWorkingDays={sprintWorkDays.total}
+                onClose={() => setStatsPopoverOpen(false)}
+                anchorRef={completionBarRef}
+                onFilterStatus={(status) => {
+                  f.resetFilters();
+                  f.setStatusFilter(new Set([status]));
+                }}
+                onFilterType={(type) => {
+                  f.resetFilters();
+                  f.setIssueTypeFilter(new Set([type]));
+                }}
+                onFilterEpic={(epic) => {
+                  f.resetFilters();
+                  f.setEpicFilter(new Set([epic]));
+                }}
+              />
             )}
         </ViewHeader>
 
