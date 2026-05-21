@@ -59,10 +59,13 @@ export async function POST(request: Request) {
     childTickets: childMap.get(e.jiraKey) ?? [],
   }));
 
+  const conversationId = `summarize-epics-${Date.now()}`;
+
   const result = await agentFetch("/api/tasks", {
     method: "POST",
     body: {
       skill: "summarize-epics",
+      conversationId,
       args: {
         epics: JSON.stringify(epicsPayload),
       },

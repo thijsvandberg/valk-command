@@ -55,10 +55,13 @@ export async function POST(
     summary: e.summary ?? null,
   }));
 
+  const conversationId = `suggest-epic-${key}-${Date.now()}`;
+
   const result = await agentFetch("/api/tasks", {
     method: "POST",
     body: {
       skill: "suggest-epic",
+      conversationId,
       args: {
         ticketKey: ticketRow.jiraKey,
         ticketTitle: ticketRow.title,

@@ -66,7 +66,7 @@ export async function POST(request: Request) {
           // Fire-and-forget: call our own generate-summaries endpoint logic
           await agentFetch("/api/tasks", {
             method: "POST",
-            body: { skill: "summarize-epics", args: await buildSummarizeArgs() },
+            body: { skill: "summarize-epics", conversationId: `summarize-epics-auto-${Date.now()}`, args: await buildSummarizeArgs() },
             retries: 1,
           });
         }
