@@ -1026,19 +1026,16 @@ export default function SprintBoard() {
                         onClose={() => setStatsPopoverOpen(false)}
                         anchorRef={completionBarRef}
                         onFilterStatus={(status) => {
-                          const next = new Set(f.statusFilter);
-                          if (next.has(status)) next.delete(status); else next.add(status);
-                          f.setStatusFilter(next);
+                          f.resetFilters();
+                          f.setStatusFilter(new Set([status]));
                         }}
                         onFilterType={(type) => {
-                          const next = new Set(f.issueTypeFilter);
-                          if (next.has(type)) next.delete(type); else next.add(type);
-                          f.setIssueTypeFilter(next);
+                          f.resetFilters();
+                          f.setIssueTypeFilter(new Set([type]));
                         }}
                         onFilterEpic={(epic) => {
-                          const next = new Set(f.epicFilter);
-                          if (next.has(epic)) next.delete(epic); else next.add(epic);
-                          f.setEpicFilter(next);
+                          f.resetFilters();
+                          f.setEpicFilter(new Set([epic]));
                         }}
                       />
                     )}

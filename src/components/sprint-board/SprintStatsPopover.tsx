@@ -100,67 +100,13 @@ export function SprintStatsPopover({
     return { totalSp, totalBv, bvScoredCount, bvAvg, spAvg, noPointsCount, statusMap, typeEntries, epicEntries, hasRealEpics };
   }, [allTickets]);
 
-  // Positioning
-  const maxWidth = 760;
-  const gap = 10;
-  const margin = 16;
-  const [pos, setPos] = useState<{ top: number | undefined; bottom: number | undefined; left: number; width: number }>({
-    top: 0, bottom: undefined, left: 0, width: maxWidth,
-  });
-
   useEffect(() => {
-    function updatePos() {
-      if (!anchorRef.current) return;
-      const rect = anchorRef.current.getBoundingClientRect();
-      const vw = document.documentElement.clientWidth;
-      const vh = document.documentElement.clientHeight;
-
-      const effectiveWidth = Math.min(maxWidth, vw - margin * 2);
-      const anchorCenter = rect.left + rect.width / 2;
-      const idealLeft = anchorCenter - effectiveWidth / 2;
-      const clampedLeft = Math.min(Math.max(margin, idealLeft), vw - effectiveWidth - margin);
-
-      const spaceBelow = vh - rect.bottom - gap;
-      const maxPopoverHeight = vh * 0.85;
-      const showAbove = spaceBelow < Math.min(maxPopoverHeight, 400) && rect.top > spaceBelow;
-
-      setPos({
-        top: showAbove ? undefined : rect.bottom + gap,
-        bottom: showAbove ? vh - rect.top + gap : undefined,
-        left: clampedLeft,
-        width: effectiveWidth,
-      });
-    }
-    updatePos();
-    window.addEventListener("scroll", updatePos, true);
-    window.addEventListener("resize", updatePos);
-    return () => {
-      window.removeEventListener("scroll", updatePos, true);
-      window.removeEventListener("resize", updatePos);
-    };
-  }, [anchorRef]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node) &&
-        anchorRef.current &&
-        !anchorRef.current.contains(e.target as Node)
-      ) {
-        onClose();
-      }
-    }
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [onClose, anchorRef]);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
 
   const handleFilterClick = useCallback((type: "status" | "type" | "epic", value: string) => {
     if (type === "status") onFilterStatus?.(value);
@@ -180,182 +126,198 @@ export function SprintStatsPopover({
   const isLastDays = workingDaysRemaining != null && workingDaysRemaining <= 2;
 
   return (
-    <div
-      ref={popoverRef}
-      className="fixed z-50 overflow-y-auto rounded-xl border border-border-strong bg-[var(--color-surface-floating)]"
-      style={{
-        top: pos.top,
-        bottom: pos.bottom,
-        left: pos.left,
-        width: pos.width,
-        maxHeight: "85vh",
-        boxShadow: "0 12px 48px rgba(0,0,0,0.32), 0 4px 12px rgba(0,0,0,0.16)",
-        opacity: mounted ? 1 : 0,
-        transform: mounted ? "scale(1) translateY(0)" : "scale(0.98) translateY(-4px)",
-        transition: "opacity 180ms ease-out, transform 180ms ease-out",
-        transformOrigin: "top center",
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-1">
-        <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold text-text-primary tracking-tight">
-            {sprintName ?? "Sprint Statistics"}
-          </h3>
-          {workingDaysRemaining != null && totalWorkingDays != null && totalWorkingDays > 0 && (
-            <div className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${isLastDays ? "text-amber-400/90" : "text-text-muted"}`} style={{ backgroundColor: isLastDays ? "rgba(234,179,8,0.08)" : "var(--color-overlay-subtle)" }}>
-              <Calendar size={11} strokeWidth={1.5} />
-              <span className="tabular-nums">
-                {workingDaysRemaining === 0 ? "Last day" : `${workingDaysRemaining} day${workingDaysRemaining !== 1 ? "s" : ""} left`}
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40"
+        style={{
+          backgroundColor: "rgba(0,0,0,0.25)",
+          opacity: mounted ? 1 : 0,
+          transition: "opacity 180ms ease-out",
+        }}
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div
+        ref={popoverRef}
+        className="fixed z-50 overflow-y-auto rounded-xl border border-border-strong bg-[var(--color-surface-floating)]"
+        style={{
+          top: "50%",
+          left: "50%",
+          transform: mounted ? "translate(-50%, -50%) scale(1)" : "translate(-50%, -50%) scale(0.97)",
+          width: "min(760px, calc(100vw - 48px))",
+          maxHeight: "min(85vh, 680px)",
+          boxShadow: "0 16px 64px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.2)",
+          opacity: mounted ? 1 : 0,
+          transition: "opacity 180ms ease-out, transform 180ms ease-out",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-1">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-text-primary tracking-tight">
+              {sprintName ?? "Sprint Statistics"}
+            </h3>
+            {workingDaysRemaining != null && totalWorkingDays != null && totalWorkingDays > 0 && (
+              <div className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${isLastDays ? "text-amber-400/90" : "text-text-muted"}`} style={{ backgroundColor: isLastDays ? "rgba(234,179,8,0.08)" : "var(--color-overlay-subtle)" }}>
+                <Calendar size={11} strokeWidth={1.5} />
+                <span className="tabular-nums">
+                  {workingDaysRemaining === 0 ? "Last day" : `${workingDaysRemaining} day${workingDaysRemaining !== 1 ? "s" : ""} left`}
+                </span>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1.5 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
+          >
+            <X size={14} strokeWidth={1.5} />
+          </button>
+        </div>
+
+        {/* Sprint time progress bar */}
+        {timePct != null && totalWorkingDays != null && daysElapsed != null && (
+          <div className="px-6 pt-2 pb-1">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-overlay-default)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(timePct, 100)}%`,
+                    backgroundColor: isLastDays ? "rgba(234,179,8,0.6)" : "var(--color-text-muted)",
+                    opacity: 0.5,
+                    transition: "width 400ms ease-out",
+                  }}
+                />
+              </div>
+              <span className={`text-[10px] tabular-nums shrink-0 ${isLastDays ? "text-amber-400/60" : "text-text-muted"}`}>
+                day {daysElapsed}/{totalWorkingDays}
               </span>
+            </div>
+          </div>
+        )}
+
+        {/* Summary cards */}
+        <div className="px-6 pt-3 pb-5">
+          <div className="grid grid-cols-3 gap-3">
+            <SummaryCard label="Items" value={allTickets.length} />
+            <SummaryCard label="Story Points" value={stats.totalSp} sub={stats.spAvg ? `avg ${stats.spAvg}` : undefined} />
+            <SummaryCard label="Business Value" value={stats.totalBv} sub={stats.bvAvg ? `avg ${stats.bvAvg}` : undefined} />
+          </div>
+          {stats.noPointsCount > 0 && (
+            <div className="flex items-center gap-1.5 mt-3 text-[11px]">
+              <AlertTriangle size={11} strokeWidth={2} className="text-amber-400/70 shrink-0" />
+              <span className="text-amber-400/70">{stats.noPointsCount} ticket{stats.noPointsCount > 1 ? "s" : ""} without estimate</span>
             </div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md p-1.5 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
-        >
-          <X size={14} strokeWidth={1.5} />
-        </button>
-      </div>
 
-      {/* Sprint time progress bar */}
-      {timePct != null && totalWorkingDays != null && daysElapsed != null && (
-        <div className="px-6 pt-2 pb-1">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-overlay-default)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${Math.min(timePct, 100)}%`,
-                  backgroundColor: isLastDays ? "rgba(234,179,8,0.6)" : "var(--color-text-muted)",
-                  opacity: 0.5,
-                  transition: "width 400ms ease-out",
-                }}
-              />
-            </div>
-            <span className={`text-[10px] tabular-nums shrink-0 ${isLastDays ? "text-amber-400/60" : "text-text-muted"}`}>
-              day {daysElapsed}/{totalWorkingDays}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Summary cards */}
-      <div className="px-6 pt-3 pb-5">
-        <div className="grid grid-cols-3 gap-3">
-          <SummaryCard label="Items" value={allTickets.length} />
-          <SummaryCard label="Story Points" value={stats.totalSp} sub={stats.spAvg ? `avg ${stats.spAvg}` : undefined} />
-          <SummaryCard label="Business Value" value={stats.totalBv} sub={stats.bvAvg ? `avg ${stats.bvAvg}` : undefined} />
-        </div>
-        {stats.noPointsCount > 0 && (
-          <div className="flex items-center gap-1.5 mt-3 text-[11px]">
-            <AlertTriangle size={11} strokeWidth={2} className="text-amber-400/70 shrink-0" />
-            <span className="text-amber-400/70">{stats.noPointsCount} ticket{stats.noPointsCount > 1 ? "s" : ""} without estimate</span>
-          </div>
-        )}
-      </div>
-
-      {/* Two-column: Status + Type */}
-      <div className="grid grid-cols-2 gap-0 border-t border-border-subtle">
-        {/* Status breakdown */}
-        <div className="px-6 py-4 border-r border-border-subtle">
-          <SectionLabel>By Status</SectionLabel>
-          <div className="space-y-3">
-            {STATUS_ORDER.map((status) => {
-              const ss = stats.statusMap[status];
-              if (!ss || ss.count === 0) return null;
-              const colors = STATUS_PILL_COLORS[status];
-              const barColor = colors?.dot ?? colors?.text ?? "#94a3b8";
-              const pct = (ss.sp / maxStatusSp) * 100;
-              return (
-                <FilterRow
-                  key={status}
-                  onClick={onFilterStatus ? () => handleFilterClick("status", status) : undefined}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
-                      <span className="text-[11px] font-medium text-text-secondary">{STATUS_LABELS[status] ?? status}</span>
-                    </div>
-                    <RowMetrics count={ss.count} sp={ss.sp} bv={ss.bv} />
-                  </div>
-                  <BarTrack>
-                    <Bar pct={pct} color={barColor} opacity={0.5} />
-                  </BarTrack>
-                </FilterRow>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Type breakdown */}
-        <div className="px-6 py-4">
-          <SectionLabel>By Type</SectionLabel>
-          {stats.typeEntries.length > 0 ? (
+        {/* Two-column: Status + Type */}
+        <div className="grid grid-cols-2 gap-0 border-t border-border-subtle">
+          {/* Status breakdown */}
+          <div className="px-6 py-4 border-r border-border-subtle">
+            <SectionLabel>By Status</SectionLabel>
             <div className="space-y-3">
-              {stats.typeEntries.map(([typeName, data]) => {
-                const barColor = ISSUE_TYPE_COLORS[typeName as keyof typeof ISSUE_TYPE_COLORS] ?? "#94a3b8";
-                const pct = maxTypeSp > 0 ? (data.sp / maxTypeSp) * 100 : 0;
+              {STATUS_ORDER.map((status) => {
+                const ss = stats.statusMap[status];
+                if (!ss || ss.count === 0) return null;
+                const colors = STATUS_PILL_COLORS[status];
+                const barColor = colors?.dot ?? colors?.text ?? "#94a3b8";
+                const pct = (ss.sp / maxStatusSp) * 100;
                 return (
                   <FilterRow
-                    key={typeName}
-                    onClick={onFilterType ? () => handleFilterClick("type", typeName) : undefined}
+                    key={status}
+                    accentColor={barColor}
+                    onClick={onFilterStatus ? () => handleFilterClick("status", status) : undefined}
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
-                        <IssueTypeIcon type={typeName} size={13} />
-                        <span className="text-[11px] font-medium text-text-secondary capitalize">{typeName}</span>
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
+                        <span className="text-[11px] font-medium text-text-secondary">{STATUS_LABELS[status] ?? status}</span>
                       </div>
-                      <RowMetrics count={data.count} sp={data.sp} bv={data.bv} />
+                      <RowMetrics count={ss.count} sp={ss.sp} bv={ss.bv} />
                     </div>
                     <BarTrack>
-                      <Bar pct={pct} color={barColor} opacity={0.45} />
+                      <Bar pct={pct} color={barColor} opacity={0.5} />
                     </BarTrack>
                   </FilterRow>
                 );
               })}
             </div>
-          ) : (
-            <span className="text-[11px] text-text-muted">No data</span>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* Epic breakdown (full width) */}
-      {stats.hasRealEpics && stats.epicEntries.length > 0 && (
-        <div className="px-6 py-4 border-t border-border-subtle">
-          <SectionLabel>By Epic</SectionLabel>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-            {stats.epicEntries.map(([epicName, data]) => {
-              const epicColor = epicName === "No Epic" ? { text: "#6b7280", bg: "rgba(107,114,128,0.12)" } : getEpicColor(epicName);
-              const pct = maxEpicSp > 0 ? (data.sp / maxEpicSp) * 100 : 0;
-              return (
-                <FilterRow
-                  key={epicName}
-                  onClick={onFilterEpic ? () => handleFilterClick("epic", epicName === "No Epic" ? "" : epicName) : undefined}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: epicColor.text }} />
-                      <span className="text-[11px] font-medium text-text-secondary truncate">{epicName}</span>
-                    </div>
-                    <RowMetrics count={data.count} sp={data.sp} bv={data.bv} />
-                  </div>
-                  <BarTrack>
-                    <Bar pct={pct} color={epicColor.text} opacity={0.4} />
-                  </BarTrack>
-                </FilterRow>
-              );
-            })}
+          {/* Type breakdown */}
+          <div className="px-6 py-4">
+            <SectionLabel>By Type</SectionLabel>
+            {stats.typeEntries.length > 0 ? (
+              <div className="space-y-3">
+                {stats.typeEntries.map(([typeName, data]) => {
+                  const barColor = ISSUE_TYPE_COLORS[typeName as keyof typeof ISSUE_TYPE_COLORS] ?? "#94a3b8";
+                  const pct = maxTypeSp > 0 ? (data.sp / maxTypeSp) * 100 : 0;
+                  return (
+                    <FilterRow
+                      key={typeName}
+                      accentColor={barColor}
+                      onClick={onFilterType ? () => handleFilterClick("type", typeName) : undefined}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <IssueTypeIcon type={typeName} size={13} />
+                          <span className="text-[11px] font-medium text-text-secondary capitalize">{typeName}</span>
+                        </div>
+                        <RowMetrics count={data.count} sp={data.sp} bv={data.bv} />
+                      </div>
+                      <BarTrack>
+                        <Bar pct={pct} color={barColor} opacity={0.45} />
+                      </BarTrack>
+                    </FilterRow>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="text-[11px] text-text-muted">No data</span>
+            )}
           </div>
         </div>
-      )}
 
-      <div className="h-2" />
-    </div>
+        {/* Epic breakdown (full width) */}
+        {stats.hasRealEpics && stats.epicEntries.length > 0 && (
+          <div className="px-6 py-4 border-t border-border-subtle">
+            <SectionLabel>By Epic</SectionLabel>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+              {stats.epicEntries.map(([epicName, data]) => {
+                const isNoEpic = epicName === "No Epic";
+                const epicColor = isNoEpic ? { text: "#6b7280", bg: "rgba(107,114,128,0.12)" } : getEpicColor(epicName);
+                const pct = maxEpicSp > 0 ? (data.sp / maxEpicSp) * 100 : 0;
+                return (
+                  <FilterRow
+                    key={epicName}
+                    accentColor={epicColor.text}
+                    onClick={!isNoEpic && onFilterEpic ? () => handleFilterClick("epic", epicName) : undefined}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: epicColor.text }} />
+                        <span className="text-[11px] font-medium text-text-secondary truncate">{epicName}</span>
+                      </div>
+                      <RowMetrics count={data.count} sp={data.sp} bv={data.bv} />
+                    </div>
+                    <BarTrack>
+                      <Bar pct={pct} color={epicColor.text} opacity={0.4} />
+                    </BarTrack>
+                  </FilterRow>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="h-2" />
+      </div>
+    </>
   );
 }
 
@@ -379,18 +341,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function FilterRow({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+function FilterRow({ children, onClick, accentColor }: { children: React.ReactNode; onClick?: () => void; accentColor?: string }) {
   if (!onClick) return <div>{children}</div>;
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      className="rounded-md -mx-2 px-2 py-1 cursor-pointer transition-colors duration-100 hover:bg-overlay-default active:bg-overlay-strong"
+      className="group w-full text-left rounded-md -mx-2 px-2 py-1.5 cursor-pointer transition-colors duration-100 hover:bg-[var(--color-overlay-subtle)]"
+      style={{ borderLeft: "2px solid transparent" }}
+      onMouseEnter={(e) => { if (accentColor) e.currentTarget.style.borderLeftColor = accentColor; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderLeftColor = "transparent"; }}
     >
       {children}
-    </div>
+    </button>
   );
 }
 

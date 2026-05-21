@@ -123,12 +123,14 @@ describe("SprintStatsPopover", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("calls onClose when clicking outside", () => {
+  it("calls onClose when clicking the backdrop", () => {
     const onClose = vi.fn();
     const anchorRef = createAnchorRef();
-    render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
+    const { container } = render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
 
-    fireEvent.mouseDown(document.body);
+    // The backdrop is the first fixed div (z-40)
+    const backdrop = container.querySelector(".fixed.inset-0")!;
+    fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -137,8 +139,8 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
 
-    const popover = screen.getByText("Sprint Statistics").closest("div.fixed") ?? screen.getByText("Sprint Statistics").parentElement!.parentElement!;
-    fireEvent.mouseDown(popover);
+    const popover = screen.getByText("Sprint Statistics").closest("div.fixed.z-50")!;
+    fireEvent.click(popover);
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -208,5 +210,16 @@ describe("SprintStatsPopover", () => {
     fireEvent.click(screen.getByText("Auth"));
     expect(onFilterEpic).toHaveBeenCalledWith("Auth");
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("does not filter when clicking No Epic row", () => {
+    const onFilterEpic = vi.fn();
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} onFilterEpic={onFilterEpic} />);
+
+    // "No Epic" should not be a button
+    const noEpicText = screen.getByText("No Epic");
+    fireEvent.click(noEpicText);
+    expect(onFilterEpic).not.toHaveBeenCalled();
   });
 });
