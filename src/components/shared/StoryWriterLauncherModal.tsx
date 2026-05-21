@@ -439,7 +439,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     if (!title) { setCreateError("Enter a story title"); return; }
     setCreateError(null); setCreating(true);
     try {
-      const { key } = await storyWriter.createViaGlobal({ title, sprintId: selectedSprintId || undefined, issueType }) as { key: string };
+      const { key } = await storyWriter.createDraft({ title, sprintId: selectedSprintId || undefined, issueType }) as { key: string };
       onClose(); router.push(`/tickets/${key}/write`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
@@ -590,7 +590,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                 <SprintSelectDropdown value={selectedSprintId} options={sprintOptions} onChange={setSelectedSprintId} />
               </div>
 
-              <p className="text-label text-text-muted">Creates in Jira and opens in story writer.</p>
+              <p className="text-label text-text-muted">Opens immediately. Jira issue is created in the background.</p>
             </div>
           )}
 

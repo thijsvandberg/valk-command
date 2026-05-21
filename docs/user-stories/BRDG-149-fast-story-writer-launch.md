@@ -51,10 +51,10 @@ The modal closes and the story writer opens near-instantly. Jira issue creation 
 ## Acceptance Criteria
 
 ### Phase 1: Optimistic navigation with local draft
-- [ ] Introduce a "draft" concept: create a local-only ticket record with a temporary key (e.g., `DRAFT-{uuid}`) and `status: "DRAFTING"`
-- [ ] `handleCreateNew` creates the local draft and navigates to `/tickets/DRAFT-xxx/write` immediately (no waiting for Jira)
-- [ ] The story writer session is created against the draft key and works normally
-- [ ] User can start typing their story description immediately after the modal closes
+- [x] Introduce a "draft" concept: create a local-only ticket record with a temporary key (e.g., `DRAFT-{uuid}`) and `status: "DRAFTING"`
+- [x] `handleCreateNew` creates the local draft and navigates to `/tickets/DRAFT-xxx/write` immediately (no waiting for Jira)
+- [x] The story writer session is created against the draft key and works normally
+- [x] User can start typing their story description immediately after the modal closes
 
 ### Phase 2: Background Jira sync
 - [ ] After the local draft is created, fire the Jira issue creation in the background (non-blocking)

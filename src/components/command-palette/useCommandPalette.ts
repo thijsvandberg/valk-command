@@ -478,7 +478,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       }
       setSubFlow((prev) => prev.kind === "new-story" ? { ...prev, loading: true, error: null } : prev);
       try {
-        const result = await storyWriter.createViaGlobal({ title, sprintId: subFlow.sprintId || undefined }) as { key: string };
+        const result = await storyWriter.createDraft({ title, sprintId: subFlow.sprintId || undefined }) as { key: string };
         router.push(`/tickets/${result.key}/write`);
         handleClose();
       } catch (err) {

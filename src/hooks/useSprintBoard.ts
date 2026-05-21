@@ -71,6 +71,7 @@ export function useTicketDetail(ticketKey: string | null) {
   // Defer the Jira freshness check so it doesn't compete with the initial SWR fetch
   useEffect(() => {
     if (!ticketKey) return;
+    if (ticketKey.startsWith("DRAFT-")) return;
     if (checkedRef.current === ticketKey) return;
     checkedRef.current = ticketKey;
 
