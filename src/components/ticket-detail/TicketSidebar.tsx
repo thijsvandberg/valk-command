@@ -375,32 +375,6 @@ export function TicketSidebar({
                 );
               })()}
             </DetailRow>
-            {ticket.type !== "epic" && (
-              <DetailRow label="Epic">
-                <EpicPicker
-                  value={epicKey ? { key: epicKey, name: epicName ?? epicKey } : null}
-                  onChange={handleEpicChange}
-                  align="right"
-                  ticketKey={ticket.key}
-                />
-              </DetailRow>
-            )}
-            {detail?.parent && (
-              <div className="py-2.5">
-                <span className="shrink-0 text-xs text-text-tertiary">Parent</span>
-                <Link
-                  href={`/tickets/${detail.parent.key}`}
-                  className="group/parent mt-1.5 flex items-center gap-2.5 rounded-lg border border-border-subtle px-3 py-2 hover:border-[var(--color-brand-500)]/30 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] cursor-pointer"
-                  style={{ transition: "border-color 0.15s ease, background-color 0.15s ease" }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="block text-xs text-text-muted">{detail.parent.key}</span>
-                    <span className="block truncate text-sm text-text-secondary leading-snug">{detail.parent.title}</span>
-                  </div>
-                  <ArrowUpRight size={14} strokeWidth={2} className="shrink-0 text-text-muted opacity-0 group-hover/parent:opacity-100" style={{ transition: "opacity 0.15s ease" }} />
-                </Link>
-              </div>
-            )}
             <DetailRow label="Readiness">
               <div className="flex items-center justify-end gap-2">
                 <span
@@ -412,13 +386,27 @@ export function TicketSidebar({
                 <ReadinessCell value={readiness} onChange={handleReadinessChange} align="right" />
               </div>
             </DetailRow>
-            {ticket.type !== "epic" && (
+            {ticket.type !== "epic" && ticket.type !== "subtask" && (
               <DetailRow label="Epic">
                 <EpicPicker
                   value={epicKey ? { key: epicKey, name: epicName ?? epicKey } : null}
                   onChange={handleEpicChange}
                   align="right"
+                  ticketKey={ticket.key}
                 />
+              </DetailRow>
+            )}
+            {detail?.parent && (
+              <DetailRow label="Parent">
+                <Link
+                  href={`/tickets/${detail.parent.key}`}
+                  className="group/parent inline-flex items-center gap-1.5 text-[var(--color-brand-600)] hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] cursor-pointer"
+                  style={{ transition: "color 0.15s ease" }}
+                  title={detail.parent.title}
+                >
+                  <span className="min-w-0 truncate max-w-[180px]">{detail.parent.key} {detail.parent.title}</span>
+                  <ArrowUpRight size={12} strokeWidth={2} className="shrink-0 opacity-0 group-hover/parent:opacity-100" style={{ transition: "opacity 0.15s ease" }} />
+                </Link>
               </DetailRow>
             )}
             {ticket.type !== "epic" && (
