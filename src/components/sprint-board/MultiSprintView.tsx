@@ -11,7 +11,8 @@ import type { StatCriterion } from "./GroupStatBar";
 import { SprintSelector } from "./SprintSelector";
 import { SortableTicketRow } from "./TicketRow";
 import { BulkActionBar } from "./BulkActionBar";
-import { COLUMN_PRESETS } from "./FilterBar";
+import { COLUMNS, ColumnToggle } from "./FilterBar";
+import type { ColumnId } from "./FilterBar";
 import { saveTicketMetadata, saveStoryPoints } from "./sprint-board-utils";
 import { getJiraUrl } from "./TicketTableCells";
 import { CalendarRange, RefreshCw, X, Columns2, ChevronDown, Search, Sheet } from "lucide-react";
@@ -51,10 +52,46 @@ const compareCollisionDetection: CollisionDetection = (args) => {
   return pointerWithin({ ...args, droppableContainers: columnContainers });
 };
 
-// Header labels for compact preset columns
-const COMPACT_HEADER_LABELS: Record<string, string> = {
-  key: "Key", title: "Title", points: "SP", assignee: "",
+// Header labels for all columns in compare view
+const COMPARE_HEADER_LABELS: Record<ColumnId, string> = {
+  type: "", key: "Key", title: "Title", epic: "Epic", sprint: "Sprint",
+  jiraStatus: "Status", flagged: "", points: "SP", bv: "BV",
+  notes: "", pipeline: "CI", assignee: "", poStatus: "Readiness",
+  quality: "QS",
 };
+
+// Column widths for the compare view (pixels). Title takes remaining space.
+const COMPARE_COL_WIDTHS: Record<ColumnId, number | undefined> = {
+  type: 32, key: 120, title: undefined, epic: 130, sprint: 100,
+  jiraStatus: 90, flagged: 36, points: 46, bv: 46,
+  notes: 36, pipeline: 70, assignee: 36, poStatus: 70, quality: 56,
+};
+
+const COMPARE_LS_KEY = "bridge:compare-columns";
+const COMPARE_DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "points", "assignee"];
+const COMPARE_DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
+
+function loadCompareColumns(): { visible: ColumnId[]; order: ColumnId[] } {
+  try {
+    const raw = localStorage.getItem(COMPARE_LS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw) as { visible?: string[]; order?: string[] };
+      const validIds = new Set<string>(COLUMNS.map((c) => c.id));
+      const visible = (data.visible ?? COMPARE_DEFAULT_VISIBLE).filter((id) => validIds.has(id)) as ColumnId[];
+      const savedOrder = (data.order ?? []).filter((id) => validIds.has(id)) as ColumnId[];
+      const savedSet = new Set(savedOrder);
+      const order = [...savedOrder, ...COMPARE_DEFAULT_ORDER.filter((id) => !savedSet.has(id))];
+      return { visible, order };
+    }
+  } catch { /* ignore */ }
+  return { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER };
+}
+
+function saveCompareColumns(visible: ColumnId[], order: ColumnId[]) {
+  try {
+    localStorage.setItem(COMPARE_LS_KEY, JSON.stringify({ visible, order }));
+  } catch { /* ignore */ }
+}
 
 // --- Droppable sprint column ---
 
@@ -84,6 +121,8 @@ function DroppableSprintColumn({
   onStoryPointsChange,
   onJiraStatusChange,
   onIssueTypeChange,
+  visibleColumns,
+  columnOrder,
 }: {
   columnId: "left" | "right";
   sprintId: string;
@@ -110,6 +149,8 @@ function DroppableSprintColumn({
   onStoryPointsChange?: (key: string, value: number | null) => void;
   onJiraStatusChange: (key: string, status: JiraStatus) => void;
   onIssueTypeChange: (key: string, type: IssueType) => void;
+  visibleColumns: Set<ColumnId>;
+  columnOrder: ColumnId[];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
@@ -118,6 +159,13 @@ function DroppableSprintColumn({
   const [activeCriterion, setActiveCriterion] = useState<StatCriterion | null>(null);
 
   const currentSprint = sprints.find((s) => s.id === sprintId);
+
+  // Only show visible columns in their configured order
+  const activeOrder = useMemo(
+    () => columnOrder.filter((id) => visibleColumns.has(id)),
+    [columnOrder, visibleColumns],
+  );
+  const colVisible = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
 
   const filteredTickets = useMemo(() => {
     let result = allTickets;
@@ -128,7 +176,7 @@ function DroppableSprintColumn({
         if (activeCriterion === "in-progress") return t.jiraStatus === "IN PROGRESS";
         if (activeCriterion === "test") return t.jiraStatus === "TEST";
         if (activeCriterion === "done") return t.jiraStatus === "DONE";
-        if (activeCriterion === "unpointed") return t.storyPoints == null && t.jiraStatus !== "DEPRECATED";
+        if (activeCriterion === "unpointed") return t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike";
         return true;
       });
     }
@@ -252,12 +300,18 @@ function DroppableSprintColumn({
           />
         ) : (
           <table className="w-full table-fixed border-collapse">
+            <colgroup>
+              <col style={{ width: 36 }} />
+              {activeOrder.map((colId) => (
+                <col key={colId} style={COMPARE_COL_WIDTHS[colId] ? { width: COMPARE_COL_WIDTHS[colId] } : undefined} />
+              ))}
+            </colgroup>
             <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
               <tr className="h-[44px] border-b border-border-subtle text-left">
                 <th className="w-9 py-2 pl-1 pr-1" />
-                {COLUMN_PRESETS.compact.map((colId) => {
-                  const label = COMPACT_HEADER_LABELS[colId] ?? "";
-                  const isCenter = colId === "points";
+                {activeOrder.map((colId) => {
+                  const label = COMPARE_HEADER_LABELS[colId] ?? "";
+                  const isCenter = colId === "points" || colId === "bv";
                   return label ? (
                     <th key={colId} className={`py-2 pr-2 text-xs font-medium text-text-muted${isCenter ? " text-center" : ""}`}>
                       {label}
@@ -282,7 +336,8 @@ function DroppableSprintColumn({
                     key={ticket.key}
                     ticket={ticket}
                     ticketIdx={idx}
-                    preset="compact"
+                    col={colVisible}
+                    columnOrder={activeOrder}
                     isChecked={checkedKeys.has(ticket.key)}
                     isSelected={selectedKey === ticket.key}
                     someChecked={someChecked}
@@ -321,14 +376,14 @@ function DroppableSprintColumn({
               })}
               {filteredTickets.length === 0 && isFiltered && (
                 <tr>
-                  <td colSpan={1 + COLUMN_PRESETS.compact.length} className="py-12 text-center text-xs text-text-muted">
+                  <td colSpan={1 + activeOrder.length} className="py-12 text-center text-xs text-text-muted">
                     No matching tickets
                   </td>
                 </tr>
               )}
               {isOver && filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan={1 + COLUMN_PRESETS.compact.length} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
+                  <td colSpan={1 + activeOrder.length} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
                     Drop here to move
                   </td>
                 </tr>
@@ -385,6 +440,41 @@ export function MultiSprintView({
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
   const [readinessMap, setReadinessMap] = useState<Record<string, TicketReadiness | null>>({});
+
+  // Column configuration (persisted in localStorage)
+  const [compareColState, setCompareColState] = useState(() => loadCompareColumns());
+  const compareVisible = useMemo(() => new Set(compareColState.visible), [compareColState.visible]);
+  const compareOrder = compareColState.order;
+
+  const handleCompareColumnToggle = useCallback((id: ColumnId, show: boolean) => {
+    setCompareColState((prev) => {
+      const next = show
+        ? { visible: [...prev.visible, id], order: prev.order.includes(id) ? prev.order : [...prev.order, id] }
+        : { visible: prev.visible.filter((c) => c !== id), order: prev.order };
+      saveCompareColumns(next.visible, next.order);
+      return next;
+    });
+  }, []);
+
+  const handleCompareColumnReorder = useCallback((activeId: ColumnId, overId: ColumnId) => {
+    setCompareColState((prev) => {
+      const oldIdx = prev.order.indexOf(activeId);
+      const newIdx = prev.order.indexOf(overId);
+      if (oldIdx === -1 || newIdx === -1) return prev;
+      const next = [...prev.order];
+      next.splice(oldIdx, 1);
+      next.splice(newIdx, 0, activeId);
+      const result = { visible: prev.visible, order: next };
+      saveCompareColumns(result.visible, result.order);
+      return result;
+    });
+  }, []);
+
+  const handleCompareColumnReset = useCallback(() => {
+    const result = { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER };
+    setCompareColState(result);
+    saveCompareColumns(result.visible, result.order);
+  }, []);
 
   const getMutateForKey = useCallback((key: string) => {
     return leftTickets.some((t) => t.key === key) ? mutateLeft : mutateRight;
@@ -716,14 +806,23 @@ export function MultiSprintView({
         <ViewHeader
           icon={<Columns2 size={15} strokeWidth={1.5} className="text-text-tertiary" />}
           actions={
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
-              icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
-              onClick={onClose}
-              title="Close compare view"
-            />
+            <>
+              <ColumnToggle
+                visible={compareVisible}
+                order={compareOrder}
+                onChange={handleCompareColumnToggle}
+                onReorder={handleCompareColumnReorder}
+                onReset={handleCompareColumnReset}
+              />
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                onClick={onClose}
+                title="Close compare view"
+              />
+            </>
           }
         >
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
@@ -765,6 +864,8 @@ export function MultiSprintView({
               onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
+              visibleColumns={compareVisible}
+              columnOrder={compareOrder}
             />
             <div className="w-px shrink-0 bg-overlay-default" />
             <DroppableSprintColumn
@@ -798,6 +899,8 @@ export function MultiSprintView({
               onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
+              visibleColumns={compareVisible}
+              columnOrder={compareOrder}
             />
           </div>
 

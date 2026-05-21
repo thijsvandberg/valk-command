@@ -35,7 +35,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   const inProgressCount = tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
   const testCount = tickets.filter((t) => t.jiraStatus === "TEST").length;
   const doneCount = tickets.filter((t) => t.jiraStatus === "DONE").length;
-  const noPointsCount = tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED").length;
+  const noPointsCount = tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike").length;
   const deprecatedWithSp = tickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
 
   const isCollapsible = onToggleCollapse !== undefined;

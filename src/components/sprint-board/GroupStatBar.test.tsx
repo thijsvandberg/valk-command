@@ -112,6 +112,16 @@ describe("GroupStatBar", () => {
     expect(container.querySelector("svg")).toBeTruthy();
   });
 
+  it("excludes spikes from no-points count", () => {
+    const tickets = [
+      makeTicket({ key: "VPL-1", storyPoints: 3 }),
+      makeTicket({ key: "VPL-2", storyPoints: null }),
+      makeTicket({ key: "VPL-3", storyPoints: null, type: "spike" }),
+    ];
+    render(<GroupStatBar tickets={tickets} />);
+    expect(screen.getByText("1 no SP")).toBeTruthy();
+  });
+
   it("does not render pills for zero-count statuses", () => {
     const onlyDone = [makeTicket({ key: "VPL-1", jiraStatus: "DONE", storyPoints: 3 })];
     render(<GroupStatBar tickets={onlyDone} />);
