@@ -28,6 +28,13 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | `/api/jira/sync-comments` | POST | Sync comments for a specific ticket |
 | `/api/jira/check-updated` | GET | Lightweight freshness check for a single ticket |
 | `/api/jira/health` | GET | Verify Jira connectivity |
+| `/api/jira/sprints/[id]` | PUT | Update sprint metadata (goal, dates) via Jira Agile API |
+
+## Sprints
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/sprints/[id]/suggest-goal` | POST | Invoke workspace skill to generate a sprint goal suggestion |
 
 ## Tickets
 
