@@ -11,14 +11,24 @@ As a Product Owner, I want the epic picker in the ticket sidebar to suggest the 
 
 The epic picker (`EpicPicker.tsx`) currently shows a flat list of all epics with search. For a growing backlog, manually finding the right epic is slow and error-prone. By storing a short summary per epic locally and sending those summaries (along with the ticket context) to VRW, we can get a ranked AI suggestion in seconds.
 
+## Implementation Plan
+
+1. **Phase 1 (Schema + API):** Add `summary` and `summaryUpdatedAt` columns to `ticket` table, generate migration, extend `GET /api/epics` response, create `PATCH /api/epics/[key]/summary` endpoint
+2. **Phase 2 (VRW summarize-epics):** Create `summarize-epics` skill prompt + register in VRW `skills.ts`, create `POST /api/epics/generate-summaries` endpoint with stream capture, add Refresh summaries button to EpicPicker
+3. **Phase 3 (VRW suggest-epic):** Create `suggest-epic` skill prompt + register in VRW `skills.ts`
+4. **Phase 4 (Frontend):** Create `POST /api/tickets/[key]/suggest-epic` endpoint, add suggest button to EpicPicker with streaming, display suggestions with confidence/reason, dismiss on search
+5. **Phase 5 (Staleness):** Compute staleness from `jiraUpdatedAt` vs `summaryUpdatedAt` in `GET /api/epics`, expose `summaryStale` boolean, show indicator in EpicPicker with refresh action
+
+**Files touched:** `src/db/schema.ts`, `src/app/api/epics/route.ts`, `src/app/api/epics/[key]/summary/route.ts` (new), `src/app/api/epics/generate-summaries/route.ts` (new), `src/app/api/tickets/[key]/suggest-epic/route.ts` (new), `src/components/shared/EpicPicker.tsx`, `src/components/ticket-detail/TicketSidebar.tsx`, `src/lib/api-client.ts`, VRW `src/skills.ts` + 2 new skill prompts
+
 ## Acceptance Criteria
 
 ### Phase 1: Epic Summaries Storage
 
-- [ ] Add a `summary` text column to the `ticket` table (nullable, used primarily for epics)
-- [ ] Create a migration for the new column
-- [ ] Extend `GET /api/epics` response to include the `summary` field per epic
-- [ ] Add `PATCH /api/epics/[key]/summary` endpoint for manually editing a summary
+- [x] Add a `summary` text column to the `ticket` table (nullable, used primarily for epics)
+- [x] Create a migration for the new column
+- [x] Extend `GET /api/epics` response to include the `summary` field per epic
+- [x] Add `PATCH /api/epics/[key]/summary` endpoint for manually editing a summary
 
 ### Phase 2: AI Summary Generation (VRW)
 

@@ -263,6 +263,47 @@ export const storyWriter = {
 
   createViaGlobal: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/story-writer/create", { method: "POST", body: data, signal }),
+  createDraft: (data: Record<string, unknown>, signal?: AbortSignal) =>
+    apiFetch<unknown>("/api/story-writer/create-draft", { method: "POST", body: data, signal }),
+  draftStatus: (key: string, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/story-writer/draft-status?key=${enc(key)}`, { signal }),
+  finalizeDraft: (data: Record<string, unknown>, signal?: AbortSignal) =>
+    apiFetch<unknown>("/api/story-writer/finalize-draft", { method: "POST", body: data, signal }),
+  retryDraft: (data: Record<string, unknown>, signal?: AbortSignal) =>
+    apiFetch<unknown>("/api/story-writer/retry-draft", { method: "POST", body: data, signal }),
+};
+
+// ---------------------------------------------------------------------------
+// Epics
+// ---------------------------------------------------------------------------
+
+export interface EpicSuggestion {
+  key: string;
+  name: string;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+}
+
+export const epics = {
+  listUrl: () => "/api/epics" as const,
+
+  list: (signal?: AbortSignal) =>
+    apiFetch<{ key: string; name: string; status: string; childCount: number; summary: string | null; summaryStale: boolean }[]>("/api/epics", { signal }),
+
+  updateSummary: (key: string, summary: string, signal?: AbortSignal) =>
+    apiFetch<{ key: string; summary: string; summaryUpdatedAt: string }>(
+      `/api/epics/${enc(key)}/summary`, { method: "PATCH", body: { summary }, signal },
+    ),
+
+  generateSummaries: (signal?: AbortSignal) =>
+    apiFetch<{ taskId: string; streamUrl: string }>(
+      "/api/epics/generate-summaries", { method: "POST", signal },
+    ),
+
+  suggestEpic: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{ taskId: string; streamUrl: string }>(
+      `/api/tickets/${enc(ticketKey)}/suggest-epic`, { method: "POST", signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,8 @@ export interface EpicListItem {
   name: string;
   status: string;
   childCount: number;
+  summary: string | null;
+  summaryStale: boolean;
 }
 
 export async function GET() {
@@ -23,6 +25,9 @@ export async function GET() {
       jiraKey: ticket.jiraKey,
       title: ticket.title,
       status: ticket.status,
+      summary: ticket.summary,
+      summaryUpdatedAt: ticket.summaryUpdatedAt,
+      jiraUpdatedAt: ticket.jiraUpdatedAt,
     })
     .from(ticket)
     .where(eq(ticket.type, "epic"))
@@ -41,12 +46,18 @@ export async function GET() {
 
   const countMap = new Map(childCounts.map((r) => [r.epicKey, r.count]));
 
-  const epics: EpicListItem[] = epicRows.map((e) => ({
-    key: e.jiraKey,
-    name: e.title,
-    status: e.status ?? "TO DO",
-    childCount: countMap.get(e.jiraKey) ?? 0,
-  }));
+  const epics: EpicListItem[] = epicRows.map((e) => {
+    const summaryStale = !e.summaryUpdatedAt
+      || (e.jiraUpdatedAt != null && e.jiraUpdatedAt > e.summaryUpdatedAt);
+    return {
+      key: e.jiraKey,
+      name: e.title,
+      status: e.status ?? "TO DO",
+      childCount: countMap.get(e.jiraKey) ?? 0,
+      summary: e.summary ?? null,
+      summaryStale: e.summary != null && summaryStale,
+    };
+  });
 
   // Sort: most children first (active epics tend to have more)
   epics.sort((a, b) => b.childCount - a.childCount);

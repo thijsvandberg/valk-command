@@ -330,6 +330,13 @@
       "when": 1779311068294,
       "tag": "0046_fancy_namor",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1779397597462,
+      "tag": "0047_clear_cardiac",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Check, Search, ChevronDown, Zap, X, RefreshCw } from "lucide-react";
+import { Check, Search, Zap, X, RefreshCw } from "lucide-react";
 import useSWR from "swr";
 import { apiFetch, swrFetcher } from "@/lib/api-client";
 
@@ -16,6 +16,8 @@ interface EpicListItem {
   name: string;
   status: string;
   childCount: number;
+  summary: string | null;
+  summaryStale: boolean;
 }
 
 export function EpicPicker({
@@ -125,7 +127,7 @@ export function EpicPicker({
         type="button"
         onClick={() => open ? handleClose() : handleOpen()}
         title={value ? `Epic: ${value.name}` : "No epic"}
-        className="group/epic inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -mr-2 text-xs cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
         style={{ transition: "background-color 0.15s ease" }}
       >
         {value ? (
@@ -136,12 +138,6 @@ export function EpicPicker({
         ) : (
           <span className="text-text-muted">None</span>
         )}
-        <ChevronDown
-          size={10}
-          strokeWidth={2}
-          className="shrink-0 text-text-muted opacity-0 group-hover/epic:opacity-100"
-          style={{ transition: "opacity 0.15s ease" }}
-        />
       </button>
 
       {open && pos && createPortal(
