@@ -1,5 +1,6 @@
-import { preload } from "swr";
+import { preload, mutate as globalMutate } from "swr";
 import { fetcher } from "@/components/SWRProvider";
+import type { Ticket } from "@/types/ticket";
 
 const MAX_CONCURRENT = 3;
 let activePrefetches = 0;
@@ -56,4 +57,12 @@ export function prefetchTicketList(sprintId: string): void {
 
 export function prefetchConversation(id: string): void {
   prefetchUrl(`/api/conversations/${encodeURIComponent(id)}`);
+}
+
+// Pre-seed the SWR detail cache with list-level ticket data so the detail page
+// can render instantly with partial data while the full API call completes.
+// Uses `revalidate: true` so SWR immediately fires the real fetch in the background.
+export function seedTicketDetailCache(ticket: Ticket): void {
+  const detailKey = `/api/tickets/${encodeURIComponent(ticket.key)}`;
+  globalMutate(detailKey, ticket, { revalidate: true });
 }

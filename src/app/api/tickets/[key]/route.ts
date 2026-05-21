@@ -61,14 +61,13 @@ export async function GET(
     });
   }
 
+  // All 12 queries run in a single parallel batch to eliminate the sequential
+  // findFirst -> Promise.all waterfall. The ticket lookup is index #0.
   const { result: queryData, durationMs } = await timedQuery(`GET /api/tickets/${key}`, async () => {
-    const t = await db.query.ticket.findFirst({
-      where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
-    });
-
-    if (!t) return null;
-
-    const [meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRows, reviewCountRows, versionCountRows] = await Promise.all([
+    const [t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentRows, reviewCountRows, versionCountRows] = await Promise.all([
+      db.query.ticket.findFirst({
+        where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+      }),
       db.query.ticketMetadata.findFirst({
         where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
       }),
@@ -93,7 +92,6 @@ export async function GET(
         where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
         orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
       }),
-      // Reverse lookup: find parent ticket if this is a subtask (joined to get title in one query)
       db.select({
         ticketKey: ticketSubtask.ticketKey,
         title: ticket.title,
@@ -101,11 +99,11 @@ export async function GET(
         .innerJoin(ticket, eq(ticket.jiraKey, ticketSubtask.ticketKey))
         .where(eq(ticketSubtask.subtaskKey, key))
         .limit(1),
-      // Review count for tab badge (avoids separate /reviews API call)
       db.select({ value: count() }).from(storedReview).where(eq(storedReview.ticketKey, key)),
-      // Version count for tab badge (avoids separate /versions?metaOnly=true API call)
       db.select({ value: count() }).from(storyVersion).where(eq(storyVersion.jiraKey, key)),
     ]);
+
+    if (!t) return null;
 
     const parentTicket = parentRows.length > 0
       ? { key: parentRows[0].ticketKey, title: parentRows[0].title }
