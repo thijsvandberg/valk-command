@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { z } from "zod";
 import { db } from "@/db";
-import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit, relatedStoryCandidate } from "@/db/schema";
+import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit, relatedStoryCandidate, ticketLink } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
@@ -72,9 +72,39 @@ export async function GET(request: Request, { params }: RouteContext) {
       .orderBy(storyWriterDraft.draftIndex)
       .all();
 
-    const relatedCandidates = await db.select().from(relatedStoryCandidate)
-      .where(eq(relatedStoryCandidate.sessionId, session.id))
-      .all();
+    const [sessionCandidates, existingLinks] = await Promise.all([
+      db.select().from(relatedStoryCandidate)
+        .where(eq(relatedStoryCandidate.sessionId, session.id))
+        .all(),
+      db.select().from(ticketLink)
+        .where(eq(ticketLink.ticketKey, key))
+        .all(),
+    ]);
+
+    // Merge existing ticketLink entries into candidates so the Related panel
+    // shows them immediately. Session candidates take priority; existing links
+    // that are not already represented get appended with score -1.
+    const candidateKeys = new Set(sessionCandidates.map((c) => c.jiraKey));
+    const now = new Date().toISOString();
+    const linkCandidates = existingLinks
+      .filter((link) => !candidateKeys.has(link.linkedKey))
+      .map((link) => ({
+        id: `link-${link.id}`,
+        sessionId: session.id,
+        ticketKey: key,
+        jiraKey: link.linkedKey,
+        score: -1,
+        title: link.title,
+        issueType: link.type ?? null,
+        status: link.status,
+        jiraUrl: null,
+        updatedDate: null,
+        matchReason: link.relation,
+        isLinked: true,
+        createdAt: now,
+      }));
+
+    const relatedCandidates = [...sessionCandidates, ...linkCandidates];
 
     if (draftsOnly) {
       return NextResponse.json({ session: resolvedSession, messages: [], aiDrafts, relatedCandidates });

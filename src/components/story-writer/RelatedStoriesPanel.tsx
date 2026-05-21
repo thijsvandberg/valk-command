@@ -86,7 +86,13 @@ function CandidateCard({
     >
       {/* Top row: score, key, icon, status, link button */}
       <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1">
-        <ScoreBadge score={candidate.score} />
+        {candidate.score >= 0 ? (
+          <ScoreBadge score={candidate.score} />
+        ) : (
+          <span className="inline-flex items-center justify-center w-5 h-5 shrink-0 text-[var(--color-brand-400)]">
+            <Link2 size={13} strokeWidth={1.5} />
+          </span>
+        )}
         {candidate.issueType && (
           <IssueTypeIcon type={candidate.issueType.toLowerCase()} size={13} />
         )}
@@ -322,6 +328,27 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
                   isSelected={selectedKey === c.jiraKey}
                 />
               ))}
+              {onFindRelated && (
+                <div className="flex justify-center pt-2 pb-1">
+                  <div className="flex items-stretch rounded-md border border-border-default bg-overlay-subtle overflow-hidden hover:border-border-strong transition-colors duration-150">
+                    <button
+                      type="button"
+                      onClick={onPrefillFindRelated}
+                      className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150"
+                    >
+                      Find more
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onFindRelated}
+                      className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                      title="Send immediately"
+                    >
+                      <SendHorizontal size={9} strokeWidth={2} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

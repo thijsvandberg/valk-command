@@ -148,6 +148,52 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
   }
 
+  // Handle virtual candidates synthesised from existing ticketLink entries
+  if (candidateId.startsWith("link-")) {
+    const linkId = candidateId.slice(5);
+    const link = await db
+      .select()
+      .from(ticketLink)
+      .where(eq(ticketLink.id, linkId))
+      .get();
+
+    if (!link) {
+      return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    }
+
+    if (!isLinked) {
+      await db.delete(ticketLink).where(eq(ticketLink.id, linkId));
+      if (link.jiraLinkId) {
+        try { await jiraClient.deleteIssueLink(link.jiraLinkId); } catch { /* ignore */ }
+      }
+      await logActivity({
+        type: "story-writer",
+        scope: key,
+        summary: `Related story ${link.linkedKey} unlinked from ${key}`,
+      });
+    }
+
+    // Return the virtual candidate shape so the frontend can update state
+    const now = new Date().toISOString();
+    return NextResponse.json({
+      candidate: {
+        id: candidateId,
+        sessionId: session.id,
+        ticketKey: key,
+        jiraKey: link.linkedKey,
+        score: -1,
+        title: link.title,
+        issueType: link.type ?? null,
+        status: link.status,
+        jiraUrl: null,
+        updatedDate: null,
+        matchReason: link.relation,
+        isLinked,
+        createdAt: now,
+      },
+    });
+  }
+
   const candidate = await db
     .select()
     .from(relatedStoryCandidate)

@@ -327,9 +327,14 @@ export function useStoryWriter(ticketKey: string) {
     try {
       const result = await storyWriterApi.toggleRelated(ticketKey, { candidateId, isLinked }) as { candidate?: RelatedStoryCandidateRow };
       if (!unmountedRef.current && result.candidate) {
-        setRelatedCandidates((prev) =>
-          prev.map((c) => (c.id === candidateId ? result.candidate! : c)),
-        );
+        // Virtual candidates (from ticketLink) are removed when unlinked
+        if (candidateId.startsWith("link-") && !isLinked) {
+          setRelatedCandidates((prev) => prev.filter((c) => c.id !== candidateId));
+        } else {
+          setRelatedCandidates((prev) =>
+            prev.map((c) => (c.id === candidateId ? result.candidate! : c)),
+          );
+        }
       }
     } catch { /* ignore */ }
   }, [ticketKey]);
