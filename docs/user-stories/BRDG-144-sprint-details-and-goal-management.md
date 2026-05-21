@@ -54,11 +54,11 @@ The sprint name in the header should reveal dates and goal on click/hover. An ed
 - [x] Handle Jira permission errors gracefully (read-only boards)
 
 ### Phase 4: VRW workspace skill
-- [ ] New workspace skill `/suggest-sprint-goal` in VRW
-- [ ] Skill input: sprint name, list of ticket summaries with epic/type/SP
-- [ ] Skill output: a concise sprint goal (1-2 sentences) capturing the sprint's theme
-- [ ] Bridge API route `POST /api/sprints/[id]/suggest-goal` that invokes the workspace skill
-- [ ] Streaming response so the UI can show the suggestion as it generates
+- [ ] New workspace skill `/suggest-sprint-goal` in VRW <!-- skipped: VRW skill must be created in the valk-remote-workspace repo, out of scope for this codebase -->
+- [ ] Skill input: sprint name, list of ticket summaries with epic/type/SP <!-- skipped: depends on VRW skill above -->
+- [ ] Skill output: a concise sprint goal (1-2 sentences) capturing the sprint's theme <!-- skipped: depends on VRW skill above -->
+- [x] Bridge API route `POST /api/sprints/[id]/suggest-goal` that invokes the workspace skill
+- [x] Streaming response so the UI can show the suggestion as it generates
 
 ## Technical Notes
 
