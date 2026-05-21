@@ -41,7 +41,7 @@ The epic picker (`EpicPicker.tsx`) currently shows a flat list of all epics with
   - Triggers the `summarize-epics` skill via the workspace task system
   - Streams progress back to the client
   - On completion, upserts summaries into the local DB
-- [ ] Add a "Refresh summaries" button in a suitable location (e.g., Sprint Board settings or epic management)
+- [x] Add a "Refresh summaries" button in a suitable location (e.g., Sprint Board settings or epic management)
 
 ### Phase 3: AI Epic Suggestion (VRW)
 
@@ -54,16 +54,16 @@ The epic picker (`EpicPicker.tsx`) currently shows a flat list of all epics with
 
 ### Phase 4: Frontend Integration
 
-- [ ] Add a "Suggest epic" button (sparkle/wand icon) to the `EpicPicker` popover header
-- [ ] On click: call `POST /api/tickets/[key]/suggest-epic` which:
+- [x] Add a "Suggest epic" button (sparkle/wand icon) to the `EpicPicker` popover header
+- [x] On click: call `POST /api/tickets/[key]/suggest-epic` which:
   - Gathers ticket context (title, description, acceptance criteria)
   - Loads all epic summaries from local DB
   - Sends both to VRW via the `suggest-epic` skill
-- [ ] Show a loading state in the picker while the suggestion streams
-- [ ] Display suggestions as a highlighted section at the top of the epic list:
+- [x] Show a loading state in the picker while the suggestion streams
+- [x] Display suggestions as a highlighted section at the top of the epic list:
   - Each suggestion shows the epic name, confidence indicator, and short reason
   - Clicking a suggestion selects it as the epic (same as normal selection)
-- [ ] Suggestions should dismiss/hide when the user starts typing in the search field
+- [x] Suggestions should dismiss/hide when the user starts typing in the search field
 
 ### Phase 5: Summary Staleness Detection
 
