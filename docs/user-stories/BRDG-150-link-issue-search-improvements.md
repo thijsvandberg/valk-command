@@ -57,7 +57,7 @@ The sprint board's `SearchModal` has a more sophisticated search with keyboard n
 
 - [x] Add `jiraClient.searchIssues(query)` method (issue picker REST endpoint) <!-- pre-satisfied: method already exists at jira-client.ts:1052 -->
 - [x] Extend `/api/tickets/search` with Jira fallback when local results are sparse
-- [ ] Show Jira-only results with a subtle indicator (not in local DB)
+- [x] Show Jira-only results with a subtle indicator (not in local DB)
 - [x] Add recent/frequent quick picks when search is empty
-- [ ] Match visual style with `SearchModal` (status pills, better truncation)
+- [x] Match visual style with `SearchModal` (status pills, better truncation)
 - [x] Tests for the extended search route
