@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { storyWriter as storyWriterApi } from "@/lib/api-client";
 
 export type DraftSyncStatus = "idle" | "pending" | "synced" | "error";
@@ -14,21 +13,15 @@ interface DraftSyncResult {
 }
 
 /**
- * Polls draft-status for DRAFT-xxx keys and handles URL replacement
- * when the real Jira key arrives.
+ * Polls draft-status for DRAFT-xxx keys and updates the URL silently
+ * when the real Jira key arrives. Uses history.replaceState instead of
+ * router.replace so the component stays mounted and user state is preserved.
  */
 export function useDraftSync(ticketKey: string): DraftSyncResult {
-  const router = useRouter();
   const isDraft = ticketKey.startsWith("DRAFT-");
   const [syncStatus, setSyncStatus] = useState<DraftSyncStatus>(isDraft ? "pending" : "idle");
   const [realKey, setRealKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const unmountedRef = useRef(false);
-
-  useEffect(() => {
-    unmountedRef.current = false;
-    return () => { unmountedRef.current = true; };
-  }, []);
 
   useEffect(() => {
     if (!isDraft) return;
@@ -50,7 +43,8 @@ export function useDraftSync(ticketKey: string): DraftSyncResult {
           if (data.status === "synced" && data.realKey) {
             setSyncStatus("synced");
             setRealKey(data.realKey);
-            router.replace(`/tickets/${data.realKey}/write`);
+            // Update URL silently without triggering navigation/remount
+            window.history.replaceState(null, "", `/tickets/${data.realKey}/write`);
             return;
           }
 
@@ -64,7 +58,6 @@ export function useDraftSync(ticketKey: string): DraftSyncResult {
           await new Promise((r) => setTimeout(r, 1500));
         } catch {
           if (cancelled) return;
-          // Network error, keep polling
           await new Promise((r) => setTimeout(r, 3000));
         }
       }
@@ -72,7 +65,7 @@ export function useDraftSync(ticketKey: string): DraftSyncResult {
 
     poll();
     return () => { cancelled = true; };
-  }, [isDraft, syncStatus, ticketKey, router]);
+  }, [isDraft, syncStatus, ticketKey]);
 
   const retry = useCallback(() => {
     if (!isDraft) return;

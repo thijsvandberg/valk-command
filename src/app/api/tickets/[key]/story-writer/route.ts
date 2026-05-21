@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { resolveDraftKey } from "@/lib/draft-sync";
 
 const patchSessionSchema = z.object({
   localDraft: z.string().optional(),
@@ -22,9 +23,10 @@ const patchSessionSchema = z.object({
 type RouteContext = { params: Promise<{ key: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
   const { searchParams } = new URL(request.url);
   const draftsOnly = searchParams.get("draftsOnly") === "true";
 
@@ -126,9 +128,10 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   try {
     const ticketRow = await db
@@ -238,9 +241,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   let rawBody: unknown;
   try {
@@ -332,9 +336,10 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("delete");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
   const url = new URL(request.url);
   const deleteConversation = url.searchParams.get("deleteConversation") === "true";
 

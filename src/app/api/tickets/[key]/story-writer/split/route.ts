@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
+import { resolveDraftKey } from "@/lib/draft-sync";
 import { db } from "@/db";
 import { storyWriterSession, ticket, ticketLink, ticketMetadata } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -21,9 +22,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   let body: { targetKey?: string; sprintId?: string; title?: string; issueType?: string } = {};
   try {

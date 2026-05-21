@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
+import { resolveDraftKey } from "@/lib/draft-sync";
 import { db } from "@/db";
 import { storyWriterSession, relatedStoryCandidate, ticketLink } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -21,9 +22,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   let body: Record<string, unknown>;
   try {
@@ -115,9 +117,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   let body: Record<string, unknown>;
   try {
@@ -299,9 +302,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
  * GET: return all related story candidates for the active session.
  */
 export async function GET(_request: Request, { params }: RouteContext) {
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   const session = await db
     .select()

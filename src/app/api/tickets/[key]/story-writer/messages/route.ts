@@ -7,6 +7,7 @@ import { randomUUID, createHash } from "crypto";
 import { agentFetch, type AgentError } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
+import { resolveDraftKey } from "@/lib/draft-sync";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -36,9 +37,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("story-writer");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   let body: Record<string, unknown>;
   try {
@@ -284,9 +286,10 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   const limited = applyRateLimit("delete");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
   const url = new URL(request.url);
   const failedOnly = url.searchParams.get("failed") === "true";
 

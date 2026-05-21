@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
+import { resolveDraftKey } from "@/lib/draft-sync";
 import { db } from "@/db";
 import { storyWriterExecutionLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,9 +8,10 @@ import { eq } from "drizzle-orm";
 type RouteContext = { params: Promise<{ key: string; taskId: string }> };
 
 export async function GET(_request: Request, { params }: RouteContext) {
-  const { key, taskId } = await params;
-  const invalidKey = validatePathParam(key);
+  const { key: rawKey, taskId } = await params;
+  const invalidKey = validatePathParam(rawKey);
   if (invalidKey) return invalidKey;
+  const key = resolveDraftKey(rawKey);
   const invalidTaskId = validatePathParam(taskId);
   if (invalidTaskId) return invalidTaskId;
 

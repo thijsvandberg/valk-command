@@ -67,6 +67,9 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const router = useRouter();
   const draftSync = useDraftSync(ticketKey);
   const isDraft = ticketKey.startsWith("DRAFT-");
+  // Use the real key for display once the Jira issue is created
+  const effectiveKey = draftSync.realKey ?? ticketKey;
+  const isStillDraft = isDraft && !draftSync.realKey;
   const writer = useStoryWriter(ticketKey);
   const { notify } = useNotification();
   const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
@@ -500,7 +503,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 </button>
               )}
 
-              {!isDraft && (hasLocalSave ? (
+              {!isStillDraft && (hasLocalSave ? (
                 <Button
                   variant="primary"
                   size="md"
@@ -559,7 +562,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       </button>
                     )}
 
-                    {!isDraft && (
+                    {!isStillDraft && (
                       <>
                         <div className="mx-2 my-1 h-px bg-overlay-default" />
 
@@ -613,7 +616,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         )}
 
                         <a
-                          href={`{getJiraUrl(ticketKey)}`}
+                          href={`{getJiraUrl(effectiveKey)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setShowMoreMenu(false)}
@@ -703,7 +706,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
               const displayTitle = writer.session?.localTitle ?? ticketData?.title ?? draftTitle ?? ticketKey;
               const displayType = ticketData?.type ?? draftType;
 
-              if (isDraft && draftSync.syncStatus === "pending") {
+              if (isStillDraft && draftSync.syncStatus === "pending") {
                 return (
                   <>
                     <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2.5 py-1 text-label font-medium text-text-tertiary">
@@ -718,7 +721,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 );
               }
 
-              if (!ticketData) {
+              if (!ticketData && isStillDraft) {
                 return (
                   <>
                     {displayType && <IssueTypeIcon type={displayType} size={14} />}
@@ -730,16 +733,16 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 );
               }
 
-              const status = (ticketData.jiraStatus ?? "TO DO") as import("@/types/ticket").JiraStatus;
+              const status = (ticketData?.jiraStatus ?? "TO DO") as import("@/types/ticket").JiraStatus;
               return (
                 <>
                   <TicketStatusPill
-                    ticketKey={ticketKey}
+                    ticketKey={effectiveKey}
                     jiraStatus={status}
                     readiness={localReadiness}
                     onJiraStatusChange={handleJiraStatusChange}
                     onReadinessChange={handleReadinessChange}
-                    issueType={ticketData.type}
+                    issueType={ticketData?.type ?? draftType}
                     onIssueTypeChange={handleTypeChange}
                     title={displayTitle}
                     size="lg"
