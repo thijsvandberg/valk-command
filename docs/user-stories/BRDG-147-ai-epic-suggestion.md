@@ -32,12 +32,12 @@ The epic picker (`EpicPicker.tsx`) currently shows a flat list of all epics with
 
 ### Phase 2: AI Summary Generation (VRW)
 
-- [ ] Create a `summarize-epics` skill in VRW that generates a 1-2 sentence summary per epic
+- [x] Create a `summarize-epics` skill in VRW that generates a 1-2 sentence summary per epic
   - Input: list of epic keys (or "all" for a full refresh)
   - Per epic: reads title, description, and child ticket titles from Jira
   - Output: JSON array of `{ key, summary }` pairs
-- [ ] Create a skill prompt file `.claude/skills/summarize-epics.md` in VRW
-- [ ] Add `POST /api/epics/generate-summaries` endpoint in valk-command that:
+- [x] Create a skill prompt file `.claude/skills/summarize-epics.md` in VRW
+- [x] Add `POST /api/epics/generate-summaries` endpoint in valk-command that:
   - Triggers the `summarize-epics` skill via the workspace task system
   - Streams progress back to the client
   - On completion, upserts summaries into the local DB
@@ -45,12 +45,12 @@ The epic picker (`EpicPicker.tsx`) currently shows a flat list of all epics with
 
 ### Phase 3: AI Epic Suggestion (VRW)
 
-- [ ] Create a `suggest-epic` skill in VRW
+- [x] Create a `suggest-epic` skill in VRW
   - Input: ticket key, title, description/acceptance criteria, and the full epic summary list
   - Output: JSON with top 3 suggested epics, each with a `key`, `name`, `confidence` (high/medium/low), and a short `reason`
   - The skill prompt should instruct the model to match based on domain, scope, and thematic fit
-- [ ] Create a skill prompt file `.claude/skills/suggest-epic.md` in VRW
-- [ ] Register both new skills in VRW's `src/skills.ts` with appropriate tools and timeouts
+- [x] Create a skill prompt file `.claude/skills/suggest-epic.md` in VRW
+- [x] Register both new skills in VRW's `src/skills.ts` with appropriate tools and timeouts
 
 ### Phase 4: Frontend Integration
 
