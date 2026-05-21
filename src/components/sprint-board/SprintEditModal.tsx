@@ -103,7 +103,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
         skillName: "suggest-sprint-goal",
         args: {
           sprintName: sprint.name,
-          tickets: ticketData,
+          tickets: JSON.stringify(ticketData),
         },
       }, controller.signal);
 
