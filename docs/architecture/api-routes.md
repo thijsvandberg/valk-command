@@ -30,6 +30,14 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | `/api/jira/health` | GET | Verify Jira connectivity |
 | `/api/jira/sprints/[id]` | PUT | Update sprint metadata (goal, dates) via Jira Agile API |
 
+## Epics
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/epics` | GET | List all epics with summary, child count, staleness |
+| `/api/epics/[key]/summary` | PATCH | Update epic summary manually. Body: `{ summary }` |
+| `/api/epics/generate-summaries` | POST | Invoke workspace `summarize-epics` skill to generate summaries for all epics |
+
 ## Sprints
 
 | Route | Method | Purpose |
@@ -66,6 +74,7 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]/related-suggestions` | GET | Return cached AI-suggested related issues |
 | `/api/tickets/[key]/related-suggestions` | POST | Discover related issues via workspace `find-related` skill (cached 30 min) |
 | `/api/tickets/[key]/related-suggestions` | DELETE | Clear cached suggestions for this ticket |
+| `/api/tickets/[key]/suggest-epic` | POST | Invoke workspace `suggest-epic` skill. Returns `{ taskId, streamUrl }` |
 
 ## Story Writer
 
