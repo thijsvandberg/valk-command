@@ -1066,7 +1066,7 @@ export default function SprintBoard() {
                           if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
                           f.setGapsFilter(next);
                         }}
-                        className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-all duration-150 ${
+                        className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-[background-color,color,box-shadow] duration-150 ${
                           f.gapsFilter.has("no_points")
                             ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_rgba(234,179,8,0.3)]"
                             : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
@@ -1240,7 +1240,6 @@ export default function SprintBoard() {
       )}
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       <StoryWriterLauncherModal open={showStoryWriterLauncher} onClose={() => setShowStoryWriterLauncher(false)} />
-      <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
     </>
   );

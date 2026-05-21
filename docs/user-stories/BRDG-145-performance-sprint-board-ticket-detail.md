@@ -58,10 +58,10 @@ Notes: Item #21 already implemented. Duplicate `VIRTUALIZE_THRESHOLD` in `Sprint
 
 ### Phase 4: CSS and rendering polish
 
-- [ ] Replace `transition-all` with specific property transitions in `SprintBoard.tsx`
-- [ ] Move inline `@keyframes fadeInUp` style block to global CSS (currently injected per render)
-- [ ] Replace `<table>` layout for code blocks in `renderMarkdown.tsx` with CSS grid
-- [ ] Debounce `onLocalEdit` callback in `EditableDescription.tsx` to prevent parent re-render on every keystroke
+- [x] Replace `transition-all` with specific property transitions in `SprintBoard.tsx`
+- [x] Move inline `@keyframes fadeInUp` style block to global CSS (currently injected per render)
+- [x] Replace `<table>` layout for code blocks in `renderMarkdown.tsx` with CSS grid
+- [x] Debounce `onLocalEdit` callback in `EditableDescription.tsx` to prevent parent re-render on every keystroke
 - [x] Add `{ passive: true }` to scroll event listener in `SprintSlots.tsx` <!-- already implemented -->
 - [x] Defer ticket prefetching to mouse-enter intent instead of unconditional mount-time prefetch of first 5 tickets
 

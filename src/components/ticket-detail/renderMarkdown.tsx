@@ -253,32 +253,25 @@ function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode 
           <span className="ml-1 font-mono text-caption font-medium uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>{lang}</span>
         )}
       </div>
-      {/* Code table */}
+      {/* Code grid */}
       <div className="overflow-x-auto py-2">
-        <table className="border-collapse" style={{ tableLayout: "fixed", width: "100%" }}>
-          <colgroup>
-            {/* Fixed width for up to 3-digit line numbers */}
-            <col style={{ width: "3rem" }} />
-            <col />
-          </colgroup>
-          <tbody>
-            {lines.map((codeLine, li) => (
-              <tr key={li} className="group">
-                <td
-                  className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-label leading-[1.6rem]"
-                  style={{ color: "var(--color-text-muted)", borderColor: "var(--color-overlay-default)", whiteSpace: "nowrap" }}
-                >
-                  {li + 1}
-                </td>
-                <td
-                  className="rm-code-content py-0 pl-4 pr-6 font-mono text-[0.8125rem] leading-[1.6rem]"
-                  style={{ color: "var(--color-text-secondary)", whiteSpace: "pre" }}
-                  dangerouslySetInnerHTML={{ __html: sanitizePrismOutput(highlightCodeLine(codeLine, lang) || "\u00a0") }}
-                />
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="grid" style={{ gridTemplateColumns: "3rem 1fr" }}>
+          {lines.map((codeLine, li) => (
+            <div key={li} className="contents group">
+              <div
+                className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-label leading-[1.6rem]"
+                style={{ color: "var(--color-text-muted)", borderColor: "var(--color-overlay-default)", whiteSpace: "nowrap" }}
+              >
+                {li + 1}
+              </div>
+              <div
+                className="rm-code-content py-0 pl-4 pr-6 font-mono text-[0.8125rem] leading-[1.6rem]"
+                style={{ color: "var(--color-text-secondary)", whiteSpace: "pre" }}
+                dangerouslySetInnerHTML={{ __html: sanitizePrismOutput(highlightCodeLine(codeLine, lang) || "\u00a0") }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

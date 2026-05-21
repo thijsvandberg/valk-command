@@ -82,6 +82,8 @@ export function EditableDescription({
   const [editIsDraft, setEditIsDraft] = useState(serverLocalEdit?.isDraft ?? false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notifiedDescRef = useRef(false);
+  // Only call onLocalEdit(true) once per editing session to avoid parent re-renders per keystroke
+  const localEditNotifiedRef = useRef(false);
 
   const hasLocalEdit = localValue !== null;
   const value = localValue ?? initialDescription;
@@ -137,7 +139,10 @@ export function EditableDescription({
     setLocalValue(newValue);
     if (newValue.trim() !== initialDescription.trim()) {
       setEditIsDraft(true);
-      onLocalEdit(true);
+      if (!localEditNotifiedRef.current) {
+        localEditNotifiedRef.current = true;
+        onLocalEdit(true);
+      }
       autoSaveDraft(newValue);
     }
   }, [initialDescription, onLocalEdit, autoSaveDraft]);
@@ -146,6 +151,7 @@ export function EditableDescription({
     if (value.trim() === initialDescription.trim()) {
       setLocalValue(null);
       setEditIsDraft(false);
+      localEditNotifiedRef.current = false;
       onLocalEdit(false);
       // Clean up any draft
       await apiFetch<void>(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits?draftsOnly=true`, { method: "DELETE" });
