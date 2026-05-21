@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Check, Search, Zap, X, RefreshCw, Sparkles, AlertTriangle } from "lucide-react";
 import useSWR from "swr";
-import { apiFetch, swrFetcher, workspaceTasks } from "@/lib/api-client";
+import { apiFetch, swrFetcher, workspaceTasks, ApiError } from "@/lib/api-client";
 
 export interface EpicOption {
   key: string;
@@ -179,15 +179,18 @@ export function EpicPicker({
         { method: "POST" },
       );
       if (!resp.taskId) {
-        setSuggestError("Failed to start suggestion");
+        setSuggestError("No task ID returned");
         setSuggesting(false);
         return;
       }
 
       const es = new EventSource(workspaceTasks.streamUrl(resp.taskId));
       eventSourceRef.current = es;
+      let resolved = false;
 
       es.addEventListener("result", (e) => {
+        if (resolved) return;
+        resolved = true;
         try {
           const data = JSON.parse((e as MessageEvent).data);
           const output = (data.output ?? data.text ?? "") as string;
@@ -205,36 +208,29 @@ export function EpicPicker({
       });
 
       es.addEventListener("error", () => {
-        setSuggestError("Connection lost");
+        if (resolved) return;
+        resolved = true;
         es.close();
         eventSourceRef.current = null;
+        setSuggestError("Connection to workspace lost");
         setSuggesting(false);
       });
 
-      const errorHandler = (e: MessageEvent) => {
-        try {
-          const data = JSON.parse(e.data);
-          setSuggestError(data.message ?? "Suggestion failed");
-        } catch {
-          setSuggestError("Suggestion failed");
-        }
-        es.close();
-        eventSourceRef.current = null;
-        setSuggesting(false);
-      };
-      es.addEventListener("error", errorHandler as EventListener);
-
       // Timeout after 90s
       setTimeout(() => {
-        if (eventSourceRef.current === es) {
+        if (!resolved && eventSourceRef.current === es) {
+          resolved = true;
           es.close();
           eventSourceRef.current = null;
           setSuggesting(false);
           setSuggestError("Suggestion timed out");
         }
       }, 90_000);
-    } catch {
-      setSuggestError("Failed to request suggestion");
+    } catch (err) {
+      const msg = err instanceof ApiError
+        ? err.body?.error ?? `Request failed (${err.status})`
+        : "Failed to request suggestion";
+      setSuggestError(msg);
       setSuggesting(false);
     }
   }, [ticketKey, suggesting]);

@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "@/db";
-import { activityLog } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { activityLog, ticket } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { jiraClient, ISSUE_FIELDS } from "@/lib/jira-client";
 import { upsertIssue } from "@/lib/upsert-issue";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { agentFetch } from "@/lib/agent-fetch";
 import { cache } from "@/lib/cache";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -51,6 +52,29 @@ export async function POST(request: Request) {
       completedAt: new Date().toISOString(),
     }).where(eq(activityLog.id, logId));
 
+    // Auto-regenerate stale summaries in the background
+    after(async () => {
+      try {
+        const staleEpics = await db
+          .select({ jiraKey: ticket.jiraKey })
+          .from(ticket)
+          .where(sql`${ticket.type} = 'epic' AND ${ticket.summary} IS NOT NULL AND (${ticket.summaryUpdatedAt} IS NULL OR ${ticket.jiraUpdatedAt} > ${ticket.summaryUpdatedAt})`)
+          .all();
+
+        if (staleEpics.length > 0) {
+          logger.info("sync-epics", `${staleEpics.length} stale epic summaries, triggering regeneration`);
+          // Fire-and-forget: call our own generate-summaries endpoint logic
+          await agentFetch("/api/tasks", {
+            method: "POST",
+            body: { skill: "summarize-epics", args: await buildSummarizeArgs() },
+            retries: 1,
+          });
+        }
+      } catch (err) {
+        logger.warn("sync-epics", "Auto-summary regeneration failed (non-critical)", err);
+      }
+    });
+
     return NextResponse.json({ count: upserted });
   } catch (err) {
     logger.error("sync-epics", "POST failed", err);
@@ -64,4 +88,35 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Epic sync failed" }, { status: 500 });
   }
+}
+
+async function buildSummarizeArgs(): Promise<{ epics: string }> {
+  const epicRows = await db
+    .select({ jiraKey: ticket.jiraKey, title: ticket.title, description: ticket.description })
+    .from(ticket)
+    .where(eq(ticket.type, "epic"))
+    .all();
+
+  const childRows = await db
+    .select({ epicKey: ticket.epicKey, title: ticket.title })
+    .from(ticket)
+    .where(sql`${ticket.epicKey} IS NOT NULL AND ${ticket.type} != 'epic'`)
+    .all();
+
+  const childMap = new Map<string, string[]>();
+  for (const c of childRows) {
+    if (!c.epicKey) continue;
+    const list = childMap.get(c.epicKey) ?? [];
+    list.push(c.title);
+    childMap.set(c.epicKey, list);
+  }
+
+  const payload = epicRows.map((e) => ({
+    key: e.jiraKey,
+    name: e.title,
+    description: e.description ?? null,
+    childTickets: childMap.get(e.jiraKey) ?? [],
+  }));
+
+  return { epics: JSON.stringify(payload) };
 }
