@@ -1,6 +1,6 @@
 # BRDG-144: Sprint Details and Goal Management
 
-**Status:** In Progress
+**Status:** Bridge Complete (VRW skill pending)
 **Priority:** Medium
 
 ## Description
