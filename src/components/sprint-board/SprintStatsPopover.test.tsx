@@ -47,10 +47,11 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} />);
 
+    expect(screen.getByText("Sprint Statistics")).toBeTruthy();
     expect(screen.getByText("Items")).toBeTruthy();
-    // Total items count shown next to "Items" label
-    const itemsRow = screen.getByText("Items").closest("div")!;
-    expect(itemsRow.textContent).toContain("5");
+    // Items card contains the count
+    const itemsCard = screen.getByText("Items").closest(".rounded-lg")!;
+    expect(itemsCard.textContent).toContain("5");
     expect(screen.getByText("Story Points")).toBeTruthy();
     expect(screen.getByText("Business Value")).toBeTruthy();
   });
@@ -59,10 +60,10 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} />);
 
-    expect(screen.getByText("DONE")).toBeTruthy();
-    expect(screen.getByText("IN PROGRESS")).toBeTruthy();
-    expect(screen.getByText("TEST")).toBeTruthy();
-    expect(screen.getByText("TO DO")).toBeTruthy();
+    expect(screen.getByText("Done")).toBeTruthy();
+    expect(screen.getByText("In Progress")).toBeTruthy();
+    expect(screen.getByText("Test")).toBeTruthy();
+    expect(screen.getByText("To Do")).toBeTruthy();
     expect(screen.getByText("By Status")).toBeTruthy();
   });
 
@@ -110,7 +111,7 @@ describe("SprintStatsPopover", () => {
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} />);
 
     // VPL-4 has no story points and is not a spike
-    expect(screen.getByText("1 without estimate")).toBeTruthy();
+    expect(screen.getByText("1 ticket without estimate")).toBeTruthy();
   });
 
   it("calls onClose when Escape is pressed", () => {
@@ -136,7 +137,7 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
 
-    const popover = screen.getByText("Items").closest("[role]") ?? screen.getByText("Items").parentElement!.parentElement!;
+    const popover = screen.getByText("Sprint Statistics").closest("div.fixed") ?? screen.getByText("Sprint Statistics").parentElement!.parentElement!;
     fireEvent.mouseDown(popover);
     expect(onClose).not.toHaveBeenCalled();
   });
