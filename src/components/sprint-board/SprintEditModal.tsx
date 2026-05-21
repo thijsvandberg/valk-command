@@ -15,23 +15,31 @@ interface SprintEditModalProps {
   showToast: (msg: string) => void;
 }
 
-function toInputDate(iso: string | null | undefined): string {
+function toInputDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toISOString().slice(0, 10);
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   } catch {
     return "";
   }
 }
 
-function toIsoDate(input: string): string {
+function toIsoDateTime(input: string): string {
   if (!input) return "";
-  return new Date(input + "T00:00:00Z").toISOString();
+  return new Date(input).toISOString();
+}
+
+function fmtWeekday(input: string): string {
+  if (!input) return "";
+  const d = new Date(input);
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
 export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintEditModalProps) {
-  const [startDate, setStartDate] = useState(toInputDate(sprint.startDate));
-  const [endDate, setEndDate] = useState(toInputDate(sprint.endDate));
+  const [startDate, setStartDate] = useState(toInputDateTime(sprint.startDate));
+  const [endDate, setEndDate] = useState(toInputDateTime(sprint.endDate));
   const [goal, setGoal] = useState(sprint.goal ?? "");
   const [saving, setSaving] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
@@ -47,12 +55,12 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
     setSaving(true);
     try {
       const fields: Record<string, string> = {};
-      const origStart = toInputDate(sprint.startDate);
-      const origEnd = toInputDate(sprint.endDate);
+      const origStart = toInputDateTime(sprint.startDate);
+      const origEnd = toInputDateTime(sprint.endDate);
       const origGoal = sprint.goal ?? "";
 
-      if (startDate !== origStart) fields.startDate = toIsoDate(startDate);
-      if (endDate !== origEnd) fields.endDate = toIsoDate(endDate);
+      if (startDate !== origStart) fields.startDate = toIsoDateTime(startDate);
+      if (endDate !== origEnd) fields.endDate = toIsoDateTime(endDate);
       if (goal !== origGoal) fields.goal = goal;
 
       if (Object.keys(fields).length === 0) {
@@ -189,12 +197,17 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
           {/* Date fields */}
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1.5">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
-                Start date
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                  <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
+                  Start date
+                </span>
+                {startDate && (
+                  <span className="text-[10px] text-text-muted">{fmtWeekday(startDate)}</span>
+                )}
+              </div>
               <input
-                type="date"
+                type="datetime-local"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
@@ -205,12 +218,17 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
               />
             </label>
             <label className="space-y-1.5">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
-                End date
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                  <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
+                  End date
+                </span>
+                {endDate && (
+                  <span className="text-[10px] text-text-muted">{fmtWeekday(endDate)}</span>
+                )}
+              </div>
               <input
-                type="date"
+                type="datetime-local"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
