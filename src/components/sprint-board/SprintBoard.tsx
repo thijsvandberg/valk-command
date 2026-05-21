@@ -19,11 +19,11 @@ import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, b
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
+import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle } from "lucide-react";
-import { Tooltip } from "@/components/shared/Tooltip";
 import {
   DndContext,
   DragOverlay,
@@ -183,6 +183,8 @@ export default function SprintBoard() {
   const [syncing, setSyncing] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [sprintsModalOpen, setSprintsModalOpen] = useState(false);
+  const [statsPopoverOpen, setStatsPopoverOpen] = useState(false);
+  const completionBarRef = useRef<HTMLDivElement>(null);
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
@@ -990,74 +992,38 @@ export default function SprintBoard() {
                 {!isAllView && !f.activeView && activeSprint?.state === "active" ? (
                   <>
                     <ViewHeaderDivider />
-                    <Tooltip content={
-                      <div className="flex flex-col gap-1.5 tabular-nums text-[12px]">
-                        <div className="flex items-baseline justify-between gap-4">
-                          <span className="text-text-tertiary">Items</span>
-                          <span className="font-semibold text-text-primary">{allTickets.length}</span>
-                        </div>
-                        <div className="flex items-baseline justify-between gap-4">
-                          <span className="text-text-tertiary">Story Points</span>
-                          <span><span className="font-semibold text-text-primary">{totalPoints}</span>{allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length > 0 && <span className="text-text-muted ml-1">avg {(totalPoints / allTickets.filter(t => t.storyPoints != null && t.storyPoints > 0).length).toFixed(1)}</span>}</span>
-                        </div>
-                        {bvScoredCount > 0 && (
-                          <div className="flex items-baseline justify-between gap-4">
-                            <span className="text-text-tertiary">Business Value</span>
-                            <span><span className="font-semibold text-text-primary">{bvTotal}</span>{bvAvg && <span className="text-text-muted ml-1">avg {bvAvg}</span>}</span>
-                          </div>
-                        )}
-                        {noPointsCount > 0 && (
-                          <div className="flex items-center gap-1.5 pt-0.5 border-t border-border-subtle">
-                            <AlertTriangle size={10} strokeWidth={2} className="text-amber-400 shrink-0" />
-                            <span className="text-amber-400">{noPointsCount} without estimate</span>
-                          </div>
-                        )}
-                        <div className="border-t border-border-subtle pt-1 mt-0.5">
-                          {(["DONE", "TEST", "IN PROGRESS", "TO DO"] as const).map((status) => {
-                            const ss = statusStats[status];
-                            const count = status === "TO DO" ? todoCount : status === "IN PROGRESS" ? inProgressCount : status === "TEST" ? testCount : doneCount;
-                            if (count === 0) return null;
-                            const colors = STATUS_PILL_COLORS[status];
-                            return (
-                              <div key={status} className="flex items-center justify-between gap-4 py-0.5">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: colors?.dot ?? colors?.text ?? "#94a3b8" }} />
-                                  <span className="text-text-secondary">{status}</span>
-                                </div>
-                                <div className="flex items-baseline gap-2">
-                                  <span className="font-semibold text-text-primary">{count}</span>
-                                  {ss && ss.sp > 0 && (
-                                    <span className="flex items-center gap-0.5"><span className="text-text-tertiary">{ss.sp}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">SP</span></span>
-                                  )}
-                                  {ss && ss.bv > 0 && (
-                                    <span className="flex items-center gap-0.5"><span className="text-text-tertiary">{ss.bv}</span><span className="text-[10px] uppercase text-text-muted tracking-wide">BV</span></span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    }>
-                      <div>
-                        <SprintCompletionBar
-                          doneSp={statusStats["DONE"]?.sp ?? 0}
-                          testSp={statusStats["TEST"]?.sp ?? 0}
-                          inProgressSp={statusStats["IN PROGRESS"]?.sp ?? 0}
-                          totalSp={totalPoints}
-                          doneBv={statusStats["DONE"]?.bv ?? 0}
-                          testBv={statusStats["TEST"]?.bv ?? 0}
-                          inProgressBv={statusStats["IN PROGRESS"]?.bv ?? 0}
-                          totalBv={bvTotal}
-                          doneItems={doneCount}
-                          testItems={testCount}
-                          inProgressItems={inProgressCount}
-                          totalItems={allTickets.length}
-                          workingDaysRemaining={sprintWorkDays.remaining}
-                          totalWorkingDays={sprintWorkDays.total}
-                        />
-                      </div>
-                    </Tooltip>
+                    <div
+                      ref={completionBarRef}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setStatsPopoverOpen((v) => !v)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setStatsPopoverOpen((v) => !v); } }}
+                      className="cursor-pointer"
+                    >
+                      <SprintCompletionBar
+                        doneSp={statusStats["DONE"]?.sp ?? 0}
+                        testSp={statusStats["TEST"]?.sp ?? 0}
+                        inProgressSp={statusStats["IN PROGRESS"]?.sp ?? 0}
+                        totalSp={totalPoints}
+                        doneBv={statusStats["DONE"]?.bv ?? 0}
+                        testBv={statusStats["TEST"]?.bv ?? 0}
+                        inProgressBv={statusStats["IN PROGRESS"]?.bv ?? 0}
+                        totalBv={bvTotal}
+                        doneItems={doneCount}
+                        testItems={testCount}
+                        inProgressItems={inProgressCount}
+                        totalItems={allTickets.length}
+                        workingDaysRemaining={sprintWorkDays.remaining}
+                        totalWorkingDays={sprintWorkDays.total}
+                      />
+                    </div>
+                    {statsPopoverOpen && (
+                      <SprintStatsPopover
+                        allTickets={allTickets}
+                        onClose={() => setStatsPopoverOpen(false)}
+                        anchorRef={completionBarRef}
+                      />
+                    )}
                     {noPointsCount > 0 && (
                       <button
                         type="button"
