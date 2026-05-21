@@ -35,17 +35,17 @@ The sprint name in the header should reveal dates and goal on click/hover. An ed
 - [x] Sprint goal is fetched from the existing sprint sync data (already includes `goal` field)
 
 ### Phase 2: Sprint edit modal
-- [ ] Modal with editable fields:
+- [x] Modal with editable fields:
   - Start date (date picker)
   - End date (date picker)
   - Sprint goal (textarea)
-- [ ] AI suggest button next to the goal textarea:
+- [x] AI suggest button next to the goal textarea:
   - Sends current sprint tickets (titles, epics, types, story points) to the workspace agent
   - Workspace generates a concise sprint goal suggestion
   - Suggestion is shown inline; user can accept, edit, or dismiss
-- [ ] Save button syncs changes to Jira via `PUT /rest/agile/1.0/sprint/{sprintId}`
-- [ ] Cancel discards changes
-- [ ] Success toast on save; error toast on failure
+- [x] Save button syncs changes to Jira via `PUT /rest/agile/1.0/sprint/{sprintId}`
+- [x] Cancel discards changes
+- [x] Success toast on save; error toast on failure
 
 ### Phase 3: Jira sync
 - [x] New API route `PUT /api/jira/sprints/[id]` that proxies updates to the Jira Agile API

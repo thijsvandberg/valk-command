@@ -140,6 +140,7 @@ const boardCollisionDetection: CollisionDetection = (args) => {
 };
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
+const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -1254,6 +1255,14 @@ export default function SprintBoard() {
       )}
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       <StoryWriterLauncherModal open={showStoryWriterLauncher} onClose={() => setShowStoryWriterLauncher(false)} />
+      {editModalOpen && activeSprint && (
+        <SprintEditModal
+          sprint={activeSprint}
+          tickets={allTickets}
+          onClose={() => setEditModalOpen(false)}
+          showToast={showToast}
+        />
+      )}
     </div>
     </>
   );
