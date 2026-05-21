@@ -1,6 +1,6 @@
 # BRDG-150: Link Issue Search Improvements
 
-**Status:** Draft
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -30,6 +30,21 @@ The sprint board's `SearchModal` has a more sophisticated search with keyboard n
 4. Deduplicate results (local + Jira)
 5. Optionally show 3-5 recently linked issues as quick picks when the search field is empty
 
+## Implementation Plan
+
+1. **Checkbox 1 (pre-satisfied):** `jiraClient.searchIssues()` already exists at `src/lib/jira-client.ts:1052`. Mark done.
+2. **Checkbox 2 (backend):** In `/api/tickets/search/route.ts`, lower Jira fallback threshold from "zero local results" to "fewer than 5". Add `source: "local" | "jira"` field to each result. Add `?jira=1` query param so frontend can do two-phase search (local-only first, then local+Jira). Deduplicate by key (local wins).
+3. **Checkbox 4 backend:** Add `?recent=1` path to the same route. Query `ticketLink` table for 5 most recently linked issues (distinct, excluding current ticket). Return with `source: "recent"`.
+4. **Checkbox 6 (tests):** Write tests for sparse fallback, dedup, recent picks, `?jira=0` skipping Jira, graceful Jira failure.
+5. **Checkbox 3 (frontend):** Update types in api-client and LinkIssueDialog. Implement two-phase search: fire local-only immediately, then fire `?jira=1` after 300ms if local < 5. Show "Searching Jira..." text. Add subtle "Jira" badge on jira-source results.
+6. **Checkbox 4 frontend:** Fetch recent picks when search is empty, render "Recent" section with Clock icon.
+7. **Checkbox 5 (frontend):** Add StatusBadge to result rows and selected chip. Improve truncation. Align hover/active styles with SearchModal (left border accent on highlight).
+
+### Key decisions
+- "Recent" = most recently created links globally (not per-ticket), which gives broadest usefulness
+- Local results always win in dedup (same key from both sources)
+- Two-phase frontend approach lets us show local results instantly while Jira loads
+
 ## Implementation Notes
 
 ### Reuse from existing code
@@ -40,9 +55,9 @@ The sprint board's `SearchModal` has a more sophisticated search with keyboard n
 
 ### Checklist
 
-- [ ] Add `jiraClient.searchIssues(query)` method (issue picker REST endpoint)
-- [ ] Extend `/api/tickets/search` with Jira fallback when local results are sparse
+- [x] Add `jiraClient.searchIssues(query)` method (issue picker REST endpoint) <!-- pre-satisfied: method already exists at jira-client.ts:1052 -->
+- [x] Extend `/api/tickets/search` with Jira fallback when local results are sparse
 - [ ] Show Jira-only results with a subtle indicator (not in local DB)
-- [ ] Add recent/frequent quick picks when search is empty
+- [x] Add recent/frequent quick picks when search is empty
 - [ ] Match visual style with `SearchModal` (status pills, better truncation)
-- [ ] Tests for the extended search route
+- [x] Tests for the extended search route
