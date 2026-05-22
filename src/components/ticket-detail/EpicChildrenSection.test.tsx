@@ -4,9 +4,15 @@ import { EpicChildrenSection } from "./EpicChildrenSection";
 import type { Subtask } from "@/types/ticket";
 
 const mockCreateChildIssue = vi.fn();
+const mockSearchForLink = vi.fn();
+const mockSearchForLinkWithJira = vi.fn();
+const mockUpdateEpic = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   tickets: {
     createChildIssue: (...args: unknown[]) => mockCreateChildIssue(...args),
+    searchForLink: (...args: unknown[]) => mockSearchForLink(...args),
+    searchForLinkWithJira: (...args: unknown[]) => mockSearchForLinkWithJira(...args),
+    updateEpic: (...args: unknown[]) => mockUpdateEpic(...args),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -34,6 +40,8 @@ function renderSection(items: Subtask[] = []) {
 describe("EpicChildrenSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchForLink.mockResolvedValue([]);
+    mockSearchForLinkWithJira.mockResolvedValue([]);
   });
 
   describe("inline creation", () => {
@@ -200,6 +208,126 @@ describe("EpicChildrenSection", () => {
       expect(screen.getByText("To Do")).toBeInTheDocument();
       expect(screen.queryByText("In Progress")).not.toBeInTheDocument();
       expect(screen.queryByText("Done")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("choose existing", () => {
+    it("shows Choose existing button", () => {
+      renderSection();
+      expect(screen.getByText("Choose existing")).toBeInTheDocument();
+    });
+
+    it("opens search input when clicking Choose existing", () => {
+      renderSection();
+      fireEvent.click(screen.getByText("Choose existing"));
+      expect(screen.getByPlaceholderText("Search by key or title...")).toBeInTheDocument();
+    });
+
+    it("shows search results after typing", async () => {
+      mockSearchForLink.mockResolvedValue([
+        { key: "VPL-50", title: "Existing ticket", type: "story", status: "TO DO", source: "local" },
+      ]);
+
+      renderSection();
+      fireEvent.click(screen.getByText("Choose existing"));
+
+      const searchInput = screen.getByPlaceholderText("Search by key or title...");
+      fireEvent.change(searchInput, { target: { value: "VPL-50" } });
+
+      await waitFor(() => {
+        expect(screen.getByText("Existing ticket")).toBeInTheDocument();
+      });
+    });
+
+    it("links existing ticket on click", async () => {
+      mockSearchForLink.mockResolvedValue([
+        { key: "VPL-50", title: "Existing ticket", type: "story", status: "TO DO", source: "local" },
+      ]);
+      mockUpdateEpic.mockResolvedValue({ epic: "Epic VPL-1", epicKey: "VPL-1" });
+
+      const { onMutate } = renderSection();
+      fireEvent.click(screen.getByText("Choose existing"));
+
+      const searchInput = screen.getByPlaceholderText("Search by key or title...");
+      fireEvent.change(searchInput, { target: { value: "VPL-50" } });
+
+      await waitFor(() => {
+        expect(screen.getByText("Existing ticket")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Existing ticket"));
+
+      await waitFor(() => {
+        expect(mockUpdateEpic).toHaveBeenCalledWith("VPL-50", "VPL-1");
+      });
+
+      await waitFor(() => {
+        expect(onMutate).toHaveBeenCalled();
+      });
+    });
+
+    it("closes search on Cancel", () => {
+      renderSection();
+      fireEvent.click(screen.getByText("Choose existing"));
+      expect(screen.getByPlaceholderText("Search by key or title...")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Cancel"));
+      expect(screen.queryByPlaceholderText("Search by key or title...")).not.toBeInTheDocument();
+      expect(screen.getByText("Choose existing")).toBeInTheDocument();
+    });
+
+    it("closes search on Escape", () => {
+      renderSection();
+      fireEvent.click(screen.getByText("Choose existing"));
+      const searchInput = screen.getByPlaceholderText("Search by key or title...");
+
+      fireEvent.keyDown(searchInput, { key: "Escape" });
+      expect(screen.queryByPlaceholderText("Search by key or title...")).not.toBeInTheDocument();
+    });
+
+    it("excludes already-linked children from results", async () => {
+      mockSearchForLink.mockResolvedValue([
+        { key: "VPL-10", title: "First story", type: "story", status: "TO DO", source: "local" },
+        { key: "VPL-50", title: "New ticket", type: "task", status: "TO DO", source: "local" },
+      ]);
+
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.click(screen.getByText("Choose existing"));
+
+      const searchInput = screen.getByPlaceholderText("Search by key or title...");
+      fireEvent.change(searchInput, { target: { value: "VPL" } });
+
+      await waitFor(() => {
+        expect(screen.getByText("New ticket")).toBeInTheDocument();
+      });
+
+      const resultButtons = screen.getAllByRole("button").filter(
+        (b) => b.textContent?.includes("New ticket"),
+      );
+      expect(resultButtons.length).toBe(1);
+    });
+
+    it("shows error when linking fails", async () => {
+      mockSearchForLink.mockResolvedValue([
+        { key: "VPL-50", title: "Fail ticket", type: "story", status: "TO DO", source: "local" },
+      ]);
+      mockUpdateEpic.mockRejectedValue(new Error("API error"));
+
+      renderSection();
+      fireEvent.click(screen.getByText("Choose existing"));
+
+      const searchInput = screen.getByPlaceholderText("Search by key or title...");
+      fireEvent.change(searchInput, { target: { value: "VPL-50" } });
+
+      await waitFor(() => {
+        expect(screen.getByText("Fail ticket")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Fail ticket"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Failed to link VPL-50/)).toBeInTheDocument();
+      });
     });
   });
 

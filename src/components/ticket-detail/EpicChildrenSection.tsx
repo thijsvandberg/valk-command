@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { TicketDetail, JiraStatus, Subtask, IssueType } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { tickets, ApiError } from "@/lib/api-client";
-import { Loader2, ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown, Search } from "lucide-react";
 
 type StatusFilter = "all" | JiraStatus;
 
@@ -23,6 +23,14 @@ const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[]
   { value: "task", label: "Task", jiraType: "Task" },
   { value: "bug", label: "Bug", jiraType: "Bug" },
 ];
+
+interface SearchResult {
+  key: string;
+  title: string;
+  type: string;
+  status: string;
+  source?: "local" | "jira";
+}
 
 interface EpicChildrenSectionProps {
   items: TicketDetail["epicChildren"];
@@ -46,6 +54,17 @@ export function EpicChildrenSection({
   const inputRef = useRef<HTMLInputElement>(null);
   const typePickerRef = useRef<HTMLDivElement>(null);
 
+  // Search existing state
+  const [searchMode, setSearchMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchHighlight, setSearchHighlight] = useState(-1);
+  const [searching, setSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
   const mergedItems = [
     ...items,
     ...locallyAdded.filter((la) => !items.some((i) => i.key === la.key)),
@@ -63,6 +82,8 @@ export function EpicChildrenSection({
   };
 
   const currentTypeConfig = CHILD_ISSUE_TYPES.find((t) => t.value === selectedType) ?? CHILD_ISSUE_TYPES[0];
+
+  // --- Create child issue ---
 
   const handleCreate = useCallback(() => {
     const title = newTitle.trim();
@@ -104,6 +125,131 @@ export function EpicChildrenSection({
       inputRef.current?.blur();
     }
   }, [handleCreate]);
+
+  // --- Search existing ---
+
+  const existingKeys = useMemo(() => new Set(mergedItems.map((i) => i.key)), [mergedItems]);
+
+  const doSearch = useCallback((q: string) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchAbortRef.current?.abort();
+
+    if (q.length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+      try {
+        const data = await tickets.searchForLink(q, ticketKey, controller.signal);
+        const filtered = data.filter((r: SearchResult) => r.key !== ticketKey && !existingKeys.has(r.key));
+        setSearchResults(filtered);
+        setSearchHighlight(-1);
+        setSearching(false);
+
+        if (filtered.length < 5) {
+          setTimeout(async () => {
+            try {
+              const fullData = await tickets.searchForLinkWithJira(q, ticketKey, controller.signal);
+              setSearchResults(fullData.filter((r: SearchResult) => r.key !== ticketKey && !existingKeys.has(r.key)));
+            } catch { /* ignore aborted */ }
+          }, 300);
+        }
+      } catch {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, 250);
+  }, [ticketKey, existingKeys]);
+
+  const handleSearchChange = useCallback((value: string) => {
+    const urlMatch = value.match(/atlassian\.net\/browse\/([A-Z][A-Z0-9]+-\d+)/i);
+    const cleaned = urlMatch ? urlMatch[1].toUpperCase() : value;
+    setSearchQuery(cleaned);
+    setError(null);
+    doSearch(cleaned);
+  }, [doSearch]);
+
+  const handleLinkExisting = useCallback((result: SearchResult) => {
+    const placeholderKey = `pending-${Date.now()}`;
+    const placeholder: Subtask = {
+      key: result.key,
+      title: result.title,
+      type: (result.type || "task") as IssueType,
+      jiraStatus: (result.status || "TO DO") as JiraStatus,
+      assignee: null,
+    };
+    setLocallyAdded((prev) => [...prev, placeholder]);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchMode(false);
+    setError(null);
+
+    tickets.updateEpic(result.key, ticketKey)
+      .then(() => {
+        onMutate();
+      })
+      .catch((err) => {
+        setLocallyAdded((prev) => prev.filter((i) => i.key !== result.key));
+        const detail = err instanceof ApiError ? err.message : "Jira API error";
+        setError(`Failed to link ${result.key}: ${detail}`);
+        console.error("Failed to link existing issue:", err);
+      });
+  }, [ticketKey, onMutate]);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSearchHighlight((h) => Math.min(h + 1, searchResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSearchHighlight((h) => Math.max(h - 1, -1));
+    } else if (e.key === "Enter" && searchHighlight >= 0 && searchResults[searchHighlight]) {
+      e.preventDefault();
+      handleLinkExisting(searchResults[searchHighlight]);
+    } else if (e.key === "Escape") {
+      setSearchQuery("");
+      setSearchResults([]);
+      setSearchMode(false);
+    }
+  }, [searchHighlight, searchResults, handleLinkExisting]);
+
+  const closeSearch = useCallback(() => {
+    setSearchMode(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchHighlight(-1);
+  }, []);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    if (!searchMode) return;
+    const handler = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        closeSearch();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [searchMode, closeSearch]);
+
+  // Focus search input when entering search mode
+  useEffect(() => {
+    if (searchMode) searchInputRef.current?.focus();
+  }, [searchMode]);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      searchAbortRef.current?.abort();
+    };
+  }, []);
+
+  // --- Render ---
 
   const childRows = filtered.map((child, idx) => {
     const isPending = child.key.startsWith("pending-");
@@ -192,6 +338,64 @@ export function EpicChildrenSection({
     </div>
   );
 
+  const searchSection = searchMode ? (
+    <div ref={searchContainerRef} className="relative mt-2" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-2 rounded-lg border border-border-default px-3 py-2">
+        <Search size={14} className="shrink-0 text-text-muted" />
+        <input
+          ref={searchInputRef}
+          type="text"
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
+          placeholder="Search by key or title..."
+          className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+        />
+        {searching && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
+        <button
+          type="button"
+          onClick={closeSearch}
+          className="cursor-pointer text-xs text-text-muted transition-colors duration-150 hover:text-text-secondary"
+        >
+          Cancel
+        </button>
+      </div>
+      {searchResults.length > 0 && (
+        <div className="absolute left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
+          {searchResults.map((r, idx) => (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => handleLinkExisting(r)}
+              className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
+                idx === searchHighlight ? "bg-overlay-subtle" : ""
+              } ${idx < searchResults.length - 1 ? "border-b border-border-subtle" : ""}`}
+            >
+              <IssueTypeIcon type={(r.type || "task") as IssueType} size={14} />
+              <span className="font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{r.title}</span>
+              <StatusBadge status={(r.status || "TO DO") as JiraStatus} />
+              {r.source === "jira" && (
+                <span className="rounded bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">Jira</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : (
+    <div className="mt-2 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => setSearchMode(true)}
+        className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-[var(--color-brand-400)] transition-colors duration-150 hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-80"
+      >
+        <Search size={12} />
+        Choose existing
+      </button>
+    </div>
+  );
+
   const listContent = (
     <div className="mt-3">
       {filtered.length > 0 && (
@@ -202,6 +406,7 @@ export function EpicChildrenSection({
       <div className={`rounded-lg border border-border-default ${filtered.length > 0 ? "rounded-t-none" : ""}`}>
         {inlineInput}
       </div>
+      {searchSection}
     </div>
   );
 
@@ -245,7 +450,7 @@ export function EpicChildrenSection({
         <p className="mt-2 text-xs text-red-400/80">{error}</p>
       )}
 
-      {/* Child list + inline input */}
+      {/* Child list + inline input + search */}
       {filtered.length > 0 ? (
         listContent
       ) : mergedItems.length > 0 ? (
