@@ -6,7 +6,7 @@ import { READINESS_OPTIONS, READINESS_CONFIG } from "@/types/ticket";
 import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
-import { Copy, FileText, Loader2 } from "lucide-react";
+import { Copy, FileText, Loader2, Layers } from "lucide-react";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 
 export function BulkActionBar({
@@ -21,6 +21,7 @@ export function BulkActionBar({
   onReviewStory,
   onCopyToClipboard,
   onExportForStakeholders,
+  onRefine,
   isRefreshing,
   isExporting,
 }: {
@@ -35,6 +36,7 @@ export function BulkActionBar({
   onReviewStory?: () => void;
   onCopyToClipboard?: () => void;
   onExportForStakeholders?: () => void;
+  onRefine?: () => void;
   isRefreshing?: boolean;
   isExporting?: boolean;
 }) {
@@ -173,6 +175,16 @@ export function BulkActionBar({
             <FileText className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
           )}
           {isExporting ? "Exporting..." : "Export"}
+        </Button>
+      )}
+      {onRefine && (
+        <Button
+          variant="soft"
+          size="md"
+          onClick={onRefine}
+        >
+          <Layers className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
+          Refine
         </Button>
       )}
       <div className="flex-1" />

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useCallback, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
@@ -31,6 +31,8 @@ import {
 
 const MIN_TICKETS = 1;
 const MAX_TICKETS = 12;
+
+type ViewMode = "all" | "sprint";
 
 function SortableQueueItem({
   ticket,
@@ -103,10 +105,12 @@ function TicketRow({
   ticket,
   selected,
   onToggle,
+  showSprint,
 }: {
   ticket: Ticket;
   selected: boolean;
   onToggle: (key: string) => void;
+  showSprint?: boolean;
 }) {
   const readinessCfg = ticket.readiness ? READINESS_CONFIG[ticket.readiness] : null;
 
@@ -146,6 +150,16 @@ function TicketRow({
           {readinessCfg.label}
         </span>
       )}
+      {showSprint && ticket.sprintId && (
+        <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-muted">
+          {ticket.sprintId}
+        </span>
+      )}
+      {showSprint && !ticket.sprintId && (
+        <span className="shrink-0 rounded-md bg-overlay-subtle px-1.5 py-0.5 text-caption italic text-text-muted">
+          No sprint
+        </span>
+      )}
       <StatusBadge status={ticket.jiraStatus} />
       {ticket.storyPoints != null && (
         <span
@@ -162,9 +176,31 @@ function TicketRow({
   );
 }
 
+/** Sort: ready_to_refine first, then no sprint, then rest */
+function smartSort(a: Ticket, b: Ticket): number {
+  const aReady = a.readiness === "ready_to_refine" ? 0 : 1;
+  const bReady = b.readiness === "ready_to_refine" ? 0 : 1;
+  if (aReady !== bReady) return aReady - bReady;
+
+  const aNoSprint = a.sprintId ? 1 : 0;
+  const bNoSprint = b.sprintId ? 1 : 0;
+  if (aNoSprint !== bNoSprint) return aNoSprint - bNoSprint;
+
+  return 0;
+}
+
 export default function RefinementPage() {
+  return (
+    <Suspense>
+      <RefinementPageInner />
+    </Suspense>
+  );
+}
+
+function RefinementPageInner() {
   const pageTitle = usePageTitle("Refinement");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { startSession } = useRefinementSession();
 
   const { data: sprints } = useJiraSprints();
@@ -172,15 +208,21 @@ export default function RefinementPage() {
     () => (sprints ?? []).filter((s) => !s.hidden && (s.state === "active" || s.state === "future")),
     [sprints],
   );
+
+  // View mode: "all" shows all tickets across sprints; "sprint" shows per-sprint
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
   const [sprintDropdownOpen, setSprintDropdownOpen] = useState(false);
 
-  // Auto-select first active sprint
-  const effectiveSprintId = selectedSprintId ?? (activeSprints.length > 0 ? String(activeSprints[0].id) : null);
+  // For "all" mode, fetch all tickets; for "sprint" mode, fetch per sprint
+  const effectiveSprintId =
+    viewMode === "all"
+      ? "__all__"
+      : selectedSprintId ?? (activeSprints.length > 0 ? String(activeSprints[0].id) : null);
   const { data: tickets } = useTickets(effectiveSprintId);
 
-  // Filter to non-DONE, non-epic tickets
-  const availableTickets = useMemo(
+  // Filter to non-DONE, non-epic, non-subtask tickets
+  const filteredTickets = useMemo(
     () =>
       (tickets ?? []).filter(
         (t) => t.jiraStatus !== "DONE" && t.jiraStatus !== "DEPRECATED" && t.type !== "epic" && t.type !== "subtask",
@@ -188,8 +230,20 @@ export default function RefinementPage() {
     [tickets],
   );
 
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-  const [queue, setQueue] = useState<string[]>([]);
+  // In "all" mode, apply smart sort
+  const availableTickets = useMemo(
+    () => (viewMode === "all" ? [...filteredTickets].sort(smartSort) : filteredTickets),
+    [viewMode, filteredTickets],
+  );
+
+  // Pre-fill queue from ?keys= query param (e.g. from sprint board multi-select)
+  const keysParam = searchParams.get("keys");
+  const [initialKeys] = useState(() =>
+    keysParam ? keysParam.split(",").filter(Boolean) : [],
+  );
+
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(initialKeys);
+  const [queue, setQueue] = useState<string[]>(initialKeys);
 
   const toggleTicket = useCallback(
     (key: string) => {
@@ -228,9 +282,16 @@ export default function RefinementPage() {
     [queue],
   );
 
+  // Resolve queue tickets from either the loaded ticket list or keep the key for tickets not yet loaded
+  const allTicketMap = useMemo(() => {
+    const map = new Map<string, Ticket>();
+    for (const t of availableTickets) map.set(t.key, t);
+    return map;
+  }, [availableTickets]);
+
   const queueTickets = useMemo(
-    () => queue.map((key) => availableTickets.find((t) => t.key === key)).filter(Boolean) as Ticket[],
-    [queue, availableTickets],
+    () => queue.map((key) => allTicketMap.get(key)).filter(Boolean) as Ticket[],
+    [queue, allTicketMap],
   );
 
   const canStart = queue.length >= MIN_TICKETS;
@@ -242,7 +303,17 @@ export default function RefinementPage() {
   }, [canStart, queue, startSession, router]);
 
   const selectedSprintName =
-    effectiveSprintId ? activeSprints.find((s) => String(s.id) === effectiveSprintId)?.name ?? "Sprint" : "Select sprint";
+    viewMode === "sprint" && effectiveSprintId && effectiveSprintId !== "__all__"
+      ? activeSprints.find((s) => String(s.id) === effectiveSprintId)?.name ?? "Sprint"
+      : "";
+
+  // Count ready_to_refine in the list
+  const readyCount = useMemo(
+    () => availableTickets.filter((t) => t.readiness === "ready_to_refine").length,
+    [availableTickets],
+  );
+
+  const noData = viewMode === "sprint" && !effectiveSprintId;
 
   return (
     <>
@@ -266,15 +337,15 @@ export default function RefinementPage() {
       </ViewHeader>
 
       <div className="relative min-h-full">
-        {!effectiveSprintId || availableTickets.length === 0 ? (
+        {noData || availableTickets.length === 0 ? (
           <div className="flex min-h-full items-center justify-center py-24">
             <EmptyState
               icon={<Layers size={20} strokeWidth={1.5} className="text-text-tertiary" />}
-              title={!effectiveSprintId ? "No active sprints" : "No tickets available"}
+              title={noData ? "No active sprints" : "No tickets available"}
               description={
-                !effectiveSprintId
+                noData
                   ? "There are no active or future sprints to refine."
-                  : "All tickets in this sprint are done or deprecated."
+                  : "All tickets in this view are done or deprecated."
               }
             />
           </div>
@@ -282,52 +353,90 @@ export default function RefinementPage() {
           <div className="mx-auto flex max-w-6xl gap-6 p-6">
             {/* Left: ticket selection list */}
             <div className="min-w-0 flex-1">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
                   Select tickets
+                  {readyCount > 0 && viewMode === "all" && (
+                    <span className="ml-2 rounded-full bg-[rgba(34,197,94,0.12)] px-2 py-0.5 text-caption font-medium text-[#22c55e]">
+                      {readyCount} ready to refine
+                    </span>
+                  )}
                 </h2>
-                {/* Sprint selector */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setSprintDropdownOpen(!sprintDropdownOpen)}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    style={{ transition: "background-color 0.15s ease" }}
-                  >
-                    {selectedSprintName}
-                    <ChevronDown size={12} strokeWidth={2} />
-                  </button>
-                  {sprintDropdownOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setSprintDropdownOpen(false)} />
-                      <div className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
-                        {activeSprints.map((sprint) => (
-                          <button
-                            key={sprint.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedSprintId(String(sprint.id));
-                              setSprintDropdownOpen(false);
-                              setSelectedKeys([]);
-                              setQueue([]);
-                            }}
-                            className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs ${
-                              String(sprint.id) === effectiveSprintId
-                                ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-                                : "text-text-secondary hover:bg-overlay-subtle"
-                            }`}
-                            style={{ transition: "background-color 0.1s ease" }}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                sprint.state === "active" ? "bg-[var(--color-brand-400)]" : "bg-text-muted"
-                              }`}
-                            />
-                            {sprint.name}
-                          </button>
-                        ))}
-                      </div>
-                    </>
+
+                <div className="flex items-center gap-2">
+                  {/* View mode toggle */}
+                  <div className="flex items-center gap-0.5 rounded-lg bg-overlay-subtle p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => { setViewMode("all"); setSelectedKeys([]); setQueue([]); }}
+                      className={`cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                        viewMode === "all"
+                          ? "bg-[var(--color-surface-elevated)] text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+                          : "text-text-tertiary hover:text-text-secondary"
+                      }`}
+                      style={{ transition: "color 0.15s ease" }}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setViewMode("sprint"); setSelectedKeys([]); setQueue([]); }}
+                      className={`cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                        viewMode === "sprint"
+                          ? "bg-[var(--color-surface-elevated)] text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+                          : "text-text-tertiary hover:text-text-secondary"
+                      }`}
+                      style={{ transition: "color 0.15s ease" }}
+                    >
+                      Per sprint
+                    </button>
+                  </div>
+
+                  {/* Sprint selector (only in sprint mode) */}
+                  {viewMode === "sprint" && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setSprintDropdownOpen(!sprintDropdownOpen)}
+                        className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                        style={{ transition: "background-color 0.15s ease" }}
+                      >
+                        {selectedSprintName || "Select sprint"}
+                        <ChevronDown size={12} strokeWidth={2} />
+                      </button>
+                      {sprintDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setSprintDropdownOpen(false)} />
+                          <div className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+                            {activeSprints.map((sprint) => (
+                              <button
+                                key={sprint.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSprintId(String(sprint.id));
+                                  setSprintDropdownOpen(false);
+                                  setSelectedKeys([]);
+                                  setQueue([]);
+                                }}
+                                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs ${
+                                  String(sprint.id) === effectiveSprintId
+                                    ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                                    : "text-text-secondary hover:bg-overlay-subtle"
+                                }`}
+                                style={{ transition: "background-color 0.1s ease" }}
+                              >
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${
+                                    sprint.state === "active" ? "bg-[var(--color-brand-400)]" : "bg-text-muted"
+                                  }`}
+                                />
+                                {sprint.name}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -339,6 +448,7 @@ export default function RefinementPage() {
                     ticket={ticket}
                     selected={selectedKeys.includes(ticket.key)}
                     onToggle={toggleTicket}
+                    showSprint={viewMode === "all"}
                   />
                 ))}
               </div>
