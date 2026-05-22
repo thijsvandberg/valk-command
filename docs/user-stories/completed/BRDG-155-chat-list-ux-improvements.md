@@ -1,6 +1,6 @@
 # BRDG-155: Conversation List UX Improvements
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
