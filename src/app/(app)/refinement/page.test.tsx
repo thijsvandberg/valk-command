@@ -22,6 +22,11 @@ vi.mock("@/hooks/useSprintBoard", () => ({
       { id: 2, name: "Sprint 11", state: "future", hidden: false, startDate: null, endDate: null, goal: null },
     ],
   }),
+  useSprintSlots: () => ({
+    data: [
+      { slotIndex: 0, sprintId: "1", sprintName: "Sprint 10" },
+    ],
+  }),
   useTickets: () => ({
     data: [
       {
@@ -40,6 +45,7 @@ vi.mock("@/hooks/useSprintBoard", () => ({
         notes: "",
         epic: null,
         epicKey: null,
+        sprintId: "1",
       },
       {
         key: "VPL-101",
@@ -57,6 +63,7 @@ vi.mock("@/hooks/useSprintBoard", () => ({
         notes: "",
         epic: null,
         epicKey: null,
+        sprintId: "1",
       },
       {
         key: "VPL-102",

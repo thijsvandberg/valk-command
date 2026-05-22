@@ -63,17 +63,19 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     filteredConversations,
   } = useConversationFilters(conversations);
 
+  // Pass activeId so the hook can reconnect to any running task when the user
+  // navigates to this conversation (handles navigation-away scenarios)
+  const workspaceTask = useWorkspaceTask(activeId ?? undefined);
+
   const {
     messages,
     loading: msgLoading,
     error: msgError,
     sendMessage,
     refresh: refreshMessages,
-  } = useMessages(activeId);
-
-  // Pass activeId so the hook can reconnect to any running task when the user
-  // navigates to this conversation (handles navigation-away scenarios)
-  const workspaceTask = useWorkspaceTask(activeId ?? undefined);
+  } = useMessages(activeId, {
+    hasRunningTask: workspaceTask.status === "streaming" || workspaceTask.status === "submitting",
+  });
   const { notify } = useNotification();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
   const isInvestigation = activeConv?.type === "investigation";

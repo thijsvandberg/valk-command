@@ -49,29 +49,10 @@ export function truncateAtWords(text: string, maxWords: number): string {
   return parts.slice(0, idx).join("") + "...";
 }
 
-export function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const isToday =
-    date.getDate() === now.getDate() &&
-    date.getMonth() === now.getMonth() &&
-    date.getFullYear() === now.getFullYear();
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  if (isToday) return `${hh}:${mm}`;
-  const day = date.getDate();
-  const month = date.toLocaleString("en", { month: "short" });
-  return `${day} ${month} ${hh}:${mm}`;
-}
+import { formatTimestamp as _formatTimestamp, formatDuration as _formatDuration } from "@/lib/format-timestamp";
 
-export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainSeconds = Math.round(seconds % 60);
-  return `${minutes}m ${remainSeconds}s`;
-}
+export const formatTimestamp = _formatTimestamp;
+export const formatDuration = _formatDuration;
 
 export function MessageInfoButton({
   message,
