@@ -288,7 +288,7 @@ export function EpicChildrenSection({
 
   const inlineInput = (
     <div
-      className={`flex items-center gap-2 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      className={`flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Type selector */}
@@ -296,7 +296,7 @@ export function EpicChildrenSection({
         <button
           type="button"
           onClick={() => setShowTypePicker((v) => !v)}
-          className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
+          className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           <IssueTypeIcon type={selectedType} size={14} />
           <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
