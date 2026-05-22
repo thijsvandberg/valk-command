@@ -1,6 +1,6 @@
 # BRDG-156: Sprint Export with AI-Revised Stakeholder Titles
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
