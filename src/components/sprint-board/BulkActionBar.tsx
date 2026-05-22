@@ -6,7 +6,7 @@ import { READINESS_OPTIONS, READINESS_CONFIG } from "@/types/ticket";
 import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
-import { Copy } from "lucide-react";
+import { Copy, FileText, Loader2 } from "lucide-react";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 
 export function BulkActionBar({
@@ -20,7 +20,9 @@ export function BulkActionBar({
   onRefreshFromJira,
   onReviewStory,
   onCopyToClipboard,
+  onExportForStakeholders,
   isRefreshing,
+  isExporting,
 }: {
   count: number;
   selectedPoints?: number;
@@ -32,7 +34,9 @@ export function BulkActionBar({
   onRefreshFromJira?: () => void;
   onReviewStory?: () => void;
   onCopyToClipboard?: () => void;
+  onExportForStakeholders?: () => void;
   isRefreshing?: boolean;
+  isExporting?: boolean;
 }) {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
@@ -153,6 +157,22 @@ export function BulkActionBar({
         >
           <Copy className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
           Copy
+        </Button>
+      )}
+      {onExportForStakeholders && (
+        <Button
+          variant="ghost"
+          size="md"
+          disabled={isExporting}
+          onClick={onExportForStakeholders}
+          className="border-0 text-text-secondary hover:text-text-primary"
+        >
+          {isExporting ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+          ) : (
+            <FileText className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
+          )}
+          {isExporting ? "Exporting..." : "Export"}
         </Button>
       )}
       <div className="flex-1" />

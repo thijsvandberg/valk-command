@@ -1,6 +1,6 @@
 # BRDG-156: Sprint Export with AI-Revised Stakeholder Titles
 
-**Status:** Draft
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -56,18 +56,32 @@ Sprint {name} - Selected work ({total} pts)
 4. Result is copied to clipboard with a toast confirmation
 5. If AI call fails, fall back to original titles with a warning toast
 
+## Implementation Plan
+
+1. **Install `@anthropic-ai/sdk`**, add `ANTHROPIC_API_KEY` to `src/lib/env.ts` and `.env.example`
+2. **Create `POST /api/ai/rewrite-titles/route.ts`** with Zod validation, Anthropic SDK call, JSON response
+3. **Add `ai.rewriteTitles` helper** to `src/lib/api-client.ts`
+4. **Add Export button** to `BulkActionBar.tsx` with `onExportForStakeholders` + `isExporting` props
+5. **Wire handler** in `SprintBoard.tsx`: build payload from checked tickets, call API, format result, copy to clipboard, toast
+6. **Write tests** for the API route (400 on invalid body, 503 on missing key, success with mocked SDK, fallback on malformed AI response)
+
+Notes:
+- Tickets with null story points: omit points suffix, just show `- {title} - {KEY}`
+- All view (no active sprint): use "Selected work" as header instead of sprint name
+- On AI failure: fall back to original titles, copy anyway, toast with warning
+
 ## Acceptance Criteria
 
-- [ ] New "Export" button appears in BulkActionBar when tickets are selected
-- [ ] Clicking it sends selected ticket titles + points to an AI endpoint
-- [ ] AI rewrites each title to be short, non-technical, and stakeholder-friendly
-- [ ] Result is formatted as a bulleted list with points and ticket keys
-- [ ] Sprint name and total points are included in the header
-- [ ] Result is copied to clipboard automatically
-- [ ] Loading state shown on button while processing
-- [ ] Fallback to original titles if AI call fails
-- [ ] Toast confirms successful copy or shows error
-- [ ] Works with any number of selected tickets (1 to all)
+- [x] New "Export" button appears in BulkActionBar when tickets are selected
+- [x] Clicking it sends selected ticket titles + points to an AI endpoint
+- [x] AI rewrites each title to be short, non-technical, and stakeholder-friendly
+- [x] Result is formatted as a bulleted list with points and ticket keys
+- [x] Sprint name and total points are included in the header
+- [x] Result is copied to clipboard automatically
+- [x] Loading state shown on button while processing
+- [x] Fallback to original titles if AI call fails
+- [x] Toast confirms successful copy or shows error
+- [x] Works with any number of selected tickets (1 to all)
 
 ## Technical Notes
 

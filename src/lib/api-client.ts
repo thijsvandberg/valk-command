@@ -406,6 +406,10 @@ export const jira = {
     apiFetch<unknown>("/api/jira/assign", { method: "POST", body: data, signal }),
   updateSprint: (sprintId: string, data: { goal?: string; startDate?: string; endDate?: string }, signal?: AbortSignal) =>
     apiFetch<{ ok: boolean }>(`/api/jira/sprints/${encodeURIComponent(sprintId)}`, { method: "PUT", body: data, signal }),
+  createSprint: (data: { name: string; startDate?: string; endDate?: string; goal?: string }, signal?: AbortSignal) =>
+    apiFetch<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null }>(
+      "/api/jira/sprints", { method: "POST", body: data, signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------
@@ -690,4 +694,15 @@ export const cache = {
     apiFetch<void>("/api/cache/flush", { method: "POST", signal }),
   stats: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/cache/stats", { signal }),
+};
+
+export const ai = {
+  rewriteTitles: (
+    data: { tickets: { key: string; title: string; points: number | null; epicName: string | null }[] },
+    signal?: AbortSignal,
+  ) =>
+    apiFetch<{ tickets: { key: string; title: string }[]; fallback?: boolean }>(
+      "/api/ai/rewrite-titles",
+      { method: "POST", body: data, signal },
+    ),
 };

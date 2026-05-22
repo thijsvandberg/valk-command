@@ -21,7 +21,7 @@ import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
-import { apiFetch, jira, followedSprints, workspaceTasks, ApiError } from "@/lib/api-client";
+import { apiFetch, jira, followedSprints, workspaceTasks, ai, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle } from "lucide-react";
@@ -141,6 +141,7 @@ const boardCollisionDetection: CollisionDetection = (args) => {
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
+const CreateSprintModal = dynamic(() => import("@/components/sprint-board/CreateSprintModal").then((m) => ({ default: m.CreateSprintModal })), { ssr: false });
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -189,12 +190,14 @@ export default function SprintBoard() {
   const [detailsPopoverOpen, setDetailsPopoverOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
+  const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
   const [goalSuggestionUrl, setGoalSuggestionUrl] = useState<string | null>(null);
   const completionBarRef = useRef<HTMLDivElement>(null);
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slotsInitialized = useRef(false);
@@ -491,6 +494,54 @@ export default function SprintBoard() {
     });
   }, [tickets, checkedTickets, showToast]);
 
+  const handleExportForStakeholders = useCallback(async () => {
+    const selected = tickets.filter((t) => checkedTickets.has(t.key));
+    if (selected.length === 0) return;
+
+    setIsExporting(true);
+
+    const payload = selected.map((t) => ({
+      key: t.key,
+      title: t.title,
+      points: t.storyPoints ?? null,
+      epicName: t.epic ?? null,
+    }));
+
+    const selectedPts = selected.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+    const sprintLabel = activeSprint?.name ?? "Selected work";
+
+    function formatExport(rewritten: { key: string; title: string }[]) {
+      const titleMap = new Map(rewritten.map((r) => [r.key, r.title]));
+      const lines = selected.map((t) => {
+        const title = titleMap.get(t.key) ?? t.title;
+        const ptsSuffix = t.storyPoints != null ? ` (${t.storyPoints} pts)` : "";
+        return `- ${title}${ptsSuffix} - ${t.key}`;
+      });
+      return `${sprintLabel} - Selected work (${selectedPts} pts)\n\n${lines.join("\n")}`;
+    }
+
+    try {
+      const result = await ai.rewriteTitles({ tickets: payload });
+      const text = formatExport(result.tickets);
+      await navigator.clipboard.writeText(text);
+      if (result.fallback) {
+        showToast("Exported with original titles (AI unavailable)");
+      } else {
+        showToast(`Exported ${selected.length} ticket${selected.length === 1 ? "" : "s"} to clipboard`);
+      }
+    } catch {
+      const text = formatExport(payload.map((t) => ({ key: t.key, title: t.title })));
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Exported with original titles (AI unavailable)");
+      } catch {
+        showToast("Failed to copy to clipboard");
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  }, [tickets, checkedTickets, activeSprint, showToast]);
+
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -522,6 +573,17 @@ export default function SprintBoard() {
       const next = [...prev, sprintId]; saveSprintSlots(next, sprints); return next;
     });
   }, [sprints]);
+
+  const handleSprintCreated = useCallback((sprintId: string) => {
+    setSlotSprints((prev) => {
+      if (prev.length >= 8 || prev.includes(sprintId)) return prev;
+      const next = [...prev, sprintId];
+      saveSprintSlots(next, sprints);
+      return next;
+    });
+    navigateToSprint(sprintId);
+    setCreateSprintModalOpen(false);
+  }, [sprints, navigateToSprint]);
 
   const [inflightKeys, setInflightKeys] = useState<Set<string>>(new Set());
   const [boardActiveDragId, setBoardActiveDragId] = useState<string | null>(null);
@@ -1176,7 +1238,7 @@ export default function SprintBoard() {
             onDragEnd={handleBoardDragEnd}
           >
             <div className="relative bg-[var(--color-surface-toolbar)]">
-              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} />
+              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} />
               {boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
             </div>
 
@@ -1196,7 +1258,7 @@ export default function SprintBoard() {
               )}
             </div>
 
-            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
+            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={isExporting} />}
 
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {boardActiveDragTicket && (() => {
@@ -1251,7 +1313,7 @@ export default function SprintBoard() {
         ) : (
           <>
             <div className="bg-[var(--color-surface-toolbar)]">
-              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} />
+              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} />
             </div>
 
             {!barsCollapsed && (
@@ -1268,7 +1330,7 @@ export default function SprintBoard() {
               {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onStoryPointsChange={handleStoryPointsChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onReorder={f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} />}
             </div>
 
-            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} isRefreshing={bulkRefreshing} />}
+            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={isExporting} />}
           </>
         )}
       </div>
@@ -1294,6 +1356,13 @@ export default function SprintBoard() {
           onClose={() => { setEditModalOpen(false); setAutoSuggest(false); }}
           showToast={showToast}
           autoSuggest={autoSuggest}
+        />
+      )}
+      {createSprintModalOpen && (
+        <CreateSprintModal
+          onClose={() => setCreateSprintModalOpen(false)}
+          onCreated={handleSprintCreated}
+          showToast={showToast}
         />
       )}
     </div>
