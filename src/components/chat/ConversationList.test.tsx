@@ -2,10 +2,11 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import ConversationList from "./ConversationList";
 import type { Conversation } from "@/types/chat";
+import type { ConversationCategory } from "@/lib/conversation-category";
 
 const mockConversations: Conversation[] = [
-  { id: "conv-1", title: "First conversation", type: "chat", createdAt: "2026-03-28T09:15:00Z", relatedTicket: null },
-  { id: "conv-2", title: "Second conversation", type: "chat", createdAt: "2026-03-27T16:30:00Z", relatedTicket: null },
+  { id: "conv-1", title: "First conversation", type: "chat", createdAt: "2026-03-28T09:15:00Z", relatedTicket: null, metadata: null },
+  { id: "conv-2", title: "Second conversation", type: "chat", createdAt: "2026-03-27T16:30:00Z", relatedTicket: null, metadata: null },
 ];
 
 const defaultProps = {
@@ -84,9 +85,40 @@ describe("ConversationList", () => {
     expect(screen.getByText("No conversations yet")).toBeInTheDocument();
   });
 
+  it("shows 'No matching conversations' when filters active and list is empty", () => {
+    render(<ConversationList {...defaultProps} conversations={[]} hasActiveFilters={true} />);
+    expect(screen.getByText("No matching conversations")).toBeInTheDocument();
+  });
+
   it("shows error message when error is set", () => {
     render(<ConversationList {...defaultProps} error="Something went wrong" />);
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+  });
+
+  it("renders filter bar when filter props are provided", () => {
+    const categoryCounts: Record<ConversationCategory, number> = {
+      chat: 2, task: 0, investigation: 0, "story-writer": 0,
+      "sprint-goal": 1, stakeholder: 0, review: 0,
+    };
+    render(
+      <ConversationList
+        {...defaultProps}
+        categoryCounts={categoryCounts}
+        activeFilters={new Set<ConversationCategory>()}
+        onToggleFilter={vi.fn()}
+        onClearFilters={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("conversation-filter-bar")).toBeInTheDocument();
+  });
+
+  it("renders category-specific left border on conversation items", () => {
+    const convs: Conversation[] = [
+      { id: "sg-1", title: "Sprint Goal: BT: 137", type: "chat", createdAt: "2026-03-28T09:15:00Z", relatedTicket: null, metadata: null },
+    ];
+    render(<ConversationList {...defaultProps} conversations={convs} />);
+    const button = screen.getByText("Sprint Goal: BT: 137").closest("button");
+    expect(button?.style.borderLeft).toContain("2px solid");
   });
 });

@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConversations } from "@/hooks/useConversations";
+import { useConversationFilters } from "@/hooks/useConversationFilters";
 import { useMessages } from "@/hooks/useMessages";
 import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
 import { useNotification } from "@/hooks/useNotification";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { parseSkillInvocation, parseReviewOutput, mapAgentReviewToResult } from "@/lib/agent-client";
 import { extractInvestigationTitle } from "@/lib/investigation-parser";
-import type { ConversationType } from "@/types/chat";
+import type { ConversationType, SprintGoalMetadata } from "@/types/chat";
 import ConversationList from "./ConversationList";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
@@ -20,7 +21,8 @@ import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { prefetchConversation, cancelAllPrefetches } from "@/lib/prefetch";
 import { apiFetch } from "@/lib/api-client";
-import { MessageCircle, X, PenLine, Search } from "lucide-react";
+import { MessageCircle, X, PenLine, Check } from "lucide-react";
+import { deriveCategory, CATEGORY_CONFIG } from "@/lib/conversation-category";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 
@@ -44,6 +46,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   } = useConversations();
 
   const {
+    activeFilters,
+    toggleFilter,
+    clearFilters,
+    categoryCounts,
+    filteredConversations,
+  } = useConversationFilters(conversations);
+
+  const {
     messages,
     loading: msgLoading,
     error: msgError,
@@ -57,7 +67,17 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const { notify } = useNotification();
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
   const isInvestigation = activeConv?.type === "investigation";
+  const isSprintGoal = activeConv?.title?.startsWith("Sprint Goal:") ?? false;
   const pageTitle = usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
+
+  // Toast for inline feedback (sprint goal actions etc.)
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // Investigation-specific config (Tech/Explain toggle, Jira key)
   const investigationConfigRef = useRef<InvestigationConfig>({ explainMode: false });
@@ -105,6 +125,32 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       const saved = await sendMessage(content);
       if (!saved) return false;
 
+      // For sprint-goal conversations, send follow-up with feedback context
+      if (isSprintGoal && !content.trim().startsWith("/")) {
+        let meta: SprintGoalMetadata | null = null;
+        try {
+          if (activeConv?.metadata) meta = JSON.parse(activeConv.metadata) as SprintGoalMetadata;
+        } catch { /* ignore */ }
+
+        if (meta) {
+          // Find the last assistant response to include as context
+          const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant");
+          const args: Record<string, string> = {
+            sprintId: meta.sprintId,
+            sprintName: meta.sprintName,
+            ticketKeys: JSON.stringify(meta.ticketKeys),
+            feedback: content.trim(),
+          };
+          if (lastAssistantMsg) {
+            args.previousSuggestion = lastAssistantMsg.content;
+          }
+          lastInvocationRef.current = { skill: "suggest-sprint-goal", args: content.trim() };
+          workspaceTask.reset();
+          await workspaceTask.submitAndStream("suggest-sprint-goal", args, activeId);
+          return true;
+        }
+      }
+
       // For investigation conversations, auto-wrap as /investigate skill invocation
       if (isInvestigation && !content.trim().startsWith("/")) {
         const config = investigationConfigRef.current;
@@ -143,7 +189,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
       return true;
     },
-    [activeId, sendMessage, workspaceTask, isInvestigation, activeConv]
+    [activeId, sendMessage, workspaceTask, isInvestigation, isSprintGoal, activeConv, messages]
   );
 
   // Track the last skill invocation so we can persist review results from chat
@@ -236,9 +282,10 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     }
   }, [workspaceTask.status, workspaceTask.taskId, workspaceTask.output, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations]);
 
-  const headerIcon = isInvestigation
-    ? <Search size={15} strokeWidth={1.5} className="text-text-tertiary" />
-    : <MessageCircle size={15} strokeWidth={1.5} className="text-text-tertiary" />;
+  const activeCategory = activeConv ? deriveCategory(activeConv) : "chat";
+  const activeCategoryConfig = CATEGORY_CONFIG[activeCategory];
+  const HeaderIcon = activeCategoryConfig.icon;
+  const headerIcon = <HeaderIcon size={15} strokeWidth={1.5} style={{ color: activeCategoryConfig.color }} />;
 
   const headerTitle = activeConv
     ? activeConv.title
@@ -312,11 +359,16 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           />
 
           <ConversationList
-            conversations={conversations}
+            conversations={filteredConversations}
             activeId={activeId}
             loading={convLoading}
             error={convError}
             runningTaskConversationIds={runningTaskConversationIds}
+            categoryCounts={categoryCounts}
+            activeFilters={activeFilters}
+            onToggleFilter={toggleFilter}
+            onClearFilters={clearFilters}
+            hasActiveFilters={activeFilters.size > 0}
             onSelect={handleSelect}
             onCreate={handleCreate}
             onDelete={handleDelete}
@@ -340,7 +392,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         )}
         {activeId ? (
           <>
-            <MessageList messages={messages} loading={msgLoading} error={msgError} />
+            <MessageList messages={messages} loading={msgLoading} error={msgError} conversation={activeConv} showToast={showToast} />
             {workspaceTask.status !== "idle" && workspaceTask.status !== "completed" && (
               <TaskProgress
                 skill={workspaceTask.skill}
@@ -372,6 +424,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         )}
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
+          <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
+          <span className="text-sm text-text-primary">{toast}</span>
+        </div>
+      )}
     </div>
     </>
   );
