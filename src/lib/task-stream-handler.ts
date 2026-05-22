@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/db";
-import { workspaceTask, message } from "@/db/schema";
+import { workspaceTask, message, conversation } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
@@ -155,11 +155,30 @@ export async function captureTaskStream(params: CaptureParams): Promise<void> {
 
     await saveAssistantMessage(conversationId, output, taskId);
 
-    createNotification(
-      "task-complete",
-      `${skillName} task completed`,
-      { category: "agent", linkUrl: `/chat/${conversationId}` },
-    );
+    // Sprint-goal suggestions get a descriptive notification with the sprint name
+    if (skillName === "suggest-sprint-goal") {
+      let sprintName = "sprint";
+      const conv = await db.query.conversation.findFirst({
+        where: (c, { eq: eq_ }) => eq_(c.id, conversationId),
+      });
+      if (conv?.metadata) {
+        try {
+          const meta = JSON.parse(conv.metadata);
+          if (meta.sprintName) sprintName = meta.sprintName;
+        } catch { /* ignore */ }
+      }
+      createNotification(
+        "sprint-goal-ready",
+        `Sprint goal suggestion ready for ${sprintName}`,
+        { category: "agent", linkUrl: `/chat/${conversationId}` },
+      );
+    } else {
+      createNotification(
+        "task-complete",
+        `${skillName} task completed`,
+        { category: "agent", linkUrl: `/chat/${conversationId}` },
+      );
+    }
 
     logger.info("task-stream-handler", "task_completed", {
       event: "task_stream_captured",

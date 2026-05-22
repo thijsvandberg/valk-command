@@ -46,6 +46,7 @@ export function useConversations(): UseConversationsReturn {
         type,
         createdAt: new Date().toISOString(),
         relatedTicket: null,
+        metadata: null,
       };
       setConversations((prev) => [optimistic, ...prev]);
 

@@ -44,13 +44,17 @@ function buildPromptSummary(skillName: string, args: Record<string, unknown>): s
   switch (skillName) {
     case "suggest-sprint-goal": {
       const sprintName = typeof args.sprintName === "string" ? args.sprintName : "unknown sprint";
+      const sprintId = typeof args.sprintId === "string" ? args.sprintId : null;
       let ticketCount = 0;
       if (typeof args.tickets === "string") {
         try { ticketCount = JSON.parse(args.tickets).length; } catch { /* ignore */ }
       } else if (Array.isArray(args.tickets)) {
         ticketCount = args.tickets.length;
       }
-      return `Suggest a sprint goal for ${sprintName} based on ${ticketCount} ticket${ticketCount !== 1 ? "s" : ""}.`;
+      const sprintLabel = sprintId
+        ? `[${sprintName}](/sprint-board?sprint=${sprintId})`
+        : sprintName;
+      return `Suggest a sprint goal for ${sprintLabel} based on ${ticketCount} ticket${ticketCount !== 1 ? "s" : ""}.`;
     }
     case "review-story":
     case "review-story-json": {
@@ -104,11 +108,27 @@ export async function POST(request: Request) {
     where: (c, { eq: eq_ }) => eq_(c.id, conversationId),
   });
   if (!existing) {
+    // Build metadata for sprint-goal conversations so the chat UI can offer actions
+    let metadata: string | null = null;
+    if (skillName === "suggest-sprint-goal") {
+      const sprintId = typeof args.sprintId === "string" ? args.sprintId : null;
+      const sprintName = typeof args.sprintName === "string" ? args.sprintName : null;
+      let ticketKeys: string[] = [];
+      try {
+        const raw = typeof args.tickets === "string" ? JSON.parse(args.tickets) : args.tickets;
+        if (Array.isArray(raw)) ticketKeys = raw.map((t: { key?: string }) => t.key).filter((k): k is string => Boolean(k));
+      } catch { /* ignore */ }
+      if (sprintId) {
+        metadata = JSON.stringify({ sprintId, sprintName, ticketKeys });
+      }
+    }
+
     await db.insert(conversation).values({
       id: conversationId,
       title: buildConversationTitle(skillName, args),
       createdAt: new Date().toISOString(),
       relatedTicket: typeof b.relatedTicket === "string" ? b.relatedTicket : null,
+      metadata,
     });
 
     // Save a user message so the conversation shows what was requested

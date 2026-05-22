@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Message } from "@/types/chat";
+import type { Message, Conversation, SprintGoalMetadata } from "@/types/chat";
 import type { ReviewStoryData } from "@/lib/agent-client";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { markdownComponents } from "./markdown-components";
 import { CopyActions } from "./CopyActions";
+import { SprintGoalActions } from "./SprintGoalActions";
 import { isInvestigationResult, parseInvestigationResult } from "@/lib/investigation-parser";
 import { InvestigationResult } from "./investigation/InvestigationResult";
 
@@ -16,6 +17,8 @@ interface MessageListProps {
   messages: Message[];
   loading: boolean;
   error: string | null;
+  conversation?: Conversation | null;
+  showToast?: (msg: string) => void;
 }
 
 function verdictColor(verdict: string): string {
@@ -152,6 +155,33 @@ function preprocessMarkdown(raw: string): string {
     .trim();
 }
 
+function formatTimestamp(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    if (isToday) return time;
+    if (isYesterday) return `Yesterday ${time}`;
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ` ${time}`;
+  } catch {
+    return "";
+  }
+}
+
+function parseSprintGoalMetadata(conversation?: Conversation | null): SprintGoalMetadata | null {
+  if (!conversation?.metadata) return null;
+  if (!conversation.title.startsWith("Sprint Goal:")) return null;
+  try {
+    const parsed = JSON.parse(conversation.metadata);
+    if (parsed.sprintId && parsed.sprintName) return parsed as SprintGoalMetadata;
+  } catch { /* ignore */ }
+  return null;
+}
+
 function MessageContent({ content }: { content: string }) {
   // JSON output (structured skill results)
   const jsonData = parseJsonOutput(content);
@@ -204,8 +234,17 @@ function MessageContent({ content }: { content: string }) {
 }
 
 
-export default function MessageList({ messages, loading, error }: MessageListProps) {
+export default function MessageList({ messages, loading, error, conversation, showToast }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sprintGoalMeta = useMemo(() => parseSprintGoalMetadata(conversation), [conversation]);
+
+  // Find the last assistant message index for sprint goal actions
+  const lastAssistantIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return i;
+    }
+    return -1;
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -231,23 +270,33 @@ export default function MessageList({ messages, loading, error }: MessageListPro
     );
   }
 
+  const lastIdx = messages.length - 1;
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 lg:px-8">
       <div className="mx-auto max-w-3xl space-y-4">
-        {messages.map((message) => {
+        {messages.map((message, idx) => {
           const isSending = message.id.startsWith("optimistic-");
           const isInvestigation = message.role === "assistant" && isInvestigationResult(message.content);
+          const isLast = idx === lastIdx;
+          const showSprintActions = sprintGoalMeta && showToast && message.role === "assistant" && idx === lastAssistantIdx && !isSending;
+          const ts = message.timestamp ? formatTimestamp(message.timestamp) : null;
 
           // Investigation results use a report-style container instead of a chat bubble
           if (isInvestigation) {
             return (
-              <div key={message.id} className="flex justify-start">
+              <div key={message.id} className="group/msg flex flex-col items-start">
                 <div
                   className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""}`}
                   data-testid="message-investigation"
                 >
                   <MessageContent content={message.content} />
                 </div>
+                {ts && (
+                  <span className={`mt-1 text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${isLast ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100"}`}>
+                    {ts}
+                  </span>
+                )}
               </div>
             );
           }
@@ -255,7 +304,7 @@ export default function MessageList({ messages, loading, error }: MessageListPro
           return (
             <div
               key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`group/msg flex flex-col ${message.role === "user" ? "items-end" : "items-start"}`}
             >
               <div
                 className={`max-w-[80%] overflow-x-auto rounded-xl px-4 py-3 text-sm leading-[1.7] font-[var(--font-body)] ${
@@ -269,10 +318,21 @@ export default function MessageList({ messages, loading, error }: MessageListPro
                 {isSending && (
                   <p className="mt-1 text-caption text-text-tertiary">Sending...</p>
                 )}
-                {message.role === "assistant" && !isSending && (
+                {message.role === "assistant" && !isSending && !showSprintActions && (
                   <CopyActions content={message.content} />
                 )}
+                {showSprintActions && (
+                  <>
+                    <CopyActions content={message.content} />
+                    <SprintGoalActions content={message.content} metadata={sprintGoalMeta} showToast={showToast!} />
+                  </>
+                )}
               </div>
+              {ts && (
+                <span className={`mt-1 text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${isLast ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100"}`}>
+                  {ts}
+                </span>
+              )}
             </div>
           );
         })}

@@ -233,6 +233,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
       const { id: taskId } = await workspaceTasks.create({
         skillName: "suggest-sprint-goal",
         args: {
+          sprintId: sprint.id,
           sprintName: sprint.name,
           tickets: JSON.stringify(ticketData),
         },

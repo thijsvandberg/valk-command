@@ -21,7 +21,7 @@ import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
-import { apiFetch, jira, followedSprints, ApiError } from "@/lib/api-client";
+import { apiFetch, jira, followedSprints, workspaceTasks, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle } from "lucide-react";
@@ -189,6 +189,7 @@ export default function SprintBoard() {
   const [detailsPopoverOpen, setDetailsPopoverOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
+  const [goalSuggestionUrl, setGoalSuggestionUrl] = useState<string | null>(null);
   const completionBarRef = useRef<HTMLDivElement>(null);
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
@@ -218,6 +219,16 @@ export default function SprintBoard() {
       return { ...prev, [activeSprintId]: order };
     });
   }, [activeSprintId, setPoPriorityMap]);
+
+  // Track sprint goal suggestion conversation for the active sprint
+  useEffect(() => {
+    if (!activeSprintId || activeSprintId === "__all__") { setGoalSuggestionUrl(null); return; }
+    try {
+      const raw = localStorage.getItem(`sprint-goal-conv-${activeSprintId}`);
+      if (raw) setGoalSuggestionUrl(`/chat/${raw}`);
+      else setGoalSuggestionUrl(null);
+    } catch { setGoalSuggestionUrl(null); }
+  }, [activeSprintId]);
 
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
   const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
@@ -1004,7 +1015,26 @@ export default function SprintBoard() {
                   open={detailsPopoverOpen}
                   onClose={() => setDetailsPopoverOpen(false)}
                   onEdit={() => setEditModalOpen(true)}
-                  onSuggestGoal={() => { setAutoSuggest(true); setEditModalOpen(true); }}
+                  onSuggestGoal={async () => {
+                    setDetailsPopoverOpen(false);
+                    const ticketData = allTickets
+                      .filter((t) => t.jiraStatus !== "DEPRECATED")
+                      .map((t) => ({ key: t.key, summary: t.title, epic: t.epic ?? undefined, type: t.type, storyPoints: t.storyPoints ?? undefined }));
+                    try {
+                      const result = await workspaceTasks.create({
+                        skillName: "suggest-sprint-goal",
+                        args: { sprintId: activeSprint!.id, sprintName: activeSprint!.name, tickets: JSON.stringify(ticketData) },
+                      });
+                      const convId = (result as Record<string, unknown>).conversationId as string | undefined;
+                      if (convId) {
+                        try { localStorage.setItem(`sprint-goal-conv-${activeSprint!.id}`, convId); } catch { /* ok */ }
+                        router.push(`/chat/${convId}`);
+                      }
+                    } catch {
+                      showToast("Could not start suggestion. Is the workspace running?");
+                    }
+                  }}
+                  goalSuggestionUrl={goalSuggestionUrl}
                 />
               </span>
             ) : (

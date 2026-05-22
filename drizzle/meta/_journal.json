@@ -337,6 +337,13 @@
       "when": 1779397597462,
       "tag": "0047_clear_cardiac",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1779440244927,
+      "tag": "0048_conversation_metadata",
+      "breakpoints": true
     }
   ]
 }

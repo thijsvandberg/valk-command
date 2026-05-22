@@ -54,7 +54,7 @@ describe("CommandPalette", () => {
       }
       if (urlStr.includes("/api/conversations") && !urlStr.includes("POST")) {
         return new Response(JSON.stringify([
-          { id: "conv-1", title: "Sprint planning", createdAt: "2026-04-01", relatedTicket: null },
+          { id: "conv-1", title: "Sprint planning", createdAt: "2026-04-01", relatedTicket: null, metadata: null },
         ]));
       }
       if (urlStr.includes("/api/story-writer/active-sessions")) {

@@ -9,6 +9,7 @@ export const conversation = sqliteTable("conversation", {
     .notNull()
     .default(sql`(datetime('now'))`),
   relatedTicket: text("related_ticket"),
+  metadata: text("metadata"),
 }, (table) => [
   index("conversation_created_at_idx").on(table.createdAt),
 ]);

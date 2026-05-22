@@ -2,7 +2,8 @@
 
 import type { Sprint } from "@/types/ticket";
 import { Popover } from "@/components/shared/Popover";
-import { Pencil, Sparkles } from "lucide-react";
+import { Pencil, Sparkles, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 interface SprintDetailsPopoverProps {
   sprint: Sprint;
@@ -10,6 +11,7 @@ interface SprintDetailsPopoverProps {
   onClose: () => void;
   onEdit: () => void;
   onSuggestGoal?: () => void;
+  goalSuggestionUrl?: string | null;
 }
 
 function fmtDate(iso: string): string {
@@ -23,6 +25,7 @@ export function SprintDetailsPopover({
   onClose,
   onEdit,
   onSuggestGoal,
+  goalSuggestionUrl,
 }: SprintDetailsPopoverProps) {
   const hasGoal = sprint.goal && sprint.goal.trim().length > 0;
   const hasDates = sprint.startDate && sprint.endDate;
@@ -41,23 +44,39 @@ export function SprintDetailsPopover({
         {hasGoal ? (
           <p className="text-xs leading-relaxed text-text-primary">{sprint.goal}</p>
         ) : (
-          <p className="flex items-center gap-1.5 text-xs italic text-text-muted">
-            <span>No sprint goal set</span>
-            {onSuggestGoal && (
-              <button
-                type="button"
-                onClick={() => { onClose(); onSuggestGoal(); }}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium not-italic cursor-pointer
-                  text-[var(--color-brand-400)]
-                  hover:bg-[var(--color-brand-500)]/10
-                  active:bg-[var(--color-brand-500)]/15
+          <div className="space-y-1.5">
+            <p className="flex items-center gap-1.5 text-xs italic text-text-muted">
+              <span>No sprint goal set</span>
+              {onSuggestGoal && !goalSuggestionUrl && (
+                <button
+                  type="button"
+                  onClick={() => { onClose(); onSuggestGoal(); }}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium not-italic cursor-pointer
+                    text-[var(--color-brand-400)]
+                    hover:bg-[var(--color-brand-500)]/10
+                    active:bg-[var(--color-brand-500)]/15
+                    transition-colors duration-100"
+                >
+                  <Sparkles size={10} strokeWidth={1.5} className="shrink-0" />
+                  Suggest with AI
+                </button>
+              )}
+            </p>
+            {goalSuggestionUrl && (
+              <Link
+                href={goalSuggestionUrl}
+                onClick={onClose}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium not-italic cursor-pointer
+                  text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.06] border border-[var(--color-brand-500)]/20
+                  hover:bg-[var(--color-brand-500)]/[0.12]
                   transition-colors duration-100"
               >
                 <Sparkles size={10} strokeWidth={1.5} className="shrink-0" />
-                Suggest with AI
-              </button>
+                AI suggestion available
+                <ExternalLink size={9} strokeWidth={1.5} className="ml-auto shrink-0 opacity-60" />
+              </Link>
             )}
-          </p>
+          </div>
         )}
 
         {/* Divider + actions */}

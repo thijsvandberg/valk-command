@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     type: convType,
     createdAt: new Date().toISOString(),
     relatedTicket: body.relatedTicket ?? null,
+    metadata: null,
   };
 
   await db.insert(conversation).values(conv);

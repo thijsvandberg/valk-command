@@ -71,6 +71,9 @@ export async function PATCH(
   if (typeof body.title === "string" && body.title.trim()) {
     updates.title = body.title.trim();
   }
+  if (typeof body.metadata === "string" || body.metadata === null) {
+    updates.metadata = body.metadata;
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

@@ -146,8 +146,8 @@ describe("GET /api/search/local", () => {
       [],
       [],
       [
-        { id: "conv-1", title: "Auth investigation chat", type: "investigation", relatedTicket: "VPL-42", createdAt: new Date().toISOString() },
-        { id: "conv-2", title: "Sprint planning", type: "chat", relatedTicket: null, createdAt: new Date().toISOString() },
+        { id: "conv-1", title: "Auth investigation chat", type: "investigation", relatedTicket: "VPL-42", metadata: null, createdAt: new Date().toISOString() },
+        { id: "conv-2", title: "Sprint planning", type: "chat", relatedTicket: null, metadata: null, createdAt: new Date().toISOString() },
       ],
       [
         { id: "msg-1", conversationId: "conv-1", role: "user", content: "Let us investigate the authentication problem", timestamp: new Date().toISOString(), status: "sent", workspaceTaskId: null, contentHash: null },
@@ -219,7 +219,7 @@ describe("GET /api/search/local", () => {
       [],
       [],
       [],
-      [{ id: "conv-3", title: "Auth discussion", type: "chat", relatedTicket: null, createdAt: new Date().toISOString() }],
+      [{ id: "conv-3", title: "Auth discussion", type: "chat", relatedTicket: null, metadata: null, createdAt: new Date().toISOString() }],
       [],
     );
 

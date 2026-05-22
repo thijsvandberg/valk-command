@@ -10,10 +10,17 @@ export interface Message {
 
 export type ConversationType = "chat" | "investigation";
 
+export interface SprintGoalMetadata {
+  sprintId: string;
+  sprintName: string;
+  ticketKeys: string[];
+}
+
 export interface Conversation {
   id: string;
   title: string;
   type: ConversationType;
   createdAt: string;
   relatedTicket: string | null;
+  metadata: string | null;
 }
