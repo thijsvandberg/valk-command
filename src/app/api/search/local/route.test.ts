@@ -37,15 +37,26 @@ function setupDbMock(
   messages: unknown[] = [],
 ) {
   let callCount = 0;
-  const responses = [tickets, metadata, jiraComments, poComments, localEdits, conversations, messages];
+  // Index 5 is appSetting (consumed by .where().get(), returns null)
+  const responses = [tickets, metadata, jiraComments, poComments, localEdits, /* appSetting placeholder */ [], conversations, messages];
 
   (db.select as Mock).mockImplementation(() => ({
-    from: () => ({
-      all: () => Promise.resolve(responses[callCount++] ?? []),
-      where: () => ({
-        get: () => Promise.resolve(null),
-      }),
-    }),
+    from: () => {
+      // Capture the index for this from() call
+      const idx = callCount++;
+      const data = responses[idx] ?? [];
+      return {
+        // Direct .all() for non-filtered queries
+        all: () => Promise.resolve(data),
+        // .where() for filtered queries (tickets, appSetting)
+        where: () => ({
+          get: () => Promise.resolve(null),
+          all: () => Promise.resolve(data),
+          then: (resolve: (v: unknown[]) => void, reject?: (e: unknown) => void) =>
+            Promise.resolve(data).then(resolve, reject),
+        }),
+      };
+    },
   }));
 }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, jiraComment, poComment, ticketLocalEdit, appSetting, conversation, message } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, notInArray } from "drizzle-orm";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { env } from "@/lib/env";
 import {
@@ -86,7 +86,7 @@ function stripAdf(raw: string | null | undefined): string {
 async function buildIndex() {
   const [tickets, metadataRows, jiraCommentRows, poCommentRows, localEditRows, sprintSetting, conversationRows, messageRows] =
     await Promise.all([
-      db.select().from(ticket).all(),
+      db.select().from(ticket).where(notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"])),
       db.select().from(ticketMetadata).all(),
       db.select().from(jiraComment).all(),
       db.select().from(poComment).all(),

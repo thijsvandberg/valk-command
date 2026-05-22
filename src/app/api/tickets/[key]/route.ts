@@ -12,6 +12,7 @@ import { upsertIssue } from "@/lib/upsert-issue";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { resolveDraftKey } from "@/lib/draft-sync";
 
 function userInitials(name: string): string {
   return name
@@ -47,9 +48,10 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   const cacheKey = `/api/tickets/${key}`;
   const cached = cache.get(cacheKey);
@@ -300,9 +302,10 @@ export async function PATCH(
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   const t = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),

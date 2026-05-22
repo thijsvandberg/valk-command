@@ -48,6 +48,7 @@ export async function GET(request: Request) {
   const { result: { rows, allLocalEdits, allVersions, subtaskCounts }, durationMs } = await timedQuery(
     `GET /api/tickets${sprintId ? `?sprintId=${sprintId}` : ""}`,
     async () => {
+      const draftFilter = notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"]);
       const mainQuery = db
         .select({ t: ticket, meta: ticketMetadata })
         .from(ticket)
@@ -56,17 +57,17 @@ export async function GET(request: Request) {
       // Subquery to scope local edits and versions to the same sprint filter without
       // waiting for the main ticket rows first.
       const sprintKeySubquery = sprintId
-        ? db.select({ jiraKey: ticket.jiraKey }).from(ticket).where(eq(ticket.sprintName, sprintId))
-        : db.select({ jiraKey: ticket.jiraKey }).from(ticket);
+        ? db.select({ jiraKey: ticket.jiraKey }).from(ticket).where(and(draftFilter, eq(ticket.sprintName, sprintId)))
+        : db.select({ jiraKey: ticket.jiraKey }).from(ticket).where(draftFilter);
 
       const [rows, allLocalEdits, allVersions, subtaskCounts] = await Promise.all([
         sprintId
-          ? mainQuery.where(eq(ticket.sprintName, sprintId)).orderBy(
+          ? mainQuery.where(and(draftFilter, eq(ticket.sprintName, sprintId))).orderBy(
               // Null ranks go last; ranked tickets are shown in Jira order
               sql`CASE WHEN ${ticket.jiraRank} IS NULL THEN 1 ELSE 0 END`,
               asc(ticket.jiraRank),
             )
-          : mainQuery,
+          : mainQuery.where(draftFilter),
         db.select({
           id: ticketLocalEdit.id,
           ticketKey: ticketLocalEdit.ticketKey,
