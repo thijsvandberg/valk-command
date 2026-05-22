@@ -153,6 +153,7 @@ export function EpicChildrenSection({
           className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
         >
           <IssueTypeIcon type={selectedType} size={14} />
+          <span className="text-xs font-medium text-text-secondary">{currentTypeConfig.label}</span>
           <ChevronDown size={10} className="text-text-muted" />
         </button>
         {showTypePicker && (
