@@ -21,10 +21,12 @@ import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { prefetchConversation, cancelAllPrefetches } from "@/lib/prefetch";
 import { apiFetch } from "@/lib/api-client";
-import { MessageCircle, X, PenLine, Check } from "lucide-react";
+import { MessageCircle, X, PenLine, Check, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useSidebarState } from "@/hooks/useSidebarState";
 import { deriveCategory, CATEGORY_CONFIG } from "@/lib/conversation-category";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { EditableConversationTitle } from "./EditableConversationTitle";
 
 const RUNNING_TASK_POLL_INTERVAL_MS = 10_000;
 
@@ -36,6 +38,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const activeId = conversationId ?? null;
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
+  const [filtersVisible, setFiltersVisible] = useState(false);
+  const sidebar = useSidebarState();
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  // When activeId arrives from the router, the pending ID is no longer needed.
+  // Derive the effective pending value without a cascading effect.
+  const resolvedPendingId = activeId ? null : pendingConversationId;
   const {
     conversations,
     loading: convLoading,
@@ -97,6 +107,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     const title = type === "investigation" ? "New investigation" : "New conversation";
     const conversation = await createConversation(title, type);
     if (conversation) {
+      setPendingConversationId(conversation.id);
       router.push(`/chat/${conversation.id}`);
       setSidebarOpen(false);
     }
@@ -116,6 +127,46 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     },
     [deleteConversation, activeId, router]
   );
+
+  const handleTogglePin = useCallback(
+    async (id: string, pinned: boolean) => {
+      try {
+        await apiFetch(`/api/conversations/${id}`, {
+          method: "PATCH",
+          body: { pinned },
+        });
+        refreshConversations();
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("Maximum 10")) {
+          showToast("Maximum 10 pinned conversations reached");
+        }
+      }
+    },
+    [refreshConversations, showToast]
+  );
+
+  // Resize drag handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeRef.current = { startX: e.clientX, startWidth: sidebar.width };
+
+    function onMouseMove(ev: MouseEvent) {
+      if (!resizeRef.current) return;
+      const delta = ev.clientX - resizeRef.current.startX;
+      sidebar.setWidth(resizeRef.current.startWidth + delta);
+    }
+    function onMouseUp() {
+      resizeRef.current = null;
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, [sidebar]);
 
   const handleSend = useCallback(
     async (content: string): Promise<boolean> => {
@@ -315,14 +366,14 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     }
   }, [workspaceTask.status, workspaceTask.taskId, workspaceTask.output, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations]);
 
-  const activeCategory = activeConv ? deriveCategory(activeConv) : "chat";
+  // Use pending ID to avoid flash when route hasn't settled yet
+  const effectiveActiveId = activeId ?? resolvedPendingId;
+  const effectiveConv = activeConv ?? (resolvedPendingId ? conversations.find((c) => c.id === resolvedPendingId) ?? null : null);
+
+  const activeCategory = (effectiveConv ? deriveCategory(effectiveConv) : "chat") as ReturnType<typeof deriveCategory>;
   const activeCategoryConfig = CATEGORY_CONFIG[activeCategory];
   const HeaderIcon = activeCategoryConfig.icon;
   const headerIcon = <HeaderIcon size={15} strokeWidth={1.5} style={{ color: activeCategoryConfig.color }} />;
-
-  const headerTitle = activeConv
-    ? activeConv.title
-    : "Chat";
 
   return (
     <>
@@ -333,8 +384,16 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         icon={headerIcon}
         className="z-10"
       >
-        <ViewHeaderTitle>{headerTitle}</ViewHeaderTitle>
-        {activeConv && (
+        {effectiveConv ? (
+          <EditableConversationTitle
+            conversationId={effectiveConv.id}
+            title={effectiveConv.title}
+            onTitleSaved={refreshConversations}
+          />
+        ) : (
+          <ViewHeaderTitle>Chat</ViewHeaderTitle>
+        )}
+        {effectiveConv && (
           <>
             <ViewHeaderDivider />
             <span className="text-sm text-text-tertiary">
@@ -377,9 +436,10 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         {/* Conversation sidebar */}
         <aside
           data-testid="chat-sidebar"
-          className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-border-default bg-[var(--color-surface-elevated)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
+          className={`fixed top-0 right-0 z-40 h-full border-l border-border-default bg-[var(--color-surface-elevated)] transition-[transform,width] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "translate-x-full"
           }`}
+          style={{ width: sidebarOpen ? 288 : sidebar.effectiveWidth }}
         >
           {/* Mobile close button */}
           <Button
@@ -393,18 +453,32 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
           <ConversationList
             conversations={filteredConversations}
-            activeId={activeId}
+            activeId={effectiveActiveId}
             loading={convLoading}
             error={convError}
+            collapsed={sidebar.collapsed}
+            onToggleCollapsed={sidebar.toggleCollapsed}
             runningTaskConversationIds={runningTaskConversationIds}
             categoryCounts={categoryCounts}
             activeFilters={activeFilters}
             onToggleFilter={toggleFilter}
             onClearFilters={clearFilters}
             hasActiveFilters={activeFilters.size > 0}
+            filtersVisible={filtersVisible}
+            onToggleFiltersVisible={() => setFiltersVisible((v) => !v)}
             onSelect={handleSelect}
             onCreate={handleCreate}
             onDelete={handleDelete}
+            onTogglePin={handleTogglePin}
+          />
+
+          {/* Resize handle (desktop only) */}
+          <div
+            className="hidden lg:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-[var(--color-brand-400)]/20 active:bg-[var(--color-brand-400)]/30 transition-colors duration-150"
+            onMouseDown={handleResizeStart}
+            onDoubleClick={sidebar.resetWidth}
+            aria-label="Resize sidebar"
+            role="separator"
           />
         </aside>
 
@@ -412,18 +486,18 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         <div className="flex flex-1 flex-col min-w-0">
         <WorkspaceStatus />
         {/* Story Writer link when conversation is linked to a ticket */}
-        {activeConv?.relatedTicket && (
+        {effectiveConv?.relatedTicket && (
           <div className="border-b border-border-default px-6 py-2">
             <Link
-              href={`/tickets/${activeConv.relatedTicket}/write`}
+              href={`/tickets/${effectiveConv.relatedTicket}/write`}
               className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-colors duration-150"
             >
               <PenLine size={13} strokeWidth={1.5} />
-              Open Story Writer for {activeConv.relatedTicket}
+              Open Story Writer for {effectiveConv.relatedTicket}
             </Link>
           </div>
         )}
-        {activeId ? (
+        {effectiveActiveId ? (
           <>
             <MessageList messages={messages} loading={msgLoading} error={msgError} conversation={activeConv} showToast={showToast} />
             {workspaceTask.status !== "idle" && workspaceTask.status !== "completed" && (

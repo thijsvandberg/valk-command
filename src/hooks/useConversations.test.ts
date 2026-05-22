@@ -8,6 +8,7 @@ const mockConversation = {
   createdAt: "2026-03-28T10:00:00.000Z",
   relatedTicket: null,
   metadata: null,
+  pinned: false,
 };
 
 beforeEach(() => {

@@ -7,6 +7,7 @@ import type { ConversationType } from "@/types/chat";
 
 interface ConversationTypePickerProps {
   onCreate: (type: ConversationType) => void;
+  collapsed?: boolean;
 }
 
 const options: { type: ConversationType; label: string; icon: React.ReactNode }[] = [
@@ -22,7 +23,7 @@ const options: { type: ConversationType; label: string; icon: React.ReactNode }[
   },
 ];
 
-export default function ConversationTypePicker({ onCreate }: ConversationTypePickerProps) {
+export default function ConversationTypePicker({ onCreate, collapsed }: ConversationTypePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

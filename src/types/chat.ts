@@ -6,6 +6,7 @@ export interface Message {
   timestamp: string;
   workspaceTaskId: string | null;
   status?: "pending" | "sent" | "failed";
+  sequence?: number | null;
 }
 
 export type ConversationType = "chat" | "investigation";
@@ -23,4 +24,5 @@ export interface Conversation {
   createdAt: string;
   relatedTicket: string | null;
   metadata: string | null;
+  pinned: boolean;
 }

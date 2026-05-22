@@ -10,6 +10,7 @@ export const conversation = sqliteTable("conversation", {
     .default(sql`(datetime('now'))`),
   relatedTicket: text("related_ticket"),
   metadata: text("metadata"),
+  pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
 }, (table) => [
   index("conversation_created_at_idx").on(table.createdAt),
 ]);
@@ -29,8 +30,10 @@ export const message = sqliteTable("message", {
     .notNull()
     .default("sent"),
   contentHash: text("content_hash"),
+  sequence: integer("sequence"),
 }, (table) => [
   index("message_conversation_id_idx").on(table.conversationId),
+  index("message_conversation_sequence_idx").on(table.conversationId, table.sequence),
 ]);
 
 export const ticket = sqliteTable("ticket", {

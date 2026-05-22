@@ -1,6 +1,6 @@
 # BRDG-155: Conversation List UX Improvements
 
-**Status:** Draft
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -53,38 +53,55 @@ As the PO, I want a more flexible and organized conversation list that I can res
 - Pin state is stored in the database (`pinned` boolean on conversation table)
 - Maximum 10 pinned conversations
 
+## Implementation Plan
+
+1. **DB: Add `pinned` column** - Create migration `0049_conversation_pinned.sql`, update `schema.ts` conversation table with `pinned` boolean, update `Conversation` type in `types/chat.ts`.
+2. **API: Extend PATCH** - Update `api/conversations/[id]/route.ts` PATCH handler to accept `pinned`, enforce max 10 pins (409 if exceeded).
+3. **Collapsible sidebar** - Create `useSidebarState` hook (localStorage for collapsed/width, Cmd/Ctrl+B listener). Update `ChatLayout.tsx` sidebar to use dynamic width + collapse toggle. Update `ConversationList.tsx` to accept `collapsed` prop showing icon-only mode.
+4. **Resizable sidebar** - Add drag handle div on sidebar right edge in `ChatLayout.tsx`. MouseDown/Move/Up handlers clamp width 200-500px. Double-click resets to default (288px).
+5. **Search input** - Add search `<input>` in `ConversationList.tsx` header. Local state + debounced case-insensitive title filter. No-results empty state. Clear button + Escape handler. Composes with existing category filters.
+6. **Date grouping** - Create `lib/date-groups.ts` utility. Render grouped sections in `ConversationList` with sticky headers. Collapsible groups stored in localStorage `bridge:sidebar-groups-collapsed`.
+7. **Pinned conversations** - Context menu component for pin/unpin. Split conversations into pinned section (top) + date-grouped unpinned. `onTogglePin` callback from ChatLayout calls PATCH API. Optimistic update in useConversations.
+8. **Tests** - Update `ConversationList.test.tsx` for new props/features. New test files for `date-groups.ts` and `useSidebarState.ts`.
+
+### Design decisions
+- Pinned items respect active category filters and search (consistent behavior)
+- Collapsed/resizable sidebar disabled on mobile (keep existing slide-over)
+- Pin ordering: by `createdAt` within pinned section (boolean column, no pinnedAt timestamp)
+- Running task indicators remain visible in collapsed mode
+
 ## Acceptance Criteria
 
 ### Collapsible sidebar
-- [ ] Toggle button collapses/expands the sidebar
-- [ ] Collapsed state shows icons only
-- [ ] `Cmd/Ctrl + B` toggles the sidebar
-- [ ] Collapsed state persists across reloads
+- [x] Toggle button collapses/expands the sidebar
+- [x] Collapsed state shows icons only
+- [x] `Cmd/Ctrl + B` toggles the sidebar
+- [x] Collapsed state persists across reloads
 
 ### Resizable sidebar
-- [ ] Drag handle on the right edge allows resizing
-- [ ] Width is constrained between 200px and 500px
-- [ ] Width persists across reloads
-- [ ] Double-click resets to default width
+- [x] Drag handle on the right edge allows resizing
+- [x] Width is constrained between 200px and 500px
+- [x] Width persists across reloads
+- [x] Double-click resets to default width
 
 ### Search
-- [ ] Search input filters conversations by title
-- [ ] Search is case-insensitive
-- [ ] "No results" state shown when nothing matches
-- [ ] Clear button and Escape reset the search
-- [ ] Search works in combination with type filters (BRDG-153)
+- [x] Search input filters conversations by title
+- [x] Search is case-insensitive
+- [x] "No results" state shown when nothing matches
+- [x] Clear button and Escape reset the search
+- [x] Search works in combination with type filters (BRDG-153)
 
 ### Date grouping
-- [ ] Conversations are grouped into relative date sections
-- [ ] Group headers are sticky
-- [ ] Groups can be collapsed/expanded
-- [ ] Collapsed state persists across reloads
+- [x] Conversations are grouped into relative date sections
+- [x] Group headers are sticky
+- [x] Groups can be collapsed/expanded
+- [x] Collapsed state persists across reloads
 
 ### Pinned conversations
-- [ ] Conversations can be pinned/unpinned via context menu
-- [ ] Pinned section appears at the top of the list
-- [ ] Maximum 10 pins enforced
-- [ ] Pin state is stored in the database
+- [x] Conversations can be pinned/unpinned via context menu
+- [x] Pinned section appears at the top of the list
+- [x] Maximum 10 pins enforced
+- [x] Pin state is stored in the database
 
 ## Technical Notes
 

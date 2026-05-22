@@ -10,6 +10,7 @@ function makeConv(overrides: Partial<Conversation> = {}): Conversation {
     createdAt: "2026-05-22T10:00:00Z",
     relatedTicket: null,
     metadata: null,
+    pinned: false,
     ...overrides,
   };
 }

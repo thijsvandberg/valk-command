@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { conversation, message, storyWriterSession } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
@@ -28,7 +28,7 @@ export async function GET(
     .select()
     .from(message)
     .where(eq(message.conversationId, id))
-    .orderBy(message.timestamp);
+    .orderBy(sql`COALESCE(${message.sequence}, 999999999)`, message.timestamp);
 
   return NextResponse.json({
     ...conv,
@@ -73,6 +73,21 @@ export async function PATCH(
   }
   if (typeof body.metadata === "string" || body.metadata === null) {
     updates.metadata = body.metadata;
+  }
+  if (typeof body.pinned === "boolean" || typeof body.pinned === "number") {
+    const wantPin = Boolean(body.pinned);
+    if (wantPin && !conv.pinned) {
+      const pinned = await db.select({ id: conversation.id })
+        .from(conversation)
+        .where(and(eq(conversation.pinned, true), ne(conversation.id, id)));
+      if (pinned.length >= 10) {
+        return NextResponse.json(
+          { error: "Maximum 10 pinned conversations reached" },
+          { status: 409 },
+        );
+      }
+    }
+    updates.pinned = wantPin;
   }
 
   if (Object.keys(updates).length === 0) {
