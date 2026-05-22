@@ -4,6 +4,7 @@ import { message } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { nextSequence } from "@/db/next-sequence";
 
 const VALID_ROLES = ["user", "assistant"] as const;
 
@@ -65,6 +66,7 @@ export async function POST(
     content: body.content.trim(),
     timestamp: new Date().toISOString(),
     workspaceTaskId: (body.workspaceTaskId as string | undefined) ?? null,
+    sequence: nextSequence(id),
   };
 
   await db.insert(message).values(msg);

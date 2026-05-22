@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Conversation, ConversationType } from "@/types/chat";
 import { conversations as conversationsApi, ApiError } from "@/lib/api-client";
+import { CONVERSATION_LIST_POLL_MS } from "@/lib/polling-constants";
 
 interface UseConversationsReturn {
   conversations: Conversation[];
@@ -17,12 +18,15 @@ export function useConversations(): UseConversationsReturn {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastJsonRef = useRef<string>("");
 
   const fetchConversations = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await conversationsApi.list();
+      const json = JSON.stringify(data);
+      lastJsonRef.current = json;
       setConversations(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -34,6 +38,25 @@ export function useConversations(): UseConversationsReturn {
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
+
+  // Background polling: silently refresh conversation list without loading state
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const data = await conversationsApi.list();
+        const json = JSON.stringify(data);
+        if (json !== lastJsonRef.current) {
+          lastJsonRef.current = json;
+          setConversations(data);
+        }
+      } catch {
+        // Silently ignore poll errors
+      }
+    };
+
+    const interval = setInterval(poll, CONVERSATION_LIST_POLL_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   const createConversation = useCallback(
     async (title?: string, type: ConversationType = "chat"): Promise<Conversation | null> => {

@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import { extractStoryDrafts } from "@/lib/story-draft-parser";
 import { agentFetch } from "@/lib/agent-fetch";
 import { createOrUpdateNotification } from "@/lib/notifications";
+import { nextSequence } from "@/db/next-sequence";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -64,6 +65,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       content: assistantContent,
       workspaceTaskId: taskId,
       timestamp: new Date().toISOString(),
+      sequence: nextSequence(session.conversationId),
     });
   }
 

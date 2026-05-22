@@ -8,6 +8,7 @@ import { agentFetch, type AgentError } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
 import { resolveDraftKey } from "@/lib/draft-sync";
+import { nextSequence } from "@/db/next-sequence";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -118,6 +119,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       status: "pending",
       contentHash,
       timestamp: new Date().toISOString(),
+      sequence: nextSequence(session.conversationId),
     });
   }
 

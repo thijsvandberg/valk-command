@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
 import { createNotification } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
+import { nextSequence } from "@/db/next-sequence";
 
 const STREAM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -80,6 +81,7 @@ async function saveAssistantMessage(
     content,
     workspaceTaskId,
     timestamp: new Date().toISOString(),
+    sequence: nextSequence(conversationId),
   });
 }
 

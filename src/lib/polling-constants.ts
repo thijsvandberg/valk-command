@@ -1,0 +1,3 @@
+export const CONVERSATION_LIST_POLL_MS = 5_000;
+export const MESSAGE_POLL_MS = 3_000;
+export const MESSAGE_POLL_IDLE_TIMEOUT_MS = 60_000;

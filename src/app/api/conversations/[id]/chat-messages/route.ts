@@ -7,6 +7,7 @@ import { agentFetch } from "@/lib/agent-fetch";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { captureTaskStream } from "@/lib/task-stream-handler";
+import { nextSequence } from "@/db/next-sequence";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -55,6 +56,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     role: "user",
     content,
     timestamp: new Date().toISOString(),
+    sequence: nextSequence(conversationId),
   });
 
   // Try to resume the existing workspace session

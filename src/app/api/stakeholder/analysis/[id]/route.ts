@@ -7,6 +7,7 @@ import { createNotification } from "@/lib/notifications";
 import { parseBriefingOutput } from "@/lib/stakeholder-data";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { nextSequence } from "@/db/next-sequence";
 
 export async function PATCH(
   request: Request,
@@ -64,6 +65,7 @@ export async function PATCH(
         timestamp: new Date().toISOString(),
         workspaceTaskId: row.workspaceTaskId ?? undefined,
         status: "sent",
+        sequence: nextSequence(row.conversationId),
       });
 
       const typeLabel = row.type === "brief" ? "Sprint Brief" : "Deep Dive";

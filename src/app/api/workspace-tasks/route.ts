@@ -7,6 +7,7 @@ import { conversation, message, workspaceTask } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { captureTaskStream } from "@/lib/task-stream-handler";
+import { nextSequence } from "@/db/next-sequence";
 
 /**
  * Build a human-readable title for a task conversation based on skill + args.
@@ -150,6 +151,7 @@ export async function POST(request: Request) {
       role: "user",
       content: buildPromptSummary(skillName, args),
       timestamp: new Date().toISOString(),
+      sequence: nextSequence(conversationId),
     });
   } else if (existing.title === "New conversation" || existing.title === "New investigation") {
     // Update generic title to something meaningful based on the first skill invocation

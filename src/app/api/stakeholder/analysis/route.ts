@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { eq, desc, and } from "drizzle-orm";
 import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { nextSequence } from "@/db/next-sequence";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     content: `Generate ${typeLabel} for ${sprintName}`,
     timestamp: new Date().toISOString(),
     status: "sent",
+    sequence: nextSequence(conversationId),
   });
 
   // Create analysis record in "running" state

@@ -16,6 +16,10 @@ vi.mock("@/lib/task-stream-handler", () => ({
   captureTaskStream: vi.fn(),
 }));
 
+vi.mock("@/db/next-sequence", () => ({
+  nextSequence: vi.fn().mockReturnValue(1),
+}));
+
 const { mockDb } = vi.hoisted(() => {
   const mockDb = {
     query: {
