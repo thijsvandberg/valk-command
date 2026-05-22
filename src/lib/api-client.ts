@@ -196,6 +196,10 @@ export const tickets = {
   rankSubtasks: (key: string, data: { orderedKeys: string[]; movedKey: string; rankBefore?: string; rankAfter?: string }, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/subtasks/rank`, { method: "POST", body: data, signal }),
 
+  // Epic children
+  createChildIssue: (key: string, data: { title: string; issueType?: string }, signal?: AbortSignal) =>
+    apiFetch<import("@/types/ticket").Subtask>(`/api/tickets/${enc(key)}/children`, { method: "POST", body: data, signal }),
+
   // Issue links
   createLink: (key: string, data: { targetKey: string; relation: string }, signal?: AbortSignal) =>
     apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "POST", body: data, signal }),
