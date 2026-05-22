@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useRefinementSession, type TicketCompletionData } from "@/contexts/RefinementSessionContext";
+import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { CheckCircle2, Copy, Check, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -10,6 +10,9 @@ export function SessionSummary() {
   const router = useRouter();
   const { queue, completionData, sessionStartedAt } = useRefinementSession();
   const [copied, setCopied] = useState(false);
+
+  // Capture end timestamp once via lazy state initializer (pure)
+  const [endTime] = useState(() => Date.now());
 
   const stats = useMemo(() => {
     const completed = queue.filter((key) => completionData[key]);
@@ -20,7 +23,7 @@ export function SessionSummary() {
     );
     const statusChanged = queue.filter((key) => completionData[key]?.statusChanged);
 
-    const durationMs = sessionStartedAt ? Date.now() - sessionStartedAt : 0;
+    const durationMs = sessionStartedAt ? endTime - sessionStartedAt : 0;
     const durationMin = Math.round(durationMs / 60000);
 
     return {
@@ -32,7 +35,7 @@ export function SessionSummary() {
       statusChanged: statusChanged.length,
       durationMin,
     };
-  }, [queue, completionData, sessionStartedAt]);
+  }, [queue, completionData, sessionStartedAt, endTime]);
 
   const markdownSummary = useMemo(() => {
     const lines = [

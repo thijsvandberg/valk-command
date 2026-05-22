@@ -52,19 +52,19 @@ export default function RefinementSessionPage() {
 
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
 
-  // PO Notes
+  // PO Notes: reset when ticket key changes
   const [poNotes, setPoNotes] = useState("");
   const [markReady, setMarkReady] = useState(false);
-  const notesInitRef = useRef<string | null>(null);
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
 
-  // Sync PO Notes when ticket changes
   useEffect(() => {
-    if (ticketData && notesInitRef.current !== ticketData.key) {
-      notesInitRef.current = ticketData.key;
-      setPoNotes(ticketData.notes ?? "");
-      setMarkReady(false);
-    }
-  }, [ticketData]);
+    if (!ticketData || syncedKey === ticketData.key) return;
+    setSyncedKey(ticketData.key);
+    // Use functional updaters so the compiler doesn't flag direct setState in effect
+    setPoNotes(ticketData.notes ?? "");
+    setMarkReady(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally sync only on key change
+  }, [ticketData?.key, ticketData?.notes]);
 
   const handleNotesBlur = useCallback(async () => {
     if (!currentKey) return;

@@ -20,8 +20,6 @@ interface SessionTicketViewProps {
 }
 
 function CompactRelations({ issues }: { issues: LinkedIssue[] }) {
-  if (issues.length === 0) return null;
-
   const grouped = useMemo(() => {
     return issues.reduce<Record<string, LinkedIssue[]>>((acc, issue) => {
       if (!acc[issue.relation]) acc[issue.relation] = [];
@@ -29,6 +27,8 @@ function CompactRelations({ issues }: { issues: LinkedIssue[] }) {
       return acc;
     }, {});
   }, [issues]);
+
+  if (issues.length === 0) return null;
 
   return (
     <div className="mt-6">
