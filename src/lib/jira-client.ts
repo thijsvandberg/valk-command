@@ -959,6 +959,21 @@ export class JiraClient {
   }
 
   /**
+   * Create a new sprint on a board via the Jira Agile API.
+   * Uses POST /rest/agile/1.0/sprint.
+   */
+  async createSprint(
+    params: { name: string; originBoardId: number; startDate?: string; endDate?: string; goal?: string },
+    signal?: AbortSignal,
+  ): Promise<JiraSprint> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    return jiraPost<JiraSprint>("/rest/agile/1.0/sprint", params, signal);
+  }
+
+  /**
    * Assign an issue to a user (by accountId) or unassign (null).
    */
   async assignIssue(key: string, accountId: string | null, signal?: AbortSignal): Promise<void> {

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { jiraClient } from "@/lib/jira-client";
+import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { env } from "@/lib/env";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
@@ -106,7 +107,95 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ ok: true, count: hiddenIds.length });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    logger.error("jira", "Failed to load sprints", message);
-    return NextResponse.json({ error: "Failed to load sprints" }, { status: 500 });
+    logger.error("jira", "Failed to update hidden sprints", message);
+    return NextResponse.json({ error: "Failed to update hidden sprints" }, { status: 500 });
+  }
+}
+
+interface StoredSprint {
+  id: number;
+  name: string;
+  state: string;
+  startDate: string | null;
+  endDate: string | null;
+  completeDate: string | null;
+  goal: string | null;
+}
+
+/**
+ * POST /api/jira/sprints
+ *
+ * Creates a new sprint in Jira and adds it to the local cache.
+ * Body: { name: string; startDate?: string; endDate?: string; goal?: string }
+ */
+export async function POST(request: NextRequest) {
+  const limited = applyRateLimit("write");
+  if (limited) return limited;
+
+  let body: { name?: string; startDate?: string; endDate?: string; goal?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const name = body.name?.trim();
+  if (!name) {
+    return NextResponse.json({ error: "Sprint name is required" }, { status: 400 });
+  }
+
+  const boardId = env.JIRA_BOARD_ID ? parseInt(env.JIRA_BOARD_ID, 10) : null;
+  if (!boardId || isNaN(boardId)) {
+    return NextResponse.json({ error: "JIRA_BOARD_ID is not configured" }, { status: 400 });
+  }
+
+  try {
+    const created = await jiraClient.createSprint({
+      name,
+      originBoardId: boardId,
+      ...(body.startDate ? { startDate: body.startDate } : {}),
+      ...(body.endDate ? { endDate: body.endDate } : {}),
+      ...(body.goal ? { goal: body.goal } : {}),
+    });
+
+    // Insert into local sprint cache
+    const row = await db.query.appSetting.findFirst({
+      where: (r, { eq: eqFn }) => eqFn(r.key, "jira_sprints"),
+    });
+
+    const newSprint: StoredSprint = {
+      id: created.id,
+      name: created.name,
+      state: created.state ?? "future",
+      startDate: created.startDate ?? null,
+      endDate: created.endDate ?? null,
+      completeDate: created.completeDate ?? null,
+      goal: created.goal ?? null,
+    };
+
+    if (row) {
+      try {
+        const sprints: StoredSprint[] = JSON.parse(row.value);
+        sprints.push(newSprint);
+        await db.update(appSetting).set({ value: JSON.stringify(sprints) }).where(eq(appSetting.key, "jira_sprints"));
+      } catch {
+        // Cache parse failure is non-critical
+      }
+    }
+
+    cache.invalidate("/api/jira/sprints");
+
+    return NextResponse.json(newSprint, { status: 201 });
+  } catch (err) {
+    if (err instanceof JiraApiError && err.status === 403) {
+      return NextResponse.json(
+        { error: "Insufficient permissions to create a sprint" },
+        { status: 403 },
+      );
+    }
+
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error("jira", "Failed to create sprint", message);
+    return NextResponse.json({ error: "Failed to create sprint" }, { status: 500 });
   }
 }

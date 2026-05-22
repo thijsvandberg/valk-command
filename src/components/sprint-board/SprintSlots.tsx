@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -214,6 +214,7 @@ export function SprintSlots({
   onColumnReset,
   groupBy,
   onGroupByChange,
+  onCreateSprint,
 }: {
   slotSprints: string[];
   activeSlot: number;
@@ -247,6 +248,7 @@ export function SprintSlots({
   onColumnReset?: () => void;
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
+  onCreateSprint?: () => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -356,6 +358,24 @@ export function SprintSlots({
           })}
         </SortableContext>
       </DndContext>
+
+      {/* Create sprint button */}
+      {onCreateSprint && (
+        <button
+          type="button"
+          onClick={onCreateSprint}
+          disabled={slotSprints.length >= 8}
+          title={slotSprints.length >= 8 ? "Maximum 8 pinned sprints" : "Create sprint"}
+          aria-label={slotSprints.length >= 8 ? "Maximum 8 pinned sprints" : "Create sprint"}
+          className="group relative flex shrink-0 items-center justify-center self-center h-6 w-6 rounded-md text-text-muted cursor-pointer
+            hover:text-text-secondary hover:bg-overlay-default
+            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]
+            disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-muted
+            transition-colors duration-100"
+        >
+          <Plus size={13} strokeWidth={1.5} />
+        </button>
+      )}
 
       {/* Ephemeral (unpinned) sprint tab */}
       {ephemeralSprintId && (() => {
