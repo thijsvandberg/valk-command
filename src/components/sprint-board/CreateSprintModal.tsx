@@ -87,6 +87,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(null); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && !creating) handleCreate(); }}
               placeholder="e.g. Sprint 42"
               autoFocus
               className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
