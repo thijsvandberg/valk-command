@@ -142,7 +142,7 @@ export function EpicChildrenSection({
 
   const inlineInput = (
     <div
-      className={`flex items-center gap-2 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      className="flex items-center gap-2 px-3 py-2"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Type selector */}
@@ -193,9 +193,15 @@ export function EpicChildrenSection({
   );
 
   const listContent = (
-    <div className="mt-3 overflow-hidden rounded-lg border border-border-default">
-      {childRows}
-      {inlineInput}
+    <div className="mt-3">
+      {filtered.length > 0 && (
+        <div className="overflow-hidden rounded-lg rounded-b-none border border-b-0 border-border-default">
+          {childRows}
+        </div>
+      )}
+      <div className={`rounded-lg border border-border-default ${filtered.length > 0 ? "rounded-t-none" : ""}`}>
+        {inlineInput}
+      </div>
     </div>
   );
 
