@@ -288,7 +288,7 @@ export function EpicChildrenSection({
 
   const inlineInput = (
     <div
-      className="flex items-center gap-2 px-3 py-2"
+      className={`flex items-center gap-2 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Type selector */}
