@@ -5,7 +5,7 @@ import { mutate } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { jira } from "@/lib/api-client";
-import { Calendar, Target, Type, X } from "lucide-react";
+import { Calendar, Target, Type, X, AlertTriangle } from "lucide-react";
 
 interface CreateSprintModalProps {
   onClose: () => void;
@@ -30,12 +30,14 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
   const [endDate, setEndDate] = useState("");
   const [goal, setGoal] = useState("");
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreate = useCallback(async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
 
     setCreating(true);
+    setError(null);
     try {
       const result = await jira.createSprint({
         name: trimmed,
@@ -50,7 +52,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to create sprint";
-      showToast(msg);
+      setError(msg);
     } finally {
       setCreating(false);
     }
@@ -74,17 +76,17 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
         </div>
 
         {/* Body */}
-        <div className="space-y-4 px-5 py-4">
+        <div className="space-y-3.5 px-5 py-4">
           {/* Sprint name */}
-          <label className="space-y-1.5">
+          <label className="block space-y-1">
             <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-              <Type size={11} strokeWidth={1.5} className="text-text-muted" />
+              <Type size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
               Sprint name
             </span>
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setError(null); }}
               placeholder="e.g. Sprint 42"
               autoFocus
               className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
@@ -96,10 +98,10 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
 
           {/* Date fields */}
           <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-1.5">
+            <label className="block space-y-1">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                  <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
+                  <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
                   Start date
                 </span>
                 {startDate && (
@@ -117,10 +119,10 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
                   [color-scheme:dark]"
               />
             </label>
-            <label className="space-y-1.5">
+            <label className="block space-y-1">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-                  <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
+                  <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
                   End date
                 </span>
                 {endDate && (
@@ -141,9 +143,9 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
           </div>
 
           {/* Goal field */}
-          <label className="space-y-1.5">
+          <label className="block space-y-1">
             <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-              <Target size={11} strokeWidth={1.5} className="text-text-muted" />
+              <Target size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
               Sprint goal
             </span>
             <textarea
@@ -157,6 +159,14 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
                 transition-colors duration-100"
             />
           </label>
+
+          {/* Inline error */}
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2.5">
+              <AlertTriangle size={13} strokeWidth={1.5} className="mt-px shrink-0 text-red-400" />
+              <p className="text-xs leading-relaxed text-red-300">{error}</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

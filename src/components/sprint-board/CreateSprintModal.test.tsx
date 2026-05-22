@@ -116,7 +116,7 @@ describe("CreateSprintModal", () => {
     fireEvent.click(screen.getByText("Create"));
 
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith("Network error");
+      expect(screen.getByText("Network error")).toBeInTheDocument();
     });
 
     expect(onCreated).not.toHaveBeenCalled();
