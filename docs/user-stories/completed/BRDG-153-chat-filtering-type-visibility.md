@@ -1,6 +1,6 @@
 # BRDG-153: Chat Conversation Filtering & Type Visibility
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** High
 
 ## Description
