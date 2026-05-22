@@ -1,6 +1,6 @@
 # BRDG-162: Create Sprint from Bridge
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
