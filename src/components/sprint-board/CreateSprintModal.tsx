@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { mutate } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +31,15 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
   const [goal, setGoal] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Focus after Modal's own focus trap runs (which uses rAF)
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => nameRef.current?.focus());
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const handleCreate = useCallback(async () => {
     const trimmed = name.trim();
@@ -84,12 +93,12 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
               Sprint name
             </span>
             <input
+              ref={nameRef}
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(null); }}
               onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && !creating) handleCreate(); }}
               placeholder="e.g. Sprint 42"
-              autoFocus
               className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
                 placeholder:text-text-muted
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30

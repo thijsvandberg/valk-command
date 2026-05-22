@@ -187,15 +187,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newSprint, { status: 201 });
   } catch (err) {
-    if (err instanceof JiraApiError && err.status === 403) {
-      return NextResponse.json(
-        { error: "Insufficient permissions to create a sprint" },
-        { status: 403 },
-      );
+    if (err instanceof JiraApiError && (err.status === 401 || err.status === 403)) {
+      const detail = err.status === 401
+        ? "Jira API credentials lack permission to create sprints"
+        : "Insufficient permissions to create a sprint";
+      return NextResponse.json({ error: detail }, { status: err.status });
     }
 
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to create sprint", message);
-    return NextResponse.json({ error: "Failed to create sprint" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
