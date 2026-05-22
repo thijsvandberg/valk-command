@@ -13,6 +13,7 @@ interface SprintEditModalProps {
   tickets: Ticket[];
   onClose: () => void;
   showToast: (msg: string) => void;
+  autoSuggest?: boolean;
 }
 
 function toInputDateTime(iso: string | null | undefined): string {
@@ -45,7 +46,7 @@ interface StoredGoalTask {
 }
 
 const STORAGE_PREFIX = "sprint-goal-task-";
-const MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
 
 function getStoredTask(sprintId: string): StoredGoalTask | null {
   try {
@@ -72,13 +73,14 @@ function clearStoredTask(sprintId: string) {
   try { localStorage.removeItem(STORAGE_PREFIX + sprintId); } catch { /* ok */ }
 }
 
-export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintEditModalProps) {
+export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSuggest }: SprintEditModalProps) {
   const [startDate, setStartDate] = useState(toInputDateTime(sprint.startDate));
   const [endDate, setEndDate] = useState(toInputDateTime(sprint.endDate));
   const [goal, setGoal] = useState(sprint.goal ?? "");
   const [saving, setSaving] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [suggestionDate, setSuggestionDate] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const restoredRef = useRef(false);
@@ -93,6 +95,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
 
     if (stored.suggestion) {
       setSuggestion(stored.suggestion);
+      setSuggestionDate(stored.timestamp);
       return;
     }
 
@@ -103,6 +106,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
         const task = data as { status?: string; output?: string };
         if (task.status === "completed" && task.output) {
           setSuggestion(task.output);
+          setSuggestionDate(stored.timestamp);
           setSuggesting(false);
           setStoredTask(sprint.id, { ...stored, suggestion: task.output });
         } else if (task.status === "running") {
@@ -122,6 +126,18 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
   useEffect(() => {
     return () => { abortRef.current?.abort(); };
   }, []);
+
+  // Auto-trigger suggest when opened from the popover shortcut
+  const autoSuggestFired = useRef(false);
+  useEffect(() => {
+    if (autoSuggest && !autoSuggestFired.current && !suggesting && !suggestion) {
+      autoSuggestFired.current = true;
+      // Defer to next tick so handleSuggestGoal is defined
+      const t = setTimeout(() => handleSuggestGoalRef.current?.(), 0);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSuggest]);
 
   function connectStream(taskId: string, onResult: (text: string) => void) {
     const streamUrl = workspaceTasks.streamUrl(taskId);
@@ -157,8 +173,10 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
 
   function reconnectStream(taskId: string) {
     const es = connectStream(taskId, (text) => {
+      const now = Date.now();
       setSuggestion(text);
-      setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: Date.now() });
+      setSuggestionDate(now);
+      setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: now });
     });
 
     abortRef.current?.signal.addEventListener("abort", () => es.close());
@@ -224,8 +242,10 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
       setStoredTask(sprint.id, { taskId, suggestion: null, timestamp: Date.now() });
 
       const es = connectStream(taskId, (text) => {
+        const now = Date.now();
         setSuggestion(text);
-        setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: Date.now() });
+        setSuggestionDate(now);
+        setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: now });
       });
 
       controller.signal.addEventListener("abort", () => {
@@ -240,6 +260,9 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
       showToast(msg);
     }
   }, [sprint.id, sprint.name, tickets, showToast]);
+
+  const handleSuggestGoalRef = useRef(handleSuggestGoal);
+  handleSuggestGoalRef.current = handleSuggestGoal;
 
   const handleAcceptSuggestion = useCallback(() => {
     if (suggestion) {
@@ -373,6 +396,11 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast }: SprintE
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--color-brand-400)]">
                 <Sparkles size={10} strokeWidth={1.5} />
                 <span>AI suggestion</span>
+                {suggestionDate && (
+                  <span className="ml-auto text-[10px] font-normal text-text-muted">
+                    {new Date(suggestionDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
               </div>
               {suggesting && !suggestion && (
                 <div className="flex items-center gap-2 text-xs text-text-muted">

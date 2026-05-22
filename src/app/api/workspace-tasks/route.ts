@@ -3,10 +3,71 @@ import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
 import { db } from "@/db";
-import { conversation, workspaceTask } from "@/db/schema";
+import { conversation, message, workspaceTask } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { captureTaskStream } from "@/lib/task-stream-handler";
+
+/**
+ * Build a human-readable title for a task conversation based on skill + args.
+ */
+function buildConversationTitle(skillName: string, args: Record<string, unknown>): string {
+  switch (skillName) {
+    case "suggest-sprint-goal": {
+      const sprintName = typeof args.sprintName === "string" ? args.sprintName : null;
+      return sprintName ? `Sprint Goal: ${sprintName}` : "Sprint Goal Suggestion";
+    }
+    case "review-story":
+    case "review-story-json": {
+      const ticket = typeof args.args === "string" ? args.args.trim() : null;
+      return ticket ? `Review: ${ticket}` : "Story Review";
+    }
+    case "investigate": {
+      const query = typeof args.args === "string" ? args.args.trim() : null;
+      if (query) {
+        const short = query.length > 50 ? query.slice(0, 47) + "..." : query;
+        return `Investigate: ${short}`;
+      }
+      return "Investigation";
+    }
+    default: {
+      const pretty = skillName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return pretty;
+    }
+  }
+}
+
+/**
+ * Build a user-facing prompt summary so the conversation shows what was requested.
+ */
+function buildPromptSummary(skillName: string, args: Record<string, unknown>): string {
+  switch (skillName) {
+    case "suggest-sprint-goal": {
+      const sprintName = typeof args.sprintName === "string" ? args.sprintName : "unknown sprint";
+      let ticketCount = 0;
+      if (typeof args.tickets === "string") {
+        try { ticketCount = JSON.parse(args.tickets).length; } catch { /* ignore */ }
+      } else if (Array.isArray(args.tickets)) {
+        ticketCount = args.tickets.length;
+      }
+      return `Suggest a sprint goal for ${sprintName} based on ${ticketCount} ticket${ticketCount !== 1 ? "s" : ""}.`;
+    }
+    case "review-story":
+    case "review-story-json": {
+      const ticket = typeof args.args === "string" ? args.args.trim() : "ticket";
+      return `Review story ${ticket} for sprint readiness.`;
+    }
+    case "investigate": {
+      const query = typeof args.args === "string" ? args.args.trim() : "";
+      return query || "Run investigation.";
+    }
+    default: {
+      const argsStr = typeof args.args === "string" ? args.args : "";
+      const pretty = skillName.replace(/-/g, " ");
+      return argsStr ? `/${pretty} ${argsStr}` : `/${pretty}`;
+    }
+  }
+}
 
 export async function POST(request: Request) {
   const limited = applyRateLimit("workspace");
@@ -34,6 +95,10 @@ export async function POST(request: Request) {
     ? b.conversationId
     : `auto-${Date.now()}`;
 
+  const args = (typeof b.args === "object" && b.args !== null && !Array.isArray(b.args))
+    ? b.args as Record<string, unknown>
+    : typeof b.args === "string" ? { args: b.args } : {};
+
   // Ensure the conversation exists in Bridge's local DB so background handler can save messages
   const existing = await db.query.conversation.findFirst({
     where: (c, { eq: eq_ }) => eq_(c.id, conversationId),
@@ -41,9 +106,17 @@ export async function POST(request: Request) {
   if (!existing) {
     await db.insert(conversation).values({
       id: conversationId,
-      title: `Task: ${skillName}`,
+      title: buildConversationTitle(skillName, args),
       createdAt: new Date().toISOString(),
       relatedTicket: typeof b.relatedTicket === "string" ? b.relatedTicket : null,
+    });
+
+    // Save a user message so the conversation shows what was requested
+    await db.insert(message).values({
+      id: randomUUID(),
+      conversationId,
+      role: "user",
+      content: buildPromptSummary(skillName, args),
     });
   }
 

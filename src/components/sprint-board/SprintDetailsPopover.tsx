@@ -2,13 +2,14 @@
 
 import type { Sprint } from "@/types/ticket";
 import { Popover } from "@/components/shared/Popover";
-import { Pencil } from "lucide-react";
+import { Pencil, Sparkles } from "lucide-react";
 
 interface SprintDetailsPopoverProps {
   sprint: Sprint;
   open: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onSuggestGoal?: () => void;
 }
 
 function fmtDate(iso: string): string {
@@ -21,6 +22,7 @@ export function SprintDetailsPopover({
   open,
   onClose,
   onEdit,
+  onSuggestGoal,
 }: SprintDetailsPopoverProps) {
   const hasGoal = sprint.goal && sprint.goal.trim().length > 0;
   const hasDates = sprint.startDate && sprint.endDate;
@@ -39,10 +41,26 @@ export function SprintDetailsPopover({
         {hasGoal ? (
           <p className="text-xs leading-relaxed text-text-primary">{sprint.goal}</p>
         ) : (
-          <p className="text-xs italic text-text-muted">No sprint goal set</p>
+          <p className="flex items-center gap-1.5 text-xs italic text-text-muted">
+            <span>No sprint goal set</span>
+            {onSuggestGoal && (
+              <button
+                type="button"
+                onClick={() => { onClose(); onSuggestGoal(); }}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium not-italic cursor-pointer
+                  text-[var(--color-brand-400)]
+                  hover:bg-[var(--color-brand-500)]/10
+                  active:bg-[var(--color-brand-500)]/15
+                  transition-colors duration-100"
+              >
+                <Sparkles size={10} strokeWidth={1.5} className="shrink-0" />
+                Suggest with AI
+              </button>
+            )}
+          </p>
         )}
 
-        {/* Divider + edit */}
+        {/* Divider + actions */}
         <div className="pt-0.5">
           <div className="h-px bg-border-default -mx-3.5 mb-2" />
           <button

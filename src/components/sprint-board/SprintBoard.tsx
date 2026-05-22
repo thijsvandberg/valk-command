@@ -188,6 +188,7 @@ export default function SprintBoard() {
   const [statsPopoverOpen, setStatsPopoverOpen] = useState(false);
   const [detailsPopoverOpen, setDetailsPopoverOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [autoSuggest, setAutoSuggest] = useState(false);
   const completionBarRef = useRef<HTMLDivElement>(null);
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
@@ -1003,6 +1004,7 @@ export default function SprintBoard() {
                   open={detailsPopoverOpen}
                   onClose={() => setDetailsPopoverOpen(false)}
                   onEdit={() => setEditModalOpen(true)}
+                  onSuggestGoal={() => { setAutoSuggest(true); setEditModalOpen(true); }}
                 />
               </span>
             ) : (
@@ -1259,8 +1261,9 @@ export default function SprintBoard() {
         <SprintEditModal
           sprint={activeSprint}
           tickets={allTickets}
-          onClose={() => setEditModalOpen(false)}
+          onClose={() => { setEditModalOpen(false); setAutoSuggest(false); }}
           showToast={showToast}
+          autoSuggest={autoSuggest}
         />
       )}
     </div>
