@@ -301,3 +301,8 @@ details.expand-block[open] > summary .expand-arrow { transform: rotate(90deg); }
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Refinement session: fullscreen mode hides app shell */
+body.refinement-session-active #view-header-portal { display: none; }
+body.refinement-session-active [data-testid="sidebar"] { display: none; }
+body.refinement-session-active #main-content { border-radius: 0; }
