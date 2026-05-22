@@ -299,7 +299,7 @@ export function EpicChildrenSection({
           className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
         >
           <IssueTypeIcon type={selectedType} size={14} />
-          <span className="text-xs font-medium text-text-secondary">{currentTypeConfig.label}</span>
+          <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
           <ChevronDown size={10} className="text-text-muted" />
         </button>
         {showTypePicker && (
@@ -338,9 +338,13 @@ export function EpicChildrenSection({
     </div>
   );
 
-  const searchSection = searchMode ? (
-    <div ref={searchContainerRef} className="relative mt-2" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-2 rounded-lg border border-border-default px-3 py-2">
+  const searchRow = searchMode ? (
+    <div
+      ref={searchContainerRef}
+      className="relative border-t border-border-subtle px-3 py-2"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center gap-2">
         <Search size={14} className="shrink-0 text-text-muted" />
         <input
           ref={searchInputRef}
@@ -361,7 +365,7 @@ export function EpicChildrenSection({
         </button>
       </div>
       {searchResults.length > 0 && (
-        <div className="absolute left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
+        <div className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
           {searchResults.map((r, idx) => (
             <button
               key={r.key}
@@ -384,7 +388,7 @@ export function EpicChildrenSection({
       )}
     </div>
   ) : (
-    <div className="mt-2 flex items-center justify-between">
+    <div className="border-t border-border-subtle px-3 py-2" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         onClick={() => setSearchMode(true)}
@@ -403,10 +407,10 @@ export function EpicChildrenSection({
           {childRows}
         </div>
       )}
-      <div className={`rounded-lg border border-border-default ${filtered.length > 0 ? "rounded-t-none" : ""}`}>
+      <div className={`rounded-lg border border-border-default ${filtered.length > 0 ? "rounded-t-none border-t-0" : ""}`}>
         {inlineInput}
+        {searchRow}
       </div>
-      {searchSection}
     </div>
   );
 
