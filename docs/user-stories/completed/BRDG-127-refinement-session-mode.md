@@ -1,6 +1,6 @@
 # BRDG-127: Refinement Session Mode
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** High
 **Related:** BRDG-038 (Refinement Agenda - prep view and readiness scoring)
 
