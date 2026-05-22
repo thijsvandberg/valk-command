@@ -195,12 +195,11 @@ export default function RefinementPage() {
     (key: string) => {
       setSelectedKeys((prev) => {
         if (prev.includes(key)) {
-          const next = prev.filter((k) => k !== key);
           setQueue((q) => q.filter((k) => k !== key));
-          return next;
+          return prev.filter((k) => k !== key);
         }
         if (prev.length >= MAX_TICKETS) return prev;
-        setQueue((q) => [...q, key]);
+        setQueue((q) => q.includes(key) ? q : [...q, key]);
         return [...prev, key];
       });
     },
