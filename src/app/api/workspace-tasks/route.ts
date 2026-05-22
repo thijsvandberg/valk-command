@@ -30,6 +30,14 @@ function buildConversationTitle(skillName: string, args: Record<string, unknown>
       }
       return "Investigation";
     }
+    case "chat": {
+      const text = typeof args.args === "string" ? args.args.trim() : null;
+      if (text) {
+        const short = text.length > 50 ? text.slice(0, 47) + "..." : text;
+        return `Chat: ${short}`;
+      }
+      return "Chat";
+    }
     default: {
       const pretty = skillName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       return pretty;
@@ -64,6 +72,10 @@ function buildPromptSummary(skillName: string, args: Record<string, unknown>): s
     case "investigate": {
       const query = typeof args.args === "string" ? args.args.trim() : "";
       return query || "Run investigation.";
+    }
+    case "chat": {
+      const text = typeof args.args === "string" ? args.args.trim() : "";
+      return text || "Chat message";
     }
     default: {
       const argsStr = typeof args.args === "string" ? args.args : "";
@@ -138,6 +150,11 @@ export async function POST(request: Request) {
       role: "user",
       content: buildPromptSummary(skillName, args),
     });
+  } else if (existing.title === "New conversation" || existing.title === "New investigation") {
+    // Update generic title to something meaningful based on the first skill invocation
+    await db.update(conversation)
+      .set({ title: buildConversationTitle(skillName, args) })
+      .where(eq(conversation.id, conversationId));
   }
 
   // Normalise body for the agent: ensure skill is set and provide conversationId

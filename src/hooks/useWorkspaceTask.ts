@@ -28,6 +28,8 @@ interface UseWorkspaceTaskReturn extends WorkspaceTaskState {
     args: Record<string, string>,
     conversationId?: string
   ) => Promise<void>;
+  /** Connect to an already-created task's SSE stream (used for follow-up messages). */
+  streamExistingTask: (taskId: string, skill: string) => void;
   reset: () => void;
 }
 
@@ -268,9 +270,29 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
     [safeSetState]
   );
 
+  const streamExistingTask = useCallback(
+    (taskId: string, skill: string) => {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+
+      safeSetState({
+        ...initialState,
+        status: "streaming",
+        taskId,
+        skill,
+        progressText: `Running ${skill}...`,
+      });
+
+      openStream(taskId, skill);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [safeSetState]
+  );
+
   return {
     ...state,
     submitAndStream,
+    streamExistingTask,
     reset,
   };
 }

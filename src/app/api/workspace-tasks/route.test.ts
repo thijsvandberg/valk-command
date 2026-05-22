@@ -29,6 +29,11 @@ const { mockDb } = vi.hoisted(() => {
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue(Promise.resolve()),
     }),
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue(Promise.resolve()),
+      }),
+    }),
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -209,6 +214,67 @@ describe("POST /api/workspace-tasks", () => {
     });
     const response = await POST(request);
     expect(response.status).toBe(201);
+  });
+
+  it("builds chat title and summary from message content", async () => {
+    mockDb.query.conversation.findFirst.mockResolvedValue(null);
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    mockDb.insert.mockReturnValue({ values: insertValues });
+
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-chat" },
+      status: 201,
+      retryCount: 0,
+    });
+
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        skillName: "chat",
+        args: { args: "draft een mail naar Shiji over group reservations" },
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    expect(insertValues).toHaveBeenCalledTimes(2);
+    const convCall = insertValues.mock.calls[0][0];
+    expect(convCall.title).toBe("Chat: draft een mail naar Shiji over group reservations");
+    const msgCall = insertValues.mock.calls[1][0];
+    expect(msgCall.role).toBe("user");
+    expect(msgCall.content).toBe("draft een mail naar Shiji over group reservations");
+  });
+
+  it("updates 'New conversation' title when conversation already exists", async () => {
+    mockDb.query.conversation.findFirst.mockResolvedValue({ id: "conv-1", title: "New conversation" });
+    const mockSet = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    mockDb.update.mockReturnValue({ set: mockSet });
+
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-update" },
+      status: 201,
+      retryCount: 0,
+    });
+
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        skillName: "chat",
+        args: { args: "what is the status of VPL-123?" },
+        conversationId: "conv-1",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    expect(mockDb.update).toHaveBeenCalled();
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Chat: what is the status of VPL-123?",
+    }));
   });
 
   it("creates conversation with descriptive title and saves user prompt for suggest-sprint-goal", async () => {

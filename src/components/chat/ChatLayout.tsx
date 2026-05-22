@@ -185,11 +185,44 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           invocation.args ? { args: invocation.args } : {},
           activeId
         );
+        return true;
+      }
+
+      // Plain text in a regular chat conversation: forward to workspace
+      const hasAssistantMessage = messages.some((m) => m.role === "assistant");
+      if (hasAssistantMessage) {
+        // Follow-up: resume existing workspace session
+        try {
+          workspaceTask.reset();
+          const res = await apiFetch<{ id: string }>(`/api/conversations/${activeId}/chat-messages`, {
+            method: "POST",
+            body: { content: content.trim() },
+          });
+          lastInvocationRef.current = { skill: "chat", args: content.trim() };
+          workspaceTask.streamExistingTask(res.id, "chat");
+        } catch (err) {
+          workspaceTask.reset();
+          console.warn("[chat] follow-up failed", err);
+        }
+      } else {
+        // First message: start new chat skill task
+        lastInvocationRef.current = { skill: "chat", args: content.trim() };
+        workspaceTask.reset();
+        await workspaceTask.submitAndStream("chat", { args: content.trim() }, activeId);
+      }
+
+      // Update generic conversation title
+      if (activeConv?.title === "New conversation") {
+        const short = content.trim().length > 50 ? content.trim().slice(0, 47) + "..." : content.trim();
+        apiFetch(`/api/conversations/${activeId}`, {
+          method: "PATCH",
+          body: { title: `Chat: ${short}` },
+        }).then(() => refreshConversations()).catch((err) => console.warn("[chat] set title failed", err));
       }
 
       return true;
     },
-    [activeId, sendMessage, workspaceTask, isInvestigation, isSprintGoal, activeConv, messages]
+    [activeId, sendMessage, workspaceTask, isInvestigation, isSprintGoal, activeConv, messages, refreshConversations]
   );
 
   // Track the last skill invocation so we can persist review results from chat
