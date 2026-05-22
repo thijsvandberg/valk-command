@@ -695,14 +695,3 @@ export const cache = {
   stats: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/cache/stats", { signal }),
 };
-
-export const ai = {
-  rewriteTitles: (
-    data: { tickets: { key: string; title: string; points: number | null; epicName: string | null }[] },
-    signal?: AbortSignal,
-  ) =>
-    apiFetch<{ tickets: { key: string; title: string }[]; fallback?: boolean }>(
-      "/api/ai/rewrite-titles",
-      { method: "POST", body: data, signal },
-    ),
-};

@@ -35,9 +35,6 @@ const envSchema = z.object({
   BT_NEXT_SPRINT_ID: z.string().default(""),
   DB_PATH: z.string().default("sqlite.db"),
 
-  // AI (Anthropic)
-  ANTHROPIC_API_KEY: z.string().default(""),
-
   // Auth (Clerk) — CLERK_SECRET_KEY is read by @clerk/nextjs directly from process.env
   CLERK_ORG_ID: z.string().default(""),
 });

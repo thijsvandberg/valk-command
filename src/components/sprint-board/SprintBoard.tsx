@@ -21,7 +21,7 @@ import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatPill, StatusPill, StatusCount, SprintCompletionBar, SprintStats, STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
-import { apiFetch, jira, followedSprints, workspaceTasks, ai, ApiError } from "@/lib/api-client";
+import { apiFetch, jira, followedSprints, workspaceTasks, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle } from "lucide-react";
@@ -500,47 +500,33 @@ export default function SprintBoard() {
 
     setIsExporting(true);
 
-    const payload = selected.map((t) => ({
+    const ticketData = selected.map((t) => ({
       key: t.key,
-      title: t.title,
+      summary: t.title,
       points: t.storyPoints ?? null,
-      epicName: t.epic ?? null,
+      epic: t.epic ?? null,
     }));
 
-    const selectedPts = selected.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
     const sprintLabel = activeSprint?.name ?? "Selected work";
 
-    function formatExport(rewritten: { key: string; title: string }[]) {
-      const titleMap = new Map(rewritten.map((r) => [r.key, r.title]));
-      const lines = selected.map((t) => {
-        const title = titleMap.get(t.key) ?? t.title;
-        const ptsSuffix = t.storyPoints != null ? ` (${t.storyPoints} pts)` : "";
-        return `- ${title}${ptsSuffix} - ${t.key}`;
-      });
-      return `${sprintLabel} - Selected work (${selectedPts} pts)\n\n${lines.join("\n")}`;
-    }
-
     try {
-      const result = await ai.rewriteTitles({ tickets: payload });
-      const text = formatExport(result.tickets);
-      await navigator.clipboard.writeText(text);
-      if (result.fallback) {
-        showToast("Exported with original titles (AI unavailable)");
-      } else {
-        showToast(`Exported ${selected.length} ticket${selected.length === 1 ? "" : "s"} to clipboard`);
+      const result = await workspaceTasks.create({
+        skillName: "export-stakeholder-summary",
+        args: {
+          sprintName: sprintLabel,
+          tickets: JSON.stringify(ticketData),
+        },
+      });
+      const convId = (result as Record<string, unknown>).conversationId as string | undefined;
+      if (convId) {
+        router.push(`/chat/${convId}`);
       }
     } catch {
-      const text = formatExport(payload.map((t) => ({ key: t.key, title: t.title })));
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast("Exported with original titles (AI unavailable)");
-      } catch {
-        showToast("Failed to copy to clipboard");
-      }
+      showToast("Could not start export. Is the workspace running?");
     } finally {
       setIsExporting(false);
     }
-  }, [tickets, checkedTickets, activeSprint, showToast]);
+  }, [tickets, checkedTickets, activeSprint, showToast, router]);
 
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;

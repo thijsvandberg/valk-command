@@ -58,17 +58,14 @@ Sprint {name} - Selected work ({total} pts)
 
 ## Implementation Plan
 
-1. **Install `@anthropic-ai/sdk`**, add `ANTHROPIC_API_KEY` to `src/lib/env.ts` and `.env.example`
-2. **Create `POST /api/ai/rewrite-titles/route.ts`** with Zod validation, Anthropic SDK call, JSON response
-3. **Add `ai.rewriteTitles` helper** to `src/lib/api-client.ts`
-4. **Add Export button** to `BulkActionBar.tsx` with `onExportForStakeholders` + `isExporting` props
-5. **Wire handler** in `SprintBoard.tsx`: build payload from checked tickets, call API, format result, copy to clipboard, toast
-6. **Write tests** for the API route (400 on invalid body, 503 on missing key, success with mocked SDK, fallback on malformed AI response)
+1. **Add Export button** to `BulkActionBar.tsx` with `onExportForStakeholders` + `isExporting` props
+2. **Wire handler** in `SprintBoard.tsx`: build payload from checked tickets, submit workspace task with skill `export-stakeholder-summary`, navigate to chat conversation
+3. **VRW skill** `export-stakeholder-summary` handles AI rewriting and returns formatted result (skill lives in valk-remote-workspace)
 
 Notes:
-- Tickets with null story points: omit points suffix, just show `- {title} - {KEY}`
-- All view (no active sprint): use "Selected work" as header instead of sprint name
-- On AI failure: fall back to original titles, copy anyway, toast with warning
+- AI runs via VRW workspace agent (same pattern as suggest-sprint-goal, story reviews, etc.)
+- Result appears as a chat message in a conversation
+- All view (no active sprint): uses "Selected work" as sprint label
 
 ## Acceptance Criteria
 

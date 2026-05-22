@@ -204,12 +204,6 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 |-------|--------|---------|
 | `/api/attachments/[id]` | GET | Proxy attachment download from Jira |
 
-## AI
-
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/api/ai/rewrite-titles` | POST | Rewrite ticket titles into stakeholder-friendly summaries via Claude |
-
 ## Common Patterns
 
 ### Error Responses
