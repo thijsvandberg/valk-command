@@ -14,16 +14,18 @@ interface StoredSprint {
   state: string;
   startDate: string | null;
   endDate: string | null;
+  completeDate: string | null;
   goal: string | null;
 }
 
-function sprintToStored(s: { id: number; name: string; state: string; startDate?: string; endDate?: string; goal?: string }): StoredSprint {
+function sprintToStored(s: { id: number; name: string; state: string; startDate?: string; endDate?: string; completeDate?: string; goal?: string }): StoredSprint {
   return {
     id: s.id,
     name: s.name,
     state: s.state,
     startDate: s.startDate ?? null,
     endDate: s.endDate ?? null,
+    completeDate: s.completeDate ?? null,
     goal: s.goal ?? null,
   };
 }

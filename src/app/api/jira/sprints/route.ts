@@ -44,7 +44,7 @@ export async function GET() {
       getHiddenIds(),
     ]);
 
-    let sprints: Array<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null }>;
+    let sprints: Array<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; completeDate: string | null; goal: string | null }>;
 
     if (sprintRow) {
       sprints = safeJsonParse(sprintRow.value, [], "jira-sprints");
@@ -56,6 +56,7 @@ export async function GET() {
         state: s.state,
         startDate: s.startDate ?? null,
         endDate: s.endDate ?? null,
+        completeDate: s.completeDate ?? null,
         goal: s.goal ?? null,
       }));
     }

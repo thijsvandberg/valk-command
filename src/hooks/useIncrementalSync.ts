@@ -14,6 +14,7 @@ interface IncrementalSyncResult {
   skipped?: boolean;
   needsFullSync?: boolean;
   tickets?: string[];
+  sprintMetaRefreshed?: boolean;
 }
 
 /**
@@ -62,6 +63,12 @@ export function useIncrementalSync(onSyncComplete?: () => void) {
           ),
         );
         onCompleteRef.current?.();
+      }
+
+      if (data.sprintMetaRefreshed) {
+        globalMutate((key: unknown) =>
+          typeof key === "string" && key.startsWith("/api/jira/sprints"),
+        );
       }
     } catch {
       // Background sync, fail silently

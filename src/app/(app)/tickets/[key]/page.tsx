@@ -226,6 +226,8 @@ export default function TicketDetailPage({
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
   const [previewTicketKey, setPreviewTicketKey] = useState<string | null>(null);
 
+  const [isDiscarding, setIsDiscarding] = useState(false);
+  const [discardError, setDiscardError] = useState<string | null>(null);
   const [isPushing, setIsPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
@@ -268,17 +270,26 @@ export default function TicketDetailPage({
   }, [mutateTicket]);
 
   const handleDiscardDraft = useCallback(async () => {
+    setIsDiscarding(true);
+    setDiscardError(null);
     try {
       await apiFetch(`/api/tickets/${key}/local-edits`, { method: "DELETE" });
       setHasLocalTitleEdit(false);
       setHasLocalDescEdit(false);
       setPushError(null);
       setOverrideConfirmed(false);
-      // Await fresh data before remounting so editables initialize without stale localEdits
-      await mutateTicket();
+      setShowConflictDiff(false);
+      setMetadataOnlyConflict(false);
+      await mutateTicket(
+        (prev) => prev ? { ...prev, editState: "clean", localEdits: {} } : prev,
+        { revalidate: true },
+      );
       setDraftDiscardKey((k) => k + 1);
     } catch (err) {
       console.error("Failed to discard draft:", err);
+      setDiscardError("Failed to accept Jira version. Please try again.");
+    } finally {
+      setIsDiscarding(false);
     }
   }, [key, mutateTicket]);
 
@@ -747,35 +758,47 @@ export default function TicketDetailPage({
 
           {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
-            <div className="mt-3 flex w-full items-start gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3">
-              <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
-                <p className="mt-0.5 text-xs text-text-tertiary">
-                  Jira was updated since your local edit. Click to review and resolve.
-                </p>
+            <div className="mt-3 flex w-full flex-col gap-2 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3">
+              <div className="flex w-full items-start gap-2.5">
+                <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
+                  <p className="mt-0.5 text-xs text-text-tertiary">
+                    Jira was updated since your local edit. Click to review and resolve.
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDiscardDraft}
+                    disabled={isDiscarding}
+                    className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                  >
+                    {isDiscarding ? (
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 size={12} className="animate-spin" />
+                        Accepting...
+                      </span>
+                    ) : "Accept Jira version"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("history");
+                      setShowConflictDiff(true);
+                    }}
+                    disabled={isDiscarding}
+                    className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-[#ea8744]/80 hover:bg-[#ea8744]/10 hover:text-[#ea8744] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                  >
+                    Review diff
+                  </button>
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleDiscardDraft}
-                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong"
-                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-                >
-                  Accept Jira version
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("history");
-                    setShowConflictDiff(true);
-                  }}
-                  className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-[#ea8744]/80 hover:bg-[#ea8744]/10 hover:text-[#ea8744] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50"
-                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-                >
-                  Review diff
-                </button>
-              </div>
+              {discardError && (
+                <p className="text-xs text-red-500">{discardError}</p>
+              )}
             </div>
           )}
 
@@ -872,7 +895,7 @@ export default function TicketDetailPage({
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
-                ? detail && <EpicChildrenSection items={detail.epicChildren} onSelectTicket={setPreviewTicketKey} />
+                ? detail && <EpicChildrenSection items={detail.epicChildren} ticketKey={key} onMutate={() => mutateTicket()} onSelectTicket={setPreviewTicketKey} />
                 : <>
                     {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={key} onMutate={() => mutateTicket()} onSelectTicket={setPreviewTicketKey} />}
                     {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={key} onMutate={() => mutateTicket()} />}
@@ -896,7 +919,11 @@ export default function TicketDetailPage({
                 setMetadataOnlyConflict(false);
                 setHasLocalTitleEdit(false);
                 setHasLocalDescEdit(false);
-                await mutateTicket();
+                setDiscardError(null);
+                await mutateTicket(
+                  (prev) => prev ? { ...prev, editState: "clean", localEdits: {} } : prev,
+                  { revalidate: true },
+                );
                 setDraftDiscardKey((k) => k + 1);
                 setActiveTab("content");
               }}

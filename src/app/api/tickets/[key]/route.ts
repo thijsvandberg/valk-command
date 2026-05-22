@@ -59,7 +59,7 @@ export async function GET(
     return NextResponse.json(cached, {
       headers: {
         "X-Cache": "HIT",
-        "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+        "Cache-Control": "private, no-cache",
       },
     });
   }
@@ -280,7 +280,7 @@ export async function GET(
     headers: {
       "X-Query-Time-Ms": String(durationMs),
       "X-Cache": "MISS",
-      "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+      "Cache-Control": "private, no-cache",
     },
   });
 }

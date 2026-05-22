@@ -9,6 +9,7 @@ interface StoredSprint {
   state: string;
   startDate: string | null;
   endDate: string | null;
+  completeDate: string | null;
   goal: string | null;
 }
 

@@ -166,6 +166,38 @@ describe("useIncrementalSync", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("triggers sprint SWR revalidation when sprintMetaRefreshed is true", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, count: 0, remaining: 0, sprintMetaRefreshed: true }),
+    } as Response);
+
+    const { result } = renderHook(() => useIncrementalSync());
+
+    await waitFor(() => expect(result.current.lastSyncAt).not.toBeNull());
+
+    // Should revalidate sprint keys
+    expect(globalMutate).toHaveBeenCalled();
+    const calls = vi.mocked(globalMutate).mock.calls;
+    const matcherFn = calls[0][0] as (key: unknown) => boolean;
+    expect(matcherFn("/api/jira/sprints")).toBe(true);
+    expect(matcherFn("/api/jira/sprints?hidden=true")).toBe(true);
+    expect(matcherFn("/api/tickets")).toBe(false);
+  });
+
+  it("does not trigger sprint revalidation when sprintMetaRefreshed is false", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, count: 0, remaining: 0, sprintMetaRefreshed: false }),
+    } as Response);
+
+    const { result } = renderHook(() => useIncrementalSync());
+
+    await waitFor(() => expect(result.current.lastSyncAt).not.toBeNull());
+
+    expect(globalMutate).not.toHaveBeenCalled();
+  });
+
   it("prevents concurrent sync runs", async () => {
     let resolveFirst: (v: Response) => void;
     const firstCall = new Promise<Response>((r) => { resolveFirst = r; });

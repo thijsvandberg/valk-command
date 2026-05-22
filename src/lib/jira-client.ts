@@ -599,6 +599,38 @@ export class JiraClient {
   }
 
   /**
+   * Lightweight sprint fetch using the Agile board endpoint.
+   * Returns active+future sprints with full metadata (including goal)
+   * in a single API call when boardId is configured.
+   * Falls back to getSprints() when no boardId is available.
+   */
+  async getSprintsLightweight(signal?: AbortSignal): Promise<JiraSprint[]> {
+    if (!isConfigured()) return [];
+
+    const cfg = getConfig();
+    const boardId = cfg.boardId ? parseInt(cfg.boardId, 10) : null;
+
+    if (!boardId) {
+      return this.getSprints(["active", "future"], signal);
+    }
+
+    const sprints: JiraSprint[] = [];
+    let startAt = 0;
+
+    while (true) {
+      const page = await jiraFetch<JiraSprintListResponse>(
+        `/rest/agile/1.0/board/${boardId}/sprint?state=active,future&startAt=${startAt}&maxResults=50`,
+        signal,
+      );
+      sprints.push(...page.values);
+      if (page.isLast !== false || page.values.length === 0) break;
+      startAt += page.values.length;
+    }
+
+    return sprints;
+  }
+
+  /**
    * Fetch all issues for a given sprint using JQL search.
    */
   async getSprintIssues(sprintId: number, signal?: AbortSignal): Promise<JiraIssue[]> {

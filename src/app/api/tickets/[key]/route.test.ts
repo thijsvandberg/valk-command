@@ -95,6 +95,35 @@ describe("GET /api/tickets/[key]", () => {
     expect(data.poStatus).toBe("Draft");
     expect(data.qualityScore).toBe(60);
   });
+
+  it("sets Cache-Control to no-cache on cache miss", async () => {
+    seedTicket(testDb, "VPL-100");
+
+    const response = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-100"),
+      makeParams("VPL-100"),
+    );
+
+    expect(response.headers.get("Cache-Control")).toBe("private, no-cache");
+  });
+
+  it("sets Cache-Control to no-cache on cache hit", async () => {
+    seedTicket(testDb, "VPL-100");
+
+    // Prime the cache
+    await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-100"),
+      makeParams("VPL-100"),
+    );
+
+    const response = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-100"),
+      makeParams("VPL-100"),
+    );
+
+    expect(response.headers.get("X-Cache")).toBe("HIT");
+    expect(response.headers.get("Cache-Control")).toBe("private, no-cache");
+  });
 });
 
 describe("PATCH /api/tickets/[key] - story points", () => {

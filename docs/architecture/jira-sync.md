@@ -31,6 +31,8 @@ Watermark-based background sync that runs automatically every 150 seconds while 
 
 **Date format:** Jira JQL requires `"yyyy-MM-dd HH:mm"` format (minute precision only). The watermark (stored as ISO 8601) is converted before querying and shifted back by 1 minute to prevent missing tickets updated within the same minute as the watermark. The local timestamp comparison deduplicates any overlap.
 
+**Sprint metadata refresh:** The incremental sync also refreshes sprint metadata (state, goal, dates) on a separate 5-minute cooldown (`jira_sprint_sync_watermark`). Uses `getSprintsLightweight()` which calls the Agile board endpoint (`/rest/agile/1.0/board/{boardId}/sprint?state=active,future`) for a single API call when boardId is configured, falling back to the JQL-based `getSprints()` otherwise. State transitions (e.g., future -> active) are detected and logged to `activity_log`. The response includes `sprintMetaRefreshed: boolean` so the client can revalidate the sprint list via SWR. Sprint refresh failures are non-blocking and never affect ticket sync.
+
 ### Sprint Sync (manual/on-demand)
 
 Full sync of all tickets in a specific sprint. Used for initial data load and manual refresh.
@@ -63,6 +65,7 @@ Low-level HTTP client for the Jira REST API v3 via the Atlassian API gateway (`a
 - `getSprintTimestamps(sprintId)` -- lightweight key+updated fetch for timestamp-first sync
 - `getIssuesByKeys(keys[])` -- batch fetch by key list
 - `searchIssues(jql, fields?, maxResults?)` -- ad-hoc JQL search, used by `GET /api/search/jira`
+- `getSprintsLightweight()` -- fetch active+future sprints via Agile board endpoint (1 API call) with fallback to JQL
 - `checkJiraHealth()` -- lightweight connectivity check (1-result search, no `/myself`)
 
 ### Shared Upsert Logic (`src/lib/upsert-issue.ts`)
