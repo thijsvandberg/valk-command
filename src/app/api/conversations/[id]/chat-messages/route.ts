@@ -54,6 +54,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     conversationId,
     role: "user",
     content,
+    timestamp: new Date().toISOString(),
   });
 
   // Try to resume the existing workspace session

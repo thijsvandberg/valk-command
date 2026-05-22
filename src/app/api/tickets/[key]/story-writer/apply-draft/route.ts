@@ -63,6 +63,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       role: "assistant",
       content: assistantContent,
       workspaceTaskId: taskId,
+      timestamp: new Date().toISOString(),
     });
   }
 

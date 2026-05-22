@@ -117,6 +117,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       content,
       status: "pending",
       contentHash,
+      timestamp: new Date().toISOString(),
     });
   }
 

@@ -79,6 +79,7 @@ async function saveAssistantMessage(
     role: "assistant",
     content,
     workspaceTaskId,
+    timestamp: new Date().toISOString(),
   });
 }
 

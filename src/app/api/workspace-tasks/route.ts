@@ -149,6 +149,7 @@ export async function POST(request: Request) {
       conversationId,
       role: "user",
       content: buildPromptSummary(skillName, args),
+      timestamp: new Date().toISOString(),
     });
   } else if (existing.title === "New conversation" || existing.title === "New investigation") {
     // Update generic title to something meaningful based on the first skill invocation
