@@ -103,7 +103,7 @@ describe("POST /api/conversations/[id]/chat-messages", () => {
     // First call: session lost
     vi.mocked(agentFetch).mockResolvedValueOnce({
       ok: false,
-      error: { error: "Session not found", code: "SESSION_LOST" },
+      error: { error: "Session not found", code: "SERVER_ERROR" },
       status: 410,
       retryCount: 0,
     });
@@ -157,7 +157,7 @@ describe("POST /api/conversations/[id]/chat-messages", () => {
     // Session lost
     vi.mocked(agentFetch).mockResolvedValueOnce({
       ok: false,
-      error: { error: "Session not found", code: "SESSION_LOST" },
+      error: { error: "Session not found", code: "SERVER_ERROR" },
       status: 410,
       retryCount: 0,
     });

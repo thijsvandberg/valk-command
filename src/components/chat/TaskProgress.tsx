@@ -34,29 +34,40 @@ export default function TaskProgress({
 }: TaskProgressProps) {
   if (status === "idle" || status === "completed") return null;
 
+  // Error state
+  if (status === "failed") {
+    return (
+      <div className="border-t border-red-500/20 px-6 py-2.5">
+        <div className="mx-auto max-w-3xl">
+          <span className="text-xs text-red-400">{error ?? "Task failed"}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Streaming / submitting state
+  const label = progressText
+    ? progressText.slice(0, 80)
+    : status === "submitting"
+      ? `Starting ${skill ?? "task"}...`
+      : `Running ${skill ?? "task"}...`;
+
   return (
-    <div className="border-t border-border-default px-6 py-3">
-      <div className="mx-auto max-w-3xl">
-        {/* Status bar */}
-        <div className="flex items-center gap-3">
-          {status === "failed" ? (
-            <div className="h-2 w-2 rounded-full bg-red-400" />
-          ) : (
-            <div className="h-2 w-2 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
-          )}
-          <span className="text-xs font-medium text-text-secondary">
-            {status === "submitting" && `Submitting ${skill}...`}
-            {status === "streaming" && (progressText
-              ? progressText.slice(0, 80)
-              : `Running ${skill}...`
-            )}
-            {status === "failed" && (error ?? "Task failed")}
+    <div className="border-t border-border-default px-6 py-2.5">
+      <div className="mx-auto max-w-3xl space-y-2">
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex size-2 items-center justify-center">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
+          </div>
+          <span className="text-xs text-text-secondary truncate">
+            {label}
           </span>
         </div>
 
         {/* Tool calls (compact list) */}
         {toolCalls.length > 0 && status === "streaming" && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 pl-[18px]">
             {toolCalls.slice(-5).map((tc) => (
               <Tag key={tc.id} className="border border-border-subtle text-label text-text-tertiary">
                 {formatToolName(tc.tool)}
