@@ -284,8 +284,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       )}
 
       {/* Inline link input */}
-      <div className="mt-3 overflow-hidden rounded-lg border border-border-default">
-        <div className="relative flex items-center gap-3 px-3 py-2">
+      <div className="relative mt-3 rounded-lg border border-border-default">
+        <div className="flex items-center gap-3 px-3 py-2">
           <Link2 size={14} strokeWidth={1.5} className="shrink-0 text-text-muted" />
           <input
             ref={inlineInputRef}
@@ -299,52 +299,52 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
             className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
           />
           {inlineSearching && <Loader2 size={13} className="shrink-0 animate-spin text-text-muted" />}
-          {inlineShowResults && (
-            <div
-              className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
-              style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
-            >
-              {inlineResults.length > 0 ? inlineResults.map((r, idx) => (
-                <button
-                  key={r.key}
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); handleInlineLink(r); }}
-                  onMouseEnter={() => setInlineHighlight(idx)}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
-                  style={{
-                    borderLeft: idx === inlineHighlight ? "2px solid var(--color-brand-400)" : "2px solid transparent",
-                    backgroundColor: idx === inlineHighlight ? "var(--color-overlay-subtle)" : undefined,
-                    transition: "background-color 80ms, border-color 80ms",
-                  }}
-                >
-                  <IssueTypeIcon type={r.type as IssueType} size={13} />
-                  <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{r.title}</span>
-                  <SearchStatusBadge status={r.status} />
-                  {r.source === "jira" && (
-                    <span
-                      className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                      style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "rgba(147, 197, 253, 0.8)" }}
-                    >
-                      <Cloud size={9} strokeWidth={2} />
-                      Jira
-                    </span>
-                  )}
-                </button>
-              )) : !inlineSearching ? (
-                <div className="px-3 py-2.5 text-xs text-text-muted">
-                  No issues found for &ldquo;{inlineQuery}&rdquo;
-                </div>
-              ) : null}
-              {inlineSearchingJira && (
-                <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
-                  <Loader2 size={11} className="animate-spin text-text-muted" />
-                  <span className="text-[11px] text-text-muted">Searching Jira...</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
+        {inlineShowResults && (
+          <div
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
+            style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+          >
+            {inlineResults.length > 0 ? inlineResults.map((r, idx) => (
+              <button
+                key={r.key}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); handleInlineLink(r); }}
+                onMouseEnter={() => setInlineHighlight(idx)}
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
+                style={{
+                  borderLeft: idx === inlineHighlight ? "2px solid var(--color-brand-400)" : "2px solid transparent",
+                  backgroundColor: idx === inlineHighlight ? "var(--color-overlay-subtle)" : undefined,
+                  transition: "background-color 80ms, border-color 80ms",
+                }}
+              >
+                <IssueTypeIcon type={r.type as IssueType} size={13} />
+                <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{r.title}</span>
+                <SearchStatusBadge status={r.status} />
+                {r.source === "jira" && (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "rgba(147, 197, 253, 0.8)" }}
+                  >
+                    <Cloud size={9} strokeWidth={2} />
+                    Jira
+                  </span>
+                )}
+              </button>
+            )) : !inlineSearching ? (
+              <div className="px-3 py-2.5 text-xs text-text-muted">
+                No issues found for &ldquo;{inlineQuery}&rdquo;
+              </div>
+            ) : null}
+            {inlineSearchingJira && (
+              <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
+                <Loader2 size={11} className="animate-spin text-text-muted" />
+                <span className="text-[11px] text-text-muted">Searching Jira...</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {inlineError && (
