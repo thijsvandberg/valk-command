@@ -1,6 +1,6 @@
 # BRDG-160: Inline child issue creation and status filters for epics
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 **Depends on:** -
 
