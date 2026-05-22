@@ -22,6 +22,7 @@ import { defineTask, type TaskResult } from "@/lib/scheduler";
 import { logger } from "@/lib/logger";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { createNotification } from "@/lib/notifications";
+import { refreshSprintMetadata } from "@/lib/refresh-sprint-metadata";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -38,6 +39,14 @@ const REMOVED_TICKET_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 async function runIncrementalSync(): Promise<TaskResult> {
   if (!jiraClient.isLive) {
     return { skipped: true, reason: "Jira not configured" };
+  }
+
+  // Sprint metadata refresh on its own 5-minute cooldown
+  try {
+    await refreshSprintMetadata();
+  } catch (err) {
+    logger.warn("scheduled-tasks", "Sprint metadata refresh failed (non-blocking)",
+      err instanceof Error ? err.message : String(err));
   }
 
   const watermarkRow = await db.query.appSetting.findFirst({
