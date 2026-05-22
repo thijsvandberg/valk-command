@@ -240,7 +240,7 @@ export function registerScheduledTasks() {
   defineTask(
     "incremental-sync",
     "Jira Incremental Sync",
-    "Syncs recently updated tickets from Jira using watermark-based incremental fetching. Processes up to 50 tickets per run and creates notifications for changes.",
+    "Syncs recently updated tickets from Jira using watermark-based incremental fetching. Processes up to 50 tickets per run and creates notifications for changes. Also refreshes sprint metadata (state, goal, dates) every 5 minutes.",
     150_000,
     runIncrementalSync,
   );
