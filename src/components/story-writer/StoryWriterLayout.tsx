@@ -29,7 +29,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { getJiraUrl } from "@/lib/jira-url";
-import { apiFetch, tickets } from "@/lib/api-client";
+import { ApiError, apiFetch, tickets } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Button } from "@/components/ui/Button";
@@ -209,8 +209,9 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
           ? "Jira was updated externally. Review the diff on the ticket detail page."
           : "Metadata changed in Jira. Try pushing again.");
       }
-    } catch {
-      setPushError("Push failed");
+    } catch (err) {
+      const detail = err instanceof ApiError ? (err.body as { detail?: string })?.detail : undefined;
+      setPushError(detail ?? "Push failed");
     } finally {
       setPushing(false);
     }
@@ -290,8 +291,9 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
       await globalMutate("/api/story-writer/active-sessions");
       await handleReadinessChange("ready_to_refine");
       router.push(`/tickets/${encodeURIComponent(ticketKey)}`);
-    } catch {
-      setPushError("Push failed");
+    } catch (err) {
+      const detail = err instanceof ApiError ? (err.body as { detail?: string })?.detail : undefined;
+      setPushError(detail ?? "Push failed");
     } finally {
       setPushing(false);
     }
