@@ -725,7 +725,7 @@ export class JiraClient {
    * Add a comment to an issue.
    * REST API v3 requires ADF (Atlassian Document Format) for comment body.
    */
-  async addComment(key: string, bodyText: string, signal?: AbortSignal): Promise<void> {
+  async addComment(key: string, bodyText: string, signal?: AbortSignal): Promise<JiraComment> {
     if (!isConfigured()) {
       throw new Error("Jira is not configured");
     }
@@ -735,7 +735,7 @@ export class JiraClient {
       content: [{ type: "text" as const, text: block }],
     }));
 
-    await jiraPost<unknown>(
+    return jiraPost<JiraComment>(
       `/rest/api/3/issue/${key}/comment`,
       {
         body: {

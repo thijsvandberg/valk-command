@@ -22,6 +22,8 @@ import {
   ArrowUpRight,
   PenLine,
   MoreHorizontal,
+  Send,
+  Check,
 } from "lucide-react";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { getJiraUrl } from "@/lib/jira-url";
@@ -34,15 +36,47 @@ interface SessionTicketViewProps {
   metadataExpanded?: boolean;
 }
 
+const QUICK_COMMENTS = [
+  "Discussed in refinement, ready for dev",
+  "Needs follow-up before development",
+  "Accepted with noted caveats",
+];
+
 function CollapsibleComments({
   ticketKey,
   jiraComments,
+  onMutate,
 }: {
   ticketKey: string;
   jiraComments: TicketDetail["jiraComments"];
+  onMutate?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [posted, setPosted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const postedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const totalCount = jiraComments.length;
+
+  const handlePost = useCallback(async (content?: string) => {
+    const text = (content ?? newComment).trim();
+    if (!text || posting) return;
+    setPosting(true);
+    setError(null);
+    try {
+      await tickets.addJiraComment(ticketKey, { content: text });
+      setNewComment("");
+      setPosted(true);
+      onMutate?.();
+      clearTimeout(postedTimerRef.current);
+      postedTimerRef.current = setTimeout(() => setPosted(false), 2500);
+    } catch {
+      setError("Failed to post comment");
+    } finally {
+      setPosting(false);
+    }
+  }, [ticketKey, newComment, posting, onMutate]);
 
   return (
     <div className="mt-6">
@@ -62,7 +96,7 @@ function CollapsibleComments({
           {expanded ? <ChevronDown size={14} strokeWidth={1.5} /> : <ChevronRight size={14} strokeWidth={1.5} />}
         </span>
       </button>
-      {expanded && totalCount > 0 && (
+      {expanded && (
         <div className="mt-3 space-y-3">
           {[...jiraComments].reverse().map((comment) => (
             <div key={comment.id} className="flex gap-3">
@@ -85,10 +119,72 @@ function CollapsibleComments({
               </div>
             </div>
           ))}
+
+          {totalCount === 0 && !newComment.trim() && !posted && (
+            <p className="text-xs text-text-muted">No comments</p>
+          )}
+
+          {/* Quick-post buttons */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {QUICK_COMMENTS.map((text) => (
+              <button
+                key={text}
+                type="button"
+                onClick={() => handlePost(text)}
+                disabled={posting}
+                className="rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-caption text-text-tertiary cursor-pointer hover:border-[var(--color-brand-500)]/30 hover:bg-[var(--color-brand-500)]/[0.06] hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ transition: "border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom comment input */}
+          <div className="flex gap-2">
+            <div className="relative min-w-0 flex-1">
+              <textarea
+                value={newComment}
+                onChange={(e) => { setNewComment(e.target.value); setError(null); }}
+                placeholder="Post a comment to Jira..."
+                rows={1}
+                disabled={posting}
+                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5 pr-8 text-xs text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    handlePost();
+                  }
+                }}
+              />
+              {newComment.trim() && (
+                <button
+                  type="button"
+                  onClick={() => handlePost()}
+                  disabled={posting}
+                  className="absolute right-1.5 bottom-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                  title="Post to Jira (Cmd+Enter)"
+                  aria-label="Post comment to Jira"
+                >
+                  <Send size={10} strokeWidth={2} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {posted && (
+            <div
+              className="flex items-center gap-1.5 text-caption text-[var(--color-brand-400)]"
+              style={{ animation: "fadeInUp 0.15s ease" }}
+            >
+              <Check size={11} strokeWidth={2} />
+              <span>Posted to Jira</span>
+            </div>
+          )}
+          {error && (
+            <p className="text-caption text-[#e5534b]">{error}</p>
+          )}
         </div>
-      )}
-      {expanded && totalCount === 0 && (
-        <p className="mt-3 text-xs text-text-muted">No comments</p>
       )}
     </div>
   );
@@ -352,7 +448,7 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode, 
       />
 
       {/* Comments */}
-      <CollapsibleComments ticketKey={ticket.key} jiraComments={detail.jiraComments} />
+      <CollapsibleComments ticketKey={ticket.key} jiraComments={detail.jiraComments} onMutate={onMutate} />
 
       {/* Subtasks (hidden when in side pane mode) */}
       {!subtasksPaneMode && (

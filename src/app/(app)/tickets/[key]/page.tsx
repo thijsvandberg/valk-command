@@ -904,6 +904,7 @@ export default function TicketDetailPage({
               <CommentsSection
                 ticketKey={key}
                 jiraComments={detail?.jiraComments ?? []}
+                onMutate={() => mutateTicket()}
               />
             </>
           )}

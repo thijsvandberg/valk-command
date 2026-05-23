@@ -141,6 +141,9 @@ export const tickets = {
   deleteComment: (key: string, commentId: string, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/comments/${enc(commentId)}`, { method: "DELETE", signal }),
 
+  addJiraComment: (key: string, data: { content: string }, signal?: AbortSignal) =>
+    apiFetch<{ id: string; authorName: string; authorAvatar: string | null; authorInitials: string; authorColor: string; content: string; createdAt: string }>(`/api/tickets/${enc(key)}/jira-comments`, { method: "POST", body: data, signal }),
+
   getAttachments: (key: string, signal?: AbortSignal) =>
     apiFetch<unknown[]>(`/api/tickets/${enc(key)}/attachments`, { signal }),
 

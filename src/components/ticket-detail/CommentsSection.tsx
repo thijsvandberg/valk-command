@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { TicketDetail } from "@/types/ticket";
-import { Trash2, Flag } from "lucide-react";
+import { Trash2, Flag, Send, Check } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
@@ -12,9 +12,11 @@ import { usePrismLanguages } from "@/hooks/usePrismLanguages";
 export function CommentsSection({
   ticketKey,
   jiraComments,
+  onMutate,
 }: {
   ticketKey: string;
   jiraComments: TicketDetail["jiraComments"];
+  onMutate?: () => void;
 }) {
   const [poComments, setPoComments] = useState<Array<{ id: string; author: string; content: string; createdAt: string }>>([]);
   const [newComment, setNewComment] = useState("");
@@ -143,46 +145,139 @@ export function CommentsSection({
       </div>
 
       {/* Jira Comments */}
-      {jiraComments.length > 0 && (
-        <div>
-          <SectionHeader title="Jira Comments" count={jiraComments.length} />
-          <div className="mt-3 space-y-4">
-            {[...jiraComments].reverse().map((comment) => {
-              const isFlagComment = /flag_on|Flag added|flag_off|Flag removed/i.test(comment.content);
-              return (
-                <div
-                  key={comment.id}
-                  id={`jira-comment-${comment.id}`}
-                  className={`flex gap-3 ${isFlagComment ? "rounded-lg border-l-[3px] border-l-[#e5534b] bg-[#e5534b]/[0.04] py-3 pr-3 pl-2.5" : ""}`}
-                >
-                  <div
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
-                    style={{ backgroundColor: comment.authorColor }}
-                  >
-                    {comment.authorInitials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
-                      <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}</span>
-                      {isFlagComment && (
-                        <Flag size={11} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
-                      )}
-                    </div>
-                    <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">
-                      {renderMarkdown(
-                        isFlagComment
-                          ? comment.content.replace(/^:?flag_on:?\s*Flag added\s*/i, "").replace(/^:?flag_off:?\s*Flag removed\s*/i, "").trim()
-                          : comment.content
-                      )}
-                    </div>
-                  </div>
+      <JiraCommentsSection
+        ticketKey={ticketKey}
+        jiraComments={jiraComments}
+        onMutate={onMutate}
+      />
+    </div>
+  );
+}
+
+function JiraCommentsSection({
+  ticketKey,
+  jiraComments,
+  onMutate,
+}: {
+  ticketKey: string;
+  jiraComments: TicketDetail["jiraComments"];
+  onMutate?: () => void;
+}) {
+  const [newJiraComment, setNewJiraComment] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [posted, setPosted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const postedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handlePostJiraComment = useCallback(async () => {
+    if (!newJiraComment.trim() || posting) return;
+    setPosting(true);
+    setError(null);
+    try {
+      await tickets.addJiraComment(ticketKey, { content: newJiraComment.trim() });
+      setNewJiraComment("");
+      setPosted(true);
+      onMutate?.();
+      clearTimeout(postedTimerRef.current);
+      postedTimerRef.current = setTimeout(() => setPosted(false), 2500);
+    } catch {
+      setError("Failed to post comment to Jira");
+    } finally {
+      setPosting(false);
+    }
+  }, [ticketKey, newJiraComment, posting, onMutate]);
+
+  return (
+    <div>
+      <SectionHeader title="Jira Comments" count={jiraComments.length} />
+      <div className="mt-3 space-y-4">
+        {[...jiraComments].reverse().map((comment) => {
+          const isFlagComment = /flag_on|Flag added|flag_off|Flag removed/i.test(comment.content);
+          return (
+            <div
+              key={comment.id}
+              id={`jira-comment-${comment.id}`}
+              className={`flex gap-3 ${isFlagComment ? "rounded-lg border-l-[3px] border-l-[#e5534b] bg-[#e5534b]/[0.04] py-3 pr-3 pl-2.5" : ""}`}
+            >
+              <div
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
+                style={{ backgroundColor: comment.authorColor }}
+              >
+                {comment.authorInitials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
+                  <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}</span>
+                  {isFlagComment && (
+                    <Flag size={11} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
+                  )}
                 </div>
-              );
-            })}
+                <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">
+                  {renderMarkdown(
+                    isFlagComment
+                      ? comment.content.replace(/^:?flag_on:?\s*Flag added\s*/i, "").replace(/^:?flag_off:?\s*Flag removed\s*/i, "").trim()
+                      : comment.content
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Post a Jira comment */}
+        <div className="flex gap-3 pt-1">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-caption font-semibold text-white">
+            PO
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="relative">
+              <textarea
+                value={newJiraComment}
+                onChange={(e) => { setNewJiraComment(e.target.value); setError(null); }}
+                placeholder="Post a comment to Jira..."
+                rows={2}
+                disabled={posting}
+                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 pr-10 text-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    handlePostJiraComment();
+                  }
+                }}
+              />
+              {newJiraComment.trim() && (
+                <button
+                  type="button"
+                  onClick={handlePostJiraComment}
+                  disabled={posting}
+                  className="absolute right-2 bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                  title="Post to Jira (Cmd+Enter)"
+                  aria-label="Post comment to Jira"
+                >
+                  <Send size={12} strokeWidth={2} />
+                </button>
+              )}
+            </div>
+            {posted && (
+              <div
+                className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-brand-400)]"
+                style={{ animation: "fadeInUp 0.15s ease" }}
+              >
+                <Check size={13} strokeWidth={2} />
+                <span>Comment posted to Jira</span>
+              </div>
+            )}
+            {error && (
+              <p className="mt-1.5 text-xs text-[#e5534b]">{error}</p>
+            )}
           </div>
         </div>
-      )}
+
+        {jiraComments.length === 0 && !newJiraComment.trim() && !posted && (
+          <p className="pl-10 text-xs text-text-muted">No Jira comments</p>
+        )}
+      </div>
     </div>
   );
 }
