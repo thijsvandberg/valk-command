@@ -8,12 +8,22 @@
 
 As the PO, I want the refinement session view to feel like a full-featured working environment for each ticket, so I can do everything I need during the ceremony without leaving the session.
 
+## Implementation Plan
+
+1. **Bottom bar cleanup** (`session/page.tsx`): Remove `markReady` state and checkbox. In `handleDoneAndNext`, auto-set readiness to null when `ticketData?.storyPoints != null`.
+2. **Ticket header redesign** (`SessionTicketView.tsx`): Replace plain text header with `TicketStatusPill`. Add Jira/Bridge icon buttons, story points badge (move from bottom), and Story Writer button.
+3. **Editable title** (`SessionTicketView.tsx`): Replace static `<h1>` with `EditableTitle` component.
+4. **Navigation dropdown** (`session/page.tsx` + `RefinementSessionContext.tsx`): Extend context with `queueMeta: { key, title }[]`. Add dropdown button next to progress dots listing all tickets with key, title, checkmark for visited.
+5. **Subtasks side pane** (`session/page.tsx` + `SessionTicketView.tsx`): Add `subtasksPaneOpen` toggle. Render subtasks in a right-side panel (tabbed with PO Notes). Hide subtasks from main content when in pane mode.
+6. **LinkedIssuesSection swap** (`SessionTicketView.tsx`): Replace `CompactRelations` with full `LinkedIssuesSection` for add/remove capabilities.
+7. **Confluence + metadata panel + sprint picker** (`SessionTicketView.tsx`): Add `ConfluencePagesSection`, expandable metadata panel (creator/assignee/labels/epic/sprint/components/dates), inline sprint picker with `jira.moveSprint()`.
+
 ## Acceptance Criteria
 
 ### Bottom bar cleanup
 
-- [ ] Remove the "Mark as Ready for Dev" checkbox from the bottom bar
-- [ ] If a ticket has story points set, automatically set readiness to null (Ready for Dev) when clicking "Done, next ticket"
+- [x] Remove the "Mark as Ready for Dev" checkbox from the bottom bar
+- [x] If a ticket has story points set, automatically set readiness to null (Ready for Dev) when clicking "Done, next ticket"
 
 ### Ticket header (top area of ticket view)
 

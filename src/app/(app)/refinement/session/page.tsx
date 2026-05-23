@@ -54,15 +54,12 @@ export default function RefinementSessionPage() {
 
   // PO Notes: reset when ticket key changes
   const [poNotes, setPoNotes] = useState("");
-  const [markReady, setMarkReady] = useState(false);
   const [syncedKey, setSyncedKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ticketData || syncedKey === ticketData.key) return;
     setSyncedKey(ticketData.key);
-    // Use functional updaters so the compiler doesn't flag direct setState in effect
     setPoNotes(ticketData.notes ?? "");
-    setMarkReady(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally sync only on key change
   }, [ticketData?.key, ticketData?.notes]);
 
@@ -83,8 +80,8 @@ export default function RefinementSessionPage() {
       pointsSet: ticketData?.storyPoints != null,
     });
 
-    // Optionally mark as ready for dev
-    if (markReady) {
+    // Auto-set readiness to "Ready for Dev" when story points are set
+    if (ticketData?.storyPoints != null) {
       try {
         await tickets.updateMetadata(currentKey, { readiness: null });
         markComplete(currentKey, { statusChanged: true });
@@ -98,7 +95,7 @@ export default function RefinementSessionPage() {
     } else {
       nextTicket();
     }
-  }, [currentKey, ticketData, markReady, isLastTicket, markComplete, endSession, nextTicket]);
+  }, [currentKey, ticketData, isLastTicket, markComplete, endSession, nextTicket]);
 
   const handleExitSession = useCallback(() => {
     endSession();
@@ -269,17 +266,6 @@ export default function RefinementSessionPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Mark as ready for dev */}
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={markReady}
-                onChange={(e) => setMarkReady(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border-strong bg-overlay-subtle accent-[var(--color-brand-500)] cursor-pointer"
-              />
-              <span className="text-xs text-text-muted">Mark as Ready for Dev</span>
-            </label>
-
             {isLastTicket ? (
               <Button
                 variant="primary"
