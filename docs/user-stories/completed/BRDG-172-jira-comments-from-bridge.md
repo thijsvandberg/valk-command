@@ -1,6 +1,6 @@
 # BRDG-172: Post Jira Comments from Bridge
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 **Related:** BRDG-170 (Refinement Session View Polish)
 
