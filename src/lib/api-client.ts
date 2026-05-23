@@ -226,6 +226,11 @@ export const tickets = {
     apiFetch<Array<{ key: string; title: string; type: string; status: string; source?: "local" | "jira" }>>(`/api/tickets/search${qs({ q: query, exclude: excludeKey })}`, { signal }),
   recentLinks: (excludeKey?: string, signal?: AbortSignal) =>
     apiFetch<Array<{ key: string; title: string; type: string; status: string; source?: "recent" }>>(`/api/tickets/search${qs({ recent: "1", exclude: excludeKey })}`, { signal }),
+
+  suggestSubtasks: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{ taskId: string; streamUrl: string }>(
+      `/api/tickets/${enc(ticketKey)}/suggest-subtasks`, { method: "POST", signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------
@@ -314,11 +319,6 @@ export const epics = {
   suggestEpic: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{ taskId: string; streamUrl: string }>(
       `/api/tickets/${enc(ticketKey)}/suggest-epic`, { method: "POST", signal },
-    ),
-
-  suggestSubtasks: (ticketKey: string, signal?: AbortSignal) =>
-    apiFetch<{ taskId: string; streamUrl: string }>(
-      `/api/tickets/${enc(ticketKey)}/suggest-subtasks`, { method: "POST", signal },
     ),
 };
 
