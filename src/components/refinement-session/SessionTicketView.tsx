@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import type { Ticket, TicketDetail, LinkedIssue } from "@/types/ticket";
-import { READINESS_CONFIG, getSpColor } from "@/types/ticket";
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { Ticket, TicketDetail } from "@/types/ticket";
+import { getSpColor } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { Avatar } from "@/components/shared/Avatar";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { EditableDescription } from "@/components/ticket-detail/EditableDescription";
@@ -23,10 +24,10 @@ import {
   ArrowUpRight,
   PenLine,
   Info,
+  MoreHorizontal,
 } from "lucide-react";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { getJiraUrl } from "@/lib/jira-url";
-import { Button } from "@/components/ui/Button";
 
 interface SessionTicketViewProps {
   ticket: Ticket;
@@ -148,6 +149,22 @@ function SessionMetadataPanel({
             </div>
           </MetadataDetailRow>
         )}
+        <MetadataDetailRow label="Priority">
+          <span className="text-xs">{detail.priority}</span>
+        </MetadataDetailRow>
+        {ticket.epic && (
+          <MetadataDetailRow label="Epic">
+            <span className="text-xs text-[var(--color-brand-400)]">{ticket.epic}</span>
+          </MetadataDetailRow>
+        )}
+        <MetadataDetailRow label="Sprint">
+          <SprintPicker
+            value={currentSprintId}
+            sprints={sprints ?? []}
+            onChange={handleSprintChange}
+            align="right"
+          />
+        </MetadataDetailRow>
         {detail.labels.length > 0 && (
           <MetadataDetailRow label="Labels">
             <div className="flex flex-wrap justify-end gap-1">
@@ -162,19 +179,6 @@ function SessionMetadataPanel({
             </div>
           </MetadataDetailRow>
         )}
-        {ticket.epic && (
-          <MetadataDetailRow label="Epic">
-            <span className="text-xs text-[var(--color-brand-400)]">{ticket.epic}</span>
-          </MetadataDetailRow>
-        )}
-        <MetadataDetailRow label="Sprint">
-          <SprintPicker
-            value={currentSprintId}
-            sprints={sprints ?? []}
-            onChange={handleSprintChange}
-            align="right"
-          />
-        </MetadataDetailRow>
         {detail.components.length > 0 && (
           <MetadataDetailRow label="Components">
             <div className="flex flex-wrap justify-end gap-1">
@@ -189,6 +193,18 @@ function SessionMetadataPanel({
             </div>
           </MetadataDetailRow>
         )}
+        {detail.parent && (
+          <MetadataDetailRow label="Parent">
+            <a
+              href={`/tickets/${detail.parent.key}`}
+              target="_blank"
+              className="text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)]"
+              style={{ transition: "color 0.15s ease" }}
+            >
+              {detail.parent.key} {detail.parent.title}
+            </a>
+          </MetadataDetailRow>
+        )}
         <MetadataDetailRow label="Created">
           <span className="text-xs" title={formatAbsoluteDate(detail.createdAt)}>
             {relativeDate(detail.createdAt)}
@@ -200,6 +216,88 @@ function SessionMetadataPanel({
           </span>
         </MetadataDetailRow>
       </div>
+    </div>
+  );
+}
+
+function HeaderOverflowMenu({
+  ticketKey,
+  jiraUrl,
+}: {
+  ticketKey: string;
+  jiraUrl: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const itemClass =
+    "flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          open
+            ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+            : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+        }`}
+        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+        title="More actions"
+      >
+        <MoreHorizontal size={14} strokeWidth={1.5} />
+      </button>
+      {open && (
+        <div
+          className="absolute top-full left-0 z-50 mt-1 min-w-[180px] rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+          style={{ animation: "fadeInUp 0.1s ease" }}
+        >
+          <a
+            href={jiraUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className={itemClass}
+          >
+            <ExternalLink size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+            Open in Jira
+          </a>
+          <a
+            href={`/tickets/${ticketKey}`}
+            target="_blank"
+            onClick={() => setOpen(false)}
+            className={itemClass}
+          >
+            <ArrowUpRight size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+            Open in Bridge
+          </a>
+          <button
+            type="button"
+            onClick={() => { window.open(`/tickets/${ticketKey}/write`, "_blank"); setOpen(false); }}
+            className={itemClass}
+          >
+            <PenLine size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+            Open Story Writer
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -225,7 +323,6 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }
   );
 
   const jiraUrl = getJiraUrl(ticket.key);
-  const spColor = storyPoints != null ? getSpColor(storyPoints) : null;
 
   return (
     <div className="space-y-0">
@@ -239,50 +336,12 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }
           title={ticket.title}
         />
 
-        {/* Jira link */}
-        <a
-          href={jiraUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center rounded-md p-1.5 text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-          title="Open in Jira"
-        >
-          <ExternalLink size={14} strokeWidth={1.5} />
-        </a>
-
-        {/* Bridge ticket link */}
-        <a
-          href={`/tickets/${ticket.key}`}
-          className="flex items-center justify-center rounded-md p-1.5 text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-          title="Open in Bridge"
-          target="_blank"
-        >
-          <ArrowUpRight size={14} strokeWidth={1.5} />
-        </a>
-
-        {/* Story points badge */}
-        {storyPoints != null && spColor && (
-          <span
-            className="flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-xs font-semibold tabular-nums"
-            style={{ backgroundColor: spColor.bg, color: spColor.text }}
-            title={`${storyPoints} story point${storyPoints !== 1 ? "s" : ""}`}
-          >
-            {storyPoints}
-          </span>
-        )}
-
-        {/* Story Writer button */}
-        <button
-          type="button"
-          onClick={() => window.open(`/tickets/${ticket.key}/write`, "_blank")}
-          className="flex items-center justify-center rounded-md p-1.5 text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-          title="Open Story Writer"
-        >
-          <PenLine size={14} strokeWidth={1.5} />
-        </button>
+        {/* Story points (editable) */}
+        <StoryPointPicker
+          value={storyPoints}
+          onChange={handleStoryPointsChange}
+          align="left"
+        />
 
         {/* Metadata toggle */}
         <button
@@ -298,6 +357,9 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }
         >
           <Info size={14} strokeWidth={1.5} />
         </button>
+
+        {/* Overflow menu (Jira, Bridge, Story Writer) */}
+        <HeaderOverflowMenu ticketKey={ticket.key} jiraUrl={jiraUrl} />
 
         {/* Assignee (right-aligned) */}
         {ticket.assignee && (
