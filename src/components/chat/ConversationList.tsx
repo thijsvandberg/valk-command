@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import type { Conversation, ConversationType } from "@/types/chat";
 import { Trash2, Filter, Search, X, ChevronRight, Pin, PanelLeftClose, PanelLeftOpen, CheckSquare, Mail, MailOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -455,8 +456,8 @@ export default function ConversationList({
         </ul>
       )}
 
-      {/* Context menu */}
-      {contextMenu && (onTogglePin || onToggleRead) && (
+      {/* Context menu - portal to body to avoid transform containing block in sidebar */}
+      {contextMenu && (onTogglePin || onToggleRead) && createPortal(
         <div
           ref={contextMenuRef}
           className="fixed z-[100] min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
@@ -499,7 +500,8 @@ export default function ConversationList({
               )}
             </button>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Bulk action bar */}
