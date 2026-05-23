@@ -13,7 +13,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   CheckCircle2,
   StickyNote,
   ListChecks,
@@ -21,6 +20,58 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+
+const DEFAULT_PANE_WIDTH = 340;
+const MIN_PANE_WIDTH = 280;
+const MAX_PANE_WIDTH_RATIO = 0.5;
+
+function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
+  const [width, setWidth] = useState(DEFAULT_PANE_WIDTH);
+  const [isDragging, setIsDragging] = useState(false);
+  const paneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    function handleMouseMove(e: MouseEvent) {
+      if (!paneRef.current) return;
+      const rect = paneRef.current.getBoundingClientRect();
+      const maxW = window.innerWidth * MAX_PANE_WIDTH_RATIO;
+      const newW = Math.max(MIN_PANE_WIDTH, Math.min(maxW, rect.right - e.clientX));
+      setWidth(newW);
+    }
+    function handleMouseUp() { setIsDragging(false); }
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  return (
+    <div
+      ref={paneRef}
+      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] p-5"
+      style={{
+        width,
+        animation: isDragging ? undefined : "fadeInUp 0.15s ease",
+        transition: isDragging ? "none" : "width 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+      }}
+    >
+      {/* Resize handle */}
+      <div
+        onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
+        className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
+        style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
+      />
+      {children}
+    </div>
+  );
+}
 
 export default function RefinementSessionPage() {
   const pageTitle = usePageTitle("Refinement Session");
@@ -336,24 +387,16 @@ export default function RefinementSessionPage() {
 
           {/* Right panel: Subtasks pane */}
           {rightPanelMode === "subtasks" && ticketData && (
-            <div
-              className="w-80 shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] p-5"
-              style={{ animation: "fadeInUp 0.15s ease" }}
-            >
-              <div className="flex items-center gap-2">
-                <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">Subtasks</h3>
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
-                  {ticketData.subtasks?.length ?? 0}
-                </span>
-              </div>
-              <div className="mt-3">
-                <SubtasksSection
-                  subtasks={ticketData.subtasks ?? []}
-                  ticketKey={ticketData.key}
-                  onMutate={() => mutate()}
-                />
-              </div>
-            </div>
+            <SubtasksPaneResizable>
+              <SubtasksSection
+                subtasks={ticketData.subtasks ?? []}
+                ticketKey={ticketData.key}
+                onMutate={() => mutate()}
+                compactFilters
+                defaultHideKeys
+                showDragHandles
+              />
+            </SubtasksPaneResizable>
           )}
 
           {/* Right panel: PO Notes */}
