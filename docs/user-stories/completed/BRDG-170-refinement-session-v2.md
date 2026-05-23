@@ -1,6 +1,6 @@
 # BRDG-170: Refinement Session View Polish
 
-**Status:** Open
+**Status:** Done
 **Priority:** High
 **Related:** BRDG-127 (Refinement Session Mode)
 
