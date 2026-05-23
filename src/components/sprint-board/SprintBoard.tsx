@@ -12,6 +12,7 @@ import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
 import dynamic from "next/dynamic";
 const SearchModal = dynamic(() => import("@/components/sprint-board/SearchModal").then((m) => ({ default: m.SearchModal })), { ssr: false });
 import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLauncherModal";
+import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -528,11 +529,11 @@ export default function SprintBoard() {
     }
   }, [tickets, checkedTickets, activeSprint, showToast, router]);
 
+  const [refineModalOpen, setRefineModalOpen] = useState(false);
   const handleRefineSelected = useCallback(() => {
-    const keys = Array.from(checkedTickets);
-    if (keys.length === 0) return;
-    router.push(`/refinement?keys=${keys.join(",")}`);
-  }, [checkedTickets, router]);
+    if (checkedTickets.size === 0) return;
+    setRefineModalOpen(true);
+  }, [checkedTickets]);
 
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;
@@ -1357,6 +1358,12 @@ export default function SprintBoard() {
           showToast={showToast}
         />
       )}
+      <AddToRefinementModal
+        open={refineModalOpen}
+        onClose={() => setRefineModalOpen(false)}
+        ticketKeys={Array.from(checkedTickets)}
+        onAdded={(_id, name) => showToast(`Added to "${name}"`)}
+      />
     </div>
     </>
   );
