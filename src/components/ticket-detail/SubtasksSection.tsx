@@ -2,13 +2,14 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { TicketDetail, JiraStatus, Subtask } from "@/types/ticket";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { Loader2, GripVertical, ExternalLink, Filter, Eye, EyeOff } from "lucide-react";
+import { Loader2, GripVertical, ExternalLink, Filter, Eye, EyeOff, Sparkles } from "lucide-react";
+import { SubtaskSuggestions } from "./SubtaskSuggestions";
+import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
+import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
 import {
   DndContext,
   closestCenter,
@@ -109,7 +110,6 @@ function SortableSubtaskRow({
           <GripVertical size={12} strokeWidth={1.5} />
         </span>
       )}
-      <IssueTypeIcon type={sub.type} size={14} />
       {!hideKey && (
         <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">
           {sub.key}
@@ -117,7 +117,6 @@ function SortableSubtaskRow({
       )}
       <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
       <StatusBadge status={sub.jiraStatus} />
-      <Avatar assignee={sub.assignee} size={22} />
       {/* Open in new tab */}
       <a
         href={`/tickets/${sub.key}`}
@@ -227,7 +226,13 @@ export function SubtasksSection({
   const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
   const [hideKeys, setHideKeys] = useState(defaultHideKeys ?? false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggestProgress, setSuggestProgress] = useState<string | null>(null);
+  const [addingIndices, setAddingIndices] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
+  const suggestEsRef = useRef<EventSource | null>(null);
 
   // Merge server subtasks with locally added ones (that haven't appeared in server data yet)
   const mergedSubtasks = [
@@ -329,6 +334,118 @@ export function SubtasksSection({
     }
   }, [handleCreate]);
 
+  // Clean up EventSource on unmount
+  useEffect(() => {
+    return () => {
+      suggestEsRef.current?.close();
+      suggestEsRef.current = null;
+    };
+  }, []);
+
+  const handleSuggest = useCallback(async () => {
+    if (suggestLoading) return;
+
+    setSuggestLoading(true);
+    setSuggestError(null);
+    setSuggestProgress("Starting...");
+    setSuggestions([]);
+
+    try {
+      const data = await tickets.suggestSubtasks(ticketKey);
+      if (!data.taskId || !data.streamUrl) {
+        setSuggestError("No task ID returned from workspace");
+        setSuggestLoading(false);
+        return;
+      }
+
+      const es = new EventSource(data.streamUrl);
+      suggestEsRef.current = es;
+
+      attachTaskStreamListeners(es, {
+        onProgress: (message) => setSuggestProgress(message),
+        onToolCall: (tool) => {
+          const clean = tool.replace("mcp__jira__", "").replace("mcp__", "");
+          setSuggestProgress(`Using ${clean}...`);
+        },
+        onResult: (resultData) => {
+          es.close();
+          suggestEsRef.current = null;
+          const output = (resultData.output as string) ?? "";
+          const parsed = parseSubtaskSuggestions(output);
+          setSuggestions(parsed);
+          setSuggestLoading(false);
+          setSuggestProgress(null);
+        },
+        onStructuredError: (message) => {
+          es.close();
+          suggestEsRef.current = null;
+          setSuggestError(message);
+          setSuggestLoading(false);
+          setSuggestProgress(null);
+        },
+        onNetworkError: () => {
+          es.close();
+          suggestEsRef.current = null;
+          setSuggestError("Connection to workspace lost");
+          setSuggestLoading(false);
+          setSuggestProgress(null);
+        },
+      });
+    } catch (err) {
+      setSuggestError(err instanceof Error ? err.message : "Failed to start suggestion");
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    }
+  }, [ticketKey, suggestLoading]);
+
+  const addSuggestionAsSubtask = useCallback(async (title: string, index: number) => {
+    setAddingIndices((prev) => new Set(prev).add(index));
+
+    const placeholderKey = `pending-suggest-${Date.now()}`;
+    const placeholder: Subtask = {
+      key: placeholderKey,
+      title,
+      type: "subtask",
+      jiraStatus: "TO DO",
+      assignee: null,
+    };
+    setLocallyAdded((prev) => [...prev, placeholder]);
+    setLocalOrder(null);
+
+    try {
+      const created = await tickets.createSubtask(ticketKey, { title });
+      setLocallyAdded((prev) => prev.map((s) => s.key === placeholderKey ? created : s));
+      setSuggestions((prev) => prev.filter((_, i) => i !== index));
+      onMutate();
+    } catch (err) {
+      setLocallyAdded((prev) => prev.filter((s) => s.key !== placeholderKey));
+      const detail = err instanceof ApiError ? err.message : "Jira API error";
+      setError(`Failed to create subtask: ${detail}`);
+    }
+
+    setAddingIndices((prev) => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  }, [ticketKey, onMutate]);
+
+  const handleAddSuggestion = useCallback((index: number) => {
+    const title = suggestions[index];
+    if (title) addSuggestionAsSubtask(title, index);
+  }, [suggestions, addSuggestionAsSubtask]);
+
+  const handleAddAllSuggestions = useCallback(async () => {
+    const toAdd = [...suggestions];
+    for (let i = 0; i < toAdd.length; i++) {
+      await addSuggestionAsSubtask(toAdd[i], i);
+    }
+  }, [suggestions, addSuggestionAsSubtask]);
+
+  const handleDismissSuggestion = useCallback((index: number) => {
+    setSuggestions((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const isDndEnabled = filter === "all" && filtered.length > 1;
 
   const subtaskRows = filtered.map((sub, idx) => {
@@ -361,7 +478,6 @@ export function SubtasksSection({
           onSelectTicket(sub.key);
         } : undefined}
       >
-        <IssueTypeIcon type={sub.type} size={14} />
         {isPending ? (
           <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
             <Loader2 size={10} className="animate-spin" />
@@ -373,7 +489,6 @@ export function SubtasksSection({
         ) : null}
         <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
         <StatusBadge status={sub.jiraStatus} />
-        <Avatar assignee={sub.assignee} size={22} />
         {/* Open in new tab */}
         {!isPending && (
           <a
@@ -399,7 +514,6 @@ export function SubtasksSection({
       onClick={(e) => e.stopPropagation()}
     >
       {showDragHandles && <span className="w-3 shrink-0" />}
-      <IssueTypeIcon type="subtask" size={14} />
       <input
         ref={inputRef}
         type="text"
@@ -420,6 +534,28 @@ export function SubtasksSection({
   );
 
   const isFiltered = filter !== "all";
+
+  // Suggest subtasks button
+  const suggestButton = (
+    <button
+      type="button"
+      onClick={handleSuggest}
+      disabled={suggestLoading}
+      className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
+        suggestLoading
+          ? "text-[var(--color-brand-400)]"
+          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+      }`}
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+      title="Suggest subtasks with AI"
+    >
+      {suggestLoading ? (
+        <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+      ) : (
+        <Sparkles size={13} strokeWidth={1.5} />
+      )}
+    </button>
+  );
 
   // Filter button for compact mode
   const filterButton = compactFilters ? (
@@ -457,11 +593,16 @@ export function SubtasksSection({
           title="Subtasks"
           count={filter === "all" ? mergedSubtasks.length : undefined}
           countLabel={filter !== "all" && mergedSubtasks.length > 0 ? `${filtered.length} of ${mergedSubtasks.length}` : undefined}
-          actions={compactFilters ? filterButton : undefined}
+          actions={<>{suggestButton}{compactFilters && filterButton}</>}
         />
       )}
 
-      {hideHeader && compactFilters && filterButton}
+      {hideHeader && (
+        <div className="flex items-center gap-1">
+          {suggestButton}
+          {compactFilters && filterButton}
+        </div>
+      )}
 
       {/* Inline filter chips (non-compact mode only) */}
       {!compactFilters && mergedSubtasks.length > 0 && (
@@ -512,6 +653,18 @@ export function SubtasksSection({
       ) : (
         listContent
       )}
+
+      {/* AI-suggested subtasks */}
+      <SubtaskSuggestions
+        suggestions={suggestions}
+        isLoading={suggestLoading}
+        progressText={suggestProgress}
+        error={suggestError}
+        addingIndices={addingIndices}
+        onAdd={handleAddSuggestion}
+        onAddAll={handleAddAllSuggestions}
+        onDismiss={handleDismissSuggestion}
+      />
     </div>
   );
 }

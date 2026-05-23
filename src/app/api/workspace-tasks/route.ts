@@ -39,6 +39,10 @@ function buildConversationTitle(skillName: string, args: Record<string, unknown>
       }
       return "Chat";
     }
+    case "suggest-subtasks": {
+      const ticketKey = typeof args.ticketKey === "string" ? args.ticketKey : null;
+      return ticketKey ? `Suggest Subtasks: ${ticketKey}` : "Suggest Subtasks";
+    }
     default: {
       const pretty = skillName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       return pretty;
@@ -77,6 +81,10 @@ function buildPromptSummary(skillName: string, args: Record<string, unknown>): s
     case "chat": {
       const text = typeof args.args === "string" ? args.args.trim() : "";
       return text || "Chat message";
+    }
+    case "suggest-subtasks": {
+      const ticketKey = typeof args.ticketKey === "string" ? args.ticketKey : "ticket";
+      return `Suggest subtasks for ${ticketKey} based on description and acceptance criteria.`;
     }
     default: {
       const argsStr = typeof args.args === "string" ? args.args : "";

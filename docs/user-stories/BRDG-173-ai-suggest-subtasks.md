@@ -8,6 +8,18 @@
 
 As the PO, I want the AI to suggest subtasks based on the ticket's description and acceptance criteria, so I can quickly break down stories into actionable work items during refinement.
 
+## Implementation Plan
+
+1. **Parser utility** (`src/lib/parse-subtask-suggestions.ts`): Pure function `parseSubtaskSuggestions(output: string): string[]` that extracts subtask titles from numbered/bulleted AI output. Unit tests for all input formats.
+
+2. **API route** (`src/app/api/tickets/[key]/suggest-subtasks/route.ts`): POST handler following `suggest-epic` pattern. Fetches ticket description, acceptance criteria, and existing subtask titles from DB. Submits `suggest-subtasks` skill to VRW via `agentFetch`. Returns `{ taskId, streamUrl }` (202).
+
+3. **API client + skill registration**: Add `tickets.suggestSubtasks(key)` to `api-client.ts`. Register `suggest-subtasks` in `buildConversationTitle` and `buildPromptSummary` in `workspace-tasks/route.ts`.
+
+4. **SubtaskSuggestions component** (`src/components/ticket-detail/SubtaskSuggestions.tsx`): Displays parsed suggestions with Add/Dismiss per row and Add All button. Dashed border styling to distinguish from real subtasks. Loading and error states.
+
+5. **SubtasksSection integration**: Add Sparkles button to header. Manage streaming lifecycle (submit, parse result, cache). Wire Add (optimistic create via existing pattern), Add All (sequential), and Dismiss actions.
+
 ## Acceptance Criteria
 
 ### Suggestion trigger

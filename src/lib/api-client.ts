@@ -315,6 +315,11 @@ export const epics = {
     apiFetch<{ taskId: string; streamUrl: string }>(
       `/api/tickets/${enc(ticketKey)}/suggest-epic`, { method: "POST", signal },
     ),
+
+  suggestSubtasks: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{ taskId: string; streamUrl: string }>(
+      `/api/tickets/${enc(ticketKey)}/suggest-subtasks`, { method: "POST", signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------

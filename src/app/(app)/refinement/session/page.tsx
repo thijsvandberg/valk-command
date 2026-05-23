@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
-import { SessionTicketView } from "@/components/refinement-session/SessionTicketView";
+import { SessionTicketView, HeaderOverflowMenu } from "@/components/refinement-session/SessionTicketView";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { getJiraUrl } from "@/lib/jira-url";
 import { SessionSummary } from "@/components/refinement-session/SessionSummary";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { tickets } from "@/lib/api-client";
@@ -19,6 +22,7 @@ import {
   List,
   Check,
   GripVertical,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -193,6 +197,30 @@ export default function RefinementSessionPage() {
 
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
 
+  // Header state
+  const [storyPoints, setStoryPoints] = useState<number | null>(ticketData?.storyPoints ?? null);
+  const [metadataExpanded, setMetadataExpanded] = useState(false);
+
+  // Sync story points when ticket changes
+  useEffect(() => {
+    if (ticketData) setStoryPoints(ticketData.storyPoints);
+  }, [ticketData?.key, ticketData?.storyPoints]);
+
+  const handleStoryPointsChange = useCallback(
+    async (v: number | null) => {
+      const prev = storyPoints;
+      setStoryPoints(v);
+      try {
+        await tickets.updateStoryPoints(currentKey!, v);
+        mutate();
+      } catch (err) {
+        console.error("Failed to update story points:", err);
+        setStoryPoints(prev);
+      }
+    },
+    [currentKey, storyPoints, mutate],
+  );
+
   // PO Notes: reset when ticket key changes
   const [poNotes, setPoNotes] = useState("");
   const [syncedKey, setSyncedKey] = useState<string | null>(null);
@@ -328,16 +356,50 @@ export default function RefinementSessionPage() {
       <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
         {/* Top bar */}
         <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-5 py-3">
-          {/* Left: exit */}
-          <button
-            type="button"
-            onClick={handleExitSession}
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-          >
-            <X size={14} strokeWidth={1.5} />
-            Exit Session
-          </button>
+          {/* Left: exit + ticket info */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleExitSession}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+            >
+              <X size={14} strokeWidth={1.5} />
+              Exit Session
+            </button>
+
+            {ticketData && (
+              <>
+                <div className="h-4 w-px bg-border-subtle" />
+                <TicketStatusPill
+                  ticketKey={ticketData.key}
+                  jiraStatus={ticketData.jiraStatus}
+                  readiness={ticketData.readiness}
+                  issueType={ticketData.type}
+                  title={ticketData.title}
+                />
+                <StoryPointPicker
+                  value={storyPoints}
+                  onChange={handleStoryPointsChange}
+                  align="left"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMetadataExpanded((v) => !v)}
+                  className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    metadataExpanded
+                      ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                      : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                  }`}
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                  title="Toggle metadata"
+                >
+                  <Info size={14} strokeWidth={1.5} />
+                </button>
+                <HeaderOverflowMenu ticketKey={ticketData.key} jiraUrl={getJiraUrl(ticketData.key)} />
+              </>
+            )}
+          </div>
 
           {/* Center: progress + navigation dropdown */}
           <div className="flex items-center gap-3">
@@ -461,6 +523,7 @@ export default function RefinementSessionPage() {
                   detail={ticketData}
                   onMutate={() => mutate()}
                   subtasksPaneMode={subtasksPaneOpen}
+                  metadataExpanded={metadataExpanded}
                 />
               ) : (
                 <div className="flex items-center justify-center py-24">
