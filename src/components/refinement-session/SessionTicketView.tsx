@@ -1,71 +1,38 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import type { Ticket, TicketDetail, LinkedIssue } from "@/types/ticket";
-import { READINESS_CONFIG } from "@/types/ticket";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { StatusBadge } from "@/components/shared/StatusBadge";
+import { READINESS_CONFIG, getSpColor } from "@/types/ticket";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Avatar } from "@/components/shared/Avatar";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
-import { EditableDescription, resolveLocalValue } from "@/components/ticket-detail/EditableDescription";
+import { EditableDescription } from "@/components/ticket-detail/EditableDescription";
+import { EditableTitle } from "@/components/ticket-detail/EditableTitle";
+import { LinkedIssuesSection } from "@/components/ticket-detail/LinkedIssuesSection";
+import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
 import { SessionStoryPointPicker } from "./SessionStoryPointPicker";
-import { tickets } from "@/lib/api-client";
-import { ChevronDown, ChevronRight, MessageSquare, Link2 } from "lucide-react";
+import { SprintPicker } from "@/components/shared/SprintPicker";
+import { tickets, jira } from "@/lib/api-client";
+import { useJiraSprints } from "@/hooks/useSprintBoard";
+import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import {
+  ChevronDown,
+  ChevronRight,
+  MessageSquare,
+  ExternalLink,
+  ArrowUpRight,
+  PenLine,
+  Info,
+} from "lucide-react";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import { getJiraUrl } from "@/lib/jira-url";
+import { Button } from "@/components/ui/Button";
 
 interface SessionTicketViewProps {
   ticket: Ticket;
   detail: TicketDetail;
   onMutate: () => void;
-}
-
-function CompactRelations({ issues }: { issues: LinkedIssue[] }) {
-  const grouped = useMemo(() => {
-    return issues.reduce<Record<string, LinkedIssue[]>>((acc, issue) => {
-      if (!acc[issue.relation]) acc[issue.relation] = [];
-      acc[issue.relation].push(issue);
-      return acc;
-    }, {});
-  }, [issues]);
-
-  if (issues.length === 0) return null;
-
-  return (
-    <div className="mt-6">
-      <div className="flex items-center gap-2 border-b border-border-default pb-2">
-        <Link2 size={13} strokeWidth={1.5} className="text-text-muted" />
-        <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
-          Relations
-        </h3>
-        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
-          {issues.length}
-        </span>
-      </div>
-      <div className="mt-3 space-y-3">
-        {Object.entries(grouped).map(([relation, items]) => (
-          <div key={relation}>
-            <div className="mb-1.5 text-label font-medium uppercase tracking-wider text-text-muted">
-              {relation}
-            </div>
-            <div className="space-y-0.5">
-              {items.map((item) => (
-                <div
-                  key={item.key}
-                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-overlay-subtle"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  <IssueTypeIcon type={item.type} size={13} />
-                  <span className="font-mono text-xs text-[var(--color-brand-400)]">{item.key}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{item.title}</span>
-                  <StatusBadge status={item.jiraStatus} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  subtasksPaneMode?: boolean;
 }
 
 function CollapsibleComments({
@@ -128,9 +95,119 @@ function CollapsibleComments({
   );
 }
 
-export function SessionTicketView({ ticket, detail, onMutate }: SessionTicketViewProps) {
+function MetadataDetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1.5">
+      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
+      <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
+    </div>
+  );
+}
+
+function SessionMetadataPanel({
+  ticket,
+  detail,
+}: {
+  ticket: Ticket;
+  detail: TicketDetail;
+}) {
+  const { data: sprints } = useJiraSprints();
+  const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
+
+  const handleSprintChange = useCallback(async (sprintId: string | null) => {
+    if (!sprintId) return;
+    const prev = currentSprintId;
+    setCurrentSprintId(sprintId);
+    try {
+      await jira.moveSprint({ issueKeys: [ticket.key], targetSprintId: sprintId });
+    } catch (err) {
+      console.error("Failed to move sprint:", err);
+      setCurrentSprintId(prev);
+    }
+  }, [ticket.key, currentSprintId]);
+
+  return (
+    <div
+      className="mt-4 rounded-xl border border-border-default bg-overlay-subtle/50 px-4 py-3"
+      style={{ animation: "fadeInUp 0.15s ease" }}
+    >
+      <div className="space-y-0.5">
+        {detail.reporter && (
+          <MetadataDetailRow label="Reporter">
+            <div className="flex items-center justify-end gap-2">
+              <Avatar assignee={detail.reporter} size={18} />
+              <span className="text-xs">{detail.reporter.name}</span>
+            </div>
+          </MetadataDetailRow>
+        )}
+        {ticket.assignee && (
+          <MetadataDetailRow label="Assignee">
+            <div className="flex items-center justify-end gap-2">
+              <Avatar assignee={ticket.assignee} size={18} />
+              <span className="text-xs">{ticket.assignee.name}</span>
+            </div>
+          </MetadataDetailRow>
+        )}
+        {detail.labels.length > 0 && (
+          <MetadataDetailRow label="Labels">
+            <div className="flex flex-wrap justify-end gap-1">
+              {detail.labels.map((label) => (
+                <span
+                  key={label}
+                  className="rounded-md bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </MetadataDetailRow>
+        )}
+        {ticket.epic && (
+          <MetadataDetailRow label="Epic">
+            <span className="text-xs text-[var(--color-brand-400)]">{ticket.epic}</span>
+          </MetadataDetailRow>
+        )}
+        <MetadataDetailRow label="Sprint">
+          <SprintPicker
+            value={currentSprintId}
+            sprints={sprints ?? []}
+            onChange={handleSprintChange}
+            align="right"
+          />
+        </MetadataDetailRow>
+        {detail.components.length > 0 && (
+          <MetadataDetailRow label="Components">
+            <div className="flex flex-wrap justify-end gap-1">
+              {detail.components.map((comp) => (
+                <span
+                  key={comp}
+                  className="rounded-md bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary"
+                >
+                  {comp}
+                </span>
+              ))}
+            </div>
+          </MetadataDetailRow>
+        )}
+        <MetadataDetailRow label="Created">
+          <span className="text-xs" title={formatAbsoluteDate(detail.createdAt)}>
+            {relativeDate(detail.createdAt)}
+          </span>
+        </MetadataDetailRow>
+        <MetadataDetailRow label="Updated">
+          <span className="text-xs" title={formatAbsoluteDate(detail.updatedAt)}>
+            {relativeDate(detail.updatedAt)}
+          </span>
+        </MetadataDetailRow>
+      </div>
+    </div>
+  );
+}
+
+export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }: SessionTicketViewProps) {
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
+  const [metadataExpanded, setMetadataExpanded] = useState(false);
 
   const handleStoryPointsChange = useCallback(
     async (v: number | null) => {
@@ -147,23 +224,82 @@ export function SessionTicketView({ ticket, detail, onMutate }: SessionTicketVie
     [ticket.key, storyPoints, onMutate],
   );
 
-  const readinessCfg = ticket.readiness ? READINESS_CONFIG[ticket.readiness] : null;
+  const jiraUrl = getJiraUrl(ticket.key);
+  const spColor = storyPoints != null ? getSpColor(storyPoints) : null;
 
   return (
     <div className="space-y-0">
       {/* Ticket header */}
-      <div className="mb-6 flex items-center gap-3">
-        <IssueTypeIcon type={ticket.type} size={18} />
-        <span className="font-mono text-sm font-medium text-[var(--color-brand-400)]">{ticket.key}</span>
-        <StatusBadge status={ticket.jiraStatus} />
-        {readinessCfg && (
+      <div className="mb-4 flex items-center gap-3 flex-wrap">
+        <TicketStatusPill
+          ticketKey={ticket.key}
+          jiraStatus={ticket.jiraStatus}
+          readiness={ticket.readiness}
+          issueType={ticket.type}
+          title={ticket.title}
+        />
+
+        {/* Jira link */}
+        <a
+          href={jiraUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center rounded-md p-1.5 text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+          title="Open in Jira"
+        >
+          <ExternalLink size={14} strokeWidth={1.5} />
+        </a>
+
+        {/* Bridge ticket link */}
+        <a
+          href={`/tickets/${ticket.key}`}
+          className="flex items-center justify-center rounded-md p-1.5 text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+          title="Open in Bridge"
+          target="_blank"
+        >
+          <ArrowUpRight size={14} strokeWidth={1.5} />
+        </a>
+
+        {/* Story points badge */}
+        {storyPoints != null && spColor && (
           <span
-            className="rounded-md px-2 py-0.5 text-xs font-medium"
-            style={{ color: readinessCfg.color, backgroundColor: readinessCfg.bg }}
+            className="flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-xs font-semibold tabular-nums"
+            style={{ backgroundColor: spColor.bg, color: spColor.text }}
+            title={`${storyPoints} story point${storyPoints !== 1 ? "s" : ""}`}
           >
-            {readinessCfg.label}
+            {storyPoints}
           </span>
         )}
+
+        {/* Story Writer button */}
+        <button
+          type="button"
+          onClick={() => window.open(`/tickets/${ticket.key}/write`, "_blank")}
+          className="flex items-center justify-center rounded-md p-1.5 text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+          title="Open Story Writer"
+        >
+          <PenLine size={14} strokeWidth={1.5} />
+        </button>
+
+        {/* Metadata toggle */}
+        <button
+          type="button"
+          onClick={() => setMetadataExpanded((v) => !v)}
+          className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            metadataExpanded
+              ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+              : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+          }`}
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+          title="Toggle metadata"
+        >
+          <Info size={14} strokeWidth={1.5} />
+        </button>
+
+        {/* Assignee (right-aligned) */}
         {ticket.assignee && (
           <div className="ml-auto flex items-center gap-2">
             <Avatar assignee={ticket.assignee} size={22} />
@@ -172,10 +308,17 @@ export function SessionTicketView({ ticket, detail, onMutate }: SessionTicketVie
         )}
       </div>
 
-      {/* Title */}
-      <h1 className="font-[var(--font-display)] text-heading-lg font-bold tracking-[-0.03em] text-text-primary leading-tight">
-        {ticket.title}
-      </h1>
+      {/* Metadata panel */}
+      {metadataExpanded && (
+        <SessionMetadataPanel ticket={ticket} detail={detail} />
+      )}
+
+      {/* Title (editable) */}
+      <EditableTitle
+        ticketKey={ticket.key}
+        initialTitle={ticket.title}
+        onLocalEdit={setHasLocalEdit}
+      />
 
       {/* Description */}
       <EditableDescription
@@ -185,14 +328,23 @@ export function SessionTicketView({ ticket, detail, onMutate }: SessionTicketVie
         onLocalEdit={setHasLocalEdit}
       />
 
-      {/* Relations */}
-      <CompactRelations issues={detail.linkedIssues} />
+      {/* Confluence pages */}
+      <ConfluencePagesSection ticketKey={ticket.key} />
+
+      {/* Linked issues (full edit capabilities) */}
+      <LinkedIssuesSection
+        issues={detail.linkedIssues}
+        ticketKey={ticket.key}
+        onMutate={onMutate}
+      />
 
       {/* Comments */}
       <CollapsibleComments ticketKey={ticket.key} jiraComments={detail.jiraComments} />
 
-      {/* Subtasks */}
-      <SubtasksSection subtasks={detail.subtasks} ticketKey={ticket.key} onMutate={onMutate} />
+      {/* Subtasks (hidden when in side pane mode) */}
+      {!subtasksPaneMode && (
+        <SubtasksSection subtasks={detail.subtasks} ticketKey={ticket.key} onMutate={onMutate} />
+      )}
 
       {/* Story Points */}
       <div className="mt-8 border-t border-border-default pt-6">

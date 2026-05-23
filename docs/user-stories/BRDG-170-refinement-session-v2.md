@@ -27,11 +27,11 @@ As the PO, I want the refinement session view to feel like a full-featured worki
 
 ### Ticket header (top area of ticket view)
 
-- [ ] Replace the plain text key + status with the standard ticket pill component (same as sprint board, e.g. `[icon] VPL-24856 . DONE .`)
-- [ ] Pill links to Jira (external) and to Bridge ticket single view (internal) via two small icon buttons
-- [ ] Story points displayed in the header bar (move from bottom of view)
-- [ ] Button to open Story Writer for this ticket in a new tab
-- [ ] Title is editable inline (click to edit, Enter to save, Escape to cancel)
+- [x] Replace the plain text key + status with the standard ticket pill component (same as sprint board, e.g. `[icon] VPL-24856 . DONE .`)
+- [x] Pill links to Jira (external) and to Bridge ticket single view (internal) via two small icon buttons
+- [x] Story points displayed in the header bar (move from bottom of view)
+- [x] Button to open Story Writer for this ticket in a new tab
+- [x] Title is editable inline (click to edit, Enter to save, Escape to cancel)
 
 ### Navigation dropdown
 
@@ -46,19 +46,19 @@ As the PO, I want the refinement session view to feel like a full-featured worki
 
 ### Related stories
 
-- [ ] "Related stories" section with the same edit capabilities as the ticket single view (LinkedIssuesSection)
-- [ ] Can add/remove issue links without leaving the session
+- [x] "Related stories" section with the same edit capabilities as the ticket single view (LinkedIssuesSection)
+- [x] Can add/remove issue links without leaving the session
 
 ### Issue links and metadata
 
-- [ ] Show Confluence page links (if any) for the current ticket
-- [ ] Button to expand a metadata panel showing: creator, assignee, labels, epic, sprint, components, created/updated dates
-- [ ] Sprint field is editable: quick-move to another sprint via sprint picker
+- [x] Show Confluence page links (if any) for the current ticket
+- [x] Button to expand a metadata panel showing: creator, assignee, labels, epic, sprint, components, created/updated dates
+- [x] Sprint field is editable: quick-move to another sprint via sprint picker
 
 ### Sprint assignment
 
-- [ ] Inline sprint picker in the metadata panel
-- [ ] Moving a ticket to a different sprint saves immediately to Jira
+- [x] Inline sprint picker in the metadata panel
+- [x] Moving a ticket to a different sprint saves immediately to Jira
 
 ## Technical Notes
 
