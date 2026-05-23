@@ -507,6 +507,36 @@ export const scheduler = {
 };
 
 // ---------------------------------------------------------------------------
+// Refinement Sessions
+// ---------------------------------------------------------------------------
+
+export interface RefinementSessionResponse {
+  id: string;
+  name: string;
+  ticketKeys: string[];
+  ticketCount: number;
+  status: "draft" | "completed";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const refinementSessions = {
+  listUrl: () => "/api/refinement-sessions" as const,
+  detailUrl: (id: string) => `/api/refinement-sessions/${enc(id)}`,
+
+  list: (signal?: AbortSignal) =>
+    apiFetch<RefinementSessionResponse[]>("/api/refinement-sessions", { signal }),
+  create: (data: { name?: string; ticketKeys?: string[] }, signal?: AbortSignal) =>
+    apiFetch<RefinementSessionResponse>("/api/refinement-sessions", { method: "POST", body: data, signal }),
+  get: (id: string, signal?: AbortSignal) =>
+    apiFetch<RefinementSessionResponse>(`/api/refinement-sessions/${enc(id)}`, { signal }),
+  update: (id: string, data: Partial<{ name: string; ticketKeys: string[]; status: "draft" | "completed" }>, signal?: AbortSignal) =>
+    apiFetch<RefinementSessionResponse>(`/api/refinement-sessions/${enc(id)}`, { method: "PATCH", body: data, signal }),
+  delete: (id: string, signal?: AbortSignal) =>
+    apiFetch<void>(`/api/refinement-sessions/${enc(id)}`, { method: "DELETE", signal }),
+};
+
+// ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
 

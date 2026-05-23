@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 
 export interface TicketCompletionData {
   pointsSet: boolean;
@@ -22,10 +23,11 @@ interface RefinementSessionState {
   subtasksPaneOpen: boolean;
   sessionActive: boolean;
   sessionStartedAt: number | null;
+  savedSessionId: string | null;
 }
 
 interface RefinementSessionActions {
-  startSession: (keys: string[], meta?: QueueTicketMeta[]) => void;
+  startSession: (keys: string[], meta?: QueueTicketMeta[], savedSessionId?: string) => void;
   nextTicket: () => void;
   prevTicket: () => void;
   goToTicket: (index: number) => void;
@@ -49,12 +51,13 @@ const INITIAL_STATE: RefinementSessionState = {
   subtasksPaneOpen: false,
   sessionActive: false,
   sessionStartedAt: null,
+  savedSessionId: null,
 };
 
 export function RefinementSessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RefinementSessionState>(INITIAL_STATE);
 
-  const startSession = useCallback((keys: string[], meta?: QueueTicketMeta[]) => {
+  const startSession = useCallback((keys: string[], meta?: QueueTicketMeta[], savedSessionId?: string) => {
     setState({
       queue: keys,
       queueMeta: meta ?? keys.map((k) => ({ key: k, title: k })),
@@ -64,6 +67,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       subtasksPaneOpen: false,
       sessionActive: true,
       sessionStartedAt: Date.now(),
+      savedSessionId: savedSessionId ?? null,
     });
   }, []);
 
@@ -134,10 +138,14 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
   }, []);
 
   const endSession = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      sessionActive: false,
-    }));
+    setState((prev) => {
+      if (prev.savedSessionId) {
+        refinementSessionsApi
+          .update(prev.savedSessionId, { status: "completed" })
+          .catch(() => {});
+      }
+      return { ...prev, sessionActive: false };
+    });
   }, []);
 
   return (

@@ -618,3 +618,23 @@ export type NewStoryWriterSessionRow = typeof storyWriterSession.$inferInsert;
 export type StoryWriterDraftRow = typeof storyWriterDraft.$inferSelect;
 export type StoryWriterExecutionLogRow = typeof storyWriterExecutionLog.$inferSelect;
 export type RelatedStoryCandidateRow = typeof relatedStoryCandidate.$inferSelect;
+
+// Saved refinement sessions: persisted ticket queues for refinement ceremonies
+export const refinementSession = sqliteTable("refinement_session", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  ticketKeys: text("ticket_keys").notNull().default("[]"),
+  status: text("status", { enum: ["draft", "completed"] }).notNull().default("draft"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("refinement_session_status_idx").on(table.status),
+  index("refinement_session_created_at_idx").on(table.createdAt),
+]);
+
+export type RefinementSessionRow = typeof refinementSession.$inferSelect;
+export type NewRefinementSessionRow = typeof refinementSession.$inferInsert;

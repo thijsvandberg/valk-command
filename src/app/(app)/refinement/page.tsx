@@ -1,19 +1,23 @@
 "use client";
 
-import { Suspense, useState, useCallback, useMemo, useRef } from "react";
+import { Suspense, useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
-import { Layers, Play, GripVertical, X, Search } from "lucide-react";
+import { useRefinementSessions } from "@/hooks/useRefinementSessions";
+import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { SprintListModal } from "@/components/sprint-board/SprintListModal";
+import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
+import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
 import type { Ticket } from "@/types/ticket";
-import { getSpColor, READINESS_CONFIG } from "@/types/ticket";
+import { getSpColor, READINESS_CONFIG, JIRA_STATUS_COLORS } from "@/types/ticket";
 import {
   DndContext,
   closestCenter,
@@ -32,23 +36,102 @@ import {
 
 const MIN_TICKETS = 1;
 const MAX_TICKETS = 12;
+const DEFAULT_QUEUE_WIDTH = 380;
+const MIN_QUEUE_WIDTH = 260;
+const MAX_QUEUE_WIDTH_RATIO = 0.45;
 
 // ---------------------------------------------------------------------------
-// Queue item (drag-to-reorder)
+// Resizable queue pane
+// ---------------------------------------------------------------------------
+
+function ResizableQueuePane({ children }: { children: React.ReactNode }) {
+  const [width, setWidth] = useState(DEFAULT_QUEUE_WIDTH);
+  const [isDragging, setIsDragging] = useState(false);
+  const paneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    function handleMouseMove(e: MouseEvent) {
+      if (!paneRef.current) return;
+      const rect = paneRef.current.getBoundingClientRect();
+      const maxW = window.innerWidth * MAX_QUEUE_WIDTH_RATIO;
+      const newW = Math.max(MIN_QUEUE_WIDTH, Math.min(maxW, rect.right - e.clientX));
+      setWidth(newW);
+    }
+    function handleMouseUp() { setIsDragging(false); }
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  return (
+    <div
+      ref={paneRef}
+      className="relative shrink-0"
+      style={{ width }}
+    >
+      {/* Resize handle */}
+      <div
+        onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
+        className="absolute top-0 z-20 h-full cursor-col-resize"
+        style={{ left: -16, width: 8 }}
+      >
+        <div
+          className="mx-auto h-full w-0.5 hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
+          style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
+        />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Queue item (drag-to-reorder) with context menu for cross-session move
 // ---------------------------------------------------------------------------
 
 function SortableQueueItem({
   ticket,
   index,
   onRemove,
+  otherSessions,
+  onMoveToSession,
 }: {
   ticket: Ticket;
   index: number;
   onRemove: (key: string) => void;
+  otherSessions?: RefinementSessionResponse[];
+  onMoveToSession?: (ticketKey: string, targetSessionId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.key,
   });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    // Defer so the click that opened the menu doesn't immediately close it
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -56,6 +139,8 @@ function SortableQueueItem({
     zIndex: isDragging ? 10 : undefined,
     position: "relative" as const,
   };
+
+  const hasOtherSessions = otherSessions && otherSessions.length > 0;
 
   return (
     <div
@@ -78,7 +163,6 @@ function SortableQueueItem({
         {index + 1}
       </span>
       <IssueTypeIcon type={ticket.type} size={14} />
-      <span className="font-mono text-xs text-[var(--color-brand-400)]">{ticket.key}</span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{ticket.title}</span>
       {ticket.storyPoints != null && (
         <span
@@ -91,6 +175,43 @@ function SortableQueueItem({
           {ticket.storyPoints === 0 ? "-" : ticket.storyPoints}
         </span>
       )}
+
+      {/* Move to another session */}
+      {hasOtherSessions && (
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="cursor-pointer rounded p-0.5 text-text-muted opacity-0 hover:bg-overlay-default hover:text-text-secondary focus-visible:opacity-100 group-hover:opacity-100"
+            style={{ transition: "opacity 0.15s ease" }}
+            aria-label="Move to another session"
+          >
+            <ArrowRightLeft size={13} strokeWidth={2} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                Move to
+              </div>
+              {otherSessions.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onMoveToSession?.(ticket.key, s.id);
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
+                >
+                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                  <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => onRemove(ticket.key)}
@@ -149,7 +270,12 @@ function TicketRow({
         )}
       </div>
       <IssueTypeIcon type={ticket.type} size={14} />
-      <span className="font-mono text-xs text-[var(--color-brand-400)]">{ticket.key}</span>
+      <TicketKeyPill
+        ticketKey={ticket.key}
+        statusLabel={ticket.jiraStatus}
+        statusBg={JIRA_STATUS_COLORS[ticket.jiraStatus]?.bg}
+        statusColor={JIRA_STATUS_COLORS[ticket.jiraStatus]?.text}
+      />
       <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{ticket.title}</span>
       {readinessCfg && (
         <span
@@ -159,16 +285,11 @@ function TicketRow({
           {readinessCfg.label}
         </span>
       )}
-      {sprintName ? (
+      {sprintName && (
         <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-muted">
           {sprintName}
         </span>
-      ) : (
-        <span className="shrink-0 rounded-md bg-overlay-subtle px-1.5 py-0.5 text-caption italic text-text-muted">
-          No sprint
-        </span>
       )}
-      <StatusBadge status={ticket.jiraStatus} />
       {ticket.storyPoints != null && (
         <span
           className="rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums"
@@ -218,54 +339,52 @@ function RefinementPageInner() {
   const searchParams = useSearchParams();
   const { startSession } = useRefinementSession();
 
+  // Saved sessions
+  const { sessions, mutate: mutateSessions } = useRefinementSessions();
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const activeSession = useMemo(
+    () => sessions.find((s) => s.id === activeSessionId) ?? null,
+    [sessions, activeSessionId],
+  );
+
   // Sprint data
   const { data: sprints } = useJiraSprints();
   const { data: sprintSlots } = useSprintSlots();
 
-  // Map sprint Jira ID -> display name
   const sprintNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     (sprints ?? []).forEach((s) => { map[String(s.id)] = s.name; });
     return map;
   }, [sprints]);
 
-  // Pinned sprint IDs (from sprint slots)
   const pinnedSprintIds = useMemo(() => {
     if (!sprintSlots) return new Set<string>();
     return new Set(sprintSlots.map((s) => s.sprintId));
   }, [sprintSlots]);
 
-  // Sprint filter: which sprints to include (default: pinned)
-  const allSprintIds = useMemo(
-    () => (sprints ?? []).filter((s) => !s.hidden).map((s) => String(s.id)),
-    [sprints],
-  );
-  const [sprintFilter, setSprintFilter] = useState<Set<string> | null>(null); // null = use pinned default
+  const [sprintFilter, setSprintFilter] = useState<Set<string> | null>(null);
   const effectiveSprintFilter = sprintFilter ?? pinnedSprintIds;
   const [sprintFilterOpen, setSprintFilterOpen] = useState(false);
 
   // Fetch all tickets
   const { data: tickets } = useTickets("__all__");
 
-  // Filter: non-DONE, non-epic, non-subtask, matching sprint filter
   const filteredTickets = useMemo(() => {
     return (tickets ?? []).filter((t) => {
       if (t.jiraStatus === "DONE" || t.jiraStatus === "DEPRECATED") return false;
       if (t.type === "epic" || t.type === "subtask") return false;
-      // Include if ticket's sprint is in filter OR ticket has no sprint
+      if (t.removedFromJiraAt) return false;
       if (effectiveSprintFilter.size === 0) return true;
-      if (!t.sprintId) return true;
+      if (!t.sprintId) return false;
       return effectiveSprintFilter.has(t.sprintId);
     });
   }, [tickets, effectiveSprintFilter]);
 
-  // Smart sort
   const sortedTickets = useMemo(
     () => [...filteredTickets].sort(smartSort),
     [filteredTickets],
   );
 
-  // Inline search
   const [searchQuery, setSearchQuery] = useState("");
   const availableTickets = useMemo(() => {
     if (!searchQuery.trim()) return sortedTickets;
@@ -275,73 +394,104 @@ function RefinementPageInner() {
     );
   }, [sortedTickets, searchQuery]);
 
-  // Selection state
+  // Queue state: for quick session (no activeSessionId), uses local state.
+  // For saved sessions, derives from the session's ticketKeys.
   const keysParam = searchParams.get("keys");
   const [initialKeys] = useState(() =>
     keysParam ? keysParam.split(",").filter(Boolean) : [],
   );
-  const [selectedKeys, setSelectedKeys] = useState<string[]>(initialKeys);
-  const [queue, setQueue] = useState<string[]>(initialKeys);
+  const [quickQueue, setQuickQueue] = useState<string[]>(initialKeys);
+  const [quickSelectedKeys, setQuickSelectedKeys] = useState<string[]>(initialKeys);
+
+  // Derive queue from active session or quick mode
+  const queue = activeSession ? activeSession.ticketKeys : quickQueue;
+  const selectedKeys = activeSession ? activeSession.ticketKeys : quickSelectedKeys;
+
   const lastClickedIndexRef = useRef<number | null>(null);
 
-  // Shift-click range selection
+  // Debounce timer for persisting session queue changes
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persistSessionQueue = useCallback(
+    (sessionId: string, newKeys: string[]) => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = setTimeout(async () => {
+        await refinementSessionsApi.update(sessionId, { ticketKeys: newKeys });
+        await mutateSessions();
+      }, 400);
+    },
+    [mutateSessions],
+  );
+
+  // Update queue: for saved session, optimistically update local cache + debounce persist
+  const updateQueue = useCallback(
+    (newKeys: string[]) => {
+      if (activeSessionId && activeSession) {
+        // Optimistic update
+        mutateSessions(
+          (prev) =>
+            prev?.map((s) =>
+              s.id === activeSessionId
+                ? { ...s, ticketKeys: newKeys, ticketCount: newKeys.length }
+                : s,
+            ),
+          false,
+        );
+        persistSessionQueue(activeSessionId, newKeys);
+      } else {
+        setQuickQueue(newKeys);
+        setQuickSelectedKeys(newKeys);
+      }
+    },
+    [activeSessionId, activeSession, mutateSessions, persistSessionQueue],
+  );
+
   const toggleTicket = useCallback(
     (key: string, index: number, shiftKey: boolean) => {
       if (shiftKey && lastClickedIndexRef.current !== null) {
         const from = Math.min(lastClickedIndexRef.current, index);
         const to = Math.max(lastClickedIndexRef.current, index);
         const rangeKeys = availableTickets.slice(from, to + 1).map((t) => t.key);
-        setSelectedKeys((prev) => {
-          const set = new Set(prev);
-          for (const k of rangeKeys) set.add(k);
-          return Array.from(set);
-        });
-        setQueue((prev) => {
-          const set = new Set(prev);
-          for (const k of rangeKeys) set.add(k);
-          return Array.from(set);
-        });
+        const merged = Array.from(new Set([...queue, ...rangeKeys]));
+        updateQueue(merged);
         lastClickedIndexRef.current = index;
         return;
       }
 
       lastClickedIndexRef.current = index;
-      setSelectedKeys((prev) => {
-        if (prev.includes(key)) {
-          setQueue((q) => q.filter((k) => k !== key));
-          return prev.filter((k) => k !== key);
-        }
-        if (prev.length >= MAX_TICKETS) return prev;
-        setQueue((q) => q.includes(key) ? q : [...q, key]);
-        return [...prev, key];
-      });
+      if (queue.includes(key)) {
+        updateQueue(queue.filter((k) => k !== key));
+      } else {
+        if (queue.length >= MAX_TICKETS) return;
+        updateQueue([...queue, key]);
+      }
     },
-    [availableTickets],
+    [availableTickets, queue, updateQueue],
   );
 
-  // Select all ready-to-refine tickets
-  const handleSelectReadyToRefine = useCallback(() => {
+  const handleToggleReadyToRefine = useCallback(() => {
     const readyKeys = availableTickets
       .filter((t) => t.readiness === "ready_to_refine")
       .map((t) => t.key);
     if (readyKeys.length === 0) return;
 
-    setSelectedKeys((prev) => {
-      const set = new Set(prev);
-      for (const k of readyKeys) set.add(k);
-      return Array.from(set);
-    });
-    setQueue((prev) => {
-      const set = new Set(prev);
-      for (const k of readyKeys) set.add(k);
-      return Array.from(set);
-    });
-  }, [availableTickets]);
+    const allSelected = readyKeys.every((k) => queue.includes(k));
 
-  const removeFromQueue = useCallback((key: string) => {
-    setSelectedKeys((prev) => prev.filter((k) => k !== key));
-    setQueue((prev) => prev.filter((k) => k !== key));
-  }, []);
+    if (allSelected) {
+      const readySet = new Set(readyKeys);
+      updateQueue(queue.filter((k) => !readySet.has(k)));
+    } else {
+      const merged = Array.from(new Set([...queue, ...readyKeys]));
+      updateQueue(merged);
+    }
+  }, [availableTickets, queue, updateQueue]);
+
+  const removeFromQueue = useCallback(
+    (key: string) => {
+      updateQueue(queue.filter((k) => k !== key));
+    },
+    [queue, updateQueue],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -355,16 +505,16 @@ function RefinementPageInner() {
       const oldIndex = queue.indexOf(active.id as string);
       const newIndex = queue.indexOf(over.id as string);
       if (oldIndex === -1 || newIndex === -1) return;
-      setQueue(arrayMove(queue, oldIndex, newIndex));
+      updateQueue(arrayMove(queue, oldIndex, newIndex));
     },
-    [queue],
+    [queue, updateQueue],
   );
 
   const allTicketMap = useMemo(() => {
     const map = new Map<string, Ticket>();
-    for (const t of sortedTickets) map.set(t.key, t);
+    for (const t of tickets ?? []) map.set(t.key, t);
     return map;
-  }, [sortedTickets]);
+  }, [tickets]);
 
   const queueTickets = useMemo(
     () => queue.map((key) => allTicketMap.get(key)).filter(Boolean) as Ticket[],
@@ -379,16 +529,17 @@ function RefinementPageInner() {
       const t = allTicketMap.get(key);
       return { key, title: t?.title ?? key };
     });
-    startSession(queue, meta);
+    startSession(queue, meta, activeSessionId ?? undefined);
     router.push("/refinement/session");
-  }, [canStart, queue, allTicketMap, startSession, router]);
+  }, [canStart, queue, allTicketMap, startSession, router, activeSessionId]);
 
-  const readyCount = useMemo(
-    () => availableTickets.filter((t) => t.readiness === "ready_to_refine").length,
+  const readyKeys = useMemo(
+    () => availableTickets.filter((t) => t.readiness === "ready_to_refine").map((t) => t.key),
     [availableTickets],
   );
+  const readyCount = readyKeys.length;
+  const allReadySelected = readyCount > 0 && readyKeys.every((k) => queue.includes(k));
 
-  // Sprint filter label
   const sprintFilterLabel = useMemo(() => {
     if (effectiveSprintFilter.size === 0) return "All sprints";
     if (effectiveSprintFilter.size === pinnedSprintIds.size &&
@@ -402,7 +553,6 @@ function RefinementPageInner() {
     return `${effectiveSprintFilter.size} sprints`;
   }, [effectiveSprintFilter, pinnedSprintIds, sprintNameMap]);
 
-  // Toggle a sprint in the filter
   const toggleSprintInFilter = useCallback((id: string) => {
     setSprintFilter((prev) => {
       const current = prev ?? new Set(pinnedSprintIds);
@@ -415,6 +565,41 @@ function RefinementPageInner() {
       return next;
     });
   }, [pinnedSprintIds]);
+
+  // Other sessions for cross-session move
+  const otherSessions = useMemo(
+    () => sessions.filter((s) => s.id !== activeSessionId && s.status === "draft"),
+    [sessions, activeSessionId],
+  );
+
+  const handleMoveToSession = useCallback(
+    async (ticketKey: string, targetSessionId: string) => {
+      // Remove from current session
+      updateQueue(queue.filter((k) => k !== ticketKey));
+
+      // Add to target session
+      const target = sessions.find((s) => s.id === targetSessionId);
+      if (target) {
+        const newKeys = [...target.ticketKeys, ticketKey];
+        await refinementSessionsApi.update(targetSessionId, { ticketKeys: newKeys });
+        await mutateSessions();
+      }
+    },
+    [queue, updateQueue, sessions, mutateSessions],
+  );
+
+  // When switching sessions, load the session's queue
+  const handleSelectSession = useCallback(
+    (id: string | null) => {
+      // Flush any pending persist for the previous session
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+      setActiveSessionId(id);
+    },
+    [],
+  );
 
   return (
     <>
@@ -429,13 +614,23 @@ function RefinementPageInner() {
               icon={<Play size={14} strokeWidth={2} />}
               onClick={handleBeginRefinement}
             >
-              Begin Refinement ({queue.length})
+              {activeSession ? "Start Session" : "Begin Refinement"} ({queue.length})
             </Button>
           ) : undefined
         }
       >
         <ViewHeaderTitle>Refinement</ViewHeaderTitle>
       </ViewHeader>
+
+      {/* Saved session tabs */}
+      <div className="border-b border-border-default px-6 py-3">
+        <SavedSessionList
+          sessions={sessions}
+          mutate={mutateSessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
+        />
+      </div>
 
       <div className="relative min-h-full">
         {availableTickets.length === 0 && !searchQuery ? (
@@ -450,7 +645,6 @@ function RefinementPageInner() {
           <div className="mx-auto flex max-w-6xl gap-6 p-6">
             {/* Left: ticket selection list */}
             <div className="min-w-0 flex-1">
-              {/* Header row */}
               <div className="mb-4 flex items-center gap-3">
                 <h2 className="shrink-0 font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
                   Select tickets
@@ -458,10 +652,14 @@ function RefinementPageInner() {
                 {readyCount > 0 && (
                   <button
                     type="button"
-                    onClick={handleSelectReadyToRefine}
-                    className="shrink-0 cursor-pointer rounded-full bg-[rgba(34,197,94,0.12)] px-2 py-0.5 text-caption font-medium text-[#22c55e] hover:bg-[rgba(34,197,94,0.20)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22c55e] active:opacity-70"
-                    style={{ transition: "background-color 0.15s ease, opacity 0.1s ease" }}
-                    title="Click to select all ready-to-refine tickets"
+                    onClick={handleToggleReadyToRefine}
+                    className={`shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-caption font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22c55e] active:opacity-70 ${
+                      allReadySelected
+                        ? "bg-[#22c55e] text-white hover:bg-[#1ea34d]"
+                        : "bg-[rgba(34,197,94,0.12)] text-[#22c55e] hover:bg-[rgba(34,197,94,0.20)]"
+                    }`}
+                    style={{ transition: "background-color 0.15s ease, color 0.15s ease, opacity 0.1s ease" }}
+                    title={allReadySelected ? "Click to deselect all ready-to-refine tickets" : "Click to select all ready-to-refine tickets"}
                   >
                     {readyCount} ready to refine
                   </button>
@@ -480,87 +678,15 @@ function RefinementPageInner() {
                     {sprintFilterLabel}
                   </button>
                   {sprintFilterOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setSprintFilterOpen(false)} />
-                      <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
-                        {/* All sprints option */}
-                        <button
-                          type="button"
-                          onClick={() => { setSprintFilter(new Set()); setSprintFilterOpen(false); }}
-                          className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs ${
-                            effectiveSprintFilter.size === 0
-                              ? "text-[var(--color-brand-400)]"
-                              : "text-text-secondary hover:bg-overlay-subtle"
-                          }`}
-                          style={{ transition: "background-color 0.1s ease" }}
-                        >
-                          All sprints
-                        </button>
-                        {/* Pinned sprints shortcut */}
-                        {pinnedSprintIds.size > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => { setSprintFilter(null); setSprintFilterOpen(false); }}
-                            className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs ${
-                              sprintFilter === null
-                                ? "text-[var(--color-brand-400)]"
-                                : "text-text-secondary hover:bg-overlay-subtle"
-                            }`}
-                            style={{ transition: "background-color 0.1s ease" }}
-                          >
-                            Pinned sprints
-                          </button>
-                        )}
-                        <div className="my-1 h-px bg-border-subtle" />
-                        {/* Individual sprints */}
-                        {allSprintIds.map((id) => {
-                          const name = sprintNameMap[id] ?? id;
-                          const active = effectiveSprintFilter.has(id);
-                          const sprint = (sprints ?? []).find((s) => String(s.id) === id);
-                          const isPinned = pinnedSprintIds.has(id);
-                          return (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() => toggleSprintInFilter(id)}
-                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
-                              style={{ transition: "background-color 0.1s ease" }}
-                            >
-                              <div
-                                className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${
-                                  active
-                                    ? "border-[var(--color-brand-500)] bg-[var(--color-brand-600)]"
-                                    : "border-border-strong bg-overlay-subtle"
-                                }`}
-                              >
-                                {active && (
-                                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                                    <path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                              </div>
-                              <span className={`min-w-0 flex-1 truncate ${active ? "text-text-primary" : ""}`}>
-                                {name}
-                              </span>
-                              {isPinned && (
-                                <span className="text-caption text-text-muted">pinned</span>
-                              )}
-                              {sprint && (
-                                <span
-                                  className="shrink-0 rounded px-1 py-0.5 text-caption font-medium capitalize"
-                                  style={{
-                                    color: sprint.state === "active" ? "#4aaa60" : sprint.state === "future" ? "#60a5fa" : "var(--color-text-muted)",
-                                    backgroundColor: sprint.state === "active" ? "rgba(74,170,96,0.1)" : sprint.state === "future" ? "rgba(96,165,250,0.1)" : "var(--color-overlay-subtle)",
-                                  }}
-                                >
-                                  {sprint.state}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
+                    <SprintListModal
+                      onClose={() => setSprintFilterOpen(false)}
+                      onSelect={() => {}}
+                      onPin={() => {}}
+                      pinnedIds={pinnedSprintIds}
+                      multiSelect
+                      selectedIds={effectiveSprintFilter}
+                      onToggleSelect={toggleSprintInFilter}
+                    />
                   )}
                 </div>
               </div>
@@ -592,7 +718,7 @@ function RefinementPageInner() {
                   <TicketRow
                     key={ticket.key}
                     ticket={ticket}
-                    selected={selectedKeys.includes(ticket.key)}
+                    selected={queue.includes(ticket.key)}
                     onToggle={toggleTicket}
                     sprintName={ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? null) : null}
                     index={idx}
@@ -607,11 +733,11 @@ function RefinementPageInner() {
             </div>
 
             {/* Right: selected queue */}
-            <div className="w-80 shrink-0">
+            <ResizableQueuePane>
               <div className="sticky top-6">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
-                    Queue
+                    {activeSession ? activeSession.name : "Queue"}
                   </h2>
                   <span className="text-xs tabular-nums text-text-muted">
                     {queue.length} ticket{queue.length !== 1 ? "s" : ""}
@@ -635,6 +761,8 @@ function RefinementPageInner() {
                             ticket={ticket}
                             index={idx}
                             onRemove={removeFromQueue}
+                            otherSessions={activeSession ? otherSessions : undefined}
+                            onMoveToSession={activeSession ? handleMoveToSession : undefined}
                           />
                         ))}
                       </div>
@@ -650,11 +778,11 @@ function RefinementPageInner() {
                     onClick={handleBeginRefinement}
                     className="mt-4 w-full"
                   >
-                    Begin Refinement
+                    {activeSession ? "Start Session" : "Begin Refinement"}
                   </Button>
                 )}
               </div>
-            </div>
+            </ResizableQueuePane>
           </div>
         )}
       </div>
