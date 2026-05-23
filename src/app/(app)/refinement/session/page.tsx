@@ -7,13 +7,18 @@ import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { SessionTicketView } from "@/components/refinement-session/SessionTicketView";
 import { SessionSummary } from "@/components/refinement-session/SessionSummary";
+import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { tickets } from "@/lib/api-client";
 import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CheckCircle2,
   StickyNote,
+  ListChecks,
+  List,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -22,14 +27,18 @@ export default function RefinementSessionPage() {
   const router = useRouter();
   const {
     queue,
+    queueMeta,
     currentIndex,
     sessionActive,
     notesCollapsed,
+    subtasksPaneOpen,
+    completionData,
     nextTicket,
     prevTicket,
     goToTicket,
     markComplete,
     toggleNotes,
+    toggleSubtasksPane,
     endSession,
   } = useRefinementSession();
 
@@ -55,6 +64,10 @@ export default function RefinementSessionPage() {
   // PO Notes: reset when ticket key changes
   const [poNotes, setPoNotes] = useState("");
   const [syncedKey, setSyncedKey] = useState<string | null>(null);
+
+  // Navigation dropdown
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
+  const navDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ticketData || syncedKey === ticketData.key) return;
@@ -102,6 +115,25 @@ export default function RefinementSessionPage() {
     router.push("/refinement");
   }, [endSession, router]);
 
+  // Close nav dropdown on click outside
+  useEffect(() => {
+    if (!navDropdownOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (navDropdownRef.current && !navDropdownRef.current.contains(e.target as Node)) {
+        setNavDropdownOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setNavDropdownOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [navDropdownOpen]);
+
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -141,6 +173,9 @@ export default function RefinementSessionPage() {
     );
   }
 
+  // Determine which right panel to show
+  const rightPanelMode = subtasksPaneOpen ? "subtasks" : (!notesCollapsed ? "notes" : null);
+
   return (
     <>
       {pageTitle}
@@ -158,7 +193,7 @@ export default function RefinementSessionPage() {
             Exit Session
           </button>
 
-          {/* Center: progress */}
+          {/* Center: progress + navigation dropdown */}
           <div className="flex items-center gap-3">
             <span className="text-xs font-medium tabular-nums text-text-secondary">
               Ticket {currentIndex + 1} of {queue.length}
@@ -185,10 +220,82 @@ export default function RefinementSessionPage() {
                 </button>
               ))}
             </div>
+            {/* Navigation dropdown trigger */}
+            <div className="relative" ref={navDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setNavDropdownOpen((v) => !v)}
+                className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  navDropdownOpen
+                    ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                    : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                title="Jump to ticket"
+              >
+                <List size={14} strokeWidth={1.5} />
+              </button>
+              {navDropdownOpen && (
+                <div
+                  className="absolute top-full left-1/2 z-50 mt-2 w-[340px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+                  style={{ animation: "fadeInUp 0.1s ease" }}
+                >
+                  <div className="px-3 py-2 text-label font-semibold uppercase tracking-wider text-text-muted">
+                    Queue
+                  </div>
+                  <div className="max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+                    {queue.map((key, idx) => {
+                      const meta = queueMeta.find((m) => m.key === key);
+                      const isCompleted = !!completionData[key];
+                      const isCurrent = idx === currentIndex;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { goToTicket(idx); setNavDropdownOpen(false); }}
+                          className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left hover:bg-hover-list-item active:bg-overlay-default ${
+                            isCurrent ? "bg-overlay-subtle" : ""
+                          }`}
+                          style={{ transition: "background-color 0.1s ease" }}
+                        >
+                          <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{key}</span>
+                          <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
+                            {meta?.title ?? key}
+                          </span>
+                          {isCompleted && (
+                            <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
+                          )}
+                          {isCurrent && !isCompleted && (
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Right: ticket key + notes toggle */}
+          {/* Right: panel toggles */}
           <div className="flex items-center gap-2">
+            {/* Subtasks pane toggle */}
+            <button
+              type="button"
+              onClick={toggleSubtasksPane}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                subtasksPaneOpen
+                  ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+              }`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              title="Toggle subtasks pane"
+            >
+              <ListChecks size={13} strokeWidth={1.5} />
+              Subtasks
+            </button>
+
+            {/* Notes toggle */}
             <button
               type="button"
               onClick={toggleNotes}
@@ -217,6 +324,7 @@ export default function RefinementSessionPage() {
                   ticket={ticketData}
                   detail={ticketData}
                   onMutate={() => mutate()}
+                  subtasksPaneMode={subtasksPaneOpen}
                 />
               ) : (
                 <div className="flex items-center justify-center py-24">
@@ -226,8 +334,30 @@ export default function RefinementSessionPage() {
             </div>
           </div>
 
-          {/* PO Notes panel */}
-          {!notesCollapsed && (
+          {/* Right panel: Subtasks pane */}
+          {rightPanelMode === "subtasks" && ticketData && (
+            <div
+              className="w-80 shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] p-5"
+              style={{ animation: "fadeInUp 0.15s ease" }}
+            >
+              <div className="flex items-center gap-2">
+                <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">Subtasks</h3>
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
+                  {ticketData.subtasks?.length ?? 0}
+                </span>
+              </div>
+              <div className="mt-3">
+                <SubtasksSection
+                  subtasks={ticketData.subtasks ?? []}
+                  ticketKey={ticketData.key}
+                  onMutate={() => mutate()}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Right panel: PO Notes */}
+          {rightPanelMode === "notes" && (
             <div
               className="w-72 shrink-0 border-l border-border-subtle bg-[var(--color-surface-elevated)] p-5"
               style={{ animation: "fadeInUp 0.15s ease" }}

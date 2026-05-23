@@ -8,22 +8,30 @@ export interface TicketCompletionData {
   statusChanged: boolean;
 }
 
+export interface QueueTicketMeta {
+  key: string;
+  title: string;
+}
+
 interface RefinementSessionState {
   queue: string[];
+  queueMeta: QueueTicketMeta[];
   currentIndex: number;
   completionData: Record<string, TicketCompletionData>;
   notesCollapsed: boolean;
+  subtasksPaneOpen: boolean;
   sessionActive: boolean;
   sessionStartedAt: number | null;
 }
 
 interface RefinementSessionActions {
-  startSession: (keys: string[]) => void;
+  startSession: (keys: string[], meta?: QueueTicketMeta[]) => void;
   nextTicket: () => void;
   prevTicket: () => void;
   goToTicket: (index: number) => void;
   markComplete: (key: string, data: Partial<TicketCompletionData>) => void;
   toggleNotes: () => void;
+  toggleSubtasksPane: () => void;
   endSession: () => void;
 }
 
@@ -33,9 +41,11 @@ const RefinementSessionContext = createContext<RefinementSessionContextType | nu
 
 const INITIAL_STATE: RefinementSessionState = {
   queue: [],
+  queueMeta: [],
   currentIndex: 0,
   completionData: {},
   notesCollapsed: true,
+  subtasksPaneOpen: false,
   sessionActive: false,
   sessionStartedAt: null,
 };
@@ -43,12 +53,14 @@ const INITIAL_STATE: RefinementSessionState = {
 export function RefinementSessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RefinementSessionState>(INITIAL_STATE);
 
-  const startSession = useCallback((keys: string[]) => {
+  const startSession = useCallback((keys: string[], meta?: QueueTicketMeta[]) => {
     setState({
       queue: keys,
+      queueMeta: meta ?? keys.map((k) => ({ key: k, title: k })),
       currentIndex: 0,
       completionData: {},
       notesCollapsed: true,
+      subtasksPaneOpen: false,
       sessionActive: true,
       sessionStartedAt: Date.now(),
     });
@@ -96,6 +108,10 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
     setState((prev) => ({ ...prev, notesCollapsed: !prev.notesCollapsed }));
   }, []);
 
+  const toggleSubtasksPane = useCallback(() => {
+    setState((prev) => ({ ...prev, subtasksPaneOpen: !prev.subtasksPaneOpen }));
+  }, []);
+
   const endSession = useCallback(() => {
     setState((prev) => ({
       ...prev,
@@ -113,6 +129,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         goToTicket,
         markComplete,
         toggleNotes,
+        toggleSubtasksPane,
         endSession,
       }}
     >

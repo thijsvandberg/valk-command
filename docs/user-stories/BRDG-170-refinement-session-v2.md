@@ -35,14 +35,14 @@ As the PO, I want the refinement session view to feel like a full-featured worki
 
 ### Navigation dropdown
 
-- [ ] Button next to the progress indicator (top bar) opens a dropdown listing all tickets in the queue
-- [ ] Each item shows key, title, and a checkmark if already visited/completed
-- [ ] Clicking a ticket in the dropdown jumps to it
+- [x] Button next to the progress indicator (top bar) opens a dropdown listing all tickets in the queue
+- [x] Each item shows key, title, and a checkmark if already visited/completed
+- [x] Clicking a ticket in the dropdown jumps to it
 
 ### Subtasks side pane
 
-- [ ] Button to toggle subtasks into a side pane (right side, alongside or replacing PO Notes)
-- [ ] When in side pane mode, subtasks are always visible while scrolling the main content
+- [x] Button to toggle subtasks into a side pane (right side, alongside or replacing PO Notes)
+- [x] When in side pane mode, subtasks are always visible while scrolling the main content
 
 ### Related stories
 

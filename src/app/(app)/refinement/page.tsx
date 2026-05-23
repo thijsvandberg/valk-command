@@ -375,7 +375,11 @@ function RefinementPageInner() {
 
   const handleBeginRefinement = useCallback(() => {
     if (!canStart) return;
-    startSession(queue);
+    const meta = queue.map((key) => {
+      const t = allTicketMap.get(key);
+      return { key, title: t?.title ?? key };
+    });
+    startSession(queue, meta);
     router.push("/refinement/session");
   }, [canStart, queue, startSession, router]);
 
