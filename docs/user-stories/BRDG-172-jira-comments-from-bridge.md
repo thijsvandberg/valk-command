@@ -8,14 +8,19 @@
 
 As the PO, I want to post comments to Jira directly from Bridge (both from the ticket detail view and the refinement session), so I can document decisions and action items without switching to Jira.
 
+## Context
+
+Currently the CommentsSection has two areas: "PO Comments" (local, stored in Bridge DB) and "Jira Comments" (read-only, synced from Jira). This story adds the ability to write new Jira comments from Bridge. PO Comments remain a separate local-only feature.
+
 ## Acceptance Criteria
 
 ### Ticket detail view
 
-- [ ] New "Post to Jira" option in the comments section (alongside existing PO Comments)
-- [ ] Comment input with a toggle or tab to switch between "PO Comment" (local) and "Jira Comment" (synced)
-- [ ] Jira comments are posted via the Jira API and appear in the Jira comments list after sync
-- [ ] Confirmation indicator when a Jira comment is successfully posted
+- [ ] New "Post to Jira" comment input in the Jira Comments section (below the existing read-only list)
+- [ ] Input has a send button; posting creates the comment in Jira via API
+- [ ] The new comment appears in the Jira Comments list after a short delay (cache invalidation + revalidation)
+- [ ] Confirmation indicator (checkmark or brief toast) when a Jira comment is successfully posted
+- [ ] PO Comments section stays unchanged (local-only, separate from Jira comments)
 
 ### Refinement session
 
@@ -32,8 +37,8 @@ As the PO, I want to post comments to Jira directly from Bridge (both from the t
 ## Technical Notes
 
 - `jiraClient.addComment()` already exists and is used for flag comments
-- The UI should make it clear which comments are local (PO) vs. synced (Jira)
-- Markdown formatting in the input should be converted to Jira ADF or plain text before posting
+- Markdown formatting in the input should be converted to plain text before posting (Jira does not accept markdown in the REST v2 comment body)
+- The Jira Comments section header could show "Jira Comments" with a small "Post" button inline
 
 ## Out of Scope
 
