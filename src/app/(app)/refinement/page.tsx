@@ -14,10 +14,10 @@ import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
-import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
 import type { Ticket } from "@/types/ticket";
-import { getSpColor, READINESS_CONFIG, JIRA_STATUS_COLORS } from "@/types/ticket";
+import { getSpColor } from "@/types/ticket";
 import {
   DndContext,
   closestCenter,
@@ -242,8 +242,6 @@ function TicketRow({
   sprintName: string | null;
   index: number;
 }) {
-  const readinessCfg = ticket.readiness ? READINESS_CONFIG[ticket.readiness] : null;
-
   return (
     <button
       type="button"
@@ -269,22 +267,17 @@ function TicketRow({
           </svg>
         )}
       </div>
-      <IssueTypeIcon type={ticket.type} size={14} />
-      <TicketKeyPill
-        ticketKey={ticket.key}
-        statusLabel={ticket.jiraStatus}
-        statusBg={JIRA_STATUS_COLORS[ticket.jiraStatus]?.bg}
-        statusColor={JIRA_STATUS_COLORS[ticket.jiraStatus]?.text}
-      />
+      <span onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+        <TicketStatusPill
+          ticketKey={ticket.key}
+          jiraStatus={ticket.jiraStatus}
+          issueType={ticket.type}
+          title={ticket.title}
+          readiness={ticket.readiness}
+          variant="list"
+        />
+      </span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{ticket.title}</span>
-      {readinessCfg && (
-        <span
-          className="shrink-0 rounded-md px-1.5 py-0.5 text-caption font-medium"
-          style={{ color: readinessCfg.color, backgroundColor: readinessCfg.bg }}
-        >
-          {readinessCfg.label}
-        </span>
-      )}
       {sprintName && (
         <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-muted">
           {sprintName}

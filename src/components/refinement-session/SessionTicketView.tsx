@@ -3,8 +3,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Ticket, TicketDetail } from "@/types/ticket";
 import { getSpColor } from "@/types/ticket";
-import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { Avatar } from "@/components/shared/Avatar";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { EditableDescription } from "@/components/ticket-detail/EditableDescription";
@@ -23,7 +21,6 @@ import {
   ExternalLink,
   ArrowUpRight,
   PenLine,
-  Info,
   MoreHorizontal,
 } from "lucide-react";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
@@ -34,6 +31,7 @@ interface SessionTicketViewProps {
   detail: TicketDetail;
   onMutate: () => void;
   subtasksPaneMode?: boolean;
+  metadataExpanded?: boolean;
 }
 
 function CollapsibleComments({
@@ -220,7 +218,7 @@ function SessionMetadataPanel({
   );
 }
 
-function HeaderOverflowMenu({
+export function HeaderOverflowMenu({
   ticketKey,
   jiraUrl,
 }: {
@@ -302,10 +300,9 @@ function HeaderOverflowMenu({
   );
 }
 
-export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }: SessionTicketViewProps) {
+export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode, metadataExpanded = false }: SessionTicketViewProps) {
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
-  const [metadataExpanded, setMetadataExpanded] = useState(false);
 
   const handleStoryPointsChange = useCallback(
     async (v: number | null) => {
@@ -322,54 +319,8 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }
     [ticket.key, storyPoints, onMutate],
   );
 
-  const jiraUrl = getJiraUrl(ticket.key);
-
   return (
     <div className="space-y-0">
-      {/* Ticket header */}
-      <div className="mb-4 flex items-center gap-3 flex-wrap">
-        <TicketStatusPill
-          ticketKey={ticket.key}
-          jiraStatus={ticket.jiraStatus}
-          readiness={ticket.readiness}
-          issueType={ticket.type}
-          title={ticket.title}
-        />
-
-        {/* Story points (editable) */}
-        <StoryPointPicker
-          value={storyPoints}
-          onChange={handleStoryPointsChange}
-          align="left"
-        />
-
-        {/* Metadata toggle */}
-        <button
-          type="button"
-          onClick={() => setMetadataExpanded((v) => !v)}
-          className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-            metadataExpanded
-              ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-              : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-          }`}
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-          title="Toggle metadata"
-        >
-          <Info size={14} strokeWidth={1.5} />
-        </button>
-
-        {/* Overflow menu (Jira, Bridge, Story Writer) */}
-        <HeaderOverflowMenu ticketKey={ticket.key} jiraUrl={jiraUrl} />
-
-        {/* Assignee (right-aligned) */}
-        {ticket.assignee && (
-          <div className="ml-auto flex items-center gap-2">
-            <Avatar assignee={ticket.assignee} size={22} />
-            <span className="text-xs text-text-tertiary">{ticket.assignee.name}</span>
-          </div>
-        )}
-      </div>
-
       {/* Metadata panel */}
       {metadataExpanded && (
         <SessionMetadataPanel ticket={ticket} detail={detail} />

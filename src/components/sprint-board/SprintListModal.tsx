@@ -240,6 +240,8 @@ function SprintRow({
   showBadge,
   showHide,
   showStakeholder,
+  showPin = true,
+  isChecked,
   onSelect,
   onPin,
   onHide,
@@ -250,6 +252,8 @@ function SprintRow({
   showBadge: boolean;
   showHide: boolean;
   showStakeholder: boolean;
+  showPin?: boolean;
+  isChecked?: boolean;
   onSelect: () => void;
   onPin: () => void;
   onHide: () => void;
@@ -263,10 +267,27 @@ function SprintRow({
       onClick={onSelect}
     >
       <span className="flex items-center gap-2 min-w-0">
-        <span
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: stateColor(sprint.state) }}
-        />
+        {isChecked !== undefined && (
+          <span
+            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${
+              isChecked
+                ? "border-[var(--color-brand-500)] bg-[var(--color-brand-600)]"
+                : "border-border-strong bg-overlay-subtle"
+            }`}
+          >
+            {isChecked && (
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                <path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+        )}
+        {isChecked === undefined && (
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: stateColor(sprint.state) }}
+          />
+        )}
         <span className="truncate">{sprint.name}</span>
         {showBadge && <StateBadge state={sprint.state} />}
       </span>
@@ -296,18 +317,20 @@ function SprintRow({
               : <Eye className="h-3 w-3" strokeWidth={1.5} />}
           </button>
         )}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onPin(); }}
-          className={`flex h-5 w-5 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-            isPinned
-              ? "text-[var(--color-brand-400)]"
-              : "text-text-muted hover:text-text-tertiary hover:bg-hover-list-item"
-          }`}
-          title={isPinned ? "Unpin from tabs" : "Pin to tab"}
-        >
-          <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
-        </button>
+        {showPin && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onPin(); }}
+            className={`flex h-5 w-5 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              isPinned
+                ? "text-[var(--color-brand-400)]"
+                : "text-text-muted hover:text-text-tertiary hover:bg-hover-list-item"
+            }`}
+            title={isPinned ? "Unpin from tabs" : "Pin to tab"}
+          >
+            <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
+          </button>
+        )}
       </span>
     </button>
   );
@@ -322,6 +345,9 @@ export function SprintListModal({
   pinnedIds,
   alignLeft,
   portalAnchor,
+  multiSelect,
+  selectedIds,
+  onToggleSelect,
 }: {
   onClose: () => void;
   onSelect: (sprintId: string, sprintName: string) => void;
@@ -329,6 +355,12 @@ export function SprintListModal({
   pinnedIds: Set<string>;
   alignLeft?: boolean;
   portalAnchor?: { top: number; right: number };
+  /** Multi-select mode: show checkboxes, stay open on toggle */
+  multiSelect?: boolean;
+  /** Currently selected sprint IDs (multi-select mode) */
+  selectedIds?: Set<string>;
+  /** Toggle a sprint in/out of selection (multi-select mode) */
+  onToggleSelect?: (sprintId: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useLocalStorage<string | null>("sprint-list-team-filter", null);
@@ -414,9 +446,13 @@ export function SprintListModal({
   }, [mutate]);
 
   const selectSprint = useCallback((sprint: JiraSprint) => {
+    if (multiSelect && onToggleSelect) {
+      onToggleSelect(String(sprint.id));
+      return;
+    }
     onSelect(String(sprint.id), sprint.name);
     onClose();
-  }, [onSelect, onClose]);
+  }, [onSelect, onClose, multiSelect, onToggleSelect]);
 
   const goToStakeholder = useCallback((sprint: JiraSprint) => {
     const team = extractTeamPrefix(sprint.name) ?? "";
@@ -431,9 +467,11 @@ export function SprintListModal({
         key={sprint.id}
         sprint={sprint}
         isPinned={isPinned}
+        isChecked={multiSelect && selectedIds ? selectedIds.has(String(sprint.id)) : undefined}
         showBadge={options.showBadge}
-        showHide={options.showHide}
-        showStakeholder={options.showStakeholder}
+        showHide={multiSelect ? false : options.showHide}
+        showStakeholder={multiSelect ? false : options.showStakeholder}
+        showPin={!multiSelect}
         onSelect={() => selectSprint(sprint)}
         onPin={() => onPin(String(sprint.id))}
         onHide={() => handleToggleHidden(sprint.id, sprint.hidden ?? false)}
