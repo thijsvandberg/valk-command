@@ -122,11 +122,11 @@ describe("SubtaskSuggestions", () => {
 
     // First row should not have Add/Dismiss buttons (it's adding)
     const rows = screen.getAllByText(/Task [AB]/);
-    const firstRow = rows[0].closest("[class*='group']")!;
+    const firstRow = rows[0].closest("[class*='group']") as HTMLElement;
     expect(within(firstRow).queryByRole("button", { name: /Add subtask/ })).not.toBeInTheDocument();
 
     // Second row should still have buttons
-    const secondRow = rows[1].closest("[class*='group']")!;
+    const secondRow = rows[1].closest("[class*='group']") as HTMLElement;
     expect(within(secondRow).getByRole("button", { name: /Add subtask/ })).toBeInTheDocument();
   });
 });
