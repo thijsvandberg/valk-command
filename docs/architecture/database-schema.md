@@ -343,6 +343,23 @@ Key-value store for application configuration.
 | `key` | text PK | e.g. `jira_sync_watermark`, `scheduler:*:last_run` |
 | `value` | text | Serialized value |
 
+### Refinement
+
+#### `refinement_session`
+
+Saved refinement sessions with persisted ticket queues. Created in advance and started when the ceremony begins.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | UUID |
+| `name` | text | Display name (default: "Refinement YYYY-MM-DD") |
+| `ticket_keys` | text | JSON array of ticket keys |
+| `status` | text | `draft` or `completed` |
+| `created_at` | text | ISO timestamp |
+| `updated_at` | text | ISO timestamp, updated on every change |
+
+**Indexes:** `status`, `created_at`
+
 ### System
 
 #### `activity_log`
