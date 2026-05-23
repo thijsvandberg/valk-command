@@ -32,6 +32,7 @@ interface RefinementSessionActions {
   markComplete: (key: string, data: Partial<TicketCompletionData>) => void;
   toggleNotes: () => void;
   toggleSubtasksPane: () => void;
+  reorderQueue: (fromIndex: number, toIndex: number) => void;
   endSession: () => void;
 }
 
@@ -112,6 +113,26 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
     setState((prev) => ({ ...prev, subtasksPaneOpen: !prev.subtasksPaneOpen }));
   }, []);
 
+  const reorderQueue = useCallback((fromIndex: number, toIndex: number) => {
+    setState((prev) => {
+      const newQueue = [...prev.queue];
+      const newMeta = [...prev.queueMeta];
+      const [movedKey] = newQueue.splice(fromIndex, 1);
+      newQueue.splice(toIndex, 0, movedKey);
+      const [movedMeta] = newMeta.splice(fromIndex, 1);
+      newMeta.splice(toIndex, 0, movedMeta);
+      // Keep currentIndex pointing to the same ticket
+      const currentKey = prev.queue[prev.currentIndex];
+      const newIndex = newQueue.indexOf(currentKey);
+      return {
+        ...prev,
+        queue: newQueue,
+        queueMeta: newMeta,
+        currentIndex: newIndex >= 0 ? newIndex : prev.currentIndex,
+      };
+    });
+  }, []);
+
   const endSession = useCallback(() => {
     setState((prev) => ({
       ...prev,
@@ -130,6 +151,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         markComplete,
         toggleNotes,
         toggleSubtasksPane,
+        reorderQueue,
         endSession,
       }}
     >

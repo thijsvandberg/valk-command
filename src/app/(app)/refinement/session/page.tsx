@@ -18,8 +18,88 @@ import {
   ListChecks,
   List,
   Check,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+
+function SortableQueueItem({
+  ticketKey,
+  title,
+  isCompleted,
+  isCurrent,
+  onClick,
+}: {
+  ticketKey: string;
+  title: string;
+  isCompleted: boolean;
+  isCurrent: boolean;
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: ticketKey });
+
+  const style = {
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    position: "relative" as const,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex w-full items-center gap-2 px-3 py-2 hover:bg-hover-list-item active:bg-overlay-default ${
+        isCurrent ? "bg-overlay-subtle" : ""
+      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""}`}
+    >
+      <span
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab text-text-muted opacity-40 hover:opacity-100 active:cursor-grabbing"
+        style={{ transition: "opacity 0.15s ease" }}
+      >
+        <GripVertical size={12} strokeWidth={1.5} />
+      </span>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+      >
+        <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{ticketKey}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{title}</span>
+        {isCompleted && (
+          <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
+        )}
+        {isCurrent && !isCompleted && (
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
+        )}
+      </button>
+    </div>
+  );
+}
 
 const DEFAULT_PANE_WIDTH = 340;
 const MIN_PANE_WIDTH = 280;
@@ -90,6 +170,7 @@ export default function RefinementSessionPage() {
     markComplete,
     toggleNotes,
     toggleSubtasksPane,
+    reorderQueue,
     endSession,
   } = useRefinementSession();
 
@@ -119,6 +200,20 @@ export default function RefinementSessionPage() {
   // Navigation dropdown
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const navDropdownRef = useRef<HTMLDivElement>(null);
+
+  // DnD for queue reorder
+  const queueSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
+  const handleQueueDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const fromIdx = queue.indexOf(active.id as string);
+    const toIdx = queue.indexOf(over.id as string);
+    if (fromIdx === -1 || toIdx === -1) return;
+    reorderQueue(fromIdx, toIdx);
+  }, [queue, reorderQueue]);
 
   useEffect(() => {
     if (!ticketData || syncedKey === ticketData.key) return;
@@ -288,40 +383,30 @@ export default function RefinementSessionPage() {
               </button>
               {navDropdownOpen && (
                 <div
-                  className="absolute top-full left-1/2 z-50 mt-2 w-[340px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+                  className="absolute top-full left-1/2 z-50 mt-2 w-[420px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
                   style={{ animation: "fadeInUp 0.1s ease" }}
                 >
                   <div className="px-3 py-2 text-label font-semibold uppercase tracking-wider text-text-muted">
                     Queue
                   </div>
                   <div className="max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-                    {queue.map((key, idx) => {
-                      const meta = queueMeta.find((m) => m.key === key);
-                      const isCompleted = !!completionData[key];
-                      const isCurrent = idx === currentIndex;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => { goToTicket(idx); setNavDropdownOpen(false); }}
-                          className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left hover:bg-hover-list-item active:bg-overlay-default ${
-                            isCurrent ? "bg-overlay-subtle" : ""
-                          }`}
-                          style={{ transition: "background-color 0.1s ease" }}
-                        >
-                          <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{key}</span>
-                          <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
-                            {meta?.title ?? key}
-                          </span>
-                          {isCompleted && (
-                            <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
-                          )}
-                          {isCurrent && !isCompleted && (
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
-                          )}
-                        </button>
-                      );
-                    })}
+                    <DndContext sensors={queueSensors} collisionDetection={closestCenter} onDragEnd={handleQueueDragEnd}>
+                      <SortableContext items={queue} strategy={verticalListSortingStrategy}>
+                        {queue.map((key, idx) => {
+                          const meta = queueMeta.find((m) => m.key === key);
+                          return (
+                            <SortableQueueItem
+                              key={key}
+                              ticketKey={key}
+                              title={meta?.title ?? key}
+                              isCompleted={!!completionData[key]}
+                              isCurrent={idx === currentIndex}
+                              onClick={() => { goToTicket(idx); setNavDropdownOpen(false); }}
+                            />
+                          );
+                        })}
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 </div>
               )}
