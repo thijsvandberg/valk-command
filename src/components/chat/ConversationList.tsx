@@ -158,10 +158,18 @@ export default function ConversationList({
 
   useEffect(() => {
     if (!contextMenu) return;
-    function close() { setContextMenu(null); }
-    window.addEventListener("click", close);
-    window.addEventListener("contextmenu", close);
+    function close(e: MouseEvent) {
+      // Ignore events on the context menu itself
+      if (contextMenuRef.current?.contains(e.target as Node)) return;
+      setContextMenu(null);
+    }
+    // Defer so the originating right-click event finishes propagating
+    const timer = setTimeout(() => {
+      window.addEventListener("click", close);
+      window.addEventListener("contextmenu", close);
+    }, 0);
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("click", close);
       window.removeEventListener("contextmenu", close);
     };
