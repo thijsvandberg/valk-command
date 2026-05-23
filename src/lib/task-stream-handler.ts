@@ -158,6 +158,11 @@ export async function captureTaskStream(params: CaptureParams): Promise<void> {
 
     await saveAssistantMessage(conversationId, output, taskId);
 
+    // Mark conversation as unread so the sidebar shows new content
+    await db.update(conversation)
+      .set({ readAt: null })
+      .where(eq(conversation.id, conversationId));
+
     // Sprint-goal suggestions get a descriptive notification with the sprint name
     if (skillName === "suggest-sprint-goal") {
       let sprintName = "sprint";

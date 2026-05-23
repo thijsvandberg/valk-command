@@ -3,7 +3,7 @@ import { groupByDate } from "./date-groups";
 import type { Conversation } from "@/types/chat";
 
 function makeConv(id: string, createdAt: string): Conversation {
-  return { id, title: `Conv ${id}`, type: "chat", createdAt, relatedTicket: null, metadata: null, pinned: false };
+  return { id, title: `Conv ${id}`, type: "chat", createdAt, relatedTicket: null, metadata: null, pinned: false, readAt: null };
 }
 
 function mockNow(dateStr: string) {

@@ -2,13 +2,14 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { Conversation, ConversationType } from "@/types/chat";
-import { Trash2, Filter, Search, X, ChevronRight, Pin, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Trash2, Filter, Search, X, ChevronRight, Pin, PanelLeftClose, PanelLeftOpen, CheckSquare, Mail, MailOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { LoadingState } from "@/components/shared/LoadingState";
 import ConversationTypePicker from "./ConversationTypePicker";
 import ConversationFilterBar from "./ConversationFilterBar";
+import BulkActionBar from "./BulkActionBar";
 import { deriveCategory, CATEGORY_CONFIG, type ConversationCategory } from "@/lib/conversation-category";
 import { groupByDate, type DateGroupLabel } from "@/lib/date-groups";
 
@@ -49,6 +50,17 @@ interface ConversationListProps {
   onCreate: (type: ConversationType) => void;
   onDelete: (id: string) => void;
   onTogglePin?: (id: string, pinned: boolean) => void;
+  onToggleRead?: (id: string, isUnread: boolean) => void;
+  multiselectActive?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onActivateMultiselect?: () => void;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkDelete?: () => void;
+  onBulkSelectAll?: () => void;
+  onBulkDeselectAll?: () => void;
+  onExitMultiselect?: () => void;
 }
 
 export default function ConversationList({
@@ -70,6 +82,17 @@ export default function ConversationList({
   onCreate,
   onDelete,
   onTogglePin,
+  onToggleRead,
+  multiselectActive = false,
+  selectedIds,
+  onToggleSelect,
+  onActivateMultiselect,
+  onBulkMarkRead,
+  onBulkMarkUnread,
+  onBulkDelete,
+  onBulkSelectAll,
+  onBulkDeselectAll,
+  onExitMultiselect,
 }: ConversationListProps) {
   const canShowFilterBar = categoryCounts && activeFilters && onToggleFilter && onClearFilters;
   const hasMultipleCategories = canShowFilterBar && Object.values(categoryCounts).filter((c) => c > 0).length >= 2;
@@ -125,12 +148,12 @@ export default function ConversationList({
   }, []);
 
   // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; conversationId: string; pinned: boolean } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; conversationId: string; pinned: boolean; readAt: string | null } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, conv: Conversation) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, conversationId: conv.id, pinned: conv.pinned });
+    setContextMenu({ x: e.clientX, y: e.clientY, conversationId: conv.id, pinned: conv.pinned, readAt: conv.readAt });
   }, []);
 
   useEffect(() => {
@@ -149,6 +172,8 @@ export default function ConversationList({
   function renderConversationItem(conversation: Conversation) {
     const isActive = conversation.id === activeId;
     const hasRunningTask = runningTaskConversationIds?.has(conversation.id) ?? false;
+    const isUnread = conversation.readAt === null;
+    const isSelected = selectedIds?.has(conversation.id) ?? false;
     const category = deriveCategory(conversation);
     const config = CATEGORY_CONFIG[category];
     const Icon = config.icon;
@@ -158,7 +183,7 @@ export default function ConversationList({
         <li key={conversation.id} role="option" aria-selected={isActive}>
           <button
             type="button"
-            onClick={() => onSelect(conversation.id)}
+            onClick={() => multiselectActive && onToggleSelect ? onToggleSelect(conversation.id) : onSelect(conversation.id)}
             onContextMenu={(e) => handleContextMenu(e, conversation)}
             title={conversation.title}
             className={`relative flex h-8 w-8 items-center justify-center rounded-lg mx-auto transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
@@ -176,6 +201,9 @@ export default function ConversationList({
             {hasRunningTask && (
               <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse" aria-label="Task running" />
             )}
+            {isUnread && !hasRunningTask && (
+              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-300)]" aria-label="Unread" />
+            )}
             {conversation.pinned && (
               <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-warning-400)]" />
             )}
@@ -187,9 +215,29 @@ export default function ConversationList({
     return (
       <li key={conversation.id} role="option" aria-selected={isActive}>
         <div className="flex items-center group">
+          {multiselectActive && onToggleSelect && (
+            <button
+              type="button"
+              onClick={() => onToggleSelect(conversation.id)}
+              className="shrink-0 flex items-center justify-center w-6 h-6 ml-1 cursor-pointer"
+              aria-label={isSelected ? `Deselect ${conversation.title}` : `Select ${conversation.title}`}
+            >
+              <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors duration-150 ${
+                isSelected
+                  ? "bg-[var(--color-brand-500)] border-[var(--color-brand-500)]"
+                  : "border-border-strong hover:border-[var(--color-brand-400)]"
+              }`}>
+                {isSelected && (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => onSelect(conversation.id)}
+            onClick={() => multiselectActive && onToggleSelect ? onToggleSelect(conversation.id) : onSelect(conversation.id)}
             onContextMenu={(e) => handleContextMenu(e, conversation)}
             className={`flex-1 min-w-0 rounded-lg py-2 px-2.5 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
@@ -204,7 +252,10 @@ export default function ConversationList({
                 className="shrink-0"
                 style={{ color: config.color }}
               />
-              <span className="block truncate font-[var(--font-body)] text-sm font-medium">
+              {isUnread && (
+                <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]" aria-label="Unread" />
+              )}
+              <span className={`block truncate font-[var(--font-body)] text-sm ${isUnread ? "font-semibold text-text-primary" : "font-medium"}`}>
                 {conversation.title}
               </span>
               {conversation.pinned && (
@@ -218,14 +269,16 @@ export default function ConversationList({
               )}
             </span>
           </button>
-          <Button
-            variant="destructive"
-            iconOnly
-            icon={<Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
-            onClick={() => onDelete(conversation.id)}
-            className="shrink-0 opacity-0 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
-            aria-label={`Delete ${conversation.title}`}
-          />
+          {!multiselectActive && (
+            <Button
+              variant="destructive"
+              iconOnly
+              icon={<Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
+              onClick={() => onDelete(conversation.id)}
+              className="shrink-0 opacity-0 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
+              aria-label={`Delete ${conversation.title}`}
+            />
+          )}
         </div>
       </li>
     );
@@ -284,6 +337,21 @@ export default function ConversationList({
               {hasActiveFilters && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[var(--color-brand-400)]" />
               )}
+            </button>
+          )}
+          {!collapsed && onActivateMultiselect && (
+            <button
+              type="button"
+              onClick={onActivateMultiselect}
+              className={`flex h-7 w-7 items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                multiselectActive
+                  ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
+                  : "text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary"
+              }`}
+              aria-label={multiselectActive ? "Exit multiselect" : "Select multiple"}
+              data-testid="multiselect-toggle"
+            >
+              <CheckSquare size={14} strokeWidth={1.5} />
             </button>
           )}
           {!collapsed && <ConversationTypePicker onCreate={onCreate} />}
@@ -380,25 +448,65 @@ export default function ConversationList({
       )}
 
       {/* Context menu */}
-      {contextMenu && onTogglePin && (
+      {contextMenu && (onTogglePin || onToggleRead) && (
         <div
           ref={contextMenuRef}
           className="fixed z-[100] min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           data-testid="conversation-context-menu"
         >
-          <button
-            type="button"
-            onClick={() => {
-              onTogglePin(contextMenu.conversationId, !contextMenu.pinned);
-              setContextMenu(null);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
-          >
-            <Pin size={12} strokeWidth={1.5} />
-            {contextMenu.pinned ? "Unpin conversation" : "Pin conversation"}
-          </button>
+          {onTogglePin && (
+            <button
+              type="button"
+              onClick={() => {
+                onTogglePin(contextMenu.conversationId, !contextMenu.pinned);
+                setContextMenu(null);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
+            >
+              <Pin size={12} strokeWidth={1.5} />
+              {contextMenu.pinned ? "Unpin conversation" : "Pin conversation"}
+            </button>
+          )}
+          {onToggleRead && (
+            <button
+              type="button"
+              onClick={() => {
+                onToggleRead(contextMenu.conversationId, contextMenu.readAt === null);
+                setContextMenu(null);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
+              data-testid="context-menu-toggle-read"
+            >
+              {contextMenu.readAt === null ? (
+                <>
+                  <MailOpen size={12} strokeWidth={1.5} />
+                  Mark as read
+                </>
+              ) : (
+                <>
+                  <Mail size={12} strokeWidth={1.5} />
+                  Mark as unread
+                </>
+              )}
+            </button>
+          )}
         </div>
+      )}
+
+      {/* Bulk action bar */}
+      {multiselectActive && !collapsed && onBulkMarkRead && onBulkMarkUnread && onBulkDelete && onBulkSelectAll && onBulkDeselectAll && onExitMultiselect && (
+        <BulkActionBar
+          selectedCount={selectedIds?.size ?? 0}
+          totalCount={searchFiltered.length}
+          allSelected={(selectedIds?.size ?? 0) === searchFiltered.length && searchFiltered.length > 0}
+          onSelectAll={onBulkSelectAll}
+          onDeselectAll={onBulkDeselectAll}
+          onMarkRead={onBulkMarkRead}
+          onMarkUnread={onBulkMarkUnread}
+          onDelete={onBulkDelete}
+          onExit={onExitMultiselect}
+        />
       )}
     </div>
   );

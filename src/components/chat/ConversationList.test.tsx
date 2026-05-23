@@ -5,7 +5,7 @@ import type { Conversation } from "@/types/chat";
 import type { ConversationCategory } from "@/lib/conversation-category";
 
 function makeConv(id: string, title: string, createdAt: string, pinned = false): Conversation {
-  return { id, title, type: "chat", createdAt, relatedTicket: null, metadata: null, pinned };
+  return { id, title, type: "chat", createdAt, relatedTicket: null, metadata: null, pinned, readAt: null };
 }
 
 const now = "2026-05-22T14:00:00Z";

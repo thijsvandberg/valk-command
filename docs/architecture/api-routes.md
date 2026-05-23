@@ -107,6 +107,7 @@ General-purpose chat conversations with the workspace.
 | `/api/conversations/[id]` | GET | Get conversation details |
 | `/api/conversations/[id]` | PUT | Update conversation (title, related ticket) |
 | `/api/conversations/[id]` | DELETE | Delete conversation and messages |
+| `/api/conversations/bulk` | PATCH | Bulk operations: delete, markRead, markUnread. Body: `{ ids: string[], action }` |
 | `/api/conversations/[id]/messages` | GET | List messages in conversation |
 | `/api/conversations/[id]/messages` | POST | Add message to conversation |
 

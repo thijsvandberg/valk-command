@@ -340,6 +340,25 @@ export const conversations = {
     apiFetch<Message[]>(`/api/conversations/${enc(id)}/messages`, { signal }),
   sendMessage: (id: string, data: { role: string; content: string; workspaceTaskId?: string | null }, signal?: AbortSignal) =>
     apiFetch<Message>(`/api/conversations/${enc(id)}/messages`, { method: "POST", body: data, signal }),
+
+  markRead: (id: string, signal?: AbortSignal) =>
+    apiFetch<Conversation>(`/api/conversations/${enc(id)}`, {
+      method: "PATCH",
+      body: { readAt: new Date().toISOString() },
+      signal,
+    }),
+  markUnread: (id: string, signal?: AbortSignal) =>
+    apiFetch<Conversation>(`/api/conversations/${enc(id)}`, {
+      method: "PATCH",
+      body: { readAt: null },
+      signal,
+    }),
+  bulk: (data: { ids: string[]; action: "delete" | "markRead" | "markUnread" }, signal?: AbortSignal) =>
+    apiFetch<{ updated: number }>("/api/conversations/bulk", {
+      method: "PATCH",
+      body: data,
+      signal,
+    }),
 };
 
 // ---------------------------------------------------------------------------

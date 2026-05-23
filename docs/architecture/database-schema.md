@@ -193,6 +193,7 @@ Chat conversations (both regular chat and story writer sessions).
 | `title` | text | |
 | `created_at` | text | |
 | `related_ticket` | text | Optional linked ticket key |
+| `read_at` | text | NULL = unread, ISO timestamp = read |
 
 #### `message`
 

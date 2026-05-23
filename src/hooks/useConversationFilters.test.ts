@@ -4,7 +4,7 @@ import { useConversationFilters } from "./useConversationFilters";
 import type { Conversation } from "@/types/chat";
 
 function makeConv(id: string, title: string, type: "chat" | "investigation" = "chat"): Conversation {
-  return { id, title, type, createdAt: "2026-05-22T10:00:00Z", relatedTicket: null, metadata: null, pinned: false };
+  return { id, title, type, createdAt: "2026-05-22T10:00:00Z", relatedTicket: null, metadata: null, pinned: false, readAt: null };
 }
 
 const conversations: Conversation[] = [

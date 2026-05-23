@@ -1,6 +1,6 @@
 # BRDG-154: Conversation Read/Unread Status & Bulk Actions
 
-**Status:** Draft
+**Status:** In Progress
 **Priority:** High
 
 ## Description
@@ -44,21 +44,37 @@ Currently the only "unread" signal is the running-task dot, which disappears onc
 | `Escape` | Exit multiselect mode |
 | `Ctrl/Cmd + A` | Select all (when in multiselect mode) |
 
+## Implementation Plan
+
+1. **Schema + type** - Add `readAt` column to conversation table, update `Conversation` type, generate migration
+2. **Extend PATCH** - Accept `readAt` in `PATCH /api/conversations/[id]`
+3. **Bulk endpoint** - New `PATCH /api/conversations/bulk` for delete/markRead/markUnread
+4. **API client** - Add `markRead`, `markUnread`, `bulk` to `conversations` in api-client
+5. **Hook** - Add `markAsRead`, `markAsUnread`, `bulkAction` to `useConversations`
+6. **Mark read on open** - ChatLayout calls `markAsRead` when conversation selected
+7. **Server-side unread** - Set `readAt = null` when assistant message saved (task-stream-handler)
+8. **Unread visuals** - Bold title + unread dot in ConversationList
+9. **Manual toggle** - Add read/unread to context menu
+10. **Multiselect hook** - New `useMultiselect` hook
+11. **Multiselect UI** - Checkboxes in ConversationList, "Select" button in header
+12. **Bulk action bar** - New `BulkActionBar` component with floating action bar
+13. **Wire into ChatLayout** - Connect multiselect + bulk actions
+
 ## Acceptance Criteria
 
-- [ ] New assistant messages mark the conversation as unread
-- [ ] Opening a conversation marks it as read
-- [ ] Unread conversations are visually distinct (bold title + dot)
-- [ ] User can manually toggle read/unread status on a single conversation
-- [ ] Multiselect mode can be activated via a button in the list header
-- [ ] Checkboxes appear on each row in multiselect mode
-- [ ] Bulk delete works for selected conversations
-- [ ] Bulk mark-as-read works for selected conversations
-- [ ] Bulk mark-as-unread works for selected conversations
-- [ ] "Select all" / "Deselect all" toggle works
-- [ ] Escape exits multiselect mode
-- [ ] Selected count is displayed in the action bar
-- [ ] Delete confirmation dialog shown before bulk delete
+- [x] New assistant messages mark the conversation as unread
+- [x] Opening a conversation marks it as read
+- [x] Unread conversations are visually distinct (bold title + dot)
+- [x] User can manually toggle read/unread status on a single conversation
+- [x] Multiselect mode can be activated via a button in the list header
+- [x] Checkboxes appear on each row in multiselect mode
+- [x] Bulk delete works for selected conversations
+- [x] Bulk mark-as-read works for selected conversations
+- [x] Bulk mark-as-unread works for selected conversations
+- [x] "Select all" / "Deselect all" toggle works
+- [x] Escape exits multiselect mode
+- [x] Selected count is displayed in the action bar
+- [x] Delete confirmation dialog shown before bulk delete
 
 ## Technical Notes
 

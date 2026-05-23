@@ -11,6 +11,7 @@ function makeConv(overrides: Partial<Conversation> = {}): Conversation {
     relatedTicket: null,
     metadata: null,
     pinned: false,
+    readAt: null,
     ...overrides,
   };
 }

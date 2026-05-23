@@ -27,6 +27,8 @@ import { deriveCategory, CATEGORY_CONFIG } from "@/lib/conversation-category";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { EditableConversationTitle } from "./EditableConversationTitle";
+import { useMultiselect } from "@/hooks/useMultiselect";
+import BulkActionBar from "./BulkActionBar";
 
 const RUNNING_TASK_POLL_INTERVAL_MS = 10_000;
 
@@ -52,6 +54,9 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     error: convError,
     createConversation,
     deleteConversation,
+    markAsRead,
+    markAsUnread,
+    bulkAction,
     refresh: refreshConversations,
   } = useConversations();
 
@@ -97,6 +102,13 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     investigationConfigRef.current = config;
   }, []);
 
+  // Mark conversation as read when navigating directly (URL change)
+  useEffect(() => {
+    if (activeId) {
+      markAsRead(activeId);
+    }
+  }, [activeId, markAsRead]);
+
   // Prefetch most recent conversation when chat list loads
   useEffect(() => {
     if (conversations.length > 0 && !activeId) {
@@ -118,7 +130,8 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const handleSelect = useCallback((id: string) => {
     router.push(`/chat/${id}`);
     setSidebarOpen(false);
-  }, [router]);
+    markAsRead(id);
+  }, [router, markAsRead]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -146,6 +159,51 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     },
     [refreshConversations, showToast]
   );
+
+  const handleToggleRead = useCallback(
+    (id: string, isUnread: boolean) => {
+      if (isUnread) {
+        markAsRead(id);
+      } else {
+        markAsUnread(id);
+      }
+    },
+    [markAsRead, markAsUnread]
+  );
+
+  // Multiselect
+  const multiselect = useMultiselect();
+
+  const handleActivateMultiselect = useCallback(() => {
+    if (multiselect.active) {
+      multiselect.deactivate();
+    } else {
+      multiselect.activate();
+    }
+  }, [multiselect]);
+
+  const handleBulkDelete = useCallback(() => {
+    const ids = [...multiselect.selectedIds];
+    bulkAction(ids, "delete");
+    multiselect.deactivate();
+    if (activeId && ids.includes(activeId)) {
+      router.push("/chat");
+    }
+  }, [multiselect, bulkAction, activeId, router]);
+
+  const handleBulkMarkRead = useCallback(() => {
+    bulkAction([...multiselect.selectedIds], "markRead");
+    multiselect.deactivate();
+  }, [multiselect, bulkAction]);
+
+  const handleBulkMarkUnread = useCallback(() => {
+    bulkAction([...multiselect.selectedIds], "markUnread");
+    multiselect.deactivate();
+  }, [multiselect, bulkAction]);
+
+  const handleBulkSelectAll = useCallback(() => {
+    multiselect.selectAll(filteredConversations.map((c) => c.id));
+  }, [multiselect, filteredConversations]);
 
   // Resize drag handlers
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -321,6 +379,9 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
     // Refresh messages to pick up the assistant message saved by captureTaskStream
     refreshMessages();
 
+    // Re-mark as read since server set readAt=null when saving the assistant message
+    if (activeId) markAsRead(activeId);
+
     if (workspaceTask.output) {
       const firstLine = workspaceTask.output.split("\n").find((l) => l.trim())?.slice(0, 120) ?? "";
       notify("Chat response ready", {
@@ -366,7 +427,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         }).catch((err) => console.warn("[chat] persist review failed", err));
       }
     }
-  }, [workspaceTask.status, workspaceTask.taskId, workspaceTask.output, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations]);
+  }, [workspaceTask.status, workspaceTask.taskId, workspaceTask.output, activeId, refreshMessages, notify, isInvestigation, activeConv?.title, refreshConversations, markAsRead]);
 
   // Use pending ID to avoid flash when route hasn't settled yet
   const effectiveActiveId = activeId ?? resolvedPendingId;
@@ -472,6 +533,17 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
             onCreate={handleCreate}
             onDelete={handleDelete}
             onTogglePin={handleTogglePin}
+            onToggleRead={handleToggleRead}
+            multiselectActive={multiselect.active}
+            selectedIds={multiselect.selectedIds}
+            onToggleSelect={multiselect.toggle}
+            onActivateMultiselect={handleActivateMultiselect}
+            onBulkMarkRead={handleBulkMarkRead}
+            onBulkMarkUnread={handleBulkMarkUnread}
+            onBulkDelete={handleBulkDelete}
+            onBulkSelectAll={handleBulkSelectAll}
+            onBulkDeselectAll={multiselect.deselectAll}
+            onExitMultiselect={multiselect.deactivate}
           />
 
           {/* Resize handle (desktop only) */}

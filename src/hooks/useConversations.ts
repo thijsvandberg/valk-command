@@ -11,6 +11,9 @@ interface UseConversationsReturn {
   error: string | null;
   createConversation: (title?: string, type?: ConversationType) => Promise<Conversation | null>;
   deleteConversation: (id: string) => Promise<boolean>;
+  markAsRead: (id: string) => Promise<void>;
+  markAsUnread: (id: string) => Promise<void>;
+  bulkAction: (ids: string[], action: "delete" | "markRead" | "markUnread") => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -71,6 +74,7 @@ export function useConversations(): UseConversationsReturn {
         relatedTicket: null,
         metadata: null,
         pinned: false,
+        readAt: null,
       };
       setConversations((prev) => [optimistic, ...prev]);
 
@@ -105,12 +109,68 @@ export function useConversations(): UseConversationsReturn {
     [fetchConversations]
   );
 
+  const markAsRead = useCallback(
+    async (id: string) => {
+      const now = new Date().toISOString();
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, readAt: now } : c))
+      );
+      try {
+        await conversationsApi.markRead(id);
+      } catch {
+        // Revert on failure
+        fetchConversations();
+      }
+    },
+    [fetchConversations]
+  );
+
+  const markAsUnread = useCallback(
+    async (id: string) => {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, readAt: null } : c))
+      );
+      try {
+        await conversationsApi.markUnread(id);
+      } catch {
+        fetchConversations();
+      }
+    },
+    [fetchConversations]
+  );
+
+  const bulkAction = useCallback(
+    async (ids: string[], action: "delete" | "markRead" | "markUnread") => {
+      if (action === "delete") {
+        setConversations((prev) => prev.filter((c) => !ids.includes(c.id)));
+      } else if (action === "markRead") {
+        const now = new Date().toISOString();
+        setConversations((prev) =>
+          prev.map((c) => (ids.includes(c.id) ? { ...c, readAt: now } : c))
+        );
+      } else {
+        setConversations((prev) =>
+          prev.map((c) => (ids.includes(c.id) ? { ...c, readAt: null } : c))
+        );
+      }
+      try {
+        await conversationsApi.bulk({ ids, action });
+      } catch {
+        fetchConversations();
+      }
+    },
+    [fetchConversations]
+  );
+
   return {
     conversations,
     loading,
     error,
     createConversation,
     deleteConversation,
+    markAsRead,
+    markAsUnread,
+    bulkAction,
     refresh: fetchConversations,
   };
 }

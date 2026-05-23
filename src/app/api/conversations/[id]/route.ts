@@ -74,6 +74,9 @@ export async function PATCH(
   if (typeof body.metadata === "string" || body.metadata === null) {
     updates.metadata = body.metadata;
   }
+  if (typeof body.readAt === "string" || body.readAt === null) {
+    updates.readAt = body.readAt;
+  }
   if (typeof body.pinned === "boolean" || typeof body.pinned === "number") {
     const wantPin = Boolean(body.pinned);
     if (wantPin && !conv.pinned) {

@@ -25,4 +25,5 @@ export interface Conversation {
   relatedTicket: string | null;
   metadata: string | null;
   pinned: boolean;
+  readAt: string | null;
 }

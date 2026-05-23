@@ -11,6 +11,7 @@ export const conversation = sqliteTable("conversation", {
   relatedTicket: text("related_ticket"),
   metadata: text("metadata"),
   pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+  readAt: text("read_at"),
 }, (table) => [
   index("conversation_created_at_idx").on(table.createdAt),
 ]);
