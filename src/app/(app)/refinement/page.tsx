@@ -381,7 +381,7 @@ function RefinementPageInner() {
     });
     startSession(queue, meta);
     router.push("/refinement/session");
-  }, [canStart, queue, startSession, router]);
+  }, [canStart, queue, allTicketMap, startSession, router]);
 
   const readyCount = useMemo(
     () => availableTickets.filter((t) => t.readiness === "ready_to_refine").length,
