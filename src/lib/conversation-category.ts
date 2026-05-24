@@ -1,5 +1,6 @@
 import {
   MessageCircle,
+  MessageSquareText,
   Search,
   PenLine,
   Target,
@@ -17,7 +18,8 @@ export type ConversationCategory =
   | "story-writer"
   | "sprint-goal"
   | "stakeholder"
-  | "review";
+  | "review"
+  | "ticket-chat";
 
 export interface CategoryConfig {
   label: string;
@@ -61,11 +63,17 @@ export const CATEGORY_CONFIG: Record<ConversationCategory, CategoryConfig> = {
     icon: ClipboardCheck,
     color: "#fb923c",
   },
+  "ticket-chat": {
+    label: "Ticket Chat",
+    icon: MessageSquareText,
+    color: "#a78bfa",
+  },
 };
 
 const PREFIX_MAP: [string, ConversationCategory][] = [
   ["Sprint Goal:", "sprint-goal"],
   ["Story Writer:", "story-writer"],
+  ["Ticket Chat:", "ticket-chat"],
   ["Stakeholder:", "stakeholder"],
   ["Review:", "review"],
   ["Investigate:", "investigation"],

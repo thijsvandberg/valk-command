@@ -11,6 +11,7 @@ const allCounts: Record<ConversationCategory, number> = {
   "sprint-goal": 2,
   stakeholder: 1,
   review: 1,
+  "ticket-chat": 0,
 };
 
 const defaultProps = {
@@ -40,7 +41,7 @@ describe("ConversationFilterBar", () => {
   it("does not render when fewer than 2 categories have conversations", () => {
     const counts: Record<ConversationCategory, number> = {
       chat: 5, task: 0, investigation: 0, "story-writer": 0,
-      "sprint-goal": 0, stakeholder: 0, review: 0,
+      "sprint-goal": 0, stakeholder: 0, review: 0, "ticket-chat": 0,
     };
     const { container } = render(<ConversationFilterBar {...defaultProps} categoryCounts={counts} />);
     expect(container.innerHTML).toBe("");

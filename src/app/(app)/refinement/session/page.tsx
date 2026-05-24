@@ -11,6 +11,7 @@ import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { SessionSummary } from "@/components/refinement-session/SessionSummary";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
+import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets } from "@/lib/api-client";
 import {
   X,
@@ -23,6 +24,7 @@ import {
   Check,
   GripVertical,
   Info,
+  MessageSquareText,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -167,6 +169,7 @@ export default function RefinementSessionPage() {
     sessionActive,
     notesCollapsed,
     subtasksPaneOpen,
+    chatPaneOpen,
     completionData,
     nextTicket,
     prevTicket,
@@ -174,6 +177,7 @@ export default function RefinementSessionPage() {
     markComplete,
     toggleNotes,
     toggleSubtasksPane,
+    toggleChatPane,
     reorderQueue,
     endSession,
   } = useRefinementSession();
@@ -348,7 +352,7 @@ export default function RefinementSessionPage() {
   }
 
   // Determine which right panel to show
-  const rightPanelMode = subtasksPaneOpen ? "subtasks" : (!notesCollapsed ? "notes" : null);
+  const rightPanelMode = chatPaneOpen ? "chat" : subtasksPaneOpen ? "subtasks" : (!notesCollapsed ? "notes" : null);
 
   return (
     <>
@@ -477,6 +481,22 @@ export default function RefinementSessionPage() {
 
           {/* Right: panel toggles */}
           <div className="flex items-center gap-2">
+            {/* Chat pane toggle */}
+            <button
+              type="button"
+              onClick={toggleChatPane}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                chatPaneOpen
+                  ? "bg-[#a78bfa]/[0.08] text-[#a78bfa]"
+                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+              }`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              title="Toggle ticket chat pane"
+            >
+              <MessageSquareText size={13} strokeWidth={1.5} />
+              Chat
+            </button>
+
             {/* Subtasks pane toggle */}
             <button
               type="button"
@@ -532,6 +552,17 @@ export default function RefinementSessionPage() {
               )}
             </div>
           </div>
+
+          {/* Right panel: Chat pane */}
+          {rightPanelMode === "chat" && currentKey && (
+            <SubtasksPaneResizable>
+              <TicketChatPane
+                ticketKey={currentKey}
+                ticketTitle={queueMeta.find((m) => m.key === currentKey)?.title ?? currentKey}
+                onClose={toggleChatPane}
+              />
+            </SubtasksPaneResizable>
+          )}
 
           {/* Right panel: Subtasks pane */}
           {rightPanelMode === "subtasks" && ticketData && (

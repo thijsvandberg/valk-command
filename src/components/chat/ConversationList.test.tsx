@@ -124,7 +124,7 @@ describe("ConversationList", () => {
   it("shows filter toggle button when multiple categories exist", () => {
     const categoryCounts: Record<ConversationCategory, number> = {
       chat: 2, task: 0, investigation: 0, "story-writer": 0,
-      "sprint-goal": 1, stakeholder: 0, review: 0,
+      "sprint-goal": 1, stakeholder: 0, review: 0, "ticket-chat": 0,
     };
     render(
       <ConversationList
@@ -144,7 +144,7 @@ describe("ConversationList", () => {
   it("shows filter bar when filtersVisible is true", () => {
     const categoryCounts: Record<ConversationCategory, number> = {
       chat: 2, task: 0, investigation: 0, "story-writer": 0,
-      "sprint-goal": 1, stakeholder: 0, review: 0,
+      "sprint-goal": 1, stakeholder: 0, review: 0, "ticket-chat": 0,
     };
     render(
       <ConversationList

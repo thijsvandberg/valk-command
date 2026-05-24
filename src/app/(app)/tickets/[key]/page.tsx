@@ -22,6 +22,7 @@ import {
   Star,
   Check,
   PanelRightClose,
+  MessageSquareText,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
@@ -40,6 +41,7 @@ import { EpicChildrenSection } from "@/components/ticket-detail/EpicChildrenSect
 import { CommentsSection } from "@/components/ticket-detail/CommentsSection";
 import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
 import { TicketPreviewPanel } from "@/components/ticket-detail/TicketPreviewPanel";
+import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import dynamic from "next/dynamic";
 
 function TabLoadingFallback() {
@@ -158,6 +160,7 @@ export default function TicketDetailPage({
   const { follow, unfollow } = useFollowTicket();
   const isFollowed = followedTickets?.includes(key) ?? false;
 
+  const [chatPaneOpen, setChatPaneOpen] = useState(false);
   const [hasLocalTitleEdit, setHasLocalTitleEdit] = useState(false);
   const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
@@ -569,6 +572,22 @@ export default function TicketDetailPage({
                 Push to Jira
               </Button>
             )}
+            <Tooltip content={chatPaneOpen ? "Close ticket chat" : "Open ticket chat"}>
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                onClick={() => setChatPaneOpen((v) => !v)}
+                aria-label={chatPaneOpen ? "Close ticket chat" : "Open ticket chat"}
+                icon={
+                  <MessageSquareText
+                    size={14}
+                    strokeWidth={1.5}
+                    className={chatPaneOpen ? "text-[#a78bfa]" : ""}
+                  />
+                }
+              />
+            </Tooltip>
             <Tooltip
               content={isFollowed
                 ? "Following this ticket. You will receive PR, pipeline, deployment, and story writer notifications for it. Click to unfollow."
@@ -939,6 +958,19 @@ export default function TicketDetailPage({
           <div id="diff-footer-portal" className="sticky bottom-0 z-10 mt-auto empty:hidden" />
           </div>
         </div>
+
+      {chatPaneOpen && ticket && (
+        <div
+          className="w-80 shrink-0 border-l border-border-subtle bg-[var(--color-surface-elevated)] overflow-hidden"
+          style={{ animation: "fadeInUp 0.15s ease" }}
+        >
+          <TicketChatPane
+            ticketKey={key}
+            ticketTitle={ticket.title}
+            onClose={() => setChatPaneOpen(false)}
+          />
+        </div>
+      )}
 
       <div className="sticky top-0 min-h-full self-stretch overflow-visible">
         <TicketSidebar ticket={ticket} detail={detail} reviewData={reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} onReadinessChange={handleReadinessChange} />

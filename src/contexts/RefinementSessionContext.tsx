@@ -21,6 +21,7 @@ interface RefinementSessionState {
   completionData: Record<string, TicketCompletionData>;
   notesCollapsed: boolean;
   subtasksPaneOpen: boolean;
+  chatPaneOpen: boolean;
   sessionActive: boolean;
   sessionStartedAt: number | null;
   savedSessionId: string | null;
@@ -34,6 +35,7 @@ interface RefinementSessionActions {
   markComplete: (key: string, data: Partial<TicketCompletionData>) => void;
   toggleNotes: () => void;
   toggleSubtasksPane: () => void;
+  toggleChatPane: () => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   endSession: () => void;
 }
@@ -49,6 +51,7 @@ const INITIAL_STATE: RefinementSessionState = {
   completionData: {},
   notesCollapsed: true,
   subtasksPaneOpen: false,
+  chatPaneOpen: false,
   sessionActive: false,
   sessionStartedAt: null,
   savedSessionId: null,
@@ -65,6 +68,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       completionData: {},
       notesCollapsed: true,
       subtasksPaneOpen: false,
+      chatPaneOpen: false,
       sessionActive: true,
       sessionStartedAt: Date.now(),
       savedSessionId: savedSessionId ?? null,
@@ -117,6 +121,10 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
     setState((prev) => ({ ...prev, subtasksPaneOpen: !prev.subtasksPaneOpen }));
   }, []);
 
+  const toggleChatPane = useCallback(() => {
+    setState((prev) => ({ ...prev, chatPaneOpen: !prev.chatPaneOpen }));
+  }, []);
+
   const reorderQueue = useCallback((fromIndex: number, toIndex: number) => {
     setState((prev) => {
       const newQueue = [...prev.queue];
@@ -159,6 +167,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         markComplete,
         toggleNotes,
         toggleSubtasksPane,
+        toggleChatPane,
         reorderQueue,
         endSession,
       }}
