@@ -29,6 +29,7 @@ const EXPECTED_ROUTES = [
   { path: "/settings/integrations", file: "src/app/(app)/settings/integrations/page.tsx", name: "Settings Integrations" },
   { path: "/login", file: "src/app/login/[[...rest]]/page.tsx", name: "Login" },
 { path: "/sprint-board/compare", file: "src/app/(app)/sprint-board/compare/page.tsx", name: "Sprint Compare" },
+  { path: "/refinement/[sessionId]", file: "src/app/(app)/refinement/[sessionId]/page.tsx", name: "Refinement Session Detail" },
   { path: "/refinement/session", file: "src/app/(app)/refinement/session/page.tsx", name: "Refinement Session" },
 ];
 

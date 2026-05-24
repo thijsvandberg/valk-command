@@ -16,25 +16,41 @@ Currently the refinement page lives at a single route `/refinement`. Saved sessi
 - The toast after adding tickets from the sprint backlog always links to `/refinement`, not to the session the tickets were added to
 - Browser back/forward does not navigate between sessions
 
+## Implementation Plan
+
+1. **Extract shared component** - Move `RefinementPageInner` from `page.tsx` into `src/components/refinement-session/RefinementPageContent.tsx`. Accept `initialSessionId?: string` and `onSessionChange?: (id: string | null) => void` props. Remove `useSearchParams` dependency for session selection.
+2. **Create dynamic route** - Add `src/app/(app)/refinement/[sessionId]/page.tsx` as a thin wrapper that reads `sessionId` from params and passes it to `RefinementPageContent`. Uses `router.push` in `onSessionChange` to update URL.
+3. **Update base page** - Refactor `/refinement/page.tsx` to render `RefinementPageContent` without `initialSessionId`. Add `onSessionChange` that navigates to `/refinement/[id]` on session select.
+4. **Invalid session fallback** - In `RefinementPageContent`, detect when `initialSessionId` is set but no matching session exists, and redirect to `/refinement`.
+5. **Toast deep-link** - In `SprintBoard.tsx`, change the `onAdded` toast link from `/refinement` to `/refinement/${id}`.
+6. **TicketSidebar links** - Change `href={/refinement?session=${s.id}}` to `href={/refinement/${s.id}}`.
+7. **SessionSummary + session page** - Update `router.push("/refinement")` calls to use `savedSessionId` from context for back-navigation.
+8. **Tests** - Update any existing tests, add test for invalid session redirect.
+
+**Key decisions:**
+- Use `router.push` (not `replace`) when user clicks a session tab, so back/forward works
+- Quick session stays at `/refinement` (no ID)
+- Static `/refinement/session` route takes precedence over `[sessionId]` dynamic segment (no conflict)
+
 ## Acceptance Criteria
 
 ### URL routing
 
-- [ ] `/refinement` shows the refinement page with the default view (quick session or first saved session)
-- [ ] `/refinement/[sessionId]` opens the refinement page with the specified session active
-- [ ] Clicking a session tab updates the browser URL to `/refinement/[sessionId]`
-- [ ] Navigating to an invalid/deleted session ID shows a fallback (redirect to `/refinement` or an inline "session not found" message)
-- [ ] Browser back/forward navigates between previously visited sessions
+- [x] `/refinement` shows the refinement page with the default view (quick session or first saved session)
+- [x] `/refinement/[sessionId]` opens the refinement page with the specified session active
+- [x] Clicking a session tab updates the browser URL to `/refinement/[sessionId]`
+- [x] Navigating to an invalid/deleted session ID shows a fallback (redirect to `/refinement` or an inline "session not found" message)
+- [x] Browser back/forward navigates between previously visited sessions
 
 ### Toast deep-link
 
-- [ ] After adding tickets to a refinement session from the sprint backlog (AddToRefinementModal), the toast "Open refinement" link points to `/refinement/[sessionId]` instead of `/refinement`
-- [ ] Clicking the toast link navigates to the correct session and shows it as the active tab
+- [x] After adding tickets to a refinement session from the sprint backlog (AddToRefinementModal), the toast "Open refinement" link points to `/refinement/[sessionId]` instead of `/refinement`
+- [x] Clicking the toast link navigates to the correct session and shows it as the active tab
 
 ### Quick session handling
 
-- [ ] Quick session remains accessible at `/refinement` (no session ID needed since it is ephemeral)
-- [ ] When the user clicks the Quick Session tab, the URL updates to `/refinement` (no ID suffix)
+- [x] Quick session remains accessible at `/refinement` (no session ID needed since it is ephemeral)
+- [x] When the user clicks the Quick Session tab, the URL updates to `/refinement` (no ID suffix)
 
 ## Technical Notes
 

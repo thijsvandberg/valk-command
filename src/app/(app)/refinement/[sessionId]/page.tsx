@@ -1,18 +1,23 @@
 "use client";
 
-import { Suspense, useCallback } from "react";
+import { use, Suspense, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { RefinementPageContent } from "@/components/refinement-session/RefinementPageContent";
 
-export default function RefinementPage() {
+export default function RefinementSessionPage({
+  params,
+}: {
+  params: Promise<{ sessionId: string }>;
+}) {
+  const { sessionId } = use(params);
   return (
     <Suspense>
-      <RefinementPageWrapper />
+      <RefinementSessionWrapper sessionId={sessionId} />
     </Suspense>
   );
 }
 
-function RefinementPageWrapper() {
+function RefinementSessionWrapper({ sessionId }: { sessionId: string }) {
   const router = useRouter();
 
   const handleSessionChange = useCallback(
@@ -27,6 +32,9 @@ function RefinementPageWrapper() {
   );
 
   return (
-    <RefinementPageContent onSessionChange={handleSessionChange} />
+    <RefinementPageContent
+      initialSessionId={sessionId}
+      onSessionChange={handleSessionChange}
+    />
   );
 }

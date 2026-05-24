@@ -13,6 +13,7 @@ import { SessionSummary } from "@/components/refinement-session/SessionSummary";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets } from "@/lib/api-client";
+import { BridgeMark } from "@/components/shared/BridgeMark";
 import {
   X,
   ChevronLeft,
@@ -171,6 +172,7 @@ export default function RefinementSessionPage() {
     subtasksPaneOpen,
     chatPaneOpen,
     completionData,
+    savedSessionId,
     nextTicket,
     prevTicket,
     goToTicket,
@@ -191,9 +193,9 @@ export default function RefinementSessionPage() {
   // Redirect if no session
   useEffect(() => {
     if (queue.length === 0) {
-      router.replace("/refinement");
+      router.replace(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
     }
-  }, [queue.length, router]);
+  }, [queue.length, router, savedSessionId]);
 
   const currentKey = queue[currentIndex] ?? null;
   const isLastTicket = currentIndex >= queue.length - 1;
@@ -290,8 +292,8 @@ export default function RefinementSessionPage() {
 
   const handleExitSession = useCallback(() => {
     endSession();
-    router.push("/refinement");
-  }, [endSession, router]);
+    router.push(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
+  }, [endSession, router, savedSessionId]);
 
   // Close nav dropdown on click outside
   useEffect(() => {
@@ -354,14 +356,36 @@ export default function RefinementSessionPage() {
   // Determine which right panel to show
   const rightPanelMode = chatPaneOpen ? "chat" : subtasksPaneOpen ? "subtasks" : (!notesCollapsed ? "notes" : null);
 
+  // Badge counts
+  const subtaskCount = ticketData?.subtasks?.length ?? 0;
+  const chatCount = ticketData?.chatMessageCount ?? 0;
+  const notesCount = poNotes.trim() ? 1 : 0;
+
   return (
     <>
       {pageTitle}
       <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
-        {/* Top bar */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-5 py-3">
-          {/* Left: exit + ticket info */}
-          <div className="flex items-center gap-3">
+        {/* Top bar - matches ViewHeader styling */}
+        <div className="relative flex shrink-0 items-center justify-between border-b border-border-strong bg-[var(--color-surface-chrome)] px-5 py-3.5">
+          {/* Decorative accents (from ViewHeader) */}
+          <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(14,142,136,0.35)] to-transparent" />
+          <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,rgba(14,142,136,0.10)_0%,transparent_70%)]" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,rgba(14,142,136,0.05)_0%,transparent_70%)]" />
+
+          {/* Left: brand + exit + previous + ticket info */}
+          <div className="relative flex items-center gap-3">
+            {/* Brand mark */}
+            <div className="flex shrink-0 items-center gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_rgba(14,142,136,0.35),inset_0_1px_0_var(--color-text-muted)]">
+                <BridgeMark size={22} />
+              </div>
+              <span className="hidden font-[var(--font-display)] text-heading-sm font-extrabold tracking-[-0.04em] text-text-primary lg:inline">
+                Bridge
+              </span>
+            </div>
+
+            <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" />
+
             <button
               type="button"
               onClick={handleExitSession}
@@ -369,8 +393,20 @@ export default function RefinementSessionPage() {
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
             >
               <X size={14} strokeWidth={1.5} />
-              Exit Session
+              Exit
             </button>
+
+            <div className="h-4 w-px bg-border-subtle" />
+
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<ChevronLeft size={14} strokeWidth={2} />}
+              onClick={() => prevTicket()}
+              disabled={currentIndex === 0}
+            >
+              Previous
+            </Button>
 
             {ticketData && (
               <>
@@ -406,7 +442,7 @@ export default function RefinementSessionPage() {
           </div>
 
           {/* Center: progress + navigation dropdown */}
-          <div className="flex items-center gap-3">
+          <div className="relative flex items-center gap-3">
             <span className="text-xs font-medium tabular-nums text-text-secondary">
               Ticket {currentIndex + 1} of {queue.length}
             </span>
@@ -479,8 +515,8 @@ export default function RefinementSessionPage() {
             </div>
           </div>
 
-          {/* Right: panel toggles */}
-          <div className="flex items-center gap-2">
+          {/* Right: panel toggles + done/next */}
+          <div className="relative flex items-center gap-2">
             {/* Chat pane toggle */}
             <button
               type="button"
@@ -495,6 +531,11 @@ export default function RefinementSessionPage() {
             >
               <MessageSquareText size={13} strokeWidth={1.5} />
               Chat
+              {chatCount > 0 && (
+                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
+                  chatPaneOpen ? "bg-[#a78bfa]/15 text-[#a78bfa]" : "bg-overlay-default text-text-tertiary"
+                }`}>{chatCount}</span>
+              )}
             </button>
 
             {/* Subtasks pane toggle */}
@@ -511,6 +552,11 @@ export default function RefinementSessionPage() {
             >
               <ListChecks size={13} strokeWidth={1.5} />
               Subtasks
+              {subtaskCount > 0 && (
+                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
+                  subtasksPaneOpen ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
+                }`}>{subtaskCount}</span>
+              )}
             </button>
 
             {/* Notes toggle */}
@@ -527,7 +573,34 @@ export default function RefinementSessionPage() {
             >
               <StickyNote size={13} strokeWidth={1.5} />
               Notes
+              {notesCount > 0 && (
+                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
+                  !notesCollapsed ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
+                }`}>{notesCount}</span>
+              )}
             </button>
+
+            <div className="h-4 w-px bg-border-subtle" />
+
+            {isLastTicket ? (
+              <Button
+                variant="primary"
+                size="md"
+                icon={<CheckCircle2 size={14} strokeWidth={2} />}
+                onClick={handleDoneAndNext}
+              >
+                End Session
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="md"
+                icon={<ChevronRight size={14} strokeWidth={2} />}
+                onClick={handleDoneAndNext}
+              >
+                Done, next ticket
+              </Button>
+            )}
           </div>
         </div>
 
@@ -603,42 +676,6 @@ export default function RefinementSessionPage() {
           )}
         </div>
 
-        {/* Bottom bar */}
-        <div className="flex shrink-0 items-center justify-between border-t border-border-subtle px-5 py-3">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="md"
-              icon={<ChevronLeft size={14} strokeWidth={2} />}
-              onClick={() => prevTicket()}
-              disabled={currentIndex === 0}
-            >
-              Previous
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {isLastTicket ? (
-              <Button
-                variant="primary"
-                size="lg"
-                icon={<CheckCircle2 size={14} strokeWidth={2} />}
-                onClick={handleDoneAndNext}
-              >
-                End Session
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                size="lg"
-                icon={<ChevronRight size={14} strokeWidth={2} />}
-                onClick={handleDoneAndNext}
-              >
-                Done, next ticket
-              </Button>
-            )}
-          </div>
-        </div>
       </div>
     </>
   );

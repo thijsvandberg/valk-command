@@ -1364,13 +1364,13 @@ export default function SprintBoard() {
         open={refineModalOpen}
         onClose={() => setRefineModalOpen(false)}
         ticketKeys={Array.from(checkedTickets)}
-        onAdded={(_id, name) => showToast(
+        onAdded={(id, name) => showToast(
           <span>
             Added to &ldquo;{name}&rdquo;
             {" "}
             <a
-              href="/refinement"
-              onClick={(e) => { e.preventDefault(); router.push("/refinement"); }}
+              href={`/refinement/${id}`}
+              onClick={(e) => { e.preventDefault(); router.push(`/refinement/${id}`); }}
               className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]"
             >
               Open refinement

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 
 export function SessionSummary() {
   const router = useRouter();
-  const { queue, completionData, sessionStartedAt } = useRefinementSession();
+  const { queue, completionData, sessionStartedAt, savedSessionId } = useRefinementSession();
   const [copied, setCopied] = useState(false);
 
   // Capture end timestamp once via lazy state initializer (pure)
@@ -73,8 +73,8 @@ export function SessionSummary() {
   }, [markdownSummary]);
 
   const handleBack = useCallback(() => {
-    router.push("/refinement");
-  }, [router]);
+    router.push(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
+  }, [router, savedSessionId]);
 
   return (
     <div className="flex h-full items-center justify-center">
