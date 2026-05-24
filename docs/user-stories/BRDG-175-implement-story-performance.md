@@ -63,7 +63,7 @@ Running `npm run build` and then visual verification requires restarting the dev
 - [ ] Run `lint` and `typecheck` in parallel (both are read-only)
 - [ ] Use `npx vitest run --changed` or pass specific test file paths to only run affected tests during implementation (full suite in final verification only)
 - [ ] Skip `npm run build` during per-checkbox verification; only run it in final verification
-- [ ] Add a `npm run verify` script that runs lint + typecheck + test in an optimized way
+- [x] Add a `npm run verify` script that runs lint + typecheck + test in an optimized way
 
 ### Browser automation improvements
 

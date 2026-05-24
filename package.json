@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "verify": "bash -c 'npm run lint & pid1=$!; npm run typecheck & pid2=$!; wait $pid1 && wait $pid2' && npm run test",
     "test:watch": "vitest",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
