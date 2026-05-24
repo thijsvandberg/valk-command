@@ -254,6 +254,7 @@ function DroppableSprintColumn({
   allChecked,
   someChecked,
   sprints,
+  backlogCount = 0,
   onChangeSprint,
   activeDragId,
   dragOverId,
@@ -287,6 +288,7 @@ function DroppableSprintColumn({
   allChecked: boolean;
   someChecked: boolean;
   sprints: Sprint[];
+  backlogCount?: number;
   onChangeSprint: (id: string) => void;
   activeDragId: string | null;
   dragOverId: string | null;
@@ -388,6 +390,7 @@ function DroppableSprintColumn({
             {selectorOpen && (
               <SprintSelector
                 sprints={sprints}
+                backlogCount={backlogCount}
                 onSelect={(id) => {
                   onChangeSprint(id);
                   setSelectorOpen(false);
@@ -566,12 +569,14 @@ export function MultiSprintView({
   initialLeft,
   initialRight,
   sprints,
+  backlogCount = 0,
   onClose,
   onSprintChange,
 }: {
   initialLeft: string;
   initialRight: string;
   sprints: Sprint[];
+  backlogCount?: number;
   onClose: () => void;
   onSprintChange?: (side: "left" | "right", sprintId: string) => void;
 }) {
@@ -1037,6 +1042,7 @@ export function MultiSprintView({
               allChecked={leftAllChecked}
               someChecked={leftSomeChecked}
               sprints={sprints}
+              backlogCount={backlogCount}
               onChangeSprint={(id) => {
                 setLeftSprint(id);
                 setLeftOverride(null);
@@ -1080,6 +1086,7 @@ export function MultiSprintView({
               allChecked={rightAllChecked}
               someChecked={rightSomeChecked}
               sprints={sprints}
+              backlogCount={backlogCount}
               onChangeSprint={(id) => {
                 setRightSprint(id);
                 setRightOverride(null);

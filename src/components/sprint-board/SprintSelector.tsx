@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Inbox } from "lucide-react";
 import { TEAMS, extractTeamPrefix } from "@/lib/sprint-utils";
+
+export const BACKLOG_SPRINT_ID = "__backlog__";
 
 function sprintSecondary(s: Sprint): string {
   if (s.dateRange) return s.dateRange;
@@ -13,10 +15,12 @@ function sprintSecondary(s: Sprint): string {
 
 export function SprintSelector({
   sprints,
+  backlogCount = 0,
   onSelect,
   onClose,
 }: {
   sprints: Sprint[];
+  backlogCount?: number;
   onSelect: (id: string) => void;
   onClose: () => void;
 }) {
@@ -121,6 +125,31 @@ export function SprintSelector({
 
         {visibleActive.length === 0 && (
           <p className="px-3 py-4 text-center text-xs text-text-muted">No sprints match</p>
+        )}
+
+        {/* Backlog entry: between active/future and closed */}
+        {!teamFilter && (!search || "backlog".includes(search.toLowerCase())) && (
+          <>
+            <div className="mx-2 my-1 border-t border-border-default/40" />
+            <button
+              type="button"
+              onClick={() => {
+                onSelect(BACKLOG_SPRINT_ID);
+                onClose();
+              }}
+              className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <Inbox className="h-3.5 w-3.5 shrink-0 text-text-muted" strokeWidth={1.5} />
+                <span className="truncate">Backlog</span>
+              </span>
+              {backlogCount > 0 && (
+                <span className="ml-3 shrink-0 rounded-full bg-overlay-default px-1.5 py-0.5 text-[10px] font-medium leading-none text-text-muted">
+                  {backlogCount}
+                </span>
+              )}
+            </button>
+          </>
         )}
 
         {closed.length > 0 && (

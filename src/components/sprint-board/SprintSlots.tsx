@@ -186,6 +186,7 @@ export function SprintSlots({
   activeSlot,
   allActive,
   sprints,
+  backlogCount = 0,
   onSlotClick,
   onAllClick,
   editingSlot,
@@ -220,6 +221,7 @@ export function SprintSlots({
   activeSlot: number;
   allActive: boolean;
   sprints: Sprint[];
+  backlogCount?: number;
   onSlotClick: (idx: number) => void;
   onAllClick: () => void;
   editingSlot: number | null;
@@ -349,6 +351,7 @@ export function SprintSlots({
                 {editingSlot === idx && (
                   <SprintSelector
                     sprints={sprints}
+                    backlogCount={backlogCount}
                     onSelect={onSprintSelect}
                     onClose={onEditClose}
                   />

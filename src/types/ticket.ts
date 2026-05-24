@@ -211,7 +211,7 @@ export interface Sprint {
   id: string;
   name: string;
   dateRange: string;
-  state: "active" | "future" | "closed";
+  state: "active" | "future" | "closed" | "backlog";
   ticketCount: number;
   startDate?: string | null;
   endDate?: string | null;

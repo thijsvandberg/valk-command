@@ -12,6 +12,7 @@ export function mapJiraSprints(raw: { id: number; name: string; state: string; s
     }
     const state = s.state === "active" ? "active" as const
       : s.state === "closed" ? "closed" as const
+      : s.state === "backlog" ? "backlog" as const
       : "future" as const;
     return { id: String(s.id), name: s.name, dateRange, state, ticketCount: 0, startDate: s.startDate ?? null, endDate: s.endDate ?? null, goal: s.goal ?? null };
   });

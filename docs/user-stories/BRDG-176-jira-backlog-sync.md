@@ -64,8 +64,8 @@ Search already indexes all tickets regardless of sprint. Data integrity is handl
 - [x] Backlog sync respects the existing 5-minute cooldown and does not trigger separate rate-limited calls
 
 ### Sprint Switcher and Board Display
-- [ ] "Backlog" appears as an entry in the sprint switcher dropdown, listed below all real sprints (after ACTIVE & FUTURE, before CLOSED)
-- [ ] The Backlog entry is visually distinct from regular sprints (e.g. different icon/accent, no date range, ticket count badge showing total backlog size)
+- [x] "Backlog" appears as an entry in the sprint switcher dropdown, listed below all real sprints (after ACTIVE & FUTURE, before CLOSED)
+- [x] The Backlog entry is visually distinct from regular sprints (e.g. different icon/accent, no date range, ticket count badge showing total backlog size)
 - [x] Selecting the Backlog entry in the sprint switcher loads all unsprinted tickets into the board view
 - [ ] Backlog can be pinned to a sprint slot tab, same as any real sprint
 - [ ] When displayed, backlog tickets render using the same ticket row components as sprint tickets
