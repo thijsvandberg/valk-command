@@ -35,13 +35,13 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
   const [ticketContext, setTicketContext] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
-  const prevKeyRef = useRef<string | null>(null);
 
-  // Find or create conversation for this ticket (same pattern as Story Writer)
+  // Find or create conversation for this ticket.
+  // The effect resets local state before the async call; the React compiler flags this
+  // as "setState in effect" but it is the correct pattern for async initialization keyed
+  // on a prop change. Suppressing until the component is refactored to use key-based reset.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (prevKeyRef.current === ticketKey && conversationId) return;
-    prevKeyRef.current = ticketKey;
-
     let cancelled = false;
     setInitializing(true);
     setInitError(null);
@@ -65,7 +65,8 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
       });
 
     return () => { cancelled = true; };
-  }, [ticketKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ticketKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const workspaceTask = useWorkspaceTask(conversationId ?? undefined);
   const isStreaming = workspaceTask.status === "streaming";
