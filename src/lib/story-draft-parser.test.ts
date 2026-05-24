@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { extractStoryDraft, extractStoryDrafts } from "./story-draft-parser";
 

@@ -46,6 +46,16 @@ These could partially overlap (lint + typecheck can run in parallel).
 
 Running `npm run build` and then visual verification requires restarting the dev server, which invalidates Clerk auth sessions in the browser.
 
+## Implementation Plan
+
+1. **Add `bail: 5` to vitest config** - `vitest.config.ts`
+2. **Add `// @vitest-environment node` to API route tests** - ~77 files in `src/app/api/**/*.test.ts` plus applicable `src/lib/*.test.ts` and `src/services/*.test.ts`
+3. **Add `npm run verify` script** - `package.json` - shell-level parallel lint+typecheck, then test
+4. **Update per-checkbox verification in workflow** - `.claude/commands/implement-story.md` - parallel lint+typecheck, targeted tests, skip build
+5. **Update final verification in workflow** - `.claude/commands/implement-story.md` - use `npm run verify`, restructure steps
+6. **Add browser automation improvements to workflow** - `.claude/commands/implement-story.md` - skip for non-UI, navigate via app, retry limits, keep dev server
+7. **Run full verification** - confirm all changes work together
+
 ## Acceptance Criteria
 
 ### Workflow optimizations
@@ -64,8 +74,8 @@ Running `npm run build` and then visual verification requires restarting the dev
 
 ### Test performance
 
-- [ ] Add `bail: 5` to vitest config so test runs fail fast on widespread breakage
-- [ ] Evaluate switching API route tests from `jsdom` to `node` environment (they don't need DOM)
+- [x] Add `bail: 5` to vitest config so test runs fail fast on widespread breakage
+- [x] Evaluate switching API route tests from `jsdom` to `node` environment (they don't need DOM)
 
 ## Technical Notes
 

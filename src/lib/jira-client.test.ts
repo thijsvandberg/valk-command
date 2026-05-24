@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
 import { JiraClient, _requestTimestamps, filterDescriptionChanges, type ChangelogEntry } from "./jira-client";
 

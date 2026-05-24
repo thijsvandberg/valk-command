@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // logger reads process.env at module init; use _setLevel to control level in tests

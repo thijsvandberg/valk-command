@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { deriveCategory, CATEGORY_CONFIG, ALL_CATEGORIES } from "./conversation-category";
 import type { Conversation } from "@/types/chat";

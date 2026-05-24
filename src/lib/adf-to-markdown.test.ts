@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { adfToMarkdown } from "./adf-to-markdown";
 
