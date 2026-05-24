@@ -5,6 +5,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket, conversation, message, ticketSubtask } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -43,7 +44,7 @@ describe("POST /api/tickets/[key]/chat", () => {
     expect(res.status).toBe(404);
   });
 
-  it("creates a new conversation for the ticket", async () => {
+  it("creates a new conversation without injecting messages", async () => {
     seedTicket(testDb, "VPL-100", "My test ticket");
 
     const res = await POST(new Request("http://test"), makeParams("VPL-100"));
@@ -54,14 +55,12 @@ describe("POST /api/tickets/[key]/chat", () => {
     expect(body.title).toContain("Ticket Chat:");
     expect(body.title).toContain("VPL-100");
     expect(body.relatedTicket).toBe("VPL-100");
+    expect(body.ticketContext).toBeDefined();
+    expect(body.ticketContext).toContain("Some description");
 
-    // Verify a context message was created
+    // No messages should be injected (conversation stays hidden in chat list)
     const msgs = testDb.select().from(message).where(eq(message.conversationId, body.id)).all();
-    expect(msgs).toHaveLength(1);
-    expect(msgs[0].role).toBe("user");
-    expect(msgs[0].content).toContain("Ticket Context");
-    expect(msgs[0].content).toContain("Some description");
-    expect(msgs[0].sequence).toBe(0);
+    expect(msgs).toHaveLength(0);
   });
 
   it("returns existing conversation on second call", async () => {
@@ -78,31 +77,39 @@ describe("POST /api/tickets/[key]/chat", () => {
     expect(body1.id).toBe(body2.id);
   });
 
-  it("includes subtasks in the context message", async () => {
+  it("reuses existing Story Writer conversation for the same ticket", async () => {
     seedTicket(testDb, "VPL-300");
-    testDb.insert(ticketSubtask).values({
-      id: "sub-1",
-      ticketKey: "VPL-300",
-      subtaskKey: "VPL-301",
-      title: "Setup database",
-      status: "Done",
-    }).run();
-    testDb.insert(ticketSubtask).values({
-      id: "sub-2",
-      ticketKey: "VPL-300",
-      subtaskKey: "VPL-302",
-      title: "Write tests",
-      status: "To Do",
+
+    // Simulate Story Writer creating a conversation first
+    const swConvId = randomUUID();
+    testDb.insert(conversation).values({
+      id: swConvId,
+      title: "Story Writer: VPL-300",
+      relatedTicket: "VPL-300",
     }).run();
 
     const res = await POST(new Request("http://test"), makeParams("VPL-300"));
     const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.id).toBe(swConvId);
+  });
 
-    const msgs = testDb.select().from(message).where(eq(message.conversationId, body.id)).all();
-    expect(msgs[0].content).toContain("VPL-301");
-    expect(msgs[0].content).toContain("Setup database");
-    expect(msgs[0].content).toContain("[x]"); // Done subtask
-    expect(msgs[0].content).toContain("[ ]"); // To Do subtask
+  it("includes subtasks in ticket context", async () => {
+    seedTicket(testDb, "VPL-400");
+    testDb.insert(ticketSubtask).values({
+      id: "sub-1",
+      ticketKey: "VPL-400",
+      subtaskKey: "VPL-401",
+      title: "Setup database",
+      status: "Done",
+    }).run();
+
+    const res = await POST(new Request("http://test"), makeParams("VPL-400"));
+    const body = await res.json();
+
+    expect(body.ticketContext).toContain("VPL-401");
+    expect(body.ticketContext).toContain("Setup database");
+    expect(body.ticketContext).toContain("[x]");
   });
 });
 
@@ -112,18 +119,18 @@ describe("GET /api/tickets/[key]/chat", () => {
   });
 
   it("returns null conversationId when no chat exists", async () => {
-    const res = await GET(new Request("http://test"), makeParams("VPL-400"));
+    const res = await GET(new Request("http://test"), makeParams("VPL-500"));
     const body = await res.json();
     expect(body.conversationId).toBeNull();
   });
 
   it("returns conversationId when chat exists", async () => {
-    seedTicket(testDb, "VPL-500");
+    seedTicket(testDb, "VPL-600");
 
-    const createRes = await POST(new Request("http://test"), makeParams("VPL-500"));
+    const createRes = await POST(new Request("http://test"), makeParams("VPL-600"));
     const created = await createRes.json();
 
-    const res = await GET(new Request("http://test"), makeParams("VPL-500"));
+    const res = await GET(new Request("http://test"), makeParams("VPL-600"));
     const body = await res.json();
     expect(body.conversationId).toBe(created.id);
   });

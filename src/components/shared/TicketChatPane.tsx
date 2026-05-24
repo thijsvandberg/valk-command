@@ -7,7 +7,7 @@ import { ChatBubble } from "@/components/shared/ChatBubble";
 import { ChatInput } from "@/components/shared/ChatInput";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { apiFetch } from "@/lib/api-client";
-import { MessageSquareText, X } from "lucide-react";
+import { MessageSquareText, X, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -17,34 +17,9 @@ interface TicketChatPaneProps {
   onClose?: () => void;
 }
 
-function CompactTaskProgress({ status, progressText, error }: {
-  status: string;
-  progressText: string;
-  error: string | null;
-}) {
-  if (status === "idle" || status === "completed") return null;
-
-  if (status === "failed") {
-    return (
-      <div className="px-4 py-2 border-t border-red-500/20">
-        <span className="text-xs text-red-400">{error ?? "Task failed"}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-4 py-2 border-t border-border-default">
-      <div className="flex items-center gap-2">
-        <span className="relative flex size-1.5">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
-        </span>
-        <span className="text-xs text-text-secondary truncate">
-          {progressText || "Working..."}
-        </span>
-      </div>
-    </div>
-  );
+interface ChatConversation {
+  id: string;
+  ticketContext?: string;
 }
 
 function CompactMessageContent({ content }: { content: string }) {
@@ -55,52 +30,30 @@ function CompactMessageContent({ content }: { content: string }) {
   );
 }
 
-function ContextMessage({ content }: { content: string }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="rounded-lg border border-border-subtle bg-overlay-subtle px-3 py-2">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full cursor-pointer items-center gap-2 text-left text-xs text-text-muted hover:text-text-secondary"
-        style={{ transition: "color 0.15s ease" }}
-      >
-        <MessageSquareText size={12} strokeWidth={1.5} />
-        <span className="font-medium">Ticket context</span>
-        <span className="ml-auto text-[10px]">{expanded ? "Collapse" : "Expand"}</span>
-      </button>
-      {expanded && (
-        <div className="mt-2 max-h-48 overflow-y-auto border-t border-border-subtle pt-2 text-xs text-text-tertiary leading-relaxed prose-sm">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPaneProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [ticketContext, setTicketContext] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const prevKeyRef = useRef<string | null>(null);
 
-  // Find or create conversation for this ticket
+  // Find or create conversation for this ticket (same pattern as Story Writer)
   useEffect(() => {
     if (prevKeyRef.current === ticketKey && conversationId) return;
     prevKeyRef.current = ticketKey;
 
     let cancelled = false;
-    setInitializing(true); // eslint-disable-line react-hooks/set-state-in-effect -- reset on key change
-    setInitError(null); // eslint-disable-line react-hooks/set-state-in-effect
-    setConversationId(null); // eslint-disable-line react-hooks/set-state-in-effect
+    setInitializing(true);
+    setInitError(null);
+    setConversationId(null);
 
-    apiFetch<{ id: string }>(`/api/tickets/${encodeURIComponent(ticketKey)}/chat`, {
+    apiFetch<ChatConversation>(`/api/tickets/${encodeURIComponent(ticketKey)}/chat`, {
       method: "POST",
     })
       .then((conv) => {
         if (!cancelled) {
           setConversationId(conv.id);
+          setTicketContext(conv.ticketContext ?? null);
           setInitializing(false);
         }
       })
@@ -115,7 +68,9 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
   }, [ticketKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const workspaceTask = useWorkspaceTask(conversationId ?? undefined);
-  const isTaskRunning = workspaceTask.status === "streaming" || workspaceTask.status === "submitting";
+  const isStreaming = workspaceTask.status === "streaming";
+  const isSubmitting = workspaceTask.status === "submitting";
+  const isTaskRunning = isStreaming || isSubmitting;
 
   const {
     messages,
@@ -146,7 +101,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
     prevCountRef.current = messages.length;
   }, [messages]);
 
-  // Refresh messages when task completes
+  // Refresh messages when task completes (same as ChatLayout)
   const notifiedTaskRef = useRef<string | null>(null);
   useEffect(() => {
     if (
@@ -168,6 +123,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
       const hasAssistantMessage = messages.some((m) => m.role === "assistant");
 
       if (hasAssistantMessage) {
+        // Follow-up: resume existing workspace session (same as ChatLayout)
         try {
           workspaceTask.reset();
           const res = await apiFetch<{ id: string }>(`/api/conversations/${conversationId}/chat-messages`, {
@@ -180,18 +136,22 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
           console.warn("[ticket-chat] follow-up failed", err);
         }
       } else {
+        // First message: include ticket context in the args so the workspace knows about the ticket
+        const contextPrefix = ticketContext
+          ? `[Ticket context for ${ticketKey}]\n${ticketContext}\n\n[User question]\n`
+          : "";
         workspaceTask.reset();
-        await workspaceTask.submitAndStream("chat", { args: content.trim() }, conversationId);
+        await workspaceTask.submitAndStream(
+          "chat",
+          { args: `${contextPrefix}${content.trim()}` },
+          conversationId,
+        );
       }
 
       return true;
     },
-    [conversationId, sendMessage, workspaceTask, messages],
+    [conversationId, sendMessage, workspaceTask, messages, ticketContext, ticketKey],
   );
-
-  // Separate context message (sequence 0) from chat messages
-  const contextMessage = messages.find((m) => m.sequence === 0 && m.role === "user");
-  const chatMessages = messages.filter((m) => m !== contextMessage);
 
   if (initializing) {
     return (
@@ -215,28 +175,29 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
 
   return (
     <div className="flex h-full flex-col">
-      <PaneHeader ticketKey={ticketKey} ticketTitle={ticketTitle} onClose={onClose} />
+      <PaneHeader ticketKey={ticketKey} ticketTitle={ticketTitle} onClose={onClose} isStreaming={isTaskRunning} />
 
       {/* Messages */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-3 space-y-3"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 space-y-3"
         style={{ scrollbarWidth: "thin" }}
       >
-        {contextMessage && (
-          <ContextMessage content={contextMessage.content} />
+        {messages.length === 0 && !msgLoading && !isTaskRunning && (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#a78bfa]/[0.08] border border-[#a78bfa]/[0.12]">
+              <Sparkles size={16} className="text-[#a78bfa] opacity-60" strokeWidth={1.5} />
+            </div>
+            <p className="text-xs text-text-muted text-center max-w-[180px]">
+              Ask a question about this ticket
+            </p>
+          </div>
         )}
 
-        {chatMessages.length === 0 && !msgLoading && (
-          <p className="text-center text-xs text-text-muted py-8">
-            Ask a question about this ticket to start.
-          </p>
-        )}
-
-        {chatMessages.map((msg, idx) => {
+        {messages.map((msg, idx) => {
           const isSending = msg.id.startsWith("optimistic-");
-          const isLast = idx === chatMessages.length - 1;
+          const isLast = idx === messages.length - 1;
 
           return (
             <ChatBubble
@@ -254,12 +215,26 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
         <div ref={bottomRef} />
       </div>
 
-      {/* Task progress */}
-      <CompactTaskProgress
-        status={workspaceTask.status}
-        progressText={workspaceTask.progressText}
-        error={workspaceTask.error}
-      />
+      {/* Streaming progress (same visual as Story Writer) */}
+      {isTaskRunning && (
+        <div className="border-t border-border-default px-4 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex size-2 items-center justify-center">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
+            </div>
+            <span className="text-xs text-text-secondary truncate">
+              {workspaceTask.progressText?.slice(0, 80) || (isSubmitting ? "Starting..." : "Working...")}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {workspaceTask.status === "failed" && workspaceTask.error && (
+        <div className="border-t border-red-500/20 px-4 py-2">
+          <span className="text-xs text-red-400">{workspaceTask.error}</span>
+        </div>
+      )}
 
       {/* Input */}
       <ChatInput
@@ -274,14 +249,20 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
   );
 }
 
-function PaneHeader({ ticketKey, ticketTitle, onClose }: {
+function PaneHeader({ ticketKey, ticketTitle, onClose, isStreaming }: {
   ticketKey: string;
   ticketTitle: string;
   onClose?: () => void;
+  isStreaming?: boolean;
 }) {
   return (
     <div className="flex shrink-0 items-center gap-2 border-b border-border-subtle px-3 py-2.5">
-      <MessageSquareText size={14} strokeWidth={1.5} className="shrink-0 text-[#a78bfa]" />
+      <div className="relative">
+        <MessageSquareText size={14} strokeWidth={1.5} className="shrink-0 text-[#a78bfa]" />
+        {isStreaming && (
+          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
+        )}
+      </div>
       <div className="min-w-0 flex-1">
         <span className="block truncate text-xs font-medium text-text-primary">
           {ticketKey}
