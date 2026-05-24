@@ -1,6 +1,6 @@
 # BRDG-167: Refinement Indicator on Tickets
 
-**Status:** Open
+**Status:** Done
 **Priority:** Low
 **Related:** BRDG-166 (Saved Refinement Sessions), BRDG-127 (Refinement Session Mode)
 
