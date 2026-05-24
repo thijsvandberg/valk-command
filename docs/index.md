@@ -9,6 +9,7 @@ PO Command Center for Valk Platform.
 - [user-stories/](user-stories/) - Feature specifications as user stories
 - [investigations/](investigations/) - Ad-hoc codebase investigations
 - [todo.md](todo.md) - Backlog and task tracking
+- [performance-log.md](performance-log.md) - Notable bottlenecks from `/implement-story` runs
 
 ## Key Documents
 

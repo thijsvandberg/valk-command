@@ -71,7 +71,16 @@ When all checkboxes are `[x]`:
 1. Move the story file to `docs/user-stories/completed/`
 2. Commit the move: `chore: archive BRDG-XXX as completed`
 
-### 8. Report
+### 8. Performance review
+
+After archiving, reflect on the run and check for notable issues:
+- Phases that took unexpectedly long (build failures, retry loops, auth issues, slow tests)
+- Browser automation problems (navigation retries, screenshot failures, session expiry)
+- Unexpected blockers (unrelated code breaking the build, flaky tests, merge conflicts)
+
+**Only if there is something worth logging**, append an entry to `docs/performance-log.md` with the story ID, date, total time, a phase breakdown table, and a short list of key bottlenecks. If the run was smooth, skip this step entirely.
+
+### 9. Report
 
 When done, report:
 - What was completed
