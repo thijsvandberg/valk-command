@@ -8,7 +8,7 @@ import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -16,8 +16,9 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import type { Ticket } from "@/types/ticket";
-import { getSpColor } from "@/types/ticket";
+import { getSpColor, getEpicColor } from "@/types/ticket";
 import {
   DndContext,
   closestCenter,
@@ -33,6 +34,14 @@ import {
   useSortable,
   arrayMove,
 } from "@dnd-kit/sortable";
+
+const LAST_UPDATED_OPTIONS = [
+  { value: "1w", label: "1 week", ms: 7 * 24 * 60 * 60 * 1000 },
+  { value: "2w", label: "2 weeks", ms: 14 * 24 * 60 * 60 * 1000 },
+  { value: "4w", label: "4 weeks", ms: 28 * 24 * 60 * 60 * 1000 },
+  { value: "3m", label: "3 months", ms: 90 * 24 * 60 * 60 * 1000 },
+  { value: "all", label: "All time", ms: 0 },
+] as const;
 
 const MIN_TICKETS = 1;
 const MAX_TICKETS = 12;
@@ -282,6 +291,22 @@ function TicketRow({
         />
       </span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{ticket.title}</span>
+      {ticket.epic && (
+        <span
+          className="shrink-0 truncate max-w-[140px] rounded-md px-1.5 py-0.5 text-caption font-medium"
+          style={{
+            backgroundColor: getEpicColor(ticket.epic).bg,
+            color: getEpicColor(ticket.epic).text,
+          }}
+        >
+          {ticket.epic}
+        </span>
+      )}
+      {(ticket.totalSubtaskCount ?? 0) > 0 && (
+        <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium tabular-nums text-text-muted">
+          {ticket.openSubtaskCount ?? 0}/{ticket.totalSubtaskCount}
+        </span>
+      )}
       {sessionNames && sessionNames.length > 0 && (
         <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[var(--color-brand-500)]/[0.08] px-1.5 py-0.5 text-caption font-medium text-[var(--color-brand-400)]">
           <Layers size={9} strokeWidth={1.5} />
@@ -316,6 +341,33 @@ function TicketRow({
 // ---------------------------------------------------------------------------
 // Smart sort: ready_to_refine first, then no sprint, then rest
 // ---------------------------------------------------------------------------
+
+function filterTickets(
+  tickets: Ticket[],
+  opts: {
+    sprintFilter: Set<string>;
+    hideEstimated: boolean;
+    epicFilter: Set<string>;
+    lastUpdatedFilter: string;
+  },
+): Ticket[] {
+  const lastUpdatedMs = opts.lastUpdatedFilter !== "all"
+    ? LAST_UPDATED_OPTIONS.find((o) => o.value === opts.lastUpdatedFilter)?.ms ?? 0
+    : 0;
+  const cutoff = lastUpdatedMs > 0 ? Date.now() - lastUpdatedMs : 0;
+
+  return tickets.filter((t) => {
+    if (opts.sprintFilter.size > 0) {
+      if (!t.sprintId || !opts.sprintFilter.has(t.sprintId)) return false;
+    }
+    if (opts.hideEstimated && t.storyPoints != null && t.storyPoints > 0) return false;
+    if (opts.epicFilter.size > 0 && (!t.epic || !opts.epicFilter.has(t.epic))) return false;
+    if (cutoff > 0) {
+      if (!t.jiraUpdatedAt || new Date(t.jiraUpdatedAt).getTime() < cutoff) return false;
+    }
+    return true;
+  });
+}
 
 function smartSort(a: Ticket, b: Ticket): number {
   const aReady = a.readiness === "ready_to_refine" ? 0 : 1;
@@ -409,19 +461,55 @@ export function RefinementPageContent({
   const effectiveSprintFilter = sprintFilter ?? pinnedSprintIds;
   const [sprintFilterOpen, setSprintFilterOpen] = useState(false);
 
+  // New filter state
+  const [hideEstimated, setHideEstimated] = useState(true);
+  const [epicFilter, setEpicFilter] = useState<Set<string>>(new Set());
+  const [lastUpdatedFilter, setLastUpdatedFilter] = useState("4w");
+  const [lastUpdatedOpen, setLastUpdatedOpen] = useState(false);
+  const lastUpdatedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!lastUpdatedOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (lastUpdatedRef.current && !lastUpdatedRef.current.contains(e.target as Node)) {
+        setLastUpdatedOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [lastUpdatedOpen]);
+
   // Fetch all tickets
   const { data: tickets } = useTickets("__all__");
 
-  const filteredTickets = useMemo(() => {
+  // Base tickets: hardcoded exclusions only (status, type, removed)
+  const baseTickets = useMemo(() => {
     return (tickets ?? []).filter((t) => {
       if (t.jiraStatus === "DONE" || t.jiraStatus === "DEPRECATED") return false;
       if (t.type === "epic" || t.type === "subtask") return false;
       if (t.removedFromJiraAt) return false;
-      if (effectiveSprintFilter.size === 0) return true;
-      if (!t.sprintId) return false;
-      return effectiveSprintFilter.has(t.sprintId);
+      return true;
     });
-  }, [tickets, effectiveSprintFilter]);
+  }, [tickets]);
+
+  // Epic options derived from base tickets
+  const epicOptions = useMemo(() => {
+    const epics = new Set<string>();
+    for (const t of baseTickets) {
+      if (t.epic) epics.add(t.epic);
+    }
+    return [...epics].sort();
+  }, [baseTickets]);
+
+  // Filtered tickets: base + sprint + estimated + epic + lastUpdated
+  const filteredTickets = useMemo(() => {
+    return filterTickets(baseTickets, {
+      sprintFilter: effectiveSprintFilter,
+      hideEstimated,
+      epicFilter,
+      lastUpdatedFilter,
+    });
+  }, [baseTickets, effectiveSprintFilter, hideEstimated, epicFilter, lastUpdatedFilter]);
 
   const sortedTickets = useMemo(
     () => [...filteredTickets].sort(smartSort),
@@ -429,13 +517,14 @@ export function RefinementPageContent({
   );
 
   const [searchQuery, setSearchQuery] = useState("");
+  // When search is active, bypass all filters and search across baseTickets
   const availableTickets = useMemo(() => {
     if (!searchQuery.trim()) return sortedTickets;
     const q = searchQuery.toLowerCase();
-    return sortedTickets.filter(
-      (t) => t.key.toLowerCase().includes(q) || t.title.toLowerCase().includes(q),
-    );
-  }, [sortedTickets, searchQuery]);
+    return baseTickets
+      .filter((t) => t.key.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))
+      .sort(smartSort);
+  }, [sortedTickets, baseTickets, searchQuery]);
 
   // Queue state: for quick session (no activeSessionId), uses local state.
   // For saved sessions, derives from the session's ticketKeys.
@@ -584,10 +673,10 @@ export function RefinementPageContent({
   const allReadySelected = readyCount > 0 && readyKeys.every((k) => queue.includes(k));
 
   const sprintFilterLabel = useMemo(() => {
-    if (effectiveSprintFilter.size === 0) return "All sprints";
+    if (effectiveSprintFilter.size === 0) return "All";
     if (effectiveSprintFilter.size === pinnedSprintIds.size &&
         [...effectiveSprintFilter].every((id) => pinnedSprintIds.has(id))) {
-      return "Pinned sprints";
+      return "Pinned";
     }
     if (effectiveSprintFilter.size === 1) {
       const id = [...effectiveSprintFilter][0];
@@ -595,6 +684,11 @@ export function RefinementPageContent({
     }
     return `${effectiveSprintFilter.size} sprints`;
   }, [effectiveSprintFilter, pinnedSprintIds, sprintNameMap]);
+
+  const lastUpdatedLabel = useMemo(() => {
+    const opt = LAST_UPDATED_OPTIONS.find((o) => o.value === lastUpdatedFilter);
+    return opt?.label ?? "4 weeks";
+  }, [lastUpdatedFilter]);
 
   const toggleSprintInFilter = useCallback((id: string) => {
     setSprintFilter((prev) => {
@@ -711,31 +805,6 @@ export function RefinementPageContent({
                     {readyCount} ready to refine
                   </button>
                 )}
-
-                <div className="flex-1" />
-
-                {/* Sprint filter */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setSprintFilterOpen(!sprintFilterOpen)}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    style={{ transition: "background-color 0.15s ease" }}
-                  >
-                    {sprintFilterLabel}
-                  </button>
-                  {sprintFilterOpen && (
-                    <SprintListModal
-                      onClose={() => setSprintFilterOpen(false)}
-                      onSelect={() => {}}
-                      onPin={() => {}}
-                      pinnedIds={pinnedSprintIds}
-                      multiSelect
-                      selectedIds={effectiveSprintFilter}
-                      onToggleSelect={toggleSprintInFilter}
-                    />
-                  )}
-                </div>
               </div>
 
               {/* Search bar */}
@@ -757,6 +826,127 @@ export function RefinementPageContent({
                     <X size={13} strokeWidth={2} />
                   </button>
                 )}
+              </div>
+
+              {/* Filter bar */}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {/* Sprint filter */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setSprintFilterOpen(!sprintFilterOpen)}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary hover:bg-hover-interactive hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{ transition: "background-color 0.12s ease, border-color 0.12s ease" }}
+                  >
+                    <span className="text-text-muted">Sprint:</span> {sprintFilterLabel}
+                    <ChevronDown size={12} strokeWidth={1.5} className="opacity-40" />
+                  </button>
+                  {sprintFilterOpen && (
+                    <SprintListModal
+                      onClose={() => setSprintFilterOpen(false)}
+                      onSelect={() => {}}
+                      onPin={() => {}}
+                      pinnedIds={pinnedSprintIds}
+                      multiSelect
+                      selectedIds={effectiveSprintFilter}
+                      onToggleSelect={toggleSprintInFilter}
+                    />
+                  )}
+                </div>
+
+                {/* Epic filter */}
+                <FilterDropdown
+                  label="Epic"
+                  options={epicOptions}
+                  selected={epicFilter}
+                  onChange={setEpicFilter}
+                  searchable={epicOptions.length > 6}
+                  searchPlaceholder="Search epics..."
+                  renderOption={(epic) => {
+                    const c = getEpicColor(epic);
+                    return (
+                      <span
+                        className="truncate rounded-md px-1.5 py-0.5 text-caption font-medium"
+                        style={{ backgroundColor: c.bg, color: c.text }}
+                      >
+                        {epic}
+                      </span>
+                    );
+                  }}
+                />
+
+                {/* Last updated filter */}
+                <div className="relative" ref={lastUpdatedRef}>
+                  <button
+                    type="button"
+                    onClick={() => setLastUpdatedOpen(!lastUpdatedOpen)}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary hover:bg-hover-interactive hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{ transition: "background-color 0.12s ease, border-color 0.12s ease" }}
+                  >
+                    <span className="text-text-muted">Updated:</span> {lastUpdatedLabel}
+                    <ChevronDown
+                      size={12}
+                      strokeWidth={1.5}
+                      className={`opacity-40 ${lastUpdatedOpen ? "rotate-180" : ""}`}
+                      style={{ transition: "transform 0.15s ease" }}
+                    />
+                  </button>
+                  {lastUpdatedOpen && (
+                    <div className="absolute left-0 top-full z-50 mt-1.5 w-40 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+                      {LAST_UPDATED_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setLastUpdatedFilter(opt.value);
+                            setLastUpdatedOpen(false);
+                          }}
+                          className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover-list-item ${
+                            lastUpdatedFilter === opt.value
+                              ? "font-medium text-text-primary"
+                              : "text-text-secondary"
+                          }`}
+                          style={{ transition: "background-color 80ms" }}
+                        >
+                          <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                            {lastUpdatedFilter === opt.value && (
+                              <Check size={11} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
+                            )}
+                          </span>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Hide estimated toggle */}
+                <button
+                  type="button"
+                  onClick={() => setHideEstimated(!hideEstimated)}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
+                    hideEstimated
+                      ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
+                      : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-hover-interactive hover:border-border-strong"
+                  }`}
+                  style={{ transition: "background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 80ms" }}
+                >
+                  <span
+                    className="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border"
+                    style={{
+                      backgroundColor: hideEstimated ? "var(--color-brand-500)" : "transparent",
+                      borderColor: hideEstimated ? "var(--color-brand-500)" : "var(--color-text-muted)",
+                      transition: "background-color 0.1s ease, border-color 0.1s ease",
+                    }}
+                  >
+                    {hideEstimated && (
+                      <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
+                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  Hide estimated
+                </button>
               </div>
 
               {/* Ticket list */}
