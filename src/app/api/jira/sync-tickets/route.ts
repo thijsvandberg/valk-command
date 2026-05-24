@@ -63,6 +63,10 @@ export async function POST(request: Request) {
     return syncIndividualTickets(ticketKeys, request.signal);
   }
 
+  if (sprintId === "__backlog__") {
+    return syncBacklog(strategy, request.signal);
+  }
+
   return syncSprint(sprintId, strategy, request.signal);
 }
 
@@ -349,6 +353,148 @@ async function updateWatermark(value: string) {
  * Returns both the changed issues (full data) and the complete set of keys
  * that Jira reports for the sprint, so the caller can detect deletions.
  */
+/**
+ * Sync backlog tickets (no sprint assigned).
+ * Uses timestamp-first strategy to detect changed issues.
+ */
+async function syncBacklog(strategy: string, requestSignal?: AbortSignal) {
+  const logId = `sync-${crypto.randomUUID()}`;
+  const startedAt = new Date().toISOString();
+
+  await db.insert(activityLog).values({
+    id: logId,
+    type: "sprint-sync",
+    scope: "backlog",
+    status: "running",
+    startedAt,
+  });
+
+  const controller = registerSync(logId);
+  requestSignal?.addEventListener("abort", () => controller.abort(), { once: true });
+
+  try {
+    let issues: JiraIssue[];
+    let allJiraKeys: Set<string>;
+    let rankMap: Map<string, number>;
+
+    if (strategy === "timestamp-first" && jiraClient.isLive) {
+      const tsResult = await fetchBacklogTimestampFirst(controller.signal);
+      issues = tsResult.issues;
+      allJiraKeys = tsResult.allJiraKeys;
+      rankMap = tsResult.rankMap;
+    } else {
+      const backlogIssues = await jiraClient.getBacklogIssues(controller.signal);
+      issues = backlogIssues;
+      allJiraKeys = new Set(backlogIssues.map((i) => i.key));
+      rankMap = new Map(backlogIssues.map((i, idx) => [i.key, idx]));
+    }
+
+    const results = [];
+    for (let i = 0; i < issues.length; i++) {
+      const issue = issues[i];
+      allJiraKeys.add(issue.key);
+      const rank = rankMap.get(issue.key) ?? i;
+      const info = await upsertIssue(issue, "", controller.signal, rank);
+      results.push(info);
+    }
+
+    // Update ranks for unchanged backlog tickets
+    if (strategy === "timestamp-first" && rankMap.size > 0) {
+      const changedKeys = new Set(issues.map((iss) => iss.key));
+      for (const [key, rank] of rankMap) {
+        if (!changedKeys.has(key)) {
+          await db.update(ticket).set({ jiraRank: rank }).where(eq(ticket.jiraKey, key));
+        }
+      }
+    }
+
+    // Detect tickets that gained a sprint since last sync
+    const localBacklogTickets = await db
+      .select({ jiraKey: ticket.jiraKey })
+      .from(ticket)
+      .where(eq(ticket.sprintName, ""));
+
+    const leftBacklog = localBacklogTickets
+      .filter((t) => !allJiraKeys.has(t.jiraKey));
+
+    for (const { jiraKey: key } of leftBacklog) {
+      try {
+        const issue = await jiraClient.getIssue(key, controller.signal);
+        const sprint = extractSprint(issue.fields);
+        const newSprintName = sprint ? String(sprint.id) : "";
+        if (sprint) cacheSprintName(String(sprint.id), sprint.name);
+        await db.update(ticket)
+          .set({ sprintName: newSprintName })
+          .where(eq(ticket.jiraKey, key));
+      } catch (err) {
+        if (err instanceof JiraApiError && err.status === 404) {
+          await db.update(ticket)
+            .set({ removedFromJiraAt: new Date().toISOString() })
+            .where(eq(ticket.jiraKey, key));
+        }
+      }
+    }
+
+    const durationMs = Date.now() - new Date(startedAt).getTime();
+    await db.update(activityLog).set({
+      status: "success",
+      summary: `Backlog: ${results.length} tickets synced`,
+      durationMs,
+      completedAt: new Date().toISOString(),
+    }).where(eq(activityLog.id, logId));
+
+    invalidateSearchCache();
+    cache.invalidate("/api/tickets");
+
+    return NextResponse.json({
+      count: results.length,
+      live: jiraClient.isLive,
+      strategy,
+      tickets: results,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return NextResponse.json({ error: "Sync cancelled" }, { status: 499 });
+    }
+    const message = err instanceof Error ? err.message : "Unknown error";
+    const durationMs = Date.now() - new Date(startedAt).getTime();
+    await db.update(activityLog).set({
+      status: "failed",
+      errorDetail: message,
+      durationMs,
+      completedAt: new Date().toISOString(),
+    }).where(eq(activityLog.id, logId));
+
+    logger.error("jira", "Backlog sync failed", message);
+    return NextResponse.json({ error: "Backlog sync failed" }, { status: 500 });
+  } finally {
+    unregisterSync(logId);
+  }
+}
+
+async function fetchBacklogTimestampFirst(signal?: AbortSignal): Promise<{ issues: JiraIssue[]; allJiraKeys: Set<string>; rankMap: Map<string, number> }> {
+  const lightweight = await jiraClient.getBacklogIssueTimestamps(signal);
+  if (lightweight.length === 0) return { issues: [], allJiraKeys: new Set(), rankMap: new Map() };
+
+  const allJiraKeys = new Set(lightweight.map((item) => item.key));
+  const rankMap = new Map(lightweight.map((item, idx) => [item.key, idx]));
+  const allKeys = [...allJiraKeys];
+  const localTickets = await db
+    .select({ jiraKey: ticket.jiraKey, jiraUpdatedAt: ticket.jiraUpdatedAt })
+    .from(ticket)
+    .where(inArray(ticket.jiraKey, allKeys));
+
+  const localMap = new Map(localTickets.map((t) => [t.jiraKey, t.jiraUpdatedAt]));
+  const changedKeys = lightweight
+    .filter((item) => localMap.get(item.key) !== item.updated)
+    .map((item) => item.key);
+
+  if (changedKeys.length === 0) return { issues: [], allJiraKeys, rankMap };
+
+  const issues = await jiraClient.getIssuesByKeys(changedKeys, signal, true);
+  return { issues, allJiraKeys, rankMap };
+}
+
 async function fetchTimestampFirst(sprintIdNum: number, signal?: AbortSignal): Promise<{ issues: JiraIssue[]; allJiraKeys: Set<string>; rankMap: Map<string, number> }> {
   const lightweight = await jiraClient.getSprintIssueTimestamps(sprintIdNum, signal);
   if (lightweight.length === 0) return { issues: [], allJiraKeys: new Set(), rankMap: new Map() };

@@ -16,6 +16,7 @@ import { refreshSprintMetadata } from "@/lib/refresh-sprint-metadata";
 const WATERMARK_KEY = "jira_sync_watermark";
 const COOLDOWN_KEY = "jira_sync_last_run";
 const LAST_RESULT_KEY = "jira_sync_last_result";
+const BACKLOG_SYNCED_KEY = "backlog_synced";
 const BATCH_LIMIT = 50;
 const COOLDOWN_MS = 120_000;
 
@@ -90,6 +91,33 @@ export async function POST() {
   const syncId = `inc-sync-${crypto.randomUUID()}`;
   const controller = registerSync(syncId);
   const watermark = watermarkRow.value;
+
+  // One-time backlog seed: fetch all unsprinted tickets so they exist in the local DB.
+  // After the initial seed, incremental sync keeps them updated automatically since
+  // getUpdatedSince queries all VPL tickets regardless of sprint.
+  try {
+    const backlogSynced = await db.query.appSetting.findFirst({
+      where: (row, { eq: eqFn }) => eqFn(row.key, BACKLOG_SYNCED_KEY),
+    });
+    if (!backlogSynced) {
+      logger.info("jira", "Starting one-time backlog seed");
+      const backlogIssues = await jiraClient.getBacklogIssues(controller.signal);
+      let seeded = 0;
+      for (const issue of backlogIssues) {
+        await upsertIssue(issue, "", controller.signal);
+        seeded++;
+      }
+      await upsertSetting(BACKLOG_SYNCED_KEY, new Date().toISOString());
+      if (seeded > 0) {
+        invalidateSearchCache();
+        cache.invalidate("/api/tickets");
+        logger.info("jira", `Backlog seed complete: ${seeded} tickets`);
+      }
+    }
+  } catch (err) {
+    logger.warn("jira", "Backlog seed failed (non-blocking)",
+      err instanceof Error ? err.message : String(err));
+  }
 
   try {
     const changed = await jiraClient.getUpdatedSince(watermark, controller.signal);

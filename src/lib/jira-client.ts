@@ -979,6 +979,75 @@ export class JiraClient {
   }
 
   /**
+   * Move one or more issues to the backlog by clearing their sprint field.
+   */
+  async moveToBacklog(issueKeys: string[], signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    for (const key of issueKeys) {
+      await this.updateIssue(key, { [SPRINT_FIELD]: null }, signal);
+    }
+  }
+
+  /**
+   * Fetch all backlog issues (tickets with no sprint assigned).
+   * Uses JQL with pagination to handle large backlogs (150+ tickets).
+   */
+  async getBacklogIssues(signal?: AbortSignal): Promise<JiraIssue[]> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const cfg = getConfig();
+    const jql = `sprint is EMPTY AND project = ${cfg.projectKey} AND issuetype not in (Epic) ORDER BY rank ASC`;
+    let all: JiraIssue[] = [];
+    let pageToken: string | undefined;
+
+    while (true) {
+      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${ISSUE_FIELDS}&maxResults=100${tokenParam}`,
+        signal,
+      );
+      all = all.concat(result.issues);
+      if (result.isLast !== false || !result.nextPageToken) break;
+      pageToken = result.nextPageToken;
+    }
+
+    return all;
+  }
+
+  /**
+   * Fetch only key + updated timestamp for all backlog issues.
+   * Used by timestamp-first sync strategy for the backlog.
+   */
+  async getBacklogIssueTimestamps(signal?: AbortSignal): Promise<Array<{ key: string; updated: string }>> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const cfg = getConfig();
+    const jql = `sprint is EMPTY AND project = ${cfg.projectKey} AND issuetype not in (Epic) ORDER BY rank ASC`;
+    let all: Array<{ key: string; updated: string }> = [];
+    let pageToken: string | undefined;
+
+    while (true) {
+      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=updated&maxResults=200${tokenParam}`,
+        signal,
+      );
+      all = all.concat(result.issues.map((i) => ({ key: i.key, updated: i.fields.updated })));
+      if (result.isLast !== false || !result.nextPageToken) break;
+      pageToken = result.nextPageToken;
+    }
+
+    return all;
+  }
+
+  /**
    * Update sprint metadata (goal, dates) via the Jira Agile API.
    * Uses PUT /rest/agile/1.0/sprint/{sprintId}.
    */
