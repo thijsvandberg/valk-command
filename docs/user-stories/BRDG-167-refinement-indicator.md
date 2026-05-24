@@ -12,13 +12,30 @@ As the PO, I want to see at a glance which tickets are scheduled for a refinemen
 
 Once saved refinement sessions exist (BRDG-166), tickets can be assigned to upcoming sessions. This story surfaces that information across the app so the PO does not accidentally skip or double-refine tickets.
 
+## Implementation Plan
+
+1. **Create `useTicketSessionMap` hook** (`src/hooks/useTicketSessionMap.ts`): Wraps `useRefinementSessions()`, builds a memoized `Map<string, { id: string; name: string }[]>` mapping each ticket key to its draft sessions. Shared by all three areas.
+
+2. **Sprint board indicator**: Add `refinementSessions` optional prop to `TicketRowBaseProps`. Render a small `Layers` icon inside the `"key"` cell (next to follow star) wrapped in a `Tooltip` showing session name(s). Pass the map from `TicketTable` -> `TicketRow` and from `SprintBoard`/`MultiSprintView` -> `TicketTable`.
+
+3. **Ticket detail sidebar**: Call `useTicketSessionMap()` in `TicketSidebar`. After the Sprint row, show a "Refinement" `DetailRow` with clickable session name(s) linking to `/refinement?session={id}`. Hidden when not in any session.
+
+4. **Deep-link support**: Read `searchParams.get("session")` in `RefinementPageInner` to initialize `activeSessionId`, enabling sidebar links.
+
+5. **Refinement page indicators**: In the local `TicketRow`, show session name as a subtle badge. When a ticket is in a different session than the active one, show a non-blocking amber warning.
+
+**Design decisions:**
+- Overlay icon in key cell (not a new column) to avoid FilterBar/preset changes
+- Only draft sessions shown (completed are archival)
+- Single `Layers` icon regardless of session count; tooltip lists all
+
 ## Acceptance Criteria
 
 ### Sprint board
 
-- [ ] Tickets that are in a saved refinement session show a small indicator (icon or badge) in the ticket row
-- [ ] Hovering the indicator shows the session name in a tooltip
-- [ ] The indicator is visible in all sprint board views (table, grouped, filtered)
+- [x] Tickets that are in a saved refinement session show a small indicator (icon or badge) in the ticket row
+- [x] Hovering the indicator shows the session name in a tooltip
+- [x] The indicator is visible in all sprint board views (table, grouped, filtered)
 
 ### Ticket detail view
 

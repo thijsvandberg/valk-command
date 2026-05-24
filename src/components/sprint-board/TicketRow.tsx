@@ -7,7 +7,8 @@ import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar
 import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X } from "lucide-react";
+import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X, Layers } from "lucide-react";
+import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -60,6 +61,7 @@ export interface TicketRowBaseProps {
   onEditingTitleKeyChange?: (key: string | null) => void;
   reviewPopoverKey?: string | null;
   onToggleReviewPopover?: (key: string) => void;
+  refinementSessions?: TicketSessionEntry[];
   columnOrder?: ColumnId[];
   insertLine?: "above" | "below";
   rowStyle?: React.CSSProperties;
@@ -103,6 +105,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     onEditingTitleKeyChange,
     reviewPopoverKey = null,
     onToggleReviewPopover,
+    refinementSessions,
     columnOrder,
     insertLine,
     rowStyle,
@@ -233,6 +236,20 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                       className={isFollowed ? "text-amber-400 fill-amber-400" : "text-text-tertiary"}
                     />
                   </button>
+                </Tooltip>
+              )}
+              {refinementSessions && refinementSessions.length > 0 && (
+                <Tooltip
+                  content={`In refinement: ${refinementSessions.map((s) => s.name).join(", ")}`}
+                  delay={300}
+                >
+                  <span className="shrink-0">
+                    <Layers
+                      size={10}
+                      strokeWidth={1.5}
+                      className="text-[var(--color-brand-400)] opacity-60"
+                    />
+                  </span>
                 </Tooltip>
               )}
             </span>

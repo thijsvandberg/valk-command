@@ -18,6 +18,7 @@ import { getJiraUrl } from "./TicketTableCells";
 import { CalendarRange, RefreshCw, X, Columns2, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
+import { useTicketSessionMap, type TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { apiFetch, jira } from "@/lib/api-client";
 import {
   DndContext,
@@ -271,6 +272,7 @@ function DroppableSprintColumn({
   onColumnResize,
   onColumnResizeReset,
   paneFlex,
+  refinementSessionMap,
 }: {
   columnId: "left" | "right";
   sprintId: string;
@@ -303,6 +305,7 @@ function DroppableSprintColumn({
   onColumnResize: (id: ColumnId, width: number) => void;
   onColumnResizeReset: (id: ColumnId) => void;
   paneFlex?: number;
+  refinementSessionMap?: Map<string, TicketSessionEntry[]>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
@@ -530,6 +533,7 @@ function DroppableSprintColumn({
                     onIssueTypeChange={onIssueTypeChange}
                     insertLine={insertLine}
                     sortableData={{ columnId }}
+                    refinementSessions={refinementSessionMap?.get(ticket.key)}
                   />
                 );
               })}
@@ -576,6 +580,7 @@ export function MultiSprintView({
 
   const { data: leftApiTickets, mutate: mutateLeft } = useTickets(leftSprint);
   const { data: rightApiTickets, mutate: mutateRight } = useTickets(rightSprint);
+  const { ticketSessionMap } = useTicketSessionMap();
 
   // Local overrides keyed by sprintId so they auto-invalidate when the sprint changes
   const [leftOverride, setLeftOverride] = useState<{ sprintId: string; tickets: Ticket[] } | null>(null);
@@ -1055,6 +1060,7 @@ export function MultiSprintView({
               onColumnResize={handleColumnResize}
               onColumnResizeReset={handleColumnResizeReset}
               paneFlex={splitRatio}
+              refinementSessionMap={ticketSessionMap}
             />
             <PaneDivider
               splitContainerRef={splitContainerRef}
@@ -1097,6 +1103,7 @@ export function MultiSprintView({
               onColumnResize={handleColumnResize}
               onColumnResizeReset={handleColumnResizeReset}
               paneFlex={1 - splitRatio}
+              refinementSessionMap={ticketSessionMap}
             />
           </div>
 
