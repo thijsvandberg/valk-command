@@ -44,20 +44,26 @@ export async function POST(
 
   const existingTitles = existingSubtasks.map((s) => s.title);
 
+  const existingList = existingTitles.length > 0
+    ? `\n\nExisting subtasks (do not duplicate these):\n${existingTitles.map((t) => `- ${t}`).join("\n")}`
+    : "";
+
+  const prompt = [
+    `Suggest subtasks for Jira ticket ${ticketRow.jiraKey}: ${ticketRow.title}`,
+    ticketRow.description ? `\nDescription:\n${ticketRow.description}` : "",
+    ticketRow.acceptanceCriteria ? `\nAcceptance Criteria:\n${ticketRow.acceptanceCriteria}` : "",
+    existingList,
+    "\nRespond with ONLY a numbered list of subtask titles (e.g. \"1. Do something\"). No explanations, no headers, just the list.",
+  ].filter(Boolean).join("\n");
+
   const conversationId = `suggest-subtasks-${key}-${Date.now()}`;
 
   const result = await agentFetch("/api/tasks", {
     method: "POST",
     body: {
-      skill: "suggest-subtasks",
+      skill: "chat",
       conversationId,
-      args: {
-        ticketKey: ticketRow.jiraKey,
-        ticketTitle: ticketRow.title,
-        ticketDescription: ticketRow.description ?? "",
-        acceptanceCriteria: ticketRow.acceptanceCriteria ?? "",
-        existingSubtasks: JSON.stringify(existingTitles),
-      },
+      args: prompt,
     },
     retries: 2,
   });

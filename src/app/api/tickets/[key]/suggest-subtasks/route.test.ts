@@ -73,7 +73,7 @@ describe("POST /api/tickets/[key]/suggest-subtasks", () => {
     expect(data.error).toBe("Ticket not found");
   });
 
-  it("submits suggest-subtasks skill and returns taskId", async () => {
+  it("submits chat skill with prompt and returns taskId", async () => {
     seedTicket("VPL-10", "Add login form", {
       description: "Build a login form with email and password",
       acceptanceCriteria: "Users can log in with valid credentials",
@@ -91,24 +91,16 @@ describe("POST /api/tickets/[key]/suggest-subtasks", () => {
     expect(data.taskId).toBe("task-abc-123");
     expect(data.streamUrl).toBe("/api/workspace-tasks/task-abc-123/stream");
 
-    expect(mockAgentFetch).toHaveBeenCalledWith(
-      "/api/tasks",
-      expect.objectContaining({
-        method: "POST",
-        body: expect.objectContaining({
-          skill: "suggest-subtasks",
-          args: expect.objectContaining({
-            ticketKey: "VPL-10",
-            ticketTitle: "Add login form",
-            ticketDescription: "Build a login form with email and password",
-            acceptanceCriteria: "Users can log in with valid credentials",
-          }),
-        }),
-      }),
-    );
+    const body = mockAgentFetch.mock.calls[0][1].body;
+    expect(body.skill).toBe("chat");
+    expect(body.args).toContain("VPL-10");
+    expect(body.args).toContain("Add login form");
+    expect(body.args).toContain("Build a login form with email and password");
+    expect(body.args).toContain("Users can log in with valid credentials");
+    expect(body.args).toContain("numbered list");
   });
 
-  it("includes existing subtask titles in the request", async () => {
+  it("includes existing subtask titles in the prompt", async () => {
     seedTicket("VPL-10", "Add login form");
     seedSubtask("VPL-10", "VPL-11", "Design login UI");
     seedSubtask("VPL-10", "VPL-12", "Add validation");
@@ -121,10 +113,10 @@ describe("POST /api/tickets/[key]/suggest-subtasks", () => {
 
     await POST(makeRequest(), makeParams("VPL-10"));
 
-    const callArgs = mockAgentFetch.mock.calls[0][1].body.args;
-    const existingSubtasks = JSON.parse(callArgs.existingSubtasks);
-    expect(existingSubtasks).toContain("Design login UI");
-    expect(existingSubtasks).toContain("Add validation");
+    const prompt = mockAgentFetch.mock.calls[0][1].body.args;
+    expect(prompt).toContain("Design login UI");
+    expect(prompt).toContain("Add validation");
+    expect(prompt).toContain("do not duplicate");
   });
 
   it("returns 502 when agent is unreachable", async () => {
@@ -140,7 +132,7 @@ describe("POST /api/tickets/[key]/suggest-subtasks", () => {
     expect(response.status).toBe(502);
   });
 
-  it("sends empty strings when description and AC are null", async () => {
+  it("works when description and AC are null", async () => {
     seedTicket("VPL-10", "Minimal ticket");
 
     mockAgentFetch.mockResolvedValue({
@@ -149,10 +141,14 @@ describe("POST /api/tickets/[key]/suggest-subtasks", () => {
       status: 200,
     });
 
-    await POST(makeRequest(), makeParams("VPL-10"));
+    const response = await POST(makeRequest(), makeParams("VPL-10"));
+    expect(response.status).toBe(202);
 
-    const callArgs = mockAgentFetch.mock.calls[0][1].body.args;
-    expect(callArgs.ticketDescription).toBe("");
-    expect(callArgs.acceptanceCriteria).toBe("");
+    const prompt = mockAgentFetch.mock.calls[0][1].body.args;
+    expect(prompt).toContain("VPL-10");
+    expect(prompt).toContain("Minimal ticket");
+    // Should not contain "Description:" or "Acceptance Criteria:" sections
+    expect(prompt).not.toContain("Description:");
+    expect(prompt).not.toContain("Acceptance Criteria:");
   });
 });
