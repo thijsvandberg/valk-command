@@ -8,7 +8,7 @@ import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, FolderPlus, Plus } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -753,6 +753,52 @@ export function RefinementPageContent({
     [onSessionChange],
   );
 
+  // "Save to session" dropdown for quick mode
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const saveMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!saveMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (saveMenuRef.current && !saveMenuRef.current.contains(e.target as Node)) {
+        setSaveMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [saveMenuOpen]);
+
+  const draftSessions = useMemo(
+    () => sessions.filter((s) => s.status === "draft"),
+    [sessions],
+  );
+
+  const handleSaveToSession = useCallback(
+    async (targetSessionId: string) => {
+      setSaveMenuOpen(false);
+      const target = sessions.find((s) => s.id === targetSessionId);
+      if (!target) return;
+      const merged = Array.from(new Set([...target.ticketKeys, ...queue]));
+      await refinementSessionsApi.update(targetSessionId, { ticketKeys: merged });
+      await mutateSessions();
+      setQuickQueue([]);
+      setQuickSelectedKeys([]);
+      onSessionChange?.(targetSessionId);
+      setActiveSessionId(targetSessionId);
+    },
+    [sessions, queue, mutateSessions, onSessionChange],
+  );
+
+  const handleSaveToNewSession = useCallback(async () => {
+    setSaveMenuOpen(false);
+    const created = await refinementSessionsApi.create({ ticketKeys: queue });
+    await mutateSessions();
+    setQuickQueue([]);
+    setQuickSelectedKeys([]);
+    onSessionChange?.(created.id);
+    setActiveSessionId(created.id);
+  }, [queue, mutateSessions, onSessionChange]);
+
   // Suppress unused variable warning
   void selectedKeys;
 
@@ -1048,15 +1094,65 @@ export function RefinementPageContent({
                 )}
 
                 {canStart && (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    icon={<Play size={14} strokeWidth={2} />}
-                    onClick={handleBeginRefinement}
-                    className="mt-4 w-full"
-                  >
-                    {activeSession ? "Start Session" : "Begin Refinement"}
-                  </Button>
+                  <>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      icon={<Play size={14} strokeWidth={2} />}
+                      onClick={handleBeginRefinement}
+                      className="mt-4 w-full"
+                    >
+                      {activeSession ? "Start Session" : "Begin Refinement"}
+                    </Button>
+
+                    {/* Save to session (quick mode only) */}
+                    {!activeSession && (
+                      <div className="relative mt-2" ref={saveMenuRef}>
+                        <button
+                          type="button"
+                          onClick={() => setSaveMenuOpen(!saveMenuOpen)}
+                          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border-default bg-overlay-subtle px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                          style={{ transition: "background-color 0.15s ease" }}
+                        >
+                          <FolderPlus size={14} strokeWidth={1.5} />
+                          Save to session
+                        </button>
+                        {saveMenuOpen && (
+                          <div className="absolute bottom-full left-0 z-30 mb-1.5 w-full rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+                            {draftSessions.length > 0 && (
+                              <>
+                                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                                  Add to existing
+                                </div>
+                                {draftSessions.map((s) => (
+                                  <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => handleSaveToSession(s.id)}
+                                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
+                                    style={{ transition: "background-color 80ms" }}
+                                  >
+                                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                                    <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>
+                                  </button>
+                                ))}
+                                <div className="my-1 border-t border-border-default" />
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              onClick={handleSaveToNewSession}
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-text-secondary hover:bg-overlay-subtle"
+                              style={{ transition: "background-color 80ms" }}
+                            >
+                              <Plus size={12} strokeWidth={2} className="text-text-muted" />
+                              New session
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </ResizableQueuePane>
