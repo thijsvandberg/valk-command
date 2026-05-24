@@ -444,7 +444,7 @@ export function TicketSidebar({
                   {ticketSessions.map((s) => (
                     <Link
                       key={s.id}
-                      href={`/refinement?session=${s.id}`}
+                      href={`/refinement/${s.id}`}
                       className="group/ref inline-flex items-center gap-1 text-[var(--color-brand-600)] hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] cursor-pointer"
                       style={{ transition: "color 0.15s ease" }}
                       title={`Open refinement session: ${s.name}`}
