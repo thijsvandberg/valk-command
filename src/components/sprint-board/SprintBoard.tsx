@@ -199,7 +199,7 @@ export default function SprintBoard() {
   const mainScrollRef = useRef<HTMLElement>(null);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<React.ReactNode | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slotsInitialized = useRef(false);
 
@@ -382,10 +382,10 @@ export default function SprintBoard() {
     if (main) (mainScrollRef as React.MutableRefObject<HTMLElement | null>).current = main;
   }, []);
 
-  const showToast = useCallback((message: string) => {
+  const showToast = useCallback((message: React.ReactNode, durationMs = 3000) => {
     setToast(message);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+    toastTimerRef.current = setTimeout(() => setToast(null), durationMs);
   }, []);
 
   useEffect(() => {
@@ -1335,7 +1335,7 @@ export default function SprintBoard() {
       })()}
 
       {toast && (
-        <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
+        <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
           <span className="text-sm text-text-secondary">{toast}</span>
         </div>
@@ -1362,7 +1362,20 @@ export default function SprintBoard() {
         open={refineModalOpen}
         onClose={() => setRefineModalOpen(false)}
         ticketKeys={Array.from(checkedTickets)}
-        onAdded={(_id, name) => showToast(`Added to "${name}"`)}
+        onAdded={(_id, name) => showToast(
+          <span>
+            Added to &ldquo;{name}&rdquo;
+            {" "}
+            <a
+              href="/refinement"
+              onClick={(e) => { e.preventDefault(); router.push("/refinement"); }}
+              className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]"
+            >
+              Open refinement
+            </a>
+          </span>,
+          5000,
+        )}
       />
     </div>
     </>
