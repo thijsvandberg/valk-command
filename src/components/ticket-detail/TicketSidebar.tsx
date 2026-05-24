@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
-import { ChevronRight, AlertTriangle, Play, ArrowUpRight } from "lucide-react";
+import { ChevronRight, AlertTriangle, Play, ArrowUpRight, Layers } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
@@ -23,6 +23,7 @@ import { Tag } from "@/components/shared/Tag";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -98,6 +99,9 @@ export function TicketSidebar({
     if (!sprintSlots) return new Set<string>();
     return new Set(sprintSlots.map((s) => s.sprintId));
   }, [sprintSlots]);
+
+  const { ticketSessionMap } = useTicketSessionMap();
+  const ticketSessions = ticketSessionMap.get(ticket.key);
 
   const { data: devInfo, isLoading: devInfoLoading } = useDevInfo(ticket.key);
   const latestReview = reviewData?.reviews?.[0] ?? null;
@@ -431,6 +435,25 @@ export function TicketSidebar({
                       portalAnchor={sprintModalPos}
                     />
                   )}
+                </div>
+              </DetailRow>
+            )}
+            {ticketSessions && ticketSessions.length > 0 && (
+              <DetailRow label="Refinement">
+                <div className="flex flex-wrap justify-end gap-1.5">
+                  {ticketSessions.map((s) => (
+                    <Link
+                      key={s.id}
+                      href={`/refinement?session=${s.id}`}
+                      className="group/ref inline-flex items-center gap-1 text-[var(--color-brand-600)] hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] cursor-pointer"
+                      style={{ transition: "color 0.15s ease" }}
+                      title={`Open refinement session: ${s.name}`}
+                    >
+                      <Layers size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
+                      <span className="min-w-0 truncate max-w-[160px] text-sm">{s.name}</span>
+                      <ArrowUpRight size={11} strokeWidth={2} className="shrink-0 opacity-0 group-hover/ref:opacity-100" style={{ transition: "opacity 0.15s ease" }} />
+                    </Link>
+                  ))}
                 </div>
               </DetailRow>
             )}

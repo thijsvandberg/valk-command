@@ -39,9 +39,9 @@ Once saved refinement sessions exist (BRDG-166), tickets can be assigned to upco
 
 ### Ticket detail view
 
-- [ ] The ticket detail sidebar shows which refinement session(s) the ticket belongs to
-- [ ] Clicking the session name navigates to the refinement page with that session active
-- [ ] If the ticket is not in any session, nothing is shown (no empty state clutter)
+- [x] The ticket detail sidebar shows which refinement session(s) the ticket belongs to
+- [x] Clicking the session name navigates to the refinement page with that session active
+- [x] If the ticket is not in any session, nothing is shown (no empty state clutter)
 
 ### Refinement page
 
