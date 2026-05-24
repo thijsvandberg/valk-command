@@ -9,7 +9,7 @@ vi.mock("swr", () => ({
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
-  useJiraSprints: () => ({ data: [] }),
+  useJiraSprints: () => ({ sprints: [], backlogCount: 0 }),
 }));
 
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {

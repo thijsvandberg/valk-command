@@ -105,6 +105,7 @@ describe("PATCH /api/refinement-sessions/[id]", () => {
 
   it("updates updatedAt timestamp", async () => {
     const created = await createSession();
+    await new Promise((r) => setTimeout(r, 10));
     const response = await PATCH(
       jsonRequest("PATCH", { name: "new" }),
       makeParams(created.id),

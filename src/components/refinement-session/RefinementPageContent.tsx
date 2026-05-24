@@ -443,7 +443,7 @@ export function RefinementPageContent({
   }, [sessions]);
 
   // Sprint data
-  const { data: sprints } = useJiraSprints();
+  const { sprints } = useJiraSprints();
   const { data: sprintSlots } = useSprintSlots();
 
   const sprintNameMap = useMemo(() => {

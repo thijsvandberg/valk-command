@@ -212,14 +212,15 @@ describe("useJiraSprints", () => {
   it("fetches the sprint list", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: true,
-      json: async () => [mockSprint],
+      json: async () => ({ sprints: [mockSprint], backlogCount: 5 }),
     } as Response);
 
     const { result } = renderHook(() => useJiraSprints(), { wrapper: swrWrapper });
 
-    await waitFor(() => expect(result.current.data).toBeDefined());
+    await waitFor(() => expect(result.current.sprints.length).toBeGreaterThan(0));
 
-    expect(result.current.data).toEqual([mockSprint]);
+    expect(result.current.sprints).toEqual([mockSprint]);
+    expect(result.current.backlogCount).toBe(5);
     expect(fetch).toHaveBeenCalledWith("/api/jira/sprints", expect.objectContaining({}));
   });
 
@@ -234,7 +235,8 @@ describe("useJiraSprints", () => {
 
     // swrFetcher throws on !ok, SWR catches and sets error
     await waitFor(() => expect(result.current.error).toBeTruthy());
-    expect(result.current.data).toBeUndefined();
+    expect(result.current.sprints).toEqual([]);
+    expect(result.current.backlogCount).toBe(0);
   });
 });
 

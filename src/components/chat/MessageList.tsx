@@ -229,7 +229,7 @@ export default function MessageList({ messages, loading, error, conversation, sh
   // Find the last assistant message index for sprint goal actions
   const lastAssistantIdx = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return i;
+      if (messages[i]?.role === "assistant") return i;
     }
     return -1;
   }, [messages]);
@@ -279,6 +279,7 @@ export default function MessageList({ messages, loading, error, conversation, sh
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 lg:px-8">
       <div className="mx-auto max-w-3xl space-y-4">
         {messages.map((message, idx) => {
+          if (!message) return null;
           const isSending = message.id.startsWith("optimistic-");
           const isInvestigation = message.role === "assistant" && isInvestigationResult(message.content);
           const isLast = idx === lastIdx;

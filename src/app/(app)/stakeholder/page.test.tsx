@@ -20,12 +20,13 @@ vi.mock("swr", async (importOriginal) => {
 
 vi.mock("@/hooks/useSprintBoard", () => ({
   useJiraSprints: vi.fn(() => ({
-    data: [
+    sprints: [
       { id: 10, name: "BM: 135", state: "active", startDate: "2026-04-01T00:00:00Z", endDate: "2026-04-14T00:00:00Z" },
       { id: 11, name: "BM: 136", state: "future", startDate: "2026-04-15T00:00:00Z", endDate: "2026-04-28T00:00:00Z" },
       { id: 20, name: "GXP: 135", state: "active", startDate: "2026-04-01T00:00:00Z", endDate: "2026-04-14T00:00:00Z" },
       { id: 21, name: "GXP: 136", state: "future", startDate: "2026-04-15T00:00:00Z", endDate: "2026-04-28T00:00:00Z" },
     ],
+    backlogCount: 0,
   })),
 }));
 

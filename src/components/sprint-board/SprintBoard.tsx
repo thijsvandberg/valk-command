@@ -152,7 +152,7 @@ import { useColumnConfig } from "@/hooks/useColumnConfig";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 
 export default function SprintBoard() {
-  const { data: rawJiraSprints } = useJiraSprints();
+  const { sprints: rawJiraSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawJiraSprints), [rawJiraSprints]);
   const { ticketSessionMap } = useTicketSessionMap();
   const searchParams = useSearchParams();

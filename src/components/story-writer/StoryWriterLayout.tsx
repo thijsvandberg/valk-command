@@ -74,7 +74,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const { notify } = useNotification();
   const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
   const { data: reviewData } = useTicketReviews(ticketKey);
-  const { data: rawSprints } = useJiraSprints();
+  const { sprints: rawSprints } = useJiraSprints();
   const ticketSprintId = ticketData?.sprintId ?? null;
   const ticketSprintLabel = rawSprints?.find((s) => String(s.id) === ticketSprintId)?.name ?? ticketSprintId;
   const latestReview = reviewData?.reviews?.[0];

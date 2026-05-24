@@ -330,7 +330,7 @@ function GeneratePrompt({
 }
 
 function StakeholderView() {
-  const { data: sprints } = useJiraSprints();
+  const { sprints } = useJiraSprints();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { mutate: globalMutate } = useSWRConfig();

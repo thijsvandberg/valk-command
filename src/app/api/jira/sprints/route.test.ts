@@ -78,10 +78,11 @@ describe("GET /api/jira/sprints", () => {
     const response = await GET();
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(Array.isArray(data)).toBe(true);
-    expect(data[0].id).toBe(1);
-    expect(data[0].name).toBe("Sprint 1");
-    expect(typeof data[0].hidden).toBe("boolean");
+    expect(Array.isArray(data.sprints)).toBe(true);
+    expect(data.sprints[0].id).toBe(1);
+    expect(data.sprints[0].name).toBe("Sprint 1");
+    expect(typeof data.sprints[0].hidden).toBe("boolean");
+    expect(typeof data.backlogCount).toBe("number");
   });
 
   it("fetches from Jira client when no DB setting exists", async () => {
@@ -92,18 +93,19 @@ describe("GET /api/jira/sprints", () => {
     const response = await GET();
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data[0].id).toBe(42);
+    expect(data.sprints[0].id).toBe(42);
     expect(jiraClient.getSprints).toHaveBeenCalled();
   });
 
   it("returns cached data when cache has an entry", async () => {
-    const cached = [{ id: 99, name: "Cached Sprint", state: "active", hidden: false }];
+    const cached = { sprints: [{ id: 99, name: "Cached Sprint", state: "active", hidden: false }], backlogCount: 5 };
     vi.mocked(cache.get).mockReturnValue(cached);
 
     const response = await GET();
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data[0].id).toBe(99);
+    expect(data.sprints[0].id).toBe(99);
+    expect(data.backlogCount).toBe(5);
     // Jira client should NOT be called when cache is hit
     expect(jiraClient.getSprints).not.toHaveBeenCalled();
   });

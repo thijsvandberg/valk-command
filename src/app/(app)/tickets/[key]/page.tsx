@@ -359,7 +359,7 @@ export default function TicketDetailPage({
     }
   }, [key, mutateTicket]);
 
-  const { data: rawSprints } = useJiraSprints();
+  const { sprints: rawSprints } = useJiraSprints();
   const ticketSprintId = ticket?.sprintId ?? null;
   const ticketSprintLabel = rawSprints?.find((s) => String(s.id) === ticketSprintId)?.name ?? ticketSprintId;
 

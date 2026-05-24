@@ -206,7 +206,7 @@ function SessionMetadataPanel({
   ticket: Ticket;
   detail: TicketDetail;
 }) {
-  const { data: sprints } = useJiraSprints();
+  const { sprints } = useJiraSprints();
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
 
   const handleSprintChange = useCallback(async (sprintId: string | null) => {

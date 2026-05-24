@@ -17,10 +17,11 @@ vi.mock("@/hooks/usePageTitle", () => ({
 
 vi.mock("@/hooks/useSprintBoard", () => ({
   useJiraSprints: () => ({
-    data: [
+    sprints: [
       { id: 1, name: "Sprint 10", state: "active", hidden: false, startDate: null, endDate: null, goal: null },
       { id: 2, name: "Sprint 11", state: "future", hidden: false, startDate: null, endDate: null, goal: null },
     ],
+    backlogCount: 0,
   }),
   useSprintSlots: () => ({
     data: [

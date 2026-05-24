@@ -72,7 +72,7 @@ export function SprintStatsPopover({
   const isInitialSprint = selectedSprintId === initialSprintId || selectedSprintId === null;
 
   // Fetch sprint list for the dropdown
-  const { data: sprints } = useJiraSprints();
+  const { sprints } = useJiraSprints();
   const visibleSprints = useMemo(() => {
     if (!sprints) return [];
     return sprints

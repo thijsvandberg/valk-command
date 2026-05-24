@@ -165,7 +165,7 @@ export default function StoryWriterLandingPage() {
   const [showLauncher, setShowLauncher] = useState(false);
   const [confirmDiscardId, setConfirmDiscardId] = useState<string | null>(null);
 
-  const { data: sprints } = useJiraSprints();
+  const { sprints } = useJiraSprints();
 
   const sprintNameMap = useMemo(() => {
     const map: Record<string, string> = {};

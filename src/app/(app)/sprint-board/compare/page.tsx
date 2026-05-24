@@ -11,7 +11,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 function CompareContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: rawJiraSprints } = useJiraSprints();
+  const { sprints: rawJiraSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawJiraSprints), [rawJiraSprints]);
 
   const left = searchParams.get("left") ?? "";

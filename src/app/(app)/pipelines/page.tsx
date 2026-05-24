@@ -81,7 +81,7 @@ export default function PipelinesPage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: sprints } = useJiraSprints();
+  const { sprints } = useJiraSprints();
 
   // Default to active sprint on first load (only if no persisted filters)
   if (sprints && sprintFilters.length === 0 && !sprintAutoSelected && !initialPersistedSprints.current?.length) {

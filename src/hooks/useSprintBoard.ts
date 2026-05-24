@@ -13,13 +13,34 @@ export function useSprintSlots() {
   );
 }
 
+interface SprintData {
+  id: number;
+  name: string;
+  state: string;
+  startDate: string | null;
+  endDate: string | null;
+  goal: string | null;
+  hidden?: boolean;
+}
+
+interface SprintsResponse {
+  sprints: SprintData[];
+  backlogCount: number;
+}
+
 // Fetches cached sprint list from the DB
 export function useJiraSprints() {
-  return useSWR<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null; hidden?: boolean }[]>(
+  const swr = useSWR<SprintsResponse>(
     "/api/jira/sprints",
     swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
+
+  // Derive sprints array and backlog count from the response
+  const sprints = useMemo(() => swr.data?.sprints ?? [], [swr.data]);
+  const backlogCount = swr.data?.backlogCount ?? 0;
+
+  return { ...swr, sprints, backlogCount };
 }
 
 // Fetches all tickets for a sprint from the local DB.
@@ -45,6 +66,7 @@ export function useTickets(sprintId: string | null) {
 
     let cancelled = false;
 
+    // For backlog, use __backlog__ as the sprintId which the sync-tickets route handles
     jiraApi.syncTickets({ sprintId, strategy: "timestamp-first" })
       .then(() => { if (!cancelled) mutate(); })
       .catch(() => { /* background sync, fail silently */ });

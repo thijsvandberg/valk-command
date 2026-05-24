@@ -373,7 +373,7 @@ export function SprintListModal({
   const [hiddenExpanded, setHiddenExpanded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { data: sprints, mutate } = useJiraSprints();
+  const { sprints, mutate } = useJiraSprints();
 
   const allSprints = useMemo(() => sprints ?? [], [sprints]);
   const isSearching = search.length > 0;

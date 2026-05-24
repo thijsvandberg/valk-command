@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
-import { SessionTicketView, HeaderOverflowMenu } from "@/components/refinement-session/SessionTicketView";
+import { SessionTicketView } from "@/components/refinement-session/SessionTicketView";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
-import { getJiraUrl } from "@/lib/jira-url";
 import { SessionSummary } from "@/components/refinement-session/SessionSummary";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
@@ -436,7 +435,6 @@ export default function RefinementSessionPage() {
                 >
                   <Info size={14} strokeWidth={1.5} />
                 </button>
-                <HeaderOverflowMenu ticketKey={ticketData.key} jiraUrl={getJiraUrl(ticketData.key)} />
               </>
             )}
           </div>

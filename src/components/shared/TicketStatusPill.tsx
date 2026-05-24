@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
@@ -175,6 +175,14 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
           {copied === "titled" ? "Copied!" : "Copy with title"}
         </button>
       )}
+      <button
+        type="button"
+        onClick={() => { window.open(`/tickets/${ticketKey}/write`, "_blank"); onClose(); }}
+        className={itemClass}
+      >
+        <PenLine size={12} strokeWidth={1.5} className={iconClass} />
+        Open Story Writer
+      </button>
     </div>
   );
 }

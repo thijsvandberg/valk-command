@@ -89,7 +89,7 @@ export function TicketSidebar({
   const [isDragging, setIsDragging] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  const { data: sprints } = useJiraSprints();
+  const { sprints } = useJiraSprints();
   const { data: sprintSlots } = useSprintSlots();
   const [sprintModalOpen, setSprintModalOpen] = useState(false);
   const sprintTriggerRef = useRef<HTMLButtonElement>(null);

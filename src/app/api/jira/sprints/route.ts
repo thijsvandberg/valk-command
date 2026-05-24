@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { appSetting } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { appSetting, ticket } from "@/db/schema";
+import { eq, and, notInArray, sql } from "drizzle-orm";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
@@ -38,12 +38,21 @@ export async function GET() {
   }
 
   try {
-    const [sprintRow, hiddenIds] = await Promise.all([
+    const [sprintRow, hiddenIds, backlogCountResult] = await Promise.all([
       db.query.appSetting.findFirst({
         where: (r, { eq: eqFn }) => eqFn(r.key, "jira_sprints"),
       }),
       getHiddenIds(),
+      db.select({ count: sql<number>`COUNT(*)` })
+        .from(ticket)
+        .where(and(
+          eq(ticket.sprintName, ""),
+          notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"]),
+          notInArray(ticket.type, ["subtask", "epic"]),
+        )),
     ]);
+
+    const backlogCount = backlogCountResult[0]?.count ?? 0;
 
     let sprints: Array<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; completeDate: string | null; goal: string | null }>;
 
@@ -67,9 +76,10 @@ export async function GET() {
       hidden: hiddenIds.has(String(s.id)),
     }));
 
-    cache.set(CACHE_KEY, result, 300_000);
+    const payload = { sprints: result, backlogCount };
+    cache.set(CACHE_KEY, payload, 300_000);
 
-    return NextResponse.json(result, {
+    return NextResponse.json(payload, {
       headers: { "X-Cache": "MISS", "Cache-Control": "private, max-age=10, stale-while-revalidate=20" },
     });
   } catch (err) {
