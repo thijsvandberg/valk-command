@@ -85,6 +85,9 @@ function SprintDropZoneBar({
   activeSprintId: string;
 }) {
   const targets = slotSprints.filter((id) => id !== activeSprintId);
+  // Always show backlog as a drop target (even when not pinned) unless we're already viewing it
+  const showBacklog = activeSprintId !== "__backlog__" && !targets.includes("__backlog__");
+  const backlogSprint = showBacklog ? sprints.find((s) => s.id === "__backlog__") : null;
   return (
     <div className="absolute inset-0 z-10 flex items-center gap-2 bg-[var(--color-surface-elevated)] px-5">
       <span className="shrink-0 text-caption font-medium uppercase tracking-widest text-text-muted">
@@ -102,6 +105,13 @@ function SprintDropZoneBar({
           />
         );
       })}
+      {backlogSprint && (
+        <SprintDropTile
+          key="__backlog__"
+          sprintId="__backlog__"
+          sprint={backlogSprint}
+        />
+      )}
     </div>
   );
 }

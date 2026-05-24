@@ -37,23 +37,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "targetSprintId is required" }, { status: 400 });
   }
 
-  const sprintIdNum = parseInt(targetSprintId, 10);
-  if (isNaN(sprintIdNum)) {
-    return NextResponse.json({ ok: false, error: "targetSprintId must be a number" }, { status: 400 });
+  const isBacklog = targetSprintId === "__backlog__";
+
+  if (!isBacklog) {
+    const sprintIdNum = parseInt(targetSprintId, 10);
+    if (isNaN(sprintIdNum)) {
+      return NextResponse.json({ ok: false, error: "targetSprintId must be a number" }, { status: 400 });
+    }
+
+    try {
+      await jiraClient.moveToSprint(issueKeys, sprintIdNum);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      logger.error("jira", "Failed to move issues", message);
+      return NextResponse.json({ ok: false, error: "Failed to move issues" }, { status: 500 });
+    }
+  } else {
+    try {
+      await jiraClient.moveToBacklog(issueKeys);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      logger.error("jira", "Failed to move issues to backlog", message);
+      return NextResponse.json({ ok: false, error: "Failed to move issues to backlog" }, { status: 500 });
+    }
   }
 
-  try {
-    await jiraClient.moveToSprint(issueKeys, sprintIdNum);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    logger.error("jira", "Failed to move issues", message);
-    return NextResponse.json({ ok: false, error: "Failed to move issues" }, { status: 500 });
-  }
-
-  // Update local sprint assignment
+  // Update local sprint assignment (empty string = backlog)
   await db
     .update(ticket)
-    .set({ sprintName: targetSprintId })
+    .set({ sprintName: isBacklog ? "" : targetSprintId })
     .where(inArray(ticket.jiraKey, issueKeys));
 
   cache.invalidate("/api/tickets");

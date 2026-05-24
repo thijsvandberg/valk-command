@@ -71,8 +71,8 @@ Search already indexes all tickets regardless of sprint. Data integrity is handl
 - [x] When displayed, backlog tickets render using the same ticket row components as sprint tickets
 
 ### Interaction
-- [ ] Drag-and-drop from Backlog to a sprint works (already partially supported via move-to-sprint API)
-- [ ] Drag-and-drop from a sprint to Backlog works (clears sprint assignment)
+- [x] Drag-and-drop from Backlog to a sprint works (already partially supported via move-to-sprint API)
+- [x] Drag-and-drop from a sprint to Backlog works (clears sprint assignment)
 - [ ] Backlog tickets appear in the "All" view when grouping by sprint, under a "Backlog" group heading
 - [ ] Backlog tickets are included in global search results
 
