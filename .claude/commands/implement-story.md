@@ -37,9 +37,11 @@ For each checkbox in the story:
    - New utility functions: unit tests for all input variants
    - Update existing tests that break due to your changes
 3. Mark the checkbox as done `[x]` in the `.md` file
-4. Run `npm run lint`, `npm run typecheck`
-5. Fix any failures before moving to the next checkbox
-6. **Commit per logical unit** using conventional commits (`feat:`, `fix:`, `chore:`)
+4. Run `npm run lint` and `npm run typecheck` in parallel (both are read-only and can run concurrently)
+5. If tests were added or modified, run only the changed test files: `npx vitest run <specific-test-file-paths>`. Do NOT run the full test suite per checkbox.
+6. Do NOT run `npm run build` during per-checkbox work. Build is only run in final verification.
+7. Fix any failures before moving to the next checkbox
+8. **Commit per logical unit** using conventional commits (`feat:`, `fix:`, `chore:`)
 
 If a checkbox is unclear or ambiguous: **skip it**, annotate it inline in the `.md` file with `<!-- skipped: <reason> -->`, continue with the rest.
 
@@ -51,12 +53,14 @@ Invoke the `frontend-design` skill before writing any frontend code. Follow all 
 
 After all checkboxes are done:
 
-1. `npm run lint`
-2. `npm run typecheck`
-3. `npm run test`
-4. `npm run build`
-5. Visual/e2e verification via browser automation (open the relevant pages, verify they work)
-6. Fix anything that is broken. Repeat until everything passes.
+1. Run `npm run verify` (runs lint + typecheck in parallel, then the full test suite)
+2. `npm run build`
+3. Visual/e2e verification (if applicable):
+   - **Skip entirely for non-UI stories** (API-only, backend, database, library changes). Only perform browser verification when the story modifies components, pages, or styles.
+   - **Navigation:** Navigate through the app starting from the sprint board (click on a ticket) rather than directly visiting a URL. Direct URL navigation triggers Clerk auth redirects.
+   - **Dev server:** Keep the dev server running throughout. Do NOT restart it between checks unless it has actually crashed.
+   - **Screenshot retries:** Maximum 3 attempts per visual check. After 3 failures, log the issue and continue. Do not enter an infinite retry loop.
+4. Fix anything that is broken. Repeat until everything passes.
 
 ### 6. Handle problems found along the way
 

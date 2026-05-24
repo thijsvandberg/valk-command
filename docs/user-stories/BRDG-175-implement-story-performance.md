@@ -60,17 +60,17 @@ Running `npm run build` and then visual verification requires restarting the dev
 
 ### Workflow optimizations
 
-- [ ] Run `lint` and `typecheck` in parallel (both are read-only)
-- [ ] Use `npx vitest run --changed` or pass specific test file paths to only run affected tests during implementation (full suite in final verification only)
-- [ ] Skip `npm run build` during per-checkbox verification; only run it in final verification
+- [x] Run `lint` and `typecheck` in parallel (both are read-only)
+- [x] Use `npx vitest run --changed` or pass specific test file paths to only run affected tests during implementation (full suite in final verification only)
+- [x] Skip `npm run build` during per-checkbox verification; only run it in final verification
 - [x] Add a `npm run verify` script that runs lint + typecheck + test in an optimized way
 
 ### Browser automation improvements
 
-- [ ] Skip browser visual verification for non-UI stories (API-only, backend changes)
-- [ ] For UI stories, navigate through the app (click from sprint board) instead of direct URL navigation (avoids Clerk redirect)
-- [ ] Add max-attempt limits for screenshot retries (3 attempts max, then report and continue)
-- [ ] Do not restart the dev server unnecessarily between checks (keep it running)
+- [x] Skip browser visual verification for non-UI stories (API-only, backend changes)
+- [x] For UI stories, navigate through the app (click from sprint board) instead of direct URL navigation (avoids Clerk redirect)
+- [x] Add max-attempt limits for screenshot retries (3 attempts max, then report and continue)
+- [x] Do not restart the dev server unnecessarily between checks (keep it running)
 
 ### Test performance
 
