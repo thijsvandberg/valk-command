@@ -8,7 +8,7 @@ import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -461,6 +461,9 @@ export function RefinementPageContent({
   const effectiveSprintFilter = sprintFilter ?? pinnedSprintIds;
   const [sprintFilterOpen, setSprintFilterOpen] = useState(false);
 
+  // Filter bar visibility
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   // New filter state
   const [hideEstimated, setHideEstimated] = useState(true);
   const [epicFilter, setEpicFilter] = useState<Set<string>>(new Set());
@@ -690,6 +693,17 @@ export function RefinementPageContent({
     return opt?.label ?? "4 weeks";
   }, [lastUpdatedFilter]);
 
+  // Count non-default filters for badge on filter button
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (!hideEstimated) count++; // default is ON, so OFF is non-default
+    if (epicFilter.size > 0) count++;
+    if (lastUpdatedFilter !== "4w") count++;
+    // Sprint filter: non-default if user changed from pinned
+    if (sprintFilter !== null) count++;
+    return count;
+  }, [hideEstimated, epicFilter, lastUpdatedFilter, sprintFilter]);
+
   const toggleSprintInFilter = useCallback((id: string) => {
     setSprintFilter((prev) => {
       const current = prev ?? new Set(pinnedSprintIds);
@@ -826,10 +840,28 @@ export function RefinementPageContent({
                     <X size={13} strokeWidth={2} />
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(!filtersOpen)}
+                  className={`relative flex cursor-pointer items-center justify-center rounded-md p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    filtersOpen
+                      ? "text-[var(--color-brand-400)]"
+                      : "text-text-muted hover:text-text-secondary"
+                  }`}
+                  style={{ transition: "color 0.12s ease" }}
+                  title="Toggle filters"
+                >
+                  <SlidersHorizontal size={15} strokeWidth={1.5} />
+                  {activeFilterCount > 0 && !filtersOpen && (
+                    <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-[9px] font-semibold text-white">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
               </div>
 
               {/* Filter bar */}
-              <div className="mb-3 flex flex-wrap items-center gap-2">
+              {filtersOpen && <div className="mb-3 flex flex-wrap items-center gap-2">
                 {/* Sprint filter */}
                 <div className="relative">
                   <button
@@ -947,7 +979,7 @@ export function RefinementPageContent({
                   </span>
                   Hide estimated
                 </button>
-              </div>
+              </div>}
 
               {/* Ticket list */}
               <div className="space-y-1">
