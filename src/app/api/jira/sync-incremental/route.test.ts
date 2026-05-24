@@ -15,6 +15,7 @@ vi.mock("@/db", () => ({
 const mockGetUpdatedSince = vi.fn().mockResolvedValue([]);
 const mockGetIssuesByKeys = vi.fn().mockResolvedValue([]);
 const mockGetSprintsLightweight = vi.fn().mockResolvedValue([]);
+const mockGetBacklogIssues = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
@@ -22,6 +23,7 @@ vi.mock("@/lib/jira-client", () => ({
     getUpdatedSince: (...args: unknown[]) => mockGetUpdatedSince(...args),
     getIssuesByKeys: (...args: unknown[]) => mockGetIssuesByKeys(...args),
     getSprintsLightweight: (...args: unknown[]) => mockGetSprintsLightweight(...args),
+    getBacklogIssues: (...args: unknown[]) => mockGetBacklogIssues(...args),
     getLastChangeAuthor: vi.fn().mockResolvedValue(null),
   },
   extractSprint: () => null,
@@ -54,6 +56,7 @@ describe("POST /api/jira/sync-incremental", () => {
     mockGetUpdatedSince.mockReset().mockResolvedValue([]);
     mockGetIssuesByKeys.mockReset().mockResolvedValue([]);
     mockGetSprintsLightweight.mockReset().mockResolvedValue([]);
+    mockGetBacklogIssues.mockReset().mockResolvedValue([]);
     mockRefreshSprintMetadata.mockReset().mockResolvedValue(false);
   });
 
@@ -318,6 +321,75 @@ describe("POST /api/jira/sync-incremental", () => {
       expect(data.ok).toBe(true);
       expect(data.count).toBe(0);
       expect(data.sprintMetaRefreshed).toBe(false);
+    });
+  });
+
+  describe("backlog seed", () => {
+    it("seeds backlog tickets on first run", async () => {
+      const { appSetting, ticket } = await import("@/db/schema");
+      const { eq } = await import("drizzle-orm");
+      testDb.insert(appSetting).values({
+        key: "jira_sync_watermark",
+        value: "2026-04-01T00:00:00.000Z",
+      }).run();
+
+      mockGetBacklogIssues.mockResolvedValue([{
+        id: "30001",
+        key: "VPL-400",
+        fields: {
+          summary: "Backlog item",
+          issuetype: { name: "Story" },
+          status: { name: "To Do" },
+          assignee: null,
+          reporter: null,
+          labels: [],
+          description: null,
+          created: "2026-04-01T00:00:00.000Z",
+          updated: "2026-04-01T00:00:00.000Z",
+          components: [],
+        },
+      }]);
+
+      const res = await POST();
+      const data = await res.json();
+
+      expect(data.ok).toBe(true);
+      expect(mockGetBacklogIssues).toHaveBeenCalled();
+
+      // Backlog synced flag should be set
+      const flag = testDb
+        .select()
+        .from(appSetting)
+        .where(eq(appSetting.key, "backlog_synced"))
+        .get();
+      expect(flag).toBeDefined();
+
+      // Ticket should exist with empty sprintName
+      const t = testDb
+        .select()
+        .from(ticket)
+        .where(eq(ticket.jiraKey, "VPL-400"))
+        .get();
+      expect(t).toBeDefined();
+      expect(t!.sprintName).toBe("");
+    });
+
+    it("does not re-seed when backlog_synced flag exists", async () => {
+      const { appSetting } = await import("@/db/schema");
+      testDb.insert(appSetting).values({
+        key: "jira_sync_watermark",
+        value: "2026-04-01T00:00:00.000Z",
+      }).run();
+      testDb.insert(appSetting).values({
+        key: "backlog_synced",
+        value: "2026-04-01T00:00:00.000Z",
+      }).run();
+
+      const res = await POST();
+      const data = await res.json();
+
+      expect(data.ok).toBe(true);
+      expect(mockGetBacklogIssues).not.toHaveBeenCalled();
     });
   });
 });

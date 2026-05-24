@@ -74,12 +74,12 @@ Search already indexes all tickets regardless of sprint. Data integrity is handl
 - [x] Drag-and-drop from Backlog to a sprint works (already partially supported via move-to-sprint API)
 - [x] Drag-and-drop from a sprint to Backlog works (clears sprint assignment)
 - [x] Backlog tickets appear in the "All" view when grouping by sprint, under a "Backlog" group heading
-- [ ] Backlog tickets are included in global search results
+- [x] Backlog tickets are included in global search results
 
 ### Data Integrity
-- [ ] When a ticket is moved to a sprint in Jira, the next sync correctly moves it out of the backlog in Bridge
-- [ ] When a ticket is removed from a sprint in Jira, the next sync correctly places it in the backlog in Bridge
-- [ ] Backlog tickets have full PO metadata support (readiness, scores, notes) same as sprint tickets
+- [x] When a ticket is moved to a sprint in Jira, the next sync correctly moves it out of the backlog in Bridge
+- [x] When a ticket is removed from a sprint in Jira, the next sync correctly places it in the backlog in Bridge
+- [x] Backlog tickets have full PO metadata support (readiness, scores, notes) same as sprint tickets
 
 ## Technical Notes
 
