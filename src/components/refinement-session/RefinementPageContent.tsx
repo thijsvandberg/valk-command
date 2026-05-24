@@ -342,7 +342,7 @@ function TicketRow({
 // Smart sort: ready_to_refine first, then no sprint, then rest
 // ---------------------------------------------------------------------------
 
-function filterTickets(
+export function filterTickets(
   tickets: Ticket[],
   opts: {
     sprintFilter: Set<string>;
