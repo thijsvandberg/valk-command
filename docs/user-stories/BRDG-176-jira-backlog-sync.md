@@ -67,8 +67,8 @@ Search already indexes all tickets regardless of sprint. Data integrity is handl
 - [x] "Backlog" appears as an entry in the sprint switcher dropdown, listed below all real sprints (after ACTIVE & FUTURE, before CLOSED)
 - [x] The Backlog entry is visually distinct from regular sprints (e.g. different icon/accent, no date range, ticket count badge showing total backlog size)
 - [x] Selecting the Backlog entry in the sprint switcher loads all unsprinted tickets into the board view
-- [ ] Backlog can be pinned to a sprint slot tab, same as any real sprint
-- [ ] When displayed, backlog tickets render using the same ticket row components as sprint tickets
+- [x] Backlog can be pinned to a sprint slot tab, same as any real sprint
+- [x] When displayed, backlog tickets render using the same ticket row components as sprint tickets
 
 ### Interaction
 - [ ] Drag-and-drop from Backlog to a sprint works (already partially supported via move-to-sprint API)

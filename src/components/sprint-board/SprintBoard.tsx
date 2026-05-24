@@ -26,7 +26,7 @@ import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPop
 import { apiFetch, jira, followedSprints, workspaceTasks, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle, Inbox } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -153,7 +153,11 @@ import type { ColumnId } from "@/components/sprint-board/FilterBar";
 
 export default function SprintBoard() {
   const { sprints: rawJiraSprints, backlogCount } = useJiraSprints();
-  const sprints = useMemo(() => mapJiraSprints(rawJiraSprints), [rawJiraSprints]);
+  const sprints = useMemo(() => {
+    const mapped = mapJiraSprints(rawJiraSprints);
+    mapped.push({ id: "__backlog__", name: "Backlog", dateRange: "", state: "backlog", ticketCount: backlogCount, startDate: null, endDate: null, goal: null });
+    return mapped;
+  }, [rawJiraSprints, backlogCount]);
   const { ticketSessionMap } = useTicketSessionMap();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1052,6 +1056,12 @@ export default function SprintBoard() {
           >
           <ViewHeaderTitle>
             {!isAllView && !f.activeView && activeSprint ? (
+              activeSprint.state === "backlog" ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Inbox className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
+                  {activeSprint.name}
+                </span>
+              ) : (
               <span className="relative inline-flex items-center">
                 <button
                   type="button"
@@ -1094,6 +1104,7 @@ export default function SprintBoard() {
                   goalSuggestionUrl={goalSuggestionUrl}
                 />
               </span>
+              )
             ) : (
               <>
                 {isAllView ? "All tickets" : f.activeView ? f.activeView.title : "Sprint Board"}

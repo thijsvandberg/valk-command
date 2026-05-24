@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X, Plus } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X, Plus, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -71,12 +71,14 @@ function SortableTab({
         {...attributes}
         {...listeners}
       >
-        {sprint.state === "active" && (
+        {sprint.state === "backlog" ? (
+          <Inbox className={`h-3 w-3 ${isActive ? "text-text-secondary" : "text-text-muted"}`} strokeWidth={1.5} />
+        ) : sprint.state === "active" ? (
           <span
             className={`h-[7px] w-[7px] rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-overlay-strong"}`}
             style={isActive ? { boxShadow: "0 0 5px color-mix(in srgb, var(--color-brand-400) 50%, transparent)" } : undefined}
           />
-        )}
+        ) : null}
         {sprint.name}
         {/* Active underline */}
         {isActive && (
