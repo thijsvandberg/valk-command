@@ -45,8 +45,8 @@ Once saved refinement sessions exist (BRDG-166), tickets can be assigned to upco
 
 ### Refinement page
 
-- [ ] In the ticket selection list, tickets already in a session show which session they belong to
-- [ ] Selecting a ticket that is already in another session shows a subtle warning (not blocking)
+- [x] In the ticket selection list, tickets already in a session show which session they belong to
+- [x] Selecting a ticket that is already in another session shows a subtle warning (not blocking)
 
 ## Technical Notes
 

@@ -235,12 +235,16 @@ function TicketRow({
   onToggle,
   sprintName,
   index,
+  sessionNames,
+  isOtherSession,
 }: {
   ticket: Ticket;
   selected: boolean;
   onToggle: (key: string, index: number, shiftKey: boolean) => void;
   sprintName: string | null;
   index: number;
+  sessionNames?: string[];
+  isOtherSession?: boolean;
 }) {
   return (
     <button
@@ -278,6 +282,17 @@ function TicketRow({
         />
       </span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{ticket.title}</span>
+      {sessionNames && sessionNames.length > 0 && (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[var(--color-brand-500)]/[0.08] px-1.5 py-0.5 text-caption font-medium text-[var(--color-brand-400)]">
+          <Layers size={9} strokeWidth={1.5} />
+          {sessionNames.join(", ")}
+        </span>
+      )}
+      {selected && isOtherSession && (
+        <span className="shrink-0 text-[11px] text-amber-400/70">
+          In other session
+        </span>
+      )}
       {sprintName && (
         <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-muted">
           {sprintName}
@@ -334,11 +349,31 @@ function RefinementPageInner() {
 
   // Saved sessions
   const { sessions, mutate: mutateSessions } = useRefinementSessions();
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+    searchParams.get("session"),
+  );
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeSessionId) ?? null,
     [sessions, activeSessionId],
   );
+
+  // Build reverse lookup: ticket key -> sessions it belongs to (excluding active session)
+  const ticketSessionMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }[]>();
+    for (const session of sessions) {
+      if (session.status !== "draft") continue;
+      for (const key of session.ticketKeys) {
+        const existing = map.get(key);
+        const entry = { id: session.id, name: session.name };
+        if (existing) {
+          existing.push(entry);
+        } else {
+          map.set(key, [entry]);
+        }
+      }
+    }
+    return map;
+  }, [sessions]);
 
   // Sprint data
   const { data: sprints } = useJiraSprints();
@@ -715,6 +750,14 @@ function RefinementPageInner() {
                     onToggle={toggleTicket}
                     sprintName={ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? null) : null}
                     index={idx}
+                    sessionNames={
+                      ticketSessionMap.get(ticket.key)
+                        ?.filter((s) => s.id !== activeSessionId)
+                        .map((s) => s.name)
+                    }
+                    isOtherSession={
+                      (ticketSessionMap.get(ticket.key)?.some((s) => s.id !== activeSessionId)) ?? false
+                    }
                   />
                 ))}
                 {availableTickets.length === 0 && searchQuery && (
