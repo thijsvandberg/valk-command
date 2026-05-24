@@ -13,12 +13,13 @@ export interface TicketGroup {
   sortOrder: number;
 }
 
-// Sprint sort order: active=0, future chronologically, closed reverse-chronologically, no-sprint=Infinity.
+// Sprint sort order: active=0, future chronologically, backlog after future, closed reverse-chronologically.
 function sprintSortOrder(sprint: Sprint | undefined, sortIndex: number): number {
   if (!sprint) return Infinity;
   if (sprint.state === "active") return 0;
   if (sprint.state === "future") return 1000 + sortIndex;
-  // closed sprints: shown after future, reverse-chronological (higher sort index = newer = shown first)
+  if (sprint.state === "backlog") return 1900;
+  // closed sprints: shown after future/backlog, reverse-chronological
   return 2000 + (1000 - sortIndex);
 }
 
@@ -30,7 +31,7 @@ function groupBySprintFn(
   const groupMap = new Map<string, Ticket[]>();
 
   for (const ticket of tickets) {
-    const sid = ticket.sprintId ?? "__none__";
+    const sid = ticket.sprintId || "__backlog__";
     if (!groupMap.has(sid)) groupMap.set(sid, []);
     groupMap.get(sid)!.push(ticket);
   }
@@ -53,7 +54,7 @@ function groupBySprintFn(
 
   // Second pass: sprintIds in tickets that don't match any known sprint
   for (const [sid, ticketList] of groupMap) {
-    if (sid === "__none__" || seenSprintIds.has(sid)) continue;
+    if (sid === "__backlog__" || seenSprintIds.has(sid)) continue;
     groups.push({
       key: sid,
       label: sprintNameMap[sid] ?? sid,
@@ -62,12 +63,12 @@ function groupBySprintFn(
     });
   }
 
-  // No-sprint group always last
-  if (groupMap.has("__none__")) {
+  // Backlog group always last
+  if (groupMap.has("__backlog__")) {
     groups.push({
-      key: "__none__",
-      label: "No sprint",
-      tickets: groupMap.get("__none__")!,
+      key: "__backlog__",
+      label: "Backlog",
+      tickets: groupMap.get("__backlog__")!,
       sortOrder: Infinity,
     });
   }

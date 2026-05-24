@@ -151,7 +151,7 @@ export async function GET(request: Request) {
       editState,
       notes: meta?.poNotes ?? "",
       jiraRank: t.jiraRank ?? null,
-      sprintId: t.sprintName ?? undefined,
+      sprintId: t.sprintName || undefined,
       jiraUpdatedAt: t.jiraUpdatedAt ?? null,
       removedFromJiraAt: t.removedFromJiraAt ?? null,
       openSubtaskCount: subtaskCountByKey.get(t.jiraKey)?.open ?? 0,
