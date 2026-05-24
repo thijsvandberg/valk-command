@@ -204,6 +204,7 @@ export interface Ticket {
   removedFromJiraAt?: string | null;
   openSubtaskCount?: number;
   totalSubtaskCount?: number;
+  chatMessageCount?: number;
 }
 
 export interface Sprint {
