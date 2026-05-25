@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState, useRef } from "react";
+import { use, useEffect, useCallback, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
@@ -159,7 +159,12 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function RefinementSessionPage() {
+export default function RefinementSessionPage({
+  params,
+}: {
+  params: Promise<{ sessionId: string }>;
+}) {
+  const { sessionId } = use(params);
   const pageTitle = usePageTitle("Refinement Session");
   const router = useRouter();
   const {
@@ -192,9 +197,9 @@ export default function RefinementSessionPage() {
   // Redirect if no session
   useEffect(() => {
     if (queue.length === 0) {
-      router.replace(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
+      router.replace(`/refinement/${sessionId}`);
     }
-  }, [queue.length, router, savedSessionId]);
+  }, [queue.length, router, sessionId]);
 
   const currentKey = queue[currentIndex] ?? null;
   const isLastTicket = currentIndex >= queue.length - 1;
@@ -291,8 +296,8 @@ export default function RefinementSessionPage() {
 
   const handleExitSession = useCallback(() => {
     endSession();
-    router.push(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
-  }, [endSession, router, savedSessionId]);
+    router.push(`/refinement/${sessionId}`);
+  }, [endSession, router, sessionId]);
 
   // Close nav dropdown on click outside
   useEffect(() => {

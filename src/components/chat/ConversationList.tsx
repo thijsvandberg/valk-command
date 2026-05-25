@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { Conversation, ConversationType } from "@/types/chat";
 import { Trash2, Filter, Search, X, ChevronRight, Pin, PanelLeftClose, PanelLeftOpen, CheckSquare, Mail, MailOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import ConversationOverflowMenu from "./ConversationOverflowMenu";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -134,6 +135,8 @@ export default function ConversationList({
   const pinnedConversations = useMemo(() => searchFiltered.filter((c) => c.pinned), [searchFiltered]);
   const unpinnedConversations = useMemo(() => searchFiltered.filter((c) => !c.pinned), [searchFiltered]);
   const dateGroups = useMemo(() => groupByDate(unpinnedConversations), [unpinnedConversations]);
+  // Check full list (not search-filtered) so the hint doesn't flicker during search
+  const hasPinnedConversations = useMemo(() => conversations.some((c) => c.pinned), [conversations]);
 
   // Group collapse state
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(readCollapsedGroups);
@@ -147,6 +150,9 @@ export default function ConversationList({
       return next;
     });
   }, []);
+
+  // Track which conversation's overflow menu is open so we can keep the trigger visible
+  const [openOverflowId, setOpenOverflowId] = useState<string | null>(null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; conversationId: string; pinned: boolean; readAt: string | null } | null>(null);
@@ -279,14 +285,22 @@ export default function ConversationList({
             </span>
           </button>
           {!multiselectActive && (
-            <Button
-              variant="destructive"
-              iconOnly
-              icon={<Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
-              onClick={() => onDelete(conversation.id)}
-              className="shrink-0 opacity-0 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
-              aria-label={`Delete ${conversation.title}`}
-            />
+            <div className={`shrink-0 transition-opacity duration-150 ${
+              openOverflowId === conversation.id
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+            }`}>
+              <ConversationOverflowMenu
+                conversationId={conversation.id}
+                conversationTitle={conversation.title}
+                pinned={conversation.pinned}
+                isUnread={isUnread}
+                onTogglePin={onTogglePin}
+                onToggleRead={onToggleRead}
+                onDelete={onDelete}
+                onOpenChange={(open) => setOpenOverflowId(open ? conversation.id : null)}
+              />
+            </div>
           )}
         </div>
       </li>
@@ -397,6 +411,15 @@ export default function ConversationList({
               </button>
             )}
           </div>
+          {/* Pin hint when no conversations are pinned */}
+          {!hasPinnedConversations && conversations.length > 0 && (
+            <p
+              className="mt-1.5 text-[10px] leading-tight text-text-muted"
+              data-testid="pin-hint"
+            >
+              Right-click or use the menu to pin conversations
+            </p>
+          )}
         </div>
       )}
 
@@ -457,7 +480,7 @@ export default function ConversationList({
       )}
 
       {/* Context menu - portal to body to avoid transform containing block in sidebar */}
-      {contextMenu && (onTogglePin || onToggleRead) && createPortal(
+      {contextMenu && createPortal(
         <div
           ref={contextMenuRef}
           className="fixed z-[100] min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
@@ -500,6 +523,21 @@ export default function ConversationList({
               )}
             </button>
           )}
+          {(onTogglePin || onToggleRead) && (
+            <div className="my-1 border-t border-border-default" />
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              onDelete(contextMenu.conversationId);
+              setContextMenu(null);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-danger-400)] cursor-pointer hover:bg-hover-list-item hover:text-[var(--color-danger-300)] transition-colors duration-150"
+            data-testid="context-menu-delete"
+          >
+            <Trash2 size={12} strokeWidth={1.5} />
+            Delete conversation
+          </button>
         </div>,
         document.body,
       )}

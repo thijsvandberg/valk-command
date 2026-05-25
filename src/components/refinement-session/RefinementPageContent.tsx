@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, FolderPlus, Plus, Save } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -17,7 +17,6 @@ import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
-import { Tooltip } from "@/components/shared/Tooltip";
 import type { Ticket } from "@/types/ticket";
 import { getSpColor, getEpicColor } from "@/types/ticket";
 import {
@@ -390,7 +389,7 @@ function smartSort(a: Ticket, b: Ticket): number {
 
 interface RefinementPageContentProps {
   initialSessionId?: string;
-  onSessionChange?: (id: string | null) => void;
+  onSessionChange?: (id: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,26 +402,35 @@ export function RefinementPageContent({
 }: RefinementPageContentProps) {
   const pageTitle = usePageTitle("Refinement");
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { startSession } = useRefinementSession();
 
   // Saved sessions
   const { sessions, mutate: mutateSessions } = useRefinementSessions();
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+  // Tracks explicit user selection; null means "use default (first draft)"
+  const [userSelectedId, setUserSelectedId] = useState<string | null>(
     initialSessionId ?? null,
   );
+
+  // Resolve effective session: explicit selection if valid, otherwise first draft
+  const resolvedSessionId = useMemo(() => {
+    if (userSelectedId && sessions.some((s) => s.id === userSelectedId)) {
+      return userSelectedId;
+    }
+    const firstDraft = sessions.find((s) => s.status === "draft");
+    return firstDraft?.id ?? null;
+  }, [userSelectedId, sessions]);
+
   const activeSession = useMemo(
-    () => sessions.find((s) => s.id === activeSessionId) ?? null,
-    [sessions, activeSessionId],
+    () => sessions.find((s) => s.id === resolvedSessionId) ?? null,
+    [sessions, resolvedSessionId],
   );
 
-  // Redirect to /refinement if initialSessionId doesn't match any session
+  // Redirect if initialSessionId is invalid
   const hasCheckedSession = useRef(false);
   useEffect(() => {
     if (!initialSessionId || sessions.length === 0 || hasCheckedSession.current) return;
     hasCheckedSession.current = true;
-    const found = sessions.some((s) => s.id === initialSessionId);
-    if (!found) {
+    if (!sessions.some((s) => s.id === initialSessionId)) {
       router.replace("/refinement");
     }
   }, [initialSessionId, sessions, router]);
@@ -532,18 +540,12 @@ export function RefinementPageContent({
       .sort(smartSort);
   }, [sortedTickets, baseTickets, searchQuery]);
 
-  // Queue state: for quick session (no activeSessionId), uses local state.
-  // For saved sessions, derives from the session's ticketKeys.
-  const keysParam = searchParams.get("keys");
-  const [initialKeys] = useState(() =>
-    keysParam ? keysParam.split(",").filter(Boolean) : [],
+  // Queue derives from the active session's ticketKeys
+  const queue = useMemo(
+    () => activeSession?.ticketKeys ?? [],
+    [activeSession],
   );
-  const [quickQueue, setQuickQueue] = useState<string[]>(initialKeys);
-  const [quickSelectedKeys, setQuickSelectedKeys] = useState<string[]>(initialKeys);
-
-  // Derive queue from active session or quick mode
-  const queue = activeSession ? activeSession.ticketKeys : quickQueue;
-  const selectedKeys = activeSession ? activeSession.ticketKeys : quickSelectedKeys;
+  const selectedKeys = queue;
 
   const lastClickedIndexRef = useRef<number | null>(null);
 
@@ -561,27 +563,22 @@ export function RefinementPageContent({
     [mutateSessions],
   );
 
-  // Update queue: for saved session, optimistically update local cache + debounce persist
+  // Update queue: optimistically update local cache + debounce persist
   const updateQueue = useCallback(
     (newKeys: string[]) => {
-      if (activeSessionId && activeSession) {
-        // Optimistic update
-        mutateSessions(
-          (prev) =>
-            prev?.map((s) =>
-              s.id === activeSessionId
-                ? { ...s, ticketKeys: newKeys, ticketCount: newKeys.length }
-                : s,
-            ),
-          false,
-        );
-        persistSessionQueue(activeSessionId, newKeys);
-      } else {
-        setQuickQueue(newKeys);
-        setQuickSelectedKeys(newKeys);
-      }
+      if (!resolvedSessionId || !activeSession) return;
+      mutateSessions(
+        (prev) =>
+          prev?.map((s) =>
+            s.id === resolvedSessionId
+              ? { ...s, ticketKeys: newKeys, ticketCount: newKeys.length }
+              : s,
+          ),
+        false,
+      );
+      persistSessionQueue(resolvedSessionId, newKeys);
     },
-    [activeSessionId, activeSession, mutateSessions, persistSessionQueue],
+    [resolvedSessionId, activeSession, mutateSessions, persistSessionQueue],
   );
 
   const toggleTicket = useCallback(
@@ -661,15 +658,16 @@ export function RefinementPageContent({
 
   const canStart = queue.length >= MIN_TICKETS;
 
-  const handleBeginRefinement = useCallback(() => {
+  const handleBeginRefinement = useCallback(async () => {
     if (!canStart) return;
     const meta = queue.map((key) => {
       const t = allTicketMap.get(key);
       return { key, title: t?.title ?? key };
     });
-    startSession(queue, meta, activeSessionId ?? undefined);
+
+    startSession(queue, meta, resolvedSessionId ?? undefined);
     router.push("/refinement/session");
-  }, [canStart, queue, allTicketMap, startSession, router, activeSessionId]);
+  }, [canStart, queue, allTicketMap, startSession, router, resolvedSessionId]);
 
   const readyKeys = useMemo(
     () => availableTickets.filter((t) => t.readiness === "ready_to_refine").map((t) => t.key),
@@ -722,8 +720,8 @@ export function RefinementPageContent({
 
   // Other sessions for cross-session move
   const otherSessions = useMemo(
-    () => sessions.filter((s) => s.id !== activeSessionId && s.status === "draft"),
-    [sessions, activeSessionId],
+    () => sessions.filter((s) => s.id !== resolvedSessionId && s.status === "draft"),
+    [sessions, resolvedSessionId],
   );
 
   const handleMoveToSession = useCallback(
@@ -744,63 +742,17 @@ export function RefinementPageContent({
 
   // When switching sessions, load the session's queue
   const handleSelectSession = useCallback(
-    (id: string | null) => {
+    (id: string) => {
       // Flush any pending persist for the previous session
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current);
         persistTimerRef.current = null;
       }
-      setActiveSessionId(id);
+      setUserSelectedId(id);
       onSessionChange?.(id);
     },
     [onSessionChange],
   );
-
-  // "Save to session" dropdown for quick mode
-  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
-  const saveMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!saveMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (saveMenuRef.current && !saveMenuRef.current.contains(e.target as Node)) {
-        setSaveMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [saveMenuOpen]);
-
-  const savableSessions = useMemo(
-    () => sessions,
-    [sessions],
-  );
-
-  const handleSaveToSession = useCallback(
-    async (targetSessionId: string) => {
-      setSaveMenuOpen(false);
-      const target = sessions.find((s) => s.id === targetSessionId);
-      if (!target) return;
-      const merged = Array.from(new Set([...target.ticketKeys, ...queue]));
-      await refinementSessionsApi.update(targetSessionId, { ticketKeys: merged });
-      await mutateSessions();
-      setQuickQueue([]);
-      setQuickSelectedKeys([]);
-      onSessionChange?.(targetSessionId);
-      setActiveSessionId(targetSessionId);
-    },
-    [sessions, queue, mutateSessions, onSessionChange],
-  );
-
-  const handleSaveToNewSession = useCallback(async () => {
-    setSaveMenuOpen(false);
-    const created = await refinementSessionsApi.create({ ticketKeys: queue });
-    await mutateSessions();
-    setQuickQueue([]);
-    setQuickSelectedKeys([]);
-    onSessionChange?.(created.id);
-    setActiveSessionId(created.id);
-  }, [queue, mutateSessions, onSessionChange]);
 
   // Suppress unused variable warning
   void selectedKeys;
@@ -826,15 +778,13 @@ export function RefinementPageContent({
         <ViewHeaderTitle>Refinement</ViewHeaderTitle>
       </ViewHeader>
 
-      {/* Saved session tabs */}
-      <div className="border-b border-border-default px-6 py-3">
-        <SavedSessionList
-          sessions={sessions}
-          mutate={mutateSessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={handleSelectSession}
-        />
-      </div>
+      {/* Session tabs */}
+      <SavedSessionList
+        sessions={sessions}
+        mutate={mutateSessions}
+        activeSessionId={resolvedSessionId}
+        onSelectSession={handleSelectSession}
+      />
 
       <div className="relative min-h-full">
         {availableTickets.length === 0 && !searchQuery ? (
@@ -1042,11 +992,11 @@ export function RefinementPageContent({
                     index={idx}
                     sessionNames={
                       ticketSessionMap.get(ticket.key)
-                        ?.filter((s) => s.id !== activeSessionId)
+                        ?.filter((s) => s.id !== resolvedSessionId)
                         .map((s) => s.name)
                     }
                     isOtherSession={
-                      (ticketSessionMap.get(ticket.key)?.some((s) => s.id !== activeSessionId)) ?? false
+                      (ticketSessionMap.get(ticket.key)?.some((s) => s.id !== resolvedSessionId)) ?? false
                     }
                   />
                 ))}
@@ -1063,7 +1013,7 @@ export function RefinementPageContent({
               <div className="sticky top-6">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
-                    {activeSession ? activeSession.name : "Queue"}
+                    {activeSession?.name ?? "Queue"}
                   </h2>
                   <span className="text-xs tabular-nums text-text-muted">
                     {queue.length} ticket{queue.length !== 1 ? "s" : ""}
@@ -1087,8 +1037,8 @@ export function RefinementPageContent({
                             ticket={ticket}
                             index={idx}
                             onRemove={removeFromQueue}
-                            otherSessions={activeSession ? otherSessions : undefined}
-                            onMoveToSession={activeSession ? handleMoveToSession : undefined}
+                            otherSessions={otherSessions}
+                            onMoveToSession={handleMoveToSession}
                           />
                         ))}
                       </div>
@@ -1097,62 +1047,13 @@ export function RefinementPageContent({
                 )}
 
                 {canStart && (
-                  <div className="mt-4 flex items-center gap-2">
-                    {/* Save to session (quick mode only) */}
-                    {!activeSession && (
-                      <div className="relative" ref={saveMenuRef}>
-                        <Tooltip content="Save queue to a session for later" delay={300}>
-                          <button
-                            type="button"
-                            onClick={() => setSaveMenuOpen(!saveMenuOpen)}
-                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-                            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
-                            aria-label="Save to session"
-                          >
-                            <Save size={16} strokeWidth={1.5} />
-                          </button>
-                        </Tooltip>
-                        {saveMenuOpen && (
-                          <div className="absolute bottom-full left-0 z-30 mb-1.5 w-52 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
-                            {savableSessions.length > 0 && (
-                              <>
-                                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                                  Add to existing
-                                </div>
-                                {savableSessions.map((s) => (
-                                  <button
-                                    key={s.id}
-                                    type="button"
-                                    onClick={() => handleSaveToSession(s.id)}
-                                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
-                                    style={{ transition: "background-color 80ms" }}
-                                  >
-                                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                                    <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>
-                                  </button>
-                                ))}
-                                <div className="my-1 border-t border-border-default" />
-                              </>
-                            )}
-                            <button
-                              type="button"
-                              onClick={handleSaveToNewSession}
-                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-text-secondary hover:bg-overlay-subtle"
-                              style={{ transition: "background-color 80ms" }}
-                            >
-                              <Plus size={12} strokeWidth={2} className="text-text-muted" />
-                              New session
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div className="mt-4">
                     <Button
                       variant="primary"
                       size="lg"
                       icon={<Play size={14} strokeWidth={2} />}
                       onClick={handleBeginRefinement}
-                      className="flex-1"
+                      className="w-full"
                     >
                       Start Refinement
                     </Button>

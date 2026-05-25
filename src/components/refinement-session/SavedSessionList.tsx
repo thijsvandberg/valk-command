@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, Trash2, Check, Pencil, Zap } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Plus, Trash2, Check, Pencil } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { BarContainer } from "@/components/shared/BarContainer";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
 import type { KeyedMutator } from "swr";
 
@@ -11,7 +11,7 @@ interface SavedSessionListProps {
   sessions: RefinementSessionResponse[];
   mutate: KeyedMutator<RefinementSessionResponse[]>;
   activeSessionId: string | null;
-  onSelectSession: (id: string | null) => void;
+  onSelectSession: (id: string) => void;
 }
 
 export function SavedSessionList({
@@ -55,34 +55,21 @@ export function SavedSessionList({
     async (id: string) => {
       await refinementSessions.delete(id);
       if (activeSessionId === id) {
-        onSelectSession(null);
+        const remaining = sessions.filter((s) => s.id !== id && s.status === "draft");
+        if (remaining.length > 0) {
+          onSelectSession(remaining[0].id);
+        }
       }
       await mutate();
     },
-    [activeSessionId, mutate, onSelectSession],
+    [activeSessionId, sessions, mutate, onSelectSession],
   );
 
-  const isQuickMode = activeSessionId === null;
+  if (sessions.length === 0) return null;
 
   return (
     <>
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {/* Quick session tab */}
-        <button
-          type="button"
-          onClick={() => onSelectSession(null)}
-          className={`group flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-            isQuickMode
-              ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-              : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default"
-          }`}
-          style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
-        >
-          <Zap size={12} strokeWidth={2} />
-          Quick session
-        </button>
-
-        {/* Saved session tabs */}
+      <BarContainer className="items-stretch gap-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sessions.map((session) => {
           const isActive = activeSessionId === session.id;
           const isCompleted = session.status === "completed";
@@ -90,14 +77,14 @@ export function SavedSessionList({
           return (
             <div
               key={session.id}
-              className={`group relative flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+              className={`group relative flex shrink-0 items-center gap-1.5 px-3 text-xs font-medium ${
                 isActive
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                  ? "text-text-primary"
                   : isCompleted
-                    ? "border-border-default bg-overlay-subtle text-text-muted"
-                    : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default"
+                    ? "text-text-muted"
+                    : "text-text-tertiary hover:text-text-secondary"
               }`}
-              style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
+              style={{ transition: "color 120ms" }}
             >
               {isCompleted && (
                 <Check size={12} strokeWidth={2.5} className="shrink-0 text-[var(--color-brand-500)]" />
@@ -131,7 +118,11 @@ export function SavedSessionList({
               )}
 
               {/* Ticket count badge */}
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-overlay-strong px-1 text-[10px] font-semibold tabular-nums text-text-muted">
+              <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
+                isActive
+                  ? "bg-overlay-strong text-text-secondary"
+                  : "bg-overlay-default text-text-tertiary"
+              }`}>
                 {session.ticketCount}
               </span>
 
@@ -163,21 +154,30 @@ export function SavedSessionList({
                   </button>
                 </span>
               )}
+
+              {/* Active underline */}
+              {isActive && (
+                <span className="absolute bottom-0 left-1.5 right-1.5 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
+              )}
+
+              {/* Hover underline preview */}
+              {!isActive && !isCompleted && (
+                <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
+              )}
             </div>
           );
         })}
 
         {/* New session button */}
-        <Button
-          variant="dashed"
-          size="sm"
-          icon={<Plus size={12} strokeWidth={2} />}
+        <button
+          type="button"
           onClick={handleCreate}
-          className="shrink-0"
+          className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center self-center rounded-md text-text-muted hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-100"
+          aria-label="New session"
         >
-          New session
-        </Button>
-      </div>
+          <Plus size={13} strokeWidth={1.5} />
+        </button>
+      </BarContainer>
 
       <ConfirmDialog
         open={deleteTarget !== null}

@@ -16,12 +16,8 @@ function RefinementPageWrapper() {
   const router = useRouter();
 
   const handleSessionChange = useCallback(
-    (id: string | null) => {
-      if (id) {
-        router.push(`/refinement/${id}`);
-      } else {
-        router.push("/refinement");
-      }
+    (id: string) => {
+      router.push(`/refinement/${id}`);
     },
     [router],
   );

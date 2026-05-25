@@ -87,10 +87,12 @@ describe("ConversationList", () => {
     expect(onCreate).toHaveBeenCalledWith("investigation");
   });
 
-  it("calls onDelete when the delete button is clicked", () => {
+  it("calls onDelete via overflow menu", () => {
     const onDelete = vi.fn();
     render(<ConversationList {...defaultProps} onDelete={onDelete} />);
-    fireEvent.click(screen.getByLabelText("Delete First conversation"));
+    const triggers = screen.getAllByTestId("conversation-overflow-trigger");
+    fireEvent.click(triggers[0]);
+    fireEvent.click(screen.getByTestId("overflow-delete"));
     expect(onDelete).toHaveBeenCalledWith("conv-1");
   });
 
@@ -299,5 +301,92 @@ describe("ConversationList - pinned conversations", () => {
     render(<ConversationList {...defaultProps} conversations={convs} onTogglePin={onTogglePin} />);
     fireEvent.contextMenu(screen.getByText("Pinned conv"));
     expect(screen.getByText("Unpin conversation")).toBeInTheDocument();
+  });
+
+  it("context menu includes Delete option", () => {
+    render(<ConversationList {...defaultProps} />);
+    fireEvent.contextMenu(screen.getByText("First conversation"));
+    expect(screen.getByTestId("conversation-context-menu")).toBeInTheDocument();
+    expect(screen.getByTestId("context-menu-delete")).toBeInTheDocument();
+    expect(screen.getByText("Delete conversation")).toBeInTheDocument();
+  });
+
+  it("calls onDelete from context menu", () => {
+    const onDelete = vi.fn();
+    render(<ConversationList {...defaultProps} onDelete={onDelete} />);
+    fireEvent.contextMenu(screen.getByText("First conversation"));
+    fireEvent.click(screen.getByTestId("context-menu-delete"));
+    expect(onDelete).toHaveBeenCalledWith("conv-1");
+  });
+});
+
+describe("ConversationList - overflow menu", () => {
+  it("shows overflow trigger on each conversation row", () => {
+    render(<ConversationList {...defaultProps} />);
+    const triggers = screen.getAllByTestId("conversation-overflow-trigger");
+    expect(triggers.length).toBe(2);
+  });
+
+  it("opens overflow menu with pin and delete options", () => {
+    const onTogglePin = vi.fn();
+    render(<ConversationList {...defaultProps} onTogglePin={onTogglePin} />);
+    const triggers = screen.getAllByTestId("conversation-overflow-trigger");
+    fireEvent.click(triggers[0]);
+    expect(screen.getByTestId("conversation-overflow-menu")).toBeInTheDocument();
+    expect(screen.getByText("Pin conversation")).toBeInTheDocument();
+    expect(screen.getByText("Delete conversation")).toBeInTheDocument();
+  });
+
+  it("calls onTogglePin from overflow menu", () => {
+    const onTogglePin = vi.fn();
+    render(<ConversationList {...defaultProps} onTogglePin={onTogglePin} />);
+    const triggers = screen.getAllByTestId("conversation-overflow-trigger");
+    fireEvent.click(triggers[0]);
+    fireEvent.click(screen.getByTestId("overflow-pin"));
+    expect(onTogglePin).toHaveBeenCalledWith("conv-1", true);
+  });
+
+  it("hides overflow trigger in multiselect mode", () => {
+    render(
+      <ConversationList
+        {...defaultProps}
+        multiselectActive={true}
+        selectedIds={new Set<string>()}
+        onToggleSelect={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("conversation-overflow-trigger")).not.toBeInTheDocument();
+  });
+
+  it("hides overflow trigger in collapsed mode", () => {
+    render(<ConversationList {...defaultProps} collapsed={true} />);
+    expect(screen.queryByTestId("conversation-overflow-trigger")).not.toBeInTheDocument();
+  });
+});
+
+describe("ConversationList - pin hint", () => {
+  it("shows pin hint when no conversations are pinned", () => {
+    render(<ConversationList {...defaultProps} />);
+    expect(screen.getByTestId("pin-hint")).toBeInTheDocument();
+    expect(screen.getByText("Right-click or use the menu to pin conversations")).toBeInTheDocument();
+  });
+
+  it("hides pin hint when a conversation is pinned", () => {
+    const convs = [
+      makeConv("p-1", "Pinned conv", now, true),
+      makeConv("u-1", "Unpinned conv", now, false),
+    ];
+    render(<ConversationList {...defaultProps} conversations={convs} />);
+    expect(screen.queryByTestId("pin-hint")).not.toBeInTheDocument();
+  });
+
+  it("hides pin hint in collapsed mode", () => {
+    render(<ConversationList {...defaultProps} collapsed={true} />);
+    expect(screen.queryByTestId("pin-hint")).not.toBeInTheDocument();
+  });
+
+  it("hides pin hint when no conversations exist", () => {
+    render(<ConversationList {...defaultProps} conversations={[]} />);
+    expect(screen.queryByTestId("pin-hint")).not.toBeInTheDocument();
   });
 });

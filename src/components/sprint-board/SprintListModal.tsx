@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, Users, ChevronRight, ListFilter } from "lucide-react";
+import { Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, Users, ChevronRight, ListFilter, Inbox } from "lucide-react";
 import { TextInput } from "@/components/shared/TextInput";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { extractTeamPrefix } from "@/lib/sprint-utils";
@@ -373,7 +373,7 @@ export function SprintListModal({
   const [hiddenExpanded, setHiddenExpanded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { sprints, mutate } = useJiraSprints();
+  const { sprints, backlogCount, mutate } = useJiraSprints();
 
   const allSprints = useMemo(() => sprints ?? [], [sprints]);
   const isSearching = search.length > 0;
@@ -578,6 +578,37 @@ export function SprintListModal({
                 <SectionHeader label="Active & Future" count={activeFutureSection.length} collapsed={activeFutureCollapsed} onToggle={() => setActiveFutureCollapsed((v) => !v)} />
                 {!activeFutureCollapsed && activeFutureSection.map((s) => renderRow(s, { showBadge: false, showHide: true, showStakeholder: true }))}
               </>
+            )}
+
+            {/* Backlog entry */}
+            {!teamFilter && !multiSelect && (
+              <div className="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm text-text-secondary hover:bg-overlay-default hover:text-text-primary">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 min-w-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  onClick={() => { onSelect("__backlog__", "Backlog"); onClose(); }}
+                >
+                  <Inbox className="h-3.5 w-3.5 shrink-0 text-text-muted" strokeWidth={1.5} />
+                  <span>Backlog</span>
+                  {backlogCount > 0 && (
+                    <span className="rounded-full bg-overlay-default px-1.5 py-0.5 text-[10px] font-medium leading-none text-text-muted">
+                      {backlogCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPin("__backlog__")}
+                  className={`flex h-5 w-5 items-center justify-center rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    pinnedIds.has("__backlog__")
+                      ? "text-[var(--color-brand-400)]"
+                      : "text-text-muted hover:text-text-tertiary hover:bg-hover-list-item"
+                  }`}
+                  title={pinnedIds.has("__backlog__") ? "Unpin from tabs" : "Pin to tab"}
+                >
+                  <Pin className="h-3 w-3" strokeWidth={1.5} fill={pinnedIds.has("__backlog__") ? "currentColor" : "none"} />
+                </button>
+              </div>
             )}
 
             {recentClosedSection.length > 0 && (

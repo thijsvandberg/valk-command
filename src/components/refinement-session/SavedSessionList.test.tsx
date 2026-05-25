@@ -35,7 +35,7 @@ const mockSessions: RefinementSessionResponse[] = [
 
 describe("SavedSessionList", () => {
   let mockMutate: KeyedMutator<RefinementSessionResponse[]>;
-  let mockOnSelect: (id: string | null) => void;
+  let mockOnSelect: (id: string) => void;
 
   beforeEach(() => {
     mockMutate = vi.fn().mockResolvedValue(undefined) as unknown as KeyedMutator<RefinementSessionResponse[]>;
@@ -43,17 +43,17 @@ describe("SavedSessionList", () => {
     vi.clearAllMocks();
   });
 
-  it("renders quick session tab and saved sessions", () => {
+  it("renders saved sessions without quick session tab", () => {
     render(
       <SavedSessionList
         sessions={mockSessions}
         mutate={mockMutate}
-        activeSessionId={null}
+        activeSessionId="s1"
         onSelectSession={mockOnSelect}
       />,
     );
 
-    expect(screen.getByText("Quick session")).toBeInTheDocument();
+    expect(screen.queryByText("Quick session")).not.toBeInTheDocument();
     expect(screen.getByText("Sprint 42")).toBeInTheDocument();
     expect(screen.getByText("Sprint 43")).toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe("SavedSessionList", () => {
       <SavedSessionList
         sessions={mockSessions}
         mutate={mockMutate}
-        activeSessionId={null}
+        activeSessionId="s1"
         onSelectSession={mockOnSelect}
       />,
     );
@@ -77,29 +77,15 @@ describe("SavedSessionList", () => {
       <SavedSessionList
         sessions={mockSessions}
         mutate={mockMutate}
-        activeSessionId={null}
+        activeSessionId="s1"
         onSelectSession={mockOnSelect}
       />,
     );
 
-    expect(screen.getByText("New session")).toBeInTheDocument();
+    expect(screen.getByLabelText("New session")).toBeInTheDocument();
   });
 
   it("calls onSelectSession when clicking a session", () => {
-    render(
-      <SavedSessionList
-        sessions={mockSessions}
-        mutate={mockMutate}
-        activeSessionId={null}
-        onSelectSession={mockOnSelect}
-      />,
-    );
-
-    fireEvent.click(screen.getByText("Sprint 42"));
-    expect(mockOnSelect).toHaveBeenCalledWith("s1");
-  });
-
-  it("calls onSelectSession(null) when clicking Quick session", () => {
     render(
       <SavedSessionList
         sessions={mockSessions}
@@ -109,8 +95,8 @@ describe("SavedSessionList", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Quick session"));
-    expect(mockOnSelect).toHaveBeenCalledWith(null);
+    fireEvent.click(screen.getByText("Sprint 43"));
+    expect(mockOnSelect).toHaveBeenCalledWith("s2");
   });
 
   it("creates a new session and selects it", async () => {
@@ -120,12 +106,12 @@ describe("SavedSessionList", () => {
       <SavedSessionList
         sessions={mockSessions}
         mutate={mockMutate}
-        activeSessionId={null}
+        activeSessionId="s1"
         onSelectSession={mockOnSelect}
       />,
     );
 
-    fireEvent.click(screen.getByText("New session"));
+    fireEvent.click(screen.getByLabelText("New session"));
 
     await waitFor(() => {
       expect(refinementSessions.create).toHaveBeenCalledWith({});
@@ -138,7 +124,7 @@ describe("SavedSessionList", () => {
       <SavedSessionList
         sessions={mockSessions}
         mutate={mockMutate}
-        activeSessionId={null}
+        activeSessionId="s1"
         onSelectSession={mockOnSelect}
       />,
     );
@@ -152,12 +138,11 @@ describe("SavedSessionList", () => {
       <SavedSessionList
         sessions={mockSessions}
         mutate={mockMutate}
-        activeSessionId={null}
+        activeSessionId="s1"
         onSelectSession={mockOnSelect}
       />,
     );
 
-    // Click the first delete button
     const deleteButtons = screen.getAllByLabelText("Delete session");
     fireEvent.click(deleteButtons[0]);
 
@@ -170,7 +155,7 @@ describe("SavedSessionList", () => {
       <SavedSessionList
         sessions={mockSessions}
         mutate={mockMutate}
-        activeSessionId={null}
+        activeSessionId="s1"
         onSelectSession={mockOnSelect}
       />,
     );
