@@ -26,3 +26,24 @@ export function friendlyAgentError(
   if (body.error) return body.error;
   return fallback;
 }
+
+const RETRYABLE_PATTERN = /usage.?policy|content.?policy|violat/i;
+
+/**
+ * Returns true if a stream error message indicates an API refusal
+ * that may succeed on retry (non-deterministic safety classifier).
+ */
+export function isRetryableStreamError(message: string): boolean {
+  return RETRYABLE_PATTERN.test(message);
+}
+
+/**
+ * Maps raw SSE error messages to user-friendly text.
+ * Used for stream-level errors (as opposed to HTTP-level errors handled by friendlyAgentError).
+ */
+export function friendlyStreamError(raw: string): string {
+  if (RETRYABLE_PATTERN.test(raw)) {
+    return "Could not generate suggestions. Try again or add subtasks manually.";
+  }
+  return raw;
+}

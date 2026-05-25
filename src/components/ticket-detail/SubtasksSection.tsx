@@ -10,6 +10,7 @@ import { Loader2, GripVertical, ExternalLink, Filter, Eye, EyeOff, Sparkles } fr
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
 import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
+import { friendlyStreamError, isRetryableStreamError } from "@/lib/agent-errors";
 import {
   DndContext,
   closestCenter,
@@ -233,6 +234,8 @@ export function SubtasksSection({
   const [addingIndices, setAddingIndices] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestEsRef = useRef<EventSource | null>(null);
+  const suggestRetryRef = useRef(0);
+  const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
 
   // Merge server subtasks with locally added ones (that haven't appeared in server data yet)
   const mergedSubtasks = [
@@ -342,12 +345,16 @@ export function SubtasksSection({
     };
   }, []);
 
-  const handleSuggest = useCallback(async () => {
-    if (suggestLoading) return;
+  const handleSuggest = useCallback(async (isRetry = false) => {
+    if (suggestLoading && !isRetry) return;
+
+    if (!isRetry) {
+      suggestRetryRef.current = 0;
+    }
 
     setSuggestLoading(true);
     setSuggestError(null);
-    setSuggestProgress("Starting...");
+    setSuggestProgress(isRetry ? "Retrying..." : "Starting...");
     setSuggestions([]);
 
     try {
@@ -379,7 +386,14 @@ export function SubtasksSection({
         onStructuredError: (message) => {
           es.close();
           suggestEsRef.current = null;
-          setSuggestError(message);
+
+          if (isRetryableStreamError(message) && suggestRetryRef.current < 1) {
+            suggestRetryRef.current += 1;
+            handleSuggestRef.current(true);
+            return;
+          }
+
+          setSuggestError(friendlyStreamError(message));
           setSuggestLoading(false);
           setSuggestProgress(null);
         },
@@ -397,6 +411,10 @@ export function SubtasksSection({
       setSuggestProgress(null);
     }
   }, [ticketKey, suggestLoading]);
+
+  useEffect(() => {
+    handleSuggestRef.current = handleSuggest;
+  }, [handleSuggest]);
 
   const addSuggestionAsSubtask = useCallback(async (title: string, index: number) => {
     setAddingIndices((prev) => new Set(prev).add(index));
@@ -539,7 +557,7 @@ export function SubtasksSection({
   const suggestButton = (
     <button
       type="button"
-      onClick={handleSuggest}
+      onClick={() => handleSuggest()}
       disabled={suggestLoading}
       className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
         suggestLoading

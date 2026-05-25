@@ -20,15 +20,23 @@ When running against the old VRW code, the request falls back to the `"chat"` sk
 - **VRW `src/task-queue.ts:56-58`**: `getSkill("suggest-subtasks")` returns `undefined`, throws `Unknown skill: suggest-subtasks`
 - **Fallback behavior**: If VRW runs older code, it uses the `"chat"` skill with broad tool access, which triggers the safety classifier
 
+## Implementation Plan
+
+1. **Register skill in VRW** -- Add `suggest-subtasks` entry to `SKILL_REGISTRY` in VRW `src/skills.ts` with `tools: "Read"`, `timeout: 60_000`, `outputFormat: "text"`. Matches pattern of `suggest-sprint-goal`.
+2. **Add `friendlyStreamError` to `agent-errors.ts`** -- New function that maps raw SSE error messages (Usage Policy, content policy) to user-friendly text. Add tests.
+3. **Apply friendly error in SubtasksSection** -- Import `friendlyStreamError` and wrap the `onStructuredError` message in `handleSuggest`.
+4. **Add retry-on-refusal logic** -- Add `retryCountRef` to `handleSuggest`; on retryable stream errors (Usage Policy), retry once before showing error. Reset on each user-initiated call.
+5. **End-to-end verification** -- Manual testing after VRW is restarted with the new skill registration.
+
 ## Acceptance Criteria
 
 ### VRW skill registration
 
-- [ ] Add `suggest-subtasks` to `SKILL_REGISTRY` in VRW `src/skills.ts`
-- [ ] Use minimal tools: `"Read"` only (no Bash, Write, WebFetch, etc.)
-- [ ] Set timeout to `60_000` (60s, same as other lightweight skills)
-- [ ] Set outputFormat to `"text"`
-- [ ] Verify the prompt file `.claude/skills/suggest-subtasks.md` is loaded correctly
+- [x] Add `suggest-subtasks` to `SKILL_REGISTRY` in VRW `src/skills.ts`
+- [x] Use minimal tools: `"Read"` only (no Bash, Write, WebFetch, etc.)
+- [x] Set timeout to `60_000` (60s, same as other lightweight skills)
+- [x] Set outputFormat to `"text"`
+- [x] Verify the prompt file `.claude/skills/suggest-subtasks.md` is loaded correctly
 
 ### End-to-end verification
 
@@ -40,8 +48,8 @@ When running against the old VRW code, the request falls back to the `"chat"` sk
 
 ### Error handling improvements (valk-command)
 
-- [ ] When VRW returns a Usage Policy error, show a user-friendly message instead of raw API error (e.g. "Could not generate suggestions. Try again or add subtasks manually.")
-- [ ] Add retry logic: if first attempt fails with API refusal, retry once (the safety classifier is non-deterministic)
+- [x] When VRW returns a Usage Policy error, show a user-friendly message instead of raw API error (e.g. "Could not generate suggestions. Try again or add subtasks manually.")
+- [x] Add retry logic: if first attempt fails with API refusal, retry once (the safety classifier is non-deterministic)
 
 ## Implementation Notes
 
