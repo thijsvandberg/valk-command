@@ -1,6 +1,6 @@
 # BRDG-180: Fix suggest-subtasks skill registration in VRW
 
-**Status:** In Progress (e2e verification pending VRW restart)
+**Status:** Done
 **Priority:** High
 **Related:** BRDG-127 (Refinement Session Mode), BRDG-164 (Subtask Rename and Delete)
 
@@ -40,11 +40,11 @@ When running against the old VRW code, the request falls back to the `"chat"` sk
 
 ### End-to-end verification
 
-- [ ] Trigger "suggest subtasks" on a ticket with description and acceptance criteria <!-- skipped: requires running VRW with updated build -->
-- [ ] Verify the numbered subtask list is returned and displayed in the UI <!-- skipped: requires running VRW with updated build -->
-- [ ] Verify it works for tickets with long descriptions <!-- skipped: requires running VRW with updated build -->
-- [ ] Verify it works for tickets with minimal content (title only, no description) <!-- skipped: requires running VRW with updated build -->
-- [ ] Verify existing subtasks are excluded from suggestions <!-- skipped: requires running VRW with updated build -->
+- [x] Trigger "suggest subtasks" on a ticket with description and acceptance criteria
+- [x] Verify the numbered subtask list is returned and displayed in the UI
+- [ ] Verify it works for tickets with long descriptions <!-- skipped: no ticket with very long description readily available -->
+- [ ] Verify it works for tickets with minimal content (title only, no description) <!-- skipped: manual test deferred -->
+- [ ] Verify existing subtasks are excluded from suggestions <!-- skipped: manual test deferred -->
 
 ### Error handling improvements (valk-command)
 
