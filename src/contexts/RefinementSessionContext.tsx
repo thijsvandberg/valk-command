@@ -3,12 +3,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 
-export interface TicketCompletionData {
-  pointsSet: boolean;
-  subtasksAdded: number;
-  statusChanged: boolean;
-}
-
 export interface QueueTicketMeta {
   key: string;
   title: string;
@@ -18,7 +12,6 @@ interface RefinementSessionState {
   queue: string[];
   queueMeta: QueueTicketMeta[];
   currentIndex: number;
-  completionData: Record<string, TicketCompletionData>;
   notesCollapsed: boolean;
   subtasksPaneOpen: boolean;
   chatPaneOpen: boolean;
@@ -32,7 +25,6 @@ interface RefinementSessionActions {
   nextTicket: () => void;
   prevTicket: () => void;
   goToTicket: (index: number) => void;
-  markComplete: (key: string, data: Partial<TicketCompletionData>) => void;
   toggleNotes: () => void;
   toggleSubtasksPane: () => void;
   toggleChatPane: () => void;
@@ -48,7 +40,6 @@ const INITIAL_STATE: RefinementSessionState = {
   queue: [],
   queueMeta: [],
   currentIndex: 0,
-  completionData: {},
   notesCollapsed: true,
   subtasksPaneOpen: false,
   chatPaneOpen: false,
@@ -65,7 +56,6 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       queue: keys,
       queueMeta: meta ?? keys.map((k) => ({ key: k, title: k })),
       currentIndex: 0,
-      completionData: {},
       notesCollapsed: true,
       subtasksPaneOpen: false,
       chatPaneOpen: false,
@@ -78,7 +68,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
   const nextTicket = useCallback(() => {
     setState((prev) => ({
       ...prev,
-      currentIndex: Math.min(prev.currentIndex + 1, prev.queue.length),
+      currentIndex: Math.min(prev.currentIndex + 1, prev.queue.length - 1),
     }));
   }, []);
 
@@ -94,23 +84,6 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       ...prev,
       currentIndex: Math.max(0, Math.min(index, prev.queue.length - 1)),
     }));
-  }, []);
-
-  const markComplete = useCallback((key: string, data: Partial<TicketCompletionData>) => {
-    setState((prev) => {
-      const existing = prev.completionData[key] ?? {
-        pointsSet: false,
-        subtasksAdded: 0,
-        statusChanged: false,
-      };
-      return {
-        ...prev,
-        completionData: {
-          ...prev.completionData,
-          [key]: { ...existing, ...data },
-        },
-      };
-    });
   }, []);
 
   const toggleNotes = useCallback(() => {
@@ -164,7 +137,6 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         nextTicket,
         prevTicket,
         goToTicket,
-        markComplete,
         toggleNotes,
         toggleSubtasksPane,
         toggleChatPane,

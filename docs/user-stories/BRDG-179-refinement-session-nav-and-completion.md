@@ -1,6 +1,6 @@
 # BRDG-179: Refinement Session Navigation and Completion Rework
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -14,17 +14,30 @@ As a PO, I want simplified ticket navigation in the refinement session header an
 - Clicking "Exit" briefly flashes the session summary before navigating away, because `endSession()` sets `sessionActive = false` (triggering the summary render) and then `router.push` immediately replaces it.
 - `markComplete` tracking is not very useful; the session summary data it feeds could be derived differently.
 
+## Implementation Plan
+
+1. **Auto-readiness on SP entry** (AC3): Move readiness update from `handleDoneAndNext` into `handleStoryPointsChange` in session page. When SP is set (not null), call `tickets.updateMetadata(currentKey, { readiness: null })` after successful SP save.
+2. **Fix Exit button** (AC5): Change `handleExitSession` to only call `endSession()`, remove `router.push()`. This fixes the flash bug - summary renders via `!sessionActive` check.
+3. **Simplify navigation handler + remove markComplete** (AC4): Replace `handleDoneAndNext` with simple `handleNext`: on last ticket call `endSession()`, otherwise call `nextTicket()`. Remove all `markComplete` calls. Update keyboard shortcut to use new handler.
+4. **Remove markComplete from context** (AC4): Remove `TicketCompletionData` interface, `completionData` state, and `markComplete` callback from `RefinementSessionContext`. Update context tests. Clamp `nextTicket` to `queue.length - 1`.
+5. **Add compact prev/next arrows** (AC1): Add icon-only `<` / `>` buttons in center header section, flanking the progress dots. `<` calls `prevTicket()` (disabled at index 0). `>` calls `handleNext` (which shows summary on last ticket).
+6. **Remove old navigation buttons** (AC2): Remove "Previous" button from left header section, remove "Done, next ticket" / "End Session" from right header section.
+7. **Update SessionSummary** (AC5/AC6): Simplify summary stats to use queue length and session duration only (completionData removed). Keep "Back to Refinement" button as-is.
+8. **Update tests**: Fix SessionSummary tests, context tests, and refinement page test mock to remove completionData references.
+
+Files: `session/page.tsx`, `RefinementSessionContext.tsx`, `SessionSummary.tsx`, and their test files.
+
 ## Acceptance Criteria
 
-- [ ] **Compact prev/next arrows**: Add small `<` and `>` navigation buttons directly next to the progress dots (center section of the header). `<` on the left of the dots, `>` on the right. Icon-only, no label.
-- [ ] **Remove old navigation buttons**: Remove the "Previous" button from the left header section and the "Done, next ticket" / "End Session" button from the right header section.
-- [ ] **Auto-readiness on SP entry**: When story points are filled in (via the StoryPointPicker in the header), automatically update readiness. This should happen on SP change, not on navigation. Remove the readiness update from the navigation handler.
-- [ ] **Remove markComplete tracking**: Remove the `markComplete` calls from the navigation handler. Completion tracking per ticket is not needed.
-- [ ] **Session summary on finish**: Show the session summary screen when:
+- [x] **Compact prev/next arrows**: Add small `<` and `>` navigation buttons directly next to the progress dots (center section of the header). `<` on the left of the dots, `>` on the right. Icon-only, no label.
+- [x] **Remove old navigation buttons**: Remove the "Previous" button from the left header section and the "Done, next ticket" / "End Session" button from the right header section.
+- [x] **Auto-readiness on SP entry**: When story points are filled in (via the StoryPointPicker in the header), automatically update readiness. This should happen on SP change, not on navigation. Remove the readiness update from the navigation handler.
+- [x] **Remove markComplete tracking**: Remove the `markComplete` calls from the navigation handler. Completion tracking per ticket is not needed.
+- [x] **Session summary on finish**: Show the session summary screen when:
   - Clicking `>` on the last ticket (instead of advancing past the queue)
   - Clicking "Exit" at any point
   - Fix the current bug where Exit briefly flashes the summary before navigating: Exit should show the summary and stay there, not immediately navigate away.
-- [ ] **Summary close navigates back**: The session summary should have a clear "Close" or "Back to refinement" button that navigates to `/refinement` or the saved session URL.
+- [x] **Summary close navigates back**: The session summary should have a clear "Close" or "Back to refinement" button that navigates to `/refinement` or the saved session URL.
 
 ## Technical Notes
 

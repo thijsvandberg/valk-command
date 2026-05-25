@@ -8,34 +8,16 @@ import { Button } from "@/components/ui/Button";
 
 export function SessionSummary() {
   const router = useRouter();
-  const { queue, completionData, sessionStartedAt, savedSessionId } = useRefinementSession();
+  const { queue, sessionStartedAt, savedSessionId } = useRefinementSession();
   const [copied, setCopied] = useState(false);
 
   // Capture end timestamp once via lazy state initializer (pure)
   const [endTime] = useState(() => Date.now());
 
-  const stats = useMemo(() => {
-    const completed = queue.filter((key) => completionData[key]);
-    const estimated = queue.filter((key) => completionData[key]?.pointsSet);
-    const totalSubtasks = queue.reduce(
-      (sum, key) => sum + (completionData[key]?.subtasksAdded ?? 0),
-      0,
-    );
-    const statusChanged = queue.filter((key) => completionData[key]?.statusChanged);
-
+  const durationMin = useMemo(() => {
     const durationMs = sessionStartedAt ? endTime - sessionStartedAt : 0;
-    const durationMin = Math.round(durationMs / 60000);
-
-    return {
-      total: queue.length,
-      completed: completed.length,
-      estimated: estimated.length,
-      skipped: queue.length - completed.length,
-      totalSubtasks,
-      statusChanged: statusChanged.length,
-      durationMin,
-    };
-  }, [queue, completionData, sessionStartedAt, endTime]);
+    return Math.round(durationMs / 60000);
+  }, [sessionStartedAt, endTime]);
 
   const markdownSummary = useMemo(() => {
     const lines = [
@@ -43,24 +25,17 @@ export function SessionSummary() {
       "",
       `| Metric | Value |`,
       `|--------|-------|`,
-      `| Tickets refined | ${stats.completed} of ${stats.total} |`,
-      `| Estimated | ${stats.estimated} |`,
-      `| Subtasks created | ${stats.totalSubtasks} |`,
-      `| Status updated | ${stats.statusChanged} |`,
-      `| Duration | ${stats.durationMin} min |`,
+      `| Tickets | ${queue.length} |`,
+      `| Duration | ${durationMin} min |`,
       "",
       "## Tickets",
       "",
-      "| Key | Status |",
-      "|-----|--------|",
-      ...queue.map((key) => {
-        const data = completionData[key];
-        const status = data ? "Refined" : "Skipped";
-        return `| ${key} | ${status} |`;
-      }),
+      "| Key |",
+      "|-----|",
+      ...queue.map((key) => `| ${key} |`),
     ];
     return lines.join("\n");
-  }, [queue, completionData, stats]);
+  }, [queue, durationMin]);
 
   const handleExport = useCallback(async () => {
     try {
@@ -87,22 +62,28 @@ export function SessionSummary() {
             <h2 className="font-[var(--font-display)] text-heading font-bold tracking-tight text-text-primary">
               Session Complete
             </h2>
-            <p className="text-xs text-text-muted">{stats.durationMin} minutes</p>
+            <p className="text-xs text-text-muted">{durationMin} minutes</p>
           </div>
         </div>
 
-        {/* Stats grid */}
+        {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Tickets refined" value={`${stats.completed}/${stats.total}`} />
-          <StatCard label="Estimated" value={String(stats.estimated)} />
-          <StatCard label="Subtasks created" value={String(stats.totalSubtasks)} />
-          <StatCard label="Status updated" value={String(stats.statusChanged)} />
+          <StatCard label="Tickets in session" value={String(queue.length)} />
+          <StatCard label="Duration" value={`${durationMin} min`} />
         </div>
 
-        {stats.skipped > 0 && (
-          <p className="mt-4 text-xs text-text-muted">
-            {stats.skipped} ticket{stats.skipped !== 1 ? "s" : ""} skipped or not completed
-          </p>
+        {/* Ticket list */}
+        {queue.length > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 text-caption font-medium uppercase tracking-wider text-text-muted">Tickets</p>
+            <div className="flex flex-wrap gap-1.5">
+              {queue.map((key) => (
+                <span key={key} className="rounded-md bg-overlay-subtle px-2 py-1 font-mono text-xs text-text-secondary">
+                  {key}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Actions */}

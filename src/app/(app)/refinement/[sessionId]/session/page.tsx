@@ -17,16 +17,13 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
   StickyNote,
   ListChecks,
   List,
-  Check,
   GripVertical,
   Info,
   MessageSquareText,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import {
   DndContext,
   closestCenter,
@@ -45,13 +42,11 @@ import {
 function SortableQueueItem({
   ticketKey,
   title,
-  isCompleted,
   isCurrent,
   onClick,
 }: {
   ticketKey: string;
   title: string;
-  isCompleted: boolean;
   isCurrent: boolean;
   onClick: () => void;
 }) {
@@ -96,10 +91,7 @@ function SortableQueueItem({
       >
         <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{ticketKey}</span>
         <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{title}</span>
-        {isCompleted && (
-          <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
-        )}
-        {isCurrent && !isCompleted && (
+        {isCurrent && (
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
         )}
       </button>
@@ -175,12 +167,10 @@ export default function RefinementSessionPage({
     notesCollapsed,
     subtasksPaneOpen,
     chatPaneOpen,
-    completionData,
     savedSessionId,
     nextTicket,
     prevTicket,
     goToTicket,
-    markComplete,
     toggleNotes,
     toggleSubtasksPane,
     toggleChatPane,
@@ -203,7 +193,6 @@ export default function RefinementSessionPage({
 
   const currentKey = queue[currentIndex] ?? null;
   const isLastTicket = currentIndex >= queue.length - 1;
-  const isSessionDone = currentIndex >= queue.length;
 
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
 
@@ -222,6 +211,9 @@ export default function RefinementSessionPage({
       setStoryPoints(v);
       try {
         await tickets.updateStoryPoints(currentKey!, v);
+        if (v != null) {
+          await tickets.updateMetadata(currentKey!, { readiness: null });
+        }
         mutate();
       } catch (err) {
         console.error("Failed to update story points:", err);
@@ -269,35 +261,17 @@ export default function RefinementSessionPage({
     }
   }, [currentKey, poNotes]);
 
-  const handleDoneAndNext = useCallback(async () => {
-    if (!currentKey) return;
-
-    // Track completion
-    markComplete(currentKey, {
-      pointsSet: ticketData?.storyPoints != null,
-    });
-
-    // Auto-set readiness to "Ready for Dev" when story points are set
-    if (ticketData?.storyPoints != null) {
-      try {
-        await tickets.updateMetadata(currentKey, { readiness: null });
-        markComplete(currentKey, { statusChanged: true });
-      } catch (err) {
-        console.error("Failed to update readiness:", err);
-      }
-    }
-
+  const handleNext = useCallback(() => {
     if (isLastTicket) {
       endSession();
     } else {
       nextTicket();
     }
-  }, [currentKey, ticketData, isLastTicket, markComplete, endSession, nextTicket]);
+  }, [isLastTicket, endSession, nextTicket]);
 
   const handleExitSession = useCallback(() => {
     endSession();
-    router.push(`/refinement/${sessionId}`);
-  }, [endSession, router, sessionId]);
+  }, [endSession]);
 
   // Close nav dropdown on click outside
   useEffect(() => {
@@ -324,10 +298,10 @@ export default function RefinementSessionPage({
       const tag = (e.target as HTMLElement)?.tagName;
       const isInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.getAttribute("contenteditable");
 
-      // Cmd+Enter: done and next
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isSessionDone) {
+      // Cmd+Enter: next ticket / end session
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && sessionActive) {
         e.preventDefault();
-        handleDoneAndNext();
+        handleNext();
         return;
       }
 
@@ -341,12 +315,12 @@ export default function RefinementSessionPage({
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleDoneAndNext, toggleNotes, isSessionDone]);
+  }, [handleNext, toggleNotes, sessionActive]);
 
   if (queue.length === 0) return null;
 
   // Session ended: show summary
-  if (!sessionActive || isSessionDone) {
+  if (!sessionActive) {
     return (
       <>
         {pageTitle}
@@ -400,18 +374,6 @@ export default function RefinementSessionPage({
               Exit
             </button>
 
-            <div className="h-4 w-px bg-border-subtle" />
-
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<ChevronLeft size={14} strokeWidth={2} />}
-              onClick={() => prevTicket()}
-              disabled={currentIndex === 0}
-            >
-              Previous
-            </Button>
-
             {ticketData && (
               <>
                 <div className="h-4 w-px bg-border-subtle" />
@@ -444,11 +406,21 @@ export default function RefinementSessionPage({
             )}
           </div>
 
-          {/* Center: progress + navigation dropdown */}
+          {/* Center: progress + navigation */}
           <div className="relative flex items-center gap-3">
             <span className="text-xs font-medium tabular-nums text-text-secondary">
               Ticket {currentIndex + 1} of {queue.length}
             </span>
+            <button
+              type="button"
+              onClick={() => prevTicket()}
+              disabled={currentIndex === 0}
+              className="flex cursor-pointer items-center justify-center rounded-md p-1 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
+              aria-label="Previous ticket"
+            >
+              <ChevronLeft size={14} strokeWidth={2} />
+            </button>
             <div className="flex items-center gap-1.5">
               {queue.map((key, idx) => (
                 <button
@@ -471,6 +443,15 @@ export default function RefinementSessionPage({
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="flex cursor-pointer items-center justify-center rounded-md p-1 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              aria-label={isLastTicket ? "End session" : "Next ticket"}
+            >
+              <ChevronRight size={14} strokeWidth={2} />
+            </button>
             {/* Navigation dropdown trigger */}
             <div className="relative" ref={navDropdownRef}>
               <button
@@ -504,7 +485,6 @@ export default function RefinementSessionPage({
                               key={key}
                               ticketKey={key}
                               title={meta?.title ?? key}
-                              isCompleted={!!completionData[key]}
                               isCurrent={idx === currentIndex}
                               onClick={() => { goToTicket(idx); setNavDropdownOpen(false); }}
                             />
@@ -583,27 +563,6 @@ export default function RefinementSessionPage({
               )}
             </button>
 
-            <div className="h-4 w-px bg-border-subtle" />
-
-            {isLastTicket ? (
-              <Button
-                variant="primary"
-                size="md"
-                icon={<CheckCircle2 size={14} strokeWidth={2} />}
-                onClick={handleDoneAndNext}
-              >
-                End Session
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                size="md"
-                icon={<ChevronRight size={14} strokeWidth={2} />}
-                onClick={handleDoneAndNext}
-              >
-                Done, next ticket
-              </Button>
-            )}
           </div>
         </div>
 

@@ -8,19 +8,15 @@ vi.mock("next/navigation", () => ({
 
 const mockSessionState = {
   queue: ["VPL-1", "VPL-2", "VPL-3"],
-  currentIndex: 3,
-  completionData: {
-    "VPL-1": { pointsSet: true, subtasksAdded: 2, statusChanged: true },
-    "VPL-2": { pointsSet: true, subtasksAdded: 1, statusChanged: false },
-  },
+  currentIndex: 2,
   notesCollapsed: true,
   sessionActive: false,
   sessionStartedAt: Date.now() - 15 * 60 * 1000, // 15 minutes ago
+  savedSessionId: null,
   startSession: vi.fn(),
   nextTicket: vi.fn(),
   prevTicket: vi.fn(),
   goToTicket: vi.fn(),
-  markComplete: vi.fn(),
   toggleNotes: vi.fn(),
   endSession: vi.fn(),
 };
@@ -35,19 +31,21 @@ describe("SessionSummary", () => {
     expect(screen.getByText("Session Complete")).toBeInTheDocument();
   });
 
-  it("shows correct ticket count", () => {
+  it("shows ticket count", () => {
     render(<SessionSummary />);
-    expect(screen.getByText("2/3")).toBeInTheDocument(); // 2 completed out of 3
+    expect(screen.getByText("3")).toBeInTheDocument();
   });
 
-  it("shows estimated count", () => {
+  it("shows duration", () => {
     render(<SessionSummary />);
-    expect(screen.getByText("2")).toBeInTheDocument(); // 2 estimated
+    expect(screen.getByText("15 min")).toBeInTheDocument();
   });
 
-  it("shows total subtasks", () => {
+  it("shows ticket keys", () => {
     render(<SessionSummary />);
-    expect(screen.getByText("3")).toBeInTheDocument(); // 2 + 1 subtasks
+    expect(screen.getByText("VPL-1")).toBeInTheDocument();
+    expect(screen.getByText("VPL-2")).toBeInTheDocument();
+    expect(screen.getByText("VPL-3")).toBeInTheDocument();
   });
 
   it("shows export button", () => {
@@ -58,10 +56,5 @@ describe("SessionSummary", () => {
   it("shows back to refinement button", () => {
     render(<SessionSummary />);
     expect(screen.getByText("Back to Refinement")).toBeInTheDocument();
-  });
-
-  it("shows skipped ticket count", () => {
-    render(<SessionSummary />);
-    expect(screen.getByText(/1 ticket.* skipped/)).toBeInTheDocument();
   });
 });

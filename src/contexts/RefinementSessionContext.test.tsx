@@ -52,47 +52,18 @@ describe("RefinementSessionContext", () => {
     act(() => { state.nextTicket(); });
     expect(state.currentIndex).toBe(2);
 
-    // Should not go beyond queue length
+    // Should not go beyond last index
     act(() => { state.nextTicket(); });
-    expect(state.currentIndex).toBe(3);
+    expect(state.currentIndex).toBe(2);
 
     act(() => { state.prevTicket(); });
-    expect(state.currentIndex).toBe(2);
+    expect(state.currentIndex).toBe(1);
 
     // Should not go below 0
     act(() => { state.goToTicket(0); });
     expect(state.currentIndex).toBe(0);
     act(() => { state.prevTicket(); });
     expect(state.currentIndex).toBe(0);
-  });
-
-  it("marks tickets as complete", () => {
-    let state!: ReturnType<typeof useRefinementSession>;
-    renderWithProvider((s) => { state = s; });
-
-    act(() => { state.startSession(["VPL-1", "VPL-2"]); });
-    act(() => { state.markComplete("VPL-1", { pointsSet: true, subtasksAdded: 3 }); });
-
-    expect(state.completionData["VPL-1"]).toEqual({
-      pointsSet: true,
-      subtasksAdded: 3,
-      statusChanged: false,
-    });
-  });
-
-  it("merges completion data on subsequent calls", () => {
-    let state!: ReturnType<typeof useRefinementSession>;
-    renderWithProvider((s) => { state = s; });
-
-    act(() => { state.startSession(["VPL-1"]); });
-    act(() => { state.markComplete("VPL-1", { pointsSet: true }); });
-    act(() => { state.markComplete("VPL-1", { statusChanged: true }); });
-
-    expect(state.completionData["VPL-1"]).toEqual({
-      pointsSet: true,
-      subtasksAdded: 0,
-      statusChanged: true,
-    });
   });
 
   it("toggles notes panel", () => {
