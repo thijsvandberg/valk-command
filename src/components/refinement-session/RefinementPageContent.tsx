@@ -256,9 +256,11 @@ function TicketRow({
   isOtherSession?: boolean;
 }) {
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={(e) => onToggle(ticket.key, index, e.shiftKey)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(ticket.key, index, e.shiftKey); } }}
       className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
         selected
           ? "bg-[var(--color-brand-500)]/[0.08] border border-[var(--color-brand-500)]/20"
@@ -334,7 +336,7 @@ function TicketRow({
           {ticket.storyPoints === 0 ? "-" : ticket.storyPoints}
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
