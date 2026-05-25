@@ -190,7 +190,9 @@ describe("ChatLayout", () => {
       expect(screen.getAllByText("Test conversation").length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByLabelText("Delete Test conversation"));
+    // Open overflow menu and click delete
+    fireEvent.click(screen.getByLabelText("Actions for Test conversation"));
+    fireEvent.click(screen.getByTestId("overflow-delete"));
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/chat");
