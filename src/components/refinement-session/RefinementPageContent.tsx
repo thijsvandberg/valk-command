@@ -8,7 +8,7 @@ import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, FolderPlus, Plus } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, FolderPlus, Plus, Save } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -17,6 +17,7 @@ import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { Tooltip } from "@/components/shared/Tooltip";
 import type { Ticket } from "@/types/ticket";
 import { getSpColor, getEpicColor } from "@/types/ticket";
 import {
@@ -770,8 +771,8 @@ export function RefinementPageContent({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [saveMenuOpen]);
 
-  const draftSessions = useMemo(
-    () => sessions.filter((s) => s.status === "draft"),
+  const savableSessions = useMemo(
+    () => sessions,
     [sessions],
   );
 
@@ -817,7 +818,7 @@ export function RefinementPageContent({
               icon={<Play size={14} strokeWidth={2} />}
               onClick={handleBeginRefinement}
             >
-              {activeSession ? "Start Session" : "Begin Refinement"} ({queue.length})
+              Start Refinement ({queue.length})
             </Button>
           ) : undefined
         }
@@ -1096,37 +1097,29 @@ export function RefinementPageContent({
                 )}
 
                 {canStart && (
-                  <>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      icon={<Play size={14} strokeWidth={2} />}
-                      onClick={handleBeginRefinement}
-                      className="mt-4 w-full"
-                    >
-                      {activeSession ? "Start Session" : "Begin Refinement"}
-                    </Button>
-
+                  <div className="mt-4 flex items-center gap-2">
                     {/* Save to session (quick mode only) */}
                     {!activeSession && (
-                      <div className="relative mt-2" ref={saveMenuRef}>
-                        <button
-                          type="button"
-                          onClick={() => setSaveMenuOpen(!saveMenuOpen)}
-                          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border-default bg-overlay-subtle px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                          style={{ transition: "background-color 0.15s ease" }}
-                        >
-                          <FolderPlus size={14} strokeWidth={1.5} />
-                          Save to session
-                        </button>
+                      <div className="relative" ref={saveMenuRef}>
+                        <Tooltip content="Save queue to a session for later" delay={300}>
+                          <button
+                            type="button"
+                            onClick={() => setSaveMenuOpen(!saveMenuOpen)}
+                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+                            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
+                            aria-label="Save to session"
+                          >
+                            <Save size={16} strokeWidth={1.5} />
+                          </button>
+                        </Tooltip>
                         {saveMenuOpen && (
-                          <div className="absolute bottom-full left-0 z-30 mb-1.5 w-full rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
-                            {draftSessions.length > 0 && (
+                          <div className="absolute bottom-full left-0 z-30 mb-1.5 w-52 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+                            {savableSessions.length > 0 && (
                               <>
                                 <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                                   Add to existing
                                 </div>
-                                {draftSessions.map((s) => (
+                                {savableSessions.map((s) => (
                                   <button
                                     key={s.id}
                                     type="button"
@@ -1154,7 +1147,16 @@ export function RefinementPageContent({
                         )}
                       </div>
                     )}
-                  </>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      icon={<Play size={14} strokeWidth={2} />}
+                      onClick={handleBeginRefinement}
+                      className="flex-1"
+                    >
+                      Start Refinement
+                    </Button>
+                  </div>
                 )}
               </div>
             </ResizableQueuePane>
