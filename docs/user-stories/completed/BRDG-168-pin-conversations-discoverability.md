@@ -1,6 +1,6 @@
 # BRDG-168: Pin Conversations Discoverability
 
-**Status:** Draft
+**Status:** Done
 **Priority:** Medium
 
 ## Description
