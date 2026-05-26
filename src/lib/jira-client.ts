@@ -1348,6 +1348,31 @@ export class JiraClient {
   }
 
   /**
+   * Fetch all labels from the Jira instance.
+   * Paginates through GET /rest/api/3/label until all labels are retrieved.
+   */
+  async getLabels(signal?: AbortSignal): Promise<string[]> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const all: string[] = [];
+    let startAt = 0;
+
+    while (true) {
+      const page = await jiraFetch<{ values: string[]; total: number }>(
+        `/rest/api/3/label?startAt=${startAt}&maxResults=1000`,
+        signal,
+      );
+      all.push(...page.values);
+      if (startAt + page.values.length >= page.total) break;
+      startAt += page.values.length;
+    }
+
+    return all;
+  }
+
+  /**
    * Whether the client is talking to a real Jira instance.
    */
   get isLive(): boolean {

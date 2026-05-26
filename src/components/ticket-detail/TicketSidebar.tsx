@@ -20,6 +20,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { useJiraSprints, useSprintSlots, useDevInfo } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Tag } from "@/components/shared/Tag";
+import { LabelPicker } from "@/components/shared/LabelPicker";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
@@ -91,6 +92,10 @@ export function TicketSidebar({
   const [epicName, setEpicName] = useState<string | null>(ticket.epic);
   const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
+  const [labels, setLabels] = useState<string[]>(() => {
+    if (!detail?.labels) return [];
+    return detail.labels;
+  });
   const [showMore, setShowMore] = useState(ticket.qualityScore !== null);
   const [poNoteExpanded, setPoNoteExpanded] = useState(false);
   const poNoteRef = useRef<HTMLTextAreaElement>(null);
@@ -259,6 +264,21 @@ export function TicketSidebar({
       setEpicKey(prevKey);
     }
   }, [ticket.key, epicName, epicKey]);
+
+  useEffect(() => {
+    if (detail?.labels) setLabels(detail.labels);
+  }, [detail?.labels]);
+
+  const handleLabelsChange = useCallback(async (newLabels: string[]) => {
+    const prev = labels;
+    setLabels(newLabels);
+    try {
+      await tickets.updateLabels(ticket.key, newLabels);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setLabels(prev);
+    }
+  }, [ticket.key, labels]);
 
   const handleNotesChange = useCallback(async (notes: string) => {
     setPoNotes(notes);
@@ -544,15 +564,11 @@ export function TicketSidebar({
             {showMore && (
               <div className="mt-2 space-y-2">
                 <DetailRow label="Labels">
-                  {detail?.labels && detail.labels.length > 0 ? (
-                    <div className="flex flex-wrap justify-end gap-1">
-                      {detail.labels.map((l) => (
-                        <Tag key={l}>{l}</Tag>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-text-muted">None</span>
-                  )}
+                  <LabelPicker
+                    value={labels}
+                    onChange={handleLabelsChange}
+                    align="right"
+                  />
                 </DetailRow>
                 <button
                   type="button"

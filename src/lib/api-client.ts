@@ -128,6 +128,8 @@ export const tickets = {
     apiFetch<{ epic: string | null; epicKey: string | null }>(`/api/tickets/${enc(key)}`, { method: "PATCH", body: { epicKey }, signal }),
   toggleFlag: (key: string, flagged: boolean, flagReason?: string, signal?: AbortSignal) =>
     apiFetch<{ flagged: boolean }>(`/api/tickets/${enc(key)}`, { method: "PATCH", body: { flagged, ...(flagReason ? { flagReason } : {}) }, signal }),
+  updateLabels: (key: string, labels: string[], signal?: AbortSignal) =>
+    apiFetch<{ labels: string[] }>(`/api/tickets/${enc(key)}`, { method: "PATCH", body: { labels }, signal }),
 
   getMetadata: (key: string, signal?: AbortSignal) =>
     apiFetch<Record<string, unknown>>(`/api/tickets/${enc(key)}/metadata`, { signal }),

@@ -462,6 +462,23 @@ export async function PATCH(
     result.flagged = newFlagged;
   }
 
+  // Handle labels update
+  if (body.labels !== undefined) {
+    if (!Array.isArray(body.labels) || !body.labels.every((l: unknown) => typeof l === "string")) {
+      return NextResponse.json({ error: "labels must be an array of strings" }, { status: 400 });
+    }
+
+    const labels: string[] = body.labels;
+    await db.update(ticket).set({ labels: JSON.stringify(labels) }).where(eq(ticket.jiraKey, key));
+
+    jiraClient.updateIssue(key, { labels }).catch((err: unknown) => {
+      logger.error("ticket-detail", `PATCH Jira labels sync failed for ${key}:`, err);
+    });
+
+    await logActivity({ type: "metadata-update", scope: key, summary: `Updated labels` });
+    result.labels = labels;
+  }
+
   if (Object.keys(result).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
