@@ -83,13 +83,33 @@ export async function PATCH(
   }
 
   if (body.status !== undefined) {
-    if (body.status !== "draft" && body.status !== "completed") {
+    if (body.status !== "draft" && body.status !== "in_progress" && body.status !== "completed") {
       return NextResponse.json(
-        { error: "status must be 'draft' or 'completed'" },
+        { error: "status must be 'draft', 'in_progress', or 'completed'" },
         { status: 400 },
       );
     }
     updates.status = body.status;
+  }
+
+  if (body.generalComment !== undefined) {
+    if (body.generalComment !== null && typeof body.generalComment !== "string") {
+      return NextResponse.json(
+        { error: "generalComment must be a string or null" },
+        { status: 400 },
+      );
+    }
+    updates.generalComment = body.generalComment;
+  }
+
+  if (body.currentIndex !== undefined) {
+    if (typeof body.currentIndex !== "number" || body.currentIndex < 0 || !Number.isInteger(body.currentIndex)) {
+      return NextResponse.json(
+        { error: "currentIndex must be a non-negative integer" },
+        { status: 400 },
+      );
+    }
+    updates.currentIndex = body.currentIndex;
   }
 
   await db

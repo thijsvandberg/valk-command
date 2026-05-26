@@ -532,12 +532,25 @@ export const scheduler = {
 // Refinement Sessions
 // ---------------------------------------------------------------------------
 
+export type RefinementSessionStatus = "draft" | "in_progress" | "completed";
+
 export interface RefinementSessionResponse {
   id: string;
   name: string;
   ticketKeys: string[];
   ticketCount: number;
-  status: "draft" | "completed";
+  status: RefinementSessionStatus;
+  generalComment: string | null;
+  currentIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RefinementSessionTicketNoteResponse {
+  id: string;
+  sessionId: string;
+  ticketKey: string;
+  content: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -552,10 +565,16 @@ export const refinementSessions = {
     apiFetch<RefinementSessionResponse>("/api/refinement-sessions", { method: "POST", body: data, signal }),
   get: (id: string, signal?: AbortSignal) =>
     apiFetch<RefinementSessionResponse>(`/api/refinement-sessions/${enc(id)}`, { signal }),
-  update: (id: string, data: Partial<{ name: string; ticketKeys: string[]; status: "draft" | "completed" }>, signal?: AbortSignal) =>
+  update: (id: string, data: Partial<{ name: string; ticketKeys: string[]; status: RefinementSessionStatus; generalComment: string | null; currentIndex: number }>, signal?: AbortSignal) =>
     apiFetch<RefinementSessionResponse>(`/api/refinement-sessions/${enc(id)}`, { method: "PATCH", body: data, signal }),
   delete: (id: string, signal?: AbortSignal) =>
     apiFetch<void>(`/api/refinement-sessions/${enc(id)}`, { method: "DELETE", signal }),
+
+  // Per-ticket PO notes within a session
+  ticketNotes: (id: string, signal?: AbortSignal) =>
+    apiFetch<RefinementSessionTicketNoteResponse[]>(`/api/refinement-sessions/${enc(id)}/ticket-notes`, { signal }),
+  upsertTicketNote: (id: string, data: { ticketKey: string; content: string }, signal?: AbortSignal) =>
+    apiFetch<RefinementSessionTicketNoteResponse | void>(`/api/refinement-sessions/${enc(id)}/ticket-notes`, { method: "PUT", body: data, signal }),
 };
 
 // ---------------------------------------------------------------------------
