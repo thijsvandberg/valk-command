@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Fuse from "fuse.js";
 import { useRouter, usePathname } from "next/navigation";
 
-import { apiFetch, jira, conversations as conversationsApi, storyWriter, sprintSlots as sprintSlotsApi } from "@/lib/api-client";
+import { apiFetch, jira, conversations as conversationsApi, storyWriter, sprintSlots as sprintSlotsApi, settings } from "@/lib/api-client";
 import type { LocalSearchResult } from "@/app/api/search/local/route";
 import type { Conversation } from "@/types/chat";
 import type { ActiveSession } from "@/app/api/story-writer/active-sessions/route";
@@ -229,17 +229,26 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       .catch((err) => console.warn("[command-palette] fetch sessions failed", err));
   }, [open]);
 
-  /* ---- Lazily fetch sprint slots when the sub-flow opens ---- */
+  /* ---- Lazily fetch sprint slots + default sprint when the sub-flow opens ---- */
   const isSubFlowLoadingSprints = subFlow.kind === "new-story" && subFlow.loadingSprints;
   useEffect(() => {
     if (!isSubFlowLoadingSprints) return;
     let cancelled = false;
-    (sprintSlotsApi.list() as Promise<SprintSlot[]>)
-      .then((data) => {
+    Promise.all([
+      sprintSlotsApi.list() as Promise<SprintSlot[]>,
+      settings.getDefaultSprint().catch(() => ({ sprintId: "" })),
+    ])
+      .then(([slots, defaultPref]) => {
         if (cancelled) return;
+        const configuredId = defaultPref.sprintId;
+        const resolvedSprintId = configuredId && slots.some((s) => s.sprintId === configuredId)
+          ? configuredId
+          : slots.find((s) => s.sprintName.toLowerCase() === "backlog")?.sprintId
+            ?? slots[0]?.sprintId
+            ?? "";
         setSubFlow((prev) => {
           if (prev.kind !== "new-story") return prev;
-          return { ...prev, sprints: data, sprintId: data[0]?.sprintId ?? "", loadingSprints: false };
+          return { ...prev, sprints: slots, sprintId: resolvedSprintId, loadingSprints: false };
         });
       })
       .catch(() => {
