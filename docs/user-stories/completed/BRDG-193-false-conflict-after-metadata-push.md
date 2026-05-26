@@ -1,6 +1,6 @@
 # BRDG-193: Fix false "Metadata changed in Jira" conflict after Bridge-initiated metadata push
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** High
 
 ## Description
