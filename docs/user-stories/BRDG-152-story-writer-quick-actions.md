@@ -38,9 +38,9 @@ Three interaction zones:
 
 ## Acceptance Criteria
 
-- [ ] Sprint picker badge in header (replaces read-only link)
-- [ ] Story points badge in header (click to change)
-- [ ] Business value badge in header (click to change)
+- [x] Sprint picker badge in header (replaces read-only link)
+- [x] Story points badge in header (click to change)
+- [x] Business value badge in header (click to change)
 - [ ] Flag/unflag toggle in "..." dropdown menu
 - [ ] New "Meta" pane tab with: assignee, creator, labels, and full metadata overview
 - [ ] Changes sync to Jira where applicable (sprint, assignee, epic)

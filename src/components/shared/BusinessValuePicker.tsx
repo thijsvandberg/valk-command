@@ -12,11 +12,13 @@ export function BusinessValuePicker({
   onChange,
   align = "right",
   subtle = false,
+  size = "sm",
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
   align?: "left" | "right";
   subtle?: boolean;
+  size?: "sm" | "lg";
 }) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -69,6 +71,7 @@ export function BusinessValuePicker({
     };
   }, [open, onChange, updatePosition]);
 
+  const isLg = size === "lg";
   const isNA = value === 0;
   const color = value != null ? getBvColor(value) : null;
   const showBg = !subtle || hovered || open;
@@ -76,22 +79,45 @@ export function BusinessValuePicker({
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => open ? setOpen(false) : handleOpen()}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
-        className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
-        style={{
-          color: color?.text ?? "var(--color-text-muted)",
-          backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
-          opacity: hovered && showBg ? 0.85 : 1,
-        }}
-      >
-        {displayLabel ?? <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
-      </button>
+      {isLg ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => open ? setOpen(false) : handleOpen()}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
+          className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+          style={{
+            color: color?.text ?? "var(--color-text-muted)",
+            backgroundColor: color?.bg ?? "var(--color-overlay-subtle)",
+            opacity: hovered ? 0.85 : 1,
+            transition: "opacity 0.15s ease",
+          }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">BV</span>
+          <span className="text-xs font-semibold tabular-nums">
+            {displayLabel ?? "?"}
+          </span>
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => open ? setOpen(false) : handleOpen()}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
+          className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
+          style={{
+            color: color?.text ?? "var(--color-text-muted)",
+            backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
+            opacity: hovered && showBg ? 0.85 : 1,
+          }}
+        >
+          {displayLabel ?? <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
+        </button>
+      )}
 
       {open && pos && createPortal(
         <div

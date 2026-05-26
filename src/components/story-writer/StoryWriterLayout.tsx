@@ -10,7 +10,6 @@ import {
   Loader2,
   Star,
   Scissors,
-  IterationCw,
   MoreHorizontal,
   ArrowUpRight,
   NotebookPen,
@@ -25,9 +24,11 @@ import { useDraftSync } from "@/hooks/useDraftSync";
 import { PAGE_TITLE_SUFFIX } from "@/hooks/usePageTitle";
 import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
-import { Tooltip } from "@/components/shared/Tooltip";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SplitStoryPicker } from "./SplitStoryPicker";
+import { SprintPicker } from "@/components/shared/SprintPicker";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { ApiError, apiFetch, jira, tickets } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -77,7 +78,6 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const { data: reviewData } = useTicketReviews(ticketKey);
   const { sprints: rawSprints } = useJiraSprints();
   const ticketSprintId = ticketData?.sprintId ?? null;
-  const ticketSprintLabel = rawSprints?.find((s) => String(s.id) === ticketSprintId)?.name ?? ticketSprintId;
   const latestReview = reviewData?.reviews?.[0];
 
   const [pushing, setPushing] = useState(false);
@@ -540,30 +540,36 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
           <ViewHeader
             className="shrink-0"
             actions={<>
-              {(ticketSprintId || ticketData) && (
+              {ticketData && (
                 <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
-                  {ticketSprintId && (
-                    <Tooltip content={ticketSprintLabel || "Sprint"}>
-                      <Link
-                        href={`/sprint-board?sprint=${encodeURIComponent(ticketSprintId)}`}
-                        className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                      >
-                        <IterationCw size={12} strokeWidth={1.5} />
-                        <span className="max-w-[110px] truncate">{ticketSprintLabel}</span>
-                      </Link>
-                    </Tooltip>
-                  )}
-                  {ticketData && (
-                    <EpicPicker
-                      value={ticketAsTicket?.epicKey ? { key: ticketAsTicket.epicKey, name: ticketAsTicket.epic ?? ticketAsTicket.epicKey } : null}
-                      onChange={handleEpicChange}
-                      align="left"
-                      ticketKey={ticketKey}
-                    />
-                  )}
+                  <SprintPicker
+                    value={ticketSprintId}
+                    sprints={rawSprints ?? []}
+                    onChange={handleSprintChange}
+                    align="left"
+                    variant="badge"
+                  />
+                  <EpicPicker
+                    value={ticketAsTicket?.epicKey ? { key: ticketAsTicket.epicKey, name: ticketAsTicket.epic ?? ticketAsTicket.epicKey } : null}
+                    onChange={handleEpicChange}
+                    align="left"
+                    ticketKey={ticketKey}
+                  />
+                  <StoryPointPicker
+                    value={ticketAsTicket?.storyPoints ?? null}
+                    onChange={handleStoryPointsChange}
+                    align="left"
+                    size="lg"
+                  />
+                  <BusinessValuePicker
+                    value={ticketAsTicket?.businessValue ?? null}
+                    onChange={handleBusinessValueChange}
+                    align="left"
+                    size="lg"
+                  />
                 </nav>
               )}
-              {(ticketSprintId || ticketData) && (
+              {ticketData && (
                 <div className="h-5 w-px shrink-0 bg-overlay-default" />
               )}
 
