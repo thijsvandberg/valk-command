@@ -7,6 +7,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets, ApiError } from "@/lib/api-client";
@@ -311,29 +312,36 @@ export function EpicChildrenSection({
 
         {/* Story points */}
         {visibleFields.has("storyPoints") && epic?.storyPoints != null && (
-          <span
-            className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
-            style={{
-              color: getSpColor(epic.storyPoints).text,
-              backgroundColor: getSpColor(epic.storyPoints).bg,
-            }}
-          >
-            {epic.storyPoints === 0 ? "-" : epic.storyPoints}
-          </span>
+          <Tooltip content={`${epic.storyPoints === 0 ? "N/A" : epic.storyPoints} story point${epic.storyPoints === 1 ? "" : "s"}`}>
+            <span
+              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+              style={{
+                color: getSpColor(epic.storyPoints).text,
+                backgroundColor: getSpColor(epic.storyPoints).bg,
+              }}
+            >
+              {epic.storyPoints === 0 ? "-" : epic.storyPoints}
+            </span>
+          </Tooltip>
         )}
 
         {/* Subtask count */}
         {visibleFields.has("subtaskCount") && epic && epic.subtaskCount > 0 && (
-          <span className="shrink-0 rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text-muted">
-            {epic.subtaskCount} sub
-          </span>
+          <Tooltip content={`${epic.subtaskCount} subtask${epic.subtaskCount === 1 ? "" : "s"}`}>
+            <span className="flex shrink-0 items-center gap-1 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium tabular-nums text-text-muted">
+              <IssueTypeIcon type="subtask" size={10} />
+              {epic.subtaskCount}
+            </span>
+          </Tooltip>
         )}
 
         {/* Sprint */}
         {visibleFields.has("sprint") && epic?.sprintName && (
-          <span className="shrink-0 max-w-[100px] truncate rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
-            {epic.sprintName}
-          </span>
+          <Tooltip content={epic.sprintName}>
+            <span className="shrink-0 max-w-[100px] truncate rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
+              {epic.sprintName}
+            </span>
+          </Tooltip>
         )}
 
         {/* Status */}
@@ -375,14 +383,14 @@ export function EpicChildrenSection({
         </>
       ) : (
         <>
-          {/* Type selector */}
+          {/* Type selector - icon aligns with row icons, label aligns with keys */}
+          <IssueTypeIcon type={selectedType} size={14} />
           <div className="relative" ref={typePickerRef}>
             <button
               type="button"
               onClick={() => setShowTypePicker((v) => !v)}
               className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
-              <IssueTypeIcon type={selectedType} size={14} />
               <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
               <ChevronDown size={10} className="text-text-muted" />
             </button>
@@ -424,10 +432,11 @@ export function EpicChildrenSection({
           <button
             type="button"
             onClick={() => setSearchMode(true)}
-            className="shrink-0 cursor-pointer rounded-md p-1 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             title="Link existing issue"
           >
-            <Search size={13} strokeWidth={1.5} />
+            <Search size={12} strokeWidth={1.5} />
+            <span className="hidden text-xs font-medium sm:inline">Link existing</span>
           </button>
         </>
       )}

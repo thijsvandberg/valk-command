@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticket, ticketLocalEdit, jiraComment, ticketSubtask, storedReview, storyVersion, conversation, message, subtaskSuggestion } from "@/db/schema";
+import { ticket, ticketLocalEdit, jiraComment, ticketSubtask, storedReview, storyVersion, conversation, message, subtaskSuggestion, sprintNameCache } from "@/db/schema";
 import { eq, sql, count } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, EpicChild, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
@@ -211,9 +211,11 @@ export async function GET(
     assignee: buildAssignee(l.assignee),
   }));
 
-  // Build subtask counts for epic children
+  // Build subtask counts and resolve sprint names for epic children
   const epicChildKeys = epicChildRows.map((c) => c.jiraKey);
   const subtaskCountMap = new Map<string, number>();
+  const sprintIdToName = new Map<string, string>();
+
   if (epicChildKeys.length > 0) {
     const subtaskCountRows = await db
       .select({ ticketKey: ticketSubtask.ticketKey, total: count() })
@@ -222,6 +224,18 @@ export async function GET(
       .groupBy(ticketSubtask.ticketKey);
     for (const row of subtaskCountRows) {
       subtaskCountMap.set(row.ticketKey, row.total);
+    }
+
+    // Resolve sprint IDs to display names
+    const sprintIds = [...new Set(epicChildRows.map((c) => c.sprintName).filter(Boolean))] as string[];
+    if (sprintIds.length > 0) {
+      const sprintNameRows = await db
+        .select({ sprintId: sprintNameCache.sprintId, displayName: sprintNameCache.displayName })
+        .from(sprintNameCache)
+        .where(sql`${sprintNameCache.sprintId} IN (${sql.join(sprintIds.map((id) => sql`${id}`), sql`, `)})`);
+      for (const row of sprintNameRows) {
+        sprintIdToName.set(row.sprintId, row.displayName);
+      }
     }
   }
 
@@ -232,7 +246,7 @@ export async function GET(
     jiraStatus: (c.status ?? "TO DO") as JiraStatus,
     assignee: buildAssignee(c.assignee),
     storyPoints: c.storyPoints ?? null,
-    sprintName: c.sprintName ?? null,
+    sprintName: c.sprintName ? (sprintIdToName.get(c.sprintName) ?? c.sprintName) : null,
     subtaskCount: subtaskCountMap.get(c.jiraKey) ?? 0,
   }));
 
