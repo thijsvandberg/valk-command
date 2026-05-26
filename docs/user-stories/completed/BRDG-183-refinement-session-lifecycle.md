@@ -1,6 +1,6 @@
 # BRDG-183: Refinement Session Lifecycle & End Modal
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** High
 
 ## Description
