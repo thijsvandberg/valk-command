@@ -1,6 +1,6 @@
 # BRDG-187: Default Sprint for New Stories
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Low
 
 ## Description
