@@ -28,8 +28,6 @@ import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSp
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { SprintPicker } from "@/components/shared/SprintPicker";
-import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
-import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { ApiError, apiFetch, jira, tickets } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
@@ -555,18 +553,6 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                     onChange={handleEpicChange}
                     align="left"
                     ticketKey={ticketKey}
-                  />
-                  <StoryPointPicker
-                    value={ticketAsTicket?.storyPoints ?? null}
-                    onChange={handleStoryPointsChange}
-                    align="left"
-                    size="lg"
-                  />
-                  <BusinessValuePicker
-                    value={ticketAsTicket?.businessValue ?? null}
-                    onChange={handleBusinessValueChange}
-                    align="left"
-                    size="lg"
                   />
                 </nav>
               )}

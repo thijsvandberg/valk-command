@@ -126,6 +126,47 @@ export function MetaApp() {
         </MetaRow>
       </MetaSection>
 
+      {/* Scoring */}
+      <div>
+        <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">Scoring</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <div
+            className="rounded-lg border border-border-subtle px-3 py-2"
+            style={{
+              backgroundColor: ticket.storyPoints != null
+                ? "color-mix(in srgb, var(--color-brand-500) 4%, var(--color-surface-elevated))"
+                : "var(--color-overlay-subtle)",
+              transition: "background-color 0.15s ease",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-caption text-text-muted">Story Points</span>
+              <StoryPointPicker
+                value={ticket.storyPoints}
+                onChange={handleStoryPointsChange}
+              />
+            </div>
+          </div>
+          <div
+            className="rounded-lg border border-border-subtle px-3 py-2"
+            style={{
+              backgroundColor: ticket.businessValue != null
+                ? "color-mix(in srgb, var(--color-brand-500) 4%, var(--color-surface-elevated))"
+                : "var(--color-overlay-subtle)",
+              transition: "background-color 0.15s ease",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-caption text-text-muted">Business Value</span>
+              <BusinessValuePicker
+                value={ticket.businessValue}
+                onChange={handleBusinessValueChange}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Planning */}
       <MetaSection title="Planning">
         <MetaRow label="Sprint">
@@ -146,18 +187,6 @@ export function MetaApp() {
             />
           </MetaRow>
         )}
-        <MetaRow label="Story Points">
-          <StoryPointPicker
-            value={ticket.storyPoints}
-            onChange={handleStoryPointsChange}
-          />
-        </MetaRow>
-        <MetaRow label="Business Value">
-          <BusinessValuePicker
-            value={ticket.businessValue}
-            onChange={handleBusinessValueChange}
-          />
-        </MetaRow>
         {priority && (
           <MetaRow label="Priority">
             <span className="text-xs text-text-secondary">{priority}</span>

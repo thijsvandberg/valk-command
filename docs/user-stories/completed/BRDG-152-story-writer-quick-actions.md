@@ -39,8 +39,8 @@ Three interaction zones:
 ## Acceptance Criteria
 
 - [x] Sprint picker badge in header (replaces read-only link)
-- [x] Story points badge in header (click to change)
-- [x] Business value badge in header (click to change)
+- [x] Story points editable in Meta pane (CompactField grid)
+- [x] Business value editable in Meta pane (CompactField grid)
 - [x] Flag/unflag toggle in "..." dropdown menu
 - [x] New "Meta" pane tab with: assignee, creator, labels, and full metadata overview
 - [x] Changes sync to Jira where applicable (sprint, assignee, epic)
