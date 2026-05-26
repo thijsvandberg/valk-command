@@ -170,6 +170,18 @@ These endpoints require no auth (rate-limited only). The investigation degrades 
 5. Discrepancies between Confluence docs and code surfaced in "What's missing"
 6. Explain mode: Confluence business context enriches the non-technical summary
 
+## VRW Testing
+
+VRW has a Vitest test suite (105 tests, 11 files) covering all core modules. When making changes that affect workspace integration:
+
+- **Task execution**: `task-queue.test.ts` and `task-queue.integration.test.ts` cover the full task lifecycle including SSE event capture, status transitions, and session management
+- **CLI communication**: `stream-runner.test.ts` and `persistent-session.test.ts` test CLI event parsing (system/assistant/result/error) with mocked `child_process`
+- **Session management**: `session-pool.test.ts` covers LRU eviction, idle timeouts, and pool lifecycle
+- **Skill system**: `skills.test.ts` covers registry lookup, prompt loading, frontmatter stripping, and args injection
+- **Scheduling**: `scheduler.test.ts` covers cron registration, job execution, output parsing, and delivery
+
+Run VRW tests from its project root: `cd /path/to/valk-remote-workspace && npm run test`
+
 ## Environment Variables
 
 | Variable | Required | Purpose |
