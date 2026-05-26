@@ -208,5 +208,22 @@ describe("StoryPointPicker", () => {
       fireEvent.click(screen.getByText("3"));
       expect(onChange).toHaveBeenCalledWith(3);
     });
+
+    it("shows inline custom input instead of # button", () => {
+      render(<StoryPointPicker value={null} onChange={() => {}} size="lg" />);
+      fireEvent.click(screen.getByRole("button"));
+      expect(screen.getByPlaceholderText("#")).toBeInTheDocument();
+      expect(screen.queryByTitle("Custom value")).not.toBeInTheDocument();
+    });
+
+    it("submits custom value via inline input on Enter", () => {
+      const onChange = vi.fn();
+      render(<StoryPointPicker value={null} onChange={onChange} size="lg" />);
+      fireEvent.click(screen.getByRole("button"));
+      const input = screen.getByPlaceholderText("#");
+      fireEvent.change(input, { target: { value: "13" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(onChange).toHaveBeenCalledWith(13);
+    });
   });
 });

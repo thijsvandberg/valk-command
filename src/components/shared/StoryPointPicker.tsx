@@ -25,10 +25,12 @@ export function StoryPointPicker({
   const [hovered, setHovered] = useState(false);
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
+  const [lgCustomInput, setLgCustomInput] = useState("");
   const [pos, setPos] = useState<{ top: number; left: number; flipUp: boolean } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
+  const lgCustomInputRef = useRef<HTMLInputElement>(null);
   const handleMouseEnter = useCallback(() => setHovered(true), []);
   const handleMouseLeave = useCallback(() => setHovered(false), []);
 
@@ -65,6 +67,14 @@ export function StoryPointPicker({
     }
     handleClose();
   }, [customInput, onChange, handleClose]);
+
+  const handleLgCustomSubmit = useCallback(() => {
+    const parsed = parseInt(lgCustomInput, 10);
+    if (parsed > 0 && parsed <= 999) {
+      onChange(parsed);
+      handleClose();
+    }
+  }, [lgCustomInput, onChange, handleClose]);
 
   useEffect(() => {
     if (customMode && customInputRef.current) {
@@ -169,10 +179,77 @@ export function StoryPointPicker({
             boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
           }}
         >
-          {isLg && !customMode && (
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Story Points</div>
-          )}
-          {customMode ? (
+          {isLg ? (
+            <>
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Story Points</div>
+              <div className="flex items-center gap-1.5">
+                {/* N/A option */}
+                <button
+                  type="button"
+                  onClick={() => { onChange(0); handleClose(); }}
+                  title="Not applicable"
+                  className="flex h-10 w-10 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+                  style={{
+                    color: isNA ? "#fff" : "#555a64",
+                    backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)",
+                    boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined,
+                  }}
+                >
+                  <Minus size={14} strokeWidth={1.5} />
+                </button>
+
+                {/* Preset options */}
+                {SP_PRESET_OPTIONS.map((n) => {
+                  const c = getSpColor(n);
+                  const isActive = n === value;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => { onChange(n); handleClose(); }}
+                      className="flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+                      style={{
+                        color: isActive ? "#fff" : c.text,
+                        backgroundColor: isActive ? c.text : c.bg,
+                        boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined,
+                      }}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+
+                {/* Inline custom input */}
+                <input
+                  ref={lgCustomInputRef}
+                  type="number"
+                  min="1"
+                  max="999"
+                  value={lgCustomInput}
+                  onChange={(e) => setLgCustomInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); handleLgCustomSubmit(); }
+                    if (e.key === "Escape") { e.preventDefault(); handleClose(); }
+                  }}
+                  placeholder="#"
+                  className="h-10 w-10 rounded-md border border-border-default bg-[var(--color-surface-default)] text-center text-sm font-medium tabular-nums text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  style={{ transition: "border-color 0.15s ease" }}
+                />
+
+                {/* Clear (back to unset) */}
+                {value != null && (
+                  <button
+                    type="button"
+                    onClick={() => { onChange(null); handleClose(); }}
+                    title="Clear"
+                    className="flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60"
+                  >
+                    <X size={14} strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+            </>
+          ) : customMode ? (
             <div className="flex items-center gap-1">
               <input
                 ref={customInputRef}
@@ -197,7 +274,7 @@ export function StoryPointPicker({
               </button>
             </div>
           ) : (
-            <div className={`flex items-center gap-${isLg ? "1.5" : "1"}`}>
+            <div className="flex items-center gap-1">
               {/* N/A option */}
               <button
                 type="button"
@@ -246,7 +323,7 @@ export function StoryPointPicker({
                   boxShadow: isCustomValue ? `0 0 0 1px ${color?.text ?? "var(--color-text-muted)"}40` : undefined,
                 }}
               >
-                <Hash size={isLg ? 13 : 11} strokeWidth={1.5} />
+                <Hash size={11} strokeWidth={1.5} />
               </button>
 
               {/* Clear (back to unset) */}

@@ -101,12 +101,16 @@ function SortableQueueItem({
   );
 }
 
-const DEFAULT_PANE_WIDTH = 400;
 const MIN_PANE_WIDTH = 320;
 const MAX_PANE_WIDTH_RATIO = 0.5;
 
+function getDefaultPaneWidth() {
+  if (typeof window === "undefined") return 400;
+  return Math.max(MIN_PANE_WIDTH, Math.round(window.innerWidth * 0.3));
+}
+
 function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
-  const [width, setWidth] = useState(DEFAULT_PANE_WIDTH);
+  const [width, setWidth] = useState(getDefaultPaneWidth);
   const [isDragging, setIsDragging] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
 
@@ -135,13 +139,15 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={paneRef}
-      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] px-5 py-5"
+      className="group/pane relative shrink-0 overflow-y-auto border-l border-[var(--color-brand-500)]/10 bg-[var(--color-surface-chrome)] px-6 pt-4 pb-6"
       style={{
         width,
         animation: isDragging ? undefined : "fadeInUp 0.15s ease",
         transition: isDragging ? "none" : "width 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}
     >
+      {/* Top accent line */}
+      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-[rgba(14,142,136,0.25)] via-transparent to-transparent" />
       {/* Resize handle */}
       <div
         onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
