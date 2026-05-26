@@ -9,7 +9,8 @@ import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import useSWR from "swr";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse, swrFetcher } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus, Sparkles, Loader2, MoreHorizontal } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus, Sparkles, Loader2, MoreHorizontal, Copy } from "lucide-react";
+import { getJiraUrl } from "@/lib/jira-url";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -853,6 +854,18 @@ export function RefinementPageContent({
   );
   const suggestionCounts = suggestionCountsData?.counts ?? {};
 
+  const [copyToast, setCopyToast] = useState(false);
+  const handleCopyStories = useCallback(() => {
+    const text = queueTickets.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyToast(true);
+      setTimeout(() => setCopyToast(false), 1500);
+    }).catch(() => {
+      // ignore
+    });
+    setBulkSuggestMenuOpen(false);
+  }, [queueTickets]);
+
   const handleBulkSuggest = useCallback(async (force?: boolean) => {
     if (!resolvedSessionId || bulkSuggestRunning) return;
     setBulkSuggestMenuOpen(false);
@@ -1206,13 +1219,20 @@ export function RefinementPageContent({
                               <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-amber-400" />
                               Regenerate all
                             </button>
+                            <div className="my-1 border-t border-border-subtle" />
+                            <button
+                              type="button"
+                              onClick={handleCopyStories}
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
+                              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                            >
+                              <Copy size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+                              Copy stories + titles
+                            </button>
                           </div>
                         )}
                       </div>
                     )}
-                    <span className="text-xs tabular-nums text-text-muted">
-                      {queue.length} ticket{queue.length !== 1 ? "s" : ""}
-                    </span>
                   </div>
                 </div>
 
@@ -1288,6 +1308,14 @@ export function RefinementPageContent({
         onClose={() => setCreateModalOpen(false)}
         onCreate={handleCreateSession}
       />
+
+      {copyToast && (
+        <div
+          className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-text-secondary shadow-[var(--shadow-md)]"
+        >
+          Copied {queueTickets.length} ticket{queueTickets.length !== 1 ? "s" : ""} to clipboard
+        </div>
+      )}
     </>
   );
 }
