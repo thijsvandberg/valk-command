@@ -365,11 +365,28 @@ Saved refinement sessions with persisted ticket queues. Created in advance and s
 | `id` | text PK | UUID |
 | `name` | text | Display name (default: "Refinement YYYY-MM-DD") |
 | `ticket_keys` | text | JSON array of ticket keys |
-| `status` | text | `draft` or `completed` |
+| `status` | text | `draft`, `in_progress`, or `completed` |
+| `general_comment` | text | Session-level PO comment (nullable) |
+| `current_index` | integer | Last viewed ticket index for resume (default 0) |
 | `created_at` | text | ISO timestamp |
 | `updated_at` | text | ISO timestamp, updated on every change |
 
 **Indexes:** `status`, `created_at`
+
+#### `refinement_session_ticket_note`
+
+Per-ticket PO messages within a refinement session. One note per ticket per session.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | UUID |
+| `session_id` | text FK | -> refinement_session.id (cascade delete) |
+| `ticket_key` | text | Jira ticket key |
+| `content` | text | PO message content |
+| `created_at` | text | ISO timestamp |
+| `updated_at` | text | ISO timestamp |
+
+**Indexes:** `session_id`, unique(`session_id`, `ticket_key`)
 
 ### System
 

@@ -164,8 +164,10 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/refinement-sessions` | GET | List all saved sessions (newest first, limit 50) |
 | `/api/refinement-sessions` | POST | Create session (optional: `name`, `ticketKeys`) |
 | `/api/refinement-sessions/[id]` | GET | Get session detail |
-| `/api/refinement-sessions/[id]` | PATCH | Update name, ticketKeys, or status |
+| `/api/refinement-sessions/[id]` | PATCH | Update name, ticketKeys, status, generalComment, currentIndex |
 | `/api/refinement-sessions/[id]` | DELETE | Delete session |
+| `/api/refinement-sessions/[id]/ticket-notes` | GET | List per-ticket PO notes for a session |
+| `/api/refinement-sessions/[id]/ticket-notes` | PUT | Upsert a ticket note (`ticketKey`, `content`); empty content deletes |
 
 ## Settings & Config
 
