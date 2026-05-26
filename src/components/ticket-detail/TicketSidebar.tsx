@@ -265,10 +265,6 @@ export function TicketSidebar({
     }
   }, [ticket.key, epicName, epicKey]);
 
-  useEffect(() => {
-    if (detail?.labels) setLabels(detail.labels);
-  }, [detail?.labels]);
-
   const handleLabelsChange = useCallback(async (newLabels: string[]) => {
     const prev = labels;
     setLabels(newLabels);
