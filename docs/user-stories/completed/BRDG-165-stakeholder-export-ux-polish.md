@@ -1,6 +1,6 @@
 # BRDG-165: Stakeholder Export UX Polish
 
-**Status:** Draft
+**Status:** Done
 **Priority:** High
 **Depends on:** BRDG-156
 
