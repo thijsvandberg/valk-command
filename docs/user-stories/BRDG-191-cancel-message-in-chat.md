@@ -73,23 +73,23 @@ Both chats use SSE streaming from the valk-agent workspace. The streaming infras
 
 ### Phase 5: UI - Cancel Button
 
-- [ ] **Regular Chat** (`MessageInput.tsx`):
+- [x] **Regular Chat** (`MessageInput.tsx`):
   - Show a cancel button (X icon or "Stop" button) while `isStreaming` is true
   - The cancel button replaces or sits next to the send button
   - On click: call `cancelTask()` from the hook
   - After cancel: restore the normal input state
-- [ ] **Story Writer Chat** (`StoryWriterChat.tsx`):
+- [x] **Story Writer Chat** (`StoryWriterChat.tsx`):
   - Show a cancel button in the streaming indicator area (near the progress/status area)
   - On click: call `cancelCurrentTask()` from the hook
   - After cancel: restore the normal input state and quick actions
 
 ### Phase 6: UI - Cancelled Message Styling
 
-- [ ] **Regular Chat** (`MessageList.tsx`):
+- [x] **Regular Chat** (`MessageList.tsx`):
   - Cancelled assistant messages: reduced opacity (0.5), italic "Cancelled" label, no action buttons
   - Cancelled user messages: subtle strikethrough or muted text
   - Partial content (if any was streamed before cancel) still visible but clearly marked as incomplete
-- [ ] **Story Writer Chat** (`ChatMessageParts.tsx`):
+- [x] **Story Writer Chat** (`ChatMessageParts.tsx`):
   - Same visual treatment as regular chat
   - Any parsed special blocks (drafts, suggestions) from a cancelled message should NOT be actionable
   - Add a "Cancelled" badge similar to the "Failed" state styling

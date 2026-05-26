@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
-import { Loader2, SendHorizontal, GripHorizontal } from "lucide-react";
+import { Loader2, SendHorizontal, Square, GripHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 interface ChatInputProps {
@@ -22,6 +22,8 @@ interface ChatInputProps {
   sendAriaLabel?: string;
   /** data-testid for the root element */
   testId?: string;
+  /** Called when the user clicks the cancel/stop button while streaming */
+  onCancel?: () => void;
   /** Programmatically fill the input from outside */
   pendingInput?: string | null;
   onPendingInputConsumed?: () => void;
@@ -34,6 +36,7 @@ export function ChatInput({
   headerSlot,
   footerLeftSlot,
   footerRightSlot,
+  onCancel,
   resizable,
   ariaLabel = "Message input",
   sendAriaLabel = "Send message",
@@ -176,21 +179,34 @@ export function ChatInput({
             </div>
             <div className="flex items-center gap-1.5">
               {footerRightSlot}
-              <Button
-                variant="primary"
-                size="md"
-                iconOnly
-                icon={
-                  sending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
-                  ) : (
-                    <SendHorizontal className="h-3 w-3" strokeWidth={2} />
-                  )
-                }
-                onClick={handleSubmit}
-                disabled={!value.trim() || isBusy}
-                aria-label={sendAriaLabel}
-              />
+              {onCancel && disabled ? (
+                <Button
+                  variant="ghost"
+                  size="md"
+                  iconOnly
+                  icon={<Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />}
+                  onClick={onCancel}
+                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+                  aria-label="Stop generating"
+                  data-testid="cancel-button"
+                />
+              ) : (
+                <Button
+                  variant="primary"
+                  size="md"
+                  iconOnly
+                  icon={
+                    sending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
+                    ) : (
+                      <SendHorizontal className="h-3 w-3" strokeWidth={2} />
+                    )
+                  }
+                  onClick={handleSubmit}
+                  disabled={!value.trim() || isBusy}
+                  aria-label={sendAriaLabel}
+                />
+              )}
             </div>
           </div>
         </div>

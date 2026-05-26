@@ -1,5 +1,6 @@
 "use client";
 
+import { Square } from "lucide-react";
 import type { TaskStreamStatus } from "@/hooks/useWorkspaceTask";
 import { Tag } from "@/components/shared/Tag";
 
@@ -15,6 +16,7 @@ interface TaskProgressProps {
   progressText: string;
   toolCalls: ToolCallEvent[];
   error: string | null;
+  onCancel?: () => void;
 }
 
 function formatToolName(tool: string): string {
@@ -31,6 +33,7 @@ export default function TaskProgress({
   progressText,
   toolCalls,
   error,
+  onCancel,
 }: TaskProgressProps) {
   if (status === "idle" || status === "completed") return null;
 
@@ -60,9 +63,21 @@ export default function TaskProgress({
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
             <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
           </div>
-          <span className="text-xs text-text-secondary truncate">
+          <span className="text-xs text-text-secondary truncate flex-1">
             {label}
           </span>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors duration-150"
+              aria-label="Cancel task"
+              data-testid="task-progress-cancel"
+            >
+              <Square size={9} strokeWidth={2} fill="currentColor" />
+              Stop
+            </button>
+          )}
         </div>
 
         {/* Tool calls (compact list) */}

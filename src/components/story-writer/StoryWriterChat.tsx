@@ -9,6 +9,7 @@ import type { QuickPrompt, QuickPromptsConfig } from "@/app/api/settings/quick-p
 import {
   Loader2,
   SendHorizontal,
+  Square,
   FileText,
   Star,
   Search,
@@ -46,6 +47,7 @@ interface StoryWriterChatProps {
   onSend: (content: string, skill?: string) => Promise<boolean>;
   onRetry?: (messageId: string) => Promise<boolean>;
   onClearFailed?: () => Promise<void>;
+  onCancel?: () => void;
   onFindRelated?: () => void;
   onOpenRelatedPanel?: () => void;
   onStoryKeyClick?: (key: string) => void;
@@ -100,8 +102,8 @@ const QUICK_ACTIONS: {
     id: "match-epic",
     label: "Match Epic",
     icon: Target,
-    prompt: "",
-    enabled: false,
+    prompt: "Suggest the best epic for this story",
+    enabled: true,
   },
   {
     id: "tech-analysis",
@@ -181,6 +183,7 @@ export function StoryWriterChat({
   onSend,
   onRetry,
   onClearFailed,
+  onCancel,
   onFindRelated,
   onOpenRelatedPanel,
   onStoryKeyClick,
@@ -609,6 +612,8 @@ export function StoryWriterChat({
                     setShowActions(false);
                     if (actionId === "find-related") {
                       onFindRelated?.();
+                    } else if (actionId === "match-epic") {
+                      onSend(prompt, "match-epic");
                     } else {
                       fillInput(prompt);
                     }
@@ -655,20 +660,33 @@ export function StoryWriterChat({
                 >
                   Codebase
                 </Button>
-                <Button
-                  variant="primary"
-                  size="md"
-                  iconOnly
-                  icon={
-                    isBusy ? (
-                      <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
-                    ) : (
-                      <SendHorizontal className="h-3 w-3" strokeWidth={2} />
-                    )
-                  }
-                  onClick={handleSubmit}
-                  disabled={!inputValue.trim() || isBusy}
-                />
+                {isBusy && onCancel ? (
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    iconOnly
+                    icon={<Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />}
+                    onClick={onCancel}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+                    aria-label="Stop generating"
+                    data-testid="cancel-button"
+                  />
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    iconOnly
+                    icon={
+                      isBusy ? (
+                        <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
+                      ) : (
+                        <SendHorizontal className="h-3 w-3" strokeWidth={2} />
+                      )
+                    }
+                    onClick={handleSubmit}
+                    disabled={!inputValue.trim() || isBusy}
+                  />
+                )}
               </div>
             </div>
           </div>

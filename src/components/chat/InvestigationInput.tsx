@@ -11,6 +11,7 @@ interface InvestigationInputProps {
   onSend: (content: string) => Promise<boolean>;
   onConfigChange: (config: InvestigationConfig) => void;
   disabled?: boolean;
+  onCancel?: () => void;
 }
 
 function ModeToggle({ explainMode, onChange }: { explainMode: boolean; onChange: (v: boolean) => void }) {
@@ -48,6 +49,7 @@ export default function InvestigationInput({
   onSend,
   onConfigChange,
   disabled,
+  onCancel,
 }: InvestigationInputProps) {
   const [explainMode, setExplainMode] = useState(false);
 
@@ -59,6 +61,7 @@ export default function InvestigationInput({
     <ChatInput
       onSend={onSend}
       disabled={disabled}
+      onCancel={onCancel}
       placeholder="Ask a question about the codebase... (include a Jira key like VPL-20661 for extra context)"
       ariaLabel="Investigation question"
       sendAriaLabel="Send investigation"

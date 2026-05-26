@@ -12,6 +12,8 @@ interface ChatBubbleProps {
   showTimestamp?: "always" | "hover";
   /** Dim the bubble (optimistic/sending state) */
   dimmed?: boolean;
+  /** Mark the message as cancelled */
+  cancelled?: boolean;
   /** Actions rendered inside the bubble (e.g. CopyActions) */
   actions?: ReactNode;
   /** data-testid for the bubble container */
@@ -26,6 +28,7 @@ export function ChatBubble({
   timestamp,
   showTimestamp = "hover",
   dimmed,
+  cancelled,
   actions,
   testId,
   className,
@@ -41,23 +44,30 @@ export function ChatBubble({
           isUser
             ? "rounded-br-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.18)]"
             : "rounded-bl-lg bg-[var(--color-surface-floating)] text-text-primary border border-border-default"
-        } ${dimmed ? "opacity-60" : ""} ${className ?? ""}`}
+        } ${dimmed ? "opacity-60" : ""} ${cancelled ? "opacity-40" : ""} ${className ?? ""}`}
         data-testid={testId ?? `message-${role}`}
       >
         {children}
-        {actions}
+        {cancelled ? null : actions}
       </div>
-      {timestamp && (
-        <span
-          className={`mt-1 text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${
-            showTimestamp === "always"
-              ? "opacity-100"
-              : "opacity-0 group-hover/msg:opacity-100"
-          }`}
-        >
-          {formatTimestamp(timestamp)}
-        </span>
-      )}
+      <div className={`mt-1 flex items-center gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
+        {cancelled && (
+          <span className="text-[10px] font-medium text-red-400/60 uppercase tracking-wider select-none" data-testid="cancelled-badge">
+            Cancelled
+          </span>
+        )}
+        {timestamp && (
+          <span
+            className={`text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${
+              showTimestamp === "always"
+                ? "opacity-100"
+                : "opacity-0 group-hover/msg:opacity-100"
+            }`}
+          >
+            {formatTimestamp(timestamp)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

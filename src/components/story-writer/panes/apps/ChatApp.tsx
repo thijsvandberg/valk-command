@@ -151,6 +151,7 @@ export function ChatApp() {
           onSend={writer.onSend}
           onRetry={writer.onRetry}
           onClearFailed={writer.onClearFailed}
+          onCancel={(writer.status === "streaming" || writer.status === "sending") ? writer.onCancel : undefined}
           onFindRelated={handleFindRelated}
           onOpenRelatedPanel={handleOpenRelatedPanel}
           onStoryKeyClick={handleStoryKeyClick}

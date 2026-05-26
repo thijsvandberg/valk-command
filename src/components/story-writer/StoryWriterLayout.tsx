@@ -421,6 +421,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     onSend: writer.sendMessage,
     onRetry: writer.retryMessage,
     onClearFailed: writer.clearFailedMessages,
+    onCancel: writer.cancelCurrentTask,
     onCreateLink: async (targetKey: string, relation: string) => {
       await writer.createLink(targetKey, relation);
       mutateTicket();

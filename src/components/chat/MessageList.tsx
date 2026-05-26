@@ -291,16 +291,21 @@ export default function MessageList({ messages, loading, error, conversation, sh
             return (
               <div key={message.id} className="group/msg flex flex-col items-start">
                 <div
-                  className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""}`}
+                  className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""} ${message.cancelled ? "opacity-40" : ""}`}
                   data-testid="message-investigation"
                 >
                   <MessageContent content={message.content} />
                 </div>
-                {ts && (
-                  <span className={`mt-1 text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${isLast ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100"}`}>
-                    {ts}
-                  </span>
-                )}
+                <div className="mt-1 flex items-center gap-2">
+                  {message.cancelled && (
+                    <span className="text-[10px] font-medium text-red-400/60 uppercase tracking-wider select-none">Cancelled</span>
+                  )}
+                  {ts && (
+                    <span className={`text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${isLast ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100"}`}>
+                      {ts}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           }
@@ -312,6 +317,7 @@ export default function MessageList({ messages, loading, error, conversation, sh
               timestamp={message.timestamp}
               showTimestamp={isLast ? "always" : "hover"}
               dimmed={isSending}
+              cancelled={message.cancelled}
               actions={
                 <>
                   {isSending && (

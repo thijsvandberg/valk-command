@@ -581,6 +581,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
                 progressText={workspaceTask.progressText}
                 toolCalls={workspaceTask.toolCalls}
                 error={workspaceTask.error}
+                onCancel={(workspaceTask.status === "submitting" || workspaceTask.status === "streaming") ? () => workspaceTask.cancelTask() : undefined}
               />
             )}
             {isInvestigation ? (
@@ -588,11 +589,13 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
                 onSend={handleSend}
                 onConfigChange={handleInvestigationConfigChange}
                 disabled={workspaceTask.status === "submitting" || workspaceTask.status === "streaming"}
+                onCancel={(workspaceTask.status === "submitting" || workspaceTask.status === "streaming") ? () => workspaceTask.cancelTask() : undefined}
               />
             ) : (
               <MessageInput
                 onSend={handleSend}
                 disabled={workspaceTask.status === "submitting" || workspaceTask.status === "streaming"}
+                onCancel={(workspaceTask.status === "submitting" || workspaceTask.status === "streaming") ? () => workspaceTask.cancelTask() : undefined}
               />
             )}
           </>

@@ -25,6 +25,7 @@ import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { TitleSuggestionChips } from "@/components/story-writer/TitleSuggestionChips";
 import { TypeSuggestionChip } from "@/components/story-writer/TypeSuggestionChip";
 import { LinkSuggestionChips, type LinkSuggestion } from "@/components/story-writer/LinkSuggestionChips";
+import { EpicSuggestionCard, type EpicSuggestion } from "@/components/story-writer/EpicSuggestionCard";
 
 export const SHOW_MORE_WORD_THRESHOLD = 80;
 export const TRUNCATE_WORD_COUNT = 40;
@@ -94,6 +95,74 @@ export function stripLinkSuggestionTags(content: string): string {
   return content
     .replace(/<link-suggestions>[\s\S]*?<\/link-suggestions>/g, "")
     .replace(/<link-suggestion\s[^/]*\/>/g, "");
+}
+
+const VALID_CONFIDENCE = new Set(["high", "medium", "low"]);
+
+export function parseEpicSuggestions(content: string): EpicSuggestion[] {
+  const results: EpicSuggestion[] = [];
+  const seen = new Set<string>();
+
+  // XML format: <epic-suggestion><epic key="..." confidence="..." reason="..." />...</epic-suggestion>
+  const xmlMatch = content.match(/<epic-suggestion>([\s\S]*?)<\/epic-suggestion>/);
+  if (xmlMatch) {
+    for (const m of xmlMatch[1].matchAll(/<epic\s+key="([^"]+)"\s+confidence="([^"]+)"\s+reason="([^"]+)"\s*\/>/g)) {
+      const key = m[1];
+      const confidence = VALID_CONFIDENCE.has(m[2]) ? m[2] as EpicSuggestion["confidence"] : "low";
+      if (!seen.has(key)) {
+        seen.add(key);
+        results.push({ key, name: key, confidence, reason: m[3] });
+      }
+    }
+  }
+
+  // JSON format: <json-output>[{key, name, confidence, reason}]</json-output>
+  if (results.length === 0) {
+    const jsonMatch = content.match(/<json-output>([\s\S]*?)<\/json-output>/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1]);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item && typeof item.key === "string" && typeof item.confidence === "string") {
+              const key = item.key;
+              const confidence = VALID_CONFIDENCE.has(item.confidence) ? item.confidence as EpicSuggestion["confidence"] : "low";
+              if (!seen.has(key)) {
+                seen.add(key);
+                results.push({
+                  key,
+                  name: typeof item.name === "string" ? item.name : key,
+                  confidence,
+                  reason: typeof item.reason === "string" ? item.reason : "",
+                });
+              }
+            }
+          }
+        }
+      } catch {
+        // Not valid JSON, skip
+      }
+    }
+  }
+
+  return results;
+}
+
+export function stripEpicSuggestionTags(content: string): string {
+  let result = content.replace(/<epic-suggestion>[\s\S]*?<\/epic-suggestion>/g, "");
+  // Only strip <json-output> blocks that contain epic suggestion data (have "confidence" key)
+  result = result.replace(/<json-output>([\s\S]*?)<\/json-output>/g, (match, inner) => {
+    try {
+      const parsed = JSON.parse(inner);
+      if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0]?.confidence === "string") {
+        return "";
+      }
+    } catch {
+      // Not JSON, leave it
+    }
+    return match;
+  });
+  return result;
 }
 
 export function MessageInfoButton({
@@ -182,6 +251,8 @@ export function ChatMessage({
   onApplyType,
   onCreateLink,
   linkedIssueKeys,
+  onApplyEpic,
+  currentEpicKey,
   currentTitle,
   currentType,
 }: {
@@ -200,6 +271,8 @@ export function ChatMessage({
   onApplyType?: (type: string) => void;
   onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys?: Set<string>;
+  onApplyEpic?: (epicKey: string) => Promise<void>;
+  currentEpicKey?: string | null;
   currentTitle?: string;
   currentType?: string;
 }) {
@@ -235,15 +308,21 @@ export function ChatMessage({
   }, [onStoryKeyClick]);
 
   // Strip non-title-suggestions tags first, keep the title-suggestions tag for positional splitting
-  const baseContent = stripLinkSuggestionTags(
-    message.content
-      .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
-      .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
-      .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
-      .replace(/<summary>[\s\S]*?<\/summary>/g, "")
-      .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
-      .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, ""),
+  const baseContent = stripEpicSuggestionTags(
+    stripLinkSuggestionTags(
+      message.content
+        .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
+        .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
+        .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
+        .replace(/<summary>[\s\S]*?<\/summary>/g, "")
+        .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
+        .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, ""),
+    ),
   );
+
+  const epicSuggestions = message.role === "assistant"
+    ? parseEpicSuggestions(message.content)
+    : [];
 
   const typeSuggestion = (() => {
     if (message.role !== "assistant") return null;
@@ -295,10 +374,12 @@ export function ChatMessage({
   const draftOnly = !displayContent && !contentAfter && !allTitleSuggestions.length && !!draftId;
   const isLong = countWords(displayContent) > SHOW_MORE_WORD_THRESHOLD;
   const truncatedContent = isLong ? truncateAtWords(displayContent, TRUNCATE_WORD_COUNT) : displayContent;
+  const isCancelled = !!message.cancelled;
 
   return (
-    <div className={`group flex items-end gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}>
-      {isUser && (displayContent || draftId) && (
+    <div className={`group flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+    <div className={`flex items-end gap-2.5 ${isUser ? "justify-end" : "justify-start"} w-full`}>
+      {isUser && (displayContent || draftId) && !isCancelled && (
         <MessageInfoButton
           message={message}
           logsTaskId={logsTaskId ?? null}
@@ -323,7 +404,7 @@ export function ChatMessage({
             : isUser
               ? "px-4 py-3 rounded-2xl rounded-br-lg bg-[var(--color-brand-600)]/[0.18] text-text-primary border border-[var(--color-brand-500)]/[0.18] shadow-sm"
               : "px-4 py-3 rounded-2xl rounded-bl-lg bg-[var(--color-surface-floating)] text-text-primary border border-border-default shadow-sm"
-        }`}
+        } ${isCancelled ? "opacity-40" : ""}`}
       >
         {displayContent && (
           <div>
@@ -356,6 +437,13 @@ export function ChatMessage({
             suggestions={linkSuggestions}
             linkedIssueKeys={linkedIssueKeys ?? new Set()}
             onLink={onCreateLink}
+          />
+        )}
+        {epicSuggestions.length > 0 && onApplyEpic && (
+          <EpicSuggestionCard
+            suggestions={epicSuggestions}
+            currentEpicKey={currentEpicKey ?? null}
+            onApply={onApplyEpic}
           />
         )}
         {contentAfter && (
@@ -449,7 +537,7 @@ export function ChatMessage({
         )}
       </div>
 
-      {!isUser && (displayContent || contentAfter || draftId || allTitleSuggestions.length > 0) && (
+      {!isUser && !isCancelled && (displayContent || contentAfter || draftId || allTitleSuggestions.length > 0) && (
         <MessageInfoButton
           message={message}
           logsTaskId={logsTaskId ?? null}
@@ -457,6 +545,12 @@ export function ChatMessage({
           isUser={false}
         />
       )}
+    </div>
+    {isCancelled && (
+      <span className={`mt-1 text-[10px] font-medium text-red-400/60 uppercase tracking-wider select-none ${isUser ? "mr-1" : "ml-[34px]"}`} data-testid="cancelled-badge">
+        Cancelled
+      </span>
+    )}
     </div>
   );
 }
