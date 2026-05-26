@@ -195,6 +195,8 @@ export async function POST(request: Request, { params }: RouteContext) {
           continue;
         }
 
+        const ticketLabel = `[${key}](/tickets/${key}) ${ticketRow.title}`;
+
         // Smart skip: check if suggestions are already up to date
         if (!force) {
           const latestSuggestion = db
@@ -210,7 +212,7 @@ export async function POST(request: Request, { params }: RouteContext) {
               postMessage(
                 convId,
                 "assistant",
-                `Skipped [${key}](/tickets/${key}) - suggestions are up to date (generated after last change).`,
+                `Skipped ${ticketLabel} - suggestions are up to date.`,
               );
               skipped++;
               continue;
@@ -225,8 +227,6 @@ export async function POST(request: Request, { params }: RouteContext) {
           .where(eq(ticketSubtask.ticketKey, key))
           .all();
         const existingTitles = existingSubtasks.map((s) => s.title);
-
-        postMessage(convId, "assistant", `Generating subtasks for [${key}](/tickets/${key})...`);
 
         // Submit suggest-subtasks skill to VRW
         const taskConversationId = `bulk-suggest-task-${key}-${Date.now()}`;
@@ -247,11 +247,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         });
 
         if (!result.ok) {
-          postMessage(
-            convId,
-            "assistant",
-            `Failed to generate for [${key}](/tickets/${key}): ${result.error.error}`,
-          );
+          postMessage(convId, "assistant", `Failed: ${ticketLabel} - ${result.error.error}`);
           failed++;
           continue;
         }
@@ -260,7 +256,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         const taskId = typeof taskData.id === "string" ? taskData.id : null;
 
         if (!taskId) {
-          postMessage(convId, "assistant", `Failed to generate for [${key}](/tickets/${key}): no task ID returned.`);
+          postMessage(convId, "assistant", `Failed: ${ticketLabel} - no task ID returned.`);
           failed++;
           continue;
         }
@@ -269,11 +265,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         const { output, error: taskError } = await captureSubtaskResult(taskId);
 
         if (taskError || !output) {
-          postMessage(
-            convId,
-            "assistant",
-            `Failed to generate for [${key}](/tickets/${key}): ${taskError ?? "no output"}`,
-          );
+          postMessage(convId, "assistant", `Failed: ${ticketLabel} - ${taskError ?? "no output"}`);
           failed++;
           continue;
         }
@@ -298,13 +290,13 @@ export async function POST(request: Request, { params }: RouteContext) {
         postMessage(
           convId,
           "assistant",
-          `Generated ${titles.length} subtask suggestion${titles.length !== 1 ? "s" : ""} for [${key}](/tickets/${key}).`,
+          `Generated ${titles.length} suggestion${titles.length !== 1 ? "s" : ""} for ${ticketLabel}`,
         );
         generated++;
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error";
         logger.error("bulk-suggest-subtasks", `Error processing ${key}`, errMsg);
-        postMessage(convId, "assistant", `Failed to generate for [${key}](/tickets/${key}): ${errMsg}`);
+        postMessage(convId, "assistant", `Failed: [${key}](/tickets/${key}) - ${errMsg}`);
         failed++;
       }
     }

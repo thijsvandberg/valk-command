@@ -9,7 +9,7 @@ import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import useSWR from "swr";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse, swrFetcher } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus, Sparkles, Loader2 } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus, Sparkles, Loader2, MoreHorizontal } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -1170,42 +1170,41 @@ export function RefinementPageContent({
                         <button
                           type="button"
                           onClick={() => setBulkSuggestMenuOpen(!bulkSuggestMenuOpen)}
-                          disabled={bulkSuggestRunning}
-                          className={`flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
-                            bulkSuggestRunning
-                              ? "border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] text-[var(--color-brand-500)] cursor-default"
-                              : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary"
+                          className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                            bulkSuggestMenuOpen
+                              ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                              : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
                           }`}
-                          style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
-                          title="Suggest subtasks for all tickets"
-                          aria-label="Suggest subtasks for all tickets"
+                          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                          aria-label="Queue actions"
                         >
                           {bulkSuggestRunning ? (
-                            <Loader2 size={12} strokeWidth={2} className="animate-spin" />
+                            <Loader2 size={14} strokeWidth={1.5} className="animate-spin text-[var(--color-brand-400)]" />
                           ) : (
-                            <Sparkles size={12} strokeWidth={2} />
+                            <MoreHorizontal size={15} strokeWidth={1.5} />
                           )}
-                          <span className="hidden sm:inline">
-                            {bulkSuggestRunning ? "Generating..." : "Suggest subtasks"}
-                          </span>
                         </button>
-                        {bulkSuggestMenuOpen && !bulkSuggestRunning && (
-                          <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+                        {bulkSuggestMenuOpen && (
+                          <div className="absolute right-0 top-full z-30 mt-1 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]">
                             <button
                               type="button"
                               onClick={() => handleBulkSuggest(false)}
-                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
+                              disabled={bulkSuggestRunning}
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40"
+                              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                             >
-                              <Sparkles size={11} strokeWidth={2} className="text-[var(--color-brand-400)]" />
-                              <span>Suggest subtasks</span>
+                              <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
+                              Suggest subtasks
                             </button>
                             <button
                               type="button"
                               onClick={() => handleBulkSuggest(true)}
-                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
+                              disabled={bulkSuggestRunning}
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40"
+                              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                             >
-                              <Sparkles size={11} strokeWidth={2} className="text-amber-400" />
-                              <span>Regenerate all</span>
+                              <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-amber-400" />
+                              Regenerate all
                             </button>
                           </div>
                         )}
