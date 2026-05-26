@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
+import { resolveDraftKey } from "@/lib/draft-sync";
 import { db } from "@/db";
 import { ticketLink, relatedSuggestionCache } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -30,9 +31,10 @@ const RELATION_TO_JIRA: Record<string, { type: string; direction: "outward" | "i
 };
 
 export async function POST(request: Request, { params }: RouteContext) {
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   const t = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
@@ -120,9 +122,10 @@ export async function POST(request: Request, { params }: RouteContext) {
 }
 
 export async function DELETE(request: Request, { params }: RouteContext) {
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   let body: { jiraLinkId?: string; linkedKey?: string };
   try {

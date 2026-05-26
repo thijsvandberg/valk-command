@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Link2, Check, Loader2 } from "lucide-react";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets } from "@/lib/api-client";
+import type { JiraStatus, TicketReadiness } from "@/types/ticket";
 
 export interface LinkSuggestion {
   key: string;
@@ -13,6 +14,8 @@ export interface LinkSuggestion {
 interface ResolvedInfo {
   title: string;
   type: string;
+  status: string;
+  readiness: TicketReadiness | null;
 }
 
 interface LinkSuggestionChipsProps {
@@ -45,12 +48,19 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
     if (keysToResolve.length === 0) return;
 
     for (const key of keysToResolve) {
-      tickets.searchForLink(key, undefined)
-        .then((results) => {
+      tickets.get(key)
+        .then((data) => {
           if (cancelled) return;
-          const match = results.find((r) => r.key === key);
-          if (match) {
-            setResolved((prev) => ({ ...prev, [key]: { title: match.title, type: match.type } }));
+          if (data) {
+            setResolved((prev) => ({
+              ...prev,
+              [key]: {
+                title: data.title,
+                type: data.type,
+                status: data.jiraStatus,
+                readiness: data.readiness,
+              },
+            }));
           }
         })
         .catch(() => {});
@@ -59,6 +69,20 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
   }, [suggestions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (suggestions.length === 0) return null;
+
+  // Group suggestions by relation type, preserving order of first appearance
+  const groupedRelations: [string, LinkSuggestion[]][] = [];
+  const groupMap = new Map<string, LinkSuggestion[]>();
+  for (const s of suggestions) {
+    const existing = groupMap.get(s.relation);
+    if (existing) {
+      existing.push(s);
+    } else {
+      const group = [s];
+      groupMap.set(s.relation, group);
+      groupedRelations.push([s.relation, group]);
+    }
+  }
 
   const handleLink = async (key: string, relation: string) => {
     setLinking((prev) => new Set(prev).add(key));
@@ -82,61 +106,75 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
         </span>
       </div>
       <div className="divide-y divide-border-subtle">
-        {suggestions.map((s) => {
-          const alreadyLinked = linkedIssueKeys.has(s.key);
-          const justLinked = linked.has(s.key);
-          const isLinking = linking.has(s.key);
-          const hasError = errors.has(s.key);
-          const relationLabel = RELATION_LABELS[s.relation] ?? s.relation;
-          const info = resolved[s.key];
-
+        {groupedRelations.map(([relation, items]) => {
+          const relationLabel = RELATION_LABELS[relation] ?? relation;
           return (
-            <div
-              key={s.key}
-              className={`flex flex-col gap-1 px-3 py-2 transition-colors duration-150 ${
-                justLinked || alreadyLinked
-                  ? "bg-[var(--color-brand-500)]/[0.04]"
-                  : "hover:bg-overlay-subtle"
-              }`}
-            >
-              <span className="text-caption text-text-muted">{relationLabel}</span>
-              <div className="flex items-center gap-2">
-                {info && <IssueTypeIcon type={info.type} size={13} />}
-                <span className="font-mono text-label text-[var(--color-brand-400)] shrink-0">{s.key}</span>
-                {info && (
-                  <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>
-                )}
-                {!info && <span className="flex-1" />}
-              {alreadyLinked ? (
-                <span className="text-caption text-text-muted shrink-0">Already linked</span>
-              ) : justLinked ? (
-                <span className="flex items-center gap-1 text-caption font-medium text-emerald-400 shrink-0">
-                  <Check size={10} strokeWidth={2.5} />
-                  Linked
-                </span>
-              ) : hasError ? (
-                <button
-                  type="button"
-                  onClick={() => handleLink(s.key, s.relation)}
-                  className="shrink-0 text-caption font-medium text-red-400 cursor-pointer hover:text-red-300 transition-colors duration-150"
-                >
-                  Retry
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleLink(s.key, s.relation)}
-                  disabled={isLinking}
-                  className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50"
-                >
-                  {isLinking ? (
-                    <Loader2 size={10} className="animate-spin" />
-                  ) : (
-                    "Link"
-                  )}
-                </button>
-              )}
+            <div key={relation}>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-subtle">
+                <span className="text-caption text-text-muted">{relationLabel}</span>
               </div>
+              {items.map((s) => {
+                const alreadyLinked = linkedIssueKeys.has(s.key);
+                const justLinked = linked.has(s.key);
+                const isLinking = linking.has(s.key);
+                const hasError = errors.has(s.key);
+                const info = resolved[s.key];
+
+                return (
+                  <div
+                    key={s.key}
+                    className={`flex items-center gap-2 px-3 py-2 transition-colors duration-150 ${
+                      justLinked || alreadyLinked
+                        ? "bg-[var(--color-brand-500)]/[0.04]"
+                        : "hover:bg-overlay-subtle"
+                    }`}
+                  >
+                    <TicketStatusPill
+                      ticketKey={s.key}
+                      issueType={info?.type ?? "task"}
+                      jiraStatus={(info?.status ?? "TO DO") as JiraStatus}
+                      readiness={info?.readiness ?? undefined}
+                      title={info?.title}
+                      size="sm"
+                      variant="list"
+                      compact
+                    />
+                    {info && (
+                      <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>
+                    )}
+                    {!info && <span className="flex-1" />}
+                    {alreadyLinked ? (
+                      <span className="text-caption text-text-muted shrink-0">Already linked</span>
+                    ) : justLinked ? (
+                      <span className="flex items-center gap-1 text-caption font-medium text-emerald-400 shrink-0">
+                        <Check size={10} strokeWidth={2.5} />
+                        Linked
+                      </span>
+                    ) : hasError ? (
+                      <button
+                        type="button"
+                        onClick={() => handleLink(s.key, s.relation)}
+                        className="shrink-0 text-caption font-medium text-red-400 cursor-pointer hover:text-red-300 transition-colors duration-150"
+                      >
+                        Retry
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleLink(s.key, s.relation)}
+                        disabled={isLinking}
+                        className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50"
+                      >
+                        {isLinking ? (
+                          <Loader2 size={10} className="animate-spin" />
+                        ) : (
+                          "Link"
+                        )}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}

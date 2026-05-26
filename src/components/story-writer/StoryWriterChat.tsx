@@ -63,6 +63,8 @@ interface StoryWriterChatProps {
   onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys?: Set<string>;
   issueType?: IssueType;
+  currentTitle?: string;
+  currentType?: string;
   pendingInput?: string | null;
   onPendingInputConsumed?: () => void;
 }
@@ -144,6 +146,8 @@ export function StoryWriterChat({
   onCreateLink,
   linkedIssueKeys,
   issueType = "story",
+  currentTitle,
+  currentType,
   pendingInput,
   onPendingInputConsumed,
 }: StoryWriterChatProps) {
@@ -352,6 +356,8 @@ export function StoryWriterChat({
                 onStoryKeyClick={onStoryKeyClick}
                 onApplyTitle={onApplyTitle}
                 onApplyType={onApplyType}
+                currentTitle={currentTitle}
+                currentType={currentType}
                 onCreateLink={onCreateLink}
                 linkedIssueKeys={linkedIssueKeys}
               />

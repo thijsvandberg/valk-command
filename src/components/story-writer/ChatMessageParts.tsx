@@ -182,6 +182,8 @@ export function ChatMessage({
   onApplyType,
   onCreateLink,
   linkedIssueKeys,
+  currentTitle,
+  currentType,
 }: {
   message: Message;
   draftId?: string;
@@ -198,6 +200,8 @@ export function ChatMessage({
   onApplyType?: (type: string) => void;
   onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys?: Set<string>;
+  currentTitle?: string;
+  currentType?: string;
 }) {
   const isUser = message.role === "user";
   const [expanded, setExpanded] = useState(false);
@@ -342,10 +346,10 @@ export function ChatMessage({
           </div>
         )}
         {allTitleSuggestions.length > 0 && onApplyTitle && (
-          <TitleSuggestionChips titles={allTitleSuggestions} onApply={onApplyTitle} />
+          <TitleSuggestionChips titles={allTitleSuggestions} onApply={onApplyTitle} currentTitle={currentTitle} />
         )}
         {typeSuggestion && onApplyType && (
-          <TypeSuggestionChip type={typeSuggestion} onApply={onApplyType} />
+          <TypeSuggestionChip type={typeSuggestion} onApply={onApplyType} currentType={currentType} />
         )}
         {linkSuggestions.length > 0 && onCreateLink && (
           <LinkSuggestionChips

@@ -82,13 +82,18 @@ export function useStoryWriter(ticketKey: string) {
     refreshSession,
   });
 
+  // Only run cleanup on actual unmount. The hook already self-cleans timers via
+  // its own useEffect([], ...) cleanup. Using [drafts] here would fire cleanup
+  // on every render (new object reference), killing debounce timers prematurely.
+  const clearTimersRef = useRef(drafts.clearTimers);
+  clearTimersRef.current = drafts.clearTimers;
   useEffect(() => {
     unmountedRef.current = false;
     return () => {
       unmountedRef.current = true;
-      drafts.clearTimers();
+      clearTimersRef.current();
     };
-  }, [drafts]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;

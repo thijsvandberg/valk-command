@@ -7,6 +7,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 interface TypeSuggestionChipProps {
   type: string;
   onApply: (type: string) => void;
+  currentType?: string;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -16,35 +17,48 @@ const TYPE_LABELS: Record<string, string> = {
   spike: "Spike",
 };
 
-export function TypeSuggestionChip({ type, onApply }: TypeSuggestionChipProps) {
-  const [applied, setApplied] = useState(false);
+export function TypeSuggestionChip({ type, onApply, currentType }: TypeSuggestionChipProps) {
+  const [clicked, setClicked] = useState(false);
 
+  const applied = clicked || currentType === type;
   const label = TYPE_LABELS[type] ?? type;
 
   const handleApply = () => {
-    setApplied(true);
+    setClicked(true);
     onApply(type);
   };
 
   return (
-    <div className="mt-2 flex items-center gap-2">
-      <div className="flex items-center gap-2 rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5">
-        <ArrowRight size={11} strokeWidth={1.5} className="text-text-muted shrink-0" />
-        <span className="text-xs text-text-secondary">Change type to</span>
+    <div className="mt-3 rounded-lg border border-border-default overflow-hidden">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default">
+        <ArrowRight size={10} strokeWidth={1.5} className="text-text-muted" />
+        <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
+          Type change
+        </span>
+      </div>
+      <div
+        className={`flex items-center gap-2.5 px-3 py-2 transition-colors duration-150 ${
+          applied
+            ? "bg-[var(--color-brand-500)]/[0.04]"
+            : "hover:bg-overlay-subtle"
+        }`}
+      >
+        <span className="text-body-sm text-text-secondary">Change type to</span>
         <span className="flex items-center gap-1.5">
           <IssueTypeIcon type={type} size={13} />
-          <span className="text-xs font-medium text-text-primary">{label}</span>
+          <span className="text-body-sm font-medium text-text-primary">{label}</span>
         </span>
+        <span className="flex-1" />
         {applied ? (
-          <span className="flex items-center gap-1 text-xs font-medium text-emerald-400 ml-1">
-            <Check size={11} strokeWidth={2.5} />
+          <span className="flex items-center gap-1 text-caption font-medium text-emerald-400 shrink-0">
+            <Check size={10} strokeWidth={2.5} />
             Applied
           </span>
         ) : (
           <button
             type="button"
             onClick={handleApply}
-            className="ml-1 rounded-md px-2.5 py-0.5 text-xs font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+            className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150"
           >
             Accept
           </button>

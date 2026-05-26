@@ -6,15 +6,16 @@ import { Check, Type } from "lucide-react";
 interface TitleSuggestionChipsProps {
   titles: string[];
   onApply: (title: string) => void;
+  currentTitle?: string;
 }
 
-export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsProps) {
-  const [selected, setSelected] = useState<string | null>(null);
+export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSuggestionChipsProps) {
+  const [clicked, setClicked] = useState<string | null>(null);
 
   if (titles.length === 0) return null;
 
   const handleApply = (title: string) => {
-    setSelected(title);
+    setClicked(title);
     onApply(title);
   };
 
@@ -28,7 +29,7 @@ export function TitleSuggestionChips({ titles, onApply }: TitleSuggestionChipsPr
       </div>
       <div className="divide-y divide-border-subtle">
         {titles.map((title, i) => {
-          const isSelected = selected === title;
+          const isSelected = clicked === title || currentTitle === title;
           return (
             <div
               key={title}

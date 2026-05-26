@@ -4,6 +4,7 @@ import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
 import type { UpdateMetadataInput } from "@/services/ticket-service";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { resolveDraftKey } from "@/lib/draft-sync";
 
 export async function PUT(
   request: Request,
@@ -12,9 +13,10 @@ export async function PUT(
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
 
   let body: UpdateMetadataInput;
   try {

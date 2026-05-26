@@ -16,7 +16,7 @@ export function resolveDraftKey(key: string): string {
 }
 
 interface DraftSyncParams {
-  title: string;
+  title?: string;
   sprintId?: string;
   issueType: string;
 }
@@ -30,7 +30,7 @@ export async function syncDraftToJira(draftKey: string, params: DraftSyncParams)
 
   try {
     const result = await jiraClient.createIssue({
-      summary: params.title,
+      summary: params.title || "Untitled draft",
       sprintId: params.sprintId,
       issueType: params.issueType,
       description: { type: "doc", version: 1, content: [] },
