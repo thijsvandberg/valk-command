@@ -21,7 +21,7 @@ interface RefinementSessionState {
 }
 
 interface RefinementSessionActions {
-  startSession: (keys: string[], meta?: QueueTicketMeta[], savedSessionId?: string) => void;
+  startSession: (keys: string[], meta?: QueueTicketMeta[], savedSessionId?: string, startIndex?: number) => void;
   nextTicket: () => void;
   prevTicket: () => void;
   goToTicket: (index: number) => void;
@@ -51,11 +51,11 @@ const INITIAL_STATE: RefinementSessionState = {
 export function RefinementSessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RefinementSessionState>(INITIAL_STATE);
 
-  const startSession = useCallback((keys: string[], meta?: QueueTicketMeta[], savedSessionId?: string) => {
+  const startSession = useCallback((keys: string[], meta?: QueueTicketMeta[], savedSessionId?: string, startIndex?: number) => {
     setState({
       queue: keys,
       queueMeta: meta ?? keys.map((k) => ({ key: k, title: k })),
-      currentIndex: 0,
+      currentIndex: startIndex != null ? Math.max(0, Math.min(startIndex, keys.length - 1)) : 0,
       notesCollapsed: true,
       subtasksPaneOpen: false,
       chatPaneOpen: false,

@@ -8,11 +8,10 @@ import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
@@ -540,10 +539,13 @@ export function RefinementPageContent({
       .sort(smartSort);
   }, [sortedTickets, baseTickets, searchQuery]);
 
-  // Queue derives from the active session's ticketKeys
+  // Local queue for when no session is active
+  const [localQueue, setLocalQueue] = useState<string[]>([]);
+
+  // Queue derives from the active session or local state
   const queue = useMemo(
-    () => activeSession?.ticketKeys ?? [],
-    [activeSession],
+    () => activeSession ? activeSession.ticketKeys : localQueue,
+    [activeSession, localQueue],
   );
   const selectedKeys = queue;
 
@@ -563,20 +565,23 @@ export function RefinementPageContent({
     [mutateSessions],
   );
 
-  // Update queue: optimistically update local cache + debounce persist
+  // Update queue: session mode persists to API, no-session mode uses local state
   const updateQueue = useCallback(
     (newKeys: string[]) => {
-      if (!resolvedSessionId || !activeSession) return;
-      mutateSessions(
-        (prev) =>
-          prev?.map((s) =>
-            s.id === resolvedSessionId
-              ? { ...s, ticketKeys: newKeys, ticketCount: newKeys.length }
-              : s,
-          ),
-        false,
-      );
-      persistSessionQueue(resolvedSessionId, newKeys);
+      if (resolvedSessionId && activeSession) {
+        mutateSessions(
+          (prev) =>
+            prev?.map((s) =>
+              s.id === resolvedSessionId
+                ? { ...s, ticketKeys: newKeys, ticketCount: newKeys.length }
+                : s,
+            ),
+          false,
+        );
+        persistSessionQueue(resolvedSessionId, newKeys);
+      } else {
+        setLocalQueue(newKeys);
+      }
     },
     [resolvedSessionId, activeSession, mutateSessions, persistSessionQueue],
   );
@@ -665,9 +670,18 @@ export function RefinementPageContent({
       return { key, title: t?.title ?? key };
     });
 
-    startSession(queue, meta, resolvedSessionId ?? undefined);
-    router.push("/refinement/session");
-  }, [canStart, queue, allTicketMap, startSession, router, resolvedSessionId]);
+    let sessionId = resolvedSessionId;
+    if (!sessionId) {
+      const created = await refinementSessionsApi.create({ ticketKeys: queue });
+      sessionId = created.id;
+      setUserSelectedId(sessionId);
+      setLocalQueue([]);
+      await mutateSessions();
+    }
+
+    startSession(queue, meta, sessionId);
+    router.push(`/refinement/${sessionId}/session/${encodeURIComponent(queue[0])}`);
+  }, [canStart, queue, allTicketMap, startSession, router, resolvedSessionId, mutateSessions]);
 
   const readyKeys = useMemo(
     () => availableTickets.filter((t) => t.readiness === "ready_to_refine").map((t) => t.key),
@@ -754,6 +768,16 @@ export function RefinementPageContent({
     [onSessionChange],
   );
 
+  // Save local queue as a new session
+  const handleSaveAsSession = useCallback(async () => {
+    if (localQueue.length === 0) return;
+    const created = await refinementSessionsApi.create({ ticketKeys: localQueue });
+    setLocalQueue([]);
+    setUserSelectedId(created.id);
+    onSessionChange?.(created.id);
+    await mutateSessions();
+  }, [localQueue, mutateSessions, onSessionChange]);
+
   // Suppress unused variable warning
   void selectedKeys;
 
@@ -786,17 +810,8 @@ export function RefinementPageContent({
         onSelectSession={handleSelectSession}
       />
 
-      <div className="relative min-h-full">
-        {availableTickets.length === 0 && !searchQuery ? (
-          <div className="flex min-h-full items-center justify-center py-24">
-            <EmptyState
-              icon={<Layers size={20} strokeWidth={1.5} className="text-text-tertiary" />}
-              title="No tickets available"
-              description="No open tickets match the current sprint filter."
-            />
-          </div>
-        ) : (
-          <div className="mx-auto flex max-w-6xl gap-6 p-6">
+      <div className="min-h-full">
+        <div className="mx-auto flex max-w-6xl gap-6 p-6">
             {/* Left: ticket selection list */}
             <div className="min-w-0 flex-1">
               <div className="mb-4 flex items-center gap-3">
@@ -878,6 +893,7 @@ export function RefinementPageContent({
                       onSelect={() => {}}
                       onPin={() => {}}
                       pinnedIds={pinnedSprintIds}
+                      alignLeft
                       multiSelect
                       selectedIds={effectiveSprintFilter}
                       onToggleSelect={toggleSprintInFilter}
@@ -1000,9 +1016,11 @@ export function RefinementPageContent({
                     }
                   />
                 ))}
-                {availableTickets.length === 0 && searchQuery && (
+                {availableTickets.length === 0 && (
                   <p className="py-8 text-center text-sm text-text-muted">
-                    No tickets match &ldquo;{searchQuery}&rdquo;
+                    {searchQuery
+                      ? <>No tickets match &ldquo;{searchQuery}&rdquo;</>
+                      : "No tickets match the current filters."}
                   </p>
                 )}
               </div>
@@ -1047,13 +1065,25 @@ export function RefinementPageContent({
                 )}
 
                 {canStart && (
-                  <div className="mt-4">
+                  <div className="mt-4 flex items-center gap-2">
+                    {!activeSession && (
+                      <button
+                        type="button"
+                        onClick={handleSaveAsSession}
+                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+                        style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
+                        aria-label="Save as session"
+                        title="Save queue as a new session"
+                      >
+                        <Save size={16} strokeWidth={1.5} />
+                      </button>
+                    )}
                     <Button
                       variant="primary"
                       size="lg"
                       icon={<Play size={14} strokeWidth={2} />}
                       onClick={handleBeginRefinement}
-                      className="w-full"
+                      className="flex-1"
                     >
                       Start Refinement
                     </Button>
@@ -1062,7 +1092,6 @@ export function RefinementPageContent({
               </div>
             </ResizableQueuePane>
           </div>
-        )}
       </div>
     </>
   );

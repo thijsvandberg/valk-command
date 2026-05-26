@@ -30,7 +30,7 @@ const MOCK_TICKETS = [
   },
 ];
 const MOCK_MUTATE = vi.fn();
-const MOCK_SPRINTS_RESULT = { sprints: MOCK_SPRINTS, backlogCount: 0 };
+const MOCK_SPRINTS_RESULT = { sprints: MOCK_SPRINTS, backlogCount: 0, data: { sprints: MOCK_SPRINTS, backlogCount: 0 } };
 const MOCK_TICKETS_RESULT = { data: MOCK_TICKETS, isLoading: false, mutate: MOCK_MUTATE };
 
 vi.mock("@/hooks/useSprintBoard", () => ({

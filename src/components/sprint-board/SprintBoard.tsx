@@ -162,7 +162,7 @@ import { useColumnConfig } from "@/hooks/useColumnConfig";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 
 export default function SprintBoard() {
-  const { sprints: rawJiraSprints, backlogCount } = useJiraSprints();
+  const { sprints: rawJiraSprints, backlogCount, data: sprintsData } = useJiraSprints();
   const sprints = useMemo(() => {
     const mapped = mapJiraSprints(rawJiraSprints);
     mapped.push({ id: "__backlog__", name: "Backlog", dateRange: "", state: "backlog", ticketCount: backlogCount, startDate: null, endDate: null, goal: null });
@@ -937,7 +937,7 @@ export default function SprintBoard() {
   }, [sprints]);
 
   useEffect(() => {
-    if (slotsInitialized.current || sprints.length === 0) return;
+    if (slotsInitialized.current || !sprintsData) return;
     slotsInitialized.current = true;
     apiFetch<{ slotIndex: number; sprintId: string }[]>("/api/sprint-slots")
       .then((savedSlots) => {
@@ -950,7 +950,7 @@ export default function SprintBoard() {
         if (fb) setSlotSprints([fb.id]);
       })
       .catch(() => { const fb = sprints.find((s) => s.state === "active") ?? sprints[0]; if (fb) setSlotSprints([fb.id]); });
-  }, [sprints]);
+  }, [sprintsData, sprints]);
 
   const sortChange = (fld: typeof f.sortField, d: typeof f.sortDir) => { f.setSortField(fld); f.setSortDir(d); };
 
