@@ -95,11 +95,11 @@ The bulk generation runs in the background. A chat conversation linked to the se
 
 ### Tests
 
-- [ ] API test: `POST /api/refinement-sessions/[id]/bulk-suggest-subtasks` creates conversation, processes tickets, posts messages
-- [ ] API test: skip logic correctly compares dates
-- [ ] API test: force-regenerate ignores skip logic
-- [ ] Unit test: suggestion count badge renders correctly on queue items
-- [ ] Integration test: end-to-end flow from button click to suggestions appearing on tickets
+- [x] API test: `POST /api/refinement-sessions/[id]/bulk-suggest-subtasks` creates conversation, posts messages, reuses conversation, force label
+- [x] API test: `GET /api/refinement-sessions/[id]/bulk-suggest-subtasks` detects running/complete/no-run states
+- [x] API test: `GET /api/refinement-sessions/[id]/suggestion-counts` returns per-ticket counts, filters by session
+- [ ] Unit test: suggestion count badge renders correctly on queue items <!-- skipped: component is an internal function in RefinementPageContent, not separately testable without extracting -->
+- [ ] Integration test: end-to-end flow from button click to suggestions appearing on tickets <!-- skipped: requires VRW running and full app context -->
 
 ## Acceptance Criteria
 
