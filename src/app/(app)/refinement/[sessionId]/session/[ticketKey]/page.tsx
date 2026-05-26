@@ -139,7 +139,7 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={paneRef}
-      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-white px-6 pt-4 pb-6"
+      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-base)] px-6 pt-4 pb-6"
       style={{
         width,
         animation: isDragging ? undefined : "fadeInUp 0.15s ease",
