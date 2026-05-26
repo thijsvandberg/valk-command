@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyWriterSession, conversation, activityLog } from "@/db/schema";
+import { ticket, ticketMetadata, ticketLocalEdit, storyWriterSession, conversation, activityLog } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
@@ -84,6 +84,12 @@ export function finalizeDraft(draftKey: string, realKey: string, sprintName?: st
       tx.update(activityLog)
         .set({ scope: realKey })
         .where(eq(activityLog.scope, draftKey))
+        .run();
+
+      // Migrate local edits to the real key
+      tx.update(ticketLocalEdit)
+        .set({ ticketKey: realKey })
+        .where(eq(ticketLocalEdit.ticketKey, draftKey))
         .run();
 
       // Mark draft row as replaced; description stores real key for lookup

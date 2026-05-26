@@ -5,14 +5,16 @@ import type { UpsertLocalEditInput } from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
 import { cache } from "@/lib/cache";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { resolveDraftKey } from "@/lib/draft-sync";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
   const edits = await ticketService.getLocalEdits(key);
   return NextResponse.json(edits);
 }
@@ -24,9 +26,10 @@ export async function PUT(
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -51,9 +54,10 @@ export async function DELETE(
   const limited = applyRateLimit("delete");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
   const draftsOnly = new URL(request.url).searchParams.get("draftsOnly") === "true";
   await ticketService.deleteLocalEdits(key, { draftsOnly });
   cache.invalidate(`/api/tickets/${key}`);
@@ -67,9 +71,10 @@ export async function PATCH(
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  const { key } = await params;
-  const invalid = validatePathParam(key);
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
   let body: Record<string, unknown> = {};
   try { body = await request.json(); } catch { /* no body is fine */ }
 

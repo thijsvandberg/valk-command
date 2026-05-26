@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketMetadata, storyWriterSession, conversation, activityLog } from "@/db/schema";
+import { ticket, ticketMetadata, ticketLocalEdit, storyWriterSession, conversation, activityLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -84,6 +84,29 @@ describe("finalizeDraft", () => {
     // Conversation updated
     const conv = testDb.select().from(conversation).where(eq(conversation.id, "conv-1")).get();
     expect(conv!.relatedTicket).toBe("VPL-123");
+  });
+
+  it("migrates ticketLocalEdit rows to the real key", () => {
+    seedDraft(testDb, "DRAFT-edit");
+    testDb.insert(ticketLocalEdit).values({
+      id: "edit-1",
+      ticketKey: "DRAFT-edit",
+      field: "description",
+      localValue: "Draft content",
+      isDraft: false,
+      modifiedAt: new Date().toISOString(),
+    }).run();
+
+    finalizeDraft("DRAFT-edit", "VPL-456");
+
+    // Local edit should now be keyed to the real key
+    const edit = testDb.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.id, "edit-1")).get();
+    expect(edit).toBeDefined();
+    expect(edit!.ticketKey).toBe("VPL-456");
+
+    // No edits left under the draft key
+    const draftEdits = testDb.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.ticketKey, "DRAFT-edit")).all();
+    expect(draftEdits).toHaveLength(0);
   });
 
   it("handles missing draft gracefully", () => {
