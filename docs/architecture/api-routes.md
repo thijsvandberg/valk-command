@@ -176,6 +176,8 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/settings/column-widths` | POST | Save column widths |
 | `/api/settings/quick-prompts` | GET | Get quick prompt templates |
 | `/api/settings/quick-prompts` | POST | Save quick prompt templates |
+| `/api/settings/section-visibility` | GET | Get field visibility for a section (`?section=epic-children\|subtasks`) |
+| `/api/settings/section-visibility` | PUT | Save field visibility for a section |
 | `/api/sprint-slots` | GET | Get sprint slot assignments |
 | `/api/sprint-slots` | POST | Save sprint slot assignments |
 
