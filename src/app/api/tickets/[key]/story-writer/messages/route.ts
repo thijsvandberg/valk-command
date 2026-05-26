@@ -128,7 +128,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     .set({ updatedAt: new Date().toISOString() })
     .where(eq(storyWriterSession.id, session.id));
 
-  // Check if this is the first message (no assistant messages yet)
+  // Check if this is the first message (no non-cancelled assistant messages yet).
+  // After a cancel, the next message should be treated as a first message so the
+  // agent starts with fresh context instead of resuming a cancelled session.
   const assistantMessages = await db
     .select()
     .from(message)
@@ -136,6 +138,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       and(
         eq(message.conversationId, session.conversationId),
         eq(message.role, "assistant"),
+        eq(message.cancelled, false),
       ),
     )
     .all();

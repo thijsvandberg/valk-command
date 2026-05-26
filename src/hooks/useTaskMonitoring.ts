@@ -3,7 +3,7 @@
 import { useCallback, useRef, useEffect } from "react";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
-import { apiFetch, ApiError, workspaceTasks as workspaceTasksApi } from "@/lib/api-client";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import { attachTaskStreamListeners } from "./useStreamingTask";
 
 export interface WorkspaceUsage {
@@ -222,8 +222,8 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
     });
   }, [apiBase, ticketKey, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
 
-  const cancelTask = useCallback((taskId: string) => {
-    // Close SSE stream and clear poll timer
+  const cancelTask = useCallback((_taskId: string) => {
+    // Close SSE stream and clear poll timer (caller handles the API call)
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
     if (pollTimerRef.current) {
@@ -231,9 +231,6 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       pollTimerRef.current = null;
     }
     sendStartRef.current = null;
-
-    // Signal the server (fire-and-forget)
-    workspaceTasksApi.cancel(taskId).catch(() => {});
   }, []);
 
   return { startMonitoring, sendStartRef, pollTimerRef, cancelTask };

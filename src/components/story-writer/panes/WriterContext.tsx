@@ -36,7 +36,7 @@ export interface WriterContextValue {
   onSend: (content: string, skill?: string) => Promise<boolean>;
   onRetry: (messageId: string) => Promise<boolean>;
   onClearFailed: () => Promise<void>;
-  onCancel: () => void;
+  onCancel: () => Promise<void>;
   onCreateLink: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys: Set<string>;
   onApplyEpic: (epicKey: string) => Promise<void>;

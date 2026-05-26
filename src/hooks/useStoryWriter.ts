@@ -48,7 +48,15 @@ export function useStoryWriter(ticketKey: string) {
       const data = await storyWriterApi.getSession(ticketKey);
       if (!unmountedRef.current) {
         setSession((data as Record<string, unknown>).session as StoryWriterSessionRow | null);
-        setMessages((data as Record<string, unknown>).messages as Message[]);
+        const serverMessages = (data as Record<string, unknown>).messages as Message[];
+        // Preserve local cancelled flags that may not yet be persisted to the DB
+        setMessages((prev) => {
+          const localCancelledIds = new Set(prev.filter((m) => m.cancelled).map((m) => m.id));
+          if (localCancelledIds.size === 0) return serverMessages;
+          return serverMessages.map((m) =>
+            localCancelledIds.has(m.id) ? { ...m, cancelled: true } : m,
+          );
+        });
         setAllDrafts(((data as Record<string, unknown>).aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
         setRelatedCandidates(((data as Record<string, unknown>).relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
       }
@@ -378,9 +386,11 @@ export function useStoryWriter(ticketKey: string) {
     }
   }, [apiBase, setSession]);
 
-  const cancelCurrentTask = useCallback(() => {
+  const cancelCurrentTask = useCallback(async () => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user" && m.workspaceTaskId);
     const taskId = lastUserMsg?.workspaceTaskId;
+
+    // Close streams immediately for responsive UI
     if (taskId) {
       monitoring.cancelTask(taskId);
     }
@@ -395,6 +405,13 @@ export function useStoryWriter(ticketKey: string) {
         if (m.workspaceTaskId === taskId && m.role === "assistant") return { ...m, cancelled: true };
         return m;
       }));
+    }
+
+    // Await the server-side cancel so the DB is updated before any subsequent refresh
+    if (taskId) {
+      try {
+        await workspaceTasksApi.cancel(taskId);
+      } catch { /* best-effort */ }
     }
   }, [messages, monitoring]);
 
