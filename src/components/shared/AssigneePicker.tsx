@@ -88,7 +88,7 @@ export function AssigneePicker({
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const flipUp = rect.bottom + 340 > window.innerHeight;
+    const flipUp = rect.bottom + 440 > window.innerHeight;
     setPos({
       top: flipUp ? rect.top : rect.bottom + 4,
       left: align === "left" ? rect.left : rect.right,
@@ -224,7 +224,7 @@ export function AssigneePicker({
           )}
 
           {/* Options */}
-          <div className="max-h-[220px] overflow-y-auto py-1">
+          <div className="max-h-[320px] overflow-y-auto py-1">
             {/* Unassign option */}
             <button
               type="button"
