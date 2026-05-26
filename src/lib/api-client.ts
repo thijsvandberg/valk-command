@@ -583,6 +583,11 @@ export const settings = {
   saveColumnConfig: (config: unknown, signal?: AbortSignal) =>
     apiFetch<void>("/api/settings/column-config", { method: "PUT", body: config, signal }),
 
+  getSectionVisibility: (section: string, signal?: AbortSignal) =>
+    apiFetch<{ visible: string[] | null }>(`/api/settings/section-visibility?section=${encodeURIComponent(section)}`, { signal }),
+  saveSectionVisibility: (section: string, visible: string[], signal?: AbortSignal) =>
+    apiFetch<{ visible: string[] }>("/api/settings/section-visibility", { method: "PUT", body: { section, visible }, signal }),
+
   getQuickPrompts: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/settings/quick-prompts", { signal }),
   saveQuickPrompts: (data: unknown, signal?: AbortSignal) =>
