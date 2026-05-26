@@ -19,13 +19,13 @@ describe("EpicSuggestionCard", () => {
     expect(screen.getByText("Epic suggestion")).toBeInTheDocument();
     expect(screen.getByText("VPL-10")).toBeInTheDocument();
     expect(screen.getByText("Group Reservations")).toBeInTheDocument();
-    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("H")).toBeInTheDocument();
     expect(screen.getByText("Covers group booking")).toBeInTheDocument();
     expect(screen.getByText("VPL-20")).toBeInTheDocument();
-    expect(screen.getByText("Med")).toBeInTheDocument();
+    expect(screen.getByText("M")).toBeInTheDocument();
   });
 
-  it("shows 'Current' for the epic already set on the ticket", () => {
+  it("shows 'Applied' for the epic already set on the ticket", () => {
     render(
       <EpicSuggestionCard
         suggestions={SUGGESTIONS}
@@ -33,12 +33,12 @@ describe("EpicSuggestionCard", () => {
         onApply={vi.fn()}
       />,
     );
-    expect(screen.getByText("Current")).toBeInTheDocument();
+    expect(screen.getByText("Applied")).toBeInTheDocument();
     // VPL-20 should still have a Link button
     expect(screen.getAllByRole("button", { name: /link/i })).toHaveLength(1);
   });
 
-  it("calls onApply and shows 'Linked' on success", async () => {
+  it("calls onApply and shows 'Applied' on success", async () => {
     const onApply = vi.fn().mockResolvedValue(undefined);
     render(
       <EpicSuggestionCard
@@ -52,7 +52,7 @@ describe("EpicSuggestionCard", () => {
     expect(onApply).toHaveBeenCalledWith("VPL-10");
 
     await waitFor(() => {
-      expect(screen.getByText("Linked")).toBeInTheDocument();
+      expect(screen.getByText("Applied")).toBeInTheDocument();
     });
   });
 
@@ -84,7 +84,7 @@ describe("EpicSuggestionCard", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders confidence badges with correct labels", () => {
+  it("renders confidence indicators for each level", () => {
     render(
       <EpicSuggestionCard
         suggestions={[
@@ -95,8 +95,8 @@ describe("EpicSuggestionCard", () => {
         onApply={vi.fn()}
       />,
     );
-    expect(screen.getByText("High")).toBeInTheDocument();
-    expect(screen.getByText("Med")).toBeInTheDocument();
-    expect(screen.getByText("Low")).toBeInTheDocument();
+    expect(screen.getByText("H")).toBeInTheDocument();
+    expect(screen.getByText("M")).toBeInTheDocument();
+    expect(screen.getByText("L")).toBeInTheDocument();
   });
 });

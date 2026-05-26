@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Target, Loader2 } from "lucide-react";
+import { Target, Loader2, Check } from "lucide-react";
 
 export interface EpicSuggestion {
   key: string;
@@ -54,6 +54,7 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
         {suggestions.map((s) => {
           const isCurrent = currentEpicKey === s.key;
           const justApplied = applied.has(s.key);
+          const isSelected = isCurrent || justApplied;
           const isApplying = applying.has(s.key);
           const hasError = errors.has(s.key);
           const conf = CONFIDENCE_STYLES[s.confidence] ?? CONFIDENCE_STYLES.low;
@@ -61,63 +62,63 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
           return (
             <div
               key={s.key}
-              className={`flex items-start gap-2.5 px-3 py-2.5 transition-colors duration-150 ${
-                isCurrent || justApplied
-                  ? "bg-[var(--color-brand-500)]/[0.04]"
+              className={`flex items-center gap-3 px-3 py-2 transition-colors duration-150 ${
+                isSelected
+                  ? "bg-[var(--color-brand-500)]/[0.06]"
                   : "hover:bg-overlay-subtle"
               }`}
             >
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="shrink-0 font-mono text-label font-bold text-text-secondary">
+              <span
+                className={`flex size-5 shrink-0 items-center justify-center rounded-full text-caption font-medium transition-colors duration-150 ${
+                  isSelected
+                    ? "bg-[var(--color-brand-500)]/[0.15] text-[var(--color-brand-500)]"
+                    : ""
+                }`}
+                style={isSelected ? undefined : { backgroundColor: conf.bg, color: conf.text }}
+              >
+                {isSelected
+                  ? <Check size={10} strokeWidth={2.5} />
+                  : <span className="text-[9px] font-semibold">{conf.label[0]}</span>}
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`shrink-0 font-mono text-label font-bold ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
                     {s.key}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-label text-text-secondary">
+                  <span className={`min-w-0 flex-1 truncate text-body-sm leading-[1.6] ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
                     {s.name}
                   </span>
-                  <span
-                    className="shrink-0 rounded-full px-1.5 py-0.5 text-caption font-medium"
-                    style={{ backgroundColor: conf.bg, color: conf.text }}
-                  >
-                    {conf.label}
-                  </span>
                 </div>
-                <span className="text-caption text-text-muted leading-[1.5]">
+                <span className="text-caption text-text-muted leading-[1.4] truncate">
                   {s.reason}
                 </span>
               </div>
-              <div className="shrink-0 self-center">
-                {isCurrent ? (
-                  <span className="rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
-                    Current
-                  </span>
-                ) : justApplied ? (
-                  <span className="rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
-                    Linked
-                  </span>
-                ) : hasError ? (
-                  <button
-                    type="button"
-                    onClick={() => handleApply(s.key)}
-                    className="shrink-0 text-caption font-medium text-red-400 cursor-pointer hover:text-red-300 transition-colors duration-150"
-                  >
-                    Retry
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleApply(s.key)}
-                    disabled={isApplying}
-                    className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50"
-                  >
-                    {isApplying ? (
-                      <Loader2 size={10} className="animate-spin" />
-                    ) : (
-                      "Link"
-                    )}
-                  </button>
-                )}
-              </div>
+              {isSelected ? (
+                <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
+                  Applied
+                </span>
+              ) : hasError ? (
+                <button
+                  type="button"
+                  onClick={() => handleApply(s.key)}
+                  className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-red-400 cursor-pointer hover:text-red-300 transition-colors duration-150"
+                >
+                  Retry
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleApply(s.key)}
+                  disabled={isApplying}
+                  className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50"
+                >
+                  {isApplying ? (
+                    <Loader2 size={10} className="animate-spin" />
+                  ) : (
+                    "Link"
+                  )}
+                </button>
+              )}
             </div>
           );
         })}
