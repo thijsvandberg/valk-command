@@ -624,7 +624,9 @@ export const refinementSession = sqliteTable("refinement_session", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   ticketKeys: text("ticket_keys").notNull().default("[]"),
-  status: text("status", { enum: ["draft", "completed"] }).notNull().default("draft"),
+  status: text("status", { enum: ["draft", "in_progress", "completed"] }).notNull().default("draft"),
+  generalComment: text("general_comment"),
+  currentIndex: integer("current_index").notNull().default(0),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -638,6 +640,28 @@ export const refinementSession = sqliteTable("refinement_session", {
 
 export type RefinementSessionRow = typeof refinementSession.$inferSelect;
 export type NewRefinementSessionRow = typeof refinementSession.$inferInsert;
+
+// Per-ticket PO messages within a refinement session
+export const refinementSessionTicketNote = sqliteTable("refinement_session_ticket_note", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => refinementSession.id, { onDelete: "cascade" }),
+  ticketKey: text("ticket_key").notNull(),
+  content: text("content").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("rstn_session_id_idx").on(table.sessionId),
+  uniqueIndex("rstn_session_ticket_unique").on(table.sessionId, table.ticketKey),
+]);
+
+export type RefinementSessionTicketNoteRow = typeof refinementSessionTicketNote.$inferSelect;
+export type NewRefinementSessionTicketNoteRow = typeof refinementSessionTicketNote.$inferInsert;
 
 // AI-suggested subtasks: persisted so they survive navigation/refresh
 export const subtaskSuggestion = sqliteTable("subtask_suggestion", {

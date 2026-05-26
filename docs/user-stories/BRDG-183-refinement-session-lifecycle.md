@@ -1,11 +1,21 @@
 # BRDG-183: Refinement Session Lifecycle & End Modal
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** High
 
 ## Description
 
 As the PO, I want a clear distinction between leaving a refinement session (to continue later) and completing it, so that sessions persist on the refinement page and I can add per-ticket PO messages and a general comment before finishing.
+
+## Implementation Plan
+
+1. **Schema & migration** -- Add `general_comment` (text), `current_index` (int default 0) to `refinement_session`; expand status enum to `["draft","in_progress","completed"]`; create `refinement_session_ticket_note` join table (id, session_id FK, ticket_key, content, timestamps) with unique constraint on (session_id, ticket_key). Generate Drizzle migration.
+2. **API layer** -- Update PATCH `/api/refinement-sessions/[id]` to accept `generalComment`, `currentIndex`, and `in_progress` status. Create `PUT/GET /api/refinement-sessions/[id]/ticket-notes` sub-resource. Update `RefinementSessionResponse` type and api-client methods.
+3. **Context provider** -- Replace `endSession()` with `openEndModal()`, `closeEndModal()`, `saveSession()`, `finishSession()`. Add `showingEndModal` state. Debounce-persist `currentIndex` on navigation.
+4. **Header overflow menu** -- Replace exit button with three-dot menu containing "Exit session". Wire to `openEndModal()`. Also wire last-ticket next to `openEndModal()`.
+5. **End modal** -- New `SessionEndModal` component: ticket list with per-ticket PO message editors, general comment field, Close/Save and Done/Finish buttons with smart primary logic (based on story point completeness).
+6. **Session persistence & overview** -- Update all status filters (`SavedSessionList`, `RefinementPageContent`, `useTicketSessionMap`, `AddToRefinementModal`) to treat `in_progress` as open. Resume sessions at persisted `currentIndex`. Visual indicator for in-progress sessions.
+7. **Cleanup** -- Move `SessionSummary` to `deleted/`, update affected tests.
 
 ## Acceptance Criteria
 
@@ -35,10 +45,10 @@ As the PO, I want a clear distinction between leaving a refinement session (to c
 - [ ] PO messages per ticket are persisted (linked to the session + ticket)
 
 ### 5. Schema changes
-- [ ] Add a session status that supports open/in-progress sessions (currently only `draft` and `completed`)
-- [ ] Add a `general_comment` field to the refinement session table
-- [ ] Add a table or field for per-ticket PO messages within a session
-- [ ] Persist `currentIndex` so sessions can be resumed at the right ticket
+- [x] Add a session status that supports open/in-progress sessions (currently only `draft` and `completed`)
+- [x] Add a `general_comment` field to the refinement session table
+- [x] Add a table or field for per-ticket PO messages within a session
+- [x] Persist `currentIndex` so sessions can be resumed at the right ticket
 
 ## Technical Notes
 
