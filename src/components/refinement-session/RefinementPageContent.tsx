@@ -807,8 +807,18 @@ export function RefinementPageContent({
       {pageTitle}
       <ViewHeader
         icon={<Layers size={16} strokeWidth={1.5} />}
+        hideNotifications
         actions={
           <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="md"
+              icon={<Plus size={13} strokeWidth={1.5} />}
+              onClick={() => setCreateModalOpen(true)}
+            >
+              New session
+            </Button>
+            <RefinementOverflowMenu />
             {canStart && (
               <Button
                 variant="primary"
@@ -819,15 +829,6 @@ export function RefinementPageContent({
                 Start Refinement ({queue.length})
               </Button>
             )}
-            <Button
-              variant="secondary"
-              size="md"
-              icon={<Plus size={13} strokeWidth={1.5} />}
-              onClick={() => setCreateModalOpen(true)}
-            >
-              New session
-            </Button>
-            <RefinementOverflowMenu />
           </div>
         }
       >

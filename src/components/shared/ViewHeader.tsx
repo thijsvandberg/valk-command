@@ -10,9 +10,10 @@ interface ViewHeaderProps {
   children?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  hideNotifications?: boolean;
 }
 
-export function ViewHeader({ icon, children, actions, className }: ViewHeaderProps) {
+export function ViewHeader({ icon, children, actions, className, hideNotifications }: ViewHeaderProps) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
   // useLayoutEffect fires after DOM commit, before the browser paints, so there
@@ -59,7 +60,7 @@ export function ViewHeader({ icon, children, actions, className }: ViewHeaderPro
 
       <div className="relative flex items-center gap-2">
         {actions}
-        <NotificationBell />
+        {!hideNotifications && <NotificationBell />}
       </div>
     </div>,
     target,
