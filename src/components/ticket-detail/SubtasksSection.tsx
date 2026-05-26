@@ -4,9 +4,10 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import type { TicketDetail, JiraStatus, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { FieldFilterPopover, STATUS_FILTER_OPTIONS, type StatusFilter } from "./FieldFilterPopover";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { Loader2, GripVertical, ExternalLink, Filter, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Loader2, GripVertical, ExternalLink, Filter, Sparkles } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
 import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
@@ -27,14 +28,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 
-type StatusFilter = "all" | JiraStatus;
-
-const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "TO DO", label: "To Do" },
-  { value: "IN PROGRESS", label: "In Progress" },
-  { value: "DONE", label: "Done" },
-];
+const SUBTASK_FIELDS = [{ id: "issueKey", label: "issue keys" }];
 
 interface SubtasksSectionProps {
   subtasks: TicketDetail["subtasks"];
@@ -134,81 +128,6 @@ function SortableSubtaskRow({
   );
 }
 
-function FilterPopover({
-  filter,
-  setFilter,
-  statusCounts,
-  hideKeys,
-  setHideKeys,
-  onClose,
-}: {
-  filter: StatusFilter;
-  setFilter: (f: StatusFilter) => void;
-  statusCounts: Record<string, number>;
-  hideKeys: boolean;
-  setHideKeys: (v: boolean) => void;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      ref={ref}
-      className="absolute top-full right-0 z-50 mt-1 min-w-[180px] rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
-      style={{ animation: "fadeInUp 0.1s ease" }}
-    >
-      <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
-        Status
-      </div>
-      {FILTER_OPTIONS.map((opt) => {
-        const isActive = filter === opt.value;
-        const count = statusCounts[opt.value as keyof typeof statusCounts] ?? 0;
-        if (opt.value !== "all" && count === 0) return null;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setFilter(opt.value)}
-            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs hover:bg-hover-list-item active:bg-overlay-default"
-          >
-            <span className={isActive ? "font-medium text-text-primary" : "text-text-secondary"}>
-              {opt.label}
-            </span>
-            <span className="ml-auto tabular-nums text-caption text-text-muted">{count}</span>
-          </button>
-        );
-      })}
-      <div className="my-1 h-px bg-border-subtle" />
-      <button
-        type="button"
-        onClick={() => setHideKeys(!hideKeys)}
-        className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs hover:bg-hover-list-item active:bg-overlay-default"
-      >
-        {hideKeys ? (
-          <Eye size={12} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-        ) : (
-          <EyeOff size={12} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-        )}
-        <span className="text-text-secondary">{hideKeys ? "Show issue keys" : "Hide issue keys"}</span>
-      </button>
-    </div>
-  );
-}
 
 export function SubtasksSection({
   subtasks,
@@ -635,12 +554,13 @@ export function SubtasksSection({
         <Filter size={13} strokeWidth={1.5} />
       </button>
       {filterPopoverOpen && (
-        <FilterPopover
+        <FieldFilterPopover
           filter={filter}
           setFilter={(f) => { setFilter(f); }}
           statusCounts={statusCounts}
-          hideKeys={hideKeys}
-          setHideKeys={setHideKeys}
+          fields={SUBTASK_FIELDS}
+          visibleFields={new Set(hideKeys ? [] : ["issueKey"])}
+          onToggleField={(id, show) => { if (id === "issueKey") setHideKeys(!show); }}
           onClose={() => setFilterPopoverOpen(false)}
         />
       )}
@@ -668,7 +588,7 @@ export function SubtasksSection({
       {/* Inline filter chips (non-compact mode only) */}
       {!compactFilters && mergedSubtasks.length > 0 && (
         <div className="mt-3 flex items-center gap-0.5 rounded-lg bg-overlay-subtle p-0.5">
-          {FILTER_OPTIONS.map((opt) => {
+          {STATUS_FILTER_OPTIONS.map((opt) => {
             const isActive = filter === opt.value;
             const count = statusCounts[opt.value as keyof typeof statusCounts] ?? 0;
             if (opt.value !== "all" && count === 0) return null;
