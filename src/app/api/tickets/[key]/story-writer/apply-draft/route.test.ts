@@ -125,6 +125,21 @@ Let me know what you think.`;
     expect(drafts[1].draftIndex).toBe(1);
   });
 
+  it("skips draft when content is identical to current localDraft", async () => {
+    seedSession(testDb, "VPL-100");
+
+    const res = await POST(
+      makeRequest("http://localhost:3100/api/tickets/VPL-100/story-writer/apply-draft", {
+        output: "<story-draft>Original draft content</story-draft>",
+      }),
+      makeParams("VPL-100"),
+    );
+    const data = await res.json();
+
+    expect(data.hasDraft).toBe(false);
+    expect(data.originalDraftId).toBeNull();
+  });
+
   it("returns hasDraft=false when no draft tags in output", async () => {
     seedSession(testDb, "VPL-100");
 

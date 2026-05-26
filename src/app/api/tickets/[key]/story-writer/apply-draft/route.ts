@@ -72,7 +72,15 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Extract original and optional target drafts from output
   const { originalDraft, targetDraft } = extractStoryDrafts(output);
 
-  if (!originalDraft && !targetDraft) {
+  // Skip saving if the draft content is identical to the current working draft
+  const effectiveOriginal = originalDraft && originalDraft.trim() !== (session.localDraft ?? "").trim()
+    ? originalDraft
+    : null;
+  const effectiveTarget = targetDraft && targetDraft.trim() !== (session.targetLocalDraft ?? "").trim()
+    ? targetDraft
+    : null;
+
+  if (!effectiveOriginal && !effectiveTarget) {
     return NextResponse.json({
       originalDraftId: null,
       targetDraftId: null,
@@ -91,26 +99,26 @@ export async function POST(request: Request, { params }: RouteContext) {
   let originalDraftId: string | null = null;
   let targetDraftId: string | null = null;
 
-  if (originalDraft) {
+  if (effectiveOriginal) {
     originalDraftId = randomUUID();
     await db.insert(storyWriterDraft).values({
       id: originalDraftId,
       sessionId: session.id,
       draftIndex: nextIndex,
-      content: originalDraft,
+      content: effectiveOriginal,
       storySlot: "original",
       messageId: savedMessageId,
     });
     nextIndex += 1;
   }
 
-  if (targetDraft) {
+  if (effectiveTarget) {
     targetDraftId = randomUUID();
     await db.insert(storyWriterDraft).values({
       id: targetDraftId,
       sessionId: session.id,
       draftIndex: nextIndex,
-      content: targetDraft,
+      content: effectiveTarget,
       storySlot: "target",
       messageId: savedMessageId,
     });
