@@ -166,17 +166,13 @@ export default function RefinementSessionTicketPage({
     queueMeta,
     currentIndex,
     sessionActive,
-    notesCollapsed,
-    subtasksPaneOpen,
-    chatPaneOpen,
+    activeSidebarPanel,
     savedSessionId,
     startSession,
     nextTicket,
     prevTicket,
     goToTicket,
-    toggleNotes,
-    toggleSubtasksPane,
-    toggleChatPane,
+    toggleSidebarPanel,
     reorderQueue,
     endSession,
   } = useRefinementSession();
@@ -382,12 +378,12 @@ export default function RefinementSessionTicketPage({
       // P: toggle notes
       if (e.key === "p" || e.key === "P") {
         e.preventDefault();
-        toggleNotes();
+        toggleSidebarPanel("notes");
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleNext, toggleNotes, sessionActive]);
+  }, [handleNext, toggleSidebarPanel, sessionActive]);
 
   if (queue.length === 0) return null;
 
@@ -402,9 +398,6 @@ export default function RefinementSessionTicketPage({
       </>
     );
   }
-
-  // Determine which right panel to show
-  const rightPanelMode = chatPaneOpen ? "chat" : subtasksPaneOpen ? "subtasks" : (!notesCollapsed ? "notes" : null);
 
   // Badge counts
   const subtaskCount = ticketData?.subtasks?.length ?? 0;
@@ -575,9 +568,9 @@ export default function RefinementSessionTicketPage({
             {/* Chat pane toggle */}
             <button
               type="button"
-              onClick={toggleChatPane}
+              onClick={() => toggleSidebarPanel("chat")}
               className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                chatPaneOpen
+                activeSidebarPanel === "chat"
                   ? "bg-[#a78bfa]/[0.08] text-[#a78bfa]"
                   : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
               }`}
@@ -588,7 +581,7 @@ export default function RefinementSessionTicketPage({
               Chat
               {chatCount > 0 && (
                 <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
-                  chatPaneOpen ? "bg-[#a78bfa]/15 text-[#a78bfa]" : "bg-overlay-default text-text-tertiary"
+                  activeSidebarPanel === "chat" ? "bg-[#a78bfa]/15 text-[#a78bfa]" : "bg-overlay-default text-text-tertiary"
                 }`}>{chatCount}</span>
               )}
             </button>
@@ -596,9 +589,9 @@ export default function RefinementSessionTicketPage({
             {/* Subtasks pane toggle */}
             <button
               type="button"
-              onClick={toggleSubtasksPane}
+              onClick={() => toggleSidebarPanel("subtasks")}
               className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                subtasksPaneOpen
+                activeSidebarPanel === "subtasks"
                   ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
                   : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
               }`}
@@ -609,7 +602,7 @@ export default function RefinementSessionTicketPage({
               Subtasks
               {subtaskCount > 0 && (
                 <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
-                  subtasksPaneOpen ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
+                  activeSidebarPanel === "subtasks" ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
                 }`}>{subtaskCount}</span>
               )}
             </button>
@@ -617,9 +610,9 @@ export default function RefinementSessionTicketPage({
             {/* Notes toggle */}
             <button
               type="button"
-              onClick={toggleNotes}
+              onClick={() => toggleSidebarPanel("notes")}
               className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                !notesCollapsed
+                activeSidebarPanel === "notes"
                   ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
                   : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
               }`}
@@ -630,7 +623,7 @@ export default function RefinementSessionTicketPage({
               Notes
               {notesCount > 0 && (
                 <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
-                  !notesCollapsed ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
+                  activeSidebarPanel === "notes" ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
                 }`}>{notesCount}</span>
               )}
             </button>
@@ -649,7 +642,7 @@ export default function RefinementSessionTicketPage({
                   ticket={ticketData}
                   detail={ticketData}
                   onMutate={() => mutate()}
-                  subtasksPaneMode={subtasksPaneOpen}
+                  subtasksPaneMode={activeSidebarPanel === "subtasks"}
                   metadataExpanded={metadataExpanded}
                 />
               ) : (
@@ -661,18 +654,18 @@ export default function RefinementSessionTicketPage({
           </div>
 
           {/* Right panel: Chat pane */}
-          {rightPanelMode === "chat" && currentKey && (
+          {activeSidebarPanel === "chat" && currentKey && (
             <SubtasksPaneResizable>
               <TicketChatPane
                 ticketKey={currentKey}
                 ticketTitle={queueMeta.find((m) => m.key === currentKey)?.title ?? currentKey}
-                onClose={toggleChatPane}
+                onClose={() => toggleSidebarPanel("chat")}
               />
             </SubtasksPaneResizable>
           )}
 
           {/* Right panel: Subtasks pane */}
-          {rightPanelMode === "subtasks" && ticketData && (
+          {activeSidebarPanel === "subtasks" && ticketData && (
             <SubtasksPaneResizable>
               <SubtasksSection
                 subtasks={ticketData.subtasks ?? []}
@@ -686,11 +679,8 @@ export default function RefinementSessionTicketPage({
           )}
 
           {/* Right panel: PO Notes */}
-          {rightPanelMode === "notes" && (
-            <div
-              className="w-72 shrink-0 border-l border-border-subtle bg-[var(--color-surface-elevated)] p-5"
-              style={{ animation: "fadeInUp 0.15s ease" }}
-            >
+          {activeSidebarPanel === "notes" && (
+            <SubtasksPaneResizable>
               <div className="flex items-center gap-2">
                 <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">PO Notes</h3>
                 {poNotes.trim() && (
@@ -706,7 +696,7 @@ export default function RefinementSessionTicketPage({
                 className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                 style={{ transition: "border-color 0.15s ease" }}
               />
-            </div>
+            </SubtasksPaneResizable>
           )}
         </div>
 

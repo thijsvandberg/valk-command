@@ -8,8 +8,9 @@ vi.mock("next/navigation", () => ({
 
 const mockSessionState = {
   queue: ["VPL-1", "VPL-2", "VPL-3"],
+  queueMeta: [],
   currentIndex: 2,
-  notesCollapsed: true,
+  activeSidebarPanel: null,
   sessionActive: false,
   sessionStartedAt: Date.now() - 15 * 60 * 1000, // 15 minutes ago
   savedSessionId: null,
@@ -17,7 +18,8 @@ const mockSessionState = {
   nextTicket: vi.fn(),
   prevTicket: vi.fn(),
   goToTicket: vi.fn(),
-  toggleNotes: vi.fn(),
+  toggleSidebarPanel: vi.fn(),
+  reorderQueue: vi.fn(),
   endSession: vi.fn(),
 };
 

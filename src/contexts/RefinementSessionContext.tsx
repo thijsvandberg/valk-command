@@ -8,13 +8,13 @@ export interface QueueTicketMeta {
   title: string;
 }
 
+export type SidebarPanel = "chat" | "subtasks" | "notes" | "info";
+
 interface RefinementSessionState {
   queue: string[];
   queueMeta: QueueTicketMeta[];
   currentIndex: number;
-  notesCollapsed: boolean;
-  subtasksPaneOpen: boolean;
-  chatPaneOpen: boolean;
+  activeSidebarPanel: SidebarPanel | null;
   sessionActive: boolean;
   sessionStartedAt: number | null;
   savedSessionId: string | null;
@@ -25,9 +25,7 @@ interface RefinementSessionActions {
   nextTicket: () => void;
   prevTicket: () => void;
   goToTicket: (index: number) => void;
-  toggleNotes: () => void;
-  toggleSubtasksPane: () => void;
-  toggleChatPane: () => void;
+  toggleSidebarPanel: (panel: SidebarPanel) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   endSession: () => void;
 }
@@ -40,9 +38,7 @@ const INITIAL_STATE: RefinementSessionState = {
   queue: [],
   queueMeta: [],
   currentIndex: 0,
-  notesCollapsed: true,
-  subtasksPaneOpen: false,
-  chatPaneOpen: false,
+  activeSidebarPanel: null,
   sessionActive: false,
   sessionStartedAt: null,
   savedSessionId: null,
@@ -56,9 +52,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       queue: keys,
       queueMeta: meta ?? keys.map((k) => ({ key: k, title: k })),
       currentIndex: startIndex != null ? Math.max(0, Math.min(startIndex, keys.length - 1)) : 0,
-      notesCollapsed: true,
-      subtasksPaneOpen: false,
-      chatPaneOpen: false,
+      activeSidebarPanel: null,
       sessionActive: true,
       sessionStartedAt: Date.now(),
       savedSessionId: savedSessionId ?? null,
@@ -86,16 +80,11 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
     }));
   }, []);
 
-  const toggleNotes = useCallback(() => {
-    setState((prev) => ({ ...prev, notesCollapsed: !prev.notesCollapsed }));
-  }, []);
-
-  const toggleSubtasksPane = useCallback(() => {
-    setState((prev) => ({ ...prev, subtasksPaneOpen: !prev.subtasksPaneOpen }));
-  }, []);
-
-  const toggleChatPane = useCallback(() => {
-    setState((prev) => ({ ...prev, chatPaneOpen: !prev.chatPaneOpen }));
+  const toggleSidebarPanel = useCallback((panel: SidebarPanel) => {
+    setState((prev) => ({
+      ...prev,
+      activeSidebarPanel: prev.activeSidebarPanel === panel ? null : panel,
+    }));
   }, []);
 
   const reorderQueue = useCallback((fromIndex: number, toIndex: number) => {
@@ -137,9 +126,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         nextTicket,
         prevTicket,
         goToTicket,
-        toggleNotes,
-        toggleSubtasksPane,
-        toggleChatPane,
+        toggleSidebarPanel,
         reorderQueue,
         endSession,
       }}

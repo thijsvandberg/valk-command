@@ -111,7 +111,7 @@ vi.mock("@/contexts/RefinementSessionContext", () => ({
     startSession: vi.fn(),
     queue: [],
     currentIndex: 0,
-    notesCollapsed: true,
+    activeSidebarPanel: null,
     sessionActive: false,
     sessionStartedAt: null,
   }),

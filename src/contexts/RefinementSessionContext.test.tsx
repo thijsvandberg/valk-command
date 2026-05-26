@@ -24,7 +24,7 @@ describe("RefinementSessionContext", () => {
     expect(state.queue).toEqual([]);
     expect(state.currentIndex).toBe(0);
     expect(state.sessionActive).toBe(false);
-    expect(state.notesCollapsed).toBe(true);
+    expect(state.activeSidebarPanel).toBe(null);
   });
 
   it("starts a session with provided keys", () => {
@@ -66,15 +66,26 @@ describe("RefinementSessionContext", () => {
     expect(state.currentIndex).toBe(0);
   });
 
-  it("toggles notes panel", () => {
+  it("toggles sidebar panel with single-select behavior", () => {
     let state!: ReturnType<typeof useRefinementSession>;
     renderWithProvider((s) => { state = s; });
 
-    expect(state.notesCollapsed).toBe(true);
-    act(() => { state.toggleNotes(); });
-    expect(state.notesCollapsed).toBe(false);
-    act(() => { state.toggleNotes(); });
-    expect(state.notesCollapsed).toBe(true);
+    expect(state.activeSidebarPanel).toBe(null);
+
+    act(() => { state.toggleSidebarPanel("notes"); });
+    expect(state.activeSidebarPanel).toBe("notes");
+
+    act(() => { state.toggleSidebarPanel("chat"); });
+    expect(state.activeSidebarPanel).toBe("chat");
+
+    act(() => { state.toggleSidebarPanel("chat"); });
+    expect(state.activeSidebarPanel).toBe(null);
+
+    act(() => { state.toggleSidebarPanel("info"); });
+    expect(state.activeSidebarPanel).toBe("info");
+
+    act(() => { state.toggleSidebarPanel("subtasks"); });
+    expect(state.activeSidebarPanel).toBe("subtasks");
   });
 
   it("ends session", () => {
