@@ -6,7 +6,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useTicketDetail, useTickets } from "@/hooks/useSprintBoard";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
-import { SessionTicketView } from "@/components/refinement-session/SessionTicketView";
+import { SessionTicketView, SessionMetadataPanel } from "@/components/refinement-session/SessionTicketView";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SessionSummary } from "@/components/refinement-session/SessionSummary";
@@ -265,7 +265,6 @@ export default function RefinementSessionTicketPage({
 
   // Header state
   const [storyPoints, setStoryPoints] = useState<number | null>(ticketData?.storyPoints ?? null);
-  const [metadataExpanded, setMetadataExpanded] = useState(false);
 
   // Sync story points when ticket changes
   useEffect(() => {
@@ -454,19 +453,6 @@ export default function RefinementSessionTicketPage({
                   onChange={handleStoryPointsChange}
                   align="left"
                 />
-                <button
-                  type="button"
-                  onClick={() => setMetadataExpanded((v) => !v)}
-                  className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                    metadataExpanded
-                      ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-                      : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-                  }`}
-                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-                  title="Toggle metadata"
-                >
-                  <Info size={14} strokeWidth={1.5} />
-                </button>
               </>
             )}
           </div>
@@ -628,6 +614,22 @@ export default function RefinementSessionTicketPage({
               )}
             </button>
 
+            {/* Info toggle */}
+            <button
+              type="button"
+              onClick={() => toggleSidebarPanel("info")}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                activeSidebarPanel === "info"
+                  ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+              }`}
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              title="Toggle ticket info"
+            >
+              <Info size={13} strokeWidth={1.5} />
+              Info
+            </button>
+
           </div>
         </div>
 
@@ -643,7 +645,6 @@ export default function RefinementSessionTicketPage({
                   detail={ticketData}
                   onMutate={() => mutate()}
                   subtasksPaneMode={activeSidebarPanel === "subtasks"}
-                  metadataExpanded={metadataExpanded}
                 />
               ) : (
                 <div className="flex items-center justify-center py-24">
@@ -696,6 +697,14 @@ export default function RefinementSessionTicketPage({
                 className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                 style={{ transition: "border-color 0.15s ease" }}
               />
+            </SubtasksPaneResizable>
+          )}
+
+          {/* Right panel: Info / Metadata */}
+          {activeSidebarPanel === "info" && ticketData && (
+            <SubtasksPaneResizable>
+              <h3 className="mb-3 text-label font-semibold uppercase tracking-wider text-text-muted">Info</h3>
+              <SessionMetadataPanel ticket={ticketData} detail={ticketData} />
             </SubtasksPaneResizable>
           )}
         </div>

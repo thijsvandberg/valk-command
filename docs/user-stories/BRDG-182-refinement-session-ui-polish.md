@@ -50,9 +50,9 @@ As the PO, I want the refinement session fullscreen mode to feel polished and co
 - [ ] Add the PO status badge to the refinement header pill (currently missing; ticket detail view has it)
 
 ### 2. Move info button ("i") into the sidebar
-- [ ] Remove the standalone "i" icon button from the header action area
-- [ ] Add an "Info" tab/item in the right sidebar (alongside Chat, Subtasks, Notes)
-- [ ] Clicking "Info" opens the ticket info panel inside the sidebar
+- [x] Remove the standalone "i" icon button from the header action area
+- [x] Add an "Info" tab/item in the right sidebar (alongside Chat, Subtasks, Notes)
+- [x] Clicking "Info" opens the ticket info panel inside the sidebar
 
 ### 3. Story point picker: clearer labeling and larger open state
 - [ ] Replace the small dot indicators with a clearer visual that communicates "story points" (e.g., a label or number badge)

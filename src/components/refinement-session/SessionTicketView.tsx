@@ -33,7 +33,6 @@ interface SessionTicketViewProps {
   detail: TicketDetail;
   onMutate: () => void;
   subtasksPaneMode?: boolean;
-  metadataExpanded?: boolean;
 }
 
 const QUICK_COMMENTS = [
@@ -199,7 +198,7 @@ function MetadataDetailRow({ label, children }: { label: string; children: React
   );
 }
 
-function SessionMetadataPanel({
+export function SessionMetadataPanel({
   ticket,
   detail,
 }: {
@@ -396,7 +395,7 @@ export function HeaderOverflowMenu({
   );
 }
 
-export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode, metadataExpanded = false }: SessionTicketViewProps) {
+export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }: SessionTicketViewProps) {
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
 
@@ -417,11 +416,6 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode, 
 
   return (
     <div className="space-y-0">
-      {/* Metadata panel */}
-      {metadataExpanded && (
-        <SessionMetadataPanel ticket={ticket} detail={detail} />
-      )}
-
       {/* Title (editable) */}
       <EditableTitle
         ticketKey={ticket.key}
