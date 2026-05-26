@@ -1,7 +1,7 @@
 // Centralized internal API client for all /api/* calls.
 // Replaces scattered fetch() patterns with typed, consistent error handling.
 
-import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview, RelatedSuggestionResponse } from "@/types/ticket";
+import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview, RelatedSuggestionResponse, SubtaskSuggestionResponse } from "@/types/ticket";
 import type { Conversation, ConversationType, Message } from "@/types/chat";
 
 // ---------------------------------------------------------------------------
@@ -230,6 +230,20 @@ export const tickets = {
   suggestSubtasks: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{ taskId: string; streamUrl: string }>(
       `/api/tickets/${enc(ticketKey)}/suggest-subtasks`, { method: "POST", signal },
+    ),
+
+  // Subtask suggestions (persisted AI suggestions)
+  getSubtaskSuggestions: (key: string, signal?: AbortSignal) =>
+    apiFetch<{ suggestions: SubtaskSuggestionResponse[] }>(
+      `/api/tickets/${enc(key)}/subtask-suggestions`, { signal },
+    ),
+  persistSubtaskSuggestions: (key: string, data: { suggestions: string[] }, signal?: AbortSignal) =>
+    apiFetch<{ suggestions: SubtaskSuggestionResponse[] }>(
+      `/api/tickets/${enc(key)}/subtask-suggestions`, { method: "PUT", body: data, signal },
+    ),
+  dismissSubtaskSuggestion: (key: string, data: { id: string }, signal?: AbortSignal) =>
+    apiFetch<void>(
+      `/api/tickets/${enc(key)}/subtask-suggestions`, { method: "DELETE", body: data, signal },
     ),
 };
 

@@ -3,8 +3,13 @@
 import { Sparkles, Plus, X, Loader2, AlertCircle, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
+interface SubtaskSuggestionItem {
+  id: string;
+  title: string;
+}
+
 interface SubtaskSuggestionsProps {
-  suggestions: string[];
+  suggestions: SubtaskSuggestionItem[];
   isLoading: boolean;
   progressText: string | null;
   error: string | null;
@@ -63,11 +68,11 @@ export function SubtaskSuggestions({
           </div>
         ) : (
           <div className="space-y-0.5">
-            {suggestions.map((title, idx) => {
+            {suggestions.map((suggestion, idx) => {
               const isAdding = addingIndices.has(idx);
               return (
                 <div
-                  key={`${idx}-${title}`}
+                  key={suggestion.id}
                   className={`group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors duration-150 ${
                     isAdding ? "opacity-50" : "hover:bg-overlay-default"
                   }`}
@@ -80,7 +85,7 @@ export function SubtaskSuggestions({
                     </span>
                   )}
                   <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
-                    {title}
+                    {suggestion.title}
                   </span>
                   {!isAdding && (
                     <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
@@ -90,13 +95,13 @@ export function SubtaskSuggestions({
                         iconOnly
                         icon={<Plus size={11} strokeWidth={2} />}
                         onClick={() => onAdd(idx)}
-                        aria-label={`Add subtask: ${title}`}
+                        aria-label={`Add subtask: ${suggestion.title}`}
                       />
                       <button
                         type="button"
                         onClick={() => onDismiss(idx)}
                         className="cursor-pointer rounded p-0.5 text-text-muted hover:text-text-secondary transition-colors duration-150"
-                        aria-label={`Dismiss suggestion: ${title}`}
+                        aria-label={`Dismiss suggestion: ${suggestion.title}`}
                       >
                         <X size={11} strokeWidth={2} />
                       </button>

@@ -244,6 +244,13 @@ export interface StoredReview {
   suggestions: string[];
 }
 
+export interface SubtaskSuggestionResponse {
+  id: string;
+  ticketKey: string;
+  title: string;
+  createdAt: string;
+}
+
 export interface RelatedSuggestionResponse {
   id: string;
   ticketKey: string;

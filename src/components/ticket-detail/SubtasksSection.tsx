@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { TicketDetail, JiraStatus, Subtask } from "@/types/ticket";
+import type { TicketDetail, JiraStatus, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { tickets } from "@/lib/api-client";
@@ -227,7 +227,7 @@ export function SubtasksSection({
   const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
   const [hideKeys, setHideKeys] = useState(defaultHideKeys ?? false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<SubtaskSuggestionResponse[]>([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestProgress, setSuggestProgress] = useState<string | null>(null);
@@ -236,6 +236,19 @@ export function SubtasksSection({
   const suggestEsRef = useRef<EventSource | null>(null);
   const suggestRetryRef = useRef(0);
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
+
+  // Load persisted suggestions on mount
+  useEffect(() => {
+    let cancelled = false;
+    tickets.getSubtaskSuggestions(ticketKey).then((data) => {
+      if (!cancelled && data.suggestions.length > 0) {
+        setSuggestions(data.suggestions);
+      }
+    }).catch(() => {
+      // Silently ignore load errors
+    });
+    return () => { cancelled = true; };
+  }, [ticketKey]);
 
   // Merge server subtasks with locally added ones (that haven't appeared in server data yet)
   const mergedSubtasks = [
@@ -379,9 +392,21 @@ export function SubtasksSection({
           suggestEsRef.current = null;
           const output = (resultData.output as string) ?? "";
           const parsed = parseSubtaskSuggestions(output);
-          setSuggestions(parsed);
           setSuggestLoading(false);
           setSuggestProgress(null);
+
+          // Persist to DB, then update state with IDs
+          tickets.persistSubtaskSuggestions(ticketKey, { suggestions: parsed })
+            .then((data) => setSuggestions(data.suggestions))
+            .catch(() => {
+              // Fallback: use ephemeral suggestions without IDs
+              setSuggestions(parsed.map((title, i) => ({
+                id: `ephemeral-${i}`,
+                ticketKey,
+                title,
+                createdAt: new Date().toISOString(),
+              })));
+            });
         },
         onStructuredError: (message) => {
           es.close();
@@ -416,13 +441,13 @@ export function SubtasksSection({
     handleSuggestRef.current = handleSuggest;
   }, [handleSuggest]);
 
-  const addSuggestionAsSubtask = useCallback(async (title: string, index: number) => {
+  const addSuggestionAsSubtask = useCallback(async (suggestion: SubtaskSuggestionResponse, index: number) => {
     setAddingIndices((prev) => new Set(prev).add(index));
 
     const placeholderKey = `pending-suggest-${Date.now()}`;
     const placeholder: Subtask = {
       key: placeholderKey,
-      title,
+      title: suggestion.title,
       type: "subtask",
       jiraStatus: "TO DO",
       assignee: null,
@@ -431,10 +456,14 @@ export function SubtasksSection({
     setLocalOrder(null);
 
     try {
-      const created = await tickets.createSubtask(ticketKey, { title });
+      const created = await tickets.createSubtask(ticketKey, { title: suggestion.title });
       setLocallyAdded((prev) => prev.map((s) => s.key === placeholderKey ? created : s));
       setSuggestions((prev) => prev.filter((_, i) => i !== index));
       onMutate();
+      // Remove accepted suggestion from DB
+      if (!suggestion.id.startsWith("ephemeral-")) {
+        tickets.dismissSubtaskSuggestion(ticketKey, { id: suggestion.id }).catch(() => {});
+      }
     } catch (err) {
       setLocallyAdded((prev) => prev.filter((s) => s.key !== placeholderKey));
       const detail = err instanceof ApiError ? err.message : "Jira API error";
@@ -449,8 +478,8 @@ export function SubtasksSection({
   }, [ticketKey, onMutate]);
 
   const handleAddSuggestion = useCallback((index: number) => {
-    const title = suggestions[index];
-    if (title) addSuggestionAsSubtask(title, index);
+    const suggestion = suggestions[index];
+    if (suggestion) addSuggestionAsSubtask(suggestion, index);
   }, [suggestions, addSuggestionAsSubtask]);
 
   const handleAddAllSuggestions = useCallback(async () => {
@@ -461,8 +490,13 @@ export function SubtasksSection({
   }, [suggestions, addSuggestionAsSubtask]);
 
   const handleDismissSuggestion = useCallback((index: number) => {
+    const suggestion = suggestions[index];
     setSuggestions((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+    // Remove from DB
+    if (suggestion && !suggestion.id.startsWith("ephemeral-")) {
+      tickets.dismissSubtaskSuggestion(ticketKey, { id: suggestion.id }).catch(() => {});
+    }
+  }, [suggestions, ticketKey]);
 
   const isDndEnabled = filter === "all" && filtered.length > 1;
 
