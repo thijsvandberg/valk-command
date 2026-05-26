@@ -6,7 +6,7 @@ interface TitleInputProps {
   placeholder?: string;
 }
 
-export function TitleInput({ value, onChange, placeholder = "Story title..." }: TitleInputProps) {
+export function TitleInput({ value, onChange, placeholder = "Story title (optional, AI will suggest)" }: TitleInputProps) {
   return (
     <input
       type="text"

@@ -413,6 +413,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     targetTicketKey,
     targetTicketTitle,
     splitModeVisible,
+    needsTitle: !draftTitle && !ticketData?.title && (!writer.session?.localTitle || writer.session.localTitle === "Untitled draft"),
     onDraftChange: handleDraftChange,
     onTitleChange: handleTitleChange,
     onTargetDraftChange: handleTargetDraftChange,
@@ -713,7 +714,8 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
             </>}
           >
             {(() => {
-              const displayTitle = writer.session?.localTitle ?? ticketData?.title ?? draftTitle ?? ticketKey;
+              const rawTitle = writer.session?.localTitle ?? ticketData?.title ?? draftTitle;
+              const displayTitle = (rawTitle && rawTitle !== "Untitled draft") ? rawTitle : (draftTitle || ticketKey);
               const displayType = ticketData?.type ?? draftType;
 
               if (isStillDraft && draftSync.syncStatus === "pending") {

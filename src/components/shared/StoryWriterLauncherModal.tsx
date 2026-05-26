@@ -436,18 +436,18 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
   const handleCreateNew = () => {
     const title = newTitle.trim();
-    if (!title) { setCreateError("Enter a story title"); return; }
     setCreateError(null);
 
     // Generate draft key client-side and navigate instantly
     const draftKey = `DRAFT-${crypto.randomUUID().slice(0, 8)}`;
-    const params = new URLSearchParams({ title, type: issueType });
+    const params = new URLSearchParams({ type: issueType });
+    if (title) params.set("title", title);
     onClose();
     router.push(`/tickets/${draftKey}/write?${params.toString()}`);
 
     // Fire draft creation in background (non-blocking)
     storyWriter.createDraft({
-      title, sprintId: selectedSprintId || undefined, issueType, draftKey,
+      title: title || undefined, sprintId: selectedSprintId || undefined, issueType, draftKey,
     }).catch(() => {});
   };
 
@@ -469,7 +469,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
   }, [mode, sessions]);
 
   const canConfirm =
-    mode === "new"     ? newTitle.trim().length > 0 :
+    mode === "new"     ? true :
     mode === "session" ? !!selectedSessionKey : !!selectedTicket;
 
   const handleConfirm = () => {
@@ -560,7 +560,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleCreateNew(); }}
-                  placeholder="Build cool stuff"
+                  placeholder="Story title (optional, AI will suggest)"
                 />
               </div>
 

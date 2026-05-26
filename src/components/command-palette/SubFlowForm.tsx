@@ -69,7 +69,7 @@ export function SubFlowForm({
               value={subFlow.title}
               onChange={(e) => onTitleChange(e.target.value)}
               className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
-              placeholder="Story title..."
+              placeholder="Story title (optional, AI will suggest)"
             />
           </div>
           <div>

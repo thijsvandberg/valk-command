@@ -27,6 +27,7 @@ export interface WriterContextValue {
   targetTicketKey: string | null;
   targetTicketTitle: string | null;
   splitModeVisible: boolean;
+  needsTitle: boolean;
 
   onDraftChange: (content: string) => void;
   onTitleChange: (title: string) => void;
