@@ -93,19 +93,20 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
           return (
             <div
               key={s.key}
-              className={`flex items-center gap-2.5 px-3 py-2 transition-colors duration-150 ${
+              className={`flex flex-col gap-1 px-3 py-2 transition-colors duration-150 ${
                 justLinked || alreadyLinked
                   ? "bg-[var(--color-brand-500)]/[0.04]"
                   : "hover:bg-overlay-subtle"
               }`}
             >
-              <span className="text-caption text-text-muted shrink-0">{relationLabel}</span>
-              {info && <IssueTypeIcon type={info.type} size={13} />}
-              <span className="font-mono text-label text-[var(--color-brand-400)] shrink-0">{s.key}</span>
-              {info && (
-                <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>
-              )}
-              {!info && <span className="flex-1" />}
+              <span className="text-caption text-text-muted">{relationLabel}</span>
+              <div className="flex items-center gap-2">
+                {info && <IssueTypeIcon type={info.type} size={13} />}
+                <span className="font-mono text-label text-[var(--color-brand-400)] shrink-0">{s.key}</span>
+                {info && (
+                  <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>
+                )}
+                {!info && <span className="flex-1" />}
               {alreadyLinked ? (
                 <span className="text-caption text-text-muted shrink-0">Already linked</span>
               ) : justLinked ? (
@@ -135,6 +136,7 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
                   )}
                 </button>
               )}
+              </div>
             </div>
           );
         })}
