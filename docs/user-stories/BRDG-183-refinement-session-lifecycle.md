@@ -25,18 +25,18 @@ As the PO, I want a clear distinction between leaving a refinement session (to c
 - [x] Clicking "Exit session" navigates to the end modal (same as finishing the last ticket)
 
 ### 2. End modal after exit or finishing last ticket
-- [ ] Both the overflow menu "Exit session" and navigating past the last ticket lead to the same end modal/page
-- [ ] The end modal shows:
+- [x] Both the overflow menu "Exit session" and navigating past the last ticket lead to the same end modal/page
+- [x] The end modal shows:
   - All session tickets as a list: ticket key (in standard pill form) + title per row
   - Behind each ticket: a button to add a PO message (inline or mini-editor)
   - A general comment field (always visible, always saved to the session)
-- [ ] Two action buttons at the bottom:
+- [x] Two action buttons at the bottom:
   - **Close / Save**: leaves the session flow but keeps the session open (status remains `draft`/`in_progress`); the session stays visible on the refinement overview page
   - **Done / Finish**: marks the session as `completed`
 
 ### 3. Smart primary button logic
-- [ ] If not all tickets have story points assigned (excluding spikes), the **Finish** button is primary (encouraging the user to go back and estimate)
-- [ ] If all applicable tickets have story points, the **Close/Save** button is primary
+- [x] If not all tickets have story points assigned (excluding spikes), the **Finish** button is primary (encouraging the user to go back and estimate)
+- [x] If all applicable tickets have story points, the **Close/Save** button is primary
 
 ### 4. Session persistence
 - [ ] Exiting via "Close/Save" keeps the session in an open state so it can be resumed later

@@ -9,7 +9,7 @@ import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { SessionTicketView, SessionMetadataPanel } from "@/components/refinement-session/SessionTicketView";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
-import { SessionSummary } from "@/components/refinement-session/SessionSummary";
+import { SessionEndModal } from "@/components/refinement-session/SessionEndModal";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets } from "@/lib/api-client";
@@ -430,13 +430,18 @@ export default function RefinementSessionTicketPage({
 
   if (queue.length === 0) return null;
 
-  // Session ended: show summary
-  if (!sessionActive) {
+  // Session ended: navigate back to refinement
+  if (!sessionActive && !showingEndModal) {
+    return null;
+  }
+
+  // End modal: shown when exiting or after last ticket
+  if (showingEndModal) {
     return (
       <>
         {pageTitle}
         <div className="flex h-full flex-col bg-[var(--color-surface-elevated)]">
-          <SessionSummary />
+          <SessionEndModal />
         </div>
       </>
     );
