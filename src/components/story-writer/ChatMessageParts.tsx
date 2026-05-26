@@ -4,20 +4,19 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { Message } from "@/types/chat";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
 import {
-  Loader2,
   FileText,
   ChevronDown,
   ChevronUp,
-  Link2,
   AlertCircle,
   RotateCcw,
   Info,
   ExternalLink,
-  Zap,
+  MessageSquareQuote,
   Maximize2,
   Check,
   GitCompare,
   Sparkles,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +25,9 @@ import { TitleSuggestionChips } from "@/components/story-writer/TitleSuggestionC
 import { TypeSuggestionChip } from "@/components/story-writer/TypeSuggestionChip";
 import { LinkSuggestionChips, type LinkSuggestion } from "@/components/story-writer/LinkSuggestionChips";
 import { EpicSuggestionCard, type EpicSuggestion } from "@/components/story-writer/EpicSuggestionCard";
+import { SuggestionCard, SuggestionRow, ScoreBadge, LinkButton } from "@/components/story-writer/SuggestionCard";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import type { JiraStatus } from "@/types/ticket";
 
 export const SHOW_MORE_WORD_THRESHOLD = 80;
 export const TRUNCATE_WORD_COUNT = 40;
@@ -308,15 +310,24 @@ export function ChatMessage({
   }, [onStoryKeyClick]);
 
   // Strip non-title-suggestions tags first, keep the title-suggestions tag for positional splitting
+  const hasRelatedBlock = message.content.includes("<related-stories>");
   const baseContent = stripEpicSuggestionTags(
     stripLinkSuggestionTags(
-      message.content
-        .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
-        .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
-        .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
-        .replace(/<summary>[\s\S]*?<\/summary>/g, "")
-        .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
-        .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, ""),
+      (() => {
+        let c = message.content
+          .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
+          .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
+          .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
+          .replace(/<summary>[\s\S]*?<\/summary>/g, "")
+          .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
+          .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "");
+        // When the message contained related-stories results, strip the verbose
+        // scoring breakdown since the card already displays all candidates.
+        if (hasRelatedBlock) {
+          c = c.replace(/\*{0,2}(?:Already linked|Candidates? pool|Scoring)[:\s*][\s\S]*/i, "").trim();
+        }
+        return c;
+      })(),
     ),
   );
 
@@ -604,6 +615,12 @@ export function DraftCard({ content }: { content: string }) {
   );
 }
 
+function normalizeJiraStatus(raw: string | null | undefined): JiraStatus {
+  const upper = (raw ?? "").toUpperCase().trim();
+  const VALID: JiraStatus[] = ["TO DO", "IN PROGRESS", "TEST", "DONE", "DEPRECATED"];
+  return (VALID.find((s) => s === upper) ?? "TO DO") as JiraStatus;
+}
+
 export function RelatedStoriesInline({
   candidates,
   onLink,
@@ -623,62 +640,43 @@ export function RelatedStoriesInline({
     setLinkingId(null);
   };
 
-  const jiraBase = "https://new-story.atlassian.net/browse/";
-
   return (
-    <div className="mt-2 rounded-lg border border-[var(--color-brand-500)]/12 bg-[var(--color-brand-500)]/[0.03] overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
-        <span className="text-caption font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-          Related Stories
-        </span>
-        {onOpenPanel && (
-          <button
-            type="button"
-            onClick={onOpenPanel}
-            className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
-          >
-            Open panel
-          </button>
-        )}
-      </div>
-      <div className="divide-y divide-border-subtle">
-        {candidates.map((c) => (
-          <div key={c.id} className="flex items-center gap-2 px-3 py-2">
-            <span className={`shrink-0 text-caption font-bold tabular-nums w-6 text-right ${c.score >= 80 ? "text-emerald-400" : c.score >= 60 ? "text-amber-400" : "text-text-tertiary"}`}>
-              {c.score}
-            </span>
-            <a
-              href={c.jiraUrl ?? `${jiraBase}${c.jiraKey}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] shrink-0 transition-colors duration-100"
-            >
-              {c.jiraKey}
-            </a>
-            <span className="min-w-0 flex-1 truncate text-label text-text-secondary">
-              {c.title}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleLink(c.id, !c.isLinked)}
-              disabled={linkingId === c.id}
-              className={`shrink-0 flex items-center gap-1 rounded border px-1.5 py-0.5 text-caption font-medium cursor-pointer transition-colors duration-150 disabled:opacity-50 ${
-                c.isLinked
-                  ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-                  : "border-border-strong text-text-tertiary hover:border-[var(--color-brand-500)]/20 hover:text-[var(--color-brand-400)]"
-              }`}
-            >
-              {linkingId === c.id ? (
-                <Loader2 size={9} className="animate-spin" />
-              ) : c.isLinked ? (
-                <Link2 size={9} strokeWidth={1.5} />
-              ) : null}
-              {c.isLinked ? "Linked" : "Link"}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
+    <SuggestionCard
+      icon={<Search size={10} strokeWidth={1.5} className="text-text-muted" />}
+      title="Related stories"
+      headerRight={onOpenPanel ? (
+        <button
+          type="button"
+          onClick={onOpenPanel}
+          className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
+        >
+          Open panel
+        </button>
+      ) : undefined}
+    >
+      {candidates.map((c) => (
+        <SuggestionRow key={c.id} active={c.isLinked}>
+          <ScoreBadge score={c.score} />
+          <TicketStatusPill
+            ticketKey={c.jiraKey}
+            issueType={(c.issueType ?? "task").toLowerCase()}
+            jiraStatus={normalizeJiraStatus(c.status)}
+            title={c.title}
+            size="sm"
+            variant="list"
+          />
+          <span className="min-w-0 flex-1 truncate text-label text-text-secondary">
+            {c.title}
+          </span>
+          <LinkButton
+            linked={c.isLinked}
+            loading={linkingId === c.id}
+            onLink={() => handleLink(c.id, true)}
+            onUnlink={() => handleLink(c.id, false)}
+          />
+        </SuggestionRow>
+      ))}
+    </SuggestionCard>
   );
 }
 
@@ -714,7 +712,7 @@ export function QuickActionsPopover({
         variant="ghost"
         size="md"
         iconOnly
-        icon={<Zap size={14} strokeWidth={1.5} />}
+        icon={<MessageSquareQuote size={14} strokeWidth={1.5} />}
         onClick={onToggle}
         disabled={disabled}
         className={`shrink-0 ${

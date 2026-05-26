@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { NotebookPen, Plus, ArrowRight, AlertTriangle, Scissors } from "lucide-react";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import type { JiraStatus, TicketReadiness } from "@/types/ticket";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
@@ -22,6 +24,7 @@ interface ActiveSession {
   epicKey: string | null;
   issueType: string | null;
   status: string;
+  readiness: string | null;
   updatedAt: string | null;
   jiraUpdatedAt: string | null;
   targetTicketKey: string | null;
@@ -60,32 +63,17 @@ function SessionCard({
       {/* Top row: ticket key(s) + badges */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <a
-            href={`/tickets/${session.ticketKey}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)] hover:underline cursor-pointer"
-          >
-            {session.ticketKey}
-          </a>
-          {session.issueType && (
-            <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary">
-              {session.issueType}
-            </span>
-          )}
+          <TicketStatusPill
+            ticketKey={session.ticketKey}
+            jiraStatus={(session.status as JiraStatus) ?? "TO DO"}
+            readiness={(session.readiness as TicketReadiness) ?? undefined}
+            issueType={session.issueType ?? undefined}
+            title={session.title}
+            size="sm"
+          />
           {isSplit && (
             <>
               <Scissors size={9} strokeWidth={2} className="shrink-0 text-violet-400/60" />
-              <a
-                href={`/tickets/${session.targetTicketKey}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="shrink-0 text-label font-mono font-medium text-[var(--color-brand-400)] hover:underline cursor-pointer"
-              >
-                {session.targetTicketKey}
-              </a>
               <span className="shrink-0 flex items-center gap-1 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/80">
                 Split
               </span>

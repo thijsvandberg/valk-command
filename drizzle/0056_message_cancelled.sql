@@ -1,1 +1,0 @@
-ALTER TABLE "message" ADD "cancelled" integer DEFAULT false NOT NULL;

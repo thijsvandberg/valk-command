@@ -11,7 +11,6 @@ import {
   Star,
   Scissors,
   IterationCw,
-  Zap,
   MoreHorizontal,
   ArrowUpRight,
   NotebookPen,
@@ -35,6 +34,7 @@ import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
 import { PaneProvider, usePaneContext } from "./panes/PaneContext";
 import { WriterProvider, useWriterContext, type WriterContextValue } from "./panes/WriterContext";
 import { ApplicationListBar } from "./panes/ApplicationListBar";
@@ -200,6 +200,11 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const handleReadinessChange = useCallback(async (v: import("@/types/ticket").TicketReadiness | null) => {
     setLocalReadiness(v);
     await tickets.updateMetadata(ticketKey, { readiness: v });
+    mutateTicket();
+  }, [ticketKey, mutateTicket]);
+
+  const handleEpicChange = useCallback(async (epic: EpicOption | null) => {
+    await tickets.updateEpic(ticketKey, epic?.key ?? null);
     mutateTicket();
   }, [ticketKey, mutateTicket]);
 
@@ -466,7 +471,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
           <ViewHeader
             className="shrink-0"
             actions={<>
-              {(ticketSprintId || ticketAsTicket?.epic) && (
+              {(ticketSprintId || ticketData) && (
                 <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
                   {ticketSprintId && (
                     <Tooltip content={ticketSprintLabel || "Sprint"}>
@@ -479,27 +484,17 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       </Link>
                     </Tooltip>
                   )}
-                  {ticketAsTicket?.epic && (
-                    <Tooltip content={ticketAsTicket.epic}>
-                      {ticketAsTicket.epicKey ? (
-                        <Link
-                          href={`/tickets/${ticketAsTicket.epicKey}`}
-                          className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                        >
-                          <Zap size={12} strokeWidth={1.5} />
-                          <span className="max-w-[120px] truncate">{ticketAsTicket.epic}</span>
-                        </Link>
-                      ) : (
-                        <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary">
-                          <Zap size={12} strokeWidth={1.5} />
-                          <span className="max-w-[120px] truncate">{ticketAsTicket.epic}</span>
-                        </span>
-                      )}
-                    </Tooltip>
+                  {ticketData && (
+                    <EpicPicker
+                      value={ticketAsTicket?.epicKey ? { key: ticketAsTicket.epicKey, name: ticketAsTicket.epic ?? ticketAsTicket.epicKey } : null}
+                      onChange={handleEpicChange}
+                      align="left"
+                      ticketKey={ticketKey}
+                    />
                   )}
                 </nav>
               )}
-              {(ticketSprintId || ticketAsTicket?.epic) && (
+              {(ticketSprintId || ticketData) && (
                 <div className="h-5 w-px shrink-0 bg-overlay-default" />
               )}
 
@@ -731,7 +726,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
           >
             {(() => {
               const rawTitle = writer.session?.localTitle ?? ticketData?.title ?? draftTitle;
-              const displayTitle = (rawTitle && rawTitle !== "Untitled draft") ? rawTitle : (draftTitle || ticketKey);
+              const displayTitle = (rawTitle && rawTitle !== "Untitled draft") ? rawTitle : (draftTitle || "Untitled draft");
               const displayType = ticketData?.type ?? draftType;
 
               if (isStillDraft && draftSync.syncStatus === "pending") {

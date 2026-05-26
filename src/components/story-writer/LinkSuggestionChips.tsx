@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link2, Loader2 } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { SuggestionCard, SuggestionRow, LinkButton } from "@/components/story-writer/SuggestionCard";
 import { tickets } from "@/lib/api-client";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
 
@@ -98,88 +99,55 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
   };
 
   return (
-    <div className="mt-3 rounded-lg border border-border-default overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default">
-        <Link2 size={10} strokeWidth={1.5} className="text-text-muted" />
-        <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
-          Link suggestions
-        </span>
-      </div>
-      <div className="divide-y divide-border-subtle">
-        {groupedRelations.map(([relation, items]) => {
-          const relationLabel = RELATION_LABELS[relation] ?? relation;
-          return (
-            <div key={relation}>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-primary border-b border-border-subtle">
-                <span className="text-caption text-text-muted">{relationLabel}</span>
-              </div>
-              {items.map((s) => {
-                const alreadyLinked = linkedIssueKeys.has(s.key);
-                const justLinked = linked.has(s.key);
-                const isLinking = linking.has(s.key);
-                const hasError = errors.has(s.key);
-                const info = resolved[s.key];
-
-                return (
-                  <div
-                    key={s.key}
-                    className={`flex items-center gap-2 px-3 py-2 transition-colors duration-150 ${
-                      justLinked || alreadyLinked
-                        ? "bg-[var(--color-brand-500)]/[0.04]"
-                        : "hover:bg-overlay-subtle"
-                    }`}
-                  >
-                    <TicketStatusPill
-                      ticketKey={s.key}
-                      issueType={info?.type ?? "task"}
-                      jiraStatus={(info?.status ?? "TO DO") as JiraStatus}
-                      readiness={info?.readiness ?? undefined}
-                      title={info?.title}
-                      size="sm"
-                      variant="list"
-                      compact
-                    />
-                    {info && (
-                      <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>
-                    )}
-                    {!info && <span className="flex-1" />}
-                    {alreadyLinked ? (
-                      <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
-                        Linked
-                      </span>
-                    ) : justLinked ? (
-                      <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
-                        Linked
-                      </span>
-                    ) : hasError ? (
-                      <button
-                        type="button"
-                        onClick={() => handleLink(s.key, s.relation)}
-                        className="shrink-0 text-caption font-medium text-red-400 cursor-pointer hover:text-red-300 transition-colors duration-150"
-                      >
-                        Retry
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleLink(s.key, s.relation)}
-                        disabled={isLinking}
-                        className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50"
-                      >
-                        {isLinking ? (
-                          <Loader2 size={10} className="animate-spin" />
-                        ) : (
-                          "Link"
-                        )}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+    <SuggestionCard
+      icon={<Link2 size={10} strokeWidth={1.5} className="text-text-muted" />}
+      title="Link suggestions"
+    >
+      {groupedRelations.map(([relation, items]) => {
+        const relationLabel = RELATION_LABELS[relation] ?? relation;
+        return (
+          <div key={relation}>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-primary border-b border-border-subtle">
+              <span className="text-caption text-text-muted">{relationLabel}</span>
             </div>
-          );
-        })}
-      </div>
-    </div>
+            {items.map((s) => {
+              const alreadyLinked = linkedIssueKeys.has(s.key);
+              const justLinked = linked.has(s.key);
+              const isLinking = linking.has(s.key);
+              const hasError = errors.has(s.key);
+              const info = resolved[s.key];
+
+              return (
+                <SuggestionRow key={s.key} active={justLinked || alreadyLinked}>
+                  <TicketStatusPill
+                    ticketKey={s.key}
+                    issueType={info?.type ?? "task"}
+                    jiraStatus={(info?.status ?? "TO DO") as JiraStatus}
+                    readiness={info?.readiness ?? undefined}
+                    title={info?.title}
+                    size="sm"
+                    variant="list"
+                    compact
+                  />
+                  {info ? (
+                    <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>
+                  ) : (
+                    <span className="min-w-0 flex-1">
+                      <span className="block h-3.5 w-3/4 rounded bg-surface-secondary animate-pulse" />
+                    </span>
+                  )}
+                  <LinkButton
+                    linked={alreadyLinked || justLinked}
+                    loading={isLinking}
+                    error={hasError}
+                    onLink={() => handleLink(s.key, s.relation)}
+                  />
+                </SuggestionRow>
+              );
+            })}
+          </div>
+        );
+      })}
+    </SuggestionCard>
   );
 }

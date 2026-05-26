@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { storyWriterSession, ticket, message } from "@/db/schema";
+import { storyWriterSession, ticket, ticketMetadata, message } from "@/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
@@ -13,6 +13,7 @@ export interface ActiveSession {
   epicKey: string | null;
   issueType: string | null;
   status: string;
+  readiness: string | null;
   updatedAt: string | null;
   jiraUpdatedAt: string | null;
   targetTicketKey: string | null;
@@ -34,11 +35,13 @@ export async function GET() {
       issueType: ticket.type,
       ticketStatus: ticket.status,
       jiraUpdatedAt: ticket.jiraUpdatedAt,
+      readiness: ticketMetadata.readiness,
       // Correlated subquery to get the target ticket title without a second join
       targetTitle: sql<string | null>`(SELECT title FROM ticket WHERE jira_key = ${storyWriterSession.targetTicketKey})`,
     })
     .from(storyWriterSession)
     .leftJoin(ticket, eq(storyWriterSession.ticketKey, ticket.jiraKey))
+    .leftJoin(ticketMetadata, eq(storyWriterSession.ticketKey, ticketMetadata.jiraKey))
     .where(
       and(
         eq(storyWriterSession.status, "active"),
@@ -57,6 +60,7 @@ export async function GET() {
     epicKey: r.epicKey ?? null,
     issueType: r.issueType ?? null,
     status: r.ticketStatus ?? "unknown",
+    readiness: r.readiness ?? null,
     updatedAt: r.updatedAt,
     jiraUpdatedAt: r.jiraUpdatedAt ?? null,
     targetTicketKey: r.targetTicketKey ?? null,

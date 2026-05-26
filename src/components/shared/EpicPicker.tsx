@@ -85,9 +85,19 @@ export function EpicPicker({
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const flipUp = rect.bottom + 300 > window.innerHeight;
+    const popoverWidth = 280;
+    let left: number;
+    if (align === "left") {
+      left = rect.left;
+      if (left + popoverWidth > window.innerWidth - 8) {
+        left = window.innerWidth - popoverWidth - 8;
+      }
+    } else {
+      left = rect.right;
+    }
     setPos({
       top: flipUp ? rect.top : rect.bottom + 4,
-      left: align === "left" ? rect.left : rect.right,
+      left,
       flipUp,
     });
   }, [align]);
@@ -258,18 +268,13 @@ export function EpicPicker({
         ref={triggerRef}
         type="button"
         onClick={() => open ? handleClose() : handleOpen()}
-        title={value ? `Epic: ${value.name}` : "No epic"}
-        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -mr-2 text-xs cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
-        style={{ transition: "background-color 0.15s ease" }}
+        title={value ? `Epic: ${value.name}` : "Select epic"}
+        className="inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
       >
-        {value ? (
-          <>
-            <Zap size={10} strokeWidth={2} className="shrink-0 text-[#9b6cd4]" />
-            <span className="truncate max-w-[140px] font-medium text-[#9b6cd4]">{value.name}</span>
-          </>
-        ) : (
-          <span className="text-text-muted">None</span>
-        )}
+        <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[#9b6cd4]" : "text-text-muted"}`} />
+        <span className={`truncate max-w-[140px] ${value ? "text-[#9b6cd4] font-medium" : "text-text-muted"}`}>
+          {value ? value.name : "Select epic"}
+        </span>
       </button>
 
       {open && pos && createPortal(
@@ -280,7 +285,7 @@ export function EpicPicker({
             top: pos.flipUp ? undefined : pos.top,
             bottom: pos.flipUp ? window.innerHeight - pos.top + 4 : undefined,
             left: align === "left" ? pos.left : undefined,
-            right: align === "right" ? window.innerWidth - pos.left : undefined,
+            right: align === "right" ? Math.max(8, window.innerWidth - pos.left) : undefined,
             backgroundColor: "var(--color-surface-floating)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.20), 0 1px 4px rgba(0,0,0,0.10)",
           }}

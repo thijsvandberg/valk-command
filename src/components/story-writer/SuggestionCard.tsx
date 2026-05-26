@@ -1,0 +1,141 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { Loader2 } from "lucide-react";
+
+/* ------------------------------------------------------------------ */
+/*  Card shell                                                         */
+/* ------------------------------------------------------------------ */
+
+export function SuggestionCard({
+  icon,
+  title,
+  headerRight,
+  children,
+  className = "",
+}: {
+  icon: ReactNode;
+  title: string;
+  headerRight?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`mt-3 rounded-lg border border-border-default overflow-hidden ${className}`}>
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default">
+        {icon}
+        <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
+          {title}
+        </span>
+        {headerRight && <span className="ml-auto flex items-center">{headerRight}</span>}
+      </div>
+      <div className="divide-y divide-border-subtle">{children}</div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Row                                                                */
+/* ------------------------------------------------------------------ */
+
+export function SuggestionRow({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 px-3 py-1.5 transition-colors duration-150 ${
+        active ? "bg-[var(--color-brand-500)]/[0.04]" : "hover:bg-overlay-subtle"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Score badge                                                        */
+/* ------------------------------------------------------------------ */
+
+export function ScoreBadge({ score }: { score: number }) {
+  if (score < 0) {
+    return <span className="size-5 shrink-0" />;
+  }
+
+  const color = score >= 80
+    ? "bg-emerald-500/15 text-emerald-400"
+    : score >= 60
+      ? "bg-amber-500/15 text-amber-400"
+      : "bg-overlay-default text-text-tertiary";
+
+  return (
+    <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums leading-none ${color}`}>
+      {score}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Link / Linked / Retry button                                       */
+/* ------------------------------------------------------------------ */
+
+export function LinkButton({
+  linked,
+  loading,
+  error,
+  onLink,
+  onUnlink,
+}: {
+  linked: boolean;
+  loading: boolean;
+  error?: boolean;
+  onLink: () => void;
+  onUnlink?: () => void;
+}) {
+  if (error) {
+    return (
+      <button
+        type="button"
+        onClick={onLink}
+        className="shrink-0 text-caption font-medium text-red-400 cursor-pointer hover:text-red-300 transition-colors duration-150"
+      >
+        Retry
+      </button>
+    );
+  }
+
+  if (linked) {
+    if (onUnlink) {
+      return (
+        <button
+          type="button"
+          onClick={onUnlink}
+          disabled={loading}
+          className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)] cursor-pointer hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150 disabled:opacity-50"
+        >
+          {loading && <Loader2 size={10} className="inline animate-spin mr-1" />}
+          Linked
+        </button>
+      );
+    }
+    return (
+      <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
+        Linked
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onLink}
+      disabled={loading}
+      className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50"
+    >
+      {loading ? <Loader2 size={10} className="animate-spin" /> : "Link"}
+    </button>
+  );
+}

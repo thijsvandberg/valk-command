@@ -8,7 +8,7 @@ import {
   Search, ArrowRight, History, Check, Trash2, IterationCw, Zap, Scissors,
 } from "lucide-react";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
-import { apiFetch, jira, sprintSlots, config as configApi, storyWriter } from "@/lib/api-client";
+import { apiFetch, jira, sprintSlots, config as configApi, storyWriter, settings } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -350,11 +350,14 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     setShowDropdown(false); setSelectedSessionKey(""); setFocusedSearch(-1); setConfirmDeleteSessionId(null);
 
     Promise.all([
-      jira.getSprints() as unknown as Promise<JiraSprint[]>,
+      jira.getSprints() as unknown as Promise<{ sprints: JiraSprint[]; backlogCount?: number }>,
       sprintSlots.list() as Promise<SprintSlot[]>,
       configApi.get() as Promise<{ nextSprintId: string }>,
-    ]).then(([all, slots, cfg]) => {
+      settings.getDefaultSprint().catch(() => ({ sprintId: "" })),
+    ]).then(([sprintData, slots, cfg, defaultPref]) => {
+      const all      = Array.isArray(sprintData) ? sprintData : (sprintData.sprints ?? []);
       const nextId   = cfg.nextSprintId?.trim() ?? "";
+      const savedId  = defaultPref.sprintId?.trim() ?? "";
       const slotIds  = new Set(slots.map((s) => s.sprintId));
       const visible  = all.filter((s) => s.state !== "closed");
       const ordered: SprintOption[] = [];
@@ -376,7 +379,11 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
         ordered.push({ value: String(s.id), label: s.name, section: "other" })
       );
       setSprintOptions(ordered);
-      const def = nextId && ordered.find((o) => o.value === nextId) ? nextId : ordered[0]?.value ?? "";
+      const def = (savedId && ordered.find((o) => o.value === savedId))
+        ? savedId
+        : (nextId && ordered.find((o) => o.value === nextId))
+          ? nextId
+          : ordered[0]?.value ?? "";
       setSelectedSprintId(def);
     }).catch((err) => console.warn("[launcher-modal] fetch sprints failed", err));
 

@@ -119,24 +119,18 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
 
     await jiraClient.updateIssue(key, fields);
 
-    const refreshUrl = env.NEXT_PUBLIC_APP_URL;
-    await fetch(new URL("/api/jira/sync-tickets", refreshUrl), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketKeys: [key] }),
-    });
-
-    // Jira's API may return stale data immediately after a write (eventual
-    // consistency). Overwrite the local mirror with the values we just pushed
-    // so the ticket detail page always shows the correct content.
+    // Write the pushed values directly to the local mirror instead of
+    // re-fetching from Jira. A sync right after a write often returns stale
+    // data due to Jira's eventual consistency, which overwrites the title/
+    // description we just pushed. The next page load will reconcile via the
+    // deferred checkUpdated mechanism.
     const directUpdates: Record<string, unknown> = {};
     for (const edit of localEdits) {
       if (edit.field === "title") directUpdates.title = edit.localValue;
       else if (edit.field === "description") directUpdates.description = edit.localValue;
     }
     if (Object.keys(directUpdates).length > 0) {
-      await db.update(ticket).set(directUpdates).where(eq(ticket.jiraKey, key));
-      cache.invalidate(`/api/tickets/${key}`);
+      db.update(ticket).set(directUpdates).where(eq(ticket.jiraKey, key)).run();
     }
 
     const postPushVersion = await db.query.storyVersion.findFirst({
@@ -144,9 +138,12 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
       orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
     });
 
-    await db
-      .delete(ticketLocalEdit)
-      .where(eq(ticketLocalEdit.ticketKey, key));
+    db.delete(ticketLocalEdit)
+      .where(eq(ticketLocalEdit.ticketKey, key))
+      .run();
+
+    cache.invalidate(`/api/tickets/${key}`);
+    cache.invalidate(/^\/api\/tickets(\?|$)/);
 
     await logActivity({
       type: "push-to-jira",
