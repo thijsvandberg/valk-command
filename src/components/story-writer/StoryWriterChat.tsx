@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import type { IssueType } from "@/types/ticket";
-import type { QuickPromptsConfig } from "@/app/api/settings/quick-prompts/route";
+import type { QuickPrompt, QuickPromptsConfig } from "@/app/api/settings/quick-prompts/route";
 import {
   Loader2,
   SendHorizontal,
@@ -112,6 +112,58 @@ const QUICK_ACTIONS: {
   },
 ];
 
+export type ChipContext = {
+  hasTitle: boolean;
+  hasDraft: boolean;
+  hasRelated: boolean;
+  hasLinkedIssues: boolean;
+};
+
+type ContextualPrompt = QuickPrompt & {
+  visible: (ctx: ChipContext) => boolean;
+  order: number;
+  /** When set, the chip triggers this action ID instead of sending text */
+  actionId?: string;
+};
+
+const CONTEXTUAL_PROMPTS: ContextualPrompt[] = [
+  {
+    id: "ctx-find-related",
+    label: "Find related stories",
+    text: "Find related stories",
+    order: 0,
+    actionId: "find-related",
+    visible: ({ hasTitle, hasRelated, hasLinkedIssues }) =>
+      hasTitle && !hasRelated && !hasLinkedIssues,
+  },
+  {
+    id: "ctx-review-story",
+    label: "Review story",
+    text: "Review this story. Score its quality and provide specific feedback on completeness, clarity, acceptance criteria, and testability.",
+    order: 1,
+    visible: ({ hasDraft }) => hasDraft,
+  },
+];
+
+/** Pure helper: merge API prompts with contextual prompts based on story state */
+export function getVisibleChips(
+  apiPrompts: QuickPrompt[],
+  ctx: ChipContext
+): QuickPrompt[] {
+  const filtered = apiPrompts.filter((p) => {
+    if (ctx.hasTitle && p.label.toLowerCase() === "suggest title") {
+      return false;
+    }
+    return true;
+  });
+
+  const contextual = CONTEXTUAL_PROMPTS.filter((cp) => cp.visible(ctx))
+    .sort((a, b) => a.order - b.order)
+    .map(({ visible: _v, order: _o, actionId: _a, ...rest }) => rest);
+
+  return [...contextual, ...filtered];
+}
+
 const promptsFetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function StoryWriterChat({
@@ -164,7 +216,22 @@ export function StoryWriterChat({
     promptsFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
-  const quickPrompts = promptsData?.prompts[issueType] ?? [];
+  const apiPrompts = promptsData?.prompts[issueType] ?? [];
+
+  const hasTitle = !!(currentTitle && currentTitle !== "Untitled draft");
+  const hasDraft = !!localDraft?.trim();
+  const hasRelated = !!(relatedCandidates && relatedCandidates.length > 0);
+  const hasLinkedIssues = !!(linkedIssueKeys && linkedIssueKeys.size > 0);
+
+  const chipContext: ChipContext = useMemo(
+    () => ({ hasTitle, hasDraft, hasRelated, hasLinkedIssues }),
+    [hasTitle, hasDraft, hasRelated, hasLinkedIssues]
+  );
+
+  const mergedChips = useMemo(
+    () => getVisibleChips(apiPrompts, chipContext),
+    [apiPrompts, chipContext]
+  );
 
   const [manualInputHeight, setManualInputHeight] = useState<number | null>(null);
   const resizeDragging = useRef(false);
@@ -463,32 +530,49 @@ export function StoryWriterChat({
 
       <div className="shrink-0 border-t border-border-default">
         <div className="px-3 pt-2.5 pb-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {quickPrompts.map((s) => (
-              <div key={s.id} className="group flex items-stretch rounded-lg border border-border-default bg-overlay-subtle overflow-hidden hover:border-[var(--color-brand-500)]/20 hover:bg-[var(--color-brand-500)]/[0.04] transition-colors duration-150">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (inputValue.trim()) return;
-                    onCodebaseResearchChange(s.enableCodebase === true);
-                    fillInput(s.text);
-                  }}
-                  disabled={isBusy}
-                  className="px-2.5 py-1.5 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+          <div className="flex flex-wrap items-center gap-1.5 min-h-[32px]">
+            {mergedChips.map((s) => {
+              const isCtxFindRelated = s.id === "ctx-find-related";
+              return (
+                <div
+                  key={s.id}
+                  className="group flex items-stretch rounded-lg border border-border-default bg-overlay-subtle overflow-hidden hover:border-[var(--color-brand-500)]/20 hover:bg-[var(--color-brand-500)]/[0.04] transition-colors duration-150"
+                  style={{ animation: "chipFadeIn 200ms ease-out both" }}
                 >
-                  {s.label}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDirectSend(s.text, s.enableCodebase === true)}
-                  disabled={isBusy || !!inputValue.trim()}
-                  className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Submit immediately"
-                >
-                  <SendHorizontal size={9} strokeWidth={2} />
-                </button>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (inputValue.trim()) return;
+                      if (isCtxFindRelated) {
+                        onFindRelated?.();
+                        return;
+                      }
+                      onCodebaseResearchChange(s.enableCodebase === true);
+                      fillInput(s.text);
+                    }}
+                    disabled={isBusy}
+                    className="px-2.5 py-1.5 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {s.label}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isCtxFindRelated) {
+                        onFindRelated?.();
+                        return;
+                      }
+                      handleDirectSend(s.text, s.enableCodebase === true);
+                    }}
+                    disabled={isBusy || !!inputValue.trim()}
+                    className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Submit immediately"
+                  >
+                    <SendHorizontal size={9} strokeWidth={2} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
