@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EpicChildrenSection } from "./EpicChildrenSection";
-import type { Subtask } from "@/types/ticket";
+import type { EpicChild } from "@/types/ticket";
 
 const mockCreateChildIssue = vi.fn();
 const mockSearchForLink = vi.fn();
@@ -14,16 +14,20 @@ vi.mock("@/lib/api-client", () => ({
     searchForLinkWithJira: (...args: unknown[]) => mockSearchForLinkWithJira(...args),
     updateEpic: (...args: unknown[]) => mockUpdateEpic(...args),
   },
+  settings: {
+    getSectionVisibility: vi.fn().mockResolvedValue({ visible: null }),
+    saveSectionVisibility: vi.fn().mockResolvedValue({}),
+  },
   ApiError: class ApiError extends Error {},
 }));
 
-const SAMPLE_CHILDREN: Subtask[] = [
-  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null },
-  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null },
-  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null },
+const SAMPLE_CHILDREN: EpicChild[] = [
+  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, sprintName: "Sprint 1", subtaskCount: 2 },
+  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, sprintName: null, subtaskCount: 0 },
+  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, sprintName: "Sprint 1", subtaskCount: 1 },
 ];
 
-function renderSection(items: Subtask[] = []) {
+function renderSection(items: EpicChild[] = []) {
   const onMutate = vi.fn();
   const onSelectTicket = vi.fn();
   const result = render(
@@ -201,8 +205,8 @@ describe("EpicChildrenSection", () => {
     });
 
     it("hides filter chips with zero count", () => {
-      const items: Subtask[] = [
-        { key: "VPL-10", title: "Only todo", type: "story", jiraStatus: "TO DO", assignee: null },
+      const items: EpicChild[] = [
+        { key: "VPL-10", title: "Only todo", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, sprintName: null, subtaskCount: 0 },
       ];
       renderSection(items);
       expect(screen.getByText("To Do")).toBeInTheDocument();

@@ -144,6 +144,12 @@ export interface Subtask {
   assignee: Assignee | null;
 }
 
+export interface EpicChild extends Subtask {
+  storyPoints: number | null;
+  sprintName: string | null;
+  subtaskCount: number;
+}
+
 export interface LinkedIssue {
   jiraLinkId?: string;
   relation: string;
@@ -177,7 +183,7 @@ export interface TicketDetail {
   subtasks: Subtask[];
   linkedIssues: LinkedIssue[];
   jiraComments: JiraComment[];
-  epicChildren: Subtask[];
+  epicChildren: EpicChild[];
 }
 
 export type TicketEditState = "clean" | "draft" | "local_edits" | "conflict";

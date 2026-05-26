@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import type { TicketDetail, JiraStatus, Subtask, IssueType } from "@/types/ticket";
+import type { TicketDetail, JiraStatus, Subtask, EpicChild, IssueType } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";

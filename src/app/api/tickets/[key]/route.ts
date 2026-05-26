@@ -3,7 +3,7 @@ import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticket, ticketLocalEdit, jiraComment, ticketSubtask, storedReview, storyVersion, conversation, message, subtaskSuggestion } from "@/db/schema";
 import { eq, sql, count } from "drizzle-orm";
-import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, LinkedIssue } from "@/types/ticket";
+import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, EpicChild, LinkedIssue } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
@@ -211,12 +211,29 @@ export async function GET(
     assignee: buildAssignee(l.assignee),
   }));
 
-  const epicChildren: Subtask[] = epicChildRows.map((c) => ({
+  // Build subtask counts for epic children
+  const epicChildKeys = epicChildRows.map((c) => c.jiraKey);
+  const subtaskCountMap = new Map<string, number>();
+  if (epicChildKeys.length > 0) {
+    const subtaskCountRows = await db
+      .select({ ticketKey: ticketSubtask.ticketKey, total: count() })
+      .from(ticketSubtask)
+      .where(sql`${ticketSubtask.ticketKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`)
+      .groupBy(ticketSubtask.ticketKey);
+    for (const row of subtaskCountRows) {
+      subtaskCountMap.set(row.ticketKey, row.total);
+    }
+  }
+
+  const epicChildren: EpicChild[] = epicChildRows.map((c) => ({
     key: c.jiraKey,
     title: c.title,
     type: (c.type ?? "task") as IssueType,
     jiraStatus: (c.status ?? "TO DO") as JiraStatus,
     assignee: buildAssignee(c.assignee),
+    storyPoints: c.storyPoints ?? null,
+    sprintName: c.sprintName ?? null,
+    subtaskCount: subtaskCountMap.get(c.jiraKey) ?? 0,
   }));
 
   // Resolve inline attachment references: ![filename](attachment) → ![filename](/api/attachments/ID)
