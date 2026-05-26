@@ -75,5 +75,5 @@ Declined (dismissed) subtasks do not need to be saved. Only pending and accepted
 
 ### Tests
 
-- [ ] API route tests for GET/PUT/DELETE subtask-suggestions
-- [ ] SubtaskSuggestions component rendering tests updated
+- [x] API route tests for GET/PUT/DELETE subtask-suggestions
+- [x] SubtaskSuggestions component rendering tests updated
