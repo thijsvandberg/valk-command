@@ -101,8 +101,8 @@ function SortableQueueItem({
   );
 }
 
-const DEFAULT_PANE_WIDTH = 340;
-const MIN_PANE_WIDTH = 280;
+const DEFAULT_PANE_WIDTH = 400;
+const MIN_PANE_WIDTH = 320;
 const MAX_PANE_WIDTH_RATIO = 0.5;
 
 function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
@@ -135,7 +135,7 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={paneRef}
-      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] p-5"
+      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] px-5 py-5"
       style={{
         width,
         animation: isDragging ? undefined : "fadeInUp 0.15s ease",

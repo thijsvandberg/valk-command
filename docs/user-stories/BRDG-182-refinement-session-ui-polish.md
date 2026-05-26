@@ -1,6 +1,6 @@
 # BRDG-182: Refinement Session UI Polish
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -60,9 +60,9 @@ As the PO, I want the refinement session fullscreen mode to feel polished and co
 - [x] The collapsed state does not have to be a dot; any compact indicator that reads as "story points" is fine
 
 ### 4. Sidebar visual polish and default width
-- [ ] Increase the default sidebar width (currently too narrow; content feels cramped)
-- [ ] Polish the sidebar styling: spacing, alignment, and visual consistency with the rest of the app
-- [ ] Ensure the sidebar content area has proper padding and structure
+- [x] Increase the default sidebar width (currently too narrow; content feels cramped)
+- [x] Polish the sidebar styling: spacing, alignment, and visual consistency with the rest of the app
+- [x] Ensure the sidebar content area has proper padding and structure
 
 ### 5. Sidebar tab selection: support multiple panels and fix active state
 - [x] Fix the issue where all sidebar tabs appear selected/highlighted simultaneously
