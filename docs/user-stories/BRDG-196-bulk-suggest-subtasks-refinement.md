@@ -1,6 +1,6 @@
 # BRDG-196: Bulk Suggest Subtasks from Refinement Session
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
@@ -57,7 +57,7 @@ The bulk generation runs in the background. A chat conversation linked to the se
 
 ### Backend
 
-- [ ] New API endpoint: `POST /api/refinement-sessions/[id]/bulk-suggest-subtasks`
+- [x] New API endpoint: `POST /api/refinement-sessions/[id]/bulk-suggest-subtasks`
   - Reads session's `ticketKeys` to get the list
   - Creates/reuses a conversation linked to the session (store `conversationId` on session or use metadata)
   - Posts a "start" message to the conversation
@@ -69,9 +69,11 @@ The bulk generation runs in the background. A chat conversation linked to the se
   - Posts "done" summary message
   - Uses `after()` for background execution, returns job ID immediately
 
-- [ ] Add `bulkSuggestConversationId` field to `refinementSession` table (or use metadata) to link the chat conversation
+- [x] Add `bulkSuggestConversationId` field to `refinementSession` table (or use metadata) to link the chat conversation
+  - Used deterministic conversation ID pattern (`bulk-suggest-${sessionId}`) with metadata, no schema change needed
 
-- [ ] Add `POST /api/refinement-sessions/[id]/bulk-suggest-subtasks/status` endpoint to check if a bulk job is running and its progress
+- [x] Add `GET /api/refinement-sessions/[id]/bulk-suggest-subtasks` endpoint to check if a bulk job is running
+- [x] Add `GET /api/refinement-sessions/[id]/suggestion-counts` endpoint for per-ticket suggestion counts
 
 ### Frontend
 

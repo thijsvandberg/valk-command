@@ -579,6 +579,16 @@ export const refinementSessions = {
     apiFetch<RefinementSessionTicketNoteResponse[]>(`/api/refinement-sessions/${enc(id)}/ticket-notes`, { signal }),
   upsertTicketNote: (id: string, data: { ticketKey: string; content: string }, signal?: AbortSignal) =>
     apiFetch<RefinementSessionTicketNoteResponse | void>(`/api/refinement-sessions/${enc(id)}/ticket-notes`, { method: "PUT", body: data, signal }),
+
+  // Bulk subtask suggestions
+  bulkSuggestSubtasks: (id: string, data?: { force?: boolean }, signal?: AbortSignal) =>
+    apiFetch<{ conversationId: string }>(`/api/refinement-sessions/${enc(id)}/bulk-suggest-subtasks`, { method: "POST", body: data ?? {}, signal }),
+  bulkSuggestStatus: (id: string, signal?: AbortSignal) =>
+    apiFetch<{ conversationId: string | null; hasRun: boolean; isRunning: boolean }>(`/api/refinement-sessions/${enc(id)}/bulk-suggest-subtasks`, { signal }),
+  suggestionCounts: (id: string, signal?: AbortSignal) =>
+    apiFetch<{ counts: Record<string, number> }>(`/api/refinement-sessions/${enc(id)}/suggestion-counts`, { signal }),
+  suggestionCountsUrl: (id: string | null) =>
+    id ? `/api/refinement-sessions/${enc(id)}/suggestion-counts` : null,
 };
 
 // ---------------------------------------------------------------------------
