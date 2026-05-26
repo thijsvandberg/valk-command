@@ -7,7 +7,7 @@ import type { StoryWriterStatus } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
 import { friendlyAgentError } from "@/lib/agent-errors";
-import { storyWriter as storyWriterApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError } from "@/lib/api-client";
+import { storyWriter as storyWriterApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
 
 export type { WorkspaceUsage } from "./useTaskMonitoring";
 
@@ -342,6 +342,10 @@ export function useStoryWriter(ticketKey: string) {
     } catch { /* ignore */ }
   }, [ticketKey, refreshSession]);
 
+  const createLink = useCallback(async (targetKey: string, relation: string) => {
+    await tickets.createLink(ticketKey, { targetKey, relation });
+  }, [ticketKey]);
+
   const linkCandidate = useCallback(async (candidateId: string, isLinked: boolean) => {
     try {
       const result = await storyWriterApi.toggleRelated(ticketKey, { candidateId, isLinked }) as { candidate?: RelatedStoryCandidateRow };
@@ -402,6 +406,7 @@ export function useStoryWriter(ticketKey: string) {
     pushToJira,
     deleteSession,
     refreshSession,
+    createLink,
     linkCandidate,
   };
 }

@@ -148,6 +148,8 @@ export function ChatApp() {
           onOpenLogs={() => setShowLogs(true)}
           onApplyTitle={writer.onTitleChange}
           onApplyType={(type) => writer.onTypeChange(type as IssueType)}
+          onCreateLink={writer.onCreateLink}
+          linkedIssueKeys={writer.linkedIssueKeys}
           issueType={writer.ticketData?.type ?? "story"}
           pendingInput={pane.pendingChatInput}
           onPendingInputConsumed={() => pane.consumePendingChatInput()}

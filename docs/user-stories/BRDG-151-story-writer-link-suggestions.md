@@ -108,11 +108,11 @@ The "Find Related" feature discovers issues based on content similarity. This fe
 - [x] Existing Link Issue dialog button remains available
 
 ### Part B: AI link suggestions in chat
-- [ ] New `<link-suggestion>` / `<link-suggestions>` XML tags are parsed from AI responses in `ChatMessageParts`
-- [ ] `LinkSuggestionChip` component renders inline in chat messages with target issue info
-- [ ] Clicking "Link" creates the link via existing API and shows confirmed state
-- [ ] Already-linked issues show muted "Already linked" state
-- [ ] Multiple link suggestions in one message are supported
+- [x] New `<link-suggestion>` / `<link-suggestions>` XML tags are parsed from AI responses in `ChatMessageParts`
+- [x] `LinkSuggestionChip` component renders inline in chat messages with target issue info
+- [x] Clicking "Link" creates the link via existing API and shows confirmed state
+- [x] Already-linked issues show muted "Already linked" state
+- [x] Multiple link suggestions in one message are supported
 - [ ] Workspace skill prompt is updated so AI emits link suggestions when issues are mentioned or discovered
 - [ ] AI proactively suggests links during story review (not only on explicit user request)
 

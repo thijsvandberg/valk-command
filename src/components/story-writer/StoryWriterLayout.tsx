@@ -420,6 +420,14 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     onSend: writer.sendMessage,
     onRetry: writer.retryMessage,
     onClearFailed: writer.clearFailedMessages,
+    onCreateLink: async (targetKey: string, relation: string) => {
+      await writer.createLink(targetKey, relation);
+      mutateTicket();
+    },
+    linkedIssueKeys: new Set(
+      (ticketData as (typeof ticketData & { linkedIssues?: { key: string }[] }) | undefined)
+        ?.linkedIssues?.map((i) => i.key) ?? [],
+    ),
     onLinkCandidate: writer.linkCandidate,
     onAcceptDraft: async (draftId: string) => {
       await writer.acceptDraft(draftId);

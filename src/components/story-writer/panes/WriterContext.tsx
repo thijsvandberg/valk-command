@@ -35,6 +35,8 @@ export interface WriterContextValue {
   onSend: (content: string, skill?: string) => Promise<boolean>;
   onRetry: (messageId: string) => Promise<boolean>;
   onClearFailed: () => Promise<void>;
+  onCreateLink: (targetKey: string, relation: string) => Promise<void>;
+  linkedIssueKeys: Set<string>;
   onLinkCandidate: (candidateId: string, isLinked: boolean) => Promise<void>;
   onAcceptDraft: (draftId: string) => Promise<void>;
   onDismissDraft: (draftId: string) => void;

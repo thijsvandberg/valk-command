@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { TitleSuggestionChips } from "@/components/story-writer/TitleSuggestionChips";
 import { TypeSuggestionChip } from "@/components/story-writer/TypeSuggestionChip";
+import { LinkSuggestionChips, type LinkSuggestion } from "@/components/story-writer/LinkSuggestionChips";
 
 export const SHOW_MORE_WORD_THRESHOLD = 80;
 export const TRUNCATE_WORD_COUNT = 40;
@@ -53,6 +54,47 @@ import { formatTimestamp as _formatTimestamp, formatDuration as _formatDuration 
 
 export const formatTimestamp = _formatTimestamp;
 export const formatDuration = _formatDuration;
+
+const VALID_RELATIONS = new Set([
+  "relates to", "blocks", "is blocked by", "clones", "is cloned by", "duplicates", "is duplicated by",
+]);
+
+export function parseLinkSuggestions(content: string): LinkSuggestion[] {
+  const results: LinkSuggestion[] = [];
+  const seen = new Set<string>();
+
+  // Multi-tag format: <link-suggestions>...<link key="..." relation="..." />...</link-suggestions>
+  const multiMatch = content.match(/<link-suggestions>([\s\S]*?)<\/link-suggestions>/);
+  if (multiMatch) {
+    const inner = multiMatch[1];
+    for (const m of inner.matchAll(/<link\s+key="([^"]+)"\s+relation="([^"]+)"\s*\/>/g)) {
+      const key = m[1];
+      const relation = VALID_RELATIONS.has(m[2]) ? m[2] : "relates to";
+      if (!seen.has(key)) {
+        seen.add(key);
+        results.push({ key, relation });
+      }
+    }
+  }
+
+  // Single-tag format: <link-suggestion key="..." relation="..." />
+  for (const m of content.matchAll(/<link-suggestion\s+key="([^"]+)"\s+relation="([^"]+)"\s*\/>/g)) {
+    const key = m[1];
+    const relation = VALID_RELATIONS.has(m[2]) ? m[2] : "relates to";
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push({ key, relation });
+    }
+  }
+
+  return results;
+}
+
+export function stripLinkSuggestionTags(content: string): string {
+  return content
+    .replace(/<link-suggestions>[\s\S]*?<\/link-suggestions>/g, "")
+    .replace(/<link-suggestion\s[^/]*\/>/g, "");
+}
 
 export function MessageInfoButton({
   message,
@@ -138,6 +180,8 @@ export function ChatMessage({
   onStoryKeyClick,
   onApplyTitle,
   onApplyType,
+  onCreateLink,
+  linkedIssueKeys,
 }: {
   message: Message;
   draftId?: string;
@@ -152,6 +196,8 @@ export function ChatMessage({
   onStoryKeyClick?: (key: string) => void;
   onApplyTitle?: (title: string) => void;
   onApplyType?: (type: string) => void;
+  onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
+  linkedIssueKeys?: Set<string>;
 }) {
   const isUser = message.role === "user";
   const [expanded, setExpanded] = useState(false);
@@ -185,13 +231,15 @@ export function ChatMessage({
   }, [onStoryKeyClick]);
 
   // Strip non-title-suggestions tags first, keep the title-suggestions tag for positional splitting
-  const baseContent = message.content
-    .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
-    .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
-    .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
-    .replace(/<summary>[\s\S]*?<\/summary>/g, "")
-    .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
-    .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "");
+  const baseContent = stripLinkSuggestionTags(
+    message.content
+      .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
+      .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
+      .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
+      .replace(/<summary>[\s\S]*?<\/summary>/g, "")
+      .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
+      .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, ""),
+  );
 
   const typeSuggestion = (() => {
     if (message.role !== "assistant") return null;
@@ -201,6 +249,10 @@ export function ChatMessage({
     const valid = ["story", "bug", "task", "spike"];
     return valid.includes(suggested) ? suggested : null;
   })();
+
+  const linkSuggestions = message.role === "assistant"
+    ? parseLinkSuggestions(message.content)
+    : [];
 
   // Structured title suggestions (Phase 1 tag format)
   const titleSuggestions = (() => {
@@ -294,6 +346,13 @@ export function ChatMessage({
         )}
         {typeSuggestion && onApplyType && (
           <TypeSuggestionChip type={typeSuggestion} onApply={onApplyType} />
+        )}
+        {linkSuggestions.length > 0 && onCreateLink && (
+          <LinkSuggestionChips
+            suggestions={linkSuggestions}
+            linkedIssueKeys={linkedIssueKeys ?? new Set()}
+            onLink={onCreateLink}
+          />
         )}
         {contentAfter && (
           <div

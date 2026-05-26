@@ -60,6 +60,8 @@ interface StoryWriterChatProps {
   onOpenLogs?: (taskId: string) => void;
   onApplyTitle?: (title: string) => void;
   onApplyType?: (type: string) => void;
+  onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
+  linkedIssueKeys?: Set<string>;
   issueType?: IssueType;
   pendingInput?: string | null;
   onPendingInputConsumed?: () => void;
@@ -139,6 +141,8 @@ export function StoryWriterChat({
   onOpenLogs,
   onApplyTitle,
   onApplyType,
+  onCreateLink,
+  linkedIssueKeys,
   issueType = "story",
   pendingInput,
   onPendingInputConsumed,
@@ -348,6 +352,8 @@ export function StoryWriterChat({
                 onStoryKeyClick={onStoryKeyClick}
                 onApplyTitle={onApplyTitle}
                 onApplyType={onApplyType}
+                onCreateLink={onCreateLink}
+                linkedIssueKeys={linkedIssueKeys}
               />
               {msg.role === "user" && msg.status === "failed" && (
                 <div className="flex justify-end mt-1">
