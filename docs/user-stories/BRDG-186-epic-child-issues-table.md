@@ -1,40 +1,49 @@
 # BRDG-186: Epic Child Issues Table Improvements
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** Medium
 
 ## Description
 
 As the PO, I want the child issues block on epics to be more informative and configurable, so I can see relevant metadata (story points, sprint, subtask count) at a glance and toggle which columns are visible, just like the subtask filter in refinement sessions.
 
+## Implementation Plan
+
+1. **Extend types + API** - Add `EpicChild` type extending `Subtask` with `storyPoints`, `sprintName`, `subtaskCount`. Update ticket detail API to include these from DB rows.
+2. **Settings API** - New `/api/settings/section-visibility` endpoint + `useSectionVisibility` hook for persisted field visibility per section.
+3. **Extract shared FieldFilterPopover** - From `SubtasksSection`'s inner `FilterPopover` into `src/components/ticket-detail/FieldFilterPopover.tsx` with configurable field toggles.
+4. **Refactor SubtasksSection** - Replace inner `FilterPopover` with shared component.
+5. **Update EpicChildrenSection** - Filter popover in header, new columns (points/sprint/subtasks), integrated search in create row, aligned input.
+6. **Tests + verification** - Update existing tests, add new ones, run full suite.
+
 ## Acceptance Criteria
 
 ### 1. Unified filter/visibility popover
-- [ ] Add a filter button (funnel icon) to the child issues section header, matching the subtask filter popover design in `SubtasksSection`
-- [ ] The popover contains:
+- [x] Add a filter button (funnel icon) to the child issues section header, matching the subtask filter popover design in `SubtasksSection`
+- [x] The popover contains:
   - Status filter (All / To Do / In Progress / Done) with counts
   - Toggle switches for field visibility: issue key, assignee, status, story points, sprint, subtask count
-- [ ] Remove the current inline status filter tabs (All / To Do) and move them into the popover
-- [ ] Default visibility for epics: assignee hidden, all other fields visible
-- [ ] Visibility preferences are persisted per user (use the existing settings API pattern)
+- [x] Remove the current inline status filter tabs (All / To Do) and move them into the popover
+- [x] Default visibility for epics: assignee hidden, all other fields visible
+- [x] Visibility preferences are persisted per user (use the existing settings API pattern)
 
 ### 2. Additional table columns
-- [ ] Add a **story points** column showing the point estimate for each child issue
-- [ ] Add a **subtask count** column showing how many subtasks each child issue has (e.g. "3" or "0")
-- [ ] Add a **sprint** column showing the sprint name the child issue belongs to
+- [x] Add a **story points** column showing the point estimate for each child issue
+- [x] Add a **subtask count** column showing how many subtasks each child issue has (e.g. "3" or "0")
+- [x] Add a **sprint** column showing the sprint name the child issue belongs to
 
 ### 3. Integrate "Choose existing" into the create row
-- [ ] Merge the "Choose existing" link into the "Create child issue" input row
-- [ ] Add a search icon or toggle in the create row that switches between create mode and search/link mode
-- [ ] Remove the separate "Choose existing" link below the list
+- [x] Merge the "Choose existing" link into the "Create child issue" input row
+- [x] Add a search icon or toggle in the create row that switches between create mode and search/link mode
+- [x] Remove the separate "Choose existing" link below the list
 
 ### 4. Align "Create child issue" input with content
-- [ ] The "Create child issue..." placeholder text and type dropdown should align with the title column of the child issues above it, not be offset to the left
+- [x] The "Create child issue..." placeholder text and type dropdown should align with the title column of the child issues above it, not be offset to the left
 
 ### 5. Shared filter popover component
-- [ ] Extract the filter popover pattern from `SubtasksSection` into a shared component that both `SubtasksSection` and `EpicChildrenSection` can use
-- [ ] Both sections should accept configurable toggle options (which fields can be shown/hidden)
-- [ ] Ensure consistent look and behavior across both sections
+- [x] Extract the filter popover pattern from `SubtasksSection` into a shared component that both `SubtasksSection` and `EpicChildrenSection` can use
+- [x] Both sections should accept configurable toggle options (which fields can be shown/hidden)
+- [x] Ensure consistent look and behavior across both sections
 
 ## Technical Notes
 

@@ -2,27 +2,32 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { TicketDetail, JiraStatus, Subtask, EpicChild, IssueType } from "@/types/ticket";
+import { getSpColor } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
+import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets, ApiError } from "@/lib/api-client";
-import { Loader2, ChevronDown, Search } from "lucide-react";
-
-type StatusFilter = "all" | JiraStatus;
-
-const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "TO DO", label: "To Do" },
-  { value: "IN PROGRESS", label: "In Progress" },
-  { value: "DONE", label: "Done" },
-];
+import { Loader2, ChevronDown, Search, Filter } from "lucide-react";
 
 const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[] = [
   { value: "story", label: "Story", jiraType: "Story" },
   { value: "task", label: "Task", jiraType: "Task" },
   { value: "bug", label: "Bug", jiraType: "Bug" },
 ];
+
+const EPIC_CHILD_FIELDS = [
+  { id: "issueKey", label: "issue keys" },
+  { id: "assignee", label: "assignees" },
+  { id: "status", label: "status" },
+  { id: "storyPoints", label: "story points" },
+  { id: "sprint", label: "sprint" },
+  { id: "subtaskCount", label: "subtask count" },
+];
+
+const DEFAULT_VISIBLE = ["issueKey", "status", "storyPoints", "sprint", "subtaskCount"];
 
 interface SearchResult {
   key: string;
@@ -46,6 +51,7 @@ export function EpicChildrenSection({
   onSelectTicket,
 }: EpicChildrenSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [selectedType, setSelectedType] = useState<IssueType>("story");
   const [showTypePicker, setShowTypePicker] = useState(false);
@@ -65,7 +71,9 @@ export function EpicChildrenSection({
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const mergedItems = [
+  const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
+
+  const mergedItems: (EpicChild | Subtask)[] = [
     ...items,
     ...locallyAdded.filter((la) => !items.some((i) => i.key === la.key)),
   ];
@@ -82,6 +90,7 @@ export function EpicChildrenSection({
   };
 
   const currentTypeConfig = CHILD_ISSUE_TYPES.find((t) => t.value === selectedType) ?? CHILD_ISSUE_TYPES[0];
+  const isFiltered = filter !== "all";
 
   // --- Create child issue ---
 
@@ -119,12 +128,19 @@ export function EpicChildrenSection({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      if (searchMode) return;
       handleCreate();
     } else if (e.key === "Escape") {
-      setNewTitle("");
-      inputRef.current?.blur();
+      if (searchMode) {
+        setSearchMode(false);
+        setSearchQuery("");
+        setSearchResults([]);
+      } else {
+        setNewTitle("");
+        inputRef.current?.blur();
+      }
     }
-  }, [handleCreate]);
+  }, [handleCreate, searchMode]);
 
   // --- Search existing ---
 
@@ -174,7 +190,6 @@ export function EpicChildrenSection({
   }, [doSearch]);
 
   const handleLinkExisting = useCallback((result: SearchResult) => {
-    const placeholderKey = `pending-${Date.now()}`;
     const placeholder: Subtask = {
       key: result.key,
       title: result.title,
@@ -249,14 +264,21 @@ export function EpicChildrenSection({
     };
   }, []);
 
+  // --- Helper to check if a child has EpicChild fields ---
+  function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
+    return "storyPoints" in child;
+  }
+
   // --- Render ---
 
   const childRows = filtered.map((child, idx) => {
     const isPending = child.key.startsWith("pending-");
+    const epic = isEpicChild(child) ? child : null;
+
     return (
       <div
         key={child.key}
-        className={`flex items-center gap-3 px-3 py-2.5 ${
+        className={`group flex items-center gap-3 px-3 py-2.5 ${
           onSelectTicket && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
         } ${idx < filtered.length - 1 ? "border-b border-border-subtle" : ""} ${
           isPending ? "opacity-50" : ""
@@ -270,102 +292,149 @@ export function EpicChildrenSection({
         } : undefined}
       >
         <IssueTypeIcon type={child.type} size={14} />
-        {isPending ? (
-          <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
-            <Loader2 size={10} className="animate-spin" />
-          </span>
-        ) : (
-          <span className="font-mono text-xs text-[var(--color-brand-400)]">
-            {child.key}
+
+        {/* Issue key */}
+        {visibleFields.has("issueKey") && (
+          isPending ? (
+            <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
+              <Loader2 size={10} className="animate-spin" />
+            </span>
+          ) : (
+            <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">
+              {child.key}
+            </span>
+          )
+        )}
+
+        {/* Title */}
+        <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{child.title}</span>
+
+        {/* Story points */}
+        {visibleFields.has("storyPoints") && epic?.storyPoints != null && (
+          <span
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+            style={{
+              color: getSpColor(epic.storyPoints).text,
+              backgroundColor: getSpColor(epic.storyPoints).bg,
+            }}
+          >
+            {epic.storyPoints === 0 ? "-" : epic.storyPoints}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{child.title}</span>
-        <StatusBadge status={child.jiraStatus} />
-        <Avatar assignee={child.assignee} size={22} />
+
+        {/* Subtask count */}
+        {visibleFields.has("subtaskCount") && epic && epic.subtaskCount > 0 && (
+          <span className="shrink-0 rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text-muted">
+            {epic.subtaskCount} sub
+          </span>
+        )}
+
+        {/* Sprint */}
+        {visibleFields.has("sprint") && epic?.sprintName && (
+          <span className="shrink-0 max-w-[100px] truncate rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
+            {epic.sprintName}
+          </span>
+        )}
+
+        {/* Status */}
+        {visibleFields.has("status") && <StatusBadge status={child.jiraStatus} />}
+
+        {/* Assignee */}
+        {visibleFields.has("assignee") && <Avatar assignee={child.assignee} size={22} />}
       </div>
     );
   });
 
+  // Inline input row (create or search mode)
   const inlineInput = (
     <div
-      className={`flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      ref={searchMode ? searchContainerRef : undefined}
+      className={`relative flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Type selector */}
-      <div className="relative" ref={typePickerRef}>
-        <button
-          type="button"
-          onClick={() => setShowTypePicker((v) => !v)}
-          className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-        >
-          <IssueTypeIcon type={selectedType} size={14} />
-          <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
-          <ChevronDown size={10} className="text-text-muted" />
-        </button>
-        {showTypePicker && (
-          <div className="absolute top-full left-0 z-20 mt-1 overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
-            {CHILD_ISSUE_TYPES.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  setSelectedType(opt.value);
-                  setShowTypePicker(false);
-                  inputRef.current?.focus();
-                }}
-                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
-                  opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
-                }`}
-              >
-                <IssueTypeIcon type={opt.value} size={14} />
-                <span>{opt.label}</span>
-              </button>
-            ))}
+      {searchMode ? (
+        <>
+          <Search size={14} className="shrink-0 text-text-muted" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Search by key or title..."
+            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+          />
+          {searching && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
+          <button
+            type="button"
+            onClick={closeSearch}
+            className="cursor-pointer text-xs text-text-muted transition-colors duration-150 hover:text-text-secondary"
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        <>
+          {/* Type selector */}
+          <div className="relative" ref={typePickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowTypePicker((v) => !v)}
+              className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <IssueTypeIcon type={selectedType} size={14} />
+              <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
+              <ChevronDown size={10} className="text-text-muted" />
+            </button>
+            {showTypePicker && (
+              <div className="absolute top-full left-0 z-20 mt-1 overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
+                {CHILD_ISSUE_TYPES.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setSelectedType(opt.value);
+                      setShowTypePicker(false);
+                      inputRef.current?.focus();
+                    }}
+                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
+                      opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
+                    }`}
+                  >
+                    <IssueTypeIcon type={opt.value} size={14} />
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <input
-        ref={inputRef}
-        type="text"
-        value={newTitle}
-        onChange={(e) => { setNewTitle(e.target.value); setError(null); }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setShowTypePicker(false)}
-        placeholder="Create child issue..."
-        className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
-      />
-    </div>
-  );
+          <input
+            ref={inputRef}
+            type="text"
+            value={newTitle}
+            onChange={(e) => { setNewTitle(e.target.value); setError(null); }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setShowTypePicker(false)}
+            placeholder="Create child issue..."
+            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+          />
 
-  const searchRow = searchMode ? (
-    <div
-      ref={searchContainerRef}
-      className="relative border-t border-border-subtle px-3 py-2"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex items-center gap-2">
-        <Search size={14} className="shrink-0 text-text-muted" />
-        <input
-          ref={searchInputRef}
-          type="text"
-          value={searchQuery}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          onKeyDown={handleSearchKeyDown}
-          placeholder="Search by key or title..."
-          className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
-        />
-        {searching && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
-        <button
-          type="button"
-          onClick={closeSearch}
-          className="cursor-pointer text-xs text-text-muted transition-colors duration-150 hover:text-text-secondary"
-        >
-          Cancel
-        </button>
-      </div>
-      {searchResults.length > 0 && (
-        <div className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
+          {/* Search toggle */}
+          <button
+            type="button"
+            onClick={() => setSearchMode(true)}
+            className="shrink-0 cursor-pointer rounded-md p-1 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            title="Link existing issue"
+          >
+            <Search size={13} strokeWidth={1.5} />
+          </button>
+        </>
+      )}
+
+      {/* Search results dropdown */}
+      {searchMode && searchResults.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
           {searchResults.map((r, idx) => (
             <button
               key={r.key}
@@ -387,17 +456,6 @@ export function EpicChildrenSection({
         </div>
       )}
     </div>
-  ) : (
-    <div className="border-t border-border-subtle px-3 py-2" onClick={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        onClick={() => setSearchMode(true)}
-        className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-[var(--color-brand-400)] transition-colors duration-150 hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-80"
-      >
-        <Search size={12} />
-        Choose existing
-      </button>
-    </div>
   );
 
   const listContent = (
@@ -409,8 +467,37 @@ export function EpicChildrenSection({
       )}
       <div className={`rounded-lg border border-border-default ${filtered.length > 0 ? "rounded-t-none border-t-0" : ""}`}>
         {inlineInput}
-        {searchRow}
       </div>
+    </div>
+  );
+
+  // Filter button in header
+  const filterButton = (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setFilterPopoverOpen((v) => !v)}
+        className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          filterPopoverOpen || isFiltered
+            ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+            : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+        }`}
+        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+        title="Filter and display options"
+      >
+        <Filter size={13} strokeWidth={1.5} />
+      </button>
+      {filterPopoverOpen && (
+        <FieldFilterPopover
+          filter={filter}
+          setFilter={setFilter}
+          statusCounts={statusCounts}
+          fields={EPIC_CHILD_FIELDS}
+          visibleFields={visibleFields}
+          onToggleField={(id, show) => toggleField(id, show)}
+          onClose={() => setFilterPopoverOpen(false)}
+        />
+      )}
     </div>
   );
 
@@ -420,41 +507,14 @@ export function EpicChildrenSection({
         title="Child Issues"
         count={filter === "all" ? mergedItems.length : undefined}
         countLabel={filter !== "all" && mergedItems.length > 0 ? `${filtered.length} of ${mergedItems.length}` : undefined}
+        actions={filterButton}
       />
-
-      {/* Status filter chips */}
-      {mergedItems.length > 0 && (
-        <div className="mt-3 flex items-center gap-0.5 rounded-lg bg-overlay-subtle p-0.5">
-          {FILTER_OPTIONS.map((opt) => {
-            const isActive = filter === opt.value;
-            const count = statusCounts[opt.value as keyof typeof statusCounts] ?? 0;
-            if (opt.value !== "all" && count === 0) return null;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setFilter(opt.value)}
-                className={`cursor-pointer flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  isActive
-                    ? "bg-[var(--color-surface-elevated)] text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
-                    : "text-text-tertiary hover:text-text-secondary"
-                }`}
-              >
-                {opt.label}
-                <span className={`tabular-nums text-[10px] ${isActive ? "text-text-secondary" : "text-text-muted"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {error && (
         <p className="mt-2 text-xs text-red-400/80">{error}</p>
       )}
 
-      {/* Child list + inline input + search */}
+      {/* Child list + inline input */}
       {filtered.length > 0 ? (
         listContent
       ) : mergedItems.length > 0 ? (
