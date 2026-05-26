@@ -9,6 +9,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { nextSequence } from "@/db/next-sequence";
+import { hasEditIntent } from "@/lib/edit-intent";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -303,7 +304,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   // Follow-up message: resume the existing workspace conversation
-  const followUpContent = buildFollowUpContent(session, key, content, codebaseResearch);
+  const { content: followUpContent, isEdit } = buildFollowUpContent(session, key, content, codebaseResearch);
+
+  console.info(
+    `[story-writer] follow-up prompt: key=${key} editIntent=${isEdit} chars=${followUpContent.length} ~tokens=${Math.ceil(followUpContent.length / 4)}`,
+  );
 
   const result = await agentFetch<TaskResponse>(
     `/api/conversations/${session.conversationId}/messages`,
@@ -512,10 +517,11 @@ function buildFollowUpContent(
   key: string,
   content: string,
   codebaseResearch: boolean,
-): string {
+): { content: string; isEdit: boolean } {
+  const isEdit = hasEditIntent(content, { splitMode: !!session.targetTicketKey });
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
 
-  const draftContext = session.localDraft
+  const draftContext = isEdit && session.localDraft
     ? `\n\n[Current story draft]\n${session.localDraft}\n[End of draft]`
     : "";
 
@@ -530,7 +536,14 @@ function buildFollowUpContent(
     ? " If this ticket still has no title, suggest 3 options using a <title-suggestions> tag."
     : "";
 
-  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag. When you mention or discover related issues, include <link-suggestion key="ISSUE-KEY" relation="relates to" /> tags to suggest linking them.${titleReminder}]`;
+  const instructions = isEdit
+    ? `[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag. When you mention or discover related issues, include <link-suggestion key="ISSUE-KEY" relation="relates to" /> tags to suggest linking them.${titleReminder}]`
+    : `[If your answer requires editing the story, include a <story-draft> block.${titleReminder}]`;
+
+  return {
+    content: `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n${instructions}`,
+    isEdit,
+  };
 }
 
 /**
