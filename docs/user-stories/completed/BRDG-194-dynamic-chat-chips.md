@@ -1,6 +1,6 @@
 # BRDG-194: Dynamic Quick Prompt Chips Based on Story State
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
