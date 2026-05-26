@@ -16,6 +16,7 @@ import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
 import { RefinementOverflowMenu } from "@/components/refinement-session/RefinementOverflowMenu";
+import { CreateSessionModal } from "@/components/refinement-session/CreateSessionModal";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import type { Ticket } from "@/types/ticket";
 import { getSpColor, getEpicColor } from "@/types/ticket";
@@ -782,9 +783,11 @@ export function RefinementPageContent({
     await mutateSessions();
   }, [localQueue, mutateSessions, onSessionChange]);
 
-  // Create a new empty session from the header
-  const handleCreateSession = useCallback(async () => {
-    const created = await refinementSessionsApi.create({});
+  // Create session modal
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  const handleCreateSession = useCallback(async (name: string) => {
+    const created = await refinementSessionsApi.create({ name });
     setUserSelectedId(created.id);
     onSessionChange?.(created.id);
     await mutateSessions();
@@ -816,16 +819,14 @@ export function RefinementPageContent({
                 Start Refinement ({queue.length})
               </Button>
             )}
-            <button
-              type="button"
-              onClick={handleCreateSession}
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              aria-label="New session"
-              title="Create a new refinement session"
+            <Button
+              variant="secondary"
+              size="md"
+              icon={<Plus size={13} strokeWidth={1.5} />}
+              onClick={() => setCreateModalOpen(true)}
             >
-              <Plus size={16} strokeWidth={1.5} />
-            </button>
+              New session
+            </Button>
             <RefinementOverflowMenu />
           </div>
         }
@@ -1124,6 +1125,12 @@ export function RefinementPageContent({
             </ResizableQueuePane>
           </div>
       </div>
+
+      <CreateSessionModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreate={handleCreateSession}
+      />
     </>
   );
 }
