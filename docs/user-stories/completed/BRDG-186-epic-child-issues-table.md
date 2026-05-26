@@ -1,6 +1,6 @@
 # BRDG-186: Epic Child Issues Table Improvements
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** Medium
 
 ## Description
