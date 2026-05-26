@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, Trash2, Check, Pencil, Play } from "lucide-react";
+import { Trash2, Check, Pencil, Play } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { BarContainer } from "@/components/shared/BarContainer";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
@@ -31,12 +31,6 @@ export function SavedSessionList({
       inputRef.current.select();
     }
   }, [editingId]);
-
-  const handleCreate = useCallback(async () => {
-    const created = await refinementSessions.create({});
-    await mutate();
-    onSelectSession(created.id);
-  }, [mutate, onSelectSession]);
 
   const handleRename = useCallback(
     async (id: string, name: string) => {
@@ -172,15 +166,6 @@ export function SavedSessionList({
           );
         })}
 
-        {/* New session button */}
-        <button
-          type="button"
-          onClick={handleCreate}
-          className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center self-center rounded-md text-text-muted hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-100"
-          aria-label="New session"
-        >
-          <Plus size={13} strokeWidth={1.5} />
-        </button>
       </BarContainer>
 
       <ConfirmDialog

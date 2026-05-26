@@ -8,13 +8,14 @@ import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save } from "lucide-react";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
+import { RefinementOverflowMenu } from "@/components/refinement-session/RefinementOverflowMenu";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import type { Ticket } from "@/types/ticket";
 import { getSpColor, getEpicColor } from "@/types/ticket";
@@ -781,6 +782,20 @@ export function RefinementPageContent({
     await mutateSessions();
   }, [localQueue, mutateSessions, onSessionChange]);
 
+  // Create a new empty session from the header
+  const handleCreateSession = useCallback(async () => {
+    const created = await refinementSessionsApi.create({});
+    setUserSelectedId(created.id);
+    onSessionChange?.(created.id);
+    await mutateSessions();
+  }, [mutateSessions, onSessionChange]);
+
+  // Only show draft/in_progress sessions in the tab bar
+  const activeSessions = useMemo(
+    () => sessions.filter((s) => s.status !== "completed"),
+    [sessions],
+  );
+
   // Suppress unused variable warning
   void selectedKeys;
 
@@ -790,16 +805,29 @@ export function RefinementPageContent({
       <ViewHeader
         icon={<Layers size={16} strokeWidth={1.5} />}
         actions={
-          canStart ? (
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<Play size={14} strokeWidth={2} />}
-              onClick={handleBeginRefinement}
+          <div className="flex items-center gap-2">
+            {canStart && (
+              <Button
+                variant="primary"
+                size="lg"
+                icon={<Play size={14} strokeWidth={2} />}
+                onClick={handleBeginRefinement}
+              >
+                Start Refinement ({queue.length})
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={handleCreateSession}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              aria-label="New session"
+              title="Create a new refinement session"
             >
-              Start Refinement ({queue.length})
-            </Button>
-          ) : undefined
+              <Plus size={16} strokeWidth={1.5} />
+            </button>
+            <RefinementOverflowMenu />
+          </div>
         }
       >
         <ViewHeaderTitle>Refinement</ViewHeaderTitle>
@@ -807,7 +835,7 @@ export function RefinementPageContent({
 
       {/* Session tabs */}
       <SavedSessionList
-        sessions={sessions}
+        sessions={activeSessions}
         mutate={mutateSessions}
         activeSessionId={resolvedSessionId}
         onSelectSession={handleSelectSession}

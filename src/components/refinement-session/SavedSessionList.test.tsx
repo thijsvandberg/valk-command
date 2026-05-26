@@ -76,17 +76,17 @@ describe("SavedSessionList", () => {
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
-  it("shows new session button", () => {
-    render(
+  it("does not render when sessions array is empty", () => {
+    const { container } = render(
       <SavedSessionList
-        sessions={mockSessions}
+        sessions={[]}
         mutate={mockMutate}
-        activeSessionId="s1"
+        activeSessionId={null}
         onSelectSession={mockOnSelect}
       />,
     );
 
-    expect(screen.getByLabelText("New session")).toBeInTheDocument();
+    expect(container.innerHTML).toBe("");
   });
 
   it("calls onSelectSession when clicking a session", () => {
@@ -101,26 +101,6 @@ describe("SavedSessionList", () => {
 
     fireEvent.click(screen.getByText("Sprint 43"));
     expect(mockOnSelect).toHaveBeenCalledWith("s2");
-  });
-
-  it("creates a new session and selects it", async () => {
-    const { refinementSessions } = await import("@/lib/api-client");
-
-    render(
-      <SavedSessionList
-        sessions={mockSessions}
-        mutate={mockMutate}
-        activeSessionId="s1"
-        onSelectSession={mockOnSelect}
-      />,
-    );
-
-    fireEvent.click(screen.getByLabelText("New session"));
-
-    await waitFor(() => {
-      expect(refinementSessions.create).toHaveBeenCalledWith({});
-      expect(mockOnSelect).toHaveBeenCalledWith("new-id");
-    });
   });
 
   it("shows rename and delete buttons for each session", () => {

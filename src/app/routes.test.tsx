@@ -31,6 +31,7 @@ const EXPECTED_ROUTES = [
   { path: "/settings/general", file: "src/app/(app)/settings/general/page.tsx", name: "Settings General" },
   { path: "/login", file: "src/app/login/[[...rest]]/page.tsx", name: "Login" },
 { path: "/sprint-board/compare", file: "src/app/(app)/sprint-board/compare/page.tsx", name: "Sprint Compare" },
+  { path: "/refinement/history", file: "src/app/(app)/refinement/history/page.tsx", name: "Refinement History" },
   { path: "/refinement/[sessionId]", file: "src/app/(app)/refinement/[sessionId]/page.tsx", name: "Refinement Session Detail" },
   { path: "/refinement/[sessionId]/session", file: "src/app/(app)/refinement/[sessionId]/session/page.tsx", name: "Refinement Session" },
   { path: "/refinement/[sessionId]/session/[ticketKey]", file: "src/app/(app)/refinement/[sessionId]/session/[ticketKey]/page.tsx", name: "Refinement Session Ticket" },
