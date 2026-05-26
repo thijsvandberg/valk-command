@@ -570,6 +570,7 @@ export const settings = {
   savedSearchesUrl: () => "/api/settings/saved-searches" as const,
   notificationPrefsUrl: () => "/api/settings/notification-preferences" as const,
   subscribedTeamsUrl: () => "/api/settings/subscribed-teams" as const,
+  defaultSprintUrl: () => "/api/settings/default-sprint" as const,
 
   // -- Actions --
   getColumnWidths: (signal?: AbortSignal) =>
@@ -601,6 +602,11 @@ export const settings = {
     apiFetch<{ teams: string[]; available: string[] }>("/api/settings/subscribed-teams", { signal }),
   saveSubscribedTeams: (teams: string[], signal?: AbortSignal) =>
     apiFetch<{ teams: string[]; available: string[] }>("/api/settings/subscribed-teams", { method: "PUT", body: { teams }, signal }),
+
+  getDefaultSprint: (signal?: AbortSignal) =>
+    apiFetch<{ sprintId: string }>("/api/settings/default-sprint", { signal }),
+  saveDefaultSprint: (sprintId: string, signal?: AbortSignal) =>
+    apiFetch<{ sprintId: string }>("/api/settings/default-sprint", { method: "PUT", body: { sprintId }, signal }),
 };
 
 // ---------------------------------------------------------------------------
