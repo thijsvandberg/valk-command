@@ -638,3 +638,20 @@ export const refinementSession = sqliteTable("refinement_session", {
 
 export type RefinementSessionRow = typeof refinementSession.$inferSelect;
 export type NewRefinementSessionRow = typeof refinementSession.$inferInsert;
+
+// AI-suggested subtasks: persisted so they survive navigation/refresh
+export const subtaskSuggestion = sqliteTable("subtask_suggestion", {
+  id: text("id").primaryKey(),
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("subtask_suggestion_ticket_key_idx").on(table.ticketKey),
+]);
+
+export type SubtaskSuggestionRow = typeof subtaskSuggestion.$inferSelect;
+export type NewSubtaskSuggestionRow = typeof subtaskSuggestion.$inferInsert;
