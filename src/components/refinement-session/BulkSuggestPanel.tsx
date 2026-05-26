@@ -84,45 +84,36 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
     return null;
   }
 
+  const icon = entry.type === "generated"
+    ? <CheckCircle2 size={12} strokeWidth={2} className="shrink-0 text-emerald-400" />
+    : entry.type === "skipped"
+      ? <SkipForward size={12} strokeWidth={2} className="shrink-0 text-text-muted" />
+      : <AlertCircle size={12} strokeWidth={2} className="shrink-0 text-red-400" />;
+
+  const badge = entry.type === "generated" && entry.count != null
+    ? <span className="shrink-0 text-[10px] tabular-nums text-emerald-400">{entry.count} subtask{entry.count !== 1 ? "s" : ""}</span>
+    : entry.type === "skipped"
+      ? <span className="shrink-0 text-[10px] text-text-muted">up to date</span>
+      : null;
+
   return (
-    <div className="flex items-start gap-2.5 py-1.5">
-      {entry.type === "generated" && (
-        <CheckCircle2 size={13} strokeWidth={2} className="mt-px shrink-0 text-emerald-400" />
+    <div className="flex items-center gap-2 py-1.5">
+      {icon}
+      {href ? (
+        <Link
+          href={href}
+          className="shrink-0 text-xs font-medium text-[var(--color-brand-500)] hover:text-[var(--color-brand-400)] hover:underline"
+          style={{ transition: "color 0.15s ease" }}
+        >
+          {entry.ticketKey}
+        </Link>
+      ) : (
+        <span className="shrink-0 text-xs font-medium text-text-secondary">{entry.ticketKey}</span>
       )}
-      {entry.type === "skipped" && (
-        <SkipForward size={13} strokeWidth={2} className="mt-px shrink-0 text-text-muted" />
+      {entry.ticketTitle && (
+        <span className="min-w-0 flex-1 truncate text-xs text-text-muted">{entry.ticketTitle}</span>
       )}
-      {entry.type === "failed" && (
-        <AlertCircle size={13} strokeWidth={2} className="mt-px shrink-0 text-red-400" />
-      )}
-      <div className="min-w-0 flex-1">
-        <span className="text-xs leading-relaxed text-text-secondary">
-          {href ? (
-            <Link
-              href={href}
-              className="font-medium text-[var(--color-brand-500)] hover:text-[var(--color-brand-400)] hover:underline"
-              style={{ transition: "color 0.15s ease" }}
-            >
-              {entry.ticketKey}
-            </Link>
-          ) : (
-            <span className="font-medium">{entry.ticketKey}</span>
-          )}
-          {entry.ticketTitle && (
-            <span className="text-text-muted"> {entry.ticketTitle}</span>
-          )}
-        </span>
-        {entry.type === "generated" && entry.count != null && (
-          <span className="ml-1.5 text-[10px] tabular-nums text-emerald-400">
-            {entry.count} subtask{entry.count !== 1 ? "s" : ""}
-          </span>
-        )}
-        {entry.type === "skipped" && (
-          <span className="ml-1.5 text-[10px] text-text-muted">
-            up to date
-          </span>
-        )}
-      </div>
+      {badge}
     </div>
   );
 }

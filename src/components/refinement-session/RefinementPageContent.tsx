@@ -1275,18 +1275,25 @@ export function RefinementPageContent({
 
                 {canStart && (
                   <div className="mt-4 flex items-center gap-2">
-                    {!activeSession && (
-                      <button
-                        type="button"
-                        onClick={handleSaveAsSession}
-                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-                        style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
-                        aria-label="Save as session"
-                        title="Save queue as a new session"
+                    <button
+                      type="button"
+                      onClick={activeSession ? undefined : handleSaveAsSession}
+                      disabled={!!activeSession}
+                      className={`group/save relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                        activeSession
+                          ? "border-border-subtle bg-transparent text-text-muted cursor-default"
+                          : "border-border-default bg-overlay-subtle text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:scale-[0.97]"
+                      }`}
+                      style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
+                      aria-label={activeSession ? "Session saved" : "Save as refinement session"}
+                    >
+                      <Save size={16} strokeWidth={1.5} />
+                      <span className="pointer-events-none absolute -top-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-[var(--color-surface-floating)] px-2.5 py-1 text-[11px] font-medium text-text-secondary opacity-0 shadow-[var(--shadow-md)] border border-border-strong group-hover/save:opacity-100"
+                        style={{ transition: "opacity 0.15s ease" }}
                       >
-                        <Save size={16} strokeWidth={1.5} />
-                      </button>
-                    )}
+                        {activeSession ? "Session auto-saves" : "Save as refinement session"}
+                      </span>
+                    </button>
                     <Button
                       variant="primary"
                       size="lg"
