@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
-import { ChevronRight, AlertTriangle, Play, ArrowUpRight, Layers } from "lucide-react";
+import { ChevronRight, ChevronDown, AlertTriangle, Play, ArrowUpRight, Layers } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
@@ -34,11 +34,19 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-function CompactField({ label, children }: { label: string; children: React.ReactNode }) {
+function CompactField({ label, children, accent }: { label: string; children: React.ReactNode; accent?: boolean }) {
   return (
-    <div className="rounded-lg bg-overlay-subtle px-3 py-2">
-      <div className="text-caption text-text-muted">{label}</div>
-      <div className="mt-0.5 text-sm text-text-secondary">{children}</div>
+    <div
+      className="rounded-lg border border-border-subtle px-3 py-2"
+      style={{
+        backgroundColor: accent ? "color-mix(in srgb, var(--color-brand-500) 4%, var(--color-surface-elevated))" : "var(--color-overlay-subtle)",
+        transition: "background-color 0.15s ease",
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-caption text-text-muted">{label}</span>
+        <div className="text-sm text-text-secondary">{children}</div>
+      </div>
     </div>
   );
 }
@@ -83,6 +91,9 @@ export function TicketSidebar({
   const [epicName, setEpicName] = useState<string | null>(ticket.epic);
   const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
+  const [showMore, setShowMore] = useState(ticket.qualityScore !== null);
+  const [poNoteExpanded, setPoNoteExpanded] = useState(false);
+  const poNoteRef = useRef<HTMLTextAreaElement>(null);
 
   // Resize state
   const [sidebarWidth, setSidebarWidth] = useLocalStorage(SIDEBAR_WIDTH_KEY, DEFAULT_SIDEBAR_WIDTH);
@@ -362,7 +373,20 @@ export function TicketSidebar({
         <div className="my-4 h-px bg-border-subtle" />
 
         {/* Details */}
-        <div className="space-y-4">
+        <div className="space-y-3">
+
+          {/* SP / BV (above status) */}
+          <div className="grid grid-cols-2 gap-2">
+            <CompactField label="Story Points" accent={hasPoints}>
+              <StoryPointPicker
+                value={storyPoints}
+                onChange={handleStoryPointsChange}
+              />
+            </CompactField>
+            <CompactField label="Business Value" accent={hasBV}>
+              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" />
+            </CompactField>
+          </div>
 
           {/* Status & Flow */}
           <div>
@@ -457,63 +481,6 @@ export function TicketSidebar({
                 </div>
               </DetailRow>
             )}
-          </div>
-
-          {/* Sizing */}
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <CompactField label="Story Points">
-                <StoryPointPicker
-                  value={storyPoints}
-                  onChange={handleStoryPointsChange}
-                />
-              </CompactField>
-              <CompactField label="Business Value">
-                <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" />
-              </CompactField>
-            </div>
-            <button
-              type="button"
-              onClick={onNavigateToReview}
-              className="w-full cursor-pointer text-left rounded-lg bg-overlay-subtle px-3 py-2 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "background-color 0.15s ease" }}
-              title="View review details"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-caption text-text-muted">Quality</span>
-                <div className="flex items-center gap-1.5">
-                  {ticket.qualityScore !== null ? (
-                    <>
-                      <QualityBadge score={ticket.qualityScore} />
-                      {isReviewOutdated && (
-                        <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
-                      )}
-                    </>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-                      <Play size={9} strokeWidth={2} className="shrink-0" />
-                      Run review
-                    </span>
-                  )}
-                </div>
-              </div>
-              {ticket.qualityScore !== null && (
-                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-overlay-default">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${ticket.qualityScore}%`,
-                      backgroundColor: ticket.qualityScore < 60 ? "#e5534b" : ticket.qualityScore < 75 ? "#ea8744" : ticket.qualityScore < 90 ? "#eab308" : "#4aaa60",
-                      transition: "width 0.4s ease",
-                    }}
-                  />
-                </div>
-              )}
-            </button>
-          </div>
-
-          {/* People */}
-          <div>
             <DetailRow label="Assignee">
               <AssigneePicker
                 value={assignee}
@@ -547,15 +514,6 @@ export function TicketSidebar({
                 </CompactField>
               </div>
             )}
-            {detail?.labels && detail.labels.length > 0 && (
-              <DetailRow label="Labels">
-                <div className="flex flex-wrap justify-end gap-1">
-                  {detail.labels.map((l) => (
-                    <Tag key={l}>{l}</Tag>
-                  ))}
-                </div>
-              </DetailRow>
-            )}
             {detail?.components && detail.components.length > 0 && (
               <DetailRow label="Components">
                 <div className="flex flex-wrap justify-end gap-1">
@@ -566,30 +524,128 @@ export function TicketSidebar({
               </DetailRow>
             )}
           </div>
+
+          {/* More section (collapsible, same pattern as Confluence/Development) */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowMore(!showMore)}
+              aria-expanded={showMore}
+              className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">More</h3>
+              <ChevronDown
+                size={12}
+                strokeWidth={1.5}
+                className={`shrink-0 text-text-muted ${showMore ? "" : "-rotate-90"}`}
+                style={{ transition: "transform 0.2s ease" }}
+              />
+            </button>
+            {showMore && (
+              <div className="mt-2 space-y-2">
+                <DetailRow label="Labels">
+                  {detail?.labels && detail.labels.length > 0 ? (
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {detail.labels.map((l) => (
+                        <Tag key={l}>{l}</Tag>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-text-muted">None</span>
+                  )}
+                </DetailRow>
+                <button
+                  type="button"
+                  onClick={onNavigateToReview}
+                  className="w-full cursor-pointer text-left rounded-lg border border-border-subtle px-3 py-2 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  style={{
+                    backgroundColor: ticket.qualityScore !== null
+                      ? "color-mix(in srgb, var(--color-brand-500) 4%, var(--color-surface-elevated))"
+                      : "var(--color-overlay-subtle)",
+                    transition: "background-color 0.15s ease",
+                  }}
+                  title="View review details"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-caption text-text-muted">Quality</span>
+                    <div className="flex items-center gap-1.5">
+                      {ticket.qualityScore !== null ? (
+                        <>
+                          <QualityBadge score={ticket.qualityScore} />
+                          {isReviewOutdated && (
+                            <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
+                          )}
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                          <Play size={9} strokeWidth={2} className="shrink-0" />
+                          Run review
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {ticket.qualityScore !== null && (
+                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-overlay-default">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${ticket.qualityScore}%`,
+                          backgroundColor: ticket.qualityScore < 60 ? "#e5534b" : ticket.qualityScore < 75 ? "#ea8744" : ticket.qualityScore < 90 ? "#eab308" : "#4aaa60",
+                          transition: "width 0.4s ease",
+                        }}
+                      />
+                    </div>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Divider */}
         <div className="my-4 h-px bg-border-subtle" />
 
-        {/* PO Note */}
+        {/* PO Note (collapsible, same pattern as Confluence/Development) */}
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">PO Note</h3>
-            {poNotes.trim() && (
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]"
-                title="Has PO note"
-              />
-            )}
-          </div>
-          <textarea
-            defaultValue={poNotes}
-            placeholder="Quick annotation..."
-            rows={2}
-            onBlur={(e) => handleNotesChange(e.target.value)}
-            className="mt-2 w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
-            style={{ transition: "border-color 0.15s ease" }}
-          />
+          <button
+            type="button"
+            onClick={() => {
+              const next = !poNoteExpanded;
+              setPoNoteExpanded(next);
+              if (next) {
+                requestAnimationFrame(() => poNoteRef.current?.focus());
+              }
+            }}
+            aria-expanded={poNoteExpanded}
+            className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          >
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">PO Note</h3>
+              {poNotes.trim() && (
+                <span
+                  className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]"
+                  title="Has PO note"
+                />
+              )}
+            </div>
+            <ChevronDown
+              size={12}
+              strokeWidth={1.5}
+              className={`shrink-0 text-text-muted ${poNoteExpanded ? "" : "-rotate-90"}`}
+              style={{ transition: "transform 0.2s ease" }}
+            />
+          </button>
+          {poNoteExpanded && (
+            <textarea
+              ref={poNoteRef}
+              defaultValue={poNotes}
+              placeholder="Quick annotation..."
+              rows={2}
+              onBlur={(e) => handleNotesChange(e.target.value)}
+              className="mt-2 w-full resize-none rounded-lg border border-border-subtle bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+              style={{ transition: "border-color 0.15s ease" }}
+            />
+          )}
         </div>
 
         {/* Divider */}

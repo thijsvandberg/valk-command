@@ -1,17 +1,18 @@
+import { User } from "lucide-react";
 import type { Assignee } from "@/types/ticket";
 
 export function Avatar({ assignee, size = 24 }: { assignee: Assignee | null; size?: number }) {
   if (!assignee) {
     return (
       <div
-        className="rounded-full"
+        className="flex items-center justify-center rounded-full bg-overlay-subtle"
         style={{
           width: size,
           height: size,
-          border: "1.5px dashed var(--color-border-default)",
-          opacity: 0.5,
         }}
-      />
+      >
+        <User size={size * 0.55} strokeWidth={1.5} className="text-text-muted" style={{ opacity: 0.6 }} />
+      </div>
     );
   }
   return (
