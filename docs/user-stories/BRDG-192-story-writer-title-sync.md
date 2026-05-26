@@ -45,20 +45,29 @@ This only reads from `ticketData` (SWR fetch for Jira tickets) or `draftTitle` (
 
 ### Option B: Set document.title from StoryWriterLayout
 
-- [ ] In `StoryWriterLayout.tsx`, add an effect that updates `document.title` whenever the resolved display title changes (line ~742 already computes `rawTitle`)
-- [ ] This avoids changing the page/layout component contract
+- [x] In `StoryWriterLayout.tsx`, add an effect that updates `document.title` whenever the resolved display title changes (line ~742 already computes `rawTitle`)
+- [x] This avoids changing the page/layout component contract
 
 ### Tests
 
-- [ ] Unit test: verify `document.title` updates when `localTitle` changes in the story writer session
+- [x] Unit test: verify `document.title` updates when `localTitle` changes in the story writer session
 - [ ] Manual test: open a draft, accept a title suggestion, verify browser tab updates
+
+## Implementation Plan
+
+**Approach: Option B** - Set `document.title` directly from `StoryWriterLayout`.
+
+1. **Add `useEffect` to `StoryWriterLayout.tsx`** that computes the page title from `writer.session?.localTitle ?? ticketData?.title ?? draftTitle` and sets `document.title` reactively. Uses `effectiveKey` (real Jira key when available, DRAFT-* otherwise).
+2. **Export SUFFIX from `usePageTitle.tsx`** to avoid magic string duplication.
+3. **No changes to `page.tsx`** - it continues providing the initial/SSR title; the layout effect overrides it when `localTitle` changes.
+4. **Add test** verifying `document.title` updates when session title changes.
 
 ## Acceptance Criteria
 
-- [ ] Browser tab title updates within 1 second of choosing/changing a title in the Story Writer
-- [ ] Draft stories show the chosen title in the tab after it's set
-- [ ] Existing Jira ticket stories continue showing the Jira title
-- [ ] No regressions in title display in the Story Writer header bar
+- [x] Browser tab title updates within 1 second of choosing/changing a title in the Story Writer
+- [x] Draft stories show the chosen title in the tab after it's set
+- [x] Existing Jira ticket stories continue showing the Jira title
+- [x] No regressions in title display in the Story Writer header bar
 
 ## Technical Notes
 

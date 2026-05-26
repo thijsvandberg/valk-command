@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 
-const SUFFIX = " | Bridge";
+export const PAGE_TITLE_SUFFIX = " | Bridge";
 
 /**
  * Sets the page title via both React 19 <title> hoisting (initial render)
@@ -8,7 +8,7 @@ const SUFFIX = " | Bridge";
  * from briefly resetting the title to the layout default.
  */
 export function usePageTitle(title: string): React.ReactElement {
-  const fullTitle = title + SUFFIX;
+  const fullTitle = title + PAGE_TITLE_SUFFIX;
 
   useEffect(() => {
     document.title = fullTitle;

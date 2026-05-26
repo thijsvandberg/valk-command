@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { mutate as globalMutate } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useDraftSync } from "@/hooks/useDraftSync";
+import { PAGE_TITLE_SUFFIX } from "@/hooks/usePageTitle";
 import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -101,6 +102,15 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   useEffect(() => {
     setLocalReadiness(ticketReadiness);
   }, [ticketReadiness]);
+
+  // Sync browser tab title with the session's working title
+  const resolvedTitle = writer.session?.localTitle ?? ticketData?.title ?? draftTitle;
+  const pageTitle = resolvedTitle && resolvedTitle !== "Untitled draft"
+    ? `${effectiveKey} - ${resolvedTitle} - Story Writer${PAGE_TITLE_SUFFIX}`
+    : `${effectiveKey} - Story Writer${PAGE_TITLE_SUFFIX}`;
+  useEffect(() => {
+    document.title = pageTitle;
+  }, [pageTitle]);
 
   // Split mode state
   const [splitModeVisible, setSplitModeVisible] = useState(false);
