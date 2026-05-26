@@ -33,13 +33,32 @@ describe("POST /api/story-writer/create-draft", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 400 when title is missing", async () => {
+  it("creates draft with placeholder title when title is empty", async () => {
     const res = await POST(new Request(BASE, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.title).toBe("Untitled draft");
+    expect(data.needsTitle).toBe(true);
+    expect(data.key).toMatch(/^DRAFT-/);
+
+    const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, data.key)).get();
+    expect(t!.title).toBe("Untitled draft");
+  });
+
+  it("returns needsTitle false when title is provided", async () => {
+    const res = await POST(new Request(BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Real title" }),
+    }));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.needsTitle).toBe(false);
+    expect(data.title).toBe("Real title");
   });
 
   it("creates a draft ticket and returns the draft key", async () => {

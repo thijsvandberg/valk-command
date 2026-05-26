@@ -22,10 +22,9 @@ export async function POST(request: Request) {
     // body stays empty
   }
 
-  const title = body.title?.trim();
-  if (!title) {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
-  }
+  const rawTitle = body.title?.trim();
+  const title = rawTitle || "Untitled draft";
+  const needsTitle = !rawTitle;
 
   const issueType = body.issueType ?? "story";
   const sprintId = body.sprintId;
@@ -59,5 +58,6 @@ export async function POST(request: Request) {
     title,
     issueType,
     sprintId: sprintId ?? null,
+    needsTitle,
   }, { status: 201 });
 }
