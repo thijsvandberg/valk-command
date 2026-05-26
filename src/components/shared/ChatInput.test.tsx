@@ -94,4 +94,24 @@ describe("ChatInput", () => {
     const { container } = render(<ChatInput onSend={async () => true} />);
     expect(container.querySelector(".cursor-row-resize")).not.toBeInTheDocument();
   });
+
+  it("shows cancel button when disabled and onCancel is provided", () => {
+    const onCancel = vi.fn();
+    render(<ChatInput onSend={async () => true} disabled onCancel={onCancel} />);
+    expect(screen.getByTestId("cancel-button")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Send message")).not.toBeInTheDocument();
+  });
+
+  it("calls onCancel when cancel button is clicked", () => {
+    const onCancel = vi.fn();
+    render(<ChatInput onSend={async () => true} disabled onCancel={onCancel} />);
+    fireEvent.click(screen.getByTestId("cancel-button"));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows send button when not disabled even if onCancel is provided", () => {
+    render(<ChatInput onSend={async () => true} onCancel={() => {}} />);
+    expect(screen.getByLabelText("Send message")).toBeInTheDocument();
+    expect(screen.queryByTestId("cancel-button")).not.toBeInTheDocument();
+  });
 });

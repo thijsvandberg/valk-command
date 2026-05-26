@@ -46,4 +46,24 @@ describe("ChatBubble", () => {
     render(<ChatBubble role="user" testId="custom-msg">Hello</ChatBubble>);
     expect(screen.getByTestId("custom-msg")).toBeInTheDocument();
   });
+
+  it("applies cancelled opacity and shows badge", () => {
+    render(<ChatBubble role="assistant" cancelled>Partial response</ChatBubble>);
+    expect(screen.getByTestId("message-assistant").className).toContain("opacity-40");
+    expect(screen.getByTestId("cancelled-badge")).toHaveTextContent("Cancelled");
+  });
+
+  it("hides actions when cancelled", () => {
+    render(
+      <ChatBubble role="assistant" cancelled actions={<button data-testid="action">Copy</button>}>
+        Content
+      </ChatBubble>
+    );
+    expect(screen.queryByTestId("action")).not.toBeInTheDocument();
+  });
+
+  it("does not show cancelled badge when not cancelled", () => {
+    render(<ChatBubble role="user">Normal</ChatBubble>);
+    expect(screen.queryByTestId("cancelled-badge")).not.toBeInTheDocument();
+  });
 });
