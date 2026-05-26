@@ -468,6 +468,7 @@ export default function RefinementSessionTicketPage({
                   value={storyPoints}
                   onChange={handleStoryPointsChange}
                   align="left"
+                  size="lg"
                 />
               </>
             )}

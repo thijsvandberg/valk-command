@@ -55,9 +55,9 @@ As the PO, I want the refinement session fullscreen mode to feel polished and co
 - [x] Clicking "Info" opens the ticket info panel inside the sidebar
 
 ### 3. Story point picker: clearer labeling and larger open state
-- [ ] Replace the small dot indicators with a clearer visual that communicates "story points" (e.g., a label or number badge)
-- [ ] When the story point picker is expanded/opened, render it at a larger size similar to the estimate card shown in the standalone estimate component
-- [ ] The collapsed state does not have to be a dot; any compact indicator that reads as "story points" is fine
+- [x] Replace the small dot indicators with a clearer visual that communicates "story points" (e.g., a label or number badge)
+- [x] When the story point picker is expanded/opened, render it at a larger size similar to the estimate card shown in the standalone estimate component
+- [x] The collapsed state does not have to be a dot; any compact indicator that reads as "story points" is fine
 
 ### 4. Sidebar visual polish and default width
 - [ ] Increase the default sidebar width (currently too narrow; content feels cramped)

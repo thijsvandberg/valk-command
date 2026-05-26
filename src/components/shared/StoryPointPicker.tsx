@@ -13,11 +13,13 @@ export function StoryPointPicker({
   onChange,
   align = "right",
   subtle = false,
+  size = "sm",
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
   align?: "left" | "right";
   subtle?: boolean;
+  size?: "sm" | "lg";
 }) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -30,16 +32,18 @@ export function StoryPointPicker({
   const handleMouseEnter = useCallback(() => setHovered(true), []);
   const handleMouseLeave = useCallback(() => setHovered(false), []);
 
+  const isLg = size === "lg";
+
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const flipUp = rect.bottom + 48 > window.innerHeight;
+    const flipUp = rect.bottom + (isLg ? 80 : 48) > window.innerHeight;
     setPos({
       top: flipUp ? rect.top : rect.bottom + 4,
       left: align === "left" ? rect.left : rect.right,
       flipUp,
     });
-  }, [align]);
+  }, [align, isLg]);
 
   const handleOpen = useCallback(() => {
     updatePosition();
@@ -102,29 +106,60 @@ export function StoryPointPicker({
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
 
+  // Size-dependent dimensions
+  const btnSize = isLg ? "h-10 w-10" : "h-7 w-7";
+  const btnText = isLg ? "text-sm font-semibold" : "text-xs font-medium";
+  const iconSize = isLg ? 14 : 12;
+  const popoverPadding = isLg ? "p-3" : "p-1.5";
+  const customInputH = isLg ? "h-10 w-20" : "h-7 w-14";
+  const customInputText = isLg ? "text-sm font-semibold" : "text-xs font-medium";
+
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => open ? handleClose() : handleOpen()}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        title={isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points"}
-        className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
-        style={{
-          color: color?.text ?? "var(--color-text-muted)",
-          backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
-          opacity: hovered && showBg ? 0.85 : 1,
-        }}
-      >
-        {displayLabel ?? <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
-      </button>
+      {isLg ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => open ? handleClose() : handleOpen()}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          title={isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points"}
+          className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+          style={{
+            color: color?.text ?? "var(--color-text-muted)",
+            backgroundColor: color?.bg ?? "var(--color-overlay-subtle)",
+            opacity: hovered ? 0.85 : 1,
+            transition: "opacity 0.15s ease",
+          }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>
+          <span className="text-xs font-semibold tabular-nums">
+            {displayLabel ?? "?"}
+          </span>
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => open ? handleClose() : handleOpen()}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          title={isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points"}
+          className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
+          style={{
+            color: color?.text ?? "var(--color-text-muted)",
+            backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
+            opacity: hovered && showBg ? 0.85 : 1,
+          }}
+        >
+          {displayLabel ?? <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
+        </button>
+      )}
 
       {open && pos && createPortal(
         <div
           ref={popoverRef}
-          className="fixed z-[9999] rounded-lg border border-border-default p-1.5"
+          className={`fixed z-[9999] rounded-lg border border-border-default ${popoverPadding}`}
           style={{
             top: pos.flipUp ? undefined : pos.top,
             bottom: pos.flipUp ? window.innerHeight - pos.top + 4 : undefined,
@@ -134,6 +169,9 @@ export function StoryPointPicker({
             boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
           }}
         >
+          {isLg && !customMode && (
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Story Points</div>
+          )}
           {customMode ? (
             <div className="flex items-center gap-1">
               <input
@@ -148,31 +186,31 @@ export function StoryPointPicker({
                   if (e.key === "Escape") { e.preventDefault(); setCustomMode(false); setCustomInput(""); }
                 }}
                 placeholder="SP"
-                className="h-7 w-14 rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 text-center text-xs font-medium tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)]"
+                className={`${customInputH} rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 text-center ${customInputText} tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)]`}
               />
               <button
                 type="button"
                 onClick={handleCustomSubmit}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60"
+                className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}
               >
-                <Hash size={12} strokeWidth={1.5} />
+                <Hash size={iconSize} strokeWidth={1.5} />
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-${isLg ? "1.5" : "1"}`}>
               {/* N/A option */}
               <button
                 type="button"
                 onClick={() => { onChange(0); handleClose(); }}
                 title="Not applicable"
-                className="flex h-7 w-7 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+                className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`}
                 style={{
                   color: isNA ? "#fff" : "#555a64",
                   backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)",
                   boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined,
                 }}
               >
-                <Minus size={12} strokeWidth={1.5} />
+                <Minus size={iconSize} strokeWidth={1.5} />
               </button>
 
               {/* Preset options */}
@@ -184,7 +222,7 @@ export function StoryPointPicker({
                     key={n}
                     type="button"
                     onClick={() => { onChange(n); handleClose(); }}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+                    className={`flex ${btnSize} items-center justify-center rounded-md ${btnText} tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`}
                     style={{
                       color: isActive ? "#fff" : c.text,
                       backgroundColor: isActive ? c.text : c.bg,
@@ -201,14 +239,14 @@ export function StoryPointPicker({
                 type="button"
                 onClick={() => setCustomMode(true)}
                 title="Custom value"
-                className="flex h-7 w-7 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+                className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`}
                 style={{
                   color: isCustomValue ? "#fff" : "var(--color-text-muted)",
                   backgroundColor: isCustomValue ? (color?.text ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)",
                   boxShadow: isCustomValue ? `0 0 0 1px ${color?.text ?? "var(--color-text-muted)"}40` : undefined,
                 }}
               >
-                <Hash size={11} strokeWidth={1.5} />
+                <Hash size={isLg ? 13 : 11} strokeWidth={1.5} />
               </button>
 
               {/* Clear (back to unset) */}
@@ -217,9 +255,9 @@ export function StoryPointPicker({
                   type="button"
                   onClick={() => { onChange(null); handleClose(); }}
                   title="Clear"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60"
+                  className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}
                 >
-                  <X size={12} strokeWidth={1.5} />
+                  <X size={iconSize} strokeWidth={1.5} />
                 </button>
               )}
             </div>

@@ -181,4 +181,32 @@ describe("StoryPointPicker", () => {
     expect(screen.queryByPlaceholderText("SP")).not.toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
   });
+
+  describe("size=lg", () => {
+    it("renders SP label with value in trigger", () => {
+      render(<StoryPointPicker value={5} onChange={() => {}} size="lg" />);
+      expect(screen.getByText("SP")).toBeInTheDocument();
+      expect(screen.getByText("5")).toBeInTheDocument();
+    });
+
+    it("renders SP label with ? when unset", () => {
+      render(<StoryPointPicker value={null} onChange={() => {}} size="lg" />);
+      expect(screen.getByText("SP")).toBeInTheDocument();
+      expect(screen.getByText("?")).toBeInTheDocument();
+    });
+
+    it("shows Story Points heading in popover", () => {
+      render(<StoryPointPicker value={null} onChange={() => {}} size="lg" />);
+      fireEvent.click(screen.getByRole("button"));
+      expect(screen.getByText("Story Points")).toBeInTheDocument();
+    });
+
+    it("calls onChange with selected value", () => {
+      const onChange = vi.fn();
+      render(<StoryPointPicker value={null} onChange={onChange} size="lg" />);
+      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByText("3"));
+      expect(onChange).toHaveBeenCalledWith(3);
+    });
+  });
 });
