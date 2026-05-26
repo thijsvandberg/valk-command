@@ -7,6 +7,7 @@ const mockCreateChildIssue = vi.fn();
 const mockSearchForLink = vi.fn();
 const mockSearchForLinkWithJira = vi.fn();
 const mockUpdateEpic = vi.fn();
+const mockGetSectionVisibility = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   tickets: {
     createChildIssue: (...args: unknown[]) => mockCreateChildIssue(...args),
@@ -15,7 +16,7 @@ vi.mock("@/lib/api-client", () => ({
     updateEpic: (...args: unknown[]) => mockUpdateEpic(...args),
   },
   settings: {
-    getSectionVisibility: vi.fn().mockResolvedValue({ visible: null }),
+    getSectionVisibility: (...args: unknown[]) => mockGetSectionVisibility(...args),
     saveSectionVisibility: vi.fn().mockResolvedValue({}),
   },
   ApiError: class ApiError extends Error {},
@@ -41,11 +42,22 @@ function renderSection(items: EpicChild[] = []) {
   return { ...result, onMutate, onSelectTicket };
 }
 
+function openFilterPopover() {
+  const filterBtn = screen.getByTitle("Filter and display options");
+  fireEvent.click(filterBtn);
+}
+
+function openSearchMode() {
+  const searchBtn = screen.getByTitle("Link existing issue");
+  fireEvent.click(searchBtn);
+}
+
 describe("EpicChildrenSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchForLink.mockResolvedValue([]);
     mockSearchForLinkWithJira.mockResolvedValue([]);
+    mockGetSectionVisibility.mockResolvedValue({ visible: null });
   });
 
   describe("inline creation", () => {
@@ -131,14 +143,12 @@ describe("EpicChildrenSection", () => {
   describe("type selector", () => {
     it("defaults to Story type", () => {
       renderSection();
-      const typeButtons = screen.queryAllByRole("button");
-      expect(typeButtons.length).toBeGreaterThan(0);
+      expect(screen.getByText("Story")).toBeInTheDocument();
     });
 
     it("shows type picker on click and selects a type", async () => {
       renderSection();
-      const typeButton = screen.getAllByRole("button")[0];
-      fireEvent.click(typeButton);
+      fireEvent.click(screen.getByText("Story"));
 
       await waitFor(() => {
         expect(screen.getByText("Task")).toBeInTheDocument();
@@ -168,22 +178,25 @@ describe("EpicChildrenSection", () => {
     });
   });
 
-  describe("status filters", () => {
-    it("shows filter chips when items exist", () => {
+  describe("filter popover", () => {
+    it("shows filter button", () => {
       renderSection(SAMPLE_CHILDREN);
+      expect(screen.getByTitle("Filter and display options")).toBeInTheDocument();
+    });
+
+    it("opens popover with status filters on click", () => {
+      renderSection(SAMPLE_CHILDREN);
+      openFilterPopover();
+
       expect(screen.getByText("All")).toBeInTheDocument();
       expect(screen.getByText("To Do")).toBeInTheDocument();
       expect(screen.getByText("In Progress")).toBeInTheDocument();
       expect(screen.getByText("Done")).toBeInTheDocument();
     });
 
-    it("does not show filter chips when no items", () => {
-      renderSection([]);
-      expect(screen.queryByText("All")).not.toBeInTheDocument();
-    });
-
-    it("filters items when clicking a status chip", () => {
+    it("filters items when selecting a status", () => {
       renderSection(SAMPLE_CHILDREN);
+      openFilterPopover();
 
       fireEvent.click(screen.getByText("To Do"));
 
@@ -192,38 +205,49 @@ describe("EpicChildrenSection", () => {
       expect(screen.queryByText("VPL-12")).not.toBeInTheDocument();
     });
 
-    it("shows all items when clicking All", () => {
+    it("shows field visibility toggles", () => {
       renderSection(SAMPLE_CHILDREN);
+      openFilterPopover();
 
-      fireEvent.click(screen.getByText("Done"));
-      expect(screen.queryByText("VPL-10")).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByText("All"));
-      expect(screen.getByText("VPL-10")).toBeInTheDocument();
-      expect(screen.getByText("VPL-11")).toBeInTheDocument();
-      expect(screen.getByText("VPL-12")).toBeInTheDocument();
-    });
-
-    it("hides filter chips with zero count", () => {
-      const items: EpicChild[] = [
-        { key: "VPL-10", title: "Only todo", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, sprintName: null, subtaskCount: 0 },
-      ];
-      renderSection(items);
-      expect(screen.getByText("To Do")).toBeInTheDocument();
-      expect(screen.queryByText("In Progress")).not.toBeInTheDocument();
-      expect(screen.queryByText("Done")).not.toBeInTheDocument();
+      expect(screen.getByText("Hide issue keys")).toBeInTheDocument();
+      expect(screen.getByText("Hide status")).toBeInTheDocument();
+      expect(screen.getByText("Hide story points")).toBeInTheDocument();
+      expect(screen.getByText("Hide sprint")).toBeInTheDocument();
+      expect(screen.getByText("Hide subtask count")).toBeInTheDocument();
+      expect(screen.getByText("Show assignees")).toBeInTheDocument();
     });
   });
 
-  describe("choose existing", () => {
-    it("shows Choose existing button", () => {
-      renderSection();
-      expect(screen.getByText("Choose existing")).toBeInTheDocument();
+  describe("additional columns", () => {
+    it("shows story points", () => {
+      renderSection(SAMPLE_CHILDREN);
+      const spBadges = screen.getAllByText("3");
+      expect(spBadges.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("5")).toBeInTheDocument();
     });
 
-    it("opens search input when clicking Choose existing", () => {
+    it("shows sprint name", () => {
+      renderSection(SAMPLE_CHILDREN);
+      const sprintLabels = screen.getAllByText("Sprint 1");
+      expect(sprintLabels.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("shows subtask count", () => {
+      renderSection(SAMPLE_CHILDREN);
+      expect(screen.getByText("2 sub")).toBeInTheDocument();
+      expect(screen.getByText("1 sub")).toBeInTheDocument();
+    });
+  });
+
+  describe("link existing (search mode)", () => {
+    it("shows search button in create row", () => {
       renderSection();
-      fireEvent.click(screen.getByText("Choose existing"));
+      expect(screen.getByTitle("Link existing issue")).toBeInTheDocument();
+    });
+
+    it("switches to search mode when clicking search button", () => {
+      renderSection();
+      openSearchMode();
       expect(screen.getByPlaceholderText("Search by key or title...")).toBeInTheDocument();
     });
 
@@ -233,7 +257,7 @@ describe("EpicChildrenSection", () => {
       ]);
 
       renderSection();
-      fireEvent.click(screen.getByText("Choose existing"));
+      openSearchMode();
 
       const searchInput = screen.getByPlaceholderText("Search by key or title...");
       fireEvent.change(searchInput, { target: { value: "VPL-50" } });
@@ -250,7 +274,7 @@ describe("EpicChildrenSection", () => {
       mockUpdateEpic.mockResolvedValue({ epic: "Epic VPL-1", epicKey: "VPL-1" });
 
       const { onMutate } = renderSection();
-      fireEvent.click(screen.getByText("Choose existing"));
+      openSearchMode();
 
       const searchInput = screen.getByPlaceholderText("Search by key or title...");
       fireEvent.change(searchInput, { target: { value: "VPL-50" } });
@@ -272,17 +296,16 @@ describe("EpicChildrenSection", () => {
 
     it("closes search on Cancel", () => {
       renderSection();
-      fireEvent.click(screen.getByText("Choose existing"));
+      openSearchMode();
       expect(screen.getByPlaceholderText("Search by key or title...")).toBeInTheDocument();
 
       fireEvent.click(screen.getByText("Cancel"));
       expect(screen.queryByPlaceholderText("Search by key or title...")).not.toBeInTheDocument();
-      expect(screen.getByText("Choose existing")).toBeInTheDocument();
     });
 
     it("closes search on Escape", () => {
       renderSection();
-      fireEvent.click(screen.getByText("Choose existing"));
+      openSearchMode();
       const searchInput = screen.getByPlaceholderText("Search by key or title...");
 
       fireEvent.keyDown(searchInput, { key: "Escape" });
@@ -296,7 +319,7 @@ describe("EpicChildrenSection", () => {
       ]);
 
       renderSection(SAMPLE_CHILDREN);
-      fireEvent.click(screen.getByText("Choose existing"));
+      openSearchMode();
 
       const searchInput = screen.getByPlaceholderText("Search by key or title...");
       fireEvent.change(searchInput, { target: { value: "VPL" } });
@@ -318,7 +341,7 @@ describe("EpicChildrenSection", () => {
       mockUpdateEpic.mockRejectedValue(new Error("API error"));
 
       renderSection();
-      fireEvent.click(screen.getByText("Choose existing"));
+      openSearchMode();
 
       const searchInput = screen.getByPlaceholderText("Search by key or title...");
       fireEvent.change(searchInput, { target: { value: "VPL-50" } });
