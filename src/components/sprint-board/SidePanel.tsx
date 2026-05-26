@@ -4,10 +4,10 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
 import { getEpicColor, getBvColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import Link from "next/link";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { QualityBadge, getJiraUrl } from "./TicketTableCells";
+import { QualityBadge } from "./TicketTableCells";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
+import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { useTicketDetail, useTicketVersions, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
@@ -15,11 +15,9 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { Tag } from "@/components/shared/Tag";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
+import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import {
-  CloudSync,
   ArrowUpRight,
-  Maximize2,
-  Minimize2,
   X,
   AlertCircle,
   ChevronRight,
@@ -27,13 +25,9 @@ import {
   History,
   CheckSquare,
   MessageSquare,
-  Check,
-  Link2,
-  PenLine,
   Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { jira } from "@/lib/api-client";
 
 // -- Layout helpers --
 
@@ -44,50 +38,6 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
       <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
     </div>
   );
-}
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
-      {children}
-    </h3>
-  );
-}
-
-// -- Simple markdown renderer for panel description --
-
-function renderSimpleMarkdown(text: string): React.ReactNode[] {
-  const lines = text.split("\n");
-  const elements: React.ReactNode[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.startsWith("## ")) {
-      elements.push(<h3 key={`h-${i}`} className="mt-4 mb-1 font-[var(--font-display)] text-sm font-semibold text-text-primary">{line.slice(3)}</h3>);
-    } else if (line.startsWith("### ")) {
-      elements.push(<h4 key={`h4-${i}`} className="mt-3 mb-1 text-xs font-semibold text-text-secondary">{line.slice(4)}</h4>);
-    } else if (/^- \[[ x]\] /.test(line)) {
-      const checked = line.startsWith("- [x] ");
-      const content = line.slice(6);
-      elements.push(
-        <div key={`cb-${i}`} className="my-0.5 flex items-start gap-1.5 text-xs text-text-secondary">
-          <span className={`mt-0.5 flex h-3 w-3 shrink-0 items-center justify-center rounded border ${checked ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10" : "border-border-strong bg-overlay-subtle"}`}>
-            {checked && <Check size={8} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
-          </span>
-          <span className={checked ? "line-through opacity-60" : ""}>{content}</span>
-        </div>
-      );
-    } else if (line.startsWith("- ")) {
-      elements.push(<li key={`li-${i}`} className="ml-4 list-disc text-xs text-text-secondary">{line.slice(2)}</li>);
-    } else if (/^\d+\. /.test(line)) {
-      elements.push(<li key={`ol-${i}`} className="ml-4 list-decimal text-xs text-text-secondary">{line.replace(/^\d+\.\s*/, "")}</li>);
-    } else if (line.trim() === "") {
-      elements.push(<div key={`br-${i}`} className="h-1.5" />);
-    } else {
-      elements.push(<p key={`p-${i}`} className="text-xs leading-relaxed text-text-secondary">{line}</p>);
-    }
-  }
-  return elements;
 }
 
 // -- Completeness labels --
@@ -129,8 +79,6 @@ export function SidePanel({
 }) {
   const jiraStatusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] || JIRA_STATUS_COLORS["TO DO"];
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
-  const [syncingTicket, setSyncingTicket] = useState(false);
-
   // Ticket detail data (reporter, parent, labels, timestamps, description)
   const { data: detail } = useTicketDetail(ticket.key);
   const description = detail?.description as string | undefined;
@@ -169,21 +117,6 @@ export function SidePanel({
     if (adjacentKeys?.next) prefetchTicketPage(adjacentKeys.next);
   }, [adjacentKeys]);
 
-  const handleSyncTicket = useCallback(async () => {
-    setSyncingTicket(true);
-    try {
-      await Promise.all([
-        jira.syncTickets({ ticketKeys: [ticket.key] }),
-        new Promise((r) => setTimeout(r, 400)),
-      ]);
-      onShowToast(`Synced ${ticket.key} from Jira`);
-    } catch {
-      // Sync failure is non-critical in panel context
-    } finally {
-      setSyncingTicket(false);
-    }
-  }, [ticket.key, onShowToast]);
-
   const [panelWidth, setPanelWidth] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_PANEL_WIDTH;
     const saved = localStorage.getItem(PANEL_STORAGE_KEY);
@@ -191,10 +124,8 @@ export function SidePanel({
     const parsed = parseInt(saved, 10);
     return !isNaN(parsed) ? Math.max(MIN_PANEL_WIDTH, parsed) : DEFAULT_PANEL_WIDTH;
   });
-  const [isFullWidth, setIsFullWidth] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const savedWidthBeforeFullRef = useRef(panelWidth);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -222,17 +153,7 @@ export function SidePanel({
     };
   }, [isDragging]);
 
-  const toggleFullWidth = useCallback(() => {
-    if (isFullWidth) {
-      setPanelWidth(savedWidthBeforeFullRef.current);
-      setIsFullWidth(false);
-    } else {
-      savedWidthBeforeFullRef.current = panelWidth;
-      setIsFullWidth(true);
-    }
-  }, [isFullWidth, panelWidth]);
-
-  const effectiveWidth = isFullWidth ? "100%" : `${panelWidth}px`;
+  const effectiveWidth = `${panelWidth}px`;
 
   // Lazy-load ticket versions via SWR (only fetches when panel is open)
   const { data: apiVersions } = useTicketVersions(ticket.key);
@@ -259,87 +180,43 @@ export function SidePanel({
   return (
     <div
       ref={panelRef}
-      className="relative flex h-full shrink-0 flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
-      style={{ width: effectiveWidth, minWidth: isFullWidth ? "100%" : MIN_PANEL_WIDTH }}
+      className="relative z-10 flex h-full shrink-0 flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
+      style={{ width: effectiveWidth, minWidth: MIN_PANEL_WIDTH }}
     >
       {/* Resize drag handle */}
-      {!isFullWidth && (
-        <div
+      <div
           onMouseDown={handleMouseDown}
           className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
           style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
-        />
-      )}
+      />
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
-        <div className="group/key flex items-center gap-2.5">
-          <IssueTypeIcon type={ticket.type} />
-          <span className="font-mono text-sm font-medium text-text-secondary">
-            {ticket.key}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            icon={<Link2 size={12} strokeWidth={1.5} />}
-            onClick={async () => {
-              const url = getJiraUrl(ticket.key);
-              const text = `${ticket.title} - ${url}`;
-              try {
-                await navigator.clipboard.writeText(text);
-                onShowToast("Link copied");
-              } catch {
-                onShowToast("Failed to copy link");
-              }
-            }}
-            className="text-transparent group-hover/key:text-text-tertiary hover:!text-text-secondary"
-            title="Copy Jira link"
+      <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
+        <div className="flex items-center gap-2">
+          <TicketKeyPill
+            ticketKey={ticket.key}
+            statusLabel={ticket.jiraStatus}
+            statusBg={jiraStatusColor.bg}
+            statusColor={jiraStatusColor.text}
+            href={`/tickets/${ticket.key}`}
           />
           {ticket.editState === "draft" && (
-            <span className="flex items-center gap-1 rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-caption text-[#4a90d9]/50" title="Unsaved draft">
+            <span className="rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-caption text-[#4a90d9]/50" title="Unsaved draft">
               draft
             </span>
           )}
           {ticket.editState === "local_edits" && (
-            <span className="flex items-center gap-1 rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-caption text-[#4a90d9]/70" title="Has local changes not yet pushed to Jira">
+            <span className="rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-caption text-[#4a90d9]/70" title="Has local changes not yet pushed to Jira">
               local changes
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           <a
-            href={`/tickets/${ticket.key}/write`}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-secondary cursor-pointer bg-overlay-subtle border border-border-default hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
-            title="Write story"
-          >
-            <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </a>
-          <Button
-            variant="secondary"
-            size="md"
-            iconOnly
-            icon={<CloudSync className={`h-3.5 w-3.5 ${syncingTicket ? "animate-spin" : ""}`} strokeWidth={1.5} />}
-            disabled={syncingTicket}
-            onClick={handleSyncTicket}
-            title="Sync ticket from Jira"
-          />
-          <Button
-            variant="ghost"
-            size="md"
-            iconOnly
-            icon={isFullWidth
-              ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              : <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-            }
-            onClick={toggleFullWidth}
-            title={isFullWidth ? "Restore panel width" : "Expand to full width"}
-          />
-          <a
             href={`/tickets/${ticket.key}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-secondary cursor-pointer bg-overlay-subtle border border-border-default hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
             title="Open in new tab"
           >
             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -379,14 +256,8 @@ export function SidePanel({
             </Link>
           )}
 
-          {/* Status row: Jira status + Epic + SP + BV */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span
-              className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: jiraStatusColor.bg, color: jiraStatusColor.text }}
-            >
-              {ticket.jiraStatus}
-            </span>
+          {/* Badges: Epic + SP + BV */}
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {epicColor && (
               <span
                 className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
@@ -472,10 +343,10 @@ export function SidePanel({
           {/* Description */}
           <div className="my-5 h-px bg-overlay-default" />
           <div>
-            <SectionHeading>Description</SectionHeading>
+            <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
             {description ? (
-              <div className="mt-2 max-h-64 overflow-y-auto">
-                {renderSimpleMarkdown(description)}
+              <div className="description-content mt-2 max-h-64 overflow-y-auto text-sm">
+                {renderMarkdown(description)}
               </div>
             ) : (
               <p className="mt-2 text-xs text-text-muted">No description</p>
@@ -484,19 +355,15 @@ export function SidePanel({
 
           {/* PO Metadata section */}
           <div className="my-5 h-px bg-overlay-default" />
-          <div className="flex items-center justify-between">
-            <SectionHeading>
-              <span className="flex items-center gap-2">
-                PO Metadata
-                {ticket.notes.trim() && (
-                  <span
-                    className="h-2 w-2 rounded-full bg-[var(--color-brand-500)]"
-                    title="Has PO notes"
-                  />
-                )}
-              </span>
-            </SectionHeading>
-          </div>
+          <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+            PO Metadata
+            {ticket.notes.trim() && (
+              <span
+                className="h-2 w-2 rounded-full bg-[var(--color-brand-500)]"
+                title="Has PO notes"
+              />
+            )}
+          </h3>
 
           <div className="mt-3 space-y-3">
             {/* Readiness completeness bar */}
