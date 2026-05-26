@@ -93,6 +93,7 @@ export function StoryPointPicker({
     }
     function handleKeyDown(e: KeyboardEvent) {
       if (customMode) return;
+      if (lgCustomInputRef.current && document.activeElement === lgCustomInputRef.current) return;
       if (e.key === "Escape") { handleClose(); return; }
       const num = parseInt(e.key, 10);
       if (SP_PRESET_SET.has(num)) { onChange(num); handleClose(); return; }
