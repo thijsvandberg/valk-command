@@ -587,26 +587,35 @@ export function SubtasksSection({
 
   const isFiltered = filter !== "all";
 
-  // Suggest subtasks button
+  // Suggest subtasks button with pending count badge
   const suggestButton = (
-    <button
-      type="button"
-      onClick={() => handleSuggest()}
-      disabled={suggestLoading}
-      className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
-        suggestLoading
-          ? "text-[var(--color-brand-400)]"
-          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-      }`}
-      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-      title="Suggest subtasks with AI"
-    >
-      {suggestLoading ? (
-        <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-      ) : (
-        <Sparkles size={13} strokeWidth={1.5} />
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => handleSuggest()}
+        disabled={suggestLoading}
+        className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
+          suggestLoading
+            ? "text-[var(--color-brand-400)]"
+            : suggestions.length > 0
+              ? "text-[var(--color-brand-400)]"
+              : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+        }`}
+        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+        title={suggestions.length > 0 ? `${suggestions.length} pending AI suggestions` : "Suggest subtasks with AI"}
+      >
+        {suggestLoading ? (
+          <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+        ) : (
+          <Sparkles size={13} strokeWidth={1.5} />
+        )}
+      </button>
+      {suggestions.length > 0 && !suggestLoading && (
+        <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-[9px] font-semibold text-white">
+          {suggestions.length}
+        </span>
       )}
-    </button>
+    </div>
   );
 
   // Filter button for compact mode

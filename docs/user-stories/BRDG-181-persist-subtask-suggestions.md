@@ -65,13 +65,13 @@ Declined (dismissed) subtasks do not need to be saved. Only pending and accepted
 
 - [x] Refinement session shows saved suggestions when revisiting a ticket
 - [x] Ticket single view shows saved suggestions
-- [ ] A count/badge shows the number of pending AI suggestions
+- [x] A count/badge shows the number of pending AI suggestions
 
 ### UI improvements
 
-- [ ] SubtaskSuggestions panel has improved visual design
-- [ ] Better spacing, depth, and interaction states
-- [ ] Consistent with the overall app design language
+- [x] SubtaskSuggestions panel has improved visual design
+- [x] Better spacing, depth, and interaction states
+- [x] Consistent with the overall app design language
 
 ### Tests
 
