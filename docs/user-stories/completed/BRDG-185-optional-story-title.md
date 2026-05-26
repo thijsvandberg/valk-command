@@ -1,6 +1,6 @@
 # BRDG-185: Optional Story Title with AI Title Suggestions
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
