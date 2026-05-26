@@ -2,6 +2,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { EpicSuggestionCard, type EpicSuggestion } from "./EpicSuggestionCard";
 
+vi.mock("@/lib/api-client", () => ({
+  tickets: { get: vi.fn().mockRejectedValue(new Error("not found")) },
+}));
+
 const SUGGESTIONS: EpicSuggestion[] = [
   { key: "VPL-10", name: "Group Reservations", confidence: "high", reason: "Covers group booking" },
   { key: "VPL-20", name: "Online Booking", confidence: "medium", reason: "Could relate to online booking" },
@@ -17,12 +21,10 @@ describe("EpicSuggestionCard", () => {
       />,
     );
     expect(screen.getByText("Epic suggestion")).toBeInTheDocument();
-    expect(screen.getByText("VPL-10")).toBeInTheDocument();
     expect(screen.getByText("Group Reservations")).toBeInTheDocument();
-    expect(screen.getByText("H")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("Covers group booking")).toBeInTheDocument();
-    expect(screen.getByText("VPL-20")).toBeInTheDocument();
-    expect(screen.getByText("M")).toBeInTheDocument();
+    expect(screen.getByText("Med")).toBeInTheDocument();
   });
 
   it("shows 'Applied' for the epic already set on the ticket", () => {
@@ -34,7 +36,6 @@ describe("EpicSuggestionCard", () => {
       />,
     );
     expect(screen.getByText("Applied")).toBeInTheDocument();
-    // VPL-20 should still have a Link button
     expect(screen.getAllByRole("button", { name: /link/i })).toHaveLength(1);
   });
 
@@ -84,7 +85,7 @@ describe("EpicSuggestionCard", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders confidence indicators for each level", () => {
+  it("renders confidence badges with correct labels", () => {
     render(
       <EpicSuggestionCard
         suggestions={[
@@ -95,8 +96,8 @@ describe("EpicSuggestionCard", () => {
         onApply={vi.fn()}
       />,
     );
-    expect(screen.getByText("H")).toBeInTheDocument();
-    expect(screen.getByText("M")).toBeInTheDocument();
-    expect(screen.getByText("L")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("Med")).toBeInTheDocument();
+    expect(screen.getByText("Low")).toBeInTheDocument();
   });
 });
