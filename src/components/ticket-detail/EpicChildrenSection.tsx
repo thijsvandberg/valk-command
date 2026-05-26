@@ -390,7 +390,7 @@ export function EpicChildrenSection({
               type="button"
               onClick={() => setShowTypePicker((v) => !v)}
               className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={visibleFields.has("issueKey") ? { minWidth: 74 } : undefined}
+              style={visibleFields.has("issueKey") ? { minWidth: 69 } : undefined}
             >
               <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
               <ChevronDown size={10} className="text-text-muted" />
