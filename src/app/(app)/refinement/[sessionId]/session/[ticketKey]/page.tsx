@@ -139,7 +139,7 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={paneRef}
-      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-base)] px-6 pt-4 pb-6"
+      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] px-6 pt-4 pb-6"
       style={{
         width,
         animation: isDragging ? undefined : "fadeInUp 0.15s ease",
@@ -411,7 +411,7 @@ export default function RefinementSessionTicketPage({
     return (
       <>
         {pageTitle}
-        <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
+        <div className="flex h-full flex-col bg-[var(--color-surface-elevated)]">
           <SessionSummary />
         </div>
       </>
@@ -426,7 +426,7 @@ export default function RefinementSessionTicketPage({
   return (
     <>
       {pageTitle}
-      <div className="flex h-full flex-col bg-[var(--color-surface-base)]">
+      <div className="flex h-full flex-col bg-[var(--color-surface-elevated)]">
         {/* Top bar - matches ViewHeader styling */}
         <div className="relative flex shrink-0 items-center justify-between border-b border-border-strong bg-[var(--color-surface-chrome)] px-5 py-3.5">
           {/* Decorative accents (from ViewHeader) */}
