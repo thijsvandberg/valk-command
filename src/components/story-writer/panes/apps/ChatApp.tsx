@@ -116,7 +116,7 @@ export function ChatApp() {
               {[
                 writer.aiDrafts.length > 0 &&
                   `${writer.aiDrafts.length} draft${writer.aiDrafts.length !== 1 ? "s" : ""}`,
-                writer.messages.length > 0 && `${writer.messages.length} msg`,
+                writer.messages.length > 0 && `${writer.messages.length} message${writer.messages.length !== 1 ? "s" : ""}`,
               ]
                 .filter(Boolean)
                 .join(" · ")}

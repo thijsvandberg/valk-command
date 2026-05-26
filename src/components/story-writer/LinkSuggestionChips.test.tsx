@@ -30,7 +30,7 @@ describe("LinkSuggestionChips", () => {
         onLink={vi.fn()}
       />,
     );
-    expect(screen.getByText("Already linked")).toBeInTheDocument();
+    expect(screen.getAllByText("Linked")).toHaveLength(1);
     // VPL-200 should still have a Link button
     const linkButtons = screen.getAllByRole("button", { name: /link/i });
     expect(linkButtons).toHaveLength(1);

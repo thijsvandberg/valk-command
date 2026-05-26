@@ -413,8 +413,7 @@ export function ChatMessage({
                 {onAcceptDraft && draftId && (
                   <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2 flex items-center gap-2">
                     {draftAccepted ? (
-                      <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
-                        <Check size={12} strokeWidth={2} />
+                      <span className="rounded-md px-3 py-1.5 text-xs font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
                         Accepted
                       </span>
                     ) : (

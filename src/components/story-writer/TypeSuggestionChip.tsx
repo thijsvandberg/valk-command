@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 
 interface TypeSuggestionChipProps {
@@ -50,8 +50,7 @@ export function TypeSuggestionChip({ type, onApply, currentType }: TypeSuggestio
         </span>
         <span className="flex-1" />
         {applied ? (
-          <span className="flex items-center gap-1 text-caption font-medium text-emerald-400 shrink-0">
-            <Check size={10} strokeWidth={2.5} />
+          <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
             Applied
           </span>
         ) : (

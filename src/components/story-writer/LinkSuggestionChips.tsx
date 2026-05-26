@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link2, Check, Loader2 } from "lucide-react";
+import { Link2, Loader2 } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets } from "@/lib/api-client";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
@@ -110,8 +110,8 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
           const relationLabel = RELATION_LABELS[relation] ?? relation;
           return (
             <div key={relation}>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-subtle">
-                <span className="text-caption text-text-muted">{relationLabel}</span>
+              <div className="px-3 pt-2.5 pb-1">
+                <span className="text-[10px] font-medium tracking-[0.04em] text-text-quaternary italic">{relationLabel}</span>
               </div>
               {items.map((s) => {
                 const alreadyLinked = linkedIssueKeys.has(s.key);
@@ -144,10 +144,11 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
                     )}
                     {!info && <span className="flex-1" />}
                     {alreadyLinked ? (
-                      <span className="text-caption text-text-muted shrink-0">Already linked</span>
+                      <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
+                        Linked
+                      </span>
                     ) : justLinked ? (
-                      <span className="flex items-center gap-1 text-caption font-medium text-emerald-400 shrink-0">
-                        <Check size={10} strokeWidth={2.5} />
+                      <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
                         Linked
                       </span>
                     ) : hasError ? (

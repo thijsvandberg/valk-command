@@ -57,18 +57,19 @@ export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSug
               >
                 {title}
               </span>
-              <button
-                type="button"
-                onClick={() => handleApply(title)}
-                disabled={isSelected}
-                className={`shrink-0 rounded-md px-2.5 py-1 text-caption font-medium cursor-pointer transition-colors duration-150 ${
-                  isSelected
-                    ? "bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)] pointer-events-none"
-                    : "text-text-muted border border-border-default hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08]"
-                }`}
-              >
-                {isSelected ? "Applied" : "Use"}
-              </button>
+              {isSelected ? (
+                <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
+                  Applied
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleApply(title)}
+                  className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150"
+                >
+                  Use
+                </button>
+              )}
             </div>
           );
         })}

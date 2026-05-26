@@ -533,7 +533,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 >
                   Close
                 </Button>
-              ) : (
+              ) : isDraftDirty ? (
                 <Button
                   variant="primary"
                   size="md"
@@ -543,7 +543,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 >
                   Push &amp; Close
                 </Button>
-              ))}
+              ) : null)}
 
               <div ref={moreMenuRef} className="relative">
                 <Button
