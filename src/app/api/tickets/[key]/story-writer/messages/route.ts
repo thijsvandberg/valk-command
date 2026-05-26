@@ -128,25 +128,24 @@ export async function POST(request: Request, { params }: RouteContext) {
     .set({ updatedAt: new Date().toISOString() })
     .where(eq(storyWriterSession.id, session.id));
 
-  // Check if this is the first message (no non-cancelled assistant messages yet).
-  // After a cancel, the next message should be treated as a first message so the
-  // agent starts with fresh context instead of resuming a cancelled session.
-  const allAssistantMessages = await db
+  // Check conversation state to decide routing:
+  // - First message (no assistants yet): use first-message path
+  // - Has cancelled messages: use first-message path with fresh agent session
+  //   but include non-cancelled history as context
+  // - Normal follow-up: resume existing agent session
+  const allMessages = await db
     .select()
     .from(message)
-    .where(
-      and(
-        eq(message.conversationId, session.conversationId),
-        eq(message.role, "assistant"),
-      ),
-    )
+    .where(eq(message.conversationId, session.conversationId))
+    .orderBy(message.timestamp)
     .all();
 
-  const nonCancelledAssistants = allAssistantMessages.filter((m) => !m.cancelled);
+  const hasCancelledMessages = allMessages.some((m) => m.cancelled);
+  const nonCancelledAssistants = allMessages.filter((m) => m.role === "assistant" && !m.cancelled);
   const isFirstMessage = nonCancelledAssistants.length === 0;
-  // When all previous assistant messages were cancelled, use a fresh agent
-  // conversationId so the agent has no memory of the cancelled exchange.
-  const isRestartAfterCancel = isFirstMessage && allAssistantMessages.length > 0;
+  // After any cancel, route through the first-message path with a fresh agent
+  // session so cancelled messages are excluded from AI context.
+  const needsFreshSession = hasCancelledMessages;
 
   interface TaskResponse { id?: string; error?: string }
 
@@ -253,12 +252,24 @@ export async function POST(request: Request, { params }: RouteContext) {
     return taskCreatedResponse(messageId, result.data, isFirstMessage);
   }
 
-  if (isFirstMessage) {
+  if (isFirstMessage || needsFreshSession) {
     const taskBody = await buildFirstMessageBody(session, key, content, codebaseResearch, model);
 
-    // After a cancel, use a fresh conversationId so the agent starts clean
-    if (isRestartAfterCancel) {
+    // After a cancel, use a fresh conversationId and inject non-cancelled
+    // conversation history so the AI retains useful context but forgets
+    // cancelled exchanges.
+    if (needsFreshSession) {
       (taskBody as Record<string, unknown>).conversationId = randomUUID();
+
+      const history = allMessages
+        .filter((m) => !m.cancelled && m.id !== messageId)
+        .map((m) => `[${m.role === "user" ? "User" : "Assistant"}]: ${m.content.slice(0, 2000)}`)
+        .join("\n\n---\n\n");
+
+      if (history) {
+        const args = (taskBody as Record<string, unknown>).args as Record<string, string>;
+        args.args = `Previous conversation (for context):\n${history}\n\n---\n\n${args.args}`;
+      }
     }
 
     const result = await agentFetch<TaskResponse>("/api/tasks", {
@@ -288,7 +299,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       durationMs: Date.now() - messageStart,
       startedAt: messageStartedAt,
     });
-    return taskCreatedResponse(messageId, result.data, isFirstMessage);
+    return taskCreatedResponse(messageId, result.data, isFirstMessage || needsFreshSession);
   }
 
   // Follow-up message: resume the existing workspace conversation
