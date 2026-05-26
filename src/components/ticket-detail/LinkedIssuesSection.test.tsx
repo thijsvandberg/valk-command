@@ -164,6 +164,62 @@ describe("LinkedIssuesSection", () => {
     });
   });
 
+  it("shows relation type dropdown that defaults to 'Relates to'", () => {
+    renderSection();
+    expect(screen.getByText("Relates to")).toBeInTheDocument();
+  });
+
+  it("allows selecting a different relation type", async () => {
+    renderSection();
+    // Click the relation dropdown button
+    fireEvent.click(screen.getByText("Relates to"));
+    // Select "Blocks"
+    fireEvent.mouseDown(screen.getByText("Blocks"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Blocks")).toBeInTheDocument();
+    });
+  });
+
+  it("uses selected relation when creating a link", async () => {
+    mockSearchForLink.mockResolvedValue([
+      { key: "VPL-300", title: "Target", type: "task", status: "TO DO" },
+    ]);
+    mockCreateLink.mockResolvedValue({
+      key: "VPL-300",
+      title: "Target",
+      type: "task",
+      jiraStatus: "TO DO",
+      assignee: null,
+      relation: "blocks",
+    });
+
+    const { onMutate } = renderSection();
+
+    // Change relation to "Blocks"
+    fireEvent.click(screen.getByText("Relates to"));
+    fireEvent.mouseDown(screen.getByText("Blocks"));
+
+    // Type and select search result
+    const input = screen.getByPlaceholderText("Link issue...");
+    fireEvent.change(input, { target: { value: "VPL-300" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Target")).toBeInTheDocument();
+    });
+
+    fireEvent.mouseDown(screen.getByText("Target"));
+
+    expect(mockCreateLink).toHaveBeenCalledWith("VPL-1", {
+      targetKey: "VPL-300",
+      relation: "blocks",
+    });
+
+    await waitFor(() => {
+      expect(onMutate).toHaveBeenCalled();
+    });
+  });
+
   it("clears input on Escape", async () => {
     renderSection();
     const input = screen.getByPlaceholderText("Link issue...");

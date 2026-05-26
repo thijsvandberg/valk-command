@@ -117,7 +117,7 @@ The "Find Related" feature discovers issues based on content similarity. This fe
 - [x] AI proactively suggests links during story review (not only on explicit user request)
 
 ### General
-- [ ] Tests for inline input, XML parsing, chip rendering, and link creation flow
+- [x] Tests for inline input, XML parsing, chip rendering, and link creation flow
 
 ## Out of Scope
 
