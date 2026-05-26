@@ -41,7 +41,7 @@ Three interaction zones:
 - [x] Sprint picker badge in header (replaces read-only link)
 - [x] Story points badge in header (click to change)
 - [x] Business value badge in header (click to change)
-- [ ] Flag/unflag toggle in "..." dropdown menu
+- [x] Flag/unflag toggle in "..." dropdown menu
 - [ ] New "Meta" pane tab with: assignee, creator, labels, and full metadata overview
 - [ ] Changes sync to Jira where applicable (sprint, assignee, epic)
 - [ ] Changes are reflected immediately via optimistic updates
