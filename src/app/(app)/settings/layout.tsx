@@ -1,11 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Settings2, Clock, Cpu, MessageSquare, Bell, Plug, Users } from "lucide-react";
+import { Settings2, SlidersHorizontal, Clock, Cpu, MessageSquare, Bell, Plug, Users } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { TabBar, TabLink } from "@/components/shared/TabBar";
 
 const TABS = [
+  { href: "/settings/general", label: "General", icon: SlidersHorizontal },
   { href: "/settings/jobs", label: "Workspace Jobs", icon: Clock },
   { href: "/settings/scheduler", label: "System Tasks", icon: Cpu },
   { href: "/settings/prompts", label: "Quick Prompts", icon: MessageSquare },
