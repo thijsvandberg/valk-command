@@ -110,8 +110,8 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
           const relationLabel = RELATION_LABELS[relation] ?? relation;
           return (
             <div key={relation}>
-              <div className="px-3 pt-2.5 pb-1">
-                <span className="text-[10px] font-medium tracking-[0.04em] text-text-quaternary italic">{relationLabel}</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-primary border-b border-border-subtle">
+                <span className="text-caption text-text-muted">{relationLabel}</span>
               </div>
               {items.map((s) => {
                 const alreadyLinked = linkedIssueKeys.has(s.key);
