@@ -397,7 +397,8 @@ async function buildFirstMessageBody(
   contextParts.push(
     `${researchFlag}\n\nUser request: ${content}\n\n` +
     `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.\n` +
-    `If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag to suggest changing it. Only suggest when it is clearly warranted.`
+    `If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag to suggest changing it. Only suggest when it is clearly warranted.\n` +
+    `When you mention or discover related issues that should be linked to this ticket, include link suggestions using: <link-suggestion key="ISSUE-KEY" relation="relates to" /> (or for multiple: <link-suggestions><link key="..." relation="..." /></link-suggestions>). Valid relations: "relates to", "blocks", "is blocked by", "clones", "is cloned by", "duplicates", "is duplicated by". Proactively suggest links during story review when you identify issues that should be connected.`
   );
 
   return {
@@ -427,7 +428,7 @@ function buildFollowUpContent(
       `Output <story-draft> for original and <story-draft slot="target"> for target story.]`;
   }
 
-  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag.]`;
+  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag. When you mention or discover related issues, include <link-suggestion key="ISSUE-KEY" relation="relates to" /> tags to suggest linking them.]`;
 }
 
 /**

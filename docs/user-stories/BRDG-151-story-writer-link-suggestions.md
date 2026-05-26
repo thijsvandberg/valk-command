@@ -113,8 +113,8 @@ The "Find Related" feature discovers issues based on content similarity. This fe
 - [x] Clicking "Link" creates the link via existing API and shows confirmed state
 - [x] Already-linked issues show muted "Already linked" state
 - [x] Multiple link suggestions in one message are supported
-- [ ] Workspace skill prompt is updated so AI emits link suggestions when issues are mentioned or discovered
-- [ ] AI proactively suggests links during story review (not only on explicit user request)
+- [x] Workspace skill prompt is updated so AI emits link suggestions when issues are mentioned or discovered
+- [x] AI proactively suggests links during story review (not only on explicit user request)
 
 ### General
 - [ ] Tests for inline input, XML parsing, chip rendering, and link creation flow
