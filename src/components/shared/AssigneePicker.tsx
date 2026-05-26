@@ -224,7 +224,7 @@ export function AssigneePicker({
           )}
 
           {/* Options */}
-          <div className="max-h-[320px] overflow-y-auto py-1">
+          <div className="max-h-[300px] overflow-y-auto py-1">
             {/* Unassign option */}
             <button
               type="button"
