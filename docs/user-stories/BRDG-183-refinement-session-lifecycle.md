@@ -20,9 +20,9 @@ As the PO, I want a clear distinction between leaving a refinement session (to c
 ## Acceptance Criteria
 
 ### 1. Move "Exit" into a "..." overflow menu
-- [ ] Replace the visible "Exit" button in the refinement header with a three-dot overflow menu (far right)
-- [ ] The overflow menu contains an "Exit session" action
-- [ ] Clicking "Exit session" navigates to the end modal (same as finishing the last ticket)
+- [x] Replace the visible "Exit" button in the refinement header with a three-dot overflow menu (far right)
+- [x] The overflow menu contains an "Exit session" action
+- [x] Clicking "Exit session" navigates to the end modal (same as finishing the last ticket)
 
 ### 2. End modal after exit or finishing last ticket
 - [ ] Both the overflow menu "Exit session" and navigating past the last ticket lead to the same end modal/page

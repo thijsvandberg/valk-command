@@ -16,7 +16,8 @@ import { tickets } from "@/lib/api-client";
 import type { TicketReadiness } from "@/types/ticket";
 import { BridgeMark } from "@/components/shared/BridgeMark";
 import {
-  X,
+  MoreHorizontal,
+  LogOut,
   ChevronLeft,
   ChevronRight,
   StickyNote,
@@ -316,6 +317,10 @@ export default function RefinementSessionTicketPage({
   const [poNotes, setPoNotes] = useState("");
   const [syncedKey, setSyncedKey] = useState<string | null>(null);
 
+  // Overflow menu
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
   // Navigation dropdown
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const navDropdownRef = useRef<HTMLDivElement>(null);
@@ -361,6 +366,23 @@ export default function RefinementSessionTicketPage({
   const handleExitSession = useCallback(() => {
     openEndModal();
   }, [openEndModal]);
+
+  // Close overflow menu on click outside
+  useEffect(() => {
+    if (!overflowOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) setOverflowOpen(false);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOverflowOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [overflowOpen]);
 
   // Close nav dropdown on click outside
   useEffect(() => {
@@ -449,16 +471,6 @@ export default function RefinementSessionTicketPage({
             </div>
 
             <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" />
-
-            <button
-              type="button"
-              onClick={handleExitSession}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-            >
-              <X size={14} strokeWidth={1.5} />
-              Exit
-            </button>
 
             {ticketData && (
               <>
@@ -654,6 +666,44 @@ export default function RefinementSessionTicketPage({
               <Info size={13} strokeWidth={1.5} />
               Info
             </button>
+
+            <div className="h-4 w-px bg-border-subtle" />
+
+            {/* Overflow menu */}
+            <div className="relative" ref={overflowRef}>
+              <button
+                type="button"
+                onClick={() => setOverflowOpen((v) => !v)}
+                className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  overflowOpen
+                    ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                    : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                title="More actions"
+                aria-label="More actions"
+              >
+                <MoreHorizontal size={16} strokeWidth={1.5} />
+              </button>
+              {overflowOpen && (
+                <div
+                  className="absolute top-full right-0 z-50 mt-2 w-48 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+                  style={{ animation: "fadeInUp 0.1s ease" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOverflowOpen(false);
+                      handleExitSession();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs text-text-secondary hover:bg-hover-list-item active:bg-overlay-default"
+                  >
+                    <LogOut size={13} strokeWidth={1.5} />
+                    Exit session
+                  </button>
+                </div>
+              )}
+            </div>
 
           </div>
         </div>
