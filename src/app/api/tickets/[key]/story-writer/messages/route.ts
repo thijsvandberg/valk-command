@@ -131,19 +131,22 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Check if this is the first message (no non-cancelled assistant messages yet).
   // After a cancel, the next message should be treated as a first message so the
   // agent starts with fresh context instead of resuming a cancelled session.
-  const assistantMessages = await db
+  const allAssistantMessages = await db
     .select()
     .from(message)
     .where(
       and(
         eq(message.conversationId, session.conversationId),
         eq(message.role, "assistant"),
-        eq(message.cancelled, false),
       ),
     )
     .all();
 
-  const isFirstMessage = assistantMessages.length === 0;
+  const nonCancelledAssistants = allAssistantMessages.filter((m) => !m.cancelled);
+  const isFirstMessage = nonCancelledAssistants.length === 0;
+  // When all previous assistant messages were cancelled, use a fresh agent
+  // conversationId so the agent has no memory of the cancelled exchange.
+  const isRestartAfterCancel = isFirstMessage && allAssistantMessages.length > 0;
 
   interface TaskResponse { id?: string; error?: string }
 
@@ -252,6 +255,11 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (isFirstMessage) {
     const taskBody = await buildFirstMessageBody(session, key, content, codebaseResearch, model);
+
+    // After a cancel, use a fresh conversationId so the agent starts clean
+    if (isRestartAfterCancel) {
+      (taskBody as Record<string, unknown>).conversationId = randomUUID();
+    }
 
     const result = await agentFetch<TaskResponse>("/api/tasks", {
       method: "POST",
