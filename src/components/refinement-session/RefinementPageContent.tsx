@@ -7,8 +7,9 @@ import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useSprintSlots } from "@/hooks/useSprintBoard";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
-import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus } from "lucide-react";
+import useSWR from "swr";
+import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse, swrFetcher } from "@/lib/api-client";
+import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus, Sparkles, Loader2 } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -17,6 +18,7 @@ import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
 import { RefinementOverflowMenu } from "@/components/refinement-session/RefinementOverflowMenu";
 import { CreateSessionModal } from "@/components/refinement-session/CreateSessionModal";
+import { BulkSuggestPanel } from "@/components/refinement-session/BulkSuggestPanel";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import type { Ticket } from "@/types/ticket";
 import { getSpColor, getEpicColor } from "@/types/ticket";
@@ -113,12 +115,14 @@ function SortableQueueItem({
   onRemove,
   otherSessions,
   onMoveToSession,
+  suggestionCount,
 }: {
   ticket: Ticket;
   index: number;
   onRemove: (key: string) => void;
   otherSessions?: RefinementSessionResponse[];
   onMoveToSession?: (ticketKey: string, targetSessionId: string) => void;
+  suggestionCount?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.key,
@@ -183,6 +187,17 @@ function SortableQueueItem({
           }}
         >
           {ticket.storyPoints === 0 ? "-" : ticket.storyPoints}
+        </span>
+      )}
+
+      {/* Subtask suggestion count badge */}
+      {suggestionCount != null && suggestionCount > 0 && (
+        <span
+          className="flex shrink-0 items-center gap-0.5 rounded-md bg-[var(--color-brand-500)]/[0.08] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[var(--color-brand-400)]"
+          title={`${suggestionCount} subtask suggestion${suggestionCount !== 1 ? "s" : ""}`}
+        >
+          <Sparkles size={9} strokeWidth={2.5} />
+          {suggestionCount}
         </span>
       )}
 
@@ -802,6 +817,89 @@ export function RefinementPageContent({
   // Suppress unused variable warning
   void selectedKeys;
 
+  // --- Bulk suggest subtasks ---
+  const [bulkSuggestConvId, setBulkSuggestConvId] = useState<string | null>(null);
+  const [bulkSuggestRunning, setBulkSuggestRunning] = useState(false);
+  const [bulkSuggestPanelCollapsed, setBulkSuggestPanelCollapsed] = useState(false);
+  const [bulkSuggestMenuOpen, setBulkSuggestMenuOpen] = useState(false);
+  const bulkSuggestMenuRef = useRef<HTMLDivElement>(null);
+
+  // On mount / session change: check if a bulk suggest conversation exists.
+  // Async initialization keyed on resolvedSessionId requires resetting state in effect.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!resolvedSessionId) {
+      setBulkSuggestConvId(null);
+      setBulkSuggestRunning(false);
+      return;
+    }
+    let cancelled = false;
+    refinementSessionsApi.bulkSuggestStatus(resolvedSessionId).then((status) => {
+      if (cancelled) return;
+      setBulkSuggestConvId(status.conversationId);
+      setBulkSuggestRunning(status.isRunning);
+    }).catch(() => {
+      // ignore
+    });
+    return () => { cancelled = true; };
+  }, [resolvedSessionId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Fetch suggestion counts for queue badges
+  const { data: suggestionCountsData, mutate: mutateSuggestionCounts } = useSWR<{ counts: Record<string, number> }>(
+    refinementSessionsApi.suggestionCountsUrl(resolvedSessionId),
+    swrFetcher,
+    { refreshInterval: bulkSuggestRunning ? 5000 : 0 },
+  );
+  const suggestionCounts = suggestionCountsData?.counts ?? {};
+
+  const handleBulkSuggest = useCallback(async (force?: boolean) => {
+    if (!resolvedSessionId || bulkSuggestRunning) return;
+    setBulkSuggestMenuOpen(false);
+    setBulkSuggestRunning(true);
+    setBulkSuggestPanelCollapsed(false);
+    try {
+      const result = await refinementSessionsApi.bulkSuggestSubtasks(resolvedSessionId, force ? { force: true } : undefined);
+      setBulkSuggestConvId(result.conversationId);
+    } catch {
+      setBulkSuggestRunning(false);
+    }
+  }, [resolvedSessionId, bulkSuggestRunning]);
+
+  // Close the bulk suggest menu on outside click
+  useEffect(() => {
+    if (!bulkSuggestMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (bulkSuggestMenuRef.current && !bulkSuggestMenuRef.current.contains(e.target as Node)) {
+        setBulkSuggestMenuOpen(false);
+      }
+    }
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [bulkSuggestMenuOpen]);
+
+  // Detect when bulk suggest completes by polling the status
+  useEffect(() => {
+    if (!bulkSuggestRunning || !resolvedSessionId) return;
+    const interval = setInterval(async () => {
+      try {
+        const status = await refinementSessionsApi.bulkSuggestStatus(resolvedSessionId);
+        if (!status.isRunning) {
+          setBulkSuggestRunning(false);
+          mutateSuggestionCounts();
+        }
+      } catch {
+        // ignore
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [bulkSuggestRunning, resolvedSessionId, mutateSuggestionCounts]);
+
   return (
     <>
       {pageTitle}
@@ -1066,9 +1164,57 @@ export function RefinementPageContent({
                   <h2 className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
                     {activeSession?.name ?? "Queue"}
                   </h2>
-                  <span className="text-xs tabular-nums text-text-muted">
-                    {queue.length} ticket{queue.length !== 1 ? "s" : ""}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {activeSession && queue.length > 0 && (
+                      <div className="relative" ref={bulkSuggestMenuRef}>
+                        <button
+                          type="button"
+                          onClick={() => setBulkSuggestMenuOpen(!bulkSuggestMenuOpen)}
+                          disabled={bulkSuggestRunning}
+                          className={`flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
+                            bulkSuggestRunning
+                              ? "border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] text-[var(--color-brand-500)] cursor-default"
+                              : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary"
+                          }`}
+                          style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
+                          title="Suggest subtasks for all tickets"
+                          aria-label="Suggest subtasks for all tickets"
+                        >
+                          {bulkSuggestRunning ? (
+                            <Loader2 size={12} strokeWidth={2} className="animate-spin" />
+                          ) : (
+                            <Sparkles size={12} strokeWidth={2} />
+                          )}
+                          <span className="hidden sm:inline">
+                            {bulkSuggestRunning ? "Generating..." : "Suggest subtasks"}
+                          </span>
+                        </button>
+                        {bulkSuggestMenuOpen && !bulkSuggestRunning && (
+                          <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+                            <button
+                              type="button"
+                              onClick={() => handleBulkSuggest(false)}
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
+                            >
+                              <Sparkles size={11} strokeWidth={2} className="text-[var(--color-brand-400)]" />
+                              <span>Suggest subtasks</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleBulkSuggest(true)}
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
+                            >
+                              <Sparkles size={11} strokeWidth={2} className="text-amber-400" />
+                              <span>Regenerate all</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <span className="text-xs tabular-nums text-text-muted">
+                      {queue.length} ticket{queue.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
                 </div>
 
                 {queue.length === 0 ? (
@@ -1090,11 +1236,22 @@ export function RefinementPageContent({
                             onRemove={removeFromQueue}
                             otherSessions={otherSessions}
                             onMoveToSession={handleMoveToSession}
+                            suggestionCount={suggestionCounts[ticket.key]}
                           />
                         ))}
                       </div>
                     </SortableContext>
                   </DndContext>
+                )}
+
+                {/* Bulk suggest progress panel */}
+                {bulkSuggestConvId && (
+                  <BulkSuggestPanel
+                    conversationId={bulkSuggestConvId}
+                    isRunning={bulkSuggestRunning}
+                    collapsed={bulkSuggestPanelCollapsed}
+                    onToggleCollapse={() => setBulkSuggestPanelCollapsed((p) => !p)}
+                  />
                 )}
 
                 {canStart && (

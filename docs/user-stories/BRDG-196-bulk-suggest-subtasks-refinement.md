@@ -77,21 +77,21 @@ The bulk generation runs in the background. A chat conversation linked to the se
 
 ### Frontend
 
-- [ ] Add "Suggest subtasks" button to queue panel header in `RefinementPageContent.tsx`
+- [x] Add "Suggest subtasks" button to queue panel header in `RefinementPageContent.tsx`
   - Disabled state while job is running
-  - Dropdown or secondary option for "Regenerate all" (force mode)
+  - Dropdown with "Suggest subtasks" and "Regenerate all" (force mode) options
 
-- [ ] Add chat conversation panel to refinement overview
-  - Reuse `TicketChatPane` pattern or build a lightweight read-only message list
-  - Collapsible panel (side or bottom)
-  - Messages render ticket links as clickable chips/links
+- [x] Add chat conversation panel to refinement overview
+  - BulkSuggestPanel component with collapsible progress log
+  - Messages render ticket links as clickable Next.js links
   - Auto-scrolls as new messages arrive
 
-- [ ] Add suggestion count indicator on ticket rows in the queue panel
-  - Small badge (e.g. sparkle + count) on tickets that have pending suggestions
-  - Fetch suggestion counts via a batch endpoint or include in ticket data
+- [x] Add suggestion count indicator on ticket rows in the queue panel
+  - Sparkle + count badge on tickets with pending suggestions
+  - SWR-based fetch from suggestion-counts endpoint, auto-refreshes during bulk generation
 
-- [ ] Ensure `SubtaskSuggestions` component in `SessionTicketView` loads and displays suggestions when entering a ticket in the refinement session
+- [x] Ensure `SubtaskSuggestions` component in `SessionTicketView` loads and displays suggestions when entering a ticket in the refinement session
+  - Already in place: SessionTicketView renders SubtasksSection which loads and displays suggestions
 
 ### Tests
 
