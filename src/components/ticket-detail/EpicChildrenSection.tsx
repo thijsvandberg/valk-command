@@ -383,13 +383,14 @@ export function EpicChildrenSection({
         </>
       ) : (
         <>
-          {/* Type selector - icon aligns with row icons, label aligns with keys */}
+          {/* Type selector - icon aligns with row icons, label width matches key column */}
           <IssueTypeIcon type={selectedType} size={14} />
           <div className="relative" ref={typePickerRef}>
             <button
               type="button"
               onClick={() => setShowTypePicker((v) => !v)}
               className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={visibleFields.has("issueKey") ? { minWidth: 72 } : undefined}
             >
               <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
               <ChevronDown size={10} className="text-text-muted" />
