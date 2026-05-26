@@ -16,7 +16,7 @@ export function useTicketSessionMap() {
   const ticketSessionMap = useMemo(() => {
     const map = new Map<string, TicketSessionEntry[]>();
     for (const session of sessions) {
-      if (session.status !== "draft") continue;
+      if (session.status === "completed") continue;
       for (const key of session.ticketKeys) {
         const existing = map.get(key);
         const entry = { id: session.id, name: session.name };

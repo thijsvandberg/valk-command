@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, Trash2, Check, Pencil } from "lucide-react";
+import { Plus, Trash2, Check, Pencil, Play } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { BarContainer } from "@/components/shared/BarContainer";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
@@ -55,7 +55,7 @@ export function SavedSessionList({
     async (id: string) => {
       await refinementSessions.delete(id);
       if (activeSessionId === id) {
-        const remaining = sessions.filter((s) => s.id !== id && s.status === "draft");
+        const remaining = sessions.filter((s) => s.id !== id && s.status !== "completed");
         if (remaining.length > 0) {
           onSelectSession(remaining[0].id);
         }
@@ -73,6 +73,7 @@ export function SavedSessionList({
         {sessions.map((session) => {
           const isActive = activeSessionId === session.id;
           const isCompleted = session.status === "completed";
+          const isInProgress = session.status === "in_progress";
 
           return (
             <div
@@ -88,6 +89,9 @@ export function SavedSessionList({
             >
               {isCompleted && (
                 <Check size={12} strokeWidth={2.5} className="shrink-0 text-[var(--color-brand-500)]" />
+              )}
+              {isInProgress && (
+                <Play size={10} strokeWidth={2.5} className="shrink-0 text-amber-400/80" />
               )}
 
               {editingId === session.id ? (

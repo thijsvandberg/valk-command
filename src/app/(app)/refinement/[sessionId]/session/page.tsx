@@ -30,11 +30,13 @@ export default function RefinementSessionRedirect({
       return;
     }
 
-    // No context: fetch session from DB and redirect to first ticket
+    // No context: fetch session from DB and resume at persisted index
     redirectedRef.current = true;
     refinementSessionsApi.get(sessionId).then((session) => {
       if (session && session.ticketKeys.length > 0) {
-        router.replace(`/refinement/${sessionId}/session/${encodeURIComponent(session.ticketKeys[0])}`);
+        const resumeIdx = Math.min(session.currentIndex, session.ticketKeys.length - 1);
+        const resumeKey = session.ticketKeys[resumeIdx] ?? session.ticketKeys[0];
+        router.replace(`/refinement/${sessionId}/session/${encodeURIComponent(resumeKey)}`);
       } else {
         router.replace(`/refinement/${sessionId}`);
       }

@@ -415,7 +415,7 @@ export function RefinementPageContent({
     if (userSelectedId && sessions.some((s) => s.id === userSelectedId)) {
       return userSelectedId;
     }
-    const firstDraft = sessions.find((s) => s.status === "draft");
+    const firstDraft = sessions.find((s) => s.status !== "completed");
     return firstDraft?.id ?? null;
   }, [userSelectedId, sessions]);
 
@@ -438,7 +438,7 @@ export function RefinementPageContent({
   const ticketSessionMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string }[]>();
     for (const session of sessions) {
-      if (session.status !== "draft") continue;
+      if (session.status === "completed") continue;
       for (const key of session.ticketKeys) {
         const existing = map.get(key);
         const entry = { id: session.id, name: session.name };
@@ -679,6 +679,9 @@ export function RefinementPageContent({
       await mutateSessions();
     }
 
+    // Mark session as in_progress when starting
+    refinementSessionsApi.update(sessionId, { status: "in_progress" }).catch(() => {});
+
     startSession(queue, meta, sessionId);
     router.push(`/refinement/${sessionId}/session/${encodeURIComponent(queue[0])}`);
   }, [canStart, queue, allTicketMap, startSession, router, resolvedSessionId, mutateSessions]);
@@ -734,7 +737,7 @@ export function RefinementPageContent({
 
   // Other sessions for cross-session move
   const otherSessions = useMemo(
-    () => sessions.filter((s) => s.id !== resolvedSessionId && s.status === "draft"),
+    () => sessions.filter((s) => s.id !== resolvedSessionId && s.status !== "completed"),
     [sessions, resolvedSessionId],
   );
 

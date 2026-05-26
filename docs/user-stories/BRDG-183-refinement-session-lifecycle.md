@@ -39,10 +39,10 @@ As the PO, I want a clear distinction between leaving a refinement session (to c
 - [x] If all applicable tickets have story points, the **Close/Save** button is primary
 
 ### 4. Session persistence
-- [ ] Exiting via "Close/Save" keeps the session in an open state so it can be resumed later
-- [ ] The refinement overview page shows open sessions and allows resuming them
-- [ ] The general comment is persisted to the database on the session record
-- [ ] PO messages per ticket are persisted (linked to the session + ticket)
+- [x] Exiting via "Close/Save" keeps the session in an open state so it can be resumed later
+- [x] The refinement overview page shows open sessions and allows resuming them
+- [x] The general comment is persisted to the database on the session record
+- [x] PO messages per ticket are persisted (linked to the session + ticket)
 
 ### 5. Schema changes
 - [x] Add a session status that supports open/in-progress sessions (currently only `draft` and `completed`)

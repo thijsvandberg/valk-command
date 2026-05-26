@@ -21,7 +21,7 @@ export function AddToRefinementModal({
   onAdded,
 }: AddToRefinementModalProps) {
   const { sessions, mutate } = useRefinementSessions();
-  const draftSessions = sessions.filter((s) => s.status === "draft");
+  const draftSessions = sessions.filter((s) => s.status !== "completed");
   const [adding, setAdding] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
