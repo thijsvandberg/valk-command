@@ -58,9 +58,36 @@ When the workspace returns the rewritten summary:
 - Auto-copy to clipboard (or provide a one-click copy button in the toast)
 - The persistent toast stays visible until the user dismisses it
 
+## Implementation Plan
+
+1. **Server-side: Improve chat message content** (AC #1)
+   - Add `export-stakeholder-summary` case to `buildConversationTitle()` and `buildPromptSummary()` in `src/app/api/workspace-tasks/route.ts`
+   - Title: "Stakeholder Export: {sprintName}"
+   - Prompt summary: list of selected tickets with keys + titles + total points
+
+2. **Create `useExportTask` hook** (AC #2-8)
+   - New file: `src/hooks/useExportTask.ts`
+   - State machine: idle -> submitting -> polling -> completed/failed
+   - `startExport()`: calls `workspaceTasks.create()`, then polls `GET /api/workspace-tasks?conversationId=X` every 3s
+   - Returns `{ status, output, error, conversationId, startExport, dismiss }`
+
+3. **Rewire `handleExportForStakeholders` in SprintBoard.tsx** (AC #2, #3)
+   - Remove `router.push()` navigation after export starts
+   - Derive `isExporting` from hook status (`submitting` or `polling`)
+   - Spinner on Export button stays active until task completes/fails
+
+4. **Add persistent export result toast** (AC #4, #5, #6, #7)
+   - Separate `exportToastData` state in SprintBoard for completed exports
+   - Success toast: "Export ready" + Copy to clipboard button + View in chat link + dismiss
+   - Error toast: warning icon + error message + dismiss
+   - No auto-dismiss (persistent until user acts)
+
+5. **Handle duplicate notification** (edge case)
+   - Use `"stakeholder-export-ready"` notification type in `task-stream-handler.ts` for this skill so `TaskCompletionNotifier` can distinguish it from generic task completions
+
 ## Acceptance Criteria
 
-- [ ] User message in chat includes sprint name + ticket list, not just "/export stakeholder summary"
+- [x] User message in chat includes sprint name + ticket list, not just "/export stakeholder summary"
 - [ ] User stays on the sprint board after clicking Export (no navigation to chat)
 - [ ] Spinner shown on Export button while workspace task is running
 - [ ] Persistent toast appears when result is ready (not auto-dismissing)

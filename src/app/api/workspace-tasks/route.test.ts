@@ -282,6 +282,46 @@ describe("POST /api/workspace-tasks", () => {
     }));
   });
 
+  it("creates conversation with sprint name title and ticket list for export-stakeholder-summary", async () => {
+    mockDb.query.conversation.findFirst.mockResolvedValue(null);
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    mockDb.insert.mockReturnValue({ values: insertValues });
+
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-export" },
+      status: 201,
+      retryCount: 0,
+    });
+
+    const tickets = [
+      { key: "VPL-10", summary: "Login page redesign", points: 5 },
+      { key: "VPL-11", summary: "API rate limiting", points: 3 },
+    ];
+
+    const request = new Request("http://localhost:3100/api/workspace-tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        skillName: "export-stakeholder-summary",
+        args: { sprintName: "VPL Sprint 48", tickets: JSON.stringify(tickets) },
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    expect(insertValues).toHaveBeenCalledTimes(2);
+    const convCall = insertValues.mock.calls[0][0];
+    expect(convCall.title).toBe("Stakeholder Export: VPL Sprint 48");
+    const msgCall = insertValues.mock.calls[1][0];
+    expect(msgCall.role).toBe("user");
+    expect(msgCall.content).toContain("VPL Sprint 48");
+    expect(msgCall.content).toContain("8 points");
+    expect(msgCall.content).toContain("VPL-10");
+    expect(msgCall.content).toContain("VPL-11");
+    expect(msgCall.content).toContain("Login page redesign");
+  });
+
   it("creates conversation with descriptive title and saves user prompt for suggest-sprint-goal", async () => {
     mockDb.query.conversation.findFirst.mockResolvedValue(null);
     const insertValues = vi.fn().mockResolvedValue(undefined);

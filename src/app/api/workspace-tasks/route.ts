@@ -43,6 +43,10 @@ function buildConversationTitle(skillName: string, args: Record<string, unknown>
       const ticketKey = typeof args.ticketKey === "string" ? args.ticketKey : null;
       return ticketKey ? `Suggest Subtasks: ${ticketKey}` : "Suggest Subtasks";
     }
+    case "export-stakeholder-summary": {
+      const sprintName = typeof args.sprintName === "string" ? args.sprintName : null;
+      return sprintName ? `Stakeholder Export: ${sprintName}` : "Stakeholder Export";
+    }
     default: {
       const pretty = skillName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       return pretty;
@@ -85,6 +89,25 @@ function buildPromptSummary(skillName: string, args: Record<string, unknown>): s
     case "suggest-subtasks": {
       const ticketKey = typeof args.ticketKey === "string" ? args.ticketKey : "ticket";
       return `Suggest subtasks for ${ticketKey} based on description and acceptance criteria.`;
+    }
+    case "export-stakeholder-summary": {
+      const sprintName = typeof args.sprintName === "string" ? args.sprintName : "selected work";
+      let tickets: { key: string; summary: string; points?: number | null }[] = [];
+      if (typeof args.tickets === "string") {
+        try { tickets = JSON.parse(args.tickets); } catch { /* ignore */ }
+      } else if (Array.isArray(args.tickets)) {
+        tickets = args.tickets;
+      }
+      const totalPoints = tickets.reduce((sum, t) => sum + (t.points ?? 0), 0);
+      const ticketLines = tickets
+        .map((t) => `- **${t.key}**: ${t.summary}`)
+        .join("\n");
+      return [
+        `Generate a stakeholder-friendly summary for **${sprintName}**`,
+        totalPoints > 0 ? ` (${totalPoints} points, ${tickets.length} tickets)` : ` (${tickets.length} tickets)`,
+        ":\n\n",
+        ticketLines,
+      ].join("");
     }
     default: {
       const argsStr = typeof args.args === "string" ? args.args : "";
