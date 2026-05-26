@@ -1,9 +1,9 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { FieldFilterPopover } from "./FieldFilterPopover";
+import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 
 const defaultProps = {
-  filter: "all" as const,
+  filter: "all" as StatusFilter,
   setFilter: vi.fn(),
   statusCounts: { all: 5, "TO DO": 2, "IN PROGRESS": 1, DONE: 2 },
   fields: [
