@@ -55,6 +55,7 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sendStartRef = useRef<number | null>(null);
+  const cancelledRef = useRef(false);
   const refreshSessionRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => { refreshSessionRef.current = options.refreshSession; }, [options.refreshSession]);
 
@@ -68,13 +69,14 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
   const startMonitoring = useCallback((taskId: string, progressMessage = "Starting...") => {
     const streamUrl = `/api/workspace-tasks/${taskId}/stream`;
 
+    cancelledRef.current = false;
     onStatus("streaming");
     onProgress(progressMessage);
 
     const resultHandled = { current: false };
 
     const applyResult = async (output: string) => {
-      if (resultHandled.current || unmountedRef.current) return;
+      if (resultHandled.current || unmountedRef.current || cancelledRef.current) return;
       resultHandled.current = true;
 
       eventSourceRef.current?.close();
@@ -223,7 +225,8 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
   }, [apiBase, ticketKey, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
 
   const cancelTask = useCallback((_taskId: string) => {
-    // Close SSE stream and clear poll timer (caller handles the API call)
+    // Prevent any in-flight poll/SSE result from being applied
+    cancelledRef.current = true;
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
     if (pollTimerRef.current) {

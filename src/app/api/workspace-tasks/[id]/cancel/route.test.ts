@@ -34,9 +34,11 @@ describe("POST /api/workspace-tasks/[id]/cancel", () => {
     testDb = createTestDb();
   });
 
-  it("returns 404 when task does not exist", async () => {
+  it("returns ok even when workspace task row does not exist", async () => {
     const res = await POST(new Request("http://localhost/api/workspace-tasks/nope/cancel", { method: "POST" }), makeParams("nope"));
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
   });
 
   it("cancels a running task and marks the workspace task as cancelled", async () => {
@@ -103,6 +105,28 @@ describe("POST /api/workspace-tasks/[id]/cancel", () => {
     const data = await res.json();
     expect(data.ok).toBe(false);
     expect(data.reason).toBe("already_completed");
+  });
+
+  it("marks messages as cancelled even without a workspace_task row (story writer)", async () => {
+    const taskId = randomUUID();
+    const convId = randomUUID();
+    const userMsgId = randomUUID();
+
+    testDb.insert(conversation).values({ id: convId, title: "Test" }).run();
+    testDb.insert(message).values({
+      id: userMsgId,
+      conversationId: convId,
+      role: "user",
+      content: "test message",
+      timestamp: new Date().toISOString(),
+      workspaceTaskId: taskId,
+    }).run();
+
+    const res = await POST(new Request("http://localhost/cancel", { method: "POST" }), makeParams(taskId));
+    expect(res.status).toBe(200);
+
+    const [updatedMsg] = testDb.select().from(message).where(eq(message.id, userMsgId)).all();
+    expect(updatedMsg?.cancelled).toBe(true);
   });
 
   it("is idempotent for already cancelled tasks", async () => {
