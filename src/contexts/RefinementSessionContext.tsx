@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 
 export interface QueueTicketMeta {
@@ -16,6 +16,7 @@ interface RefinementSessionState {
   currentIndex: number;
   activeSidebarPanel: SidebarPanel | null;
   sessionActive: boolean;
+  showingEndModal: boolean;
   sessionStartedAt: number | null;
   savedSessionId: string | null;
 }
@@ -27,7 +28,10 @@ interface RefinementSessionActions {
   goToTicket: (index: number) => void;
   toggleSidebarPanel: (panel: SidebarPanel) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
-  endSession: () => void;
+  openEndModal: () => void;
+  closeEndModal: () => void;
+  saveSession: (generalComment?: string | null) => void;
+  finishSession: (generalComment?: string | null) => void;
 }
 
 type RefinementSessionContextType = RefinementSessionState & RefinementSessionActions;
@@ -40,12 +44,23 @@ const INITIAL_STATE: RefinementSessionState = {
   currentIndex: 0,
   activeSidebarPanel: null,
   sessionActive: false,
+  showingEndModal: false,
   sessionStartedAt: null,
   savedSessionId: null,
 };
 
+const INDEX_PERSIST_DELAY = 400;
+
 export function RefinementSessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RefinementSessionState>(INITIAL_STATE);
+  const indexTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persistCurrentIndex = useCallback((sessionId: string, index: number) => {
+    if (indexTimerRef.current) clearTimeout(indexTimerRef.current);
+    indexTimerRef.current = setTimeout(() => {
+      refinementSessionsApi.update(sessionId, { currentIndex: index }).catch(() => {});
+    }, INDEX_PERSIST_DELAY);
+  }, []);
 
   const startSession = useCallback((keys: string[], meta?: QueueTicketMeta[], savedSessionId?: string, startIndex?: number) => {
     setState({
@@ -54,31 +69,41 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       currentIndex: startIndex != null ? Math.max(0, Math.min(startIndex, keys.length - 1)) : 0,
       activeSidebarPanel: null,
       sessionActive: true,
+      showingEndModal: false,
       sessionStartedAt: Date.now(),
       savedSessionId: savedSessionId ?? null,
     });
   }, []);
 
   const nextTicket = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      currentIndex: Math.min(prev.currentIndex + 1, prev.queue.length - 1),
-    }));
-  }, []);
+    setState((prev) => {
+      const newIndex = Math.min(prev.currentIndex + 1, prev.queue.length - 1);
+      if (prev.savedSessionId && newIndex !== prev.currentIndex) {
+        persistCurrentIndex(prev.savedSessionId, newIndex);
+      }
+      return { ...prev, currentIndex: newIndex };
+    });
+  }, [persistCurrentIndex]);
 
   const prevTicket = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      currentIndex: Math.max(prev.currentIndex - 1, 0),
-    }));
-  }, []);
+    setState((prev) => {
+      const newIndex = Math.max(prev.currentIndex - 1, 0);
+      if (prev.savedSessionId && newIndex !== prev.currentIndex) {
+        persistCurrentIndex(prev.savedSessionId, newIndex);
+      }
+      return { ...prev, currentIndex: newIndex };
+    });
+  }, [persistCurrentIndex]);
 
   const goToTicket = useCallback((index: number) => {
-    setState((prev) => ({
-      ...prev,
-      currentIndex: Math.max(0, Math.min(index, prev.queue.length - 1)),
-    }));
-  }, []);
+    setState((prev) => {
+      const newIndex = Math.max(0, Math.min(index, prev.queue.length - 1));
+      if (prev.savedSessionId && newIndex !== prev.currentIndex) {
+        persistCurrentIndex(prev.savedSessionId, newIndex);
+      }
+      return { ...prev, currentIndex: newIndex };
+    });
+  }, [persistCurrentIndex]);
 
   const toggleSidebarPanel = useCallback((panel: SidebarPanel) => {
     setState((prev) => ({
@@ -95,7 +120,6 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       newQueue.splice(toIndex, 0, movedKey);
       const [movedMeta] = newMeta.splice(fromIndex, 1);
       newMeta.splice(toIndex, 0, movedMeta);
-      // Keep currentIndex pointing to the same ticket
       const currentKey = prev.queue[prev.currentIndex];
       const newIndex = newQueue.indexOf(currentKey);
       return {
@@ -107,14 +131,41 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
     });
   }, []);
 
-  const endSession = useCallback(() => {
+  const openEndModal = useCallback(() => {
+    setState((prev) => ({ ...prev, showingEndModal: true }));
+  }, []);
+
+  const closeEndModal = useCallback(() => {
+    setState((prev) => ({ ...prev, showingEndModal: false }));
+  }, []);
+
+  const saveSession = useCallback((generalComment?: string | null) => {
     setState((prev) => {
       if (prev.savedSessionId) {
         refinementSessionsApi
-          .update(prev.savedSessionId, { status: "completed" })
+          .update(prev.savedSessionId, {
+            status: "in_progress",
+            currentIndex: prev.currentIndex,
+            ...(generalComment !== undefined ? { generalComment } : {}),
+          })
           .catch(() => {});
       }
-      return { ...prev, sessionActive: false };
+      return { ...prev, sessionActive: false, showingEndModal: false };
+    });
+  }, []);
+
+  const finishSession = useCallback((generalComment?: string | null) => {
+    setState((prev) => {
+      if (prev.savedSessionId) {
+        refinementSessionsApi
+          .update(prev.savedSessionId, {
+            status: "completed",
+            currentIndex: prev.currentIndex,
+            ...(generalComment !== undefined ? { generalComment } : {}),
+          })
+          .catch(() => {});
+      }
+      return { ...prev, sessionActive: false, showingEndModal: false };
     });
   }, []);
 
@@ -128,7 +179,10 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         goToTicket,
         toggleSidebarPanel,
         reorderQueue,
-        endSession,
+        openEndModal,
+        closeEndModal,
+        saveSession,
+        finishSession,
       }}
     >
       {children}

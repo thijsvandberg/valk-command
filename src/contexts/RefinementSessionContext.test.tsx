@@ -24,6 +24,7 @@ describe("RefinementSessionContext", () => {
     expect(state.queue).toEqual([]);
     expect(state.currentIndex).toBe(0);
     expect(state.sessionActive).toBe(false);
+    expect(state.showingEndModal).toBe(false);
     expect(state.activeSidebarPanel).toBe(null);
   });
 
@@ -36,6 +37,7 @@ describe("RefinementSessionContext", () => {
     expect(state.queue).toEqual(["VPL-1", "VPL-2", "VPL-3"]);
     expect(state.currentIndex).toBe(0);
     expect(state.sessionActive).toBe(true);
+    expect(state.showingEndModal).toBe(false);
     expect(state.sessionStartedAt).toBeGreaterThan(0);
   });
 
@@ -88,16 +90,45 @@ describe("RefinementSessionContext", () => {
     expect(state.activeSidebarPanel).toBe("subtasks");
   });
 
-  it("ends session", () => {
+  it("opens and closes end modal", () => {
     let state!: ReturnType<typeof useRefinementSession>;
     renderWithProvider((s) => { state = s; });
 
     act(() => { state.startSession(["VPL-1"]); });
+    expect(state.showingEndModal).toBe(false);
+
+    act(() => { state.openEndModal(); });
+    expect(state.showingEndModal).toBe(true);
     expect(state.sessionActive).toBe(true);
 
-    act(() => { state.endSession(); });
+    act(() => { state.closeEndModal(); });
+    expect(state.showingEndModal).toBe(false);
+    expect(state.sessionActive).toBe(true);
+  });
+
+  it("saves session without completing", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1"]); });
+    act(() => { state.openEndModal(); });
+    act(() => { state.saveSession(); });
+
     expect(state.sessionActive).toBe(false);
-    // Queue should still be available for summary
+    expect(state.showingEndModal).toBe(false);
+    expect(state.queue).toEqual(["VPL-1"]);
+  });
+
+  it("finishes session and marks completed", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1"]); });
+    act(() => { state.openEndModal(); });
+    act(() => { state.finishSession(); });
+
+    expect(state.sessionActive).toBe(false);
+    expect(state.showingEndModal).toBe(false);
     expect(state.queue).toEqual(["VPL-1"]);
   });
 

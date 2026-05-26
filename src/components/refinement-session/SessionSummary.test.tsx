@@ -12,6 +12,7 @@ const mockSessionState = {
   currentIndex: 2,
   activeSidebarPanel: null,
   sessionActive: false,
+  showingEndModal: false,
   sessionStartedAt: Date.now() - 15 * 60 * 1000, // 15 minutes ago
   savedSessionId: null,
   startSession: vi.fn(),
@@ -20,7 +21,10 @@ const mockSessionState = {
   goToTicket: vi.fn(),
   toggleSidebarPanel: vi.fn(),
   reorderQueue: vi.fn(),
-  endSession: vi.fn(),
+  openEndModal: vi.fn(),
+  closeEndModal: vi.fn(),
+  saveSession: vi.fn(),
+  finishSession: vi.fn(),
 };
 
 vi.mock("@/contexts/RefinementSessionContext", () => ({

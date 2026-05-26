@@ -171,6 +171,7 @@ export default function RefinementSessionTicketPage({
     queueMeta,
     currentIndex,
     sessionActive,
+    showingEndModal,
     activeSidebarPanel,
     savedSessionId,
     startSession,
@@ -179,7 +180,10 @@ export default function RefinementSessionTicketPage({
     goToTicket,
     toggleSidebarPanel,
     reorderQueue,
-    endSession,
+    openEndModal,
+    closeEndModal,
+    saveSession,
+    finishSession,
   } = useRefinementSession();
 
   // Re-hydrate session from DB when context is empty (page refresh)
@@ -348,15 +352,15 @@ export default function RefinementSessionTicketPage({
 
   const handleNext = useCallback(() => {
     if (isLastTicket) {
-      endSession();
+      openEndModal();
     } else {
       nextTicket();
     }
-  }, [isLastTicket, endSession, nextTicket]);
+  }, [isLastTicket, openEndModal, nextTicket]);
 
   const handleExitSession = useCallback(() => {
-    endSession();
-  }, [endSession]);
+    openEndModal();
+  }, [openEndModal]);
 
   // Close nav dropdown on click outside
   useEffect(() => {
