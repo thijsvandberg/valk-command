@@ -4,6 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { cache } from "@/lib/cache";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -17,6 +18,9 @@ vi.mock("@/db", () => ({
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     updateIssue: vi.fn().mockResolvedValue(undefined),
+    getIssue: vi.fn().mockResolvedValue({
+      fields: { updated: "2024-06-01T00:00:00.000Z" },
+    }),
     addComment: vi.fn().mockResolvedValue(undefined),
     addFlagComment: vi.fn().mockResolvedValue(undefined),
   },
@@ -542,5 +546,82 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    cache.flush();
+    vi.clearAllMocks();
+  });
+
+  it("syncs jiraUpdatedAt after story points push to Jira", async () => {
+    seedTicket(testDb, "VPL-500");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-06-15T12:00:00.000Z" },
+    } as never);
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-500", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyPoints: 5 }),
+      }),
+      makeParams("VPL-500"),
+    );
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-500")).get();
+    expect(row?.jiraUpdatedAt).toBe("2024-06-15T12:00:00.000Z");
+  });
+
+  it("syncs jiraUpdatedAt after issue type change", async () => {
+    seedTicket(testDb, "VPL-501");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-07-01T09:00:00.000Z" },
+    } as never);
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-501", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "bug" }),
+      }),
+      makeParams("VPL-501"),
+    );
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-501")).get();
+    expect(row?.jiraUpdatedAt).toBe("2024-07-01T09:00:00.000Z");
+  });
+
+  it("syncs jiraUpdatedAt after flag toggle", async () => {
+    seedTicket(testDb, "VPL-502");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-08-01T10:00:00.000Z" },
+    } as never);
+
+    await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-502", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: true }),
+      }),
+      makeParams("VPL-502"),
+    );
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-502")).get();
+    expect(row?.jiraUpdatedAt).toBe("2024-08-01T10:00:00.000Z");
   });
 });

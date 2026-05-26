@@ -15,6 +15,24 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { userInitials, userColor } from "@/lib/user-utils";
 
+/**
+ * After Bridge pushes a metadata change to Jira, Jira's `updated` timestamp
+ * advances. We must sync that new timestamp back so the conflict detector in
+ * pushToJira() does not flag Bridge's own change as an external conflict.
+ */
+async function syncJiraTimestamp(key: string): Promise<void> {
+  try {
+    const issue = await jiraClient.getIssue(key);
+    const newUpdated = issue.fields.updated;
+    if (newUpdated) {
+      await db.update(ticket).set({ jiraUpdatedAt: newUpdated }).where(eq(ticket.jiraKey, key));
+      cache.invalidate(`/api/tickets/${key}`);
+    }
+  } catch (err) {
+    logger.error("ticket-detail", `Failed to sync jiraUpdatedAt after metadata push for ${key}:`, err);
+  }
+}
+
 function buildAssignee(name: string | null): Assignee | null {
   if (!name) return null;
   return { name, initials: userInitials(name), color: userColor(name) };
@@ -358,9 +376,11 @@ export async function PATCH(
 
     const jiraName = JIRA_TYPE_NAMES[newType];
     if (jiraName) {
-      jiraClient.updateIssue(key, { issuetype: { name: jiraName } }).catch((err: unknown) => {
-        logger.error("ticket-detail", `PATCH Jira type sync failed for ${key}:`, err);
-      });
+      jiraClient.updateIssue(key, { issuetype: { name: jiraName } })
+        .then(() => syncJiraTimestamp(key))
+        .catch((err: unknown) => {
+          logger.error("ticket-detail", `PATCH Jira type sync failed for ${key}:`, err);
+        });
     }
 
     await logActivity({ type: "metadata-update", scope: key, summary: `Changed issue type to ${newType}` });
@@ -379,9 +399,11 @@ export async function PATCH(
 
     // Push to Jira: value 0 (N/A) is a Bridge-only concept, send null to Jira
     const jiraValue = spValue != null && spValue > 0 ? spValue : null;
-    jiraClient.updateIssue(key, { [STORY_POINTS_FIELD]: jiraValue }).catch((err: unknown) => {
-      logger.error("ticket-detail", `PATCH Jira SP sync failed for ${key}:`, err);
-    });
+    jiraClient.updateIssue(key, { [STORY_POINTS_FIELD]: jiraValue })
+      .then(() => syncJiraTimestamp(key))
+      .catch((err: unknown) => {
+        logger.error("ticket-detail", `PATCH Jira SP sync failed for ${key}:`, err);
+      });
 
     await logActivity({ type: "metadata-update", scope: key, summary: `Changed story points to ${spValue ?? "unset"}` });
     result.storyPoints = spValue;
@@ -406,9 +428,11 @@ export async function PATCH(
 
     await db.update(ticket).set({ epic: epicName, epicKey }).where(eq(ticket.jiraKey, key));
 
-    jiraClient.updateIssue(key, { parent: epicKey ? { key: epicKey } : null }).catch((err: unknown) => {
-      logger.error("ticket-detail", `PATCH Jira epic sync failed for ${key}:`, err);
-    });
+    jiraClient.updateIssue(key, { parent: epicKey ? { key: epicKey } : null })
+      .then(() => syncJiraTimestamp(key))
+      .catch((err: unknown) => {
+        logger.error("ticket-detail", `PATCH Jira epic sync failed for ${key}:`, err);
+      });
 
     await logActivity({ type: "metadata-update", scope: key, summary: `Changed epic to ${epicKey ?? "none"}` });
     result.epic = epicName;
@@ -446,6 +470,7 @@ export async function PATCH(
         await jiraClient.updateIssue(key, {
           [FLAGGED_FIELD]: newFlagged ? [{ value: "Impediment" }] : [],
         });
+        await syncJiraTimestamp(key);
       } catch (err) {
         logger.error("ticket-detail", `PATCH Jira flag sync failed for ${key}:`, err);
       }
@@ -471,9 +496,11 @@ export async function PATCH(
     const labels: string[] = body.labels;
     await db.update(ticket).set({ labels: JSON.stringify(labels) }).where(eq(ticket.jiraKey, key));
 
-    jiraClient.updateIssue(key, { labels }).catch((err: unknown) => {
-      logger.error("ticket-detail", `PATCH Jira labels sync failed for ${key}:`, err);
-    });
+    jiraClient.updateIssue(key, { labels })
+      .then(() => syncJiraTimestamp(key))
+      .catch((err: unknown) => {
+        logger.error("ticket-detail", `PATCH Jira labels sync failed for ${key}:`, err);
+      });
 
     await logActivity({ type: "metadata-update", scope: key, summary: `Updated labels` });
     result.labels = labels;

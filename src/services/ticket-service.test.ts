@@ -493,6 +493,68 @@ describe("pushToJira", () => {
     expect("success" in result && result.success).toBe(true);
   });
 
+  it("succeeds without false conflict when Bridge synced jiraUpdatedAt after metadata push", async () => {
+    mockJiraLive = true;
+    seedTicket(testDb, "VPL-1");
+    seedStoryVersion(testDb, "VPL-1", "hash-current", "2024-01-01T00:00:00.000Z");
+
+    // Simulate: Bridge pushed a metadata change and synced the new timestamp
+    testDb
+      .update(ticket)
+      .set({ jiraUpdatedAt: "2024-06-01T00:00:00Z" })
+      .where(eq(ticket.jiraKey, "VPL-1"))
+      .run();
+
+    await upsertLocalEdit("VPL-1", {
+      field: "title",
+      localValue: "New title",
+      baseJiraVersion: "hash-current",
+    });
+
+    // Remote returns the same timestamp that Bridge synced
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-06-01T00:00:00Z" },
+    } as never);
+    vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
+
+    const result = await pushToJira("VPL-1", false);
+    expect("success" in result && result.success).toBe(true);
+  });
+
+  it("detects real external metadata change as conflict", async () => {
+    mockJiraLive = true;
+    seedTicket(testDb, "VPL-1");
+    seedStoryVersion(testDb, "VPL-1", "hash-current", "2024-01-01T00:00:00.000Z");
+    testDb
+      .update(ticket)
+      .set({ jiraUpdatedAt: "2024-01-01T00:00:00Z" })
+      .where(eq(ticket.jiraKey, "VPL-1"))
+      .run();
+
+    await upsertLocalEdit("VPL-1", {
+      field: "title",
+      localValue: "New title",
+      baseJiraVersion: "hash-current",
+    });
+
+    // Someone edited the ticket directly in Jira
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-07-01T00:00:00Z" },
+    } as never);
+
+    // After sync, content hash is unchanged (metadata-only change in Jira)
+    fetchMock.mockImplementationOnce(async () => {
+      seedStoryVersion(testDb, "VPL-1", "hash-current", "2024-07-01T00:00:00.000Z");
+      return { ok: true };
+    });
+
+    const result = await pushToJira("VPL-1", false);
+    expect("conflict" in result && result.conflict).toBe(true);
+    if ("conflict" in result) {
+      expect(result.contentChanged).toBe(false);
+    }
+  });
+
   it("returns conflict result when remote content changed", async () => {
     mockJiraLive = true;
     seedTicket(testDb, "VPL-1");
