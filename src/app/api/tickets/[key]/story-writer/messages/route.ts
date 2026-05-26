@@ -346,8 +346,14 @@ async function taskCreatedResponse(
   }, { status: 201 });
 }
 
+function ticketNeedsTitle(title: string | null | undefined): boolean {
+  if (!title) return true;
+  const t = title.trim();
+  return !t || t === "Untitled draft";
+}
+
 async function buildFirstMessageBody(
-  session: { conversationId: string; localDraft: string | null; targetTicketKey: string | null; targetLocalDraft: string | null },
+  session: { conversationId: string; localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; targetLocalDraft: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
@@ -364,6 +370,8 @@ async function buildFirstMessageBody(
     .from(jiraComment)
     .where(eq(jiraComment.ticketKey, key))
     .all();
+
+  const needsTitle = ticketNeedsTitle(session.localTitle) && ticketNeedsTitle(ticketRow?.title);
 
   const contextParts = [];
   if (ticketRow) {
@@ -393,10 +401,14 @@ async function buildFirstMessageBody(
     );
   }
 
+  const titleInstruction = needsTitle
+    ? `\nThis ticket has no title yet. Along with your response, suggest 3 concise, descriptive title options using a <title-suggestions> tag (one title per line inside the tag).`
+    : "";
+
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
   contextParts.push(
     `${researchFlag}\n\nUser request: ${content}\n\n` +
-    `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.\n` +
+    `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.${titleInstruction}\n` +
     `If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag to suggest changing it. Only suggest when it is clearly warranted.\n` +
     `When you mention or discover related issues that should be linked to this ticket, include link suggestions using: <link-suggestion key="ISSUE-KEY" relation="relates to" /> (or for multiple: <link-suggestions><link key="..." relation="..." /></link-suggestions>). Valid relations: "relates to", "blocks", "is blocked by", "clones", "is cloned by", "duplicates", "is duplicated by". Proactively suggest links during story review when you identify issues that should be connected.`
   );
@@ -410,7 +422,7 @@ async function buildFirstMessageBody(
 }
 
 function buildFollowUpContent(
-  session: { localDraft: string | null; targetTicketKey: string | null },
+  session: { localDraft: string | null; localTitle: string | null; targetTicketKey: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
@@ -428,7 +440,11 @@ function buildFollowUpContent(
       `Output <story-draft> for original and <story-draft slot="target"> for target story.]`;
   }
 
-  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag. When you mention or discover related issues, include <link-suggestion key="ISSUE-KEY" relation="relates to" /> tags to suggest linking them.]`;
+  const titleReminder = ticketNeedsTitle(session.localTitle)
+    ? " If this ticket still has no title, suggest 3 options using a <title-suggestions> tag."
+    : "";
+
+  return `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag. When you mention or discover related issues, include <link-suggestion key="ISSUE-KEY" relation="relates to" /> tags to suggest linking them.${titleReminder}]`;
 }
 
 /**
