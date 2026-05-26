@@ -660,6 +660,30 @@ export const followedSprints = {
 };
 
 // ---------------------------------------------------------------------------
+// Favorite Users & Team Assignments
+// ---------------------------------------------------------------------------
+
+export const favoriteUsers = {
+  listUrl: () => "/api/settings/favorite-users" as const,
+
+  list: (signal?: AbortSignal) =>
+    apiFetch<{ favorites: string[] }>("/api/settings/favorite-users", { signal }),
+  add: (displayName: string, signal?: AbortSignal) =>
+    apiFetch<{ displayName: string }>("/api/settings/favorite-users", { method: "POST", body: { displayName }, signal }),
+  remove: (displayName: string, signal?: AbortSignal) =>
+    apiFetch<{ displayName: string }>(`/api/settings/favorite-users${qs({ displayName })}`, { method: "DELETE", signal }),
+};
+
+export const userTeams = {
+  listUrl: () => "/api/settings/user-teams" as const,
+
+  list: (signal?: AbortSignal) =>
+    apiFetch<{ assignments: Array<{ displayName: string; teams: string[] }> }>("/api/settings/user-teams", { signal }),
+  set: (displayName: string, teams: string[], signal?: AbortSignal) =>
+    apiFetch<{ displayName: string; teams: string[] }>("/api/settings/user-teams", { method: "PUT", body: { displayName, teams }, signal }),
+};
+
+// ---------------------------------------------------------------------------
 // Notifications
 // ---------------------------------------------------------------------------
 
