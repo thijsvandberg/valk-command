@@ -29,7 +29,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SplitStoryPicker } from "./SplitStoryPicker";
 import { getJiraUrl } from "@/lib/jira-url";
-import { ApiError, apiFetch, tickets } from "@/lib/api-client";
+import { ApiError, apiFetch, jira, tickets } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Button } from "@/components/ui/Button";
@@ -206,6 +206,66 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const handleEpicChange = useCallback(async (epic: EpicOption | null) => {
     await tickets.updateEpic(ticketKey, epic?.key ?? null);
     mutateTicket();
+  }, [ticketKey, mutateTicket]);
+
+  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+    try {
+      await jira.assign({ issueKey: ticketKey, accountId: user?.accountId ?? null, name: user?.displayName ?? null });
+      mutateTicket();
+    } catch (err) {
+      console.error("Assignee change failed:", err);
+      mutateTicket();
+    }
+  }, [ticketKey, mutateTicket]);
+
+  const handleSprintChange = useCallback(async (sprintId: string | null) => {
+    try {
+      await jira.moveSprint({ issueKeys: [ticketKey], targetSprintId: sprintId });
+      mutateTicket();
+    } catch (err) {
+      console.error("Sprint change failed:", err);
+      mutateTicket();
+    }
+  }, [ticketKey, mutateTicket]);
+
+  const handleStoryPointsChange = useCallback(async (v: number | null) => {
+    try {
+      await tickets.updateStoryPoints(ticketKey, v);
+      mutateTicket();
+    } catch (err) {
+      console.error("Story points change failed:", err);
+      mutateTicket();
+    }
+  }, [ticketKey, mutateTicket]);
+
+  const handleBusinessValueChange = useCallback(async (v: number | null) => {
+    try {
+      await tickets.updateMetadata(ticketKey, { businessValue: v });
+      mutateTicket();
+    } catch (err) {
+      console.error("Business value change failed:", err);
+      mutateTicket();
+    }
+  }, [ticketKey, mutateTicket]);
+
+  const handleLabelsChange = useCallback(async (labels: string[]) => {
+    try {
+      await tickets.updateLabels(ticketKey, labels);
+      mutateTicket();
+    } catch (err) {
+      console.error("Labels change failed:", err);
+      mutateTicket();
+    }
+  }, [ticketKey, mutateTicket]);
+
+  const handleFlagChange = useCallback(async (flagged: boolean) => {
+    try {
+      await tickets.toggleFlag(ticketKey, flagged);
+      mutateTicket();
+    } catch (err) {
+      console.error("Flag change failed:", err);
+      mutateTicket();
+    }
   }, [ticketKey, mutateTicket]);
 
   const handlePush = useCallback(async () => {
@@ -412,6 +472,8 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const writerContextValue: WriterContextValue = {
     ticketKey,
     ticketData: ticketAsTicket,
+    ticketDetail: ticketData ?? null,
+    mutateTicket: () => { mutateTicket(); },
     session: writer.session,
     messages: writer.messages,
     aiDrafts: writer.aiDrafts,
@@ -460,6 +522,13 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     onTypeChange: handleTypeChange,
     onCodebaseResearchChange: writer.setCodbaseResearch,
     onModelChange: writer.setModel,
+
+    onAssigneeChange: handleAssigneeChange,
+    onSprintChange: handleSprintChange,
+    onStoryPointsChange: handleStoryPointsChange,
+    onBusinessValueChange: handleBusinessValueChange,
+    onLabelsChange: handleLabelsChange,
+    onFlagChange: handleFlagChange,
   };
 
   return (

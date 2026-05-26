@@ -6,11 +6,13 @@ import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateR
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import type { WorkspaceUsage } from "@/hooks/useStoryWriter";
-import type { Ticket, IssueType } from "@/types/ticket";
+import type { Ticket, TicketDetail, IssueType, Assignee } from "@/types/ticket";
 
 export interface WriterContextValue {
   ticketKey: string;
   ticketData: Ticket | null;
+  ticketDetail: (Ticket & TicketDetail) | null;
+  mutateTicket: () => void;
   session: StoryWriterSessionRow | null;
   messages: Message[];
   aiDrafts: StoryWriterDraftRow[];
@@ -47,6 +49,13 @@ export interface WriterContextValue {
   onTypeChange: (type: IssueType) => Promise<void>;
   onCodebaseResearchChange: (v: boolean) => void;
   onModelChange: (v: string) => void;
+
+  onAssigneeChange: (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => Promise<void>;
+  onSprintChange: (sprintId: string | null) => Promise<void>;
+  onStoryPointsChange: (v: number | null) => Promise<void>;
+  onBusinessValueChange: (v: number | null) => Promise<void>;
+  onLabelsChange: (labels: string[]) => Promise<void>;
+  onFlagChange: (flagged: boolean) => Promise<void>;
 }
 
 const WriterContext = createContext<WriterContextValue | null>(null);
