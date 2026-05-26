@@ -10,6 +10,7 @@ import { DraftPreviewApp } from "./apps/DraftPreviewApp";
 import { RelatedApp } from "./apps/RelatedApp";
 import { StoryPreviewApp } from "./apps/StoryPreviewApp";
 import { SplitTargetApp } from "./apps/SplitTargetApp";
+import { MetaApp } from "./apps/MetaApp";
 
 function AppComponent({ appId }: { appId: PaneAppId }) {
   switch (appId) {
@@ -21,6 +22,7 @@ function AppComponent({ appId }: { appId: PaneAppId }) {
     case "related": return <RelatedApp />;
     case "story-preview": return <StoryPreviewApp />;
     case "split-target": return <SplitTargetApp />;
+    case "meta": return <MetaApp />;
   }
 }
 

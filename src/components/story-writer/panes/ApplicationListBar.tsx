@@ -9,6 +9,7 @@ import {
   Network,
   BookOpen,
   Scissors,
+  Info,
 } from "lucide-react";
 import { usePaneContext, type PaneAppId } from "./PaneContext";
 import { useWriterContext } from "./WriterContext";
@@ -26,6 +27,7 @@ const APP_DEFS: Array<{
   { id: "draft-preview", label: "Draft preview", icon: <Eye size={12} strokeWidth={1.5} /> },
   { id: "related", label: "Related", icon: <Network size={12} strokeWidth={1.5} /> },
   { id: "story-preview", label: "Story preview", icon: <BookOpen size={12} strokeWidth={1.5} /> },
+  { id: "meta", label: "Meta", icon: <Info size={12} strokeWidth={1.5} /> },
 ];
 
 export function ApplicationListBar() {

@@ -42,9 +42,9 @@ Three interaction zones:
 - [x] Story points badge in header (click to change)
 - [x] Business value badge in header (click to change)
 - [x] Flag/unflag toggle in "..." dropdown menu
-- [ ] New "Meta" pane tab with: assignee, creator, labels, and full metadata overview
-- [ ] Changes sync to Jira where applicable (sprint, assignee, epic)
-- [ ] Changes are reflected immediately via optimistic updates
+- [x] New "Meta" pane tab with: assignee, creator, labels, and full metadata overview
+- [x] Changes sync to Jira where applicable (sprint, assignee, epic)
+- [x] Changes are reflected immediately via optimistic updates
 
 ## Implementation Plan
 

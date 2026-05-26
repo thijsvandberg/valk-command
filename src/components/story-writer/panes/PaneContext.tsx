@@ -11,7 +11,8 @@ export type PaneAppId =
   | "draft-preview"
   | "related"
   | "story-preview"
-  | "split-target";
+  | "split-target"
+  | "meta";
 
 export interface ToolbarSlot {
   label: string;
@@ -41,6 +42,7 @@ const DEFAULT_PANE: Record<PaneAppId, 0 | 1 | 2> = {
   related: 2,
   "story-preview": 2,
   "split-target": 2,
+  meta: 2,
 };
 
 interface PaneContextValue {
