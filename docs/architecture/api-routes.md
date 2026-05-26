@@ -76,6 +76,9 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]/related-suggestions` | POST | Discover related issues via workspace `find-related` skill (cached 30 min) |
 | `/api/tickets/[key]/related-suggestions` | DELETE | Clear cached suggestions for this ticket |
 | `/api/tickets/[key]/suggest-epic` | POST | Invoke workspace `suggest-epic` skill. Returns `{ taskId, streamUrl }` |
+| `/api/tickets/[key]/subtask-suggestions` | GET | Return persisted pending AI subtask suggestions |
+| `/api/tickets/[key]/subtask-suggestions` | PUT | Parse and persist suggestions (replaces existing). Body: `{ suggestions: string[] }` or `{ output: string }` |
+| `/api/tickets/[key]/subtask-suggestions` | DELETE | Remove single suggestion (`{ id }`) or all for ticket |
 
 ## Story Writer
 

@@ -1,6 +1,6 @@
 # BRDG-181: Persist AI-suggested subtasks
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Related:** BRDG-180 (Suggest Subtasks Error Handling), BRDG-127 (Refinement Session Mode)
 

@@ -70,6 +70,17 @@ Child issues synced inline during ticket sync. Replaced on each sync.
 | `assignee` | text | |
 | `assignee_avatar` | text | |
 
+#### `subtask_suggestion`
+
+AI-generated subtask suggestions, persisted so they survive navigation/refresh. Rows are deleted when dismissed or accepted (only pending suggestions remain).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | UUID |
+| `ticket_key` | text FK -> ticket | Cascade delete |
+| `title` | text | Suggested subtask title |
+| `created_at` | text | ISO timestamp |
+
 #### `ticket_link`
 
 Issue links: blocks, is blocked by, relates to, split to/from, etc.
@@ -505,6 +516,7 @@ ticket (1) --- (*) story_version
 ticket (1) --- (*) stored_review
 ticket (1) --- (*) story_writer_session
 ticket (1) --- (*) ticket_confluence_link
+ticket (1) --- (*) subtask_suggestion
 
 conversation (1) --- (*) message
 conversation (1) --- (*) story_writer_session
