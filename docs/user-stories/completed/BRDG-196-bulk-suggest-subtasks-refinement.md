@@ -1,6 +1,6 @@
 # BRDG-196: Bulk Suggest Subtasks from Refinement Session
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -103,16 +103,16 @@ The bulk generation runs in the background. A chat conversation linked to the se
 
 ## Acceptance Criteria
 
-- [ ] "Suggest subtasks" button visible in queue panel header for active refinement sessions
-- [ ] Clicking the button starts background generation for all session tickets
-- [ ] Chat conversation shows real-time progress with clickable ticket links
-- [ ] Tickets modified since last generation get new suggestions; unchanged tickets are skipped
-- [ ] "Regenerate all" option bypasses skip logic
-- [ ] Suggestions appear on ticket detail in refinement session via existing SubtaskSuggestions component
-- [ ] Queue panel shows suggestion count indicator per ticket
-- [ ] Button is disabled while a bulk job is already running
-- [ ] Conversation persists across page navigations (can review previous runs)
-- [ ] Errors for individual tickets don't block processing of remaining tickets
+- [x] "Suggest subtasks" button visible in queue panel header for active refinement sessions
+- [x] Clicking the button starts background generation for all session tickets
+- [x] Chat conversation shows real-time progress with clickable ticket links
+- [x] Tickets modified since last generation get new suggestions; unchanged tickets are skipped
+- [x] "Regenerate all" option bypasses skip logic
+- [x] Suggestions appear on ticket detail in refinement session via existing SubtaskSuggestions component
+- [x] Queue panel shows suggestion count indicator per ticket
+- [x] Button is disabled while a bulk job is already running
+- [x] Conversation persists across page navigations (can review previous runs)
+- [x] Errors for individual tickets don't block processing of remaining tickets
 
 ## Technical Notes
 
