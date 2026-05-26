@@ -46,8 +46,8 @@ As the PO, I want the refinement session fullscreen mode to feel polished and co
 ## Acceptance Criteria
 
 ### 1. Issue pill: match ticket single view styling
-- [ ] The issue pill in the refinement header should match the size and style of the ticket detail view pill (currently it is smaller)
-- [ ] Add the PO status badge to the refinement header pill (currently missing; ticket detail view has it)
+- [x] The issue pill in the refinement header should match the size and style of the ticket detail view pill (currently it is smaller)
+- [x] Add the PO status badge to the refinement header pill (currently missing; ticket detail view has it)
 
 ### 2. Move info button ("i") into the sidebar
 - [x] Remove the standalone "i" icon button from the header action area

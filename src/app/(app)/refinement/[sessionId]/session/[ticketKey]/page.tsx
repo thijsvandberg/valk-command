@@ -13,6 +13,7 @@ import { SessionSummary } from "@/components/refinement-session/SessionSummary";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets } from "@/lib/api-client";
+import type { TicketReadiness } from "@/types/ticket";
 import { BridgeMark } from "@/components/shared/BridgeMark";
 import {
   X,
@@ -290,6 +291,19 @@ export default function RefinementSessionTicketPage({
     [currentKey, storyPoints, mutate],
   );
 
+  const handleReadinessChange = useCallback(
+    async (v: TicketReadiness | null) => {
+      if (!currentKey) return;
+      try {
+        await tickets.updateMetadata(currentKey, { readiness: v });
+        mutate();
+      } catch (err) {
+        console.error("Failed to update readiness:", err);
+      }
+    },
+    [currentKey, mutate],
+  );
+
   // PO Notes: reset when ticket key changes
   const [poNotes, setPoNotes] = useState("");
   const [syncedKey, setSyncedKey] = useState<string | null>(null);
@@ -445,8 +459,10 @@ export default function RefinementSessionTicketPage({
                   ticketKey={ticketData.key}
                   jiraStatus={ticketData.jiraStatus}
                   readiness={ticketData.readiness}
+                  onReadinessChange={handleReadinessChange}
                   issueType={ticketData.type}
                   title={ticketData.title}
+                  size="lg"
                 />
                 <StoryPointPicker
                   value={storyPoints}
