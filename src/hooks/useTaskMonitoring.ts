@@ -86,32 +86,46 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
         pollTimerRef.current = null;
       }
 
-      let applied = false;
-      for (let attempt = 0; attempt < 2 && !applied; attempt++) {
-        try {
-          await apiFetch(`${apiBase}/apply-draft`, {
-            method: "POST",
-            body: { output, taskId, assistantContent: output },
-          });
-          applied = true;
-        } catch { /* retry */ }
-      }
+      const t0 = performance.now();
+      const hasRelatedTags = output.includes("<related-stories") || output.includes("<link-suggestion");
 
-      if (!applied && !unmountedRef.current) {
-        onError("Draft received but could not be saved");
-      }
-
-      try {
-        const relatedData = await apiFetch<{ candidates?: RelatedStoryCandidateRow[] }>(`${apiBase}/apply-related`, {
-          method: "POST",
-          body: { output, taskId },
-        });
-        if (!unmountedRef.current && relatedData.candidates?.length) {
-          onRelatedCandidates(relatedData.candidates);
+      const applyDraftPromise = (async () => {
+        let applied = false;
+        for (let attempt = 0; attempt < 2 && !applied; attempt++) {
+          try {
+            await apiFetch(`${apiBase}/apply-draft`, {
+              method: "POST",
+              body: { output, taskId, assistantContent: output },
+            });
+            applied = true;
+          } catch { /* retry */ }
         }
-      } catch { /* non-critical */ }
+        if (!applied && !unmountedRef.current) {
+          onError("Draft received but could not be saved");
+        }
+      })();
 
-      await refreshSessionRef.current();
+      const applyRelatedPromise = hasRelatedTags
+        ? (async () => {
+            try {
+              const relatedData = await apiFetch<{ candidates?: RelatedStoryCandidateRow[] }>(`${apiBase}/apply-related`, {
+                method: "POST",
+                body: { output, taskId },
+              });
+              if (!unmountedRef.current && relatedData.candidates?.length) {
+                onRelatedCandidates(relatedData.candidates);
+              }
+            } catch { /* non-critical */ }
+          })()
+        : Promise.resolve();
+
+      const refreshPromise = refreshSessionRef.current();
+
+      await Promise.all([applyDraftPromise, applyRelatedPromise, refreshPromise]);
+
+      const elapsed = Math.round(performance.now() - t0);
+      console.debug(`[task-monitoring] applyResult post-processing: ${elapsed}ms (related-tags: ${hasRelatedTags})`);
+
       if (!unmountedRef.current) {
         if (sendStartRef.current) {
           onDuration(Date.now() - sendStartRef.current);

@@ -132,9 +132,13 @@ describe("useTaskMonitoring", () => {
     });
 
     it("handles SSE result event and calls apply-draft", async () => {
-      const fetchSpy = vi.spyOn(global, "fetch")
-        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [] }) } as Response);
+      const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/apply-draft")) {
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
 
       const refreshSession = vi.fn().mockResolvedValue(undefined);
       const opts = createOptions({ refreshSession });
@@ -169,6 +173,156 @@ describe("useTaskMonitoring", () => {
       );
     });
 
+    it("skips apply-related when output has no related-stories or link-suggestion tags", async () => {
+      const calledUrls: string[] = [];
+      vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        calledUrls.push(urlStr);
+        if (urlStr.includes("/apply-draft")) {
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        if (urlStr.includes("/apply-related")) {
+          return { ok: true, json: async () => ({ candidates: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+
+      const refreshSession = vi.fn().mockResolvedValue(undefined);
+      const opts = createOptions({ refreshSession });
+      const { result } = renderHook(() => useTaskMonitoring(opts));
+
+      act(() => {
+        result.current.startMonitoring("task-1");
+      });
+
+      const es = MockEventSource.instances[0];
+
+      await act(async () => {
+        es.emit("result", {
+          output: "Plain text answer with no tags",
+          inputTokens: 10,
+          outputTokens: 20,
+          cost: 0.001,
+        });
+      });
+
+      expect(calledUrls.some((u) => u.includes("/apply-draft"))).toBe(true);
+      expect(calledUrls.some((u) => u.includes("/apply-related"))).toBe(false);
+    });
+
+    it("calls apply-related when output contains related-stories tags", async () => {
+      const calledUrls: string[] = [];
+      vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        calledUrls.push(urlStr);
+        if (urlStr.includes("/apply-draft")) {
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        if (urlStr.includes("/apply-related")) {
+          return { ok: true, json: async () => ({ candidates: [{ id: "c1" }] }) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+
+      const refreshSession = vi.fn().mockResolvedValue(undefined);
+      const opts = createOptions({ refreshSession });
+      const { result } = renderHook(() => useTaskMonitoring(opts));
+
+      act(() => {
+        result.current.startMonitoring("task-1");
+      });
+
+      const es = MockEventSource.instances[0];
+
+      await act(async () => {
+        es.emit("result", {
+          output: "Here is the draft\n<related-stories>[{\"key\":\"TEST-1\"}]</related-stories>",
+          inputTokens: 10,
+          outputTokens: 20,
+          cost: 0.001,
+        });
+      });
+
+      expect(calledUrls.some((u) => u.includes("/apply-related"))).toBe(true);
+      expect(opts.onRelatedCandidates).toHaveBeenCalled();
+    });
+
+    it("calls apply-related when output contains link-suggestion tags", async () => {
+      const calledUrls: string[] = [];
+      vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        calledUrls.push(urlStr);
+        if (urlStr.includes("/apply-draft")) {
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        if (urlStr.includes("/apply-related")) {
+          return { ok: true, json: async () => ({ candidates: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+
+      const refreshSession = vi.fn().mockResolvedValue(undefined);
+      const opts = createOptions({ refreshSession });
+      const { result } = renderHook(() => useTaskMonitoring(opts));
+
+      act(() => {
+        result.current.startMonitoring("task-1");
+      });
+
+      const es = MockEventSource.instances[0];
+
+      await act(async () => {
+        es.emit("result", {
+          output: "Here is the draft\n<link-suggestion key=\"TEST-2\" />",
+          inputTokens: 10,
+          outputTokens: 20,
+          cost: 0.001,
+        });
+      });
+
+      expect(calledUrls.some((u) => u.includes("/apply-related"))).toBe(true);
+    });
+
+    it("runs apply-draft, apply-related, and refreshSession in parallel", async () => {
+      const calledUrls: string[] = [];
+      vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        calledUrls.push(urlStr);
+        if (urlStr.includes("/apply-draft")) {
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        if (urlStr.includes("/apply-related")) {
+          return { ok: true, json: async () => ({ candidates: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+
+      const refreshSession = vi.fn().mockResolvedValue(undefined);
+      const opts = createOptions({ refreshSession });
+      const { result } = renderHook(() => useTaskMonitoring(opts));
+
+      act(() => {
+        result.current.startMonitoring("task-1");
+      });
+
+      const es = MockEventSource.instances[0];
+
+      await act(async () => {
+        es.emit("result", {
+          output: "<related-stories>[]</related-stories>",
+          inputTokens: 10,
+          outputTokens: 20,
+          cost: 0.001,
+        });
+      });
+
+      // All three should have been called
+      expect(calledUrls.some((u) => u.includes("/apply-draft"))).toBe(true);
+      expect(calledUrls.some((u) => u.includes("/apply-related"))).toBe(true);
+      expect(refreshSession).toHaveBeenCalled();
+      expect(opts.onStatus).toHaveBeenCalledWith("ready");
+    });
+
     it("closes EventSource on done event", () => {
       const opts = createOptions();
       const { result } = renderHook(() => useTaskMonitoring(opts));
@@ -191,19 +345,25 @@ describe("useTaskMonitoring", () => {
     it("polls task endpoint when SSE error occurs", async () => {
       vi.useFakeTimers();
 
-      const fetchSpy = vi.spyOn(global, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            status: "completed",
-            output: "Polled output",
-            inputTokens: 50,
-            outputTokens: 100,
-            cost: 0.01,
-          }),
-        } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [] }) } as Response);
+      const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/api/workspace-tasks/task-1") && !urlStr.includes("/stream")) {
+          return {
+            ok: true,
+            json: async () => ({
+              status: "completed",
+              output: "Polled output",
+              inputTokens: 50,
+              outputTokens: 100,
+              cost: 0.01,
+            }),
+          } as Response;
+        }
+        if (urlStr.includes("/apply-draft")) {
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
 
       const refreshSession = vi.fn().mockResolvedValue(undefined);
       const opts = createOptions({ refreshSession });
