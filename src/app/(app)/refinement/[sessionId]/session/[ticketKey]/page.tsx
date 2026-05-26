@@ -146,8 +146,6 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
         transition: isDragging ? "none" : "width 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}
     >
-      {/* Top accent line */}
-      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-[rgba(14,142,136,0.25)] via-transparent to-transparent" />
       {/* Resize handle */}
       <div
         onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
