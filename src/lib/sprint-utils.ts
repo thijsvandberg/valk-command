@@ -1,4 +1,4 @@
-export const TEAMS = ["BO", "BM", "BT", "GXP"] as const;
+export const TEAMS = ["BO", "BM", "BT", "GXP", "HT"] as const;
 export type Team = (typeof TEAMS)[number];
 
 export function extractTeamPrefix(sprintName: string): string | null {

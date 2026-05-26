@@ -655,3 +655,30 @@ export const subtaskSuggestion = sqliteTable("subtask_suggestion", {
 
 export type SubtaskSuggestionRow = typeof subtaskSuggestion.$inferSelect;
 export type NewSubtaskSuggestionRow = typeof subtaskSuggestion.$inferInsert;
+
+// Favorite users: pinned users that appear at the top of assignee pickers
+export const favoriteUser = sqliteTable("favorite_user", {
+  id: text("id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  uniqueIndex("favorite_user_display_name_idx").on(table.displayName),
+]);
+
+// User-team assignments: maps users to fixed teams (BT, BM, BO, GXP, HT)
+export const userTeamAssignment = sqliteTable("user_team_assignment", {
+  id: text("id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  team: text("team").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  uniqueIndex("user_team_assignment_unique_idx").on(table.displayName, table.team),
+  index("user_team_assignment_team_idx").on(table.team),
+]);
+
+export type FavoriteUserRow = typeof favoriteUser.$inferSelect;
+export type UserTeamAssignmentRow = typeof userTeamAssignment.$inferSelect;
