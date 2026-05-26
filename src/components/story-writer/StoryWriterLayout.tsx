@@ -430,6 +430,11 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
       (ticketData as (typeof ticketData & { linkedIssues?: { key: string }[] }) | undefined)
         ?.linkedIssues?.map((i) => i.key) ?? [],
     ),
+    onApplyEpic: async (epicKey: string) => {
+      await tickets.updateEpic(ticketKey, epicKey);
+      mutateTicket();
+    },
+    currentEpicKey: ticketData?.epicKey ?? null,
     onLinkCandidate: writer.linkCandidate,
     onAcceptDraft: async (draftId: string) => {
       await writer.acceptDraft(draftId);

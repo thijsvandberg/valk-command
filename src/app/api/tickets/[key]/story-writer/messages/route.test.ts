@@ -217,4 +217,84 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
     const data = await res.json();
     expect(data.code).toBe("UNREACHABLE");
   });
+
+  describe("match-epic skill routing", () => {
+    function seedWithEpics(db: BetterSQLite3Database<typeof schema>, key: string) {
+      const { convId, sessionId } = seedSession(db, key);
+      db.insert(ticket).values({ jiraKey: "VPL-EPIC-1", title: "Auth Epic", status: "TO DO", type: "epic", summary: "Auth features" }).run();
+      db.insert(ticket).values({ jiraKey: "VPL-EPIC-2", title: "Booking Epic", status: "TO DO", type: "epic", summary: "Booking features" }).run();
+      return { convId, sessionId };
+    }
+
+    it("routes match-epic to suggest-epic skill with epic context", async () => {
+      const { convId } = seedWithEpics(testDb, "VPL-100");
+      mockFetch.mockResolvedValueOnce(jsonResponse({ id: "task_epic" }, 201));
+
+      const res = await POST(
+        makeRequest("VPL-100", { content: "Suggest the best epic", skill: "match-epic" }),
+        makeParams("VPL-100"),
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(201);
+      expect(data.taskId).toBe("task_epic");
+
+      const fetchCall = mockFetch.mock.calls[0];
+      expect(fetchCall[0]).toBe("http://agent:3001/api/tasks");
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.skill).toBe("suggest-epic");
+      expect(body.conversationId).toBe(convId);
+      expect(body.args.ticketKey).toBe("VPL-100");
+      expect(body.args.ticketTitle).toBe("Ticket VPL-100");
+      const epics = JSON.parse(body.args.epics);
+      expect(epics).toHaveLength(2);
+      expect(epics.map((e: { key: string }) => e.key).sort()).toEqual(["VPL-EPIC-1", "VPL-EPIC-2"]);
+    });
+
+    it("returns 404 when no epics exist", async () => {
+      seedSession(testDb, "VPL-100");
+
+      const res = await POST(
+        makeRequest("VPL-100", { content: "Suggest the best epic", skill: "match-epic" }),
+        makeParams("VPL-100"),
+      );
+
+      expect(res.status).toBe(404);
+      const data = await res.json();
+      expect(data.error).toBe("No epics available");
+    });
+
+    it("marks message as failed when agent returns error", async () => {
+      const { convId } = seedWithEpics(testDb, "VPL-100");
+      mockFetch.mockResolvedValueOnce(jsonResponse({ error: "Agent error", code: "AGENT_ERROR" }, 502));
+
+      const res = await POST(
+        makeRequest("VPL-100", { content: "Suggest the best epic", skill: "match-epic" }),
+        makeParams("VPL-100"),
+      );
+
+      expect(res.status).toBe(502);
+
+      const msgs = testDb.select().from(message).where(eq(message.conversationId, convId)).all();
+      const userMsg = msgs.find((m) => m.role === "user");
+      expect(userMsg?.status).toBe("failed");
+    });
+
+    it("stores user message with correct task ID on success", async () => {
+      const { convId } = seedWithEpics(testDb, "VPL-100");
+      mockFetch.mockResolvedValueOnce(jsonResponse({ id: "task_epic_2" }, 201));
+
+      await POST(
+        makeRequest("VPL-100", { content: "Suggest the best epic", skill: "match-epic" }),
+        makeParams("VPL-100"),
+      );
+
+      const msgs = testDb.select().from(message).where(eq(message.conversationId, convId)).all();
+      const userMsg = msgs.find((m) => m.role === "user");
+      expect(userMsg).toBeTruthy();
+      expect(userMsg!.content).toBe("Suggest the best epic");
+      expect(userMsg!.status).toBe("sent");
+      expect(userMsg!.workspaceTaskId).toBe("task_epic_2");
+    });
+  });
 });

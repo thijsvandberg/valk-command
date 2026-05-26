@@ -168,6 +168,8 @@ export function ChatApp() {
           onApplyType={(type) => writer.onTypeChange(type as IssueType)}
           onCreateLink={writer.onCreateLink}
           linkedIssueKeys={writer.linkedIssueKeys}
+          onApplyEpic={writer.onApplyEpic}
+          currentEpicKey={writer.currentEpicKey}
           issueType={writer.ticketData?.type ?? "story"}
           currentTitle={writer.session?.localTitle ?? writer.ticketData?.title ?? undefined}
           currentType={writer.ticketData?.type ?? undefined}

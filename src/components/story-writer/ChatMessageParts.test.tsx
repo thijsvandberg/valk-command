@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLinkSuggestions, stripLinkSuggestionTags } from "./ChatMessageParts";
+import { parseLinkSuggestions, stripLinkSuggestionTags, parseEpicSuggestions, stripEpicSuggestionTags } from "./ChatMessageParts";
 
 describe("parseLinkSuggestions", () => {
   it("parses a single link-suggestion tag", () => {
@@ -103,5 +103,81 @@ more text`;
   it("returns content unchanged when no tags present", () => {
     const input = "No tags here.";
     expect(stripLinkSuggestionTags(input)).toBe(input);
+  });
+});
+
+describe("parseEpicSuggestions", () => {
+  it("parses XML epic-suggestion format", () => {
+    const content = `Here is the suggestion:
+<epic-suggestion>
+<epic key="VPL-10" confidence="high" reason="Covers group booking" />
+<epic key="VPL-20" confidence="medium" reason="Could relate to online booking" />
+</epic-suggestion>`;
+    const result = parseEpicSuggestions(content);
+    expect(result).toEqual([
+      { key: "VPL-10", name: "VPL-10", confidence: "high", reason: "Covers group booking" },
+      { key: "VPL-20", name: "VPL-20", confidence: "medium", reason: "Could relate to online booking" },
+    ]);
+  });
+
+  it("parses json-output format with epic data", () => {
+    const content = `<json-output>[{"key":"VPL-10","name":"Group Reservations","confidence":"high","reason":"Same domain"}]</json-output>`;
+    const result = parseEpicSuggestions(content);
+    expect(result).toEqual([
+      { key: "VPL-10", name: "Group Reservations", confidence: "high", reason: "Same domain" },
+    ]);
+  });
+
+  it("defaults invalid confidence to low", () => {
+    const content = `<json-output>[{"key":"VPL-1","name":"Test","confidence":"very-high","reason":"test"}]</json-output>`;
+    const result = parseEpicSuggestions(content);
+    expect(result[0].confidence).toBe("low");
+  });
+
+  it("deduplicates by key", () => {
+    const content = `<json-output>[{"key":"VPL-1","name":"A","confidence":"high","reason":"r1"},{"key":"VPL-1","name":"A","confidence":"medium","reason":"r2"}]</json-output>`;
+    const result = parseEpicSuggestions(content);
+    expect(result).toHaveLength(1);
+  });
+
+  it("returns empty array for content without epic tags", () => {
+    expect(parseEpicSuggestions("Just text")).toEqual([]);
+  });
+
+  it("returns empty array for invalid JSON in json-output", () => {
+    const content = "<json-output>not valid json</json-output>";
+    expect(parseEpicSuggestions(content)).toEqual([]);
+  });
+
+  it("prefers XML format over JSON when XML is present", () => {
+    const content = `<epic-suggestion><epic key="VPL-1" confidence="high" reason="xml reason" /></epic-suggestion><json-output>[{"key":"VPL-2","name":"B","confidence":"low","reason":"json reason"}]</json-output>`;
+    const result = parseEpicSuggestions(content);
+    expect(result).toHaveLength(1);
+    expect(result[0].key).toBe("VPL-1");
+  });
+});
+
+describe("stripEpicSuggestionTags", () => {
+  it("strips epic-suggestion XML tags", () => {
+    const input = `before <epic-suggestion><epic key="VPL-1" confidence="high" reason="r" /></epic-suggestion> after`;
+    const result = stripEpicSuggestionTags(input);
+    expect(result).toBe("before  after");
+  });
+
+  it("strips json-output blocks that contain epic data", () => {
+    const input = `text <json-output>[{"key":"VPL-1","name":"A","confidence":"high","reason":"r"}]</json-output> more`;
+    const result = stripEpicSuggestionTags(input);
+    expect(result).toBe("text  more");
+  });
+
+  it("preserves json-output blocks without epic data", () => {
+    const input = `text <json-output>{"summary":"hello"}</json-output> more`;
+    const result = stripEpicSuggestionTags(input);
+    expect(result).toContain("json-output");
+  });
+
+  it("returns content unchanged when no tags present", () => {
+    const input = "No tags here.";
+    expect(stripEpicSuggestionTags(input)).toBe(input);
   });
 });

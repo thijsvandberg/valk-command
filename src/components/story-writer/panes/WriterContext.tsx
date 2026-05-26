@@ -39,6 +39,8 @@ export interface WriterContextValue {
   onCancel: () => void;
   onCreateLink: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys: Set<string>;
+  onApplyEpic: (epicKey: string) => Promise<void>;
+  currentEpicKey: string | null;
   onLinkCandidate: (candidateId: string, isLinked: boolean) => Promise<void>;
   onAcceptDraft: (draftId: string) => Promise<void>;
   onDismissDraft: (draftId: string) => void;

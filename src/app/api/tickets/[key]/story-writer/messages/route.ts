@@ -183,6 +183,70 @@ export async function POST(request: Request, { params }: RouteContext) {
     return taskCreatedResponse(messageId, result.data, isFirstMessage);
   }
 
+  if (skill === "match-epic") {
+    const ticketRow = await db
+      .select({ jiraKey: ticket.jiraKey, title: ticket.title, description: ticket.description })
+      .from(ticket)
+      .where(eq(ticket.jiraKey, key))
+      .get();
+
+    const epicRows = await db
+      .select({ jiraKey: ticket.jiraKey, title: ticket.title, summary: ticket.summary })
+      .from(ticket)
+      .where(eq(ticket.type, "epic"))
+      .all();
+
+    if (epicRows.length === 0) {
+      await markMessageFailed(messageId);
+      return NextResponse.json({ error: "No epics available" }, { status: 404 });
+    }
+
+    const epicsPayload = epicRows.map((e) => ({
+      key: e.jiraKey,
+      name: e.title,
+      summary: e.summary ?? null,
+    }));
+
+    const result = await agentFetch<TaskResponse>("/api/tasks", {
+      method: "POST",
+      body: {
+        skill: "suggest-epic",
+        args: {
+          ticketKey: ticketRow?.jiraKey ?? key,
+          ticketTitle: ticketRow?.title ?? "",
+          ticketDescription: ticketRow?.description ?? "",
+          epics: JSON.stringify(epicsPayload),
+        },
+        conversationId: session.conversationId,
+        model,
+      },
+      retries: 2,
+    });
+
+    if (!result.ok) {
+      await markMessageFailed(messageId);
+      await logActivity({
+        type: "story-writer",
+        scope: key,
+        status: "failed",
+        summary: `Story writer match-epic failed for ${key}: ${result.error.code}`,
+        errorDetail: JSON.stringify({ code: result.error.code, error: result.error.error, httpStatus: result.status, retryCount: result.retryCount }),
+        durationMs: Date.now() - messageStart,
+        startedAt: messageStartedAt,
+      });
+      return agentErrorResponse(result.error, result.status);
+    }
+    await logActivity({
+      type: "story-writer",
+      scope: key,
+      status: "success",
+      summary: `Story writer match-epic sent for ${key}`,
+      durationMs: Date.now() - messageStart,
+      startedAt: messageStartedAt,
+    });
+    return taskCreatedResponse(messageId, result.data, isFirstMessage);
+  }
+
   if (isFirstMessage) {
     const taskBody = await buildFirstMessageBody(session, key, content, codebaseResearch, model);
 

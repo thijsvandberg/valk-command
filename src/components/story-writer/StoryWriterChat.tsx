@@ -64,6 +64,8 @@ interface StoryWriterChatProps {
   onApplyType?: (type: string) => void;
   onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys?: Set<string>;
+  onApplyEpic?: (epicKey: string) => Promise<void>;
+  currentEpicKey?: string | null;
   issueType?: IssueType;
   currentTitle?: string;
   currentType?: string;
@@ -200,6 +202,8 @@ export function StoryWriterChat({
   onApplyType,
   onCreateLink,
   linkedIssueKeys,
+  onApplyEpic,
+  currentEpicKey,
   issueType = "story",
   currentTitle,
   currentType,
@@ -430,6 +434,8 @@ export function StoryWriterChat({
                 currentType={currentType}
                 onCreateLink={onCreateLink}
                 linkedIssueKeys={linkedIssueKeys}
+                onApplyEpic={onApplyEpic}
+                currentEpicKey={currentEpicKey}
               />
               {msg.role === "user" && msg.status === "failed" && (
                 <div className="flex justify-end mt-1">
