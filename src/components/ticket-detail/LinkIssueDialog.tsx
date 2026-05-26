@@ -9,7 +9,7 @@ import { tickets } from "@/lib/api-client";
 import { Loader2, Search, ChevronDown, Check, Clock, Cloud } from "lucide-react";
 import type { IssueType } from "@/types/ticket";
 
-const RELATION_OPTIONS = [
+export const RELATION_OPTIONS = [
   { value: "relates to", label: "Relates to" },
   { value: "blocks", label: "Blocks" },
   { value: "is blocked by", label: "Is blocked by" },

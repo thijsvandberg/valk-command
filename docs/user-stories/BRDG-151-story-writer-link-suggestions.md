@@ -87,6 +87,16 @@ Valid relation values: `relates to`, `blocks`, `is blocked by`, `clones`, `is cl
 
 The "Find Related" feature discovers issues based on content similarity. This feature is different: it handles **explicit mentions** in conversation and proactive AI suggestions during review, plus a fast inline input for direct linking. The two are complementary. Over time, link suggestions could also incorporate related story candidates, but that is out of scope for this story.
 
+## Implementation Plan
+
+1. **Part A: Relation type dropdown** - Add optional relation type dropdown prefix to `LinkedIssuesSection` inline input. Import `RELATION_OPTIONS` from `LinkIssueDialog`, add `inlineRelation` state, render compact dropdown to the left of the search input.
+2. **Parse link-suggestion XML tags** - In `ChatMessageParts.tsx`, add regex extraction/stripping for `<link-suggestion>` and `<link-suggestions>` tags. Extract `{ key, relation }[]` from both single and multi-tag formats.
+3. **Create LinkSuggestionChips component** - New `LinkSuggestionChips.tsx` following `TitleSuggestionChips` pattern. Renders bordered card with rows showing relation, issue key, and Link/Linked/Already linked button states. Async `onLink` callback with local state tracking.
+4. **Add createLink to useStoryWriter** - New `createLink(targetKey, relation)` function calling `tickets.createLink()`. Return from hook.
+5. **Wire through component tree** - Add `onCreateLink` and `linkedIssueKeys` to `WriterContextValue`, populate in `StoryWriterLayout` from `ticketData.linkedIssues`, thread through `ChatApp` -> `StoryWriterChat` -> `ChatMessage` -> `LinkSuggestionChips`.
+6. **Update AI prompt instructions** - Add `<link-suggestion>` tag instructions to `buildFirstMessageBody` and `buildFollowUpContent` in the messages route, so the AI knows when and how to emit link suggestions.
+7. **Tests** - XML parsing (single/multi tags, stripping, invalid relations), `LinkSuggestionChips` rendering (chips, already linked, click handler), relation dropdown in `LinkedIssuesSection`.
+
 ## Acceptance Criteria
 
 ### Part A: Inline link input
@@ -94,7 +104,7 @@ The "Find Related" feature discovers issues based on content similarity. This fe
 - [x] Typing in the input triggers autocomplete search (reusing existing search logic)
 - [x] Selecting a result or pressing Enter creates the link with "relates to" as default relation
 - [x] New link appears optimistically in the list before API confirms
-- [ ] Optional relation type dropdown prefix (defaults to "relates to")
+- [x] Optional relation type dropdown prefix (defaults to "relates to")
 - [x] Existing Link Issue dialog button remains available
 
 ### Part B: AI link suggestions in chat

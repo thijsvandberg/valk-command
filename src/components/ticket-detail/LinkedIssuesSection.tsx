@@ -10,10 +10,10 @@ import { StatusBadge as SearchStatusBadge } from "@/components/sprint-board/Sear
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
-import { LinkIssueDialog } from "./LinkIssueDialog";
+import { LinkIssueDialog, RELATION_OPTIONS } from "./LinkIssueDialog";
 import { RelatedIssueSuggestionsPanel, type RelatedSuggestion } from "./RelatedIssueSuggestions";
 import { tickets } from "@/lib/api-client";
-import { X, Sparkles, Loader2, Link2, Cloud } from "lucide-react";
+import { X, Sparkles, Loader2, Link2, Cloud, ChevronDown } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
@@ -37,6 +37,9 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Inline link input state
+  const [inlineRelation, setInlineRelation] = useState("relates to");
+  const [inlineRelationOpen, setInlineRelationOpen] = useState(false);
+  const inlineRelationRef = useRef<HTMLDivElement>(null);
   const [inlineQuery, setInlineQuery] = useState("");
   const [inlineResults, setInlineResults] = useState<InlineSearchResult[]>([]);
   const [inlineHighlight, setInlineHighlight] = useState(-1);
@@ -152,7 +155,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       type: result.type as LinkedIssue["type"],
       jiraStatus: result.status as LinkedIssue["jiraStatus"],
       assignee: null,
-      relation: "relates to",
+      relation: inlineRelation,
       jiraLinkId: `pending-${Date.now()}`,
     };
     setInlinePending((prev) => [...prev, placeholder]);
@@ -161,7 +164,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     setInlineShowResults(false);
     setInlineError(null);
 
-    tickets.createLink(ticketKey, { targetKey: result.key, relation: "relates to" })
+    tickets.createLink(ticketKey, { targetKey: result.key, relation: inlineRelation })
       .then(() => {
         setInlinePending((prev) => prev.filter((p) => p.key !== result.key));
         onMutate();
@@ -171,7 +174,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         setInlineError(`Failed to link ${result.key}`);
         console.error("Failed to create inline link:", err);
       });
-  }, [ticketKey, issues, inlinePending, onMutate]);
+  }, [ticketKey, issues, inlinePending, inlineRelation, onMutate]);
 
   const handleInlineKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!inlineShowResults || inlineResults.length === 0) {
@@ -286,7 +289,41 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       {/* Inline link input */}
       <div className="relative mt-3 rounded-lg border border-border-default">
         <div className="flex items-center gap-3 px-3 py-2">
-          <Link2 size={14} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+          <div ref={inlineRelationRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setInlineRelationOpen((v) => !v)}
+              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:border-border-strong active:bg-overlay-strong transition-colors duration-150"
+            >
+              <Link2 size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+              <span className="max-w-[100px] truncate">
+                {RELATION_OPTIONS.find((o) => o.value === inlineRelation)?.label ?? "Relates to"}
+              </span>
+              <ChevronDown size={10} strokeWidth={2} className="text-text-muted" />
+            </button>
+            {inlineRelationOpen && (
+              <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+                {RELATION_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setInlineRelation(opt.value);
+                      setInlineRelationOpen(false);
+                    }}
+                    className={`flex w-full items-center px-3 py-1.5 text-xs cursor-pointer transition-colors duration-150 ${
+                      inlineRelation === opt.value
+                        ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
+                        : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <input
             ref={inlineInputRef}
             type="text"
