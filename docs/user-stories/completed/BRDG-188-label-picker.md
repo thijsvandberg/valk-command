@@ -1,6 +1,6 @@
 # BRDG-188: Label Picker on Ticket Sidebar
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
