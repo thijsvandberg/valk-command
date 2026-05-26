@@ -26,6 +26,7 @@ function userColor(name: string): string {
 
 export default function PeoplePage() {
   const [query, setQuery] = useState("");
+  const [teamFilter, setTeamFilter] = useState<string | null>(null);
 
   const { data, mutate } = useSWR<{ users: AssignableUser[] }>(
     "/api/jira/assignable-users",
@@ -35,11 +36,16 @@ export default function PeoplePage() {
 
   const users = data?.users ?? [];
 
-  const filtered = query.trim()
-    ? users.filter((u) => u.displayName.toLowerCase().includes(query.toLowerCase()))
-    : users;
+  let pool = users;
+  if (teamFilter) {
+    pool = pool.filter((u) => u.teams.includes(teamFilter));
+  }
+  if (query.trim()) {
+    const q = query.toLowerCase();
+    pool = pool.filter((u) => u.displayName.toLowerCase().includes(q));
+  }
 
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = [...pool].sort((a, b) => {
     if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
     return a.displayName.localeCompare(b.displayName);
   });
@@ -95,6 +101,36 @@ export default function PeoplePage() {
           placeholder="Search people..."
           className="flex-1 bg-transparent text-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
         />
+      </div>
+
+      <div className="mb-4 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setTeamFilter(null)}
+          className={`rounded-md px-2.5 py-1 text-xs font-semibold cursor-pointer active:opacity-60 ${
+            teamFilter === null
+              ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
+              : "text-text-muted hover:text-text-tertiary"
+          }`}
+          style={{ transition: "color 0.15s ease" }}
+        >
+          All
+        </button>
+        {TEAMS.map((team) => (
+          <button
+            key={team}
+            type="button"
+            onClick={() => setTeamFilter(teamFilter === team ? null : team)}
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold cursor-pointer active:opacity-60 ${
+              teamFilter === team
+                ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
+                : "text-text-muted hover:text-text-tertiary"
+            }`}
+            style={{ transition: "color 0.15s ease" }}
+          >
+            {team}
+          </button>
+        ))}
       </div>
 
       {sorted.length === 0 && !data && (

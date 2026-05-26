@@ -11,7 +11,7 @@ const TABS = [
   { href: "/settings/prompts", label: "Quick Prompts", icon: MessageSquare },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   { href: "/settings/integrations", label: "Integrations", icon: Plug },
-  { href: "/settings/people", label: "People", icon: Users },
+  { href: "/settings/people", label: "Team", icon: Users },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
