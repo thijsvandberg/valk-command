@@ -7,6 +7,7 @@ export interface Message {
   workspaceTaskId: string | null;
   status?: "pending" | "sent" | "failed";
   sequence?: number | null;
+  cancelled?: boolean;
 }
 
 export type ConversationType = "chat" | "investigation";

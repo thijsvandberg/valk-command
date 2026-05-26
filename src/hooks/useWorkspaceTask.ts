@@ -31,6 +31,8 @@ interface UseWorkspaceTaskReturn extends WorkspaceTaskState {
   /** Connect to an already-created task's SSE stream (used for follow-up messages). */
   streamExistingTask: (taskId: string, skill: string) => void;
   reset: () => void;
+  /** Cancel the currently running task. Closes the stream and signals the server. */
+  cancelTask: () => void;
 }
 
 const initialState: WorkspaceTaskState = {
@@ -289,10 +291,30 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
     [safeSetState]
   );
 
+  const cancelTask = useCallback(() => {
+    const taskId = state.taskId;
+
+    // Close the SSE stream immediately
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current);
+      streamTimeoutRef.current = null;
+    }
+
+    safeSetState(initialState);
+
+    // Signal the server (fire-and-forget)
+    if (taskId) {
+      workspaceTasksApi.cancel(taskId).catch(() => {});
+    }
+  }, [state.taskId, safeSetState]);
+
   return {
     ...state,
     submitAndStream,
     streamExistingTask,
     reset,
+    cancelTask,
   };
 }

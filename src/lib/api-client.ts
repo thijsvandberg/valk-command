@@ -411,6 +411,8 @@ export const workspaceTasks = {
     apiFetch<unknown>(`/api/workspace-tasks/${enc(id)}`, { method: "PATCH", body: data, signal }),
   delete: (id: string, signal?: AbortSignal) =>
     apiFetch<void>(`/api/workspace-tasks/${enc(id)}`, { method: "DELETE", signal }),
+  cancel: (id: string, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>(`/api/workspace-tasks/${enc(id)}/cancel`, { method: "POST", signal }),
   health: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/workspace-tasks/health", { signal }),
   skills: (signal?: AbortSignal) =>

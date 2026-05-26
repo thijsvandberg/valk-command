@@ -32,6 +32,7 @@ export const message = sqliteTable("message", {
     .default("sent"),
   contentHash: text("content_hash"),
   sequence: integer("sequence"),
+  cancelled: integer("cancelled", { mode: "boolean" }).notNull().default(false),
 }, (table) => [
   index("message_conversation_id_idx").on(table.conversationId),
   index("message_conversation_sequence_idx").on(table.conversationId, table.sequence),
@@ -100,7 +101,7 @@ export const workspaceTask = sqliteTable("workspace_task", {
   id: text("id").primaryKey(),
   skillName: text("skill_name").notNull(),
   status: text("status", {
-    enum: ["queued", "running", "completed", "failed"],
+    enum: ["queued", "running", "completed", "failed", "cancelled"],
   }).notNull(),
   startedAt: text("started_at"),
   completedAt: text("completed_at"),

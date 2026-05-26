@@ -152,6 +152,19 @@ export async function captureTaskStream(params: CaptureParams): Promise<void> {
   }
 
   if (output !== null) {
+    // Check if the task was cancelled while we were streaming
+    const currentTask = await db.query.workspaceTask.findFirst({
+      where: (t, { eq: eq_ }) => eq_(t.id, taskId),
+    });
+    if (currentTask?.status === "cancelled") {
+      logger.info("task-stream-handler", "task_cancelled_skip", {
+        event: "task_cancelled_before_save",
+        taskId,
+        skillName,
+      });
+      return;
+    }
+
     await db.update(workspaceTask)
       .set({ status: "completed", completedAt: new Date().toISOString(), output })
       .where(eq(workspaceTask.id, taskId));

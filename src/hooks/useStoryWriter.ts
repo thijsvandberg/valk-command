@@ -93,7 +93,7 @@ export function useStoryWriter(ticketKey: string) {
       unmountedRef.current = true;
       clearTimersRef.current();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -378,6 +378,26 @@ export function useStoryWriter(ticketKey: string) {
     }
   }, [apiBase, setSession]);
 
+  const cancelCurrentTask = useCallback(() => {
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user" && m.workspaceTaskId);
+    const taskId = lastUserMsg?.workspaceTaskId;
+    if (taskId) {
+      monitoring.cancelTask(taskId);
+    }
+
+    setStatus("ready");
+    setStreamProgress("");
+    setStreamError(null);
+
+    if (lastUserMsg) {
+      setMessages((prev) => prev.map((m) => {
+        if (m.id === lastUserMsg.id) return { ...m, cancelled: true };
+        if (m.workspaceTaskId === taskId && m.role === "assistant") return { ...m, cancelled: true };
+        return m;
+      }));
+    }
+  }, [messages, monitoring]);
+
   const saveDraft = useCallback(() => drafts.saveDraft(session), [drafts, session]);
   const pushToJira = useCallback(() => drafts.pushToJira(session), [drafts, session]);
 
@@ -399,6 +419,7 @@ export function useStoryWriter(ticketKey: string) {
     sendMessage,
     retryMessage,
     clearFailedMessages,
+    cancelCurrentTask,
     updateLocalDraft: drafts.updateLocalDraft,
     updateLocalTitle: drafts.updateLocalTitle,
     updateTargetLocalDraft: drafts.updateTargetLocalDraft,
