@@ -16,6 +16,7 @@ import { AddToRefinementModal } from "@/components/refinement-session/AddToRefin
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
@@ -26,7 +27,7 @@ import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPop
 import { apiFetch, jira, followedSprints, workspaceTasks, ApiError } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle, Inbox } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, ArrowRight, Bell, BellOff, Users, AlertTriangle, Inbox, Copy as CopyIcon, ExternalLink, X } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -214,7 +215,7 @@ export default function SprintBoard() {
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const exportTask = useExportTask();
   const [toast, setToast] = useState<React.ReactNode | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slotsInitialized = useRef(false);
@@ -515,8 +516,6 @@ export default function SprintBoard() {
     const selected = tickets.filter((t) => checkedTickets.has(t.key));
     if (selected.length === 0) return;
 
-    setIsExporting(true);
-
     const ticketData = selected.map((t) => ({
       key: t.key,
       summary: t.title,
@@ -526,24 +525,11 @@ export default function SprintBoard() {
 
     const sprintLabel = activeSprint?.name ?? "Selected work";
 
-    try {
-      const result = await workspaceTasks.create({
-        skillName: "export-stakeholder-summary",
-        args: {
-          sprintName: sprintLabel,
-          tickets: JSON.stringify(ticketData),
-        },
-      });
-      const convId = (result as Record<string, unknown>).conversationId as string | undefined;
-      if (convId) {
-        router.push(`/chat/${convId}`);
-      }
-    } catch {
-      showToast("Could not start export. Is the workspace running?");
-    } finally {
-      setIsExporting(false);
-    }
-  }, [tickets, checkedTickets, activeSprint, showToast, router]);
+    await exportTask.startExport({
+      sprintName: sprintLabel,
+      tickets: JSON.stringify(ticketData),
+    });
+  }, [tickets, checkedTickets, activeSprint, exportTask]);
 
   const [refineModalOpen, setRefineModalOpen] = useState(false);
   const handleRefineSelected = useCallback(() => {
@@ -1274,7 +1260,7 @@ export default function SprintBoard() {
               )}
             </div>
 
-            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={isExporting} onRefine={handleRefineSelected} />}
+            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onRefine={handleRefineSelected} />}
 
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {boardActiveDragTicket && (() => {
@@ -1346,7 +1332,7 @@ export default function SprintBoard() {
               {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onStoryPointsChange={handleStoryPointsChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onReorder={f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} refinementSessionMap={ticketSessionMap} />}
             </div>
 
-            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={isExporting} onRefine={handleRefineSelected} />}
+            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onRefine={handleRefineSelected} />}
           </>
         )}
       </div>
@@ -1361,6 +1347,80 @@ export default function SprintBoard() {
         <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
           <span className="text-sm text-text-secondary">{toast}</span>
+        </div>
+      )}
+
+      {exportTask.status === "completed" && exportTask.output && (
+        <div
+          role="alert"
+          className="pointer-events-auto fixed right-6 bottom-16 z-50 flex flex-col gap-2 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-floating)]/95 px-4 py-3 shadow-[var(--shadow-lg)] backdrop-blur-sm max-w-sm"
+          style={{ animation: "fadeInUp 0.2s ease-out" }}
+        >
+          <div className="flex items-start gap-2.5">
+            <Check className="h-4 w-4 shrink-0 mt-0.5 text-[var(--color-brand-400)]" strokeWidth={2} />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-text-primary">Stakeholder export ready</p>
+            </div>
+            <button
+              type="button"
+              onClick={exportTask.dismiss}
+              className="shrink-0 text-text-muted hover:text-text-secondary cursor-pointer"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 pl-6.5">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(exportTask.output!).then(() => {
+                  showToast("Copied to clipboard");
+                }).catch(() => {
+                  showToast("Failed to copy");
+                });
+              }}
+              className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-300)] cursor-pointer hover:bg-[var(--color-brand-500)]/15 active:bg-[var(--color-brand-500)]/20"
+            >
+              <CopyIcon className="h-3 w-3" strokeWidth={2} />
+              Copy to clipboard
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (exportTask.conversationId) {
+                  router.push(`/chat/${exportTask.conversationId}`);
+                }
+                exportTask.dismiss();
+              }}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-text-tertiary cursor-pointer hover:text-text-secondary"
+            >
+              <ExternalLink className="h-3 w-3" strokeWidth={2} />
+              View in chat
+            </button>
+          </div>
+        </div>
+      )}
+
+      {exportTask.status === "failed" && exportTask.error && (
+        <div
+          role="alert"
+          className="pointer-events-auto fixed right-6 bottom-16 z-50 flex items-start gap-2.5 rounded-lg border border-red-500/20 bg-[var(--color-surface-floating)]/95 px-4 py-3 shadow-[var(--shadow-lg)] backdrop-blur-sm max-w-sm"
+          style={{ animation: "fadeInUp 0.2s ease-out" }}
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" strokeWidth={2} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-text-primary">Export failed</p>
+            <p className="text-label text-text-tertiary mt-0.5">{exportTask.error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={exportTask.dismiss}
+            className="shrink-0 text-text-muted hover:text-text-secondary cursor-pointer"
+            aria-label="Dismiss"
+          >
+            <X className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
         </div>
       )}
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />

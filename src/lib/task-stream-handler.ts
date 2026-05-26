@@ -163,8 +163,15 @@ export async function captureTaskStream(params: CaptureParams): Promise<void> {
       .set({ readAt: null })
       .where(eq(conversation.id, conversationId));
 
-    // Sprint-goal suggestions get a descriptive notification with the sprint name
-    if (skillName === "suggest-sprint-goal") {
+    // Stakeholder exports use a distinct notification type so the sprint board
+    // can show its own persistent toast instead of the generic TaskCompletionNotifier
+    if (skillName === "export-stakeholder-summary") {
+      createNotification(
+        "stakeholder-export-ready",
+        `Stakeholder export completed`,
+        { category: "agent", linkUrl: `/chat/${conversationId}` },
+      );
+    } else if (skillName === "suggest-sprint-goal") {
       let sprintName = "sprint";
       const conv = await db.query.conversation.findFirst({
         where: (c, { eq: eq_ }) => eq_(c.id, conversationId),

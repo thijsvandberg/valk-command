@@ -88,13 +88,13 @@ When the workspace returns the rewritten summary:
 ## Acceptance Criteria
 
 - [x] User message in chat includes sprint name + ticket list, not just "/export stakeholder summary"
-- [ ] User stays on the sprint board after clicking Export (no navigation to chat)
-- [ ] Spinner shown on Export button while workspace task is running
-- [ ] Persistent toast appears when result is ready (not auto-dismissing)
-- [ ] Toast has "Copy to clipboard" button that copies the AI result
-- [ ] Toast has "View in chat" link to the conversation
-- [ ] Error toast shown if workspace task fails
-- [ ] Works when workspace is slow (30s+ response time)
+- [x] User stays on the sprint board after clicking Export (no navigation to chat)
+- [x] Spinner shown on Export button while workspace task is running
+- [x] Persistent toast appears when result is ready (not auto-dismissing)
+- [x] Toast has "Copy to clipboard" button that copies the AI result
+- [x] Toast has "View in chat" link to the conversation
+- [x] Error toast shown if workspace task fails
+- [x] Works when workspace is slow (30s+ response time)
 
 ## Technical Notes
 
