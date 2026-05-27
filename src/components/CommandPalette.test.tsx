@@ -62,6 +62,12 @@ describe("CommandPalette", () => {
           { sessionId: "sess-1", ticketKey: "VPL-42", title: "Implement auth flow", sprintName: "Sprint 5", epic: null, epicKey: null, issueType: "story", status: "TO DO", updatedAt: "2026-04-10", jiraUpdatedAt: null },
         ]));
       }
+      if (urlStr.includes("/api/epics") && !urlStr.includes("/summary")) {
+        return new Response(JSON.stringify([
+          { key: "VPL-10", name: "Authentication Epic", status: "In Progress", childCount: 8, summary: "Handles all auth flows", summaryStale: false },
+          { key: "VPL-20", name: "Payment Integration", status: "TO DO", childCount: 3, summary: null, summaryStale: false },
+        ]));
+      }
       if (urlStr.includes("/api/sprint-slots")) {
         return new Response(JSON.stringify([
           { slotIndex: 0, sprintId: "sprint-5", sprintName: "Sprint 5" },
@@ -550,5 +556,207 @@ describe("CommandPalette", () => {
     await waitFor(() => {
       expect(screen.getByText("Implement auth flow")).toBeInTheDocument();
     });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  BRDG-209: Epic search in command palette                          */
+  /* ------------------------------------------------------------------ */
+
+  it("shows epic results when searching by epic name", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "authentication" } });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Authentication Epic")).toBeInTheDocument();
+      expect(screen.getByText("VPL-10")).toBeInTheDocument();
+    });
+  });
+
+  it("shows Epics category label for epic results", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "authentication" } });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Epics")).toBeInTheDocument();
+    });
+  });
+
+  it("shows child count on epic results", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "authentication" } });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("8 issues")).toBeInTheDocument();
+    });
+  });
+
+  it("shows epic AI summary when available", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "authentication" } });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Handles all auth flows")).toBeInTheDocument();
+    });
+  });
+
+  it("navigates to epic detail page on selection", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "authentication" } });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Authentication Epic")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Authentication Epic").closest("[data-palette-row]")!);
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-10");
+    });
+  });
+
+  it("opens in epic mode with Cmd+Shift+K", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    });
+
+    // Should show epic mode placeholder
+    expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
+    // Should show "Epics" badge (badge + category label = 2 elements)
+    const epicLabels = screen.getAllByText("Epics");
+    expect(epicLabels.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("epic mode only shows epic results, not pages or actions", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    });
+
+    // Wait for epics to load
+    await waitFor(() => {
+      expect(screen.getByText("Authentication Epic")).toBeInTheDocument();
+    });
+
+    // Pages and actions should not be visible
+    expect(screen.queryByText("Sprint Board")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sync Jira")).not.toBeInTheDocument();
+  });
+
+  it("Cmd+K while in epic mode switches to normal mode", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    });
+
+    expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
+
+    // Press Cmd+K to switch to normal mode
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    // Should now show normal placeholder
+    expect(screen.getByPlaceholderText(/search pages/i)).toBeInTheDocument();
+    // Pages should be visible
+    expect(screen.getByText("Sprint Board")).toBeInTheDocument();
+  });
+
+  it("Escape in epic mode closes the palette", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search epics/i);
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/search epics/i)).not.toBeInTheDocument();
+    }, { timeout: 300 });
+  });
+
+  it("epic mode resets when palette is closed and reopened", async () => {
+    render(<CommandPalette />);
+
+    // Open in epic mode
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+    });
+    expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
+
+    // Close
+    const input = screen.getByPlaceholderText(/search epics/i);
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/search epics/i)).not.toBeInTheDocument();
+    }, { timeout: 300 });
+
+    // Reopen with Cmd+K (should be normal mode)
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+    expect(screen.getByPlaceholderText(/search pages/i)).toBeInTheDocument();
   });
 });
