@@ -875,108 +875,93 @@ export default function SprintBoard() {
             )}
         </ViewHeader>
 
-        {/* Sprint board body -- optionally wrapped in a parent DndContext for Jira rank DnD */}
-        {dnd.jiraRankDndEnabled ? (
-          <DndContext
-            sensors={dnd.boardSensors}
-            collisionDetection={boardCollisionDetection}
-            onDragStart={dnd.handleBoardDragStart}
-            onDragOver={dnd.handleBoardDragOver}
-            onDragEnd={dnd.handleBoardDragEnd}
-          >
-            <div className="relative bg-[var(--color-surface-toolbar)]">
-              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} />
-              {dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
-            </div>
-
-            {!barsCollapsed && (
-              <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
-                <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+        {/* Sprint board body -- shared content, optionally wrapped in DndContext */}
+        {(() => {
+          const boardContent = (
+            <>
+              <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-toolbar)]`}>
+                <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} />
+                {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
               </div>
-            )}
 
-            <div ref={contentScrollRef}>
-              {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
-
-              {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
-
-              {!ticketsLoading && (
-                <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onStoryPointsChange={handleStoryPointsChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} externalDnd externalActiveDragId={dnd.boardActiveDragId} dragOverKey={dnd.boardOverId} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} refinementSessionMap={ticketSessionMap} />
+              {!barsCollapsed && (
+                <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
+                  <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+                </div>
               )}
-            </div>
 
-            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onRefine={handleRefineSelected} />}
+              <div ref={contentScrollRef}>
+                {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
+                {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
+                {!ticketsLoading && (
+                  <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onStoryPointsChange={handleStoryPointsChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} refinementSessionMap={ticketSessionMap} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+                )}
+              </div>
 
-            <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
-              {dnd.boardActiveDragTicket && (() => {
-                const isMulti = dnd.boardDraggedKeys.length > 1;
-                const draggedTickets = isMulti
-                  ? dnd.boardDraggedKeys.map((k) => tickets.find((t) => t.key === k)).filter(Boolean)
-                  : [dnd.boardActiveDragTicket];
-                return (
-                  <div style={{ opacity: 0.92 }} className="inline-block w-max">
-                    <div className="relative">
-                      {isMulti && (
-                        <>
-                          <div className="absolute inset-0 translate-y-1.5 translate-x-1.5 rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.4 }} />
-                          <div className="absolute inset-0 translate-y-[5px] translate-x-[5px] rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.2 }} />
-                        </>
-                      )}
-                      <div className={`relative rounded-lg border bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] ${isMulti ? "border-[var(--color-brand-500)]/30" : "border-[var(--color-brand-500)]/20"}`}>
+              {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onRefine={handleRefineSelected} />}
+            </>
+          );
+
+          if (!dnd.jiraRankDndEnabled) return boardContent;
+
+          return (
+            <DndContext
+              sensors={dnd.boardSensors}
+              collisionDetection={boardCollisionDetection}
+              onDragStart={dnd.handleBoardDragStart}
+              onDragOver={dnd.handleBoardDragOver}
+              onDragEnd={dnd.handleBoardDragEnd}
+            >
+              {boardContent}
+              <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
+                {dnd.boardActiveDragTicket && (() => {
+                  const isMulti = dnd.boardDraggedKeys.length > 1;
+                  const draggedTickets = isMulti
+                    ? dnd.boardDraggedKeys.map((k) => tickets.find((t) => t.key === k)).filter(Boolean)
+                    : [dnd.boardActiveDragTicket];
+                  return (
+                    <div style={{ opacity: 0.92 }} className="inline-block w-max">
+                      <div className="relative">
                         {isMulti && (
-                          <div className="absolute -top-2.5 -right-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1.5 text-[11px] font-semibold text-white shadow-sm">
-                            {dnd.boardDraggedKeys.length}
-                          </div>
+                          <>
+                            <div className="absolute inset-0 translate-y-1.5 translate-x-1.5 rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.4 }} />
+                            <div className="absolute inset-0 translate-y-[5px] translate-x-[5px] rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.2 }} />
+                          </>
                         )}
-                        <div className="px-3 py-2 space-y-0.5">
-                          {draggedTickets.slice(0, 5).map((t) => (
-                            <div key={t!.key} className="flex items-center gap-2 text-body-lg">
-                              <IssueTypeIcon type={t!.type} />
-                              <span className="font-mono text-body-sm text-text-tertiary">{t!.key}</span>
-                              <span className="max-w-52 truncate text-text-secondary">{t!.title}</span>
-                            </div>
-                          ))}
-                          {draggedTickets.length > 5 && (
-                            <div className="text-body-sm text-text-muted pl-0.5">
-                              and {draggedTickets.length - 5} more...
+                        <div className={`relative rounded-lg border bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] ${isMulti ? "border-[var(--color-brand-500)]/30" : "border-[var(--color-brand-500)]/20"}`}>
+                          {isMulti && (
+                            <div className="absolute -top-2.5 -right-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1.5 text-[11px] font-semibold text-white shadow-sm">
+                              {dnd.boardDraggedKeys.length}
                             </div>
                           )}
+                          <div className="px-3 py-2 space-y-0.5">
+                            {draggedTickets.slice(0, 5).map((t) => (
+                              <div key={t!.key} className="flex items-center gap-2 text-body-lg">
+                                <IssueTypeIcon type={t!.type} />
+                                <span className="font-mono text-body-sm text-text-tertiary">{t!.key}</span>
+                                <span className="max-w-52 truncate text-text-secondary">{t!.title}</span>
+                              </div>
+                            ))}
+                            {draggedTickets.length > 5 && (
+                              <div className="text-body-sm text-text-muted pl-0.5">
+                                and {draggedTickets.length - 5} more...
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      {dnd.boardDragTargetSprintId && (
+                        <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-label text-[var(--color-brand-300)]">
+                          Move to {sprintNameMap[dnd.boardDragTargetSprintId] ?? dnd.boardDragTargetSprintId}
+                        </div>
+                      )}
                     </div>
-                    {dnd.boardDragTargetSprintId && (
-                      <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-label text-[var(--color-brand-300)]">
-                        Move to {sprintNameMap[dnd.boardDragTargetSprintId] ?? dnd.boardDragTargetSprintId}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </DragOverlay>
-          </DndContext>
-        ) : (
-          <>
-            <div className="bg-[var(--color-surface-toolbar)]">
-              <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleColumns} columnOrder={columnOrder} onColumnToggle={toggleColumn} onColumnReorder={handleColumnReorder} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} />
-            </div>
-
-            {!barsCollapsed && (
-              <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
-                <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
-              </div>
-            )}
-
-            <div ref={contentScrollRef}>
-              {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
-
-              {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
-
-              {!ticketsLoading && <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onPoStatusChange={handlePoStatusChange} onReadinessChange={handleReadinessChange} onBusinessValueChange={handleBusinessValueChange} onStoryPointsChange={handleStoryPointsChange} onJiraStatusChange={handleJiraStatusChange} onIssueTypeChange={handleIssueTypeChange} onTitleChange={handleTitleChange} onCloseSubtasks={handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onReorder={f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} scrollContainerRef={mainScrollRef} refinementSessionMap={ticketSessionMap} />}
-            </div>
-
-            {someChecked && <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={tickets.filter((t) => checkedTickets.has(t.key)).reduce((s, t) => s + (t.storyPoints ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onRefine={handleRefineSelected} />}
-          </>
-        )}
+                  );
+                })()}
+              </DragOverlay>
+            </DndContext>
+          );
+        })()}
       </div>
 
       {selected && (() => {
