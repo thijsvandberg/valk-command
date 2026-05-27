@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import type { TicketDetail, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
+import type { TicketDetail, Subtask, SubtaskSuggestionResponse, JiraStatus } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader } from "./ChildIssueListHeader";
@@ -11,7 +11,7 @@ import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
 import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
-import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
+import { useTaskStream } from "@/hooks/useTaskStream";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
 import { friendlyStreamError, isRetryableStreamError } from "@/lib/agent-errors";
 import {
@@ -93,6 +93,7 @@ function SortableSubtaskRow({
   onSaveEdit,
   onCancelEdit,
   onDelete,
+  onJiraStatusChange,
 }: {
   sub: Subtask;
   isLast: boolean;
@@ -109,6 +110,7 @@ function SortableSubtaskRow({
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onDelete: () => void;
+  onJiraStatusChange?: (status: JiraStatus) => void;
 }) {
   const {
     attributes,
@@ -148,6 +150,7 @@ function SortableSubtaskRow({
       isLast={isLast}
       showKey={showKey}
       showStatus={showStatus}
+      onJiraStatusChange={onJiraStatusChange}
       onSelect={onSelect}
       isEditing={isEditing}
       editValue={editValue}
@@ -200,7 +203,7 @@ export function SubtasksSection({
   const pendingDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editCancelledRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const suggestEsRef = useRef<EventSource | null>(null);
+  const [suggestTaskId, setSuggestTaskId] = useState<string | null>(null);
   const suggestRetryRef = useRef(0);
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
 
@@ -252,6 +255,19 @@ export function SubtasksSection({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),
   );
+
+  const handleJiraStatusChange = useCallback(async (childKey: string, status: JiraStatus) => {
+    try {
+      await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      onMutate();
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
+  }, [onMutate]);
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -414,12 +430,47 @@ export function SubtasksSection({
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      suggestEsRef.current?.close();
-      suggestEsRef.current = null;
-    };
-  }, []);
+  useTaskStream(suggestTaskId, {
+    timeout: 0,
+    onProgress: (message) => setSuggestProgress(message),
+    onToolCall: (tool) => {
+      const clean = tool.replace("mcp__jira__", "").replace("mcp__", "");
+      setSuggestProgress(`Using ${clean}...`);
+    },
+    onResult: (resultData) => {
+      const output = (resultData.output as string) ?? "";
+      const parsed = parseSubtaskSuggestions(output);
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+
+      tickets.persistSubtaskSuggestions(ticketKey, { suggestions: parsed })
+        .then((data) => setSuggestions(data.suggestions))
+        .catch(() => {
+          setSuggestions(parsed.map((title, i) => ({
+            id: `ephemeral-${i}`,
+            ticketKey,
+            title,
+            createdAt: new Date().toISOString(),
+          })));
+        });
+    },
+    onError: (message) => {
+      if (isRetryableStreamError(message) && suggestRetryRef.current < 1) {
+        suggestRetryRef.current += 1;
+        handleSuggestRef.current(true);
+        return;
+      }
+
+      setSuggestError(friendlyStreamError(message));
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    },
+    onNetworkError: () => {
+      setSuggestError("Connection to workspace lost");
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    },
+  });
 
   const handleSuggest = useCallback(async (isRetry = false) => {
     if (suggestLoading && !isRetry) return;
@@ -432,6 +483,7 @@ export function SubtasksSection({
     setSuggestError(null);
     setSuggestProgress(isRetry ? "Retrying..." : "Starting...");
     setSuggestions([]);
+    setSuggestTaskId(null);
 
     try {
       const data = await tickets.suggestSubtasks(ticketKey);
@@ -441,56 +493,7 @@ export function SubtasksSection({
         return;
       }
 
-      const es = new EventSource(data.streamUrl);
-      suggestEsRef.current = es;
-
-      attachTaskStreamListeners(es, {
-        onProgress: (message) => setSuggestProgress(message),
-        onToolCall: (tool) => {
-          const clean = tool.replace("mcp__jira__", "").replace("mcp__", "");
-          setSuggestProgress(`Using ${clean}...`);
-        },
-        onResult: (resultData) => {
-          es.close();
-          suggestEsRef.current = null;
-          const output = (resultData.output as string) ?? "";
-          const parsed = parseSubtaskSuggestions(output);
-          setSuggestLoading(false);
-          setSuggestProgress(null);
-
-          tickets.persistSubtaskSuggestions(ticketKey, { suggestions: parsed })
-            .then((data) => setSuggestions(data.suggestions))
-            .catch(() => {
-              setSuggestions(parsed.map((title, i) => ({
-                id: `ephemeral-${i}`,
-                ticketKey,
-                title,
-                createdAt: new Date().toISOString(),
-              })));
-            });
-        },
-        onStructuredError: (message) => {
-          es.close();
-          suggestEsRef.current = null;
-
-          if (isRetryableStreamError(message) && suggestRetryRef.current < 1) {
-            suggestRetryRef.current += 1;
-            handleSuggestRef.current(true);
-            return;
-          }
-
-          setSuggestError(friendlyStreamError(message));
-          setSuggestLoading(false);
-          setSuggestProgress(null);
-        },
-        onNetworkError: () => {
-          es.close();
-          suggestEsRef.current = null;
-          setSuggestError("Connection to workspace lost");
-          setSuggestLoading(false);
-          setSuggestProgress(null);
-        },
-      });
+      setSuggestTaskId(data.taskId);
     } catch (err) {
       setSuggestError(err instanceof Error ? err.message : "Failed to start suggestion");
       setSuggestLoading(false);
@@ -586,6 +589,7 @@ export function SubtasksSection({
           onSaveEdit={handleSaveEdit}
           onCancelEdit={handleCancelEdit}
           onDelete={() => handleDelete(sub, idx)}
+          onJiraStatusChange={(s) => handleJiraStatusChange(sub.key, s)}
         />
       );
     }
@@ -600,6 +604,7 @@ export function SubtasksSection({
         isPending={isPending}
         showKey={showKey}
         showStatus={showStatus}
+        onJiraStatusChange={!isPending ? (s) => handleJiraStatusChange(sub.key, s) : undefined}
         onSelect={onSelectTicket}
         isEditing={!isPending && editingKey === sub.key}
         editValue={editingTitle}

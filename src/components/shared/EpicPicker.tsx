@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Check, Search, Zap, X, RefreshCw, Sparkles, AlertTriangle } from "lucide-react";
 import { BasePicker } from "@/components/shared/BasePicker";
 import useSWR from "swr";
-import { apiFetch, swrFetcher, workspaceTasks, ApiError } from "@/lib/api-client";
+import { apiFetch, swrFetcher, ApiError } from "@/lib/api-client";
+import { useTaskStream } from "@/hooks/useTaskStream";
 
 export interface EpicOption {
   key: string;
@@ -66,7 +67,7 @@ function EpicPickerInner({
   const [suggesting, setSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState<EpicSuggestionItem[] | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const [suggestTaskId, setSuggestTaskId] = useState<string | null>(null);
 
   const { data: epics, mutate } = useSWR<EpicListItem[]>(
     "/api/epics",
@@ -74,6 +75,34 @@ function EpicPickerInner({
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
   const hasSyncedRef = useRef(false);
+
+  // Close stream when picker closes
+  useEffect(() => {
+    if (!open) setSuggestTaskId(null);
+  }, [open]);
+
+  useTaskStream(suggestTaskId, {
+    timeout: 90_000,
+    onResult: (data) => {
+      try {
+        const output = (data.output ?? data.text ?? "") as string;
+        const match = output.match(/<json-output>([\s\S]*?)<\/json-output>/);
+        if (match) {
+          const parsed = JSON.parse(match[1].trim()) as EpicSuggestionItem[];
+          setSuggestions(parsed.filter((s) => s.key && s.name));
+        }
+      } catch { setSuggestError("Failed to parse suggestions"); }
+      setSuggesting(false);
+    },
+    onError: (message) => {
+      setSuggestError(message === "Stream timed out" ? "Suggestion timed out" : message);
+      setSuggesting(false);
+    },
+    onNetworkError: () => {
+      setSuggestError("Connection to workspace lost");
+      setSuggesting(false);
+    },
+  });
 
   const filtered = useMemo(() => {
     if (!epics) return [];
@@ -104,19 +133,6 @@ function EpicPickerInner({
     handleSync();
   }, [open, syncing, handleSync]);
 
-  // Cleanup EventSource on unmount
-  useEffect(() => {
-    return () => { eventSourceRef.current?.close(); };
-  }, []);
-
-  // Close cleans up EventSource
-  useEffect(() => {
-    if (!open) {
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
-    }
-  }, [open]);
-
   const handleSearchChange = useCallback((value: string) => {
     if (value.trim()) {
       setSuggestions(null);
@@ -129,7 +145,7 @@ function EpicPickerInner({
     setSuggesting(true);
     setSuggestions(null);
     setSuggestError(null);
-    eventSourceRef.current?.close();
+    setSuggestTaskId(null);
 
     try {
       const resp = await apiFetch<{ taskId: string; streamUrl: string }>(
@@ -138,45 +154,7 @@ function EpicPickerInner({
       );
       if (!resp.taskId) { setSuggestError("No task ID returned"); setSuggesting(false); return; }
 
-      const es = new EventSource(workspaceTasks.streamUrl(resp.taskId));
-      eventSourceRef.current = es;
-      let resolved = false;
-
-      es.addEventListener("result", (e) => {
-        if (resolved) return;
-        resolved = true;
-        try {
-          const data = JSON.parse((e as MessageEvent).data);
-          const output = (data.output ?? data.text ?? "") as string;
-          const match = output.match(/<json-output>([\s\S]*?)<\/json-output>/);
-          if (match) {
-            const parsed = JSON.parse(match[1].trim()) as EpicSuggestionItem[];
-            setSuggestions(parsed.filter((s) => s.key && s.name));
-          }
-        } catch { setSuggestError("Failed to parse suggestions"); }
-        es.close();
-        eventSourceRef.current = null;
-        setSuggesting(false);
-      });
-
-      es.addEventListener("error", () => {
-        if (resolved) return;
-        resolved = true;
-        es.close();
-        eventSourceRef.current = null;
-        setSuggestError("Connection to workspace lost");
-        setSuggesting(false);
-      });
-
-      setTimeout(() => {
-        if (!resolved && eventSourceRef.current === es) {
-          resolved = true;
-          es.close();
-          eventSourceRef.current = null;
-          setSuggesting(false);
-          setSuggestError("Suggestion timed out");
-        }
-      }, 90_000);
+      setSuggestTaskId(resp.taskId);
     } catch (err) {
       const msg = err instanceof ApiError
         ? err.body?.error ?? `Request failed (${err.status})`

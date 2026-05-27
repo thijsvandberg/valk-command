@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { tickets, ApiError } from "@/lib/api-client";
+import { streamTaskAsPromise } from "@/hooks/useTaskStream";
 import { getScoreColor, verdictLabel as getVerdictLabel } from "@/lib/status-colors";
 import type { StoredReview } from "@/types/ticket";
 
@@ -280,33 +281,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         throw new Error("No task ID returned from review generation");
       }
 
-      // Stream progress via SSE; resolve when the task completes or fails
-      await new Promise<void>((resolve, reject) => {
-        const es = new EventSource(`/api/workspace-tasks/${taskId}/stream`);
-        const timeout = setTimeout(() => {
-          es.close();
-          reject(new Error("Review timed out after 5 minutes"));
-        }, 5 * 60 * 1000);
-
-        es.addEventListener("result", () => {
-          clearTimeout(timeout);
-          es.close();
-          resolve();
-        });
-        es.addEventListener("error", (e) => {
-          clearTimeout(timeout);
-          es.close();
-          const msg = e instanceof MessageEvent
-            ? (JSON.parse(e.data) as { message?: string }).message ?? "Review failed"
-            : "Review failed";
-          reject(new Error(msg));
-        });
-        es.addEventListener("done", () => {
-          clearTimeout(timeout);
-          es.close();
-          resolve();
-        });
-      });
+      await streamTaskAsPromise(taskId);
 
       mutateReviews();
       // Revalidate ticket data so sidebar quality score updates

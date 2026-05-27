@@ -6,6 +6,7 @@ import type { Sprint, Ticket } from "@/types/ticket";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { jira, workspaceTasks } from "@/lib/api-client";
+import { useTaskStream } from "@/hooks/useTaskStream";
 import { Calendar, Target, Sparkles, Loader2, X, Check } from "lucide-react";
 
 interface SprintEditModalProps {
@@ -81,9 +82,39 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
   const [suggesting, setSuggesting] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [suggestionDate, setSuggestionDate] = useState<number | null>(null);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const restoredRef = useRef(false);
+
+  const { close: closeStream } = useTaskStream(activeTaskId, {
+    timeout: 0,
+    onResult: (data) => {
+      const text = (data.output ?? data.text ?? "") as string;
+      if (text) {
+        const now = Date.now();
+        setSuggestion(text);
+        setSuggestionDate(now);
+        if (activeTaskId) setStoredTask(sprint.id, { taskId: activeTaskId, suggestion: text, timestamp: now });
+      }
+    },
+    onProgress: (message) => {
+      // The progress event may contain text in its message field, but
+      // the original SprintEditModal only forwarded data.text via its
+      // progress listener. The hook receives the parsed message string
+      // which does not include raw text payloads, so no action needed here.
+      void message;
+    },
+    onDone: () => {
+      setSuggesting(false);
+    },
+    onError: () => {
+      setSuggesting(false);
+    },
+    onNetworkError: () => {
+      setSuggesting(false);
+    },
+  });
 
   // On mount: restore a previous suggestion or reconnect to a running task
   useEffect(() => {
@@ -99,7 +130,6 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
       return;
     }
 
-    // Task was started but no result yet - check its status
     setSuggesting(true);
     workspaceTasks.get(stored.taskId)
       .then((data) => {
@@ -110,7 +140,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
           setSuggesting(false);
           setStoredTask(sprint.id, { ...stored, suggestion: task.output });
         } else if (task.status === "running") {
-          reconnectStream(stored.taskId);
+          setActiveTaskId(stored.taskId);
         } else {
           setSuggesting(false);
           clearStoredTask(sprint.id);
@@ -132,55 +162,11 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
   useEffect(() => {
     if (autoSuggest && !autoSuggestFired.current && !suggesting && !suggestion) {
       autoSuggestFired.current = true;
-      // Defer to next tick so handleSuggestGoal is defined
       const t = setTimeout(() => handleSuggestGoalRef.current?.(), 0);
       return () => clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSuggest]);
-
-  function connectStream(taskId: string, onResult: (text: string) => void) {
-    const streamUrl = workspaceTasks.streamUrl(taskId);
-    const eventSource = new EventSource(streamUrl);
-
-    eventSource.addEventListener("result", (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        const text = data.output ?? data.text ?? "";
-        if (text) onResult(text);
-      } catch { /* ignore */ }
-    });
-
-    eventSource.addEventListener("progress", (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.text) onResult(data.text);
-      } catch { /* ignore */ }
-    });
-
-    eventSource.addEventListener("done", () => {
-      eventSource.close();
-      setSuggesting(false);
-    });
-
-    eventSource.addEventListener("error", () => {
-      eventSource.close();
-      setSuggesting(false);
-    });
-
-    return eventSource;
-  }
-
-  function reconnectStream(taskId: string) {
-    const es = connectStream(taskId, (text) => {
-      const now = Date.now();
-      setSuggestion(text);
-      setSuggestionDate(now);
-      setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: now });
-    });
-
-    abortRef.current?.signal.addEventListener("abort", () => es.close());
-  }
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -218,6 +204,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
 
     setSuggesting(true);
     setSuggestion(null);
+    setActiveTaskId(null);
 
     try {
       const ticketData = tickets
@@ -239,18 +226,11 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
         },
       }, controller.signal);
 
-      // Persist so suggestion survives navigation
       setStoredTask(sprint.id, { taskId, suggestion: null, timestamp: Date.now() });
-
-      const es = connectStream(taskId, (text) => {
-        const now = Date.now();
-        setSuggestion(text);
-        setSuggestionDate(now);
-        setStoredTask(sprint.id, { taskId, suggestion: text, timestamp: now });
-      });
+      setActiveTaskId(taskId);
 
       controller.signal.addEventListener("abort", () => {
-        es.close();
+        closeStream();
         setSuggesting(false);
       });
     } catch (err) {
@@ -260,7 +240,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
         : "Could not generate suggestion. Is the workspace running?";
       showToast(msg);
     }
-  }, [sprint.id, sprint.name, tickets, showToast]);
+  }, [sprint.id, sprint.name, tickets, showToast, closeStream]);
 
   const handleSuggestGoalRef = useRef(handleSuggestGoal);
   handleSuggestGoalRef.current = handleSuggestGoal;

@@ -5,7 +5,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Button } from "@/components/ui/Button";
 import { Sparkles, X, Link as LinkIcon, Loader2, AlertCircle } from "lucide-react";
 import { tickets } from "@/lib/api-client";
-import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
+import { useTaskStream } from "@/hooks/useTaskStream";
 import type { IssueType, RelatedSuggestionResponse } from "@/types/ticket";
 
 export interface RelatedSuggestion {
@@ -44,8 +44,49 @@ export function RelatedIssueSuggestionsPanel({
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progressText, setProgressText] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const [streamTaskId, setStreamTaskId] = useState<string | null>(null);
   const cancelledRef = useRef(false);
+
+  useTaskStream(streamTaskId, {
+    timeout: 0,
+    onProgress: (message) => {
+      if (!cancelledRef.current) setProgressText(message);
+    },
+    onToolCall: (tool) => {
+      const cleanName = tool.replace("mcp__jira__", "").replace("mcp__", "");
+      if (!cancelledRef.current) setProgressText(`Using ${cleanName}...`);
+    },
+    onResult: async (resultData) => {
+      if (cancelledRef.current) return;
+      setProgressText("Processing results...");
+      const output = (resultData.output as string) ?? "";
+      try {
+        const parsed = await tickets.applyRelatedSuggestions(ticketKey, { output });
+        if (cancelledRef.current) return;
+        setSuggestions(parsed.suggestions.map(toSuggestion));
+      } catch (err) {
+        if (cancelledRef.current) return;
+        setError(err instanceof Error ? err.message : "Failed to process results");
+      }
+      setHasSearched(true);
+      setIsLoading(false);
+      setProgressText(null);
+    },
+    onError: (message) => {
+      if (cancelledRef.current) return;
+      setError(message);
+      setHasSearched(true);
+      setIsLoading(false);
+      setProgressText(null);
+    },
+    onNetworkError: () => {
+      if (cancelledRef.current) return;
+      setError("Connection to workspace lost");
+      setHasSearched(true);
+      setIsLoading(false);
+      setProgressText(null);
+    },
+  });
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -55,7 +96,6 @@ export function RelatedIssueSuggestionsPanel({
         const data = await tickets.findRelatedSuggestions(ticketKey);
         if (cancelledRef.current) return;
 
-        // Cached result returned immediately
         if (data.cached && data.suggestions) {
           setSuggestions(data.suggestions.map(toSuggestion));
           setHasSearched(true);
@@ -63,65 +103,12 @@ export function RelatedIssueSuggestionsPanel({
           return;
         }
 
-        // Task submitted, stream progress
-        if (data.taskId && data.streamUrl) {
+        if (data.taskId) {
           setProgressText("Starting search...");
-
-          const es = new EventSource(data.streamUrl);
-          eventSourceRef.current = es;
-
-          attachTaskStreamListeners(es, {
-            onProgress: (message) => {
-              if (!cancelledRef.current) setProgressText(message);
-            },
-            onToolCall: (tool) => {
-              const cleanName = tool.replace("mcp__jira__", "").replace("mcp__", "");
-              if (!cancelledRef.current) setProgressText(`Using ${cleanName}...`);
-            },
-            onResult: async (resultData) => {
-              es.close();
-              eventSourceRef.current = null;
-              if (cancelledRef.current) return;
-
-              setProgressText("Processing results...");
-
-              const output = (resultData.output as string) ?? "";
-              try {
-                const parsed = await tickets.applyRelatedSuggestions(ticketKey, { output });
-                if (cancelledRef.current) return;
-                setSuggestions(parsed.suggestions.map(toSuggestion));
-              } catch (err) {
-                if (cancelledRef.current) return;
-                setError(err instanceof Error ? err.message : "Failed to process results");
-              }
-              setHasSearched(true);
-              setIsLoading(false);
-              setProgressText(null);
-            },
-            onStructuredError: (message) => {
-              es.close();
-              eventSourceRef.current = null;
-              if (cancelledRef.current) return;
-              setError(message);
-              setHasSearched(true);
-              setIsLoading(false);
-              setProgressText(null);
-            },
-            onNetworkError: () => {
-              es.close();
-              eventSourceRef.current = null;
-              if (cancelledRef.current) return;
-              setError("Connection to workspace lost");
-              setHasSearched(true);
-              setIsLoading(false);
-              setProgressText(null);
-            },
-          });
-
+          setStreamTaskId(data.taskId);
           return;
         }
 
-        // Unexpected response shape
         setHasSearched(true);
         setIsLoading(false);
       } catch (err) {
@@ -136,8 +123,7 @@ export function RelatedIssueSuggestionsPanel({
 
     return () => {
       cancelledRef.current = true;
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
+      setStreamTaskId(null);
     };
   }, [ticketKey]);
 

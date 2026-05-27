@@ -60,13 +60,13 @@ Create a `useTaskStream(taskId, handlers)` hook that:
 
 ## Checklist
 
-- [ ] Design the `useTaskStream` hook API
-- [ ] Implement `useTaskStream` in `src/hooks/useTaskStream.ts`
-- [ ] Migrate `TicketReview.tsx` to use the hook
-- [ ] Migrate `RelatedIssueSuggestions.tsx`
-- [ ] Migrate `SubtasksSection.tsx`
-- [ ] Migrate `EpicPicker.tsx`
-- [ ] Migrate `ReviewPopover.tsx`
-- [ ] Migrate `SprintEditModal.tsx`
+- [x] Design the `useTaskStream` hook API
+- [x] Implement `useTaskStream` in `src/hooks/useTaskStream.ts`
+- [x] Migrate `TicketReview.tsx` to use the hook
+- [x] Migrate `RelatedIssueSuggestions.tsx`
+- [x] Migrate `SubtasksSection.tsx`
+- [x] Migrate `EpicPicker.tsx`
+- [x] Migrate `ReviewPopover.tsx`
+- [x] Migrate `SprintEditModal.tsx`
 - [ ] Verify real-time streaming still works for all 6 features
 - [ ] All existing tests pass

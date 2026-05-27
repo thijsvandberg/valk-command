@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import type { StoredReview } from "@/types/ticket";
 import { tickets as ticketsApi } from "@/lib/api-client";
+import { streamTaskAsPromise } from "@/hooks/useTaskStream";
 import { getScoreColor } from "@/lib/status-colors";
 
 function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
@@ -156,13 +157,7 @@ export function ReviewPopover({
       const result = await ticketsApi.generateReview(ticketKey, { source: "ticket-detail" }) as { taskId?: string };
       const taskId = result?.taskId;
       if (taskId) {
-        await new Promise<void>((resolve) => {
-          const es = new EventSource(`/api/workspace-tasks/${taskId}/stream`);
-          const timeout = setTimeout(() => { es.close(); resolve(); }, 5 * 60 * 1000);
-          es.addEventListener("result", () => { clearTimeout(timeout); es.close(); resolve(); });
-          es.addEventListener("done", () => { clearTimeout(timeout); es.close(); resolve(); });
-          es.addEventListener("error", () => { clearTimeout(timeout); es.close(); resolve(); });
-        });
+        await streamTaskAsPromise(taskId).catch(() => {});
       }
       mutateReviews();
     } catch {
