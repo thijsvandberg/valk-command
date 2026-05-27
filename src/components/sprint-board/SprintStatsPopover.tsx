@@ -9,6 +9,8 @@ import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeI
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { swrFetcher } from "@/lib/api-client";
 import { AlertTriangle, X, Calendar, ChevronDown, Users, Loader2 } from "lucide-react";
+import { computeWorkingDays } from "./sprint-stats-utils";
+import { SummaryCard, SectionLabel, FilterRow, RowMetrics, BarTrack, Bar } from "./sprint-stats-parts";
 
 const STATUS_ORDER: JiraStatus[] = ["DONE", "TEST", "IN PROGRESS", "TO DO"];
 const STATUS_LABELS: Record<string, string> = {
@@ -17,25 +19,6 @@ const STATUS_LABELS: Record<string, string> = {
   TEST: "Test",
   DONE: "Done",
 };
-
-function computeWorkingDays(sprint: Sprint | undefined): { remaining: number | null; total: number | null } {
-  if (!sprint || sprint.state !== "active" || !sprint.startDate || !sprint.endDate) return { remaining: null, total: null };
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const start = new Date(sprint.startDate);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(sprint.endDate);
-  end.setHours(0, 0, 0, 0);
-  let total = 0;
-  const d1 = new Date(start);
-  while (d1 <= end) { if (d1.getDay() !== 0 && d1.getDay() !== 6) total++; d1.setDate(d1.getDate() + 1); }
-  let remaining = 0;
-  if (end >= now) {
-    const d2 = new Date(now);
-    while (d2 <= end) { if (d2.getDay() !== 0 && d2.getDay() !== 6) remaining++; d2.setDate(d2.getDate() + 1); }
-  }
-  return { remaining, total };
-}
 
 interface SprintStatsPopoverProps {
   /** Tickets for the initially selected sprint (avoids refetch for active sprint) */
@@ -505,74 +488,3 @@ export function SprintStatsPopover({
   );
 }
 
-// -- Sub-components --
-
-function SummaryCard({ label, value, sub }: { label: string; value: number; sub?: string }) {
-  return (
-    <div className="rounded-lg px-3.5 py-3" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
-      <div className="text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">{label}</div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-heading font-semibold text-text-primary tabular-nums leading-none">{value}</span>
-        {sub && <span className="text-[10px] text-text-muted">{sub}</span>}
-      </div>
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[10px] uppercase tracking-wider text-text-muted font-medium mb-3">{children}</div>
-  );
-}
-
-function FilterRow({ children, onClick, accentColor }: { children: React.ReactNode; onClick?: () => void; accentColor?: string }) {
-  if (!onClick) return <div className="-mx-2 px-2 py-1.5" style={{ borderLeft: "2px solid transparent" }}>{children}</div>;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group w-full text-left rounded-md -mx-2 px-2 py-1.5 cursor-pointer transition-colors duration-100 hover:bg-[var(--color-overlay-subtle)]"
-      style={{ borderLeft: "2px solid transparent" }}
-      onMouseEnter={(e) => { if (accentColor) e.currentTarget.style.borderLeftColor = accentColor; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderLeftColor = "transparent"; }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function RowMetrics({ count, sp, bv }: { count: number; sp: number; bv: number }) {
-  return (
-    <div className="flex items-baseline gap-2.5 text-[11px] tabular-nums shrink-0 ml-3">
-      <span className="font-semibold text-text-primary min-w-[14px] text-right">{count}</span>
-      {sp > 0 && <MetricChip value={sp} unit="SP" />}
-      {bv > 0 && <MetricChip value={bv} unit="BV" />}
-    </div>
-  );
-}
-
-function MetricChip({ value, unit }: { value: number; unit: string }) {
-  return (
-    <span className="flex items-center gap-0.5">
-      <span className="text-text-tertiary">{value}</span>
-      <span className="text-[9px] uppercase text-text-muted tracking-wide">{unit}</span>
-    </span>
-  );
-}
-
-function BarTrack({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="h-[4px] rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-overlay-default)" }}>
-      {children}
-    </div>
-  );
-}
-
-function Bar({ pct, color, opacity }: { pct: number; color: string; opacity: number }) {
-  return (
-    <div
-      className="h-full rounded-full"
-      style={{ width: `${pct}%`, backgroundColor: color, opacity, transition: "width 400ms ease-out" }}
-    />
-  );
-}
