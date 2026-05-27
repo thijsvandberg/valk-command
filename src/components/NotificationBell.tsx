@@ -2,184 +2,19 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import {
   Bell,
   CheckCheck,
-  GitBranch,
-  Rocket,
-  GitPullRequest,
   ExternalLink,
-  RefreshCw,
-  NotebookPen,
-  Info,
   Trash2,
   X,
   Check,
-  Bot,
-  Timer,
 } from "lucide-react";
 import { useNotifications } from "@/hooks/usePipelines";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
-
-function formatTimeAgo(iso: string): string {
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
-function formatExactTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-}
-
-// Shows a late-sync indicator when eventAt is more than 30 minutes before createdAt.
-// The threshold avoids false positives from minor clock skew or short polling delays.
-const LATE_SYNC_THRESHOLD_MS = 30 * 60 * 1000;
-
-function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: string | null }) {
-  const [visible, setVisible] = useState(false);
-  const [syncVisible, setSyncVisible] = useState(false);
-  const [pos, setPos] = useState<"above" | "below">("above");
-  const ref = useRef<HTMLSpanElement>(null);
-  const syncRef = useRef<HTMLSpanElement>(null);
-
-  const displayIso = eventAt ?? createdAt;
-  const syncGapMs = eventAt ? new Date(createdAt).getTime() - new Date(eventAt).getTime() : 0;
-  const isLateSync = syncGapMs > LATE_SYNC_THRESHOLD_MS;
-
-  const handleMouseEnter = () => {
-    if (ref.current) {
-      const rect = ref.current.getBoundingClientRect();
-      setPos(rect.top > 60 ? "above" : "below");
-    }
-    setVisible(true);
-  };
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        ref={ref}
-        className="relative inline-block"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setVisible(false)}
-      >
-        <span className="text-caption text-text-muted tabular-nums cursor-default select-none">
-          {formatTimeAgo(displayIso)}
-        </span>
-        {visible && (
-          <span
-            className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
-              pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
-            }`}
-          >
-            {formatExactTime(displayIso)}
-          </span>
-        )}
-      </span>
-      {isLateSync && (
-        <span
-          ref={syncRef}
-          className="relative inline-block"
-          onMouseEnter={() => setSyncVisible(true)}
-          onMouseLeave={() => setSyncVisible(false)}
-        >
-          <span className="text-caption text-text-muted tabular-nums cursor-default select-none">
-            (synced {formatTimeAgo(createdAt)})
-          </span>
-          {syncVisible && (
-            <span
-              className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
-                pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
-              }`}
-            >
-              Synced at {formatExactTime(createdAt)}
-            </span>
-          )}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function renderMessage(
-  message: string,
-  jiraKey: string | null,
-  href: string | null,
-  onLinkClick: () => void,
-): React.ReactNode {
-  if (!jiraKey || !href || !message.includes(jiraKey)) return message;
-  const idx = message.indexOf(jiraKey);
-  return (
-    <>
-      {message.slice(0, idx)}
-      <Link
-        href={href}
-        onClick={onLinkClick}
-        className="font-mono text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
-      >
-        {jiraKey}
-      </Link>
-      {message.slice(idx + jiraKey.length)}
-    </>
-  );
-}
-
-function notificationIcon(type: string) {
-  switch (type) {
-    case "deployment":
-      return <Rocket size={13} strokeWidth={1.5} className="text-violet-400" />;
-    case "pipeline":
-      return <GitBranch size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />;
-    case "pr":
-      return <GitPullRequest size={13} strokeWidth={1.5} className="text-amber-400" />;
-    case "sync":
-      return <RefreshCw size={13} strokeWidth={1.5} className="text-emerald-400" />;
-    case "story-writer":
-      return <NotebookPen size={13} strokeWidth={1.5} className="text-sky-400" />;
-    case "system":
-      return <Info size={13} strokeWidth={1.5} className="text-text-tertiary" />;
-    case "agent":
-      return <Bot size={13} strokeWidth={1.5} className="text-purple-400" />;
-    case "scheduler":
-      return <Timer size={13} strokeWidth={1.5} className="text-orange-400" />;
-    default:
-      return <Bell size={13} strokeWidth={1.5} className="text-text-tertiary" />;
-  }
-}
-
-
-function typeLabel(type: string): string {
-  switch (type) {
-    case "pr":           return "Pull requests";
-    case "pipeline":     return "Pipelines";
-    case "deployment":   return "Deployments";
-    case "story-writer": return "Story writer";
-    case "sync":         return "Sync";
-    case "agent":        return "Agent";
-    case "scheduler":    return "Scheduler";
-    case "system":       return "System";
-    default:             return type;
-  }
-}
-
-// Extracts team prefix from a sprint display name (e.g. "BM: 135" → "BM").
-function extractTeamPrefix(sprintName: string | null): string | null {
-  if (!sprintName) return null;
-  const idx = sprintName.indexOf(": ");
-  return idx > 0 ? sprintName.slice(0, idx) : null;
-}
+import { TimeAgo } from "@/components/notifications/TimeAgo";
+import { renderMessage, notificationIcon, typeLabel, extractTeamPrefix } from "@/components/notifications/notification-utils";
 
 export function NotificationBell() {
   const { notifications, unreadCount, subscribedUnreadCount, subscribedTeams, totalCount, markRead, markAllRead, clearRead, dismissOne, markFilteredRead, clearFiltered } = useNotifications(50);

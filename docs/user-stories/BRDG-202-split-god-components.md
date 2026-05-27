@@ -64,7 +64,7 @@ For each component:
 - [x] Extract date calculation logic into utility
 
 ### Secondary components
-- [ ] Review and split `NotificationBell.tsx` (547 lines)
+- [x] Review and split `NotificationBell.tsx` (547 lines)
 - [ ] Review and split `SprintStatsPopover.tsx` (578 lines)
 
 - [ ] All existing tests pass after each split
