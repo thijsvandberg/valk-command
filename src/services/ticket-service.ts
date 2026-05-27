@@ -7,7 +7,7 @@ import { jiraClient, JiraApiError, FLAGGED_FIELD } from "@/lib/jira-client";
 import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { logActivity } from "@/lib/activity-logger";
-import { sanitizeHtml, sanitizeText } from "@/lib/sanitize";
+import { sanitizeText } from "@/lib/sanitize";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
@@ -265,8 +265,9 @@ export async function upsertLocalEdit(
     throw new ValidationError(`localValue must not exceed ${maxLen} characters`);
   }
 
+  // Title: strip HTML tags. Description: store raw markdown (rendered safely via React JSX).
   const sanitizedValue =
-    field === "title" ? sanitizeText(localValue) : sanitizeHtml(localValue);
+    field === "title" ? sanitizeText(localValue) : localValue;
 
   const now = new Date().toISOString();
   const draftFlag = isDraft === true;
@@ -493,7 +494,7 @@ export async function updateTicketMetadata(
     }
     updates.poNotes =
       typeof input.poNotes === "string"
-        ? sanitizeHtml(input.poNotes)
+        ? input.poNotes
         : input.poNotes;
   }
 

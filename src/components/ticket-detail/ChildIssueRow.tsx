@@ -1,9 +1,8 @@
 "use client";
 
 import type { Ref } from "react";
-import type { Subtask } from "@/types/ticket";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
+import type { Subtask, TicketReadiness } from "@/types/ticket";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Loader2 } from "lucide-react";
 
 interface ChildIssueRowProps {
@@ -12,18 +11,18 @@ interface ChildIssueRowProps {
   isLast: boolean;
   isPending?: boolean;
   showTypeIcon?: boolean;
-  showKey?: boolean;
+  showPill?: boolean;
+  readiness?: TicketReadiness | null;
   onSelect?: (key: string) => void;
   /** Inline editing support */
   isEditing?: boolean;
   editValue?: string;
   onEditChange?: (value: string) => void;
-  onStartEdit?: () => void;
   onSaveEdit?: () => void;
   onCancelEdit?: () => void;
-  /** Slot for extra metadata (story points, sprint, subtask count, status badge, etc.) */
+  /** Slot for extra metadata (story points, sprint, subtask count, etc.) */
   metadataSlot?: React.ReactNode;
-  /** Slot for row-level actions (delete button, etc.) */
+  /** Slot for row-level actions (edit, delete buttons shown on hover) */
   actionsSlot?: React.ReactNode;
   /** Slot for drag handle (left of content) */
   dragHandleSlot?: React.ReactNode;
@@ -41,12 +40,12 @@ export function ChildIssueRow({
   isLast,
   isPending = false,
   showTypeIcon = false,
-  showKey = true,
+  showPill = true,
+  readiness,
   onSelect,
   isEditing = false,
   editValue = "",
   onEditChange,
-  onStartEdit,
   onSaveEdit,
   onCancelEdit,
   metadataSlot,
@@ -80,15 +79,22 @@ export function ChildIssueRow({
     >
       {dragHandleSlot}
 
-      {showTypeIcon && <IssueTypeIcon type={item.type} size={14} />}
-
-      {showKey && (
+      {showPill && (
         isPending ? (
           <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
             <Loader2 size={10} className="animate-spin" />
           </span>
         ) : (
-          <TicketKeyPill ticketKey={item.key} />
+          <span onClick={(e) => e.stopPropagation()}>
+            <TicketStatusPill
+              ticketKey={item.key}
+              jiraStatus={item.jiraStatus}
+              issueType={showTypeIcon ? item.type : undefined}
+              readiness={readiness}
+              title={item.title}
+              size="sm"
+            />
+          </span>
         )
       )}
 
@@ -107,13 +113,7 @@ export function ChildIssueRow({
           className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none border-b border-[var(--color-brand-400)]"
         />
       ) : (
-        <span
-          className={`min-w-0 flex-1 truncate text-sm text-text-secondary ${
-            !isPending && onStartEdit ? "cursor-text hover:text-text-primary" : ""
-          }`}
-          onClick={!isPending && onStartEdit ? (e: React.MouseEvent) => { e.stopPropagation(); onStartEdit(); } : undefined}
-          style={{ transition: "color 0.15s ease" }}
-        >
+        <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
           {item.title}
         </span>
       )}

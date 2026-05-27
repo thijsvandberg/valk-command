@@ -3,15 +3,9 @@ import { describe, it, expect, vi } from "vitest";
 import { ChildIssueRow } from "./ChildIssueRow";
 import type { Subtask } from "@/types/ticket";
 
-vi.mock("@/components/shared/TicketKeyPill", () => ({
-  TicketKeyPill: ({ ticketKey }: { ticketKey: string }) => (
-    <button type="button" data-testid="ticket-key-pill">{ticketKey}</button>
-  ),
-}));
-
-vi.mock("@/components/shared/IssueTypeIcon", () => ({
-  IssueTypeIcon: ({ type }: { type: string }) => (
-    <span data-testid="issue-type-icon">{type}</span>
+vi.mock("@/components/shared/TicketStatusPill", () => ({
+  TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => (
+    <span data-testid="ticket-status-pill">{ticketKey}</span>
   ),
 }));
 
@@ -29,30 +23,20 @@ describe("ChildIssueRow", () => {
     expect(screen.getByText("Test subtask")).toBeInTheDocument();
   });
 
-  it("renders TicketKeyPill when showKey is true", () => {
-    render(<ChildIssueRow item={baseSub} isLast={false} showKey />);
-    expect(screen.getByTestId("ticket-key-pill")).toHaveTextContent("VPL-100");
+  it("renders TicketStatusPill when showPill is true (default)", () => {
+    render(<ChildIssueRow item={baseSub} isLast={false} />);
+    expect(screen.getByTestId("ticket-status-pill")).toHaveTextContent("VPL-100");
   });
 
-  it("hides TicketKeyPill when showKey is false", () => {
-    render(<ChildIssueRow item={baseSub} isLast={false} showKey={false} />);
-    expect(screen.queryByTestId("ticket-key-pill")).not.toBeInTheDocument();
+  it("hides pill when showPill is false", () => {
+    render(<ChildIssueRow item={baseSub} isLast={false} showPill={false} />);
+    expect(screen.queryByTestId("ticket-status-pill")).not.toBeInTheDocument();
   });
 
   it("shows spinner instead of pill when pending", () => {
     const pending = { ...baseSub, key: "pending-123" };
-    render(<ChildIssueRow item={pending} isLast={false} isPending showKey />);
-    expect(screen.queryByTestId("ticket-key-pill")).not.toBeInTheDocument();
-  });
-
-  it("shows IssueTypeIcon when showTypeIcon is true", () => {
-    render(<ChildIssueRow item={baseSub} isLast={false} showTypeIcon />);
-    expect(screen.getByTestId("issue-type-icon")).toHaveTextContent("subtask");
-  });
-
-  it("hides IssueTypeIcon when showTypeIcon is false", () => {
-    render(<ChildIssueRow item={baseSub} isLast={false} showTypeIcon={false} />);
-    expect(screen.queryByTestId("issue-type-icon")).not.toBeInTheDocument();
+    render(<ChildIssueRow item={pending} isLast={false} isPending showPill />);
+    expect(screen.queryByTestId("ticket-status-pill")).not.toBeInTheDocument();
   });
 
   it("calls onSelect when row is clicked", () => {
@@ -165,19 +149,6 @@ describe("ChildIssueRow", () => {
       );
       fireEvent.keyDown(screen.getByDisplayValue("New title"), { key: "Escape" });
       expect(onCancelEdit).toHaveBeenCalled();
-    });
-
-    it("calls onStartEdit when title span is clicked", () => {
-      const onStartEdit = vi.fn();
-      render(
-        <ChildIssueRow
-          item={baseSub}
-          isLast={false}
-          onStartEdit={onStartEdit}
-        />,
-      );
-      fireEvent.click(screen.getByText("Test subtask"));
-      expect(onStartEdit).toHaveBeenCalled();
     });
 
     it("hides actions slot when editing", () => {

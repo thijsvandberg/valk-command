@@ -299,7 +299,6 @@ export function EpicChildrenSection({
             </span>
           </Tooltip>
         )}
-        {visibleFields.has("status") && <StatusBadge status={child.jiraStatus} />}
         {visibleFields.has("assignee") && <Avatar assignee={child.assignee} size={22} />}
       </>
     );
@@ -312,7 +311,7 @@ export function EpicChildrenSection({
       isLast={idx === filtered.length - 1}
       isPending={child.key.startsWith("pending-")}
       showTypeIcon
-      showKey={visibleFields.has("issueKey")}
+      showPill={visibleFields.has("issueKey")}
       onSelect={onSelectTicket}
       metadataSlot={renderMetadata(child)}
     />

@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { TicketDetail, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader } from "./ChildIssueListHeader";
 import { ChildIssueStatusFilter } from "./ChildIssueStatusFilter";
@@ -10,7 +9,7 @@ import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { GripVertical, Filter, Sparkles, Undo2, Loader2, X } from "lucide-react";
+import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
 import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
@@ -32,8 +31,7 @@ import {
 } from "@dnd-kit/sortable";
 
 const SUBTASK_FIELDS = [
-  { id: "issueKey", label: "issue keys" },
-  { id: "status", label: "status" },
+  { id: "issueKey", label: "issue pill" },
 ];
 
 interface SubtasksSectionProps {
@@ -45,6 +43,21 @@ interface SubtasksSectionProps {
   compactFilters?: boolean;
   defaultHideKeys?: boolean;
   showDragHandles?: boolean;
+}
+
+function EditButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted opacity-0 group-hover:opacity-100 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
+      style={{ transition: "opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease" }}
+      title="Rename subtask"
+    >
+      <SquarePen size={13} strokeWidth={2} />
+      <span>Edit</span>
+    </button>
+  );
 }
 
 function DeleteButton({ onClick }: { onClick: () => void }) {
@@ -66,8 +79,7 @@ function SortableSubtaskRow({
   sub,
   isLast,
   onSelect,
-  showKey,
-  showStatus,
+  showPill,
   showDragHandle,
   displayTitle,
   isEditing,
@@ -81,8 +93,7 @@ function SortableSubtaskRow({
   sub: Subtask;
   isLast: boolean;
   onSelect?: (key: string) => void;
-  showKey: boolean;
-  showStatus: boolean;
+  showPill: boolean;
   showDragHandle?: boolean;
   displayTitle: string;
   isEditing: boolean;
@@ -129,16 +140,19 @@ function SortableSubtaskRow({
       ref={setNodeRef}
       item={itemWithTitle}
       isLast={isLast}
-      showKey={showKey}
+      showPill={showPill}
       onSelect={onSelect}
       isEditing={isEditing}
       editValue={editValue}
       onEditChange={onEditChange}
-      onStartEdit={onStartEdit}
       onSaveEdit={onSaveEdit}
       onCancelEdit={onCancelEdit}
-      metadataSlot={showStatus ? <StatusBadge status={sub.jiraStatus} /> : undefined}
-      actionsSlot={<DeleteButton onClick={onDelete} />}
+      actionsSlot={
+        <>
+          <EditButton onClick={onStartEdit} />
+          <DeleteButton onClick={onDelete} />
+        </>
+      }
       dragHandleSlot={dragHandle}
       style={style}
       className={isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""}
@@ -182,7 +196,7 @@ export function SubtasksSection({
   const suggestRetryRef = useRef(0);
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
 
-  const defaultVisible = defaultHideKeys ? ["status"] : ["issueKey", "status"];
+  const defaultVisible = defaultHideKeys ? [] : ["issueKey"];
   const { visible: visibleFields, toggleField } = useSectionVisibility("subtasks", defaultVisible);
 
   // Load persisted suggestions on mount
@@ -537,8 +551,7 @@ export function SubtasksSection({
 
   const isDndEnabled = filter === "all" && filtered.length > 1;
   const isFiltered = filter !== "all";
-  const showKey = visibleFields.has("issueKey");
-  const showStatus = visibleFields.has("status");
+  const showPill = visibleFields.has("issueKey");
 
   const subtaskRows = filtered.map((sub, idx) => {
     const isPending = sub.key.startsWith("pending-");
@@ -551,8 +564,7 @@ export function SubtasksSection({
           sub={sub}
           isLast={idx === filtered.length - 1}
           onSelect={onSelectTicket}
-          showKey={showKey}
-          showStatus={showStatus}
+          showPill={showPill}
           showDragHandle={showDragHandles}
           displayTitle={displayTitle}
           isEditing={editingKey === sub.key}
@@ -574,16 +586,19 @@ export function SubtasksSection({
         item={itemWithTitle}
         isLast={idx === filtered.length - 1}
         isPending={isPending}
-        showKey={showKey}
+        showPill={showPill}
         onSelect={onSelectTicket}
         isEditing={!isPending && editingKey === sub.key}
         editValue={editingTitle}
         onEditChange={setEditingTitle}
-        onStartEdit={!isPending ? () => handleStartEdit(sub.key, displayTitle) : undefined}
         onSaveEdit={handleSaveEdit}
         onCancelEdit={handleCancelEdit}
-        metadataSlot={showStatus ? <StatusBadge status={sub.jiraStatus} /> : undefined}
-        actionsSlot={!isPending ? <DeleteButton onClick={() => handleDelete(sub, idx)} /> : undefined}
+        actionsSlot={!isPending ? (
+          <>
+            <EditButton onClick={() => handleStartEdit(sub.key, displayTitle)} />
+            <DeleteButton onClick={() => handleDelete(sub, idx)} />
+          </>
+        ) : undefined}
       />
     );
   });

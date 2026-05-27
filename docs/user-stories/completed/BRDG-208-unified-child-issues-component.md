@@ -1,6 +1,6 @@
 # BRDG-208: Unified Child Issues Component
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -126,7 +126,7 @@ Current subtask rows show controls on the right side (status badge, delete icon,
 - [x] Verify all existing EpicChildrenSection features still work (create, link, search, field toggles)
 - [x] Verify all existing SubtasksSection features still work (create, drag-and-drop, rename, delete, AI suggestions)
 - [x] Update/migrate existing tests for both sections
-- [ ] All tests pass, lint clean, build succeeds
+- [x] All tests pass, lint clean, build succeeds
 
 ## Out of scope
 
