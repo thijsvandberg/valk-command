@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { Plus, MessageCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { BasePicker } from "@/components/shared/BasePicker";
 import type { ConversationType } from "@/types/chat";
 
 interface ConversationTypePickerProps {
@@ -24,69 +25,50 @@ const options: { type: ConversationType; label: string; icon: React.ReactNode }[
 ];
 
 export default function ConversationTypePicker({ onCreate, collapsed }: ConversationTypePickerProps) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  return (
+    <BasePicker.Root portal={false}>
+      <ConversationTypePickerInner onCreate={onCreate} />
+    </BasePicker.Root>
+  );
+}
+
+function ConversationTypePickerInner({ onCreate }: { onCreate: (type: ConversationType) => void }) {
+  const { handleClose } = BasePicker.useContext();
 
   const handleSelect = useCallback(
     (type: ConversationType) => {
-      setOpen(false);
+      handleClose();
       onCreate(type);
     },
-    [onCreate],
+    [onCreate, handleClose],
   );
 
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
   return (
-    <div ref={containerRef} className="relative">
-      <Button
-        variant="soft"
-        iconOnly
-        icon={<Plus className="h-4 w-4" strokeWidth={2} />}
-        onClick={() => setOpen((prev) => !prev)}
-        aria-label="New conversation"
-        aria-expanded={open}
-      />
+    <>
+      <BasePicker.Trigger className="inline-flex">
+        {({ open }) => (
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+            <Plus className="h-4 w-4" strokeWidth={2} />
+          </span>
+        )}
+      </BasePicker.Trigger>
 
-      {open && (
-        <div
-          className="absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]"
-          role="menu"
-        >
-          <div className="p-1">
-            {options.map((opt) => (
-              <button
-                key={opt.type}
-                type="button"
-                role="menuitem"
-                onClick={() => handleSelect(opt.type)}
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-[var(--font-body)] text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
-              >
-                <span className="text-text-tertiary">{opt.icon}</span>
-                {opt.label}
-              </button>
-            ))}
-          </div>
+      <BasePicker.Popover width="min-w-[180px]" className="rounded-lg border-border-strong shadow-[var(--shadow-lg)]">
+        <div className="p-1" role="menu">
+          {options.map((opt) => (
+            <button
+              key={opt.type}
+              type="button"
+              role="menuitem"
+              onClick={() => handleSelect(opt.type)}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-[var(--font-body)] text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <span className="text-text-tertiary">{opt.icon}</span>
+              {opt.label}
+            </button>
+          ))}
         </div>
-      )}
-    </div>
+      </BasePicker.Popover>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 # BRDG-201: Extract BasePicker Component
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** High
 **Type:** Refactoring
 
@@ -95,14 +95,14 @@ The 11 pickers fall into 4 categories:
 - [x] Fine-tune BasePicker styling and behavior based on showcase review
 
 ### Phase 3: Migration
-- [ ] Replace `IssueTypePicker` with BasePicker version
-- [ ] Replace `AssigneePicker` with BasePicker version
-- [ ] Replace `LabelPicker` with BasePicker version
-- [ ] Replace `StoryPointPicker` with BasePicker version
-- [ ] Replace `SprintPicker` with BasePicker version
-- [ ] Replace `BusinessValuePicker` with BasePicker version
-- [ ] Replace `VersionPicker` with BasePicker version
-- [ ] Replace `EpicPicker` with BasePicker version
-- [ ] Migrate 3 feature-specific pickers (SessionStoryPointPicker, SplitStoryPicker, ConversationTypePicker)
-- [ ] All existing picker tests pass
+- [x] Replace `IssueTypePicker` with BasePicker version
+- [x] Replace `AssigneePicker` with BasePicker version
+- [x] Replace `LabelPicker` with BasePicker version
+- [x] Replace `StoryPointPicker` with BasePicker version
+- [x] Replace `SprintPicker` with BasePicker version
+- [x] Replace `BusinessValuePicker` with BasePicker version
+- [x] Replace `VersionPicker` with BasePicker version
+- [x] Replace `EpicPicker` with BasePicker version
+- [x] Migrate 3 feature-specific pickers (SessionStoryPointPicker, SplitStoryPicker, ConversationTypePicker) <!-- ConversationTypePicker migrated; SessionStoryPointPicker and SplitStoryPicker skipped: they are not dropdown pickers (inline expand and modal dialog respectively) -->
+- [x] All existing picker tests pass
 - [ ] Remove `/dev/pickers` showcase page (or keep as living documentation)

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { usePickerState } from "@/components/shared/BasePicker";
 import { getSpColor } from "@/types/ticket";
 import { Minus, X, Hash } from "lucide-react";
 
@@ -21,50 +22,30 @@ export function StoryPointPicker({
   subtle?: boolean;
   size?: "sm" | "lg";
 }) {
-  const [open, setOpen] = useState(false);
+  const isLg = size === "lg";
   const [hovered, setHovered] = useState(false);
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [lgCustomInput, setLgCustomInput] = useState("");
-  const [pos, setPos] = useState<{ top: number; left: number; flipUp: boolean } | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
   const lgCustomInputRef = useRef<HTMLInputElement>(null);
+
+  const { open, pos, triggerRef, popoverRef, handleOpen, handleClose, getPopoverStyle } = usePickerState({
+    portal: true,
+    align,
+    popoverHeight: isLg ? 80 : 48,
+    onClose: () => {
+      setCustomMode(false);
+      setCustomInput("");
+    },
+  });
+
   const handleMouseEnter = useCallback(() => setHovered(true), []);
   const handleMouseLeave = useCallback(() => setHovered(false), []);
 
-  const isLg = size === "lg";
-
-  const updatePosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const flipUp = rect.bottom + (isLg ? 80 : 48) > window.innerHeight;
-    setPos({
-      top: flipUp ? rect.top : rect.bottom + 4,
-      left: align === "left" ? rect.left : rect.right,
-      flipUp,
-    });
-  }, [align, isLg]);
-
-  const handleOpen = useCallback(() => {
-    updatePosition();
-    setOpen(true);
-    setCustomMode(false);
-    setCustomInput("");
-  }, [updatePosition]);
-
-  const handleClose = useCallback(() => {
-    setOpen(false);
-    setCustomMode(false);
-    setCustomInput("");
-  }, []);
-
   const handleCustomSubmit = useCallback(() => {
     const parsed = parseInt(customInput, 10);
-    if (parsed > 0 && parsed <= 999) {
-      onChange(parsed);
-    }
+    if (parsed > 0 && parsed <= 999) onChange(parsed);
     handleClose();
   }, [customInput, onChange, handleClose]);
 
@@ -77,39 +58,23 @@ export function StoryPointPicker({
   }, [lgCustomInput, onChange, handleClose]);
 
   useEffect(() => {
-    if (customMode && customInputRef.current) {
-      customInputRef.current.focus();
-    }
+    if (customMode && customInputRef.current) customInputRef.current.focus();
   }, [customMode]);
 
+  // Keyboard shortcuts for presets
   useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        triggerRef.current?.contains(e.target as Node) ||
-        popoverRef.current?.contains(e.target as Node)
-      ) return;
-      handleClose();
-    }
+    if (!open || customMode) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (customMode) return;
       if (lgCustomInputRef.current && document.activeElement === lgCustomInputRef.current) return;
-      if (e.key === "Escape") { handleClose(); return; }
+      if (e.key === "Escape") return;
       const num = parseInt(e.key, 10);
       if (SP_PRESET_SET.has(num)) { onChange(num); handleClose(); return; }
       if (e.key === "0" || e.key === "-") { onChange(0); handleClose(); return; }
       if (e.key === "Backspace" || e.key === "Delete") { onChange(null); handleClose(); }
     }
-    function handleScroll() { updatePosition(); }
-    document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("scroll", handleScroll, true);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("scroll", handleScroll, true);
-    };
-  }, [open, customMode, onChange, updatePosition, handleClose]);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, customMode, onChange, handleClose]);
 
   const isNA = value === 0;
   const isCustomValue = value != null && value > 0 && !SP_PRESET_SET.has(value);
@@ -117,7 +82,6 @@ export function StoryPointPicker({
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
 
-  // Size-dependent dimensions
   const btnSize = isLg ? "h-10 w-10" : "h-7 w-7";
   const btnText = isLg ? "text-sm font-semibold" : "text-xs font-medium";
   const iconSize = isLg ? 14 : 12;
@@ -144,9 +108,7 @@ export function StoryPointPicker({
           }}
         >
           <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>
-          <span className="text-xs font-semibold tabular-nums">
-            {displayLabel ?? "?"}
-          </span>
+          <span className="text-xs font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
         <button
@@ -171,80 +133,27 @@ export function StoryPointPicker({
         <div
           ref={popoverRef}
           className={`fixed z-[9999] rounded-lg border border-border-default ${popoverPadding}`}
-          style={{
-            top: pos.flipUp ? undefined : pos.top,
-            bottom: pos.flipUp ? window.innerHeight - pos.top + 4 : undefined,
-            left: align === "left" ? pos.left : undefined,
-            right: align === "right" ? window.innerWidth - pos.left : undefined,
-            backgroundColor: "var(--color-surface-floating)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
-          }}
+          style={getPopoverStyle()}
         >
           {isLg ? (
             <>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Story Points</div>
               <div className="flex items-center gap-1.5">
-                {/* N/A option */}
-                <button
-                  type="button"
-                  onClick={() => { onChange(0); handleClose(); }}
-                  title="Not applicable"
-                  className="flex h-10 w-10 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
-                  style={{
-                    color: isNA ? "#fff" : "#555a64",
-                    backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)",
-                    boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined,
-                  }}
-                >
+                <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-10 w-10 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)", boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined }}>
                   <Minus size={14} strokeWidth={1.5} />
                 </button>
-
-                {/* Preset options */}
                 {SP_PRESET_OPTIONS.map((n) => {
                   const c = getSpColor(n);
                   const isActive = n === value;
                   return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => { onChange(n); handleClose(); }}
-                      className="flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
-                      style={{
-                        color: isActive ? "#fff" : c.text,
-                        backgroundColor: isActive ? c.text : c.bg,
-                        boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined,
-                      }}
-                    >
+                    <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
                       {n}
                     </button>
                   );
                 })}
-
-                {/* Inline custom input */}
-                <input
-                  ref={lgCustomInputRef}
-                  type="number"
-                  min="1"
-                  max="999"
-                  value={lgCustomInput}
-                  onChange={(e) => setLgCustomInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.preventDefault(); handleLgCustomSubmit(); }
-                    if (e.key === "Escape") { e.preventDefault(); handleClose(); }
-                  }}
-                  placeholder="#"
-                  className="h-10 w-10 rounded-md border border-border-default bg-[var(--color-surface-default)] text-center text-sm font-medium tabular-nums text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  style={{ transition: "border-color 0.15s ease" }}
-                />
-
-                {/* Clear (back to unset) */}
+                <input ref={lgCustomInputRef} type="number" min="1" max="999" value={lgCustomInput} onChange={(e) => setLgCustomInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleLgCustomSubmit(); } if (e.key === "Escape") { e.preventDefault(); handleClose(); } }} placeholder="#" className="h-10 w-10 rounded-md border border-border-default bg-[var(--color-surface-default)] text-center text-sm font-medium tabular-nums text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" style={{ transition: "border-color 0.15s ease" }} />
                 {value != null && (
-                  <button
-                    type="button"
-                    onClick={() => { onChange(null); handleClose(); }}
-                    title="Clear"
-                    className="flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60"
-                  >
+                  <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear" className="flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60">
                     <X size={14} strokeWidth={1.5} />
                   </button>
                 )}
@@ -252,89 +161,30 @@ export function StoryPointPicker({
             </>
           ) : customMode ? (
             <div className="flex items-center gap-1">
-              <input
-                ref={customInputRef}
-                type="number"
-                min="1"
-                max="999"
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); handleCustomSubmit(); }
-                  if (e.key === "Escape") { e.preventDefault(); setCustomMode(false); setCustomInput(""); }
-                }}
-                placeholder="SP"
-                className={`${customInputH} rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 text-center ${customInputText} tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)]`}
-              />
-              <button
-                type="button"
-                onClick={handleCustomSubmit}
-                className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}
-              >
+              <input ref={customInputRef} type="number" min="1" max="999" value={customInput} onChange={(e) => setCustomInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCustomSubmit(); } if (e.key === "Escape") { e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); setCustomMode(false); setCustomInput(""); } }} placeholder="SP" className={`${customInputH} rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 text-center ${customInputText} tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)]`} />
+              <button type="button" onClick={handleCustomSubmit} className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}>
                 <Hash size={iconSize} strokeWidth={1.5} />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              {/* N/A option */}
-              <button
-                type="button"
-                onClick={() => { onChange(0); handleClose(); }}
-                title="Not applicable"
-                className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`}
-                style={{
-                  color: isNA ? "#fff" : "#555a64",
-                  backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)",
-                  boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined,
-                }}
-              >
+              <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)", boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined }}>
                 <Minus size={iconSize} strokeWidth={1.5} />
               </button>
-
-              {/* Preset options */}
               {SP_PRESET_OPTIONS.map((n) => {
                 const c = getSpColor(n);
                 const isActive = n === value;
                 return (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => { onChange(n); handleClose(); }}
-                    className={`flex ${btnSize} items-center justify-center rounded-md ${btnText} tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`}
-                    style={{
-                      color: isActive ? "#fff" : c.text,
-                      backgroundColor: isActive ? c.text : c.bg,
-                      boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined,
-                    }}
-                  >
+                  <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className={`flex ${btnSize} items-center justify-center rounded-md ${btnText} tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
                     {n}
                   </button>
                 );
               })}
-
-              {/* Custom option */}
-              <button
-                type="button"
-                onClick={() => setCustomMode(true)}
-                title="Custom value"
-                className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`}
-                style={{
-                  color: isCustomValue ? "#fff" : "var(--color-text-muted)",
-                  backgroundColor: isCustomValue ? (color?.text ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)",
-                  boxShadow: isCustomValue ? `0 0 0 1px ${color?.text ?? "var(--color-text-muted)"}40` : undefined,
-                }}
-              >
+              <button type="button" onClick={() => setCustomMode(true)} title="Custom value" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isCustomValue ? "#fff" : "var(--color-text-muted)", backgroundColor: isCustomValue ? (color?.text ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)", boxShadow: isCustomValue ? `0 0 0 1px ${color?.text ?? "var(--color-text-muted)"}40` : undefined }}>
                 <Hash size={11} strokeWidth={1.5} />
               </button>
-
-              {/* Clear (back to unset) */}
               {value != null && (
-                <button
-                  type="button"
-                  onClick={() => { onChange(null); handleClose(); }}
-                  title="Clear"
-                  className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}
-                >
+                <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear" className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}>
                   <X size={iconSize} strokeWidth={1.5} />
                 </button>
               )}

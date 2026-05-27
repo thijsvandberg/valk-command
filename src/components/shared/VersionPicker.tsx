@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check } from "lucide-react";
+import { BasePicker } from "@/components/shared/BasePicker";
 import { Tag } from "@/components/shared/Tag";
 
 export interface VersionOption {
   id: string;
-  label: string;        // short label shown in trigger
+  label: string;
   versionNum?: number;
   title?: string;
   author?: string | null;
@@ -44,7 +44,6 @@ function VersionPickerItem({
         selected ? "bg-overlay-default" : "hover:bg-overlay-subtle"
       }`}
     >
-      {/* Avatar or version badge */}
       <div className="mt-0.5 shrink-0">
         {hasAvatar ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -66,38 +65,23 @@ function VersionPickerItem({
         )}
       </div>
 
-      {/* Text content */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <span className="text-body font-semibold text-text-primary leading-tight">
             {option.title ?? option.label}
           </span>
-          {option.tag === "current" && (
-            <Tag color="brand" className="font-semibold leading-none">Jira</Tag>
-          )}
-          {option.tag === "jira" && (
-            <Tag color="neutral" className="leading-none">Jira</Tag>
-          )}
-          {option.tag === "ai-draft" && (
-            <Tag color="blue" className="font-semibold leading-none">Draft</Tag>
-          )}
-          {option.tag === "draft" && (
-            <Tag color="purple" className="font-semibold leading-none">Draft</Tag>
-          )}
-          {option.author && (
-            <span className="text-body-sm text-text-tertiary truncate">{option.author}</span>
-          )}
+          {option.tag === "current" && <Tag color="brand" className="font-semibold leading-none">Jira</Tag>}
+          {option.tag === "jira" && <Tag color="neutral" className="leading-none">Jira</Tag>}
+          {option.tag === "ai-draft" && <Tag color="blue" className="font-semibold leading-none">Draft</Tag>}
+          {option.tag === "draft" && <Tag color="purple" className="font-semibold leading-none">Draft</Tag>}
+          {option.author && <span className="text-body-sm text-text-tertiary truncate">{option.author}</span>}
         </div>
         {option.isoDate && (
-          <p className="mt-0.5 text-label leading-tight text-text-tertiary">
-            {formatRichDate(option.isoDate)}
-          </p>
+          <p className="mt-0.5 text-label leading-tight text-text-tertiary">{formatRichDate(option.isoDate)}</p>
         )}
       </div>
 
-      {selected && (
-        <Check size={13} strokeWidth={2.5} className="mt-1 shrink-0 text-[var(--color-brand-400)]" />
-      )}
+      {selected && <Check size={13} strokeWidth={2.5} className="mt-1 shrink-0 text-[var(--color-brand-400)]" />}
     </button>
   );
 }
@@ -113,92 +97,74 @@ export function VersionPicker({
   onSelect: (id: string) => void;
   align?: "left" | "right";
 }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const selected = options.find((o) => o.id === selectedId);
+  return (
+    <BasePicker.Root portal={false} align={align}>
+      <VersionPickerInner options={options} selectedId={selectedId} onSelect={onSelect} />
+    </BasePicker.Root>
+  );
+}
 
+function VersionPickerInner({
+  options,
+  selectedId,
+  onSelect,
+}: {
+  options: VersionOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const { open, handleClose } = BasePicker.useContext();
+  const selected = options.find((o) => o.id === selectedId);
   const ungrouped = options.filter((o) => !o.group);
   const groupNames = Array.from(new Set(options.filter((o) => o.group).map((o) => o.group!)));
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
   const isDraft = selected?.tag === "draft" || selected?.tag === "ai-draft";
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Compact trigger */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
+    <>
+      <BasePicker.Trigger
         className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors duration-150 ${
           open
             ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.06] text-text-primary"
             : "border-border-strong bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary"
         }`}
       >
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${isDraft ? "bg-blue-400" : "bg-overlay-strong"}`}
-        />
-        <span className="max-w-[160px] truncate">
-          {selected?.label ?? "Select version"}
-        </span>
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isDraft ? "bg-blue-400" : "bg-overlay-strong"}`} />
+        <span className="max-w-[160px] truncate">{selected?.label ?? "Select version"}</span>
         <ChevronDown
           size={11}
           strokeWidth={2}
           className={`shrink-0 transition-transform duration-150 ${open ? "rotate-180 text-text-secondary" : "text-text-tertiary"}`}
         />
-      </button>
+      </BasePicker.Trigger>
 
-      {/* Dropdown panel */}
-      {open && (
-        <div
-          className={`absolute top-full z-modal mt-1.5 w-72 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-modal)] ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
-        >
-          <div className="max-h-[340px] overflow-y-auto">
-            {ungrouped.map((o) => (
-              <VersionPickerItem
-                key={o.id}
-                option={o}
-                selected={o.id === selectedId}
-                onSelect={() => { onSelect(o.id); setOpen(false); }}
-              />
-            ))}
-            {groupNames.map((name, gi) => (
-              <div key={name}>
-                {(gi > 0 || ungrouped.length > 0) && (
-                  <div className="mx-3.5 border-t border-border-default" />
-                )}
-                <div className="px-3.5 pb-1 pt-2.5">
-                  <span className="text-caption font-medium uppercase tracking-[0.07em] text-text-tertiary">
-                    {name}
-                  </span>
-                </div>
-                {options
-                  .filter((o) => o.group === name)
-                  .map((o) => (
-                    <VersionPickerItem
-                      key={o.id}
-                      option={o}
-                      selected={o.id === selectedId}
-                      onSelect={() => { onSelect(o.id); setOpen(false); }}
-                    />
-                  ))}
+      <BasePicker.Popover width="w-72" className="overflow-hidden shadow-[var(--shadow-modal)] border-border-strong">
+        <div className="max-h-[340px] overflow-y-auto">
+          {ungrouped.map((o) => (
+            <VersionPickerItem
+              key={o.id}
+              option={o}
+              selected={o.id === selectedId}
+              onSelect={() => { onSelect(o.id); handleClose(); }}
+            />
+          ))}
+          {groupNames.map((name, gi) => (
+            <div key={name}>
+              {(gi > 0 || ungrouped.length > 0) && <div className="mx-3.5 border-t border-border-default" />}
+              <div className="px-3.5 pb-1 pt-2.5">
+                <span className="text-caption font-medium uppercase tracking-[0.07em] text-text-tertiary">{name}</span>
               </div>
-            ))}
-          </div>
+              {options.filter((o) => o.group === name).map((o) => (
+                <VersionPickerItem
+                  key={o.id}
+                  option={o}
+                  selected={o.id === selectedId}
+                  onSelect={() => { onSelect(o.id); handleClose(); }}
+                />
+              ))}
+            </div>
+          ))}
         </div>
-      )}
-    </div>
+      </BasePicker.Popover>
+    </>
   );
 }
