@@ -1,6 +1,6 @@
 # BRDG-204: Standardize Typography Tokens
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -71,6 +71,6 @@ The project uses a 17px root font-size, so Tailwind's rem-based classes compute 
 - [x] Replace `text-sm` usages (~186 occurrences) with appropriate token
 - [x] Replace `text-base`, `text-lg`, `text-xl`, `text-2xl` usages
 - [x] Document any intentional exceptions with inline comments
-- [ ] Verify visual output across all views (dashboard, chat, sprint board, ticket detail, refinement)
+- [x] Verify visual output across all views (dashboard, chat, sprint board, ticket detail, refinement)
 - [x] Consider adding ESLint rule to warn on raw Tailwind text sizes
-- [ ] All tests pass
+- [x] All tests pass
