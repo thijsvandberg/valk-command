@@ -91,6 +91,7 @@ export function useBulkSuggest(opts: {
     bulkSuggestConvId,
     bulkSuggestRunning,
     bulkSuggestVisible,
+    setBulkSuggestVisible,
     bulkSuggestPanelCollapsed,
     setBulkSuggestPanelCollapsed,
     bulkSuggestMenuOpen,

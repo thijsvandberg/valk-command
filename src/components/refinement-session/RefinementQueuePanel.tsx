@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import { Play, Sparkles, Loader2, MoreHorizontal, Copy, AlertTriangle, RefreshCw } from "lucide-react";
+import { Play, Sparkles, Loader2, MoreHorizontal, Copy, AlertTriangle, RefreshCw, Eye } from "lucide-react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/Button";
@@ -107,6 +107,11 @@ export function RefinementQueuePanel({
                   <button type="button" onClick={() => bulk.handleBulkSuggest(true)} disabled={bulk.bulkSuggestRunning} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                     <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-amber-400" />Regenerate all
                   </button>
+                  {bulk.bulkSuggestConvId && !bulk.bulkSuggestVisible && (
+                    <button type="button" onClick={() => { bulk.setBulkSuggestVisible(true); bulk.setBulkSuggestPanelCollapsed(false); bulk.setBulkSuggestMenuOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+                      <Eye size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />Show suggestions
+                    </button>
+                  )}
                   <div className="my-1 border-t border-border-subtle" />
                   <button type="button" onClick={bulk.handleCopyStories} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                     <Copy size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />Copy stories + titles
