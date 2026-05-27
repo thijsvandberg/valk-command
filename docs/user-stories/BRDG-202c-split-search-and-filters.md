@@ -22,9 +22,9 @@
 ## Checklist
 
 ### SearchModal (1,068 lines)
-- [ ] Extract search result renderers into separate components (per result type)
-- [ ] Extract keyboard navigation logic into hook
-- [ ] Verify `SearchModal.tsx` is under 300 lines
+- [x] Extract search result renderers into separate components (per result type)
+- [x] Extract keyboard navigation logic into hook
+- [x] Verify `SearchModal.tsx` is under 300 lines
 
 ### FilterBar (874 lines)
 - [x] Extract filter chip rendering into `FilterChip` component
@@ -32,4 +32,4 @@
 - [x] Extract drag-drop ordering into hook
 - [x] Verify `FilterBar.tsx` is under 300 lines
 
-- [ ] All existing search and filter tests pass
+- [x] All existing search and filter tests pass
