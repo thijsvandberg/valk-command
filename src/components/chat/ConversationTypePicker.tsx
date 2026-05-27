@@ -45,7 +45,7 @@ function ConversationTypePickerInner({ onCreate }: { onCreate: (type: Conversati
 
   return (
     <>
-      <BasePicker.Trigger className="inline-flex">
+      <BasePicker.Trigger className="inline-flex" aria-label="New conversation">
         {({ open }) => (
           <span className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
             <Plus className="h-4 w-4" strokeWidth={2} />

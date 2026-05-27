@@ -220,14 +220,11 @@ function Root({
 // BasePicker.Trigger
 // ---------------------------------------------------------------------------
 
-interface TriggerProps {
+interface TriggerProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   children: ReactNode | ((props: { open: boolean }) => ReactNode);
-  className?: string;
-  title?: string;
-  style?: CSSProperties;
 }
 
-function Trigger({ children, className, title, style }: TriggerProps) {
+function Trigger({ children, ...rest }: TriggerProps) {
   const { open, handleOpen, handleClose, triggerRef } = useBasePickerContext();
 
   return (
@@ -235,9 +232,8 @@ function Trigger({ children, className, title, style }: TriggerProps) {
       ref={triggerRef}
       type="button"
       onClick={() => (open ? handleClose() : handleOpen())}
-      title={title}
-      className={className}
-      style={style}
+      aria-expanded={open}
+      {...rest}
     >
       {typeof children === "function" ? children({ open }) : children}
     </button>

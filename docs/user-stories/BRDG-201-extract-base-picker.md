@@ -105,4 +105,4 @@ The 11 pickers fall into 4 categories:
 - [x] Replace `EpicPicker` with BasePicker version
 - [x] Migrate 3 feature-specific pickers (SessionStoryPointPicker, SplitStoryPicker, ConversationTypePicker) <!-- ConversationTypePicker migrated; SessionStoryPointPicker and SplitStoryPicker skipped: they are not dropdown pickers (inline expand and modal dialog respectively) -->
 - [x] All existing picker tests pass
-- [ ] Remove `/dev/pickers` showcase page (or keep as living documentation)
+- [x] Remove `/dev/pickers` showcase page (or keep as living documentation) <!-- kept as living documentation, V2 files moved to deleted/ -->
