@@ -1,6 +1,6 @@
 # BRDG-209: Epic Search in Command Palette
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
