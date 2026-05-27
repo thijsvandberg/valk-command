@@ -206,6 +206,7 @@ export function SubtasksSection({
   const [editingTitle, setEditingTitle] = useState("");
   const [localRenames, setLocalRenames] = useState<Record<string, string>>({});
   const [pendingDelete, setPendingDelete] = useState<{ sub: Subtask; index: number } | null>(null);
+  const [flushedDeleteKeys, setFlushedDeleteKeys] = useState<Set<string>>(new Set());
   const pendingDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editCancelledRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -233,17 +234,23 @@ export function SubtasksSection({
   ], [subtasks, locallyAdded]);
   const orderedSubtasks = localOrder ?? mergedSubtasks;
 
-  const visibleSubtasks = pendingDelete
-    ? orderedSubtasks.filter((s) => s.key !== pendingDelete.sub.key)
+  const hiddenKeys = useMemo(() => {
+    const keys = new Set(flushedDeleteKeys);
+    if (pendingDelete) keys.add(pendingDelete.sub.key);
+    return keys;
+  }, [flushedDeleteKeys, pendingDelete]);
+
+  const visibleSubtasks = hiddenKeys.size > 0
+    ? orderedSubtasks.filter((s) => !hiddenKeys.has(s.key))
     : orderedSubtasks;
 
   const filtered = filter === "all"
     ? visibleSubtasks
     : visibleSubtasks.filter((s) => s.jiraStatus === filter);
 
-  // Counts per status for filter chips (exclude pending-delete)
-  const countBase = pendingDelete
-    ? mergedSubtasks.filter((s) => s.key !== pendingDelete.sub.key)
+  // Counts per status for filter chips (exclude hidden subtasks)
+  const countBase = hiddenKeys.size > 0
+    ? mergedSubtasks.filter((s) => !hiddenKeys.has(s.key))
     : mergedSubtasks;
   const statusCounts = {
     all: countBase.length,
@@ -387,9 +394,22 @@ export function SubtasksSection({
   }, []);
 
   const flushDelete = useCallback((sub: Subtask) => {
+    setFlushedDeleteKeys((prev) => new Set(prev).add(sub.key));
     tickets.deleteSubtask(ticketKey, sub.key)
-      .then(() => onMutate())
+      .then(() => {
+        setFlushedDeleteKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(sub.key);
+          return next;
+        });
+        onMutate();
+      })
       .catch((err) => {
+        setFlushedDeleteKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(sub.key);
+          return next;
+        });
         const detail = err instanceof ApiError ? err.message : "Jira API error";
         setError(`Failed to delete subtask: ${detail}`);
       });
@@ -552,9 +572,11 @@ export function SubtasksSection({
     });
   }, [ticketKey, onMutate]);
 
-  const handleAddSuggestion = useCallback((index: number) => {
+  const handleAddSuggestion = useCallback((index: number, editedTitle?: string) => {
     const suggestion = suggestions[index];
-    if (suggestion) addSuggestionAsSubtask(suggestion, index);
+    if (!suggestion) return;
+    const toAdd = editedTitle ? { ...suggestion, title: editedTitle } : suggestion;
+    addSuggestionAsSubtask(toAdd, index);
   }, [suggestions, addSuggestionAsSubtask]);
 
   const handleAddAllSuggestions = useCallback(async () => {
