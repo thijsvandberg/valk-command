@@ -37,7 +37,7 @@ const mockSessions: RefinementSessionResponse[] = [
 describe("RefinementHistoryList", () => {
   it("shows empty state when no sessions", () => {
     render(<RefinementHistoryList sessions={[]} />);
-    expect(screen.getByText("No completed refinements yet.")).toBeInTheDocument();
+    expect(screen.getByText("No refinements yet.")).toBeInTheDocument();
   });
 
   it("renders session names", () => {

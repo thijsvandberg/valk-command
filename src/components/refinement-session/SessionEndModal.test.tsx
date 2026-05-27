@@ -85,8 +85,8 @@ describe("SessionEndModal", () => {
 
   it("shows both action buttons", () => {
     render(<SessionEndModal />);
-    expect(screen.getByText("Close / Save")).toBeInTheDocument();
-    expect(screen.getByText("Done / Finish")).toBeInTheDocument();
+    expect(screen.getByText("Save")).toBeInTheDocument();
+    expect(screen.getByText("Complete")).toBeInTheDocument();
   });
 
   it("shows unestimated indicator for tickets without story points", () => {
@@ -105,16 +105,16 @@ describe("SessionEndModal", () => {
     expect(mockContext.closeEndModal).toHaveBeenCalled();
   });
 
-  it("calls saveSession when Close / Save clicked", () => {
+  it("calls saveSession when Save clicked", () => {
     render(<SessionEndModal />);
-    fireEvent.click(screen.getByText("Close / Save"));
+    fireEvent.click(screen.getByText("Save"));
     expect(mockContext.saveSession).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith("/refinement/session-abc");
   });
 
-  it("calls finishSession when Done / Finish clicked", () => {
+  it("calls finishSession when Complete clicked", () => {
     render(<SessionEndModal />);
-    fireEvent.click(screen.getByText("Done / Finish"));
+    fireEvent.click(screen.getByText("Complete"));
     expect(mockContext.finishSession).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith("/refinement/session-abc");
   });
