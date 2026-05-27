@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import { Play, Save, Sparkles, Loader2, MoreHorizontal, Copy, AlertTriangle, RefreshCw } from "lucide-react";
+import { Play, Sparkles, Loader2, MoreHorizontal, Copy, AlertTriangle, RefreshCw } from "lucide-react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/Button";
@@ -37,10 +37,17 @@ export function RefinementQueuePanel({
   ticketsValidating,
   onRefreshEditStates,
 }: RefinementQueuePanelProps) {
-  const conflictCount = useMemo(
-    () => queueHook.queueTickets.filter((t) => t.editState === "conflict").length,
-    [queueHook.queueTickets],
-  );
+  const { conflictCount, localEditsCount } = useMemo(() => {
+    let conflicts = 0;
+    let edits = 0;
+    for (const t of queueHook.queueTickets) {
+      if (t.editState === "conflict") conflicts++;
+      else if (t.editState === "local_edits" || t.editState === "draft") edits++;
+    }
+    return { conflictCount: conflicts, localEditsCount: edits };
+  }, [queueHook.queueTickets]);
+
+  const hasEditStateIssues = conflictCount > 0 || localEditsCount > 0;
 
   const bulkSuggestMenuRef = useRef<HTMLDivElement>(null);
   const { bulkSuggestMenuOpen, setBulkSuggestMenuOpen } = bulk;
@@ -64,17 +71,9 @@ export function RefinementQueuePanel({
   return (
     <div className="sticky top-6">
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          <h2 className="truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
-            {activeSession?.name ?? "Queue"}
-          </h2>
-          {conflictCount > 0 && (
-            <span className="flex shrink-0 items-center gap-1 rounded-md bg-[var(--color-status-warning)]/[0.10] px-2 py-0.5 text-caption font-medium text-[var(--color-status-warning)]">
-              <AlertTriangle size={11} strokeWidth={2} />
-              {conflictCount} conflict{conflictCount !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
+        <h2 className="min-w-0 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
+          {activeSession?.name ?? "Queue"}
+        </h2>
         <div className="flex items-center gap-2">
           {onRefreshEditStates && queueHook.queue.length > 0 && (
             <button
@@ -119,6 +118,27 @@ export function RefinementQueuePanel({
         </div>
       </div>
 
+      {hasEditStateIssues && (
+        <div className="mb-3 rounded-lg border border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/[0.06] px-3 py-2.5">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-status-warning)]" />
+            <div className="min-w-0 text-body-sm">
+              <p className="font-medium text-text-primary">
+                {[
+                  conflictCount > 0 && `${conflictCount} conflict${conflictCount !== 1 ? "s" : ""}`,
+                  localEditsCount > 0 && `${localEditsCount} local edit${localEditsCount !== 1 ? "s" : ""}`,
+                ].filter(Boolean).join(", ")}
+              </p>
+              <p className="mt-0.5 text-text-tertiary">
+                {conflictCount > 0
+                  ? "Jira changed since last local edit. Review before starting."
+                  : "Unsaved local changes. Review before starting."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {queueHook.queue.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-strong py-12 text-center">
           <p className="text-body-lg text-text-muted">Select tickets from the list</p>
@@ -141,25 +161,8 @@ export function RefinementQueuePanel({
       )}
 
       {canStart && (
-        <div className="mt-4 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={activeSession ? undefined : onSaveAsSession}
-            disabled={!!activeSession}
-            className={`group/save relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-              activeSession
-                ? "border-border-subtle bg-transparent text-text-muted cursor-default"
-                : "border-border-default bg-overlay-subtle text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:scale-[0.97]"
-            }`}
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 80ms" }}
-            aria-label={activeSession ? "Session saved" : "Save as refinement session"}
-          >
-            <Save size={16} strokeWidth={1.5} />
-            <span className="pointer-events-none absolute -top-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-[var(--color-surface-floating)] px-2.5 py-1 text-[11px] font-medium text-text-secondary opacity-0 shadow-[var(--shadow-md)] border border-border-strong group-hover/save:opacity-100" style={{ transition: "opacity 0.15s ease" }}>
-              {activeSession ? "Session auto-saves" : "Save as refinement session"}
-            </span>
-          </button>
-          <Button variant="primary" size="lg" icon={<Play size={14} strokeWidth={2} />} onClick={onBeginRefinement} className="flex-1">
+        <div className="mt-4">
+          <Button variant="primary" size="lg" icon={<Play size={14} strokeWidth={2} />} onClick={onBeginRefinement} className="w-full">
             Start Refinement
           </Button>
         </div>

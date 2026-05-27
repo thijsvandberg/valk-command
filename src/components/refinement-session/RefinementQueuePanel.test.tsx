@@ -100,10 +100,10 @@ describe("RefinementQueuePanel conflict count", () => {
     expect(screen.getByText("2 conflicts")).toBeInTheDocument();
   });
 
-  it("shows no conflict badge when all tickets are clean", () => {
+  it("shows no alert banner when all tickets are clean", () => {
     const tickets = [
       makeTicket("VPL-1", "clean"),
-      makeTicket("VPL-2", "draft"),
+      makeTicket("VPL-2", "clean"),
     ];
     render(
       <RefinementQueuePanel
@@ -118,6 +118,48 @@ describe("RefinementQueuePanel conflict count", () => {
       />,
     );
     expect(screen.queryByText(/conflict/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/local edit/i)).not.toBeInTheDocument();
+  });
+
+  it("shows local edits count for draft/local_edits tickets", () => {
+    const tickets = [
+      makeTicket("VPL-1", "draft"),
+      makeTicket("VPL-2", "local_edits"),
+      makeTicket("VPL-3", "clean"),
+    ];
+    render(
+      <RefinementQueuePanel
+        activeSession={null}
+        queueHook={makeQueueHook(tickets)}
+        bulk={makeBulk()}
+        otherSessions={[]}
+        canStart={true}
+        onMoveToSession={vi.fn()}
+        onBeginRefinement={vi.fn()}
+        onSaveAsSession={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("2 local edits")).toBeInTheDocument();
+  });
+
+  it("shows combined counts when both conflicts and local edits exist", () => {
+    const tickets = [
+      makeTicket("VPL-1", "conflict"),
+      makeTicket("VPL-2", "draft"),
+    ];
+    render(
+      <RefinementQueuePanel
+        activeSession={null}
+        queueHook={makeQueueHook(tickets)}
+        bulk={makeBulk()}
+        otherSessions={[]}
+        canStart={true}
+        onMoveToSession={vi.fn()}
+        onBeginRefinement={vi.fn()}
+        onSaveAsSession={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("1 conflict, 1 local edit")).toBeInTheDocument();
   });
 
   it("shows singular 'conflict' for exactly one conflict", () => {
