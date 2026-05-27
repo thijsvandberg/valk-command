@@ -9,10 +9,10 @@ export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED
 export type TicketReadiness = "drafting" | "waiting_for_feedback" | "ready_to_refine" | "on_hold";
 
 export const READINESS_CONFIG: Record<TicketReadiness, { label: string; color: string; bg: string }> = {
-  drafting:             { label: "Drafting",              color: "#60a5fa", bg: "rgba(96, 165, 250, 0.12)" },
-  waiting_for_feedback: { label: "Waiting for Feedback",  color: "#e8a45a", bg: "rgba(232, 164, 90, 0.12)" },
-  ready_to_refine:      { label: "Ready to Refine",       color: "#22c55e", bg: "rgba(34, 197, 94, 0.12)" },
-  on_hold:              { label: "On Hold",               color: "#9ca3af", bg: "rgba(156, 163, 175, 0.08)" },
+  drafting:             { label: "Drafting",              color: "var(--color-status-info)", bg: "var(--color-status-info-subtle)" },
+  waiting_for_feedback: { label: "Waiting for Feedback",  color: "var(--color-status-warning)", bg: "var(--color-status-warning-subtle)" },
+  ready_to_refine:      { label: "Ready to Refine",       color: "var(--color-status-done)", bg: "var(--color-status-done-subtle)" },
+  on_hold:              { label: "On Hold",               color: "var(--color-status-neutral)", bg: "rgba(156, 163, 175, 0.08)" },
 };
 
 export const READINESS_OPTIONS: { value: TicketReadiness | null; label: string }[] = [
@@ -52,11 +52,11 @@ export const PO_STATUS_OPTIONS: { value: POStatus; label: string }[] = [
 ];
 
 export const JIRA_STATUS_COLORS: Record<JiraStatus, { bg: string; text: string }> = {
-  "TO DO": { bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8" },
-  "IN PROGRESS": { bg: "rgba(56, 152, 210, 0.15)", text: "#58b4e6" },
-  TEST: { bg: "rgba(120, 90, 220, 0.15)", text: "#9b7ee8" },
-  DONE: { bg: "rgba(34, 197, 94, 0.15)", text: "#22c55e" },
-  DEPRECATED: { bg: "rgba(120, 160, 120, 0.12)", text: "#7a9a7a" },
+  "TO DO": { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" },
+  "IN PROGRESS": { bg: "var(--color-status-progress-subtle)", text: "var(--color-status-progress)" },
+  TEST: { bg: "rgba(120, 90, 220, 0.15)", text: "var(--color-testing-400)" },
+  DONE: { bg: "var(--color-status-done-subtle)", text: "var(--color-status-done)" },
+  DEPRECATED: { bg: "var(--color-status-deprecated-subtle)", text: "var(--color-status-deprecated)" },
 };
 
 export const EPIC_COLORS: Record<string, { bg: string; text: string }> = {

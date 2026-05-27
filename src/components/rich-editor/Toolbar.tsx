@@ -8,6 +8,7 @@ import {
 import type { Editor } from "@tiptap/react";
 import type { CalloutType } from "./callout-extension";
 import type { EditorMode } from "./RichEditor";
+import { EDITOR_PALETTE } from "@/lib/status-colors";
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -270,16 +271,7 @@ function TableButton({ editor }: { editor: Editor }) {
   );
 }
 
-const TEXT_COLORS = [
-  { label: "Red",    color: "#ef4444" },
-  { label: "Orange", color: "#f97316" },
-  { label: "Amber",  color: "#f59e0b" },
-  { label: "Green",  color: "#22c55e" },
-  { label: "Blue",   color: "#3b82f6" },
-  { label: "Purple", color: "#a855f7" },
-  { label: "Pink",   color: "#ec4899" },
-  { label: "Gray",   color: "#6b7280" },
-];
+const TEXT_COLORS = EDITOR_PALETTE.text;
 
 function ColorButton({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
@@ -351,13 +343,7 @@ function ColorButton({ editor }: { editor: Editor }) {
   );
 }
 
-const CALLOUT_OPTIONS: { type: CalloutType; label: string; color: string }[] = [
-  { type: "info",    label: "Info",    color: "#3b82f6" },
-  { type: "warning", label: "Warning", color: "#f59e0b" },
-  { type: "error",   label: "Error",   color: "#ef4444" },
-  { type: "note",    label: "Note",    color: "#a855f7" },
-  { type: "success", label: "Success", color: "#22c55e" },
-];
+const CALLOUT_OPTIONS = EDITOR_PALETTE.callout as readonly { type: CalloutType; label: string; color: string }[];
 
 function CalloutDropdown({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
