@@ -1,4 +1,4 @@
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useSidebarState, MIN_WIDTH, MAX_WIDTH, DEFAULT_WIDTH, COLLAPSED_WIDTH } from "./useSidebarState";
 
@@ -63,16 +63,16 @@ describe("useSidebarState", () => {
     expect(result.current.width).toBe(DEFAULT_WIDTH);
   });
 
-  it("reads persisted collapsed state on mount", () => {
+  it("reads persisted collapsed state on mount", async () => {
     mockStorage["bridge:sidebar-collapsed"] = "true";
     const { result } = renderHook(() => useSidebarState());
-    expect(result.current.collapsed).toBe(true);
+    await waitFor(() => expect(result.current.collapsed).toBe(true));
   });
 
-  it("reads persisted width on mount", () => {
+  it("reads persisted width on mount", async () => {
     mockStorage["bridge:sidebar-width"] = "400";
     const { result } = renderHook(() => useSidebarState());
-    expect(result.current.width).toBe(400);
+    await waitFor(() => expect(result.current.width).toBe(400));
   });
 
   it("responds to Cmd+B keyboard shortcut", () => {

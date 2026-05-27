@@ -39,5 +39,5 @@ The three API-backed hooks share an identical debounce+timer+cleanup pattern, bu
 - [x] Refactor `useColumnConfig` to use it
 - [x] Refactor `useColumnWidths` to use it
 - [x] Refactor `useSectionVisibility` to use it
-- [ ] Refactor `useSidebarState` to use `useLocalStorage` internally
+- [x] Refactor `useSidebarState` to use `useLocalStorage` internally
 - [ ] All existing tests pass
