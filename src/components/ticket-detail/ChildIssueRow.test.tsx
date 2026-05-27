@@ -28,8 +28,13 @@ describe("ChildIssueRow", () => {
     expect(screen.getByTestId("ticket-status-pill")).toHaveTextContent("VPL-100");
   });
 
-  it("hides pill when showKey is false (only shows status fallback)", () => {
+  it("still renders pill when showKey is false (status-only mode)", () => {
     render(<ChildIssueRow item={baseSub} isLast={false} showKey={false} />);
+    expect(screen.getByTestId("ticket-status-pill")).toBeInTheDocument();
+  });
+
+  it("hides pill entirely when both showKey and showStatus are false", () => {
+    render(<ChildIssueRow item={baseSub} isLast={false} showKey={false} showStatus={false} />);
     expect(screen.queryByTestId("ticket-status-pill")).not.toBeInTheDocument();
   });
 

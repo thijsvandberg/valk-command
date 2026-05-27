@@ -290,7 +290,7 @@ export function DevPanel({
   );
   const [expanded, setExpanded] = useState<boolean | null>(null);
 
-  const isExpanded = expanded ?? Boolean(hasData);
+  const isExpanded = expanded ?? false;
 
   const counts: string[] = [];
   if (data?.branches.length) counts.push(`${data.branches.length} branch${data.branches.length > 1 ? "es" : ""}`);

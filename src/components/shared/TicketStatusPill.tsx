@@ -385,6 +385,10 @@ export interface TicketStatusPillProps {
   // Tighter gap between issue type icon and key in list variant
   compact?: boolean;
   removedFromJira?: boolean;
+  /** Hide the ticket key segment (default: true) */
+  showKey?: boolean;
+  /** Hide the jira status segment (default: true) */
+  showStatus?: boolean;
 }
 
 export function TicketStatusPill({
@@ -400,6 +404,8 @@ export function TicketStatusPill({
   variant,
   compact,
   removedFromJira,
+  showKey = true,
+  showStatus = true,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -461,36 +467,38 @@ export function TicketStatusPill({
         )}
 
         {/* Key */}
-        <div className="relative flex shrink-0">
-          <a
-            ref={keyLinkRef}
-            href={`/tickets/${ticketKey}`}
-            onClick={(e) => {
-              if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
-                e.preventDefault();
-                setKeyDropdownOpen((o) => !o);
-              }
-            }}
-            className={`font-mono ${textSize} font-medium text-text-secondary transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
-            style={{ minWidth: "9ch" }}
-          >
-            {ticketKey}
-          </a>
-          {keyDropdownOpen && (
-            <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
-              <KeyDropdown
-                jiraUrl={jiraUrl}
-                ticketKey={ticketKey}
-                title={title}
-                onClose={() => setKeyDropdownOpen(false)}
-                skipRef={keyLinkRef}
-              />
-            </DropdownPortal>
-          )}
-        </div>
+        {showKey && (
+          <div className="relative flex shrink-0">
+            <a
+              ref={keyLinkRef}
+              href={`/tickets/${ticketKey}`}
+              onClick={(e) => {
+                if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                  e.preventDefault();
+                  setKeyDropdownOpen((o) => !o);
+                }
+              }}
+              className={`font-mono ${textSize} font-medium text-text-secondary transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+              style={{ minWidth: "9ch" }}
+            >
+              {ticketKey}
+            </a>
+            {keyDropdownOpen && (
+              <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
+                <KeyDropdown
+                  jiraUrl={jiraUrl}
+                  ticketKey={ticketKey}
+                  title={title}
+                  onClose={() => setKeyDropdownOpen(false)}
+                  skipRef={keyLinkRef}
+                />
+              </DropdownPortal>
+            )}
+          </div>
+        )}
 
         {/* Jira status badge */}
-        {removedFromJira ? (
+        {!showStatus ? null : removedFromJira ? (
           <span className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold bg-red-500/10 text-red-400/70">
             <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70 bg-red-400/70" />
             DELETED
@@ -601,39 +609,41 @@ export function TicketStatusPill({
         )}
 
         {/* Key segment — regular click opens dropdown, cmd+click navigates to ticket */}
-        <div className="relative flex">
-          <a
-            ref={keyLinkRef}
-            href={`/tickets/${ticketKey}`}
-            onClick={(e) => {
-              if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
-                e.preventDefault();
-                setKeyDropdownOpen((o) => !o);
-              }
-            }}
-            className={`${px} font-mono ${textSize} font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] flex items-center gap-1 text-text-secondary hover:bg-overlay-default hover:text-text-secondary ${!issueType ? "rounded-l-md" : ""}`}
-            style={{ minWidth: "9ch" }}
-          >
-            {ticketKey}
-          </a>
-          {keyDropdownOpen && (
-            <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
-              <KeyDropdown
-                jiraUrl={jiraUrl}
-                ticketKey={ticketKey}
-                title={title}
-                onClose={() => setKeyDropdownOpen(false)}
-                skipRef={keyLinkRef}
-              />
-            </DropdownPortal>
-          )}
-        </div>
-
-        {/* Divider */}
-        <span className="w-px self-stretch bg-overlay-default shrink-0" />
+        {showKey && (
+          <>
+            <div className="relative flex">
+              <a
+                ref={keyLinkRef}
+                href={`/tickets/${ticketKey}`}
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                    e.preventDefault();
+                    setKeyDropdownOpen((o) => !o);
+                  }
+                }}
+                className={`${px} font-mono ${textSize} font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] flex items-center gap-1 text-text-secondary hover:bg-overlay-default hover:text-text-secondary ${!issueType ? "rounded-l-md" : ""}`}
+                style={{ minWidth: "9ch" }}
+              >
+                {ticketKey}
+              </a>
+              {keyDropdownOpen && (
+                <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
+                  <KeyDropdown
+                    jiraUrl={jiraUrl}
+                    ticketKey={ticketKey}
+                    title={title}
+                    onClose={() => setKeyDropdownOpen(false)}
+                    skipRef={keyLinkRef}
+                  />
+                </DropdownPortal>
+              )}
+            </div>
+            {showStatus && <span className="w-px self-stretch bg-overlay-default shrink-0" />}
+          </>
+        )}
 
         {/* Jira status segment */}
-        {removedFromJira ? (
+        {!showStatus ? null : removedFromJira ? (
           <span
             className={`${px} ${textSize} font-medium flex items-center gap-1.5 rounded-r-md`}
             style={{ backgroundColor: "var(--color-status-error-subtle)", color: "var(--color-status-error)", opacity: 0.7 }}

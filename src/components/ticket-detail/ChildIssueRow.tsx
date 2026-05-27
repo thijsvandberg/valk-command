@@ -3,7 +3,6 @@
 import type { Ref } from "react";
 import type { Subtask, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Loader2 } from "lucide-react";
 
 interface ChildIssueRowProps {
@@ -72,10 +71,7 @@ export function ChildIssueRow({
     onSelect(item.key);
   };
 
-  // Show the full pill (with context menu) when key is visible;
-  // show only a status badge when key is hidden but status is visible
-  const showPill = showKey && !isPending;
-  const showStatusOnly = !showKey && showStatus && !isPending;
+  const hasPill = (showKey || showStatus) && !isPending;
 
   return (
     <div
@@ -97,7 +93,7 @@ export function ChildIssueRow({
         </span>
       )}
 
-      {showPill && (
+      {hasPill && (
         <span onClick={(e) => e.stopPropagation()}>
           <TicketStatusPill
             ticketKey={item.key}
@@ -109,12 +105,10 @@ export function ChildIssueRow({
             title={item.title}
             size="sm"
             variant="list"
+            showKey={showKey}
+            showStatus={showStatus}
           />
         </span>
-      )}
-
-      {showStatusOnly && (
-        <StatusBadge status={item.jiraStatus} />
       )}
 
       {isEditing ? (
