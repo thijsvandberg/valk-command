@@ -24,4 +24,4 @@
 - [x] Extract column rendering into `SprintBoardColumn` component
 - [x] Extract grouping/sorting logic into utility functions
 - [x] Verify `SprintBoard.tsx` is under 300 lines after refactor
-- [ ] All existing sprint board tests pass
+- [x] All existing sprint board tests pass
