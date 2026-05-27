@@ -81,7 +81,16 @@ export function RefinementPageContent({
   const sprintNameMap = useMemo(() => Object.fromEntries((sprints ?? []).map((s) => [String(s.id), s.name])), [sprints]);
   const pinnedSprintIds = useMemo(() => new Set((sprintSlots ?? []).map((s) => s.sprintId)), [sprintSlots]);
 
-  const { data: tickets } = useTickets("__all__");
+  const { data: tickets, mutate: mutateTickets, isValidating: ticketsValidating } = useTickets("__all__");
+
+  // Re-validate ticket edit states on mount
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      mutateTickets();
+    }
+  }, [mutateTickets]);
 
   // --- Filters ---
   const filters = useRefinementFilters(pinnedSprintIds, sprintNameMap);
@@ -139,6 +148,16 @@ export function RefinementPageContent({
     availableTickets,
     allTickets: tickets,
   });
+
+  // Re-validate ticket edit states when the queue changes
+  const prevQueueLenRef = useRef(queueHook.queue.length);
+  useEffect(() => {
+    if (queueHook.queue.length > prevQueueLenRef.current) {
+      const timer = setTimeout(() => mutateTickets(), 500);
+      return () => clearTimeout(timer);
+    }
+    prevQueueLenRef.current = queueHook.queue.length;
+  }, [queueHook.queue.length, mutateTickets]);
 
   const canStart = queueHook.queue.length >= MIN_TICKETS;
 
@@ -274,6 +293,8 @@ export function RefinementPageContent({
               onMoveToSession={handleMoveToSession}
               onBeginRefinement={handleBeginRefinement}
               onSaveAsSession={handleSaveAsSession}
+              ticketsValidating={ticketsValidating}
+              onRefreshEditStates={() => mutateTickets()}
             />
           </ResizableQueuePane>
         </div>

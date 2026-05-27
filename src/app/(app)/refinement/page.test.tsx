@@ -28,6 +28,8 @@ vi.mock("@/hooks/useSprintBoard", () => ({
     ],
   }),
   useTickets: () => ({
+    mutate: vi.fn().mockResolvedValue(undefined),
+    isValidating: false,
     data: [
       {
         key: "VPL-100",

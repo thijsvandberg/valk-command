@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { GripVertical, X, ArrowRightLeft, Sparkles } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import type { Ticket } from "@/types/ticket";
 import { getSpColor } from "@/types/ticket";
 import type { RefinementSessionResponse } from "@/lib/api-client";
@@ -73,6 +74,9 @@ export function SortableQueueItem({
         <GripVertical size={14} strokeWidth={1.5} />
       </span>
       <IssueTypeIcon type={ticket.type} size={14} />
+      {ticket.editState === "draft" && <EditStateDot state="draft" />}
+      {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
+      {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
       <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>
       {ticket.storyPoints != null && (
         <span

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useEffect } from "react";
-import { Play, Save, Sparkles, Loader2, MoreHorizontal, Copy } from "lucide-react";
+import { useMemo, useRef, useEffect } from "react";
+import { Play, Save, Sparkles, Loader2, MoreHorizontal, Copy, AlertTriangle, RefreshCw } from "lucide-react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +21,8 @@ interface RefinementQueuePanelProps {
   onMoveToSession: (ticketKey: string, targetSessionId: string) => void;
   onBeginRefinement: () => void;
   onSaveAsSession: () => void;
+  ticketsValidating?: boolean;
+  onRefreshEditStates?: () => void;
 }
 
 export function RefinementQueuePanel({
@@ -32,7 +34,14 @@ export function RefinementQueuePanel({
   onMoveToSession,
   onBeginRefinement,
   onSaveAsSession,
+  ticketsValidating,
+  onRefreshEditStates,
 }: RefinementQueuePanelProps) {
+  const conflictCount = useMemo(
+    () => queueHook.queueTickets.filter((t) => t.editState === "conflict").length,
+    [queueHook.queueTickets],
+  );
+
   const bulkSuggestMenuRef = useRef<HTMLDivElement>(null);
   const { bulkSuggestMenuOpen, setBulkSuggestMenuOpen } = bulk;
 
@@ -55,10 +64,29 @@ export function RefinementQueuePanel({
   return (
     <div className="sticky top-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
-          {activeSession?.name ?? "Queue"}
-        </h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
+            {activeSession?.name ?? "Queue"}
+          </h2>
+          {conflictCount > 0 && (
+            <span className="flex shrink-0 items-center gap-1 rounded-md bg-[var(--color-status-warning)]/[0.10] px-2 py-0.5 text-caption font-medium text-[var(--color-status-warning)]">
+              <AlertTriangle size={11} strokeWidth={2} />
+              {conflictCount} conflict{conflictCount !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
+          {onRefreshEditStates && queueHook.queue.length > 0 && (
+            <button
+              type="button"
+              onClick={onRefreshEditStates}
+              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              aria-label="Refresh edit states"
+            >
+              <RefreshCw size={13} strokeWidth={1.5} className={ticketsValidating ? "animate-spin" : ""} />
+            </button>
+          )}
           {activeSession && queueHook.queue.length > 0 && (
             <div className="relative" ref={bulkSuggestMenuRef}>
               <button

@@ -3,6 +3,7 @@
 import { Gem } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import type { Ticket } from "@/types/ticket";
 import { getSpColor, getEpicColor } from "@/types/ticket";
 
@@ -62,6 +63,9 @@ export function TicketRow({
           variant="list"
         />
       </span>
+      {ticket.editState === "draft" && <EditStateDot state="draft" />}
+      {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
+      {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
       <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>
       {ticket.epic && (
         <span
