@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import type { TicketDetail, JiraStatus, Subtask, EpicChild, IssueType } from "@/types/ticket";
+import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType } from "@/types/ticket";
 import { getSpColor } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
@@ -266,6 +266,28 @@ export function EpicChildrenSection({
     };
   }, []);
 
+  const handleJiraStatusChange = useCallback(async (childKey: string, status: JiraStatus) => {
+    try {
+      await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      onMutate();
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
+  }, [onMutate]);
+
+  const handleReadinessChange = useCallback(async (childKey: string, readiness: TicketReadiness | null) => {
+    try {
+      await tickets.updateMetadata(childKey, { readiness });
+      onMutate();
+    } catch (err) {
+      console.error("Failed to update readiness:", err);
+    }
+  }, [onMutate]);
+
   // --- Render metadata slot for a child issue ---
   function renderMetadata(child: EpicChild | Subtask) {
     const epic = isEpicChild(child) ? child : null;
@@ -316,6 +338,8 @@ export function EpicChildrenSection({
         showKey={visibleFields.has("issueKey")}
         showStatus={visibleFields.has("status")}
         readiness={epic?.readiness}
+        onJiraStatusChange={(s) => handleJiraStatusChange(child.key, s)}
+        onReadinessChange={(r) => handleReadinessChange(child.key, r)}
         onSelect={onSelectTicket}
         metadataSlot={renderMetadata(child)}
       />

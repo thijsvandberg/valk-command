@@ -1,8 +1,7 @@
 "use client";
 
 import type { Ref } from "react";
-import type { Subtask, TicketReadiness, JiraStatus } from "@/types/ticket";
-import { JIRA_STATUS_COLORS, JIRA_STATUS_ABBREVIATIONS } from "@/types/ticket";
+import type { Subtask, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Loader2 } from "lucide-react";
@@ -16,6 +15,8 @@ interface ChildIssueRowProps {
   showKey?: boolean;
   showStatus?: boolean;
   readiness?: TicketReadiness | null;
+  onJiraStatusChange?: (status: JiraStatus) => void;
+  onReadinessChange?: (readiness: TicketReadiness | null) => void;
   onSelect?: (key: string) => void;
   /** Inline editing support */
   isEditing?: boolean;
@@ -46,6 +47,8 @@ export function ChildIssueRow({
   showKey = true,
   showStatus = true,
   readiness,
+  onJiraStatusChange,
+  onReadinessChange,
   onSelect,
   isEditing = false,
   editValue = "",
@@ -101,6 +104,8 @@ export function ChildIssueRow({
             jiraStatus={item.jiraStatus}
             issueType={showTypeIcon ? item.type : undefined}
             readiness={readiness}
+            onJiraStatusChange={onJiraStatusChange}
+            onReadinessChange={onReadinessChange}
             title={item.title}
             size="sm"
             variant="list"
