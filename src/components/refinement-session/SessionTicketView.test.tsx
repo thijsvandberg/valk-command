@@ -11,17 +11,17 @@ vi.mock("@/components/ticket-detail/EditableTitle", () => ({
       <div data-testid="editable-title">
         <span data-testid="title-key">{ticketKey as string}</span>
         <span data-testid="title-value">{initialTitle as string}</span>
-        {serverLocalEdit && (
+        {serverLocalEdit ? (
           <span data-testid="title-server-local-edit">
             {(serverLocalEdit as { value: string }).value}
           </span>
-        )}
+        ) : null}
         <button data-testid="title-notify-edit" onClick={() => (onLocalEdit as (v: boolean) => void)(true)}>
           notify edit
         </button>
-        {onViewDiff && (
+        {onViewDiff ? (
           <button data-testid="title-view-diff" onClick={onViewDiff as () => void}>view diff</button>
-        )}
+        ) : null}
       </div>
     );
   },
@@ -38,32 +38,32 @@ vi.mock("@/components/ticket-detail/EditableDescription", () => ({
       <div data-testid="editable-description">
         <span data-testid="desc-key">{ticketKey as string}</span>
         <span data-testid="desc-value">{initialDescription as string}</span>
-        {serverLocalEdit && (
+        {serverLocalEdit ? (
           <span data-testid="desc-server-local-edit">
             {(serverLocalEdit as { value: string }).value}
           </span>
-        )}
-        {isPushing && <span data-testid="desc-pushing">pushing</span>}
-        {pushError && <span data-testid="desc-push-error">{pushError as string}</span>}
-        {showConflictWarning && <span data-testid="desc-conflict">conflict</span>}
-        {overrideConfirmed && <span data-testid="desc-override-confirmed">override</span>}
+        ) : null}
+        {isPushing ? <span data-testid="desc-pushing">pushing</span> : null}
+        {pushError ? <span data-testid="desc-push-error">{pushError as string}</span> : null}
+        {showConflictWarning ? <span data-testid="desc-conflict">conflict</span> : null}
+        {overrideConfirmed ? <span data-testid="desc-override-confirmed">override</span> : null}
         <button data-testid="desc-notify-edit" onClick={() => (onLocalEdit as (v: boolean) => void)(true)}>
           notify edit
         </button>
-        {onDiscard && (
+        {onDiscard ? (
           <button data-testid="desc-discard" onClick={onDiscard as () => void}>discard</button>
-        )}
-        {onPushToJira && (
+        ) : null}
+        {onPushToJira ? (
           <button data-testid="desc-push" onClick={onPushToJira as () => void}>push</button>
-        )}
-        {onOverrideChange && (
+        ) : null}
+        {onOverrideChange ? (
           <button data-testid="desc-override-change" onClick={() => (onOverrideChange as (v: boolean) => void)(true)}>
             override change
           </button>
-        )}
-        {onViewDiff && (
+        ) : null}
+        {onViewDiff ? (
           <button data-testid="desc-view-diff" onClick={onViewDiff as () => void}>view diff</button>
-        )}
+        ) : null}
       </div>
     );
   },
