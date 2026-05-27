@@ -55,8 +55,8 @@ For each component:
 ## Checklist
 
 ### Story Writer
-- [ ] Extract toolbar logic from `StoryWriterLayout.tsx`
-- [ ] Extract pane management from `StoryWriterLayout.tsx`
+- [x] Extract toolbar logic from `StoryWriterLayout.tsx`
+- [x] Extract pane management from `StoryWriterLayout.tsx`
 - [ ] Simplify `StoryWriterLauncherModal.tsx` step logic
 
 ### Multi-Sprint
