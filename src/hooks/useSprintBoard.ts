@@ -3,6 +3,7 @@ import { useRef, useMemo, useEffect, useCallback } from "react";
 import type { Ticket, TicketDetail, ActivityLogEntry, StoredReview, StoryVersion } from "@/types/ticket";
 import type { DevInfoPayload } from "@/app/api/tickets/[key]/dev-info/route";
 import { swrFetcher, tickets as ticketsApi, jira as jiraApi } from "@/lib/api-client";
+export { useDebouncedCallback } from "./useDebouncedCallback";
 
 // Fetches saved sprint slot configuration with SWR caching
 export function useSprintSlots() {
@@ -263,30 +264,3 @@ export function useActiveWriterSessions() {
   );
 }
 
-// Debounce hook: returns a stable function that delays invoking callback
-export function useDebouncedCallback<A extends unknown[]>(
-  callback: (...args: A) => void,
-  delay: number,
-): (...args: A) => void {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const callbackRef = useRef(callback);
-
-  useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  return useMemo(
-    () =>
-      (...args: A) => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => callbackRef.current(...args), delay);
-      },
-    [delay],
-  );
-}
