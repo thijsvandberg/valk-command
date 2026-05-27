@@ -202,6 +202,7 @@ export function SubtasksSection({
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestProgress, setSuggestProgress] = useState<string | null>(null);
   const [addingIndices, setAddingIndices] = useState<Set<number>>(new Set());
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [localRenames, setLocalRenames] = useState<Record<string, string>>({});
@@ -368,15 +369,9 @@ export function SubtasksSection({
     setError(null);
 
     tickets.renameSubtask(ticketKey, savedKey, { title: trimmed })
-      .then(() => {
-        setLocalRenames((prev) => {
-          const next = { ...prev };
-          delete next[savedKey];
-          return next;
-        });
-        onMutate();
-      })
+      .then(() => onMutate())
       .catch((err) => {
+        // Remove override so title reverts to original on error
         setLocalRenames((prev) => {
           const next = { ...prev };
           delete next[savedKey];
@@ -724,7 +719,13 @@ export function SubtasksSection({
     <div className="relative">
       <button
         type="button"
-        onClick={() => handleSuggest()}
+        onClick={() => {
+          if (suggestions.length > 0) {
+            setSuggestionsExpanded(true);
+          } else {
+            handleSuggest();
+          }
+        }}
         disabled={suggestLoading}
         className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
           suggestLoading
@@ -873,9 +874,12 @@ export function SubtasksSection({
         progressText={suggestProgress}
         error={suggestError}
         addingIndices={addingIndices}
+        isExpanded={suggestionsExpanded}
+        onToggleExpanded={() => setSuggestionsExpanded((prev) => !prev)}
         onAdd={handleAddSuggestion}
         onAddAll={handleAddAllSuggestions}
         onDismiss={handleDismissSuggestion}
+        onRegenerate={() => handleSuggest()}
       />
     </div>
   );
