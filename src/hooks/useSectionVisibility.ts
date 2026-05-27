@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { settings as settingsApi } from "@/lib/api-client";
+import { useDebouncedCallback } from "./useDebouncedCallback";
 
 const DEBOUNCE_MS = 500;
 
 export function useSectionVisibility(sectionId: string, defaultVisible: string[]) {
   const [visible, setVisible] = useState<Set<string>>(new Set(defaultVisible));
   const [loaded, setLoaded] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     settingsApi.getSectionVisibility(sectionId)
@@ -21,15 +21,12 @@ export function useSectionVisibility(sectionId: string, defaultVisible: string[]
       .catch(() => setLoaded(true));
   }, [sectionId]);
 
-  const persist = useCallback(
+  const persist = useDebouncedCallback(
     (nextVisible: Set<string>) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        settingsApi.saveSectionVisibility(sectionId, [...nextVisible])
-          .catch((err) => console.warn("[section-visibility] persist failed", err));
-      }, DEBOUNCE_MS);
+      settingsApi.saveSectionVisibility(sectionId, [...nextVisible])
+        .catch((err) => console.warn("[section-visibility] persist failed", err));
     },
-    [sectionId],
+    DEBOUNCE_MS,
   );
 
   const toggleField = useCallback(
@@ -44,12 +41,6 @@ export function useSectionVisibility(sectionId: string, defaultVisible: string[]
     },
     [persist],
   );
-
-  useEffect(() => {
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, []);
 
   return { visible, loaded, toggleField };
 }

@@ -36,8 +36,8 @@ The three API-backed hooks share an identical debounce+timer+cleanup pattern, bu
 ## Checklist
 
 - [x] Create `useDebouncedPersist<T>(key, initial, persistFn, delayMs?)` hook
-- [ ] Refactor `useColumnConfig` to use it
-- [ ] Refactor `useColumnWidths` to use it
-- [ ] Refactor `useSectionVisibility` to use it
+- [x] Refactor `useColumnConfig` to use it
+- [x] Refactor `useColumnWidths` to use it
+- [x] Refactor `useSectionVisibility` to use it
 - [ ] Refactor `useSidebarState` to use `useLocalStorage` internally
 - [ ] All existing tests pass

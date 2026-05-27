@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { ColumnId } from "@/components/sprint-board/FilterBar";
 import { DEFAULT_VISIBLE, COLUMNS } from "@/components/sprint-board/FilterBar";
 import { settings as settingsApi } from "@/lib/api-client";
+import { useDebouncedCallback } from "./useDebouncedCallback";
 
 const DEBOUNCE_MS = 500;
 
@@ -13,7 +14,6 @@ export function useColumnConfig() {
   const [order, setOrder] = useState<ColumnId[]>(DEFAULT_ORDER);
   const [visible, setVisible] = useState<Set<ColumnId>>(new Set(DEFAULT_VISIBLE));
   const [loaded, setLoaded] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     settingsApi.getColumnConfig()
@@ -36,17 +36,14 @@ export function useColumnConfig() {
       .catch(() => setLoaded(true));
   }, []);
 
-  const persist = useCallback(
+  const persist = useDebouncedCallback(
     (nextOrder: ColumnId[], nextVisible: Set<ColumnId>) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        settingsApi.saveColumnConfig({
-          order: nextOrder,
-          visible: [...nextVisible],
-        }).catch((err) => console.warn("[column-config] persist failed", err));
-      }, DEBOUNCE_MS);
+      settingsApi.saveColumnConfig({
+        order: nextOrder,
+        visible: [...nextVisible],
+      }).catch((err) => console.warn("[column-config] persist failed", err));
     },
-    [],
+    DEBOUNCE_MS,
   );
 
   const setColumnOrder = useCallback(
@@ -70,7 +67,6 @@ export function useColumnConfig() {
         if (show) next.add(id);
         else next.delete(id);
         setOrder((o) => {
-          // If enabling a column not yet in order, append it so it becomes visible in the table
           const nextOrder = show && !o.includes(id) ? [...o, id] : o;
           persist(nextOrder, next);
           return nextOrder;
@@ -83,7 +79,6 @@ export function useColumnConfig() {
 
   const resetTo = useCallback(
     (nextOrder: ColumnId[], nextVisible: ColumnId[]) => {
-      // Always merge: keep provided order, append any DEFAULT_ORDER columns not yet present
       const nextOrderSet = new Set(nextOrder);
       const mergedOrder = [
         ...nextOrder.filter((id) => DEFAULT_ORDER.includes(id)),
@@ -100,12 +95,6 @@ export function useColumnConfig() {
   const resetToDefaults = useCallback(() => {
     resetTo(DEFAULT_ORDER, DEFAULT_VISIBLE);
   }, [resetTo]);
-
-  useEffect(() => {
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, []);
 
   return { order, visible, loaded, setColumnOrder, toggleColumn, resetTo, resetToDefaults };
 }

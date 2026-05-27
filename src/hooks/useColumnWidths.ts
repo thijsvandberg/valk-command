@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { settings as settingsApi } from "@/lib/api-client";
+import { useDebouncedCallback } from "./useDebouncedCallback";
 
 export type ColumnWidths = Record<string, number>;
 
@@ -27,7 +28,6 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
 export function useColumnWidths() {
   const [widths, setWidths] = useState<ColumnWidths>({});
   const [loaded, setLoaded] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     settingsApi.getColumnWidths()
@@ -38,13 +38,13 @@ export function useColumnWidths() {
       .catch(() => setLoaded(true));
   }, []);
 
-  const persist = useCallback((next: ColumnWidths) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
+  const persist = useDebouncedCallback(
+    (next: ColumnWidths) => {
       settingsApi.saveColumnWidths(next)
         .catch((err) => console.warn("[column-widths] persist failed", err));
-    }, DEBOUNCE_MS);
-  }, []);
+    },
+    DEBOUNCE_MS,
+  );
 
   const setColumnWidth = useCallback((colId: string, width: number) => {
     setWidths((prev) => {
@@ -66,12 +66,6 @@ export function useColumnWidths() {
   const getWidth = useCallback((colId: string): number | undefined => {
     return widths[colId] ?? undefined;
   }, [widths]);
-
-  useEffect(() => {
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, []);
 
   return { widths, loaded, getWidth, setColumnWidth, resetColumnWidth };
 }
