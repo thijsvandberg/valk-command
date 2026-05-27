@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Fuse from "fuse.js";
 import { useRouter, usePathname } from "next/navigation";
 
-import { apiFetch, jira, conversations as conversationsApi, storyWriter, sprintSlots as sprintSlotsApi, settings } from "@/lib/api-client";
+import { apiFetch, jira, conversations as conversationsApi, storyWriter, sprintSlots as sprintSlotsApi, settings, epics as epicsApi } from "@/lib/api-client";
 import type { LocalSearchResult } from "@/app/api/search/local/route";
 import type { Conversation } from "@/types/chat";
 import type { ActiveSession } from "@/app/api/story-writer/active-sessions/route";
@@ -15,6 +15,7 @@ import type {
   ConversationResult,
   StoryWriterResult,
   DirectTicketResult,
+  EpicResult,
   PaletteResult,
   SubFlowState,
   SprintSlot,
@@ -31,6 +32,7 @@ import {
 export interface UseCommandPaletteReturn {
   open: boolean;
   closing: boolean;
+  epicMode: boolean;
   query: string;
   setQuery: (q: string) => void;
   activeIdx: number;
@@ -63,6 +65,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   const [loadingTickets, setLoadingTickets] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [epicMode, setEpicMode] = useState(false);
+  const [epicResults, setEpicResults] = useState<EpicResult[]>([]);
   const [subFlow, setSubFlow] = useState<SubFlowState>({ kind: "none" });
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -170,6 +174,21 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     setTicketResults([]);
     setConversationResults([]);
     setStoryWriterSessions([]);
+    setEpicMode(false);
+    setSubFlow({ kind: "none" });
+    setClosing(false);
+    setOpen(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
+
+  const handleOpenEpicMode = useCallback(() => {
+    window.dispatchEvent(new Event("valk:closeGlobalSearch"));
+    setQuery("");
+    setActiveIdx(0);
+    setTicketResults([]);
+    setConversationResults([]);
+    setStoryWriterSessions([]);
+    setEpicMode(true);
     setSubFlow({ kind: "none" });
     setClosing(false);
     setOpen(true);
@@ -178,6 +197,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
   const handleClose = useCallback(() => {
     setSubFlow({ kind: "none" });
+    setEpicMode(false);
     setClosing(true);
     setTimeout(() => {
       setOpen(false);
@@ -185,19 +205,38 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     }, 120);
   }, []);
 
-  /* ---- Global Cmd+K listener ---- */
+  /* ---- Global Cmd+K / Cmd+Shift+K listener ---- */
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "k") {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const isK = e.key === "k" || e.key === "K" || e.code === "KeyK";
+      if (!isK) return;
+
+      if (!e.shiftKey) {
+        // Cmd+K: open palette (normal) or switch from epic mode to normal
         e.preventDefault();
         e.stopPropagation();
-        if (open) handleClose();
-        else handleOpen();
+        if (open && epicMode) {
+          setEpicMode(false);
+        } else if (open) {
+          handleClose();
+        } else {
+          handleOpen();
+        }
+      } else {
+        // Cmd+Shift+K: open palette in epic mode
+        e.preventDefault();
+        e.stopPropagation();
+        if (open && !epicMode) {
+          setEpicMode(true);
+        } else if (!open) {
+          handleOpenEpicMode();
+        }
       }
     }
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [open, handleOpen, handleClose]);
+  }, [open, epicMode, handleOpen, handleOpenEpicMode, handleClose]);
 
   /* ---- Listen for close requests from GlobalSearch ---- */
   useEffect(() => {
@@ -228,6 +267,46 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       })
       .catch((err) => console.warn("[command-palette] fetch sessions failed", err));
   }, [open]);
+
+  /* ---- Fetch epics once on palette open ---- */
+  useEffect(() => {
+    if (!open) return;
+    epicsApi.list()
+      .then((data) => {
+        setEpicResults(
+          data.map((e) => ({
+            category: "epic" as const,
+            id: `epic-${e.key}`,
+            key: e.key,
+            name: e.name,
+            status: e.status,
+            childCount: e.childCount,
+            summary: e.summary ?? null,
+          })),
+        );
+      })
+      .catch((err) => console.warn("[command-palette] fetch epics failed", err));
+  }, [open]);
+
+  /* ---- Fuse.js index for epic search ---- */
+  const epicFuse = useMemo(
+    () => new Fuse(epicResults, {
+      keys: [
+        { name: "name", weight: 1.0 },
+        { name: "key", weight: 0.8 },
+      ],
+      threshold: 0.4,
+      includeScore: true,
+    }),
+    [epicResults],
+  );
+
+  /* ---- Filter epic results by query ---- */
+  const filteredEpicResults = useMemo((): EpicResult[] => {
+    const q = query.trim();
+    if (!q) return epicResults.slice(0, MAX_PER_CATEGORY);
+    return epicFuse.search(q, { limit: MAX_PER_CATEGORY }).map((r) => r.item);
+  }, [query, epicResults, epicFuse]);
 
   /* ---- Lazily fetch sprint slots + default sprint when the sub-flow opens ---- */
   const isSubFlowLoadingSprints = subFlow.kind === "new-story" && subFlow.loadingSprints;
@@ -375,6 +454,11 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
   /* ---- Build combined results ---- */
   const allResults: PaletteResult[] = useMemo(() => {
+    // Epic-only mode: only show epic results
+    if (epicMode) {
+      return filteredEpicResults;
+    }
+
     const q = query.trim();
 
     // If we detected a direct ticket key, show the story writer session for that
@@ -428,16 +512,17 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       }
     }
 
-    // Story writer results appear above plain conversations
+    // Story writer results appear above plain conversations; epics after tickets
     const combined: PaletteResult[] = [
       ...ranked,
       ...ticketResults,
+      ...filteredEpicResults,
       ...filteredStoryWriterSessions,
       ...conversationResults,
     ];
 
     return combined.slice(0, MAX_TOTAL);
-  }, [query, actions, actionFuse, ticketResults, conversationResults, directTicketKey, filteredStoryWriterSessions]);
+  }, [query, epicMode, actions, actionFuse, ticketResults, conversationResults, directTicketKey, filteredStoryWriterSessions, filteredEpicResults]);
 
   /* ---- Reset active index when results change ---- */
   useEffect(() => {
@@ -470,6 +555,10 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         break;
       case "story-writer":
         router.push(`/tickets/${result.ticketKey}/write`);
+        handleClose();
+        break;
+      case "epic":
+        router.push(`/tickets/${result.key}`);
         handleClose();
         break;
     }
@@ -552,6 +641,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   return {
     open,
     closing,
+    epicMode,
     query,
     setQuery,
     activeIdx,

@@ -6,7 +6,8 @@ export type ResultCategory =
   | "ticket"
   | "conversation"
   | "direct-ticket"
-  | "story-writer";
+  | "story-writer"
+  | "epic";
 
 export interface PageResult {
   category: "page";
@@ -60,13 +61,24 @@ export interface StoryWriterResult {
   targetTitle: string | null;
 }
 
+export interface EpicResult {
+  category: "epic";
+  id: string;
+  key: string;
+  name: string;
+  status: string;
+  childCount: number;
+  summary: string | null;
+}
+
 export type PaletteResult =
   | PageResult
   | ActionResult
   | TicketResult
   | ConversationResult
   | DirectTicketResult
-  | StoryWriterResult;
+  | StoryWriterResult
+  | EpicResult;
 
 export interface SprintSlot {
   slotIndex: number;

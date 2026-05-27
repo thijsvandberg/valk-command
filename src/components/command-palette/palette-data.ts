@@ -37,6 +37,7 @@ export const CATEGORY_LABELS: Record<ResultCategory, string> = {
   page: "Pages",
   action: "Actions",
   ticket: "Tickets",
+  epic: "Epics",
   conversation: "Conversations",
   "direct-ticket": "Direct",
   "story-writer": "Story Writer",

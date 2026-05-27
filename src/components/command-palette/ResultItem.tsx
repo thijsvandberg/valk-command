@@ -8,6 +8,7 @@ import {
   MessageCircle,
   NotebookPen,
   Scissors,
+  Layers,
 } from "lucide-react";
 
 import type { PaletteResult } from "./types";
@@ -51,6 +52,12 @@ export function ResultIcon({ result, isActive }: { result: PaletteResult; isActi
       return (
         <span className={`${base} ${isActive ? "bg-emerald-500/15 text-emerald-400" : "bg-overlay-subtle text-text-tertiary"}`}>
           <NotebookPen className="h-4 w-4" strokeWidth={1.5} />
+        </span>
+      );
+    case "epic":
+      return (
+        <span className={`${base} ${isActive ? "bg-[#9b6cd4]/15 text-[#9b6cd4]" : "bg-overlay-subtle text-text-tertiary"}`}>
+          <Layers className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
   }
@@ -116,6 +123,33 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
           )}
         </div>
       );
+    case "epic": {
+      const ec = statusColor(result.status);
+      return (
+        <div className="flex flex-col min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="shrink-0 font-mono text-label text-text-tertiary font-medium">{result.key}</span>
+            <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
+              {result.name}
+            </span>
+            <span
+              className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-caption font-medium capitalize"
+              style={{ backgroundColor: ec.bg, color: ec.text }}
+            >
+              {result.status.toLowerCase()}
+            </span>
+            {result.childCount > 0 && (
+              <span className="shrink-0 text-caption text-text-muted">
+                {result.childCount} {result.childCount === 1 ? "issue" : "issues"}
+              </span>
+            )}
+          </div>
+          {result.summary && (
+            <span className="text-label text-text-muted truncate mt-0.5">{result.summary}</span>
+          )}
+        </div>
+      );
+    }
     case "story-writer":
       return (
         <div className="flex items-center gap-2 min-w-0 flex-1">

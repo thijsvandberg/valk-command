@@ -9,24 +9,6 @@ export function GlobalSearch() {
   const handleClose = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "k" || e.key === "K" || e.code === "KeyK")) {
-        e.preventDefault();
-        e.stopPropagation();
-        window.dispatchEvent(new Event("valk:closePalette"));
-        // Let page-level handlers (e.g. SprintBoard) claim the event first
-        const searchEvent = new Event("valk:openSearch", { cancelable: true });
-        const claimed = !window.dispatchEvent(searchEvent);
-        if (!claimed) {
-          setOpen((prev) => !prev);
-        }
-      }
-    }
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, []);
-
-  useEffect(() => {
     function onOpen() { setOpen(true); }
     window.addEventListener("valk:openGlobalSearch", onOpen);
     return () => window.removeEventListener("valk:openGlobalSearch", onOpen);

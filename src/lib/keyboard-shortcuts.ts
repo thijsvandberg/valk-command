@@ -18,7 +18,7 @@ export const KEYBOARD_SHORTCUTS: ShortcutGroup[] = [
     scope: "Global",
     shortcuts: [
       { keys: [mod, "K"], action: "Open Command Palette" },
-      { keys: [mod, "Shift", "K"], action: "Open Ticket Search" },
+      { keys: [mod, "Shift", "K"], action: "Search Epics" },
     ],
   },
   {

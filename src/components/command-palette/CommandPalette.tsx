@@ -13,6 +13,7 @@ export function CommandPalette() {
   const {
     open,
     closing,
+    epicMode,
     query,
     setQuery,
     activeIdx,
@@ -87,12 +88,17 @@ export function CommandPalette() {
         ) : (
           <div className="flex items-center gap-3 px-5 py-4">
             <Search className="h-[18px] w-[18px] shrink-0 text-text-muted" strokeWidth={1.5} />
+            {epicMode && (
+              <span className="shrink-0 rounded-md bg-[#9b6cd4]/15 px-2 py-0.5 text-caption font-semibold text-[#9b6cd4] tracking-wide">
+                Epics
+              </span>
+            )}
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search pages, tickets, or actions..."
+              placeholder={epicMode ? "Search epics..." : "Search pages, tickets, or actions..."}
               className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none font-[var(--font-body)]"
               spellCheck={false}
               autoComplete="off"
