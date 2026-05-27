@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Target, Check } from "lucide-react";
+import { Zap } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SuggestionCard, SuggestionRow, LinkButton } from "@/components/story-writer/SuggestionCard";
 import { tickets } from "@/lib/api-client";
@@ -23,6 +23,7 @@ const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: strin
 interface ResolvedInfo {
   status: string;
   readiness: TicketReadiness | null;
+  title: string | null;
 }
 
 interface EpicSuggestionCardProps {
@@ -54,6 +55,7 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
               [key]: {
                 status: data.jiraStatus,
                 readiness: data.readiness,
+                title: data.title || null,
               },
             }));
           }
@@ -80,7 +82,7 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
 
   return (
     <SuggestionCard
-      icon={<Target size={10} strokeWidth={1.5} className="text-text-muted" />}
+      icon={<Zap size={10} strokeWidth={1.5} className="text-text-muted" />}
       title="Epic suggestion"
     >
       {suggestions.map((s) => {
@@ -91,6 +93,7 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
         const hasError = errors.has(s.key);
         const conf = CONFIDENCE_STYLES[s.confidence] ?? CONFIDENCE_STYLES.low;
         const info = resolved[s.key];
+        const displayName = (info?.title) || (s.name !== s.key ? s.name : s.key);
 
         return (
           <SuggestionRow key={s.key} active={isSelected}>
@@ -99,15 +102,14 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
               issueType="epic"
               jiraStatus={(info?.status ?? "TO DO") as JiraStatus}
               readiness={info?.readiness ?? undefined}
-              title={s.name}
+              title={displayName}
               size="sm"
               variant="list"
-              compact
             />
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex items-center gap-1.5">
                 <span className={`min-w-0 flex-1 truncate text-label ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
-                  {s.name}
+                  {displayName}
                 </span>
                 <span
                   className="shrink-0 rounded-full px-1.5 py-0.5 text-caption font-medium leading-none"

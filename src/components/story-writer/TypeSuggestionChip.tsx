@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 
 interface TypeSuggestionChipProps {
@@ -19,6 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function TypeSuggestionChip({ type, onApply, currentType }: TypeSuggestionChipProps) {
   const [clicked, setClicked] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const applied = clicked || currentType === type;
   const label = TYPE_LABELS[type] ?? type;
@@ -30,13 +31,22 @@ export function TypeSuggestionChip({ type, onApply, currentType }: TypeSuggestio
 
   return (
     <div className="mt-3 rounded-lg border border-border-default overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
+      >
         <ArrowRight size={10} strokeWidth={1.5} className="text-text-muted" />
         <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
           Type change
         </span>
-      </div>
-      <div
+        <ChevronDown
+          size={12}
+          strokeWidth={1.5}
+          className={`ml-auto shrink-0 text-text-muted transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`}
+        />
+      </button>
+      {!collapsed && <div
         className={`flex items-center gap-2.5 px-3 py-2 transition-colors duration-150 ${
           applied
             ? "bg-[var(--color-brand-500)]/[0.04]"
@@ -62,7 +72,7 @@ export function TypeSuggestionChip({ type, onApply, currentType }: TypeSuggestio
             Accept
           </button>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

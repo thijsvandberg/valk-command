@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, Loader2 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Card shell                                                         */
@@ -13,23 +13,36 @@ export function SuggestionCard({
   headerRight,
   children,
   className = "",
+  defaultCollapsed = false,
 }: {
   icon: ReactNode;
   title: string;
   headerRight?: ReactNode;
   children: ReactNode;
   className?: string;
+  defaultCollapsed?: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
   return (
     <div className={`mt-3 rounded-lg border border-border-default overflow-hidden ${className}`}>
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
+      >
         {icon}
         <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
           {title}
         </span>
-        {headerRight && <span className="ml-auto flex items-center">{headerRight}</span>}
-      </div>
-      <div className="divide-y divide-border-subtle">{children}</div>
+        {headerRight && <span className="ml-auto flex items-center mr-1.5">{headerRight}</span>}
+        <ChevronDown
+          size={12}
+          strokeWidth={1.5}
+          className={`${headerRight ? "" : "ml-auto "}shrink-0 text-text-muted transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`}
+        />
+      </button>
+      {!collapsed && <div className="divide-y divide-border-subtle">{children}</div>}
     </div>
   );
 }

@@ -215,8 +215,9 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       setInlineHighlight((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (inlineHighlight >= 0 && inlineHighlight < inlineResults.length) {
-        handleInlineLink(inlineResults[inlineHighlight]);
+      const idx = inlineHighlight >= 0 ? inlineHighlight : 0;
+      if (idx < inlineResults.length) {
+        handleInlineLink(inlineResults[idx]);
       }
     } else if (e.key === "Escape") {
       e.preventDefault();

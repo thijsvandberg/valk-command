@@ -32,7 +32,7 @@ describe("LinkSuggestionChips", () => {
     );
     expect(screen.getAllByText("Linked")).toHaveLength(1);
     // VPL-200 should still have a Link button
-    const linkButtons = screen.getAllByRole("button", { name: /link/i });
+    const linkButtons = screen.getAllByRole("button", { name: /^link$/i });
     expect(linkButtons).toHaveLength(1);
   });
 
@@ -46,7 +46,7 @@ describe("LinkSuggestionChips", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^link$/i }));
     expect(onLink).toHaveBeenCalledWith("VPL-100", "relates to");
 
     await waitFor(() => {
@@ -64,7 +64,7 @@ describe("LinkSuggestionChips", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^link$/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Retry")).toBeInTheDocument();

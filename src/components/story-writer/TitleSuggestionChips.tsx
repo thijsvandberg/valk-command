@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Type } from "lucide-react";
+import { Check, ChevronDown, Type } from "lucide-react";
 
 interface TitleSuggestionChipsProps {
   titles: string[];
@@ -11,6 +11,7 @@ interface TitleSuggestionChipsProps {
 
 export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSuggestionChipsProps) {
   const [clicked, setClicked] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   if (titles.length === 0) return null;
 
@@ -21,13 +22,22 @@ export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSug
 
   return (
     <div className="mt-3 rounded-lg border border-border-default overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
+      >
         <Type size={10} strokeWidth={1.5} className="text-text-muted" />
         <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
           Title suggestions
         </span>
-      </div>
-      <div className="divide-y divide-border-subtle">
+        <ChevronDown
+          size={12}
+          strokeWidth={1.5}
+          className={`ml-auto shrink-0 text-text-muted transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`}
+        />
+      </button>
+      {!collapsed && <div className="divide-y divide-border-subtle">
         {titles.map((title, i) => {
           const isSelected = clicked === title || currentTitle === title;
           return (
@@ -73,7 +83,7 @@ export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSug
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
