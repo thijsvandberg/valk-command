@@ -37,10 +37,10 @@ These two features were scoped in BRDG-127 (Phase 3) but skipped during implemen
 
 ### Inline rename
 
-- [ ] Click a subtask title to enter edit mode (inline input replaces the title text)
-- [ ] `Enter` or click outside saves the new title
-- [ ] `Escape` cancels without saving
-- [ ] Optimistic UI: title updates immediately, reverts on error
+- [x] Click a subtask title to enter edit mode (inline input replaces the title text)
+- [x] `Enter` or click outside saves the new title
+- [x] `Escape` cancels without saving
+- [x] Optimistic UI: title updates immediately, reverts on error
 - [x] New API endpoint: `PATCH /api/tickets/[key]/subtasks/[subtaskKey]` accepting `{ title: string }`
 - [x] Endpoint calls `jiraClient.updateIssue(subtaskKey, { summary: title })` and updates `ticketSubtask` table
 - [x] API client method: `tickets.renameSubtask(parentKey, subtaskKey, title)`

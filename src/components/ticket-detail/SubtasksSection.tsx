@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { TicketDetail, JiraStatus, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -47,12 +47,26 @@ function SortableSubtaskRow({
   onSelect,
   hideKey,
   showDragHandle,
+  displayTitle,
+  isEditing,
+  editValue,
+  onEditChange,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
 }: {
   sub: Subtask;
   isLast: boolean;
   onSelect?: (key: string) => void;
   hideKey?: boolean;
   showDragHandle?: boolean;
+  displayTitle: string;
+  isEditing: boolean;
+  editValue: string;
+  onEditChange: (value: string) => void;
+  onStartEdit: () => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
 }) {
   const {
     attributes,
@@ -110,20 +124,44 @@ function SortableSubtaskRow({
           {sub.key}
         </span>
       )}
-      <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
+      {isEditing ? (
+        <input
+          autoFocus
+          value={editValue}
+          onChange={(e) => onEditChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); onSaveEdit(); }
+            if (e.key === "Escape") { e.preventDefault(); onCancelEdit(); }
+          }}
+          onBlur={onSaveEdit}
+          onFocus={(e) => e.target.select()}
+          onClick={(e) => e.stopPropagation()}
+          className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none border-b border-[var(--color-brand-400)]"
+        />
+      ) : (
+        <span
+          className="min-w-0 flex-1 truncate text-sm text-text-secondary cursor-text hover:text-text-primary"
+          onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
+          style={{ transition: "color 0.15s ease" }}
+        >
+          {displayTitle}
+        </span>
+      )}
       <StatusBadge status={sub.jiraStatus} />
       {/* Open in new tab */}
-      <a
-        href={`/tickets/${sub.key}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-        style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-        title="Open in new tab"
-      >
-        <ExternalLink size={12} strokeWidth={1.5} />
-      </a>
+      {!isEditing && (
+        <a
+          href={`/tickets/${sub.key}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
+          title="Open in new tab"
+        >
+          <ExternalLink size={12} strokeWidth={1.5} />
+        </a>
+      )}
     </div>
   );
 }
@@ -151,6 +189,10 @@ export function SubtasksSection({
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestProgress, setSuggestProgress] = useState<string | null>(null);
   const [addingIndices, setAddingIndices] = useState<Set<number>>(new Set());
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [localRenames, setLocalRenames] = useState<Record<string, string>>({});
+  const editCancelledRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestEsRef = useRef<EventSource | null>(null);
   const suggestRetryRef = useRef(0);
@@ -170,10 +212,10 @@ export function SubtasksSection({
   }, [ticketKey]);
 
   // Merge server subtasks with locally added ones (that haven't appeared in server data yet)
-  const mergedSubtasks = [
+  const mergedSubtasks = useMemo(() => [
     ...subtasks,
     ...locallyAdded.filter((la) => !subtasks.some((s) => s.key === la.key)),
-  ];
+  ], [subtasks, locallyAdded]);
   const orderedSubtasks = localOrder ?? mergedSubtasks;
 
   const filtered = filter === "all"
@@ -268,6 +310,59 @@ export function SubtasksSection({
       inputRef.current?.blur();
     }
   }, [handleCreate]);
+
+  const handleStartEdit = useCallback((key: string, title: string) => {
+    editCancelledRef.current = false;
+    setEditingKey(key);
+    setEditingTitle(title);
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
+    if (editCancelledRef.current) {
+      editCancelledRef.current = false;
+      return;
+    }
+    if (!editingKey) return;
+
+    const trimmed = editingTitle.trim();
+    const originalSub = mergedSubtasks.find((s) => s.key === editingKey);
+    if (!trimmed || trimmed === originalSub?.title) {
+      setEditingKey(null);
+      setEditingTitle("");
+      return;
+    }
+
+    setLocalRenames((prev) => ({ ...prev, [editingKey]: trimmed }));
+    const savedKey = editingKey;
+    setEditingKey(null);
+    setEditingTitle("");
+    setError(null);
+
+    tickets.renameSubtask(ticketKey, savedKey, { title: trimmed })
+      .then(() => {
+        setLocalRenames((prev) => {
+          const next = { ...prev };
+          delete next[savedKey];
+          return next;
+        });
+        onMutate();
+      })
+      .catch((err) => {
+        setLocalRenames((prev) => {
+          const next = { ...prev };
+          delete next[savedKey];
+          return next;
+        });
+        const detail = err instanceof ApiError ? err.message : "Jira API error";
+        setError(`Failed to rename subtask: ${detail}`);
+      });
+  }, [editingKey, editingTitle, mergedSubtasks, ticketKey, onMutate]);
+
+  const handleCancelEdit = useCallback(() => {
+    editCancelledRef.current = true;
+    setEditingKey(null);
+    setEditingTitle("");
+  }, []);
 
   // Clean up EventSource on unmount
   useEffect(() => {
@@ -430,6 +525,13 @@ export function SubtasksSection({
           onSelect={onSelectTicket}
           hideKey={hideKeys}
           showDragHandle={showDragHandles}
+          displayTitle={localRenames[sub.key] ?? sub.title}
+          isEditing={editingKey === sub.key}
+          editValue={editingTitle}
+          onEditChange={setEditingTitle}
+          onStartEdit={() => handleStartEdit(sub.key, localRenames[sub.key] ?? sub.title)}
+          onSaveEdit={handleSaveEdit}
+          onCancelEdit={handleCancelEdit}
         />
       );
     }
@@ -458,10 +560,32 @@ export function SubtasksSection({
             {sub.key}
           </span>
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{sub.title}</span>
+        {!isPending && editingKey === sub.key ? (
+          <input
+            autoFocus
+            value={editingTitle}
+            onChange={(e) => setEditingTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); handleSaveEdit(); }
+              if (e.key === "Escape") { e.preventDefault(); handleCancelEdit(); }
+            }}
+            onBlur={handleSaveEdit}
+            onFocus={(e) => e.target.select()}
+            onClick={(e) => e.stopPropagation()}
+            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none border-b border-[var(--color-brand-400)]"
+          />
+        ) : (
+          <span
+            className={`min-w-0 flex-1 truncate text-sm text-text-secondary ${!isPending ? "cursor-text hover:text-text-primary" : ""}`}
+            onClick={!isPending ? (e: React.MouseEvent) => { e.stopPropagation(); handleStartEdit(sub.key, localRenames[sub.key] ?? sub.title); } : undefined}
+            style={{ transition: "color 0.15s ease" }}
+          >
+            {localRenames[sub.key] ?? sub.title}
+          </span>
+        )}
         <StatusBadge status={sub.jiraStatus} />
         {/* Open in new tab */}
-        {!isPending && (
+        {!isPending && editingKey !== sub.key && (
           <a
             href={`/tickets/${sub.key}`}
             target="_blank"
@@ -481,7 +605,7 @@ export function SubtasksSection({
   // Always-visible inline input row at the bottom of the list
   const inlineInput = (
     <div
-      className={`flex items-center gap-2 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      className={`flex items-center gap-2 px-3 py-1.5 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
       {showDragHandles && <span className="w-3 shrink-0" />}
