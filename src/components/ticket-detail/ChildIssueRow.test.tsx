@@ -23,19 +23,19 @@ describe("ChildIssueRow", () => {
     expect(screen.getByText("Test subtask")).toBeInTheDocument();
   });
 
-  it("renders TicketStatusPill when showPill is true (default)", () => {
+  it("renders TicketStatusPill when showKey is true (default)", () => {
     render(<ChildIssueRow item={baseSub} isLast={false} />);
     expect(screen.getByTestId("ticket-status-pill")).toHaveTextContent("VPL-100");
   });
 
-  it("hides pill when showPill is false", () => {
-    render(<ChildIssueRow item={baseSub} isLast={false} showPill={false} />);
+  it("hides pill when showKey is false (only shows status fallback)", () => {
+    render(<ChildIssueRow item={baseSub} isLast={false} showKey={false} />);
     expect(screen.queryByTestId("ticket-status-pill")).not.toBeInTheDocument();
   });
 
   it("shows spinner instead of pill when pending", () => {
     const pending = { ...baseSub, key: "pending-123" };
-    render(<ChildIssueRow item={pending} isLast={false} isPending showPill />);
+    render(<ChildIssueRow item={pending} isLast={false} isPending showKey />);
     expect(screen.queryByTestId("ticket-status-pill")).not.toBeInTheDocument();
   });
 

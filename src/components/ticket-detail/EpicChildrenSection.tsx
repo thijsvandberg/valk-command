@@ -304,18 +304,23 @@ export function EpicChildrenSection({
     );
   }
 
-  const childRows = filtered.map((child, idx) => (
-    <ChildIssueRow
-      key={child.key}
-      item={child}
-      isLast={idx === filtered.length - 1}
-      isPending={child.key.startsWith("pending-")}
-      showTypeIcon
-      showPill={visibleFields.has("issueKey")}
-      onSelect={onSelectTicket}
-      metadataSlot={renderMetadata(child)}
-    />
-  ));
+  const childRows = filtered.map((child, idx) => {
+    const epic = isEpicChild(child) ? child : null;
+    return (
+      <ChildIssueRow
+        key={child.key}
+        item={child}
+        isLast={idx === filtered.length - 1}
+        isPending={child.key.startsWith("pending-")}
+        showTypeIcon
+        showKey={visibleFields.has("issueKey")}
+        showStatus={visibleFields.has("status")}
+        readiness={epic?.readiness}
+        onSelect={onSelectTicket}
+        metadataSlot={renderMetadata(child)}
+      />
+    );
+  });
 
   // Inline input row (create or search mode)
   const inlineInput = (

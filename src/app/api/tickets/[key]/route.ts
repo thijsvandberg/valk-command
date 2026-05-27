@@ -236,14 +236,24 @@ export async function GET(
   const subtaskCountMap = new Map<string, number>();
   const sprintIdToName = new Map<string, string>();
 
+  const readinessMap = new Map<string, TicketReadiness | null>();
+
   if (epicChildKeys.length > 0) {
-    const subtaskCountRows = await db
-      .select({ ticketKey: ticketSubtask.ticketKey, total: count() })
-      .from(ticketSubtask)
-      .where(sql`${ticketSubtask.ticketKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`)
-      .groupBy(ticketSubtask.ticketKey);
-    for (const row of subtaskCountRows) {
+    const [subtaskCountResult, metaRows] = await Promise.all([
+      db
+        .select({ ticketKey: ticketSubtask.ticketKey, total: count() })
+        .from(ticketSubtask)
+        .where(sql`${ticketSubtask.ticketKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`)
+        .groupBy(ticketSubtask.ticketKey),
+      db.query.ticketMetadata.findMany({
+        where: (m, { sql: sqlFn }) => sqlFn`${m.jiraKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`,
+      }),
+    ]);
+    for (const row of subtaskCountResult) {
       subtaskCountMap.set(row.ticketKey, row.total);
+    }
+    for (const row of metaRows) {
+      readinessMap.set(row.jiraKey, (row.readiness as TicketReadiness) ?? null);
     }
 
     // Resolve sprint IDs to display names
@@ -268,6 +278,7 @@ export async function GET(
     storyPoints: c.storyPoints ?? null,
     sprintName: c.sprintName ? (sprintIdToName.get(c.sprintName) ?? c.sprintName) : null,
     subtaskCount: subtaskCountMap.get(c.jiraKey) ?? 0,
+    readiness: readinessMap.get(c.jiraKey) ?? null,
   }));
 
   // Resolve inline attachment references: ![filename](attachment) → ![filename](/api/attachments/ID)

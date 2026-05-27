@@ -148,6 +148,7 @@ export interface EpicChild extends Subtask {
   storyPoints: number | null;
   sprintName: string | null;
   subtaskCount: number;
+  readiness: TicketReadiness | null;
 }
 
 export interface LinkedIssue {

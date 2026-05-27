@@ -1,8 +1,10 @@
 "use client";
 
 import type { Ref } from "react";
-import type { Subtask, TicketReadiness } from "@/types/ticket";
+import type { Subtask, TicketReadiness, JiraStatus } from "@/types/ticket";
+import { JIRA_STATUS_COLORS, JIRA_STATUS_ABBREVIATIONS } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Loader2 } from "lucide-react";
 
 interface ChildIssueRowProps {
@@ -11,7 +13,8 @@ interface ChildIssueRowProps {
   isLast: boolean;
   isPending?: boolean;
   showTypeIcon?: boolean;
-  showPill?: boolean;
+  showKey?: boolean;
+  showStatus?: boolean;
   readiness?: TicketReadiness | null;
   onSelect?: (key: string) => void;
   /** Inline editing support */
@@ -20,7 +23,7 @@ interface ChildIssueRowProps {
   onEditChange?: (value: string) => void;
   onSaveEdit?: () => void;
   onCancelEdit?: () => void;
-  /** Slot for extra metadata (story points, sprint, subtask count, etc.) */
+  /** Slot for extra metadata (story points, sprint, subtask count, assignee, etc.) */
   metadataSlot?: React.ReactNode;
   /** Slot for row-level actions (edit, delete buttons shown on hover) */
   actionsSlot?: React.ReactNode;
@@ -40,7 +43,8 @@ export function ChildIssueRow({
   isLast,
   isPending = false,
   showTypeIcon = false,
-  showPill = true,
+  showKey = true,
+  showStatus = true,
   readiness,
   onSelect,
   isEditing = false,
@@ -65,6 +69,11 @@ export function ChildIssueRow({
     onSelect(item.key);
   };
 
+  // Show the full pill (with context menu) when key is visible;
+  // show only a status badge when key is hidden but status is visible
+  const showPill = showKey && !isPending;
+  const showStatusOnly = !showKey && showStatus && !isPending;
+
   return (
     <div
       ref={ref}
@@ -79,23 +88,28 @@ export function ChildIssueRow({
     >
       {dragHandleSlot}
 
+      {isPending && (showKey || showStatus) && (
+        <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
+          <Loader2 size={10} className="animate-spin" />
+        </span>
+      )}
+
       {showPill && (
-        isPending ? (
-          <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
-            <Loader2 size={10} className="animate-spin" />
-          </span>
-        ) : (
-          <span onClick={(e) => e.stopPropagation()}>
-            <TicketStatusPill
-              ticketKey={item.key}
-              jiraStatus={item.jiraStatus}
-              issueType={showTypeIcon ? item.type : undefined}
-              readiness={readiness}
-              title={item.title}
-              size="sm"
-            />
-          </span>
-        )
+        <span onClick={(e) => e.stopPropagation()}>
+          <TicketStatusPill
+            ticketKey={item.key}
+            jiraStatus={item.jiraStatus}
+            issueType={showTypeIcon ? item.type : undefined}
+            readiness={readiness}
+            title={item.title}
+            size="sm"
+            variant="list"
+          />
+        </span>
+      )}
+
+      {showStatusOnly && (
+        <StatusBadge status={item.jiraStatus} />
       )}
 
       {isEditing ? (

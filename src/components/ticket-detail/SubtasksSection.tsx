@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { TicketDetail, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
+import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader } from "./ChildIssueListHeader";
 import { ChildIssueStatusFilter } from "./ChildIssueStatusFilter";
@@ -31,7 +32,9 @@ import {
 } from "@dnd-kit/sortable";
 
 const SUBTASK_FIELDS = [
-  { id: "issueKey", label: "issue pill" },
+  { id: "issueKey", label: "issue keys" },
+  { id: "status", label: "status" },
+  { id: "assignee", label: "assignees" },
 ];
 
 interface SubtasksSectionProps {
@@ -79,7 +82,9 @@ function SortableSubtaskRow({
   sub,
   isLast,
   onSelect,
-  showPill,
+  showKey,
+  showStatus,
+  showAssignee,
   showDragHandle,
   displayTitle,
   isEditing,
@@ -93,7 +98,9 @@ function SortableSubtaskRow({
   sub: Subtask;
   isLast: boolean;
   onSelect?: (key: string) => void;
-  showPill: boolean;
+  showKey: boolean;
+  showStatus: boolean;
+  showAssignee: boolean;
   showDragHandle?: boolean;
   displayTitle: string;
   isEditing: boolean;
@@ -140,13 +147,15 @@ function SortableSubtaskRow({
       ref={setNodeRef}
       item={itemWithTitle}
       isLast={isLast}
-      showPill={showPill}
+      showKey={showKey}
+      showStatus={showStatus}
       onSelect={onSelect}
       isEditing={isEditing}
       editValue={editValue}
       onEditChange={onEditChange}
       onSaveEdit={onSaveEdit}
       onCancelEdit={onCancelEdit}
+      metadataSlot={showAssignee ? <Avatar assignee={sub.assignee} size={22} /> : undefined}
       actionsSlot={
         <>
           <EditButton onClick={onStartEdit} />
@@ -196,7 +205,7 @@ export function SubtasksSection({
   const suggestRetryRef = useRef(0);
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
 
-  const defaultVisible = defaultHideKeys ? [] : ["issueKey"];
+  const defaultVisible = defaultHideKeys ? ["status"] : ["issueKey", "status"];
   const { visible: visibleFields, toggleField } = useSectionVisibility("subtasks", defaultVisible);
 
   // Load persisted suggestions on mount
@@ -551,7 +560,9 @@ export function SubtasksSection({
 
   const isDndEnabled = filter === "all" && filtered.length > 1;
   const isFiltered = filter !== "all";
-  const showPill = visibleFields.has("issueKey");
+  const showKey = visibleFields.has("issueKey");
+  const showStatus = visibleFields.has("status");
+  const showAssignee = visibleFields.has("assignee");
 
   const subtaskRows = filtered.map((sub, idx) => {
     const isPending = sub.key.startsWith("pending-");
@@ -564,7 +575,9 @@ export function SubtasksSection({
           sub={sub}
           isLast={idx === filtered.length - 1}
           onSelect={onSelectTicket}
-          showPill={showPill}
+          showKey={showKey}
+          showStatus={showStatus}
+          showAssignee={showAssignee}
           showDragHandle={showDragHandles}
           displayTitle={displayTitle}
           isEditing={editingKey === sub.key}
@@ -586,13 +599,15 @@ export function SubtasksSection({
         item={itemWithTitle}
         isLast={idx === filtered.length - 1}
         isPending={isPending}
-        showPill={showPill}
+        showKey={showKey}
+        showStatus={showStatus}
         onSelect={onSelectTicket}
         isEditing={!isPending && editingKey === sub.key}
         editValue={editingTitle}
         onEditChange={setEditingTitle}
         onSaveEdit={handleSaveEdit}
         onCancelEdit={handleCancelEdit}
+        metadataSlot={showAssignee ? <Avatar assignee={sub.assignee} size={22} /> : undefined}
         actionsSlot={!isPending ? (
           <>
             <EditButton onClick={() => handleStartEdit(sub.key, displayTitle)} />

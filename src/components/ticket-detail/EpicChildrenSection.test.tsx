@@ -23,9 +23,9 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const SAMPLE_CHILDREN: EpicChild[] = [
-  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, sprintName: "Sprint 1", subtaskCount: 2 },
-  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, sprintName: null, subtaskCount: 0 },
-  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, sprintName: "Sprint 1", subtaskCount: 1 },
+  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, sprintName: "Sprint 1", subtaskCount: 2, readiness: null },
+  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, sprintName: null, subtaskCount: 0, readiness: "drafting" },
+  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, sprintName: "Sprint 1", subtaskCount: 1, readiness: null },
 ];
 
 function renderSection(items: EpicChild[] = []) {
