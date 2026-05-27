@@ -77,7 +77,7 @@ export function ChildIssueRow({
     <div
       ref={ref}
       style={style}
-      className={`group flex items-center gap-2 px-3 py-2.5 ${
+      className={`group relative flex items-center gap-2 px-3 py-2.5 ${
         onSelect && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
       } ${!isLast ? "border-b border-border-subtle" : ""} ${
         isPending ? "opacity-50" : ""
@@ -133,7 +133,18 @@ export function ChildIssueRow({
 
       {metadataSlot}
 
-      {!isPending && !isEditing && actionsSlot}
+      {/* Hover overlay: actions float over content from the right */}
+      {!isPending && !isEditing && actionsSlot && (
+        <div
+          className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md pl-6 pr-2 opacity-0 group-hover:opacity-100"
+          style={{
+            transition: "opacity 0.15s ease",
+            background: "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",
+          }}
+        >
+          {actionsSlot}
+        </div>
+      )}
     </div>
   );
 }

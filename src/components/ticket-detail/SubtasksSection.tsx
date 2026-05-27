@@ -52,8 +52,8 @@ function EditButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted opacity-0 group-hover:opacity-100 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
-      style={{ transition: "opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease" }}
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
       title="Rename subtask"
     >
       <SquarePen size={13} strokeWidth={2} />
@@ -67,8 +67,8 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
-      style={{ transition: "opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease" }}
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
       title="Delete subtask"
     >
       <X size={14} strokeWidth={2} />

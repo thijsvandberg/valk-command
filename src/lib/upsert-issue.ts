@@ -229,10 +229,26 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
       }
     }
 
-    // Subtasks: replace all in ticketSubtask + upsert minimal ticket records
+    // Subtasks: replace all in ticketSubtask + upsert minimal ticket records.
+    // Jira's subtasks summary field omits assignee, so preserve existing
+    // assignee data from the ticket row or previous ticketSubtask row.
+    const existingSubRows = tx.select().from(ticketSubtask).where(eq(ticketSubtask.ticketKey, issue.key)).all();
+    const existingSubMap = new Map(existingSubRows.map((r) => [r.subtaskKey, r]));
     tx.delete(ticketSubtask).where(eq(ticketSubtask.ticketKey, issue.key)).run();
     const subtasks = fields.subtasks ?? [];
     for (const sub of subtasks) {
+      const jiraAssignee = sub.fields.assignee?.displayName ?? null;
+      const jiraAvatar = sub.fields.assignee?.avatarUrls?.["48x48"] ?? null;
+
+      // Fall back to the subtask's own ticket row for assignee data
+      const subTicketRow = !jiraAssignee
+        ? tx.select({ assignee: ticket.assignee, assigneeAvatar: ticket.assigneeAvatar }).from(ticket).where(eq(ticket.jiraKey, sub.key)).get()
+        : null;
+      const prevSubRow = existingSubMap.get(sub.key);
+
+      const resolvedAssignee = jiraAssignee ?? subTicketRow?.assignee ?? prevSubRow?.assignee ?? null;
+      const resolvedAvatar = jiraAvatar ?? subTicketRow?.assigneeAvatar ?? prevSubRow?.assigneeAvatar ?? null;
+
       tx.insert(ticketSubtask).values({
         id: `sub-${issue.key}-${sub.key}`,
         ticketKey: issue.key,
@@ -240,8 +256,8 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
         title: sub.fields.summary,
         type: normalizeIssueType(sub.fields.issuetype.name),
         status: normalizeStatus(sub.fields.status.name),
-        assignee: sub.fields.assignee?.displayName ?? null,
-        assigneeAvatar: sub.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+        assignee: resolvedAssignee,
+        assigneeAvatar: resolvedAvatar,
       }).run();
 
       // Also ensure the subtask exists as a ticket row so /tickets/[key] works
@@ -250,12 +266,17 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
         title: sub.fields.summary,
         type: normalizeIssueType(sub.fields.issuetype.name),
         status: normalizeStatus(sub.fields.status.name),
-        assignee: sub.fields.assignee?.displayName ?? null,
-        assigneeAvatar: sub.fields.assignee?.avatarUrls?.["48x48"] ?? null,
+        assignee: jiraAssignee,
+        assigneeAvatar: jiraAvatar,
         sprintName,
         lastSyncedAt: now,
       };
       if (subExists) {
+        // Preserve assignee on the ticket row too when Jira doesn't provide it
+        if (!jiraAssignee && subExists) {
+          delete (subData as Record<string, unknown>).assignee;
+          delete (subData as Record<string, unknown>).assigneeAvatar;
+        }
         tx.update(ticket).set(subData).where(eq(ticket.jiraKey, sub.key)).run();
       } else {
         tx.insert(ticket).values({ jiraKey: sub.key, ...subData }).run();
