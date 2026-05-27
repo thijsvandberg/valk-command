@@ -72,5 +72,5 @@ export function statusColor(status: string): { bg: string; text: string } {
   if (s.includes("PROGRESS")) return { bg: "rgba(56,152,210,0.12)", text: "#58b4e6" };
   if (s.includes("TEST") || s.includes("REVIEW")) return { bg: "rgba(120,90,220,0.12)", text: "#9b7ee8" };
   if (s === "DEPRECATED") return { bg: "rgba(239,68,68,0.12)", text: "#f87171" };
-  return { bg: "rgba(100,116,139,0.10)", text: "rgba(255,255,255,0.4)" };
+  return { bg: "rgba(100,116,139,0.14)", text: "#94a3b8" };
 }
