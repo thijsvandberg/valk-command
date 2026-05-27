@@ -57,7 +57,7 @@ For each component:
 ### Story Writer
 - [x] Extract toolbar logic from `StoryWriterLayout.tsx`
 - [x] Extract pane management from `StoryWriterLayout.tsx`
-- [ ] Simplify `StoryWriterLauncherModal.tsx` step logic
+- [x] Simplify `StoryWriterLauncherModal.tsx` step logic
 
 ### Multi-Sprint
 - [x] Extract chart rendering from `MultiSprintView.tsx`
