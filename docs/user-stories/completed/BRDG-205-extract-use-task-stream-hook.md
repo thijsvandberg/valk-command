@@ -1,6 +1,6 @@
 # BRDG-205: Extract useTaskStream Hook
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -68,5 +68,5 @@ Create a `useTaskStream(taskId, handlers)` hook that:
 - [x] Migrate `EpicPicker.tsx`
 - [x] Migrate `ReviewPopover.tsx`
 - [x] Migrate `SprintEditModal.tsx`
-- [ ] Verify real-time streaming still works for all 6 features
-- [ ] All existing tests pass
+- [x] Verify real-time streaming still works for all 6 features
+- [x] All existing tests pass
