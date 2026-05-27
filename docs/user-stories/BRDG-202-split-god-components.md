@@ -33,6 +33,25 @@ For each component:
 2. Extract sub-sections into focused child components
 3. Keep the parent as a layout/orchestration component under ~300 lines
 
+## Implementation Plan
+
+### Phase 1: MultiSprintView (1184 lines)
+1. **Extract utils** - Move constants (`COMPARE_*`), `CompareColState`, `loadCompareColumns`, `saveCompareColumns`, `loadSplitRatio`, `saveSplitRatio` to `multi-sprint-utils.ts`
+2. **Extract column component** - Move `compareCollisionDetection`, `ColumnResizeHandle`, `PaneDivider`, `DroppableSprintColumn` to `DroppableSprintColumn.tsx`
+
+### Phase 2: StoryWriterLayout (973 lines)
+3. **Extract action handlers** - Move ~20 `useCallback` handlers, ~15 `useState` hooks, refs, and effects into `useStoryWriterActions.ts` custom hook
+4. **Extract action bar** - Move ViewHeader actions JSX + More Menu dropdown into `StoryWriterActionBar.tsx`
+5. **Extract context assembly** - Move `WriterContextValue` assembly into the hook, reducing parent to pure layout (~120 lines)
+
+### Phase 3: StoryWriterLauncherModal (878 lines)
+6. **Extract dropdowns** - Move `SprintSelectDropdown` to `shared/SprintSelectDropdown.tsx`, `SessionSelectDropdown` to `shared/SessionSelectDropdown.tsx`
+7. **Extract mode content** - Move per-mode content sections to `shared/launcher/NewStoryContent.tsx`, `OpenSessionContent.tsx`, `ExistingStoryContent.tsx`
+
+### Phase 4: Secondary Components
+8. **NotificationBell (548 lines)** - Extract utils to `notifications/notification-utils.ts`, `TimeAgo` component, filter bar, and list item into `notifications/` subdirectory
+9. **SprintStatsPopover (579 lines)** - Extract `computeWorkingDays` to `sprint-stats-utils.ts`, sub-components to `sprint-stats-parts.tsx`
+
 ## Checklist
 
 ### Story Writer
@@ -41,8 +60,8 @@ For each component:
 - [ ] Simplify `StoryWriterLauncherModal.tsx` step logic
 
 ### Multi-Sprint
-- [ ] Extract chart rendering from `MultiSprintView.tsx`
-- [ ] Extract date calculation logic into utility
+- [x] Extract chart rendering from `MultiSprintView.tsx`
+- [x] Extract date calculation logic into utility
 
 ### Secondary components
 - [ ] Review and split `NotificationBell.tsx` (547 lines)
