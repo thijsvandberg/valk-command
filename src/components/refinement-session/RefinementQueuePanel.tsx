@@ -156,7 +156,7 @@ export function RefinementQueuePanel({
         </DndContext>
       )}
 
-      {bulk.bulkSuggestConvId && (
+      {bulk.bulkSuggestVisible && bulk.bulkSuggestConvId && (
         <BulkSuggestPanel conversationId={bulk.bulkSuggestConvId} isRunning={bulk.bulkSuggestRunning} collapsed={bulk.bulkSuggestPanelCollapsed} onToggleCollapse={() => bulk.setBulkSuggestPanelCollapsed((p) => !p)} />
       )}
 

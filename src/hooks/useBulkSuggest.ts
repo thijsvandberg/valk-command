@@ -12,8 +12,9 @@ export function useBulkSuggest(opts: {
 
   const [bulkSuggestConvId, setBulkSuggestConvId] = useState<string | null>(null);
   const [bulkSuggestRunning, setBulkSuggestRunning] = useState(false);
-  const [bulkSuggestPanelCollapsed, setBulkSuggestPanelCollapsed] = useState(false);
+  const [bulkSuggestPanelCollapsed, setBulkSuggestPanelCollapsed] = useState(true);
   const [bulkSuggestMenuOpen, setBulkSuggestMenuOpen] = useState(false);
+  const [bulkSuggestVisible, setBulkSuggestVisible] = useState(false);
 
   // On mount / session change: check if a bulk suggest conversation exists
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -60,6 +61,7 @@ export function useBulkSuggest(opts: {
     setBulkSuggestMenuOpen(false);
     setBulkSuggestRunning(true);
     setBulkSuggestPanelCollapsed(false);
+    setBulkSuggestVisible(true);
     try {
       const result = await refinementSessionsApi.bulkSuggestSubtasks(resolvedSessionId, force ? { force: true } : undefined);
       setBulkSuggestConvId(result.conversationId);
@@ -88,6 +90,7 @@ export function useBulkSuggest(opts: {
   return {
     bulkSuggestConvId,
     bulkSuggestRunning,
+    bulkSuggestVisible,
     bulkSuggestPanelCollapsed,
     setBulkSuggestPanelCollapsed,
     bulkSuggestMenuOpen,

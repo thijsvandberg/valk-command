@@ -68,6 +68,7 @@ function makeBulk() {
     bulkSuggestMenuOpen: false,
     setBulkSuggestMenuOpen: vi.fn(),
     bulkSuggestRunning: false,
+    bulkSuggestVisible: false,
     handleBulkSuggest: vi.fn(),
     handleCopyStories: vi.fn(),
     bulkSuggestConvId: null,
