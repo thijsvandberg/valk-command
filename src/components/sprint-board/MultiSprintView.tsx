@@ -11,7 +11,7 @@ import type { StatCriterion } from "./GroupStatBar";
 import { SprintSelector } from "./SprintSelector";
 import { SortableTicketRow } from "./TicketRow";
 import { BulkActionBar } from "./BulkActionBar";
-import { COLUMNS, ColumnToggle } from "./FilterBar";
+import { ColumnToggle } from "./FilterBar";
 import type { ColumnId } from "./FilterBar";
 import { saveTicketMetadata, saveStoryPoints } from "./sprint-board-utils";
 import { getJiraUrl } from "./TicketTableCells";
@@ -37,6 +37,18 @@ import {
   SortableContext,
   arrayMove,
 } from "@dnd-kit/sortable";
+import {
+  COMPARE_HEADER_LABELS,
+  COMPARE_COL_WIDTHS,
+  COMPARE_DEFAULT_VISIBLE,
+  COMPARE_DEFAULT_ORDER,
+  COMPARE_MIN_COL_WIDTH,
+  loadCompareColumns,
+  saveCompareColumns,
+  loadSplitRatio,
+  saveSplitRatio,
+  type CompareColState,
+} from "./multi-sprint-utils";
 
 // Prefer the most specific droppable (ticket row) over the large column container.
 // Ticket rows are checked first with pointerWithin; if the pointer is between rows or
@@ -52,78 +64,6 @@ const compareCollisionDetection: CollisionDetection = (args) => {
   );
   return pointerWithin({ ...args, droppableContainers: columnContainers });
 };
-
-// Header labels for all columns in compare view
-const COMPARE_HEADER_LABELS: Record<ColumnId, string> = {
-  type: "", key: "Key", title: "Title", epic: "Epic", sprint: "Sprint",
-  jiraStatus: "Status", flagged: "", points: "SP", bv: "BV",
-  notes: "", pipeline: "CI", assignee: "", poStatus: "Readiness",
-  quality: "QS",
-};
-
-// Column widths for the compare view (pixels). Title takes remaining space.
-const COMPARE_COL_WIDTHS: Record<ColumnId, number | undefined> = {
-  type: 32, key: 120, title: undefined, epic: 130, sprint: 100,
-  jiraStatus: 90, flagged: 36, points: 46, bv: 46,
-  notes: 36, pipeline: 70, assignee: 36, poStatus: 70, quality: 56,
-};
-
-const COMPARE_LS_KEY = "bridge:compare-columns";
-const COMPARE_SPLIT_LS_KEY = "bridge:compare-split";
-const COMPARE_DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "points", "assignee"];
-const COMPARE_DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
-const COMPARE_MIN_COL_WIDTH = 28;
-
-interface CompareColState {
-  visible: ColumnId[];
-  order: ColumnId[];
-  widths: Partial<Record<ColumnId, number>>;
-}
-
-function loadCompareColumns(): CompareColState {
-  try {
-    const raw = localStorage.getItem(COMPARE_LS_KEY);
-    if (raw) {
-      const data = JSON.parse(raw) as { visible?: string[]; order?: string[]; widths?: Record<string, number> };
-      const validIds = new Set<string>(COLUMNS.map((c) => c.id));
-      const visible = (data.visible ?? COMPARE_DEFAULT_VISIBLE).filter((id) => validIds.has(id)) as ColumnId[];
-      const savedOrder = (data.order ?? []).filter((id) => validIds.has(id)) as ColumnId[];
-      const savedSet = new Set(savedOrder);
-      const order = [...savedOrder, ...COMPARE_DEFAULT_ORDER.filter((id) => !savedSet.has(id))];
-      const widths: Partial<Record<ColumnId, number>> = {};
-      if (data.widths) {
-        for (const [k, v] of Object.entries(data.widths)) {
-          if (validIds.has(k) && typeof v === "number") widths[k as ColumnId] = v;
-        }
-      }
-      return { visible, order, widths };
-    }
-  } catch { /* ignore */ }
-  return { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER, widths: {} };
-}
-
-function saveCompareColumns(state: CompareColState) {
-  try {
-    localStorage.setItem(COMPARE_LS_KEY, JSON.stringify(state));
-  } catch { /* ignore */ }
-}
-
-function loadSplitRatio(): number {
-  try {
-    const raw = localStorage.getItem(COMPARE_SPLIT_LS_KEY);
-    if (raw) {
-      const v = parseFloat(raw);
-      if (v >= 0.2 && v <= 0.8) return v;
-    }
-  } catch { /* ignore */ }
-  return 0.5;
-}
-
-function saveSplitRatio(ratio: number) {
-  try {
-    localStorage.setItem(COMPARE_SPLIT_LS_KEY, String(ratio));
-  } catch { /* ignore */ }
-}
 
 // --- Column resize handle ---
 
