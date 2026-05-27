@@ -30,6 +30,7 @@ import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, AlertTriangle, Inbox, Copy as CopyIcon, ExternalLink, X } from "lucide-react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { useSprintBoardDragDrop } from "@/components/sprint-board/useSprintBoardDragDrop";
+import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoardShortcuts";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
@@ -285,20 +286,10 @@ export default function SprintBoard() {
     toastTimerRef.current = setTimeout(() => setToast(null), durationMs);
   }, []);
 
-  useEffect(() => {
-    function onOpenSearch(e: Event) { e.preventDefault(); setSearchModalOpen(true); }
-    window.addEventListener("valk:openSearch", onOpenSearch);
-    return () => { window.removeEventListener("valk:openSearch", onOpenSearch); };
-  }, []);
-
-  useEffect(() => {
-    if (!headerMenuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) setHeaderMenuOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [headerMenuOpen]);
+  const { handleTableKeyDown } = useSprintBoardShortcuts({
+    tickets, focusedTicketIdx, setFocusedTicketIdx, setSelectedTicket,
+    setSearchModalOpen, headerMenuRef, headerMenuOpen, setHeaderMenuOpen,
+  });
 
   const navigateToSprint = useCallback((sprintId: string) => {
     f.resetFilters();
@@ -416,15 +407,6 @@ export default function SprintBoard() {
     if (checkedTickets.size === 0) return;
     setRefineModalOpen(true);
   }, [checkedTickets]);
-
-  const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
-    const tag = (e.target as HTMLElement).tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-    if (e.key === "Escape") { setSelectedTicket(null); return; }
-    if (e.key === "ArrowDown") { e.preventDefault(); setFocusedTicketIdx((prev) => Math.min(prev + 1, tickets.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setFocusedTicketIdx((prev) => Math.max(prev - 1, 0)); }
-    else if (e.key === "Enter" && focusedTicketIdx >= 0 && focusedTicketIdx < tickets.length) { e.preventDefault(); const t = tickets[focusedTicketIdx]; setSelectedTicket((prev) => (prev === t.key ? null : t.key)); }
-  }, [tickets, focusedTicketIdx]);
 
   const handleSlotEdit = useCallback((slotIndex: number) => { setEditingSlot((prev) => (prev === slotIndex ? null : slotIndex)); }, []);
 

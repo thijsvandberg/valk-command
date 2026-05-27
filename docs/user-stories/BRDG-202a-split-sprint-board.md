@@ -20,7 +20,7 @@
 ## Checklist
 
 - [x] Extract drag-drop logic into `useSprintBoardDragDrop` hook
-- [ ] Extract keyboard shortcut handling into `useSprintBoardShortcuts` hook
+- [x] Extract keyboard shortcut handling into `useSprintBoardShortcuts` hook
 - [ ] Extract column rendering into `SprintBoardColumn` component
 - [ ] Extract grouping/sorting logic into utility functions
 - [ ] Verify `SprintBoard.tsx` is under 300 lines after refactor
