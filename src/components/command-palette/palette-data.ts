@@ -5,7 +5,7 @@ import Fuse from "fuse.js";
 import {
   MessageCircle,
   KanbanSquare,
-  SlidersHorizontal,
+  Gem,
   Users,
   Settings,
   NotebookPen,
@@ -18,7 +18,7 @@ export const PAGES: PageResult[] = [
   { category: "page", id: "page-sprint-board", label: "Sprint Board", href: "/sprint-board", icon: React.createElement(KanbanSquare, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["board", "kanban", "tickets", "sprint", "backlog", "home"] },
   { category: "page", id: "page-chat", label: "Chat", href: "/chat", icon: React.createElement(MessageCircle, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["conversations", "messages", "talk"] },
   { category: "page", id: "page-story-writer", label: "Story Writer", href: "/story-writer", icon: React.createElement(NotebookPen, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["write", "stories", "editor"] },
-  { category: "page", id: "page-refinement", label: "Refinement", href: "/refinement", icon: React.createElement(SlidersHorizontal, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["refine", "groom", "grooming", "prep"] },
+  { category: "page", id: "page-refinement", label: "Refinement", href: "/refinement", icon: React.createElement(Gem, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["refine", "groom", "grooming", "prep"] },
   { category: "page", id: "page-activity-log", label: "Activity Log", href: "/activity-log", icon: React.createElement(Activity, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["activity", "log", "history"] },
   { category: "page", id: "page-stakeholder", label: "Stakeholder", href: "/stakeholder", icon: React.createElement(Users, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["external", "readonly", "share"] },
   { category: "page", id: "page-settings", label: "Settings", href: "/settings", icon: React.createElement(Settings, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["preferences", "config", "configuration"] },

@@ -16,7 +16,7 @@ import {
   NotebookPen,
   SendHorizontal,
   LogOut,
-  Layers,
+  Gem,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -763,7 +763,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                           onClick={() => { setShowAddToRefinement(true); setShowMoreMenu(false); }}
                           className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                         >
-                          <Layers size={13} strokeWidth={1.5} className="shrink-0" />
+                          <Gem size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>Add to refinement</span>
                         </button>
                       </>

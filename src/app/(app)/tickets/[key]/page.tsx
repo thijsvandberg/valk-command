@@ -23,7 +23,7 @@ import {
   Check,
   PanelRightClose,
   MessageSquareText,
-  Layers,
+  Gem,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
@@ -673,7 +673,7 @@ export default function TicketDetailPage({
                     className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
-                    <Layers size={13} strokeWidth={1.5} className="text-text-muted" />
+                    <Gem size={13} strokeWidth={1.5} className="text-text-muted" />
                     Add to refinement
                   </button>
                 </div>

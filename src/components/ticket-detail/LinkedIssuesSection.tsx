@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import Link from "next/link";
-import type { TicketDetail, LinkedIssue, IssueType } from "@/types/ticket";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import type { TicketDetail, LinkedIssue } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { StatusBadge as SearchStatusBadge } from "@/components/sprint-board/SearchResultParts";
+import { ChildIssueRow } from "./ChildIssueRow";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { Button } from "@/components/ui/Button";
 import { LinkIssueDialog, RELATION_OPTIONS } from "./LinkIssueDialog";
-import { RelatedIssueSuggestionsPanel, type RelatedSuggestion } from "./RelatedIssueSuggestions";
+import { RelatedSuggestions, toRelatedSuggestion, type RelatedSuggestion } from "./RelatedIssueSuggestions";
 import { tickets } from "@/lib/api-client";
+import { useTaskStream } from "@/hooks/useTaskStream";
+import { friendlyStreamError, isRetryableStreamError } from "@/lib/agent-errors";
+import { StatusBadge as SearchStatusBadge } from "@/components/sprint-board/SearchResultParts";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import type { IssueType } from "@/types/ticket";
 import { X, Sparkles, Loader2, Link2, Cloud, ChevronDown } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
@@ -29,12 +29,24 @@ interface InlineSearchResult {
   source?: "local" | "jira";
 }
 
+function DeleteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+      title="Remove link"
+    >
+      <X size={14} strokeWidth={2} />
+      <span>Delete</span>
+    </button>
+  );
+}
+
 export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssuesSectionProps) {
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkDialogDefaults, setLinkDialogDefaults] = useState<{ targetKey?: string; relation?: string }>({});
-  const [confirmDelete, setConfirmDelete] = useState<LinkedIssue | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Inline link input state
   const [inlineRelation, setInlineRelation] = useState("relates to");
@@ -49,6 +61,28 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [inlineError, setInlineError] = useState<string | null>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const inlineDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // AI suggestions state (managed here, like SubtasksSection)
+  const [suggestions, setSuggestions] = useState<RelatedSuggestion[]>([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggestProgress, setSuggestProgress] = useState<string | null>(null);
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  const [linkingKeys, setLinkingKeys] = useState<Set<string>>(new Set());
+  const [suggestTaskId, setSuggestTaskId] = useState<string | null>(null);
+  const suggestRetryRef = useRef(0);
+  const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
+
+  // Load persisted suggestions on mount
+  useEffect(() => {
+    let cancelled = false;
+    tickets.getRelatedSuggestions(ticketKey).then((data) => {
+      if (!cancelled && data.suggestions.length > 0) {
+        setSuggestions(data.suggestions.map(toRelatedSuggestion));
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [ticketKey]);
 
   // Close relation dropdown on Esc or click outside
   useEffect(() => {
@@ -72,22 +106,127 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     };
   }, [inlineRelationOpen]);
 
-  const handleDelete = useCallback(async () => {
-    if (!confirmDelete || isDeleting) return;
-    setIsDeleting(true);
+  // Stream handling for AI suggestions
+  useTaskStream(suggestTaskId, {
+    timeout: 0,
+    onProgress: (message) => setSuggestProgress(message),
+    onToolCall: (tool) => {
+      const clean = tool.replace("mcp__jira__", "").replace("mcp__", "");
+      setSuggestProgress(`Using ${clean}...`);
+    },
+    onResult: async (resultData) => {
+      const output = (resultData.output as string) ?? "";
+      setSuggestProgress("Processing results...");
+      try {
+        const parsed = await tickets.applyRelatedSuggestions(ticketKey, { output });
+        setSuggestions(parsed.suggestions.map(toRelatedSuggestion));
+      } catch {
+        setSuggestError("Failed to process results");
+      }
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    },
+    onError: (message) => {
+      if (isRetryableStreamError(message) && suggestRetryRef.current < 1) {
+        suggestRetryRef.current += 1;
+        handleSuggestRef.current(true);
+        return;
+      }
+      setSuggestError(friendlyStreamError(message));
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    },
+    onNetworkError: () => {
+      setSuggestError("Connection to workspace lost");
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    },
+  });
+
+  const handleSuggest = useCallback(async (isRetry = false) => {
+    if (suggestLoading && !isRetry) return;
+
+    if (!isRetry) {
+      suggestRetryRef.current = 0;
+    }
+
+    setSuggestLoading(true);
+    setSuggestError(null);
+    setSuggestProgress(isRetry ? "Retrying..." : "Starting...");
+    setSuggestions([]);
+    setSuggestTaskId(null);
+
+    try {
+      const data = await tickets.findRelatedSuggestions(ticketKey);
+
+      if (data.cached && data.suggestions) {
+        setSuggestions(data.suggestions.map(toRelatedSuggestion));
+        setSuggestLoading(false);
+        setSuggestProgress(null);
+        return;
+      }
+
+      if (data.taskId) {
+        setSuggestTaskId(data.taskId);
+        return;
+      }
+
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    } catch (err) {
+      setSuggestError(err instanceof Error ? err.message : "Failed to start search");
+      setSuggestLoading(false);
+      setSuggestProgress(null);
+    }
+  }, [ticketKey, suggestLoading]);
+
+  useEffect(() => {
+    handleSuggestRef.current = handleSuggest;
+  }, [handleSuggest]);
+
+  const handleAcceptSuggestion = useCallback(async (suggestion: RelatedSuggestion) => {
+    setLinkingKeys((prev) => new Set(prev).add(suggestion.key));
+
+    try {
+      await tickets.createLink(ticketKey, {
+        targetKey: suggestion.key,
+        relation: suggestion.suggestedRelation,
+      });
+      setSuggestions((prev) => prev.filter((s) => s.key !== suggestion.key));
+      onMutate();
+      tickets.dismissRelatedSuggestion(ticketKey, { id: suggestion.id }).catch(() => {});
+    } catch (err) {
+      console.error("Failed to link suggestion:", err);
+    }
+
+    setLinkingKeys((prev) => {
+      const next = new Set(prev);
+      next.delete(suggestion.key);
+      return next;
+    });
+  }, [ticketKey, onMutate]);
+
+  const handleDeclineSuggestion = useCallback((suggestion: RelatedSuggestion) => {
+    setSuggestions((prev) => prev.filter((s) => s.key !== suggestion.key));
+    tickets.dismissRelatedSuggestion(ticketKey, { id: suggestion.id }).catch(() => {});
+  }, [ticketKey]);
+
+  const handleDeclineAll = useCallback(() => {
+    setSuggestions([]);
+    tickets.clearRelatedSuggestions(ticketKey).catch(() => {});
+  }, [ticketKey]);
+
+  const handleDelete = useCallback(async (item: LinkedIssue) => {
     try {
       await tickets.deleteLink(ticketKey, {
-        jiraLinkId: confirmDelete.jiraLinkId,
-        linkedKey: confirmDelete.key,
+        jiraLinkId: item.jiraLinkId,
+        linkedKey: item.key,
       });
       onMutate();
     } catch (err) {
       console.error("Failed to delete link:", err);
-    } finally {
-      setIsDeleting(false);
-      setConfirmDelete(null);
     }
-  }, [confirmDelete, isDeleting, ticketKey, onMutate]);
+  }, [ticketKey, onMutate]);
 
   const openLinkDialog = useCallback((defaults?: { targetKey?: string; relation?: string }) => {
     setLinkDialogDefaults(defaults ?? {});
@@ -99,10 +238,6 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     setLinkDialogDefaults({});
     onMutate();
   }, [onMutate]);
-
-  const handleLinkSuggestion = useCallback((suggestion: RelatedSuggestion) => {
-    openLinkDialog({ targetKey: suggestion.key, relation: suggestion.suggestedRelation });
-  }, [openLinkDialog]);
 
   // Inline search with two-phase Jira fallback
   const inlineJiraDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -235,24 +370,49 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     return acc;
   }, {});
 
+  const suggestButton = (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          if (suggestions.length > 0) {
+            setSuggestionsExpanded(true);
+          } else {
+            handleSuggest();
+            setSuggestionsExpanded(true);
+          }
+        }}
+        disabled={suggestLoading}
+        className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
+          suggestLoading
+            ? "text-[var(--color-brand-400)]"
+            : suggestions.length > 0
+              ? "text-[var(--color-brand-400)]"
+              : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+        }`}
+        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+        title={suggestions.length > 0 ? `${suggestions.length} pending AI suggestions` : "Find related issues with AI"}
+      >
+        {suggestLoading ? (
+          <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+        ) : (
+          <Sparkles size={13} strokeWidth={1.5} />
+        )}
+      </button>
+      {suggestions.length > 0 && !suggestLoading && (
+        <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-[9px] font-semibold text-white">
+          {suggestions.length}
+        </span>
+      )}
+    </div>
+  );
+
   return (
     <div className="mt-8">
       <SectionHeader
         title="Linked Issues"
         count={allIssues.length}
-        actions={
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Sparkles size={12} strokeWidth={2} />}
-              onClick={() => setShowSuggestions(true)}
-              aria-label="Find related issues"
-            >
-              Find related
-            </Button>
-          </>
-        }
+        actions={suggestButton}
       />
 
       {allIssues.length > 0 && (
@@ -265,42 +425,21 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
               <div className="overflow-hidden rounded-lg border border-border-default">
                 {items.map((item, idx) => {
                   const isPending = item.jiraLinkId?.startsWith("pending-");
+
                   return (
-                    <div
+                    <ChildIssueRow
                       key={item.key}
-                      className={`group flex items-center gap-3 px-3 py-2.5 ${
-                        idx < items.length - 1 ? "border-b border-border-subtle" : ""
-                      } ${isPending ? "opacity-50" : ""}`}
-                    >
-                      <IssueTypeIcon type={item.type} size={14} />
-                      {isPending ? (
-                        <span className="flex items-center gap-1.5 font-mono text-body-sm text-text-muted">
-                          <Loader2 size={10} className="animate-spin" />
-                          {item.key}
-                        </span>
-                      ) : (
-                        <Link
-                          href={`/tickets/${item.key}`}
-                          className="font-mono text-body-sm text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {item.key}
-                        </Link>
-                      )}
-                      <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{item.title}</span>
-                      <StatusBadge status={item.jiraStatus} />
-                      <Avatar assignee={item.assignee} size={22} />
-                      {!isPending && (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDelete(item)}
-                          className="cursor-pointer rounded p-0.5 text-text-muted opacity-0 transition-opacity duration-150 hover:bg-red-500/10 hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 group-hover:opacity-100"
-                          aria-label={`Remove link to ${item.key}`}
-                        >
-                          <X size={13} strokeWidth={2} />
-                        </button>
-                      )}
-                    </div>
+                      item={item}
+                      isLast={idx === items.length - 1}
+                      isPending={isPending}
+                      showTypeIcon
+                      showKey
+                      showStatus
+                      metadataSlot={<Avatar assignee={item.assignee} size={22} />}
+                      actionsSlot={!isPending ? (
+                        <DeleteButton onClick={() => handleDelete(item)} />
+                      ) : undefined}
+                    />
                   );
                 })}
               </div>
@@ -411,13 +550,19 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         <p className="mt-2 text-body-sm text-red-400/80">{inlineError}</p>
       )}
 
-      {showSuggestions && (
-        <RelatedIssueSuggestionsPanel
-          ticketKey={ticketKey}
-          onClose={() => setShowSuggestions(false)}
-          onLinkSuggestion={handleLinkSuggestion}
-        />
-      )}
+      <RelatedSuggestions
+        suggestions={suggestions}
+        isLoading={suggestLoading}
+        progressText={suggestProgress}
+        error={suggestError}
+        linkingKeys={linkingKeys}
+        isExpanded={suggestionsExpanded}
+        onToggleExpanded={() => setSuggestionsExpanded((prev) => !prev)}
+        onAccept={handleAcceptSuggestion}
+        onDecline={handleDeclineSuggestion}
+        onDeclineAll={handleDeclineAll}
+        onRegenerate={() => handleSuggest()}
+      />
 
       <LinkIssueDialog
         open={showLinkDialog}
@@ -426,16 +571,6 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         onLinked={handleLinkCreated}
         defaultTargetKey={linkDialogDefaults.targetKey}
         defaultRelation={linkDialogDefaults.relation}
-      />
-
-      <ConfirmDialog
-        open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
-        title="Remove link"
-        description={confirmDelete ? `Remove the "${confirmDelete.relation}" link to ${confirmDelete.key}?` : ""}
-        confirmLabel="Remove"
-        confirmVariant="destructive"
-        onConfirm={handleDelete}
       />
     </div>
   );

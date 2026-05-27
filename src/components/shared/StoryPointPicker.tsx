@@ -152,11 +152,9 @@ export function StoryPointPicker({
                   );
                 })}
                 <input ref={lgCustomInputRef} type="number" min="1" max="999" value={lgCustomInput} onChange={(e) => setLgCustomInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleLgCustomSubmit(); } if (e.key === "Escape") { e.preventDefault(); handleClose(); } }} placeholder="#" className="h-10 w-10 rounded-md border border-border-default bg-[var(--color-surface-default)] text-center text-body-lg font-medium tabular-nums text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" style={{ transition: "border-color 0.15s ease" }} />
-                {value != null && (
-                  <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear" className="flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60">
-                    <X size={14} strokeWidth={1.5} />
-                  </button>
-                )}
+                <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear story points" className={`flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 ${value == null ? "opacity-30 pointer-events-none" : ""}`} disabled={value == null}>
+                  <X size={14} strokeWidth={1.5} />
+                </button>
               </div>
             </>
           ) : customMode ? (
@@ -183,11 +181,9 @@ export function StoryPointPicker({
               <button type="button" onClick={() => setCustomMode(true)} title="Custom value" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isCustomValue ? "#fff" : "var(--color-text-muted)", backgroundColor: isCustomValue ? (color?.text ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)", boxShadow: isCustomValue ? `0 0 0 1px ${color?.text ?? "var(--color-text-muted)"}40` : undefined }}>
                 <Hash size={11} strokeWidth={1.5} />
               </button>
-              {value != null && (
-                <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear" className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}>
-                  <X size={iconSize} strokeWidth={1.5} />
-                </button>
-              )}
+              <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear story points" className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 ${value == null ? "opacity-30 pointer-events-none" : ""}`} disabled={value == null}>
+                <X size={iconSize} strokeWidth={1.5} />
+              </button>
             </div>
           )}
         </div>,

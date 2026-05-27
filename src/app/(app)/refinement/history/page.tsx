@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Layers, ArrowLeft } from "lucide-react";
+import { Gem, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
@@ -21,7 +21,7 @@ export default function RefinementHistoryPage() {
     <>
       {pageTitle}
       <ViewHeader
-        icon={<Layers size={16} strokeWidth={1.5} />}
+        icon={<Gem size={16} strokeWidth={1.5} />}
         actions={
           <Link
             href="/refinement"

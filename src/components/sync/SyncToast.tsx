@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/Button";
 export function ActivityToast() {
   const { toasts, dismissToast, acknowledgeError, retryEntry } = useActivityContext();
 
-  const visibleToasts = toasts.slice(-5);
+  const isRefinement = typeof document !== "undefined" && document.body.classList.contains("refinement-session-active");
+
+  // In refinement sessions, only show error/failed toasts to reduce distraction
+  const filteredToasts = isRefinement
+    ? toasts.filter((t) => t.entry.status === "failed")
+    : toasts;
+
+  const visibleToasts = filteredToasts.slice(-5);
 
   if (visibleToasts.length === 0) return null;
 

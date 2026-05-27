@@ -61,14 +61,15 @@ describe("StoryPointPicker", () => {
     const onChange = vi.fn();
     render(<StoryPointPicker value={5} onChange={onChange} />);
     fireEvent.click(screen.getByRole("button"));
-    fireEvent.click(screen.getByTitle("Clear"));
+    fireEvent.click(screen.getByTitle("Clear story points"));
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  it("does not show clear button when value is null", () => {
+  it("disables clear button when value is null", () => {
     render(<StoryPointPicker value={null} onChange={() => {}} />);
     fireEvent.click(screen.getByRole("button"));
-    expect(screen.queryByTitle("Clear")).not.toBeInTheDocument();
+    const clearBtn = screen.getByTitle("Clear story points");
+    expect(clearBtn).toBeDisabled();
   });
 
   it("supports keyboard shortcut for preset values", () => {

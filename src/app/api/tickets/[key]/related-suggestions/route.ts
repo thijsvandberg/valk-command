@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { relatedSuggestionCache, ticket, ticketLink } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { agentFetch } from "@/lib/agent-fetch";
 import { parseRelatedStories } from "@/lib/parse-related-stories";
@@ -196,16 +196,36 @@ export async function PUT(request: Request, { params }: RouteContext) {
 }
 
 /**
- * DELETE: clear the suggestions cache for this ticket.
+ * DELETE: remove a single suggestion (dismiss) or all for this ticket.
+ * Body: { id: string } to remove one, or empty/omitted to remove all.
  */
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: RouteContext) {
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  await db
-    .delete(relatedSuggestionCache)
-    .where(eq(relatedSuggestionCache.ticketKey, key));
+  let body: Record<string, unknown> = {};
+  try {
+    const text = await request.text();
+    if (text) body = JSON.parse(text);
+  } catch {
+    // empty body is fine for "delete all"
+  }
+
+  if (typeof body.id === "string") {
+    await db
+      .delete(relatedSuggestionCache)
+      .where(
+        and(
+          eq(relatedSuggestionCache.ticketKey, key),
+          eq(relatedSuggestionCache.id, body.id),
+        ),
+      );
+  } else {
+    await db
+      .delete(relatedSuggestionCache)
+      .where(eq(relatedSuggestionCache.ticketKey, key));
+  }
 
   return new Response(null, { status: 204 });
 }

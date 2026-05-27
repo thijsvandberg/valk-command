@@ -1,7 +1,7 @@
 import { agentFetchStream } from "@/lib/agent-fetch";
 import { validatePathParam } from "@/lib/api-validation";
 
-const INACTIVITY_TIMEOUT_MS = 60_000;
+const INACTIVITY_TIMEOUT_MS = 180_000;
 
 export async function GET(
   request: Request,

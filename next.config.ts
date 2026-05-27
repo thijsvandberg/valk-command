@@ -41,7 +41,10 @@ const securityHeaders = [
   },
 ];
 
+const isProductionBuild = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
+  distDir: isProductionBuild ? ".next-build" : ".next",
   devIndicators: {
     position: "bottom-right",
   },

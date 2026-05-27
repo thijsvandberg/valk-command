@@ -7,7 +7,7 @@ import {
   MessageCircle,
   KanbanSquare,
   GitBranch,
-  SlidersHorizontal,
+  Gem,
   NotebookPen,
   Users,
   Menu,
@@ -42,7 +42,7 @@ const navItems = [
   {
     label: "Refinement",
     href: "/refinement",
-    icon: <SlidersHorizontal className="h-5 w-5" strokeWidth={1.5} />,
+    icon: <Gem className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Stakeholder",

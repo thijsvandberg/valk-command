@@ -148,6 +148,7 @@ function SortableSubtaskRow({
       ref={setNodeRef}
       item={itemWithTitle}
       isLast={isLast}
+      showTypeIcon
       showKey={showKey}
       showStatus={showStatus}
       onJiraStatusChange={onJiraStatusChange}
@@ -602,6 +603,7 @@ export function SubtasksSection({
         item={itemWithTitle}
         isLast={idx === filtered.length - 1}
         isPending={isPending}
+        showTypeIcon
         showKey={showKey}
         showStatus={showStatus}
         onJiraStatusChange={!isPending ? (s) => handleJiraStatusChange(sub.key, s) : undefined}

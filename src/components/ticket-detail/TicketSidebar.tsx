@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
-import { ChevronRight, ChevronDown, AlertTriangle, Play, ArrowUpRight, Layers } from "lucide-react";
+import { ChevronRight, ChevronDown, AlertTriangle, Play, ArrowUpRight, Gem } from "lucide-react";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
@@ -439,7 +439,7 @@ export function TicketSidebar({
                       style={{ transition: "color 0.15s ease" }}
                       title={`Open refinement session: ${s.name}`}
                     >
-                      <Layers size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
+                      <Gem size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
                       <span className="min-w-0 truncate max-w-[160px] text-body-lg">{s.name}</span>
                       <ArrowUpRight size={11} strokeWidth={2} className="shrink-0 opacity-0 group-hover/ref:opacity-100" style={{ transition: "opacity 0.15s ease" }} />
                     </Link>

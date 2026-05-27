@@ -8,7 +8,7 @@ import {
   MessageCircle,
   NotebookPen,
   Scissors,
-  Layers,
+  Gem,
 } from "lucide-react";
 
 import type { PaletteResult } from "./types";
@@ -57,7 +57,7 @@ export function ResultIcon({ result, isActive }: { result: PaletteResult; isActi
     case "epic":
       return (
         <span className={`${base} ${isActive ? "bg-[#9b6cd4]/15 text-[#9b6cd4]" : "bg-overlay-subtle text-text-tertiary"}`}>
-          <Layers className="h-4 w-4" strokeWidth={1.5} />
+          <Gem className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );
   }

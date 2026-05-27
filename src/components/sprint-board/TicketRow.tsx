@@ -7,7 +7,7 @@ import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar
 import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X, Layers } from "lucide-react";
+import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X, Gem } from "lucide-react";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
@@ -244,7 +244,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                   delay={300}
                 >
                   <span className="shrink-0">
-                    <Layers
+                    <Gem
                       size={10}
                       strokeWidth={1.5}
                       className="text-[var(--color-brand-400)] opacity-60"

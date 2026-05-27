@@ -14,6 +14,7 @@ import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets } from "@/lib/api-client";
 import type { TicketReadiness } from "@/types/ticket";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { BridgeMark } from "@/components/shared/BridgeMark";
 import {
   MoreHorizontal,
@@ -21,11 +22,13 @@ import {
   ChevronLeft,
   ChevronRight,
   StickyNote,
-  ListChecks,
+  SquareMinus,
   List,
   GripVertical,
   Info,
   MessageSquareText,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import {
   DndContext,
@@ -110,8 +113,7 @@ function getDefaultPaneWidth() {
   return Math.max(MIN_PANE_WIDTH, Math.round(window.innerWidth * 0.3));
 }
 
-function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
-  const [width, setWidth] = useState(getDefaultPaneWidth);
+function SubtasksPaneResizable({ children, width, onWidthChange }: { children: React.ReactNode; width: number; onWidthChange: (w: number) => void }) {
   const [isDragging, setIsDragging] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +124,7 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
       const rect = paneRef.current.getBoundingClientRect();
       const maxW = window.innerWidth * MAX_PANE_WIDTH_RATIO;
       const newW = Math.max(MIN_PANE_WIDTH, Math.min(maxW, rect.right - e.clientX));
-      setWidth(newW);
+      onWidthChange(newW);
     }
     function handleMouseUp() { setIsDragging(false); }
     document.body.style.cursor = "col-resize";
@@ -135,7 +137,7 @@ function SubtasksPaneResizable({ children }: { children: React.ReactNode }) {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, onWidthChange]);
 
   return (
     <div
@@ -186,6 +188,12 @@ export default function RefinementSessionTicketPage({
     saveSession,
     finishSession,
   } = useRefinementSession();
+
+  // Persisted sidebar width (shared across all sidebar panels and sessions)
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage("bridge:refinement-sidebar-width", getDefaultPaneWidth());
+
+  // Persisted zoom level for refinement session content
+  const [zoomLevel, setZoomLevel] = useLocalStorage<100 | 120>("bridge:refinement-zoom", 120);
 
   // Re-hydrate session from DB when context is empty (page refresh)
   const [rehydrating, setRehydrating] = useState(false);
@@ -539,10 +547,28 @@ export default function RefinementSessionTicketPage({
             <button
               type="button"
               onClick={handleNext}
-              className="flex cursor-pointer items-center justify-center rounded-md p-1 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              className={`flex cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                storyPoints != null
+                  ? "gap-1 bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] active:bg-[var(--color-brand-700)]"
+                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+              }`}
+              style={{
+                padding: storyPoints != null ? "4px 10px" : "4px",
+                transition: "background-color 0.25s ease, color 0.25s ease, padding 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease",
+                boxShadow: storyPoints != null ? "0 2px 8px rgba(14, 142, 136, 0.3)" : "none",
+              }}
               aria-label={isLastTicket ? "End session" : "Next ticket"}
             >
+              <span
+                className="overflow-hidden text-body-sm font-medium whitespace-nowrap"
+                style={{
+                  maxWidth: storyPoints != null ? "60px" : "0px",
+                  opacity: storyPoints != null ? 1 : 0,
+                  transition: "max-width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease",
+                }}
+              >
+                {isLastTicket ? "Finish" : "Next"}
+              </span>
               <ChevronRight size={14} strokeWidth={2} />
             </button>
             {/* Navigation dropdown trigger */}
@@ -626,7 +652,7 @@ export default function RefinementSessionTicketPage({
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               title="Toggle subtasks pane"
             >
-              <ListChecks size={13} strokeWidth={1.5} />
+              <SquareMinus size={13} strokeWidth={1.5} />
               Subtasks
               {subtaskCount > 0 && (
                 <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
@@ -698,6 +724,18 @@ export default function RefinementSessionTicketPage({
                   <button
                     type="button"
                     onClick={() => {
+                      setZoomLevel(zoomLevel === 120 ? 100 : 120);
+                      setOverflowOpen(false);
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm text-text-secondary hover:bg-hover-list-item active:bg-overlay-default"
+                  >
+                    {zoomLevel === 120 ? <ZoomOut size={13} strokeWidth={1.5} /> : <ZoomIn size={13} strokeWidth={1.5} />}
+                    {zoomLevel === 120 ? "Zoom 100%" : "Zoom 120%"}
+                  </button>
+                  <div className="my-1 border-t border-border-default" />
+                  <button
+                    type="button"
+                    onClick={() => {
                       setOverflowOpen(false);
                       handleExitSession();
                     }}
@@ -714,7 +752,7 @@ export default function RefinementSessionTicketPage({
         </div>
 
         {/* Main content */}
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1" style={{ zoom: zoomLevel === 120 ? 1.2 : 1 }}>
           {/* Content area */}
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-3xl px-8 py-8">
@@ -736,7 +774,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: Chat pane */}
           {activeSidebarPanel === "chat" && currentKey && (
-            <SubtasksPaneResizable>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
               <TicketChatPane
                 ticketKey={currentKey}
                 ticketTitle={queueMeta.find((m) => m.key === currentKey)?.title ?? currentKey}
@@ -747,7 +785,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: Subtasks pane */}
           {activeSidebarPanel === "subtasks" && ticketData && (
-            <SubtasksPaneResizable>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
               <SubtasksSection
                 subtasks={ticketData.subtasks ?? []}
                 ticketKey={ticketData.key}
@@ -761,7 +799,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: PO Notes */}
           {activeSidebarPanel === "notes" && (
-            <SubtasksPaneResizable>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
               <div className="flex items-center gap-2">
                 <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">PO Notes</h3>
                 {poNotes.trim() && (
@@ -782,7 +820,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: Info / Metadata */}
           {activeSidebarPanel === "info" && ticketData && (
-            <SubtasksPaneResizable>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
               <h3 className="mb-3 text-label font-semibold uppercase tracking-wider text-text-muted">Info</h3>
               <SessionMetadataPanel ticket={ticketData} detail={ticketData} />
             </SubtasksPaneResizable>

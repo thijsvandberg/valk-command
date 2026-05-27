@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X, Plus, Inbox } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Gem, X, Plus, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -126,7 +126,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
         onClick={() => setOpen(!open)}
         icon={
           <span className="relative flex items-center justify-center">
-            <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Gem className="h-3.5 w-3.5" strokeWidth={1.5} />
             {isActive && (
               <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
             )}

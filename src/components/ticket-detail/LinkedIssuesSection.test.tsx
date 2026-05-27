@@ -16,6 +16,7 @@ const mockSearchForLinkWithJira = vi.fn();
 const mockCreateLink = vi.fn();
 const mockDeleteLink = vi.fn();
 const mockRecentLinks = vi.fn();
+const mockGetRelatedSuggestions = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   tickets: {
     searchForLink: (...args: unknown[]) => mockSearchForLink(...args),
@@ -23,12 +24,25 @@ vi.mock("@/lib/api-client", () => ({
     createLink: (...args: unknown[]) => mockCreateLink(...args),
     deleteLink: (...args: unknown[]) => mockDeleteLink(...args),
     recentLinks: (...args: unknown[]) => mockRecentLinks(...args),
+    getRelatedSuggestions: (...args: unknown[]) => mockGetRelatedSuggestions(...args),
   },
 }));
 
 // Mock RelatedIssueSuggestions to avoid its dependencies
 vi.mock("./RelatedIssueSuggestions", () => ({
-  RelatedIssueSuggestionsPanel: () => null,
+  RelatedSuggestions: () => null,
+  toRelatedSuggestion: (row: unknown) => row,
+}));
+
+// Mock useTaskStream
+vi.mock("@/hooks/useTaskStream", () => ({
+  useTaskStream: () => {},
+}));
+
+// Mock agent-errors
+vi.mock("@/lib/agent-errors", () => ({
+  friendlyStreamError: (msg: string) => msg,
+  isRetryableStreamError: () => false,
 }));
 
 const SAMPLE_ISSUES: LinkedIssue[] = [
@@ -56,6 +70,7 @@ describe("LinkedIssuesSection", () => {
     vi.clearAllMocks();
     mockRecentLinks.mockResolvedValue([]);
     mockSearchForLinkWithJira.mockResolvedValue([]);
+    mockGetRelatedSuggestions.mockResolvedValue({ suggestions: [], cachedAt: null });
   });
 
   it("renders inline input placeholder when no issues exist", () => {

@@ -6,7 +6,7 @@ import { READINESS_OPTIONS, READINESS_CONFIG } from "@/types/ticket";
 import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
-import { Copy, FileText, Loader2, Layers } from "lucide-react";
+import { Copy, FileText, Loader2, Gem } from "lucide-react";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 
 export function BulkActionBar({
@@ -183,7 +183,7 @@ export function BulkActionBar({
           size="md"
           onClick={onRefine}
         >
-          <Layers className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
+          <Gem className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
           Refine
         </Button>
       )}

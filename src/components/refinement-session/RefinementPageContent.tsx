@@ -9,7 +9,7 @@ import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import useSWR from "swr";
 import { refinementSessions as refinementSessionsApi, type RefinementSessionResponse, swrFetcher } from "@/lib/api-client";
-import { Layers, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus, Sparkles, Loader2, MoreHorizontal, Copy } from "lucide-react";
+import { Gem, Play, GripVertical, X, Search, ArrowRightLeft, ChevronDown, Check, SlidersHorizontal, Save, Plus, Sparkles, Loader2, MoreHorizontal, Copy, Clock } from "lucide-react";
 import { getJiraUrl } from "@/lib/jira-url";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +17,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
-import { RefinementOverflowMenu } from "@/components/refinement-session/RefinementOverflowMenu";
+import Link from "next/link";
 import { CreateSessionModal } from "@/components/refinement-session/CreateSessionModal";
 import { BulkSuggestPanel } from "@/components/refinement-session/BulkSuggestPanel";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
@@ -112,14 +112,12 @@ function ResizableQueuePane({ children }: { children: React.ReactNode }) {
 
 function SortableQueueItem({
   ticket,
-  index,
   onRemove,
   otherSessions,
   onMoveToSession,
   suggestionCount,
 }: {
   ticket: Ticket;
-  index: number;
   onRemove: (key: string) => void;
   otherSessions?: RefinementSessionResponse[];
   onMoveToSession?: (ticketKey: string, targetSessionId: string) => void;
@@ -174,9 +172,6 @@ function SortableQueueItem({
       >
         <GripVertical size={14} strokeWidth={1.5} />
       </span>
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-overlay-strong text-caption font-medium tabular-nums text-text-tertiary">
-        {index + 1}
-      </span>
       <IssueTypeIcon type={ticket.type} size={14} />
       <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>
       {ticket.storyPoints != null && (
@@ -218,11 +213,12 @@ function SortableQueueItem({
             <button
               type="button"
               onClick={() => setMenuOpen(!menuOpen)}
-              className="cursor-pointer rounded p-0.5 text-text-muted hover:bg-overlay-default hover:text-text-secondary"
-              style={{ transition: "color 0.15s ease" }}
+              className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               aria-label="Move to another session"
             >
               <ArrowRightLeft size={13} strokeWidth={2} />
+              <span>Move</span>
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
@@ -251,11 +247,12 @@ function SortableQueueItem({
         <button
           type="button"
           onClick={() => onRemove(ticket.key)}
-          className="cursor-pointer rounded p-0.5 text-text-muted hover:bg-red-500/10 hover:text-red-400"
-          style={{ transition: "color 0.15s ease" }}
+          className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
           aria-label={`Remove ${ticket.key} from queue`}
         >
-          <X size={13} strokeWidth={2} />
+          <X size={14} strokeWidth={2} />
+          <span>Remove</span>
         </button>
       </div>
     </div>
@@ -339,7 +336,7 @@ function TicketRow({
       )}
       {sessionNames && sessionNames.length > 0 && (
         <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[var(--color-brand-500)]/[0.08] px-1.5 py-0.5 text-caption font-medium text-[var(--color-brand-400)]">
-          <Layers size={9} strokeWidth={1.5} />
+          <Gem size={9} strokeWidth={1.5} />
           {sessionNames.join(", ")}
         </span>
       )}
@@ -578,7 +575,9 @@ export function RefinementPageContent({
     const sessionKeySet = new Set(activeSession.ticketKeys);
     const filteredKeySet = new Set(sortedTickets.map((t) => t.key));
 
-    const missingSessionTickets = baseTickets
+    // Look in *all* tickets (not just baseTickets) so we also find items
+    // excluded by hardcoded filters (DONE, DEPRECATED, subtask, etc.)
+    const missingSessionTickets = (tickets ?? [])
       .filter((t) => sessionKeySet.has(t.key) && !filteredKeySet.has(t.key));
 
     if (missingSessionTickets.length === 0) return sortedTickets;
@@ -590,7 +589,7 @@ export function RefinementPageContent({
     );
 
     return [...missingSessionTickets, ...sortedTickets];
-  }, [sortedTickets, baseTickets, searchQuery, activeSession]);
+  }, [sortedTickets, baseTickets, tickets, searchQuery, activeSession]);
 
   // Local queue for when no session is active
   const [localQueue, setLocalQueue] = useState<string[]>([]);
@@ -952,7 +951,7 @@ export function RefinementPageContent({
     <>
       {pageTitle}
       <ViewHeader
-        icon={<Layers size={16} strokeWidth={1.5} />}
+        icon={<Gem size={16} strokeWidth={1.5} />}
         hideNotifications
         actions={
           <div className="flex items-center gap-2">
@@ -964,8 +963,18 @@ export function RefinementPageContent({
             >
               New session
             </Button>
-            <RefinementOverflowMenu />
+            <Link href="/refinement/history">
+              <Button
+                variant="ghost"
+                size="md"
+                icon={<Clock size={13} strokeWidth={1.5} />}
+              >
+                Sessions
+              </Button>
+            </Link>
             {canStart && (
+              <>
+              <div className="h-5 w-px bg-border-default" />
               <Button
                 variant="primary"
                 size="lg"
@@ -974,6 +983,7 @@ export function RefinementPageContent({
               >
                 Start Refinement ({queue.length})
               </Button>
+              </>
             )}
           </div>
         }
@@ -1282,11 +1292,10 @@ export function RefinementPageContent({
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={queue} strategy={verticalListSortingStrategy}>
                       <div className="space-y-1">
-                        {queueTickets.map((ticket, idx) => (
+                        {queueTickets.map((ticket) => (
                           <SortableQueueItem
                             key={ticket.key}
                             ticket={ticket}
-                            index={idx}
                             onRemove={removeFromQueue}
                             otherSessions={otherSessions}
                             onMoveToSession={handleMoveToSession}

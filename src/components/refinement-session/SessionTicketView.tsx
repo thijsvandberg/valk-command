@@ -2,14 +2,14 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Ticket, TicketDetail } from "@/types/ticket";
-import { getSpColor } from "@/types/ticket";
+
 import { Avatar } from "@/components/shared/Avatar";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { EditableDescription } from "@/components/ticket-detail/EditableDescription";
 import { EditableTitle } from "@/components/ticket-detail/EditableTitle";
 import { LinkedIssuesSection } from "@/components/ticket-detail/LinkedIssuesSection";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
-import { SessionStoryPointPicker } from "./SessionStoryPointPicker";
+
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { tickets, jira } from "@/lib/api-client";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
@@ -396,23 +396,7 @@ export function HeaderOverflowMenu({
 }
 
 export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }: SessionTicketViewProps) {
-  const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
-
-  const handleStoryPointsChange = useCallback(
-    async (v: number | null) => {
-      const prev = storyPoints;
-      setStoryPoints(v);
-      try {
-        await tickets.updateStoryPoints(ticket.key, v);
-        onMutate();
-      } catch (err) {
-        console.error("Failed to update story points:", err);
-        setStoryPoints(prev);
-      }
-    },
-    [ticket.key, storyPoints, onMutate],
-  );
 
   return (
     <div className="space-y-0">
@@ -431,8 +415,10 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }
         onLocalEdit={setHasLocalEdit}
       />
 
-      {/* Confluence pages */}
-      <ConfluencePagesSection ticketKey={ticket.key} />
+      {/* Subtasks (hidden when in side pane mode) */}
+      {!subtasksPaneMode && (
+        <SubtasksSection subtasks={detail.subtasks} ticketKey={ticket.key} onMutate={onMutate} />
+      )}
 
       {/* Linked issues (full edit capabilities) */}
       <LinkedIssuesSection
@@ -441,18 +427,11 @@ export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }
         onMutate={onMutate}
       />
 
+      {/* Confluence pages */}
+      <ConfluencePagesSection ticketKey={ticket.key} />
+
       {/* Comments */}
       <CollapsibleComments ticketKey={ticket.key} jiraComments={detail.jiraComments} onMutate={onMutate} />
-
-      {/* Subtasks (hidden when in side pane mode) */}
-      {!subtasksPaneMode && (
-        <SubtasksSection subtasks={detail.subtasks} ticketKey={ticket.key} onMutate={onMutate} />
-      )}
-
-      {/* Story Points */}
-      <div className="mt-8 border-t border-border-default pt-6">
-        <SessionStoryPointPicker value={storyPoints} onChange={handleStoryPointsChange} />
-      </div>
     </div>
   );
 }
