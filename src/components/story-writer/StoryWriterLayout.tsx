@@ -74,7 +74,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const { sprints: rawSprints } = useJiraSprints();
   const latestReview = reviewData?.reviews?.[0];
 
-  const actions = useStoryWriterActions({
+  const { moreMenuRef, ...actions } = useStoryWriterActions({
     ticketKey,
     writer,
     ticketData: ticketData as Record<string, unknown> | undefined,
@@ -182,7 +182,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 </Button>
               ) : null)}
 
-              <div ref={actions.moreMenuRef} className="relative">
+              <div ref={moreMenuRef} className="relative">
                 <Button
                   variant="ghost"
                   size="md"

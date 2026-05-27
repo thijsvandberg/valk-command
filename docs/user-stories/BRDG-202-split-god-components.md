@@ -1,6 +1,6 @@
 # BRDG-202: Split Oversized Components
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** High
 **Type:** Refactoring
 
@@ -67,4 +67,4 @@ For each component:
 - [x] Review and split `NotificationBell.tsx` (547 lines)
 - [x] Review and split `SprintStatsPopover.tsx` (578 lines)
 
-- [ ] All existing tests pass after each split
+- [x] All existing tests pass after each split
