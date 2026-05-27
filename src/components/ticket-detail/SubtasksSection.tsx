@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { FieldFilterPopover, STATUS_FILTER_OPTIONS, type StatusFilter } from "./FieldFilterPopover";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { Loader2, GripVertical, ExternalLink, Filter, Sparkles } from "lucide-react";
+import { Loader2, GripVertical, ExternalLink, Filter, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
 import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
@@ -54,6 +54,7 @@ function SortableSubtaskRow({
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
+  onDelete,
 }: {
   sub: Subtask;
   isLast: boolean;
@@ -67,6 +68,7 @@ function SortableSubtaskRow({
   onStartEdit: () => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
+  onDelete: () => void;
 }) {
   const {
     attributes,
@@ -148,19 +150,30 @@ function SortableSubtaskRow({
         </span>
       )}
       <StatusBadge status={sub.jiraStatus} />
-      {/* Open in new tab */}
+      {/* Row actions */}
       {!isEditing && (
-        <a
-          href={`/tickets/${sub.key}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-          title="Open in new tab"
-        >
-          <ExternalLink size={12} strokeWidth={1.5} />
-        </a>
+        <>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="shrink-0 cursor-pointer rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
+            title="Delete subtask"
+          >
+            <Trash2 size={12} strokeWidth={1.5} />
+          </button>
+          <a
+            href={`/tickets/${sub.key}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
+            title="Open in new tab"
+          >
+            <ExternalLink size={12} strokeWidth={1.5} />
+          </a>
+        </>
       )}
     </div>
   );
@@ -192,6 +205,8 @@ export function SubtasksSection({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [localRenames, setLocalRenames] = useState<Record<string, string>>({});
+  const [pendingDelete, setPendingDelete] = useState<{ sub: Subtask; index: number } | null>(null);
+  const pendingDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editCancelledRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestEsRef = useRef<EventSource | null>(null);
@@ -218,16 +233,23 @@ export function SubtasksSection({
   ], [subtasks, locallyAdded]);
   const orderedSubtasks = localOrder ?? mergedSubtasks;
 
-  const filtered = filter === "all"
-    ? orderedSubtasks
-    : orderedSubtasks.filter((s) => s.jiraStatus === filter);
+  const visibleSubtasks = pendingDelete
+    ? orderedSubtasks.filter((s) => s.key !== pendingDelete.sub.key)
+    : orderedSubtasks;
 
-  // Counts per status for filter chips
+  const filtered = filter === "all"
+    ? visibleSubtasks
+    : visibleSubtasks.filter((s) => s.jiraStatus === filter);
+
+  // Counts per status for filter chips (exclude pending-delete)
+  const countBase = pendingDelete
+    ? mergedSubtasks.filter((s) => s.key !== pendingDelete.sub.key)
+    : mergedSubtasks;
   const statusCounts = {
-    all: mergedSubtasks.length,
-    "TO DO": mergedSubtasks.filter((s) => s.jiraStatus === "TO DO").length,
-    "IN PROGRESS": mergedSubtasks.filter((s) => s.jiraStatus === "IN PROGRESS").length,
-    DONE: mergedSubtasks.filter((s) => s.jiraStatus === "DONE").length,
+    all: countBase.length,
+    "TO DO": countBase.filter((s) => s.jiraStatus === "TO DO").length,
+    "IN PROGRESS": countBase.filter((s) => s.jiraStatus === "IN PROGRESS").length,
+    DONE: countBase.filter((s) => s.jiraStatus === "DONE").length,
   };
 
   const sensors = useSensors(
@@ -362,6 +384,45 @@ export function SubtasksSection({
     editCancelledRef.current = true;
     setEditingKey(null);
     setEditingTitle("");
+  }, []);
+
+  const flushDelete = useCallback((sub: Subtask) => {
+    tickets.deleteSubtask(ticketKey, sub.key)
+      .then(() => onMutate())
+      .catch((err) => {
+        const detail = err instanceof ApiError ? err.message : "Jira API error";
+        setError(`Failed to delete subtask: ${detail}`);
+      });
+  }, [ticketKey, onMutate]);
+
+  const handleDelete = useCallback((sub: Subtask, index: number) => {
+    // Flush any existing pending delete immediately
+    if (pendingDelete) {
+      if (pendingDeleteTimerRef.current) clearTimeout(pendingDeleteTimerRef.current);
+      flushDelete(pendingDelete.sub);
+    }
+
+    setPendingDelete({ sub, index });
+    pendingDeleteTimerRef.current = setTimeout(() => {
+      flushDelete(sub);
+      setPendingDelete(null);
+      pendingDeleteTimerRef.current = null;
+    }, 5000);
+  }, [pendingDelete, flushDelete]);
+
+  const handleUndoDelete = useCallback(() => {
+    if (pendingDeleteTimerRef.current) clearTimeout(pendingDeleteTimerRef.current);
+    pendingDeleteTimerRef.current = null;
+    setPendingDelete(null);
+  }, []);
+
+  // Clean up delete timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingDeleteTimerRef.current) {
+        clearTimeout(pendingDeleteTimerRef.current);
+      }
+    };
   }, []);
 
   // Clean up EventSource on unmount
@@ -532,6 +593,7 @@ export function SubtasksSection({
           onStartEdit={() => handleStartEdit(sub.key, localRenames[sub.key] ?? sub.title)}
           onSaveEdit={handleSaveEdit}
           onCancelEdit={handleCancelEdit}
+          onDelete={() => handleDelete(sub, idx)}
         />
       );
     }
@@ -584,19 +646,30 @@ export function SubtasksSection({
           </span>
         )}
         <StatusBadge status={sub.jiraStatus} />
-        {/* Open in new tab */}
+        {/* Row actions */}
         {!isPending && editingKey !== sub.key && (
-          <a
-            href={`/tickets/${sub.key}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-            title="Open in new tab"
-          >
-            <ExternalLink size={12} strokeWidth={1.5} />
-          </a>
+          <>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleDelete(sub, idx); }}
+              className="shrink-0 cursor-pointer rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
+              title="Delete subtask"
+            >
+              <Trash2 size={12} strokeWidth={1.5} />
+            </button>
+            <a
+              href={`/tickets/${sub.key}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
+              title="Open in new tab"
+            >
+              <ExternalLink size={12} strokeWidth={1.5} />
+            </a>
+          </>
         )}
       </div>
     );
@@ -696,8 +769,8 @@ export function SubtasksSection({
       {!hideHeader && (
         <SectionHeader
           title="Subtasks"
-          count={filter === "all" ? mergedSubtasks.length : undefined}
-          countLabel={filter !== "all" && mergedSubtasks.length > 0 ? `${filtered.length} of ${mergedSubtasks.length}` : undefined}
+          count={filter === "all" ? countBase.length : undefined}
+          countLabel={filter !== "all" && countBase.length > 0 ? `${filtered.length} of ${countBase.length}` : undefined}
           actions={<>{suggestButton}{compactFilters && filterButton}</>}
         />
       )}
@@ -757,6 +830,24 @@ export function SubtasksSection({
         </>
       ) : (
         listContent
+      )}
+
+      {/* Undo delete bar */}
+      {pendingDelete && (
+        <div className="mt-2 flex items-center gap-2 rounded-lg bg-overlay-subtle px-3 py-2">
+          <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
+            Deleted &ldquo;{pendingDelete.sub.title}&rdquo;
+          </span>
+          <button
+            type="button"
+            onClick={handleUndoDelete}
+            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "background-color 0.15s ease" }}
+          >
+            <Undo2 size={11} strokeWidth={1.5} />
+            Undo
+          </button>
+        </div>
       )}
 
       {/* AI-suggested subtasks */}

@@ -1,6 +1,6 @@
 # BRDG-164: Subtask Inline Rename and Delete
 
-**Status:** Open
+**Status:** Done
 **Priority:** Medium
 **Related:** BRDG-127 (Refinement Session Mode)
 
@@ -47,11 +47,11 @@ These two features were scoped in BRDG-127 (Phase 3) but skipped during implemen
 
 ### Delete with undo
 
-- [ ] Trash icon appears on hover for each subtask row
-- [ ] Clicking delete optimistically removes the subtask from the list
-- [ ] An undo bar appears at the bottom of the subtask section for 5 seconds
-- [ ] If undo is clicked, the subtask is restored to its original position
-- [ ] If undo is not clicked, the actual delete API call fires
+- [x] Trash icon appears on hover for each subtask row
+- [x] Clicking delete optimistically removes the subtask from the list
+- [x] An undo bar appears at the bottom of the subtask section for 5 seconds
+- [x] If undo is clicked, the subtask is restored to its original position
+- [x] If undo is not clicked, the actual delete API call fires
 - [x] New API endpoint: `DELETE /api/tickets/[key]/subtasks/[subtaskKey]`
 - [x] Endpoint renames the subtask to `deleteme` in Jira via `jiraClient.updateIssue(subtaskKey, { summary: "deleteme" })` (a Jira automation rule picks this up and deletes the issue)
 - [x] Endpoint removes the subtask from the local `ticketSubtask` table immediately
