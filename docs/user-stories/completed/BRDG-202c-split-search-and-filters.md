@@ -1,6 +1,6 @@
 # BRDG-202c: Split SearchModal and FilterBar
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** High
 **Type:** Refactoring
 **Parent:** BRDG-202
