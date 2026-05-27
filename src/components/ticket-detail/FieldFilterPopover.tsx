@@ -108,7 +108,7 @@ export function FieldFilterPopover({
                 >
                   {isVisible && <Check size={10} strokeWidth={3} className="text-white" />}
                 </span>
-                <span className={isVisible ? "text-text-primary" : "text-text-muted"}>
+                <span className="text-text-secondary">
                   {field.label.charAt(0).toUpperCase() + field.label.slice(1)}
                 </span>
               </button>
