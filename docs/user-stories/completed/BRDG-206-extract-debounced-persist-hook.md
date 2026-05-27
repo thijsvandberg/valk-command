@@ -1,6 +1,6 @@
 # BRDG-206: Extract useDebouncedPersist Hook
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Low
 **Type:** Refactoring
 
@@ -40,4 +40,4 @@ The three API-backed hooks share an identical debounce+timer+cleanup pattern, bu
 - [x] Refactor `useColumnWidths` to use it
 - [x] Refactor `useSectionVisibility` to use it
 - [x] Refactor `useSidebarState` to use `useLocalStorage` internally
-- [ ] All existing tests pass
+- [x] All existing tests pass
