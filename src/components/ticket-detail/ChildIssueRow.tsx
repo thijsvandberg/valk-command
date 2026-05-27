@@ -103,7 +103,6 @@ export function ChildIssueRow({
             onJiraStatusChange={onJiraStatusChange}
             onReadinessChange={onReadinessChange}
             title={item.title}
-            size="sm"
             variant="list"
             showKey={showKey}
             showStatus={showStatus}
