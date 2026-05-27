@@ -123,9 +123,9 @@ Current subtask rows show controls on the right side (status badge, delete icon,
 - [x] Remove "open externally" button from subtask rows (replaced by issue pill)
 - [x] Restyle subtask delete: hover-only, text label "Delete" with destructive color (like AI suggestions decline)
 - [x] Add field visibility toggles to subtasks (parity with epic children)
-- [ ] Verify all existing EpicChildrenSection features still work (create, link, search, field toggles)
-- [ ] Verify all existing SubtasksSection features still work (create, drag-and-drop, rename, delete, AI suggestions)
-- [ ] Update/migrate existing tests for both sections
+- [x] Verify all existing EpicChildrenSection features still work (create, link, search, field toggles)
+- [x] Verify all existing SubtasksSection features still work (create, drag-and-drop, rename, delete, AI suggestions)
+- [x] Update/migrate existing tests for both sections
 - [ ] All tests pass, lint clean, build succeeds
 
 ## Out of scope
