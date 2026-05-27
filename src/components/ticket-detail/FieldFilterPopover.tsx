@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Check } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 
 export type StatusFilter = "all" | JiraStatus;
@@ -60,6 +60,7 @@ export function FieldFilterPopover({
       className="absolute top-full right-0 z-50 mt-1 min-w-[180px] rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
       style={{ animation: "fadeInUp 0.1s ease" }}
     >
+      {/* Status filter */}
       <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
         Status
       </div>
@@ -81,25 +82,40 @@ export function FieldFilterPopover({
           </button>
         );
       })}
-      {fields.length > 0 && <div className="my-1 h-px bg-border-subtle" />}
-      {fields.map((field) => {
-        const isVisible = visibleFields.has(field.id);
-        return (
-          <button
-            key={field.id}
-            type="button"
-            onClick={() => onToggleField(field.id, !isVisible)}
-            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs hover:bg-hover-list-item active:bg-overlay-default"
-          >
-            {isVisible ? (
-              <EyeOff size={12} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-            ) : (
-              <Eye size={12} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-            )}
-            <span className="text-text-secondary">{isVisible ? `Hide ${field.label}` : `Show ${field.label}`}</span>
-          </button>
-        );
-      })}
+
+      {/* Column visibility toggles */}
+      {fields.length > 0 && (
+        <>
+          <div className="my-1 h-px bg-border-subtle" />
+          <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
+            Columns
+          </div>
+          {fields.map((field) => {
+            const isVisible = visibleFields.has(field.id);
+            return (
+              <button
+                key={field.id}
+                type="button"
+                onClick={() => onToggleField(field.id, !isVisible)}
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs hover:bg-hover-list-item active:bg-overlay-default"
+              >
+                <span
+                  className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors duration-100 ${
+                    isVisible
+                      ? "border-[var(--color-brand-400)] bg-[var(--color-brand-400)]"
+                      : "border-border-default bg-transparent"
+                  }`}
+                >
+                  {isVisible && <Check size={10} strokeWidth={3} className="text-white" />}
+                </span>
+                <span className={isVisible ? "text-text-primary" : "text-text-muted"}>
+                  {field.label.charAt(0).toUpperCase() + field.label.slice(1)}
+                </span>
+              </button>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket } from "@/db/schema";
+import { ticket, ticketSubtask, ticketMetadata } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -149,5 +149,47 @@ describe("upsertIssue", () => {
     const all = testDb.select().from(ticket).all();
     expect(all).toHaveLength(1);
     expect(all[0].title).toBe("Updated title");
+  });
+
+  it("updates parent ticketSubtask row when syncing a subtask directly", async () => {
+    // Simulate a parent with a subtask already stored
+    const parent = makeIssue({
+      summary: "Parent story",
+      subtasks: [{
+        id: "20001",
+        key: "VPL-2",
+        fields: {
+          summary: "Child task",
+          issuetype: { name: "Sub-task" },
+          status: { name: "To Do" },
+          assignee: null,
+        },
+      }],
+    });
+    parent.key = "VPL-1";
+    await upsertIssue(parent, "Sprint 1");
+
+    // Verify subtask row has initial status
+    const before = testDb.select().from(ticketSubtask).all();
+    expect(before).toHaveLength(1);
+    expect(before[0].status).toBe("TO DO");
+    expect(before[0].assignee).toBeNull();
+
+    // Now sync the subtask directly (as incremental sync would)
+    const subtask = makeIssue({
+      summary: "Child task",
+      status: { name: "Done" },
+      assignee: { accountId: "abc123", displayName: "Robin", avatarUrls: { "48x48": "https://example.com/avatar.png" } },
+    });
+    subtask.id = "20001";
+    subtask.key = "VPL-2";
+    await upsertIssue(subtask, "Sprint 1");
+
+    // The ticketSubtask row under the parent should be updated
+    const after = testDb.select().from(ticketSubtask).all();
+    expect(after).toHaveLength(1);
+    expect(after[0].status).toBe("DONE");
+    expect(after[0].assignee).toBe("Robin");
+    expect(after[0].assigneeAvatar).toBe("https://example.com/avatar.png");
   });
 });

@@ -209,12 +209,13 @@ describe("EpicChildrenSection", () => {
       renderSection(SAMPLE_CHILDREN);
       openFilterPopover();
 
-      expect(screen.getByText("Hide issue keys")).toBeInTheDocument();
-      expect(screen.getByText("Hide status")).toBeInTheDocument();
-      expect(screen.getByText("Hide story points")).toBeInTheDocument();
-      expect(screen.getByText("Hide sprint")).toBeInTheDocument();
-      expect(screen.getByText("Hide subtask count")).toBeInTheDocument();
-      expect(screen.getByText("Show assignees")).toBeInTheDocument();
+      expect(screen.getByText("Columns")).toBeInTheDocument();
+      expect(screen.getByText("Issue keys")).toBeInTheDocument();
+      expect(screen.getAllByText("Status")).toHaveLength(2);
+      expect(screen.getByText("Story points")).toBeInTheDocument();
+      expect(screen.getByText("Sprint")).toBeInTheDocument();
+      expect(screen.getByText("Subtask count")).toBeInTheDocument();
+      expect(screen.getByText("Assignees")).toBeInTheDocument();
     });
   });
 

@@ -51,31 +51,31 @@ describe("FieldFilterPopover", () => {
     expect(toDoLabel.className).toContain("font-medium");
   });
 
-  it("renders field toggles", () => {
+  it("renders Columns heading and field labels", () => {
     renderPopover();
-    expect(screen.getByText("Hide issue keys")).toBeInTheDocument();
-    expect(screen.getByText("Show assignees")).toBeInTheDocument();
+    expect(screen.getByText("Columns")).toBeInTheDocument();
+    expect(screen.getByText("Issue keys")).toBeInTheDocument();
+    expect(screen.getByText("Assignees")).toBeInTheDocument();
   });
 
-  it("calls onToggleField when clicking a field toggle", () => {
+  it("calls onToggleField when clicking a field checkbox", () => {
     const onToggleField = vi.fn();
     renderPopover({ onToggleField });
-    fireEvent.click(screen.getByText("Hide issue keys"));
+    fireEvent.click(screen.getByText("Issue keys"));
     expect(onToggleField).toHaveBeenCalledWith("issueKey", false);
   });
 
-  it("shows 'Show' for hidden fields and 'Hide' for visible ones", () => {
-    renderPopover({
-      visibleFields: new Set(["issueKey"]),
-    });
-    expect(screen.getByText("Hide issue keys")).toBeInTheDocument();
-    expect(screen.getByText("Show assignees")).toBeInTheDocument();
+  it("shows checked state for visible fields and unchecked for hidden", () => {
+    renderPopover({ visibleFields: new Set(["issueKey"]) });
+    const issueKeysLabel = screen.getByText("Issue keys");
+    expect(issueKeysLabel.className).toContain("text-text-primary");
+    const assigneesLabel = screen.getByText("Assignees");
+    expect(assigneesLabel.className).toContain("text-text-muted");
   });
 
-  it("does not render divider when no fields", () => {
-    const { container } = renderPopover({ fields: [] });
-    const dividers = container.querySelectorAll(".bg-border-subtle");
-    expect(dividers.length).toBe(0);
+  it("does not render Columns section when no fields", () => {
+    renderPopover({ fields: [] });
+    expect(screen.queryByText("Columns")).not.toBeInTheDocument();
   });
 
   it("calls onClose on Escape key", () => {
