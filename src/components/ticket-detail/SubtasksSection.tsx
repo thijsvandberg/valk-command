@@ -396,15 +396,9 @@ export function SubtasksSection({
   const flushDelete = useCallback((sub: Subtask) => {
     setFlushedDeleteKeys((prev) => new Set(prev).add(sub.key));
     tickets.deleteSubtask(ticketKey, sub.key)
-      .then(() => {
-        setFlushedDeleteKeys((prev) => {
-          const next = new Set(prev);
-          next.delete(sub.key);
-          return next;
-        });
-        onMutate();
-      })
+      .then(() => onMutate())
       .catch((err) => {
+        // Remove from flushed keys so the subtask reappears on error
         setFlushedDeleteKeys((prev) => {
           const next = new Set(prev);
           next.delete(sub.key);
