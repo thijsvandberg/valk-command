@@ -63,7 +63,7 @@ function SprintDropTile({
   return (
     <div
       ref={setNodeRef}
-      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-100 ${
+      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium transition-colors duration-100 ${
         isOver
           ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/12 text-[var(--color-brand-300)]"
           : "border-border-default bg-overlay-subtle text-text-tertiary hover:border-border-strong hover:text-text-secondary"
@@ -991,7 +991,7 @@ export default function SprintBoard() {
                     <button
                       type="button"
                       onClick={() => { setAnalyticsVisible((v) => !v); setHeaderMenuOpen(false); }}
-                      className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
+                      className={`flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150 ${
                         analyticsVisible
                           ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
                           : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
@@ -1009,7 +1009,7 @@ export default function SprintBoard() {
                           router.push(`/sprint-board/compare?left=${encodeURIComponent(leftSprint)}&right=${encodeURIComponent(rightSprint)}`);
                           setHeaderMenuOpen(false);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                       >
                         <Columns2 size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Compare</span>
@@ -1018,7 +1018,7 @@ export default function SprintBoard() {
                     <button
                       type="button"
                       onClick={() => { setSprintsModalOpen(true); setHeaderMenuOpen(false); }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                     >
                       <List size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>Sprints</span>
@@ -1031,7 +1031,7 @@ export default function SprintBoard() {
                           router.push(`/stakeholder?team=${team}&sprintId=${activeSprint.id}`);
                           setHeaderMenuOpen(false);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                       >
                         <Users size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Stakeholder View</span>
@@ -1288,14 +1288,14 @@ export default function SprintBoard() {
                         )}
                         <div className="px-3 py-2 space-y-0.5">
                           {draggedTickets.slice(0, 5).map((t) => (
-                            <div key={t!.key} className="flex items-center gap-2 text-sm">
+                            <div key={t!.key} className="flex items-center gap-2 text-body-lg">
                               <IssueTypeIcon type={t!.type} />
-                              <span className="font-mono text-xs text-text-tertiary">{t!.key}</span>
+                              <span className="font-mono text-body-sm text-text-tertiary">{t!.key}</span>
                               <span className="max-w-52 truncate text-text-secondary">{t!.title}</span>
                             </div>
                           ))}
                           {draggedTickets.length > 5 && (
-                            <div className="text-xs text-text-muted pl-0.5">
+                            <div className="text-body-sm text-text-muted pl-0.5">
                               and {draggedTickets.length - 5} more...
                             </div>
                           )}
@@ -1346,7 +1346,7 @@ export default function SprintBoard() {
       {toast && (
         <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
-          <span className="text-sm text-text-secondary">{toast}</span>
+          <span className="text-body-lg text-text-secondary">{toast}</span>
         </div>
       )}
 
@@ -1359,7 +1359,7 @@ export default function SprintBoard() {
           <div className="flex items-start gap-2.5">
             <Check className="h-4 w-4 shrink-0 mt-0.5 text-[var(--color-brand-400)]" strokeWidth={2} />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-text-primary">Stakeholder export ready</p>
+              <p className="text-body-sm font-medium text-text-primary">Stakeholder export ready</p>
             </div>
             <button
               type="button"
@@ -1380,7 +1380,7 @@ export default function SprintBoard() {
                   showToast("Failed to copy");
                 });
               }}
-              className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-brand-300)] cursor-pointer hover:bg-[var(--color-brand-500)]/15 active:bg-[var(--color-brand-500)]/20"
+              className="flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/10 px-2.5 py-1 text-body-sm font-medium text-[var(--color-brand-300)] cursor-pointer hover:bg-[var(--color-brand-500)]/15 active:bg-[var(--color-brand-500)]/20"
             >
               <CopyIcon className="h-3 w-3" strokeWidth={2} />
               Copy to clipboard
@@ -1393,7 +1393,7 @@ export default function SprintBoard() {
                 }
                 exportTask.dismiss();
               }}
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-text-tertiary cursor-pointer hover:text-text-secondary"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-body-sm text-text-tertiary cursor-pointer hover:text-text-secondary"
             >
               <ExternalLink className="h-3 w-3" strokeWidth={2} />
               View in chat
@@ -1410,7 +1410,7 @@ export default function SprintBoard() {
         >
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" strokeWidth={2} />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-text-primary">Export failed</p>
+            <p className="text-body-sm font-medium text-text-primary">Export failed</p>
             <p className="text-label text-text-tertiary mt-0.5">{exportTask.error}</p>
           </div>
           <button

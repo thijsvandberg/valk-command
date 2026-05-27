@@ -363,13 +363,13 @@ export function EpicChildrenSection({
             onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder="Search by key or title..."
-            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+            className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
           />
           {searching && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
           <button
             type="button"
             onClick={closeSearch}
-            className="cursor-pointer text-xs text-text-muted transition-colors duration-150 hover:text-text-secondary"
+            className="cursor-pointer text-body-sm text-text-muted transition-colors duration-150 hover:text-text-secondary"
           >
             Cancel
           </button>
@@ -384,7 +384,7 @@ export function EpicChildrenSection({
               className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={visibleFields.has("issueKey") ? { minWidth: 69 } : undefined}
             >
-              <span className="text-xs font-medium text-text-muted">{currentTypeConfig.label}</span>
+              <span className="text-body-sm font-medium text-text-muted">{currentTypeConfig.label}</span>
               <ChevronDown size={10} className="text-text-muted" />
             </button>
             {showTypePicker && (
@@ -398,7 +398,7 @@ export function EpicChildrenSection({
                       setShowTypePicker(false);
                       inputRef.current?.focus();
                     }}
-                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
+                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
                       opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
                     }`}
                   >
@@ -418,7 +418,7 @@ export function EpicChildrenSection({
             onKeyDown={handleKeyDown}
             onFocus={() => setShowTypePicker(false)}
             placeholder="Create child issue..."
-            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+            className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
           />
 
           <button
@@ -428,7 +428,7 @@ export function EpicChildrenSection({
             title="Link existing issue"
           >
             <Search size={12} strokeWidth={1.5} />
-            <span className="hidden text-xs font-medium sm:inline">Link existing</span>
+            <span className="hidden text-body-sm font-medium sm:inline">Link existing</span>
           </button>
         </>
       )}
@@ -445,8 +445,8 @@ export function EpicChildrenSection({
               } ${idx < searchResults.length - 1 ? "border-b border-border-subtle" : ""}`}
             >
               <IssueTypeIcon type={(r.type || "task") as IssueType} size={14} />
-              <span className="font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
-              <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{r.title}</span>
+              <span className="font-mono text-body-sm text-[var(--color-brand-400)]">{r.key}</span>
+              <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{r.title}</span>
               <StatusBadge status={(r.status || "TO DO") as JiraStatus} />
               {r.source === "jira" && (
                 <span className="rounded bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">Jira</span>
@@ -487,14 +487,14 @@ export function EpicChildrenSection({
       />
 
       {error && (
-        <p className="mt-2 text-xs text-red-400/80">{error}</p>
+        <p className="mt-2 text-body-sm text-red-400/80">{error}</p>
       )}
 
       {filtered.length > 0 ? (
         listContent
       ) : mergedItems.length > 0 ? (
         <>
-          <p className="mt-3 text-sm text-text-muted">No child issues matching this filter</p>
+          <p className="mt-3 text-body-lg text-text-muted">No child issues matching this filter</p>
           {listContent}
         </>
       ) : (

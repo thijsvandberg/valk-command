@@ -167,7 +167,7 @@ export function SessionEndModal() {
               <h2 className="font-[var(--font-display)] text-heading font-bold tracking-tight text-text-primary">
                 Wrap Up Session
               </h2>
-              <p className="text-xs text-text-muted">
+              <p className="text-body-sm text-text-muted">
                 {queue.length} ticket{queue.length !== 1 ? "s" : ""} refined
                 {unestimatedCount > 0 && (
                   <span className="ml-1.5 text-amber-400/80">
@@ -203,7 +203,7 @@ export function SessionEndModal() {
                   <div className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-overlay-subtle" style={{ transition: "background-color 0.12s ease" }}>
                     <IssueTypeIcon type={row.type} size={14} />
                     <TicketKeyPill ticketKey={row.key} />
-                    <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
+                    <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">
                       {row.title}
                     </span>
                     {row.storyPoints != null && row.storyPoints > 0 && (
@@ -237,7 +237,7 @@ export function SessionEndModal() {
                         onChange={(e) => handleNoteChange(row.key, e.target.value)}
                         placeholder="PO message for this ticket..."
                         rows={2}
-                        className="w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-xs text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                        className="w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-body-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                         style={{ transition: "border-color 0.15s ease" }}
                       />
                     </div>
@@ -259,7 +259,7 @@ export function SessionEndModal() {
             onBlur={handleCommentBlur}
             placeholder="Session notes, decisions, follow-ups..."
             rows={3}
-            className="w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2.5 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2.5 text-body-lg text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
             style={{ transition: "border-color 0.15s ease" }}
           />
         </div>

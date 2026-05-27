@@ -34,7 +34,7 @@ export function CollapsibleSection({
           strokeWidth={1.5}
           className="text-text-muted group-hover:text-text-tertiary transition-colors duration-150"
         />
-        <span className="font-[var(--font-display)] text-xs font-semibold tracking-[-0.01em] text-text-secondary group-hover:text-text-secondary transition-colors duration-150 uppercase">
+        <span className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-text-secondary group-hover:text-text-secondary transition-colors duration-150 uppercase">
           {title}
         </span>
         <ChevronRight
@@ -44,7 +44,7 @@ export function CollapsibleSection({
         />
       </button>
       {open && (
-        <div className="pb-2 text-sm leading-[1.7] text-text-secondary font-[var(--font-body)]">
+        <div className="pb-2 text-body-lg leading-[1.7] text-text-secondary font-[var(--font-body)]">
           {children}
           {copyContent && (
             <CopyActions content={copyContent} className="mt-2 pt-1.5 border-t border-border-subtle" />

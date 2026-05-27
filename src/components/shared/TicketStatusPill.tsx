@@ -77,7 +77,7 @@ function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTy
             key={type}
             type="button"
             onClick={() => { onChange(type); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
             <IssueTypeIcon type={type} size={12} />
             <span className={isActive ? "font-medium" : ""} style={{ color: isActive ? color : "var(--color-text-secondary)" }}>
@@ -139,7 +139,7 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
   }
 
   const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
+    "flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
   const iconClass = "shrink-0 text-text-tertiary";
 
   return (
@@ -232,7 +232,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
             key={status}
             type="button"
             onClick={() => { onChange(status); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
             <span
               className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide"
@@ -291,7 +291,7 @@ function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: Readine
             key={opt.label}
             type="button"
             onClick={() => { onChange(opt.value); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            className="flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
             <span
               className="shrink-0 w-4 flex items-center justify-center"
@@ -434,7 +434,7 @@ export function TicketStatusPill({
   const iconSize = size === "sm" ? 10 : size === "lg" ? 14 : 12;
   const px = size === "sm" ? "px-1.5 py-[3px]" : size === "lg" ? "px-2.5 py-1" : "px-2 py-[3px]";
   const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : size === "lg" ? "pl-2.5 pr-2 py-1" : "pl-2 pr-1.5 py-[3px]";
-  const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-xs" : "text-label";
+  const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
 
   const showReadiness = readinessCfg || onReadinessChange;
 

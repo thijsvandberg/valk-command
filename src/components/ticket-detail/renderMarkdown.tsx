@@ -209,13 +209,13 @@ function renderTable(tableLines: string[], key: string): ReactNode {
 
   return (
     <div key={key} className="my-3 overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-body-lg">
         <thead>
           <tr>
             {headers.map((h, hi) => (
               <th
                 key={hi}
-                className="border border-border-strong bg-overlay-subtle px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary"
+                className="border border-border-strong bg-overlay-subtle px-3 py-2 text-left text-body-sm font-semibold uppercase tracking-wider text-text-secondary"
               >
                 {inlineFormat(h)}
               </th>
@@ -394,7 +394,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
               key={`expand-${elements.length}`}
               className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-overlay-subtle"
             >
-              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-hover-list-item hover:text-text-primary">
+              <summary className="cursor-pointer select-none px-4 py-2.5 text-body-lg font-medium text-text-secondary transition-colors hover:bg-hover-list-item hover:text-text-primary">
                 <span className="flex items-center gap-2">
                   <svg
                     className="expand-arrow h-3.5 w-3.5 shrink-0 text-text-tertiary"
@@ -522,7 +522,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
           key={`expand-${elements.length}`}
           className="expand-block my-2 overflow-hidden rounded-lg border border-border-strong bg-overlay-subtle"
         >
-          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-hover-list-item hover:text-text-primary">
+          <summary className="cursor-pointer select-none px-4 py-2.5 text-body-lg font-medium text-text-secondary transition-colors hover:bg-hover-list-item hover:text-text-primary">
             <span className="flex items-center gap-2">
               <svg
                 className="expand-arrow h-3.5 w-3.5 shrink-0 text-text-tertiary"

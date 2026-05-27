@@ -168,7 +168,7 @@ export function ChatInput({
               placeholder={placeholder}
               disabled={isBusy}
               rows={1}
-              className={`w-full resize-none bg-transparent px-3.5 pt-2.5 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50 ${manualHeight ? "h-full" : ""}`}
+              className={`w-full resize-none bg-transparent px-3.5 pt-2.5 pb-1 font-[var(--font-body)] text-body-lg leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50 ${manualHeight ? "h-full" : ""}`}
               aria-label={ariaLabel}
             />
           </div>

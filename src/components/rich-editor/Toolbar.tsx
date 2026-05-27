@@ -312,7 +312,7 @@ function ColorButton({ editor }: { editor: Editor }) {
           open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
         }`}
       >
-        <span className="font-bold text-sm" style={{ color: currentColor ?? "currentColor" }}>A</span>
+        <span className="font-bold text-body-lg" style={{ color: currentColor ?? "currentColor" }}>A</span>
         <ChevronDown size={8} strokeWidth={1.5} className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
       </button>
 
@@ -388,7 +388,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
               key={opt.type}
               type="button"
               onClick={() => insertCallout(opt.type)}
-              className="cursor-pointer flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-text-secondary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-primary"
+              className="cursor-pointer flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-primary"
             >
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: opt.color }} />
               {opt.label}
@@ -456,13 +456,13 @@ function ExpandButton({ editor }: { editor: Editor }) {
               if (e.key === "Enter") insert();
               if (e.key === "Escape") setOpen(false);
             }}
-            className="mb-2.5 w-full rounded border border-border-strong bg-overlay-default px-2.5 py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-[var(--color-brand-500)]/50 focus:bg-overlay-default"
+            className="mb-2.5 w-full rounded border border-border-strong bg-overlay-default px-2.5 py-1.5 text-body-lg text-text-primary outline-none placeholder:text-text-muted focus:border-[var(--color-brand-500)]/50 focus:bg-overlay-default"
             placeholder="Details"
           />
           <button
             type="button"
             onClick={insert}
-            className="cursor-pointer w-full rounded bg-overlay-strong px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-overlay-strong hover:text-text-primary active:scale-[0.98]"
+            className="cursor-pointer w-full rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors hover:bg-overlay-strong hover:text-text-primary active:scale-[0.98]"
           >
             Insert
           </button>
@@ -550,7 +550,7 @@ function EmojiButton({ editor }: { editor: Editor }) {
                 type="button"
                 onClick={() => insertEmoji(emoji)}
                 title={shortname}
-                className="cursor-pointer flex h-7 w-7 items-center justify-center rounded text-base transition-colors hover:bg-overlay-strong active:scale-90"
+                className="cursor-pointer flex h-7 w-7 items-center justify-center rounded text-heading-sm transition-colors hover:bg-overlay-strong active:scale-90"
               >
                 {emoji}
               </button>

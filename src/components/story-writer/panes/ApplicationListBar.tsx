@@ -85,7 +85,7 @@ export function ApplicationListBar() {
               <button
                 type="button"
                 onClick={() => handleAppClick(app.id)}
-                className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium cursor-pointer select-none ${
+                className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-body-sm font-medium cursor-pointer select-none ${
                   isActive
                     ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
                     : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle"

@@ -357,7 +357,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     return (
       <div className="mt-8">
         <SectionHeader title="History" count={0} />
-        <p className="mt-3 text-sm text-text-tertiary">No version history yet</p>
+        <p className="mt-3 text-body-lg text-text-tertiary">No version history yet</p>
       </div>
     );
   }

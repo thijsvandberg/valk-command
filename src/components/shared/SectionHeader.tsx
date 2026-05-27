@@ -11,7 +11,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="flex items-center gap-2 border-b border-border-default pb-2">
-      <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">{title}</h3>
+      <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">{title}</h3>
       {countLabel ? (
         <span className="flex h-5 items-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
           {countLabel}

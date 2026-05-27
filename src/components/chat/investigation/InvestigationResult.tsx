@@ -23,7 +23,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
     <div className="space-y-4">
       {/* Question header */}
       <div className="border-b border-border-default pb-3">
-        <p className="font-[var(--font-display)] text-base font-semibold tracking-[-0.02em] text-text-primary leading-snug">
+        <p className="font-[var(--font-display)] text-heading-sm font-semibold tracking-[-0.02em] text-text-primary leading-snug">
           {data.question}
         </p>
       </div>
@@ -32,11 +32,11 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
       <div className="rounded-lg border border-[var(--color-brand-500)]/[0.15] bg-[var(--color-brand-500)]/[0.04] px-4 py-3">
         <div className="flex items-start gap-2 mb-1.5">
           <Lightbulb size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]/60 mt-0.5 shrink-0" />
-          <span className="font-[var(--font-display)] text-xs font-semibold tracking-[-0.01em] text-[var(--color-brand-400)]/60 uppercase">
+          <span className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-[var(--color-brand-400)]/60 uppercase">
             Finding
           </span>
         </div>
-        <div className="text-sm leading-[1.7] text-text-primary font-[var(--font-body)]">
+        <div className="text-body-lg leading-[1.7] text-text-primary font-[var(--font-body)]">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {data.finding}
           </ReactMarkdown>

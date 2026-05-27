@@ -181,7 +181,7 @@ export function SortDropdown({
                 }
                 setOpen(false);
               }}
-              className={`flex w-full items-center justify-between px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item ${
+              className={`flex w-full items-center justify-between px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item ${
                 opt.field === field ? "text-text-primary bg-overlay-subtle" : "text-text-secondary"
               }`}
             >
@@ -207,7 +207,7 @@ export function SortDropdown({
                   onChange("rank", "asc");
                   setOpen(false);
                 }}
-                className="flex w-full items-center px-3 py-1.5 text-xs text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
+                className="flex w-full items-center px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
               >
                 Reset to default
               </button>
@@ -403,7 +403,7 @@ export function ColumnToggle({
               <button
                 type="button"
                 onClick={() => { onReset(); setOpen(false); }}
-                className="flex w-full items-center px-3.5 py-1.5 text-xs text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
+                className="flex w-full items-center px-3.5 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
               >
                 Reset to default
               </button>
@@ -717,7 +717,7 @@ export function FilterBar({
           const color = getEpicColor(v);
           return (
             <span
-              className="inline-block rounded px-1.5 py-0.5 text-xs"
+              className="inline-block rounded px-1.5 py-0.5 text-body-sm"
               style={color ? { backgroundColor: color.bg, color: color.text } : undefined}
             >
               {v}

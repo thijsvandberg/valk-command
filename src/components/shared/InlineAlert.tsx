@@ -21,7 +21,7 @@ export function InlineAlert({
 }: InlineAlertProps) {
   return (
     <div
-      className={`rounded-lg border px-4 py-3 text-sm ${VARIANT_CLASSES[variant]}${className ? ` ${className}` : ""}`}
+      className={`rounded-lg border px-4 py-3 text-body-lg ${VARIANT_CLASSES[variant]}${className ? ` ${className}` : ""}`}
       role="alert"
     >
       {children}

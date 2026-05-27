@@ -24,7 +24,7 @@ export function RecurringFailures({
         </div>
         <div className="flex items-center gap-2 py-2">
           <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-brand-400)]/50" strokeWidth={1.5} />
-          <span className="text-xs text-text-muted font-[var(--font-body)]">
+          <span className="text-body-sm text-text-muted font-[var(--font-body)]">
             No recurring failures in the last 7 days
           </span>
         </div>
@@ -60,7 +60,7 @@ export function RecurringFailures({
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-amber-400/70 font-[var(--font-body)] truncate leading-relaxed">
+              <p className="text-body-sm text-amber-400/70 font-[var(--font-body)] truncate leading-relaxed">
                 {f.pattern}
               </p>
               {f.affectedScopes.length > 0 && (
@@ -85,7 +85,7 @@ export function RecurringFailures({
               )}
             </div>
             <div className="shrink-0 flex flex-col items-end gap-0.5">
-              <span className="text-sm font-bold tabular-nums font-[var(--font-display)] text-amber-400/80">
+              <span className="text-body-lg font-bold tabular-nums font-[var(--font-display)] text-amber-400/80">
                 {f.count}
               </span>
               <span className="text-caption text-text-muted font-[var(--font-body)]">occurrences</span>

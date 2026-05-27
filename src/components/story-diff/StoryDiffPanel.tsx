@@ -156,12 +156,12 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
 
       {/* Version info */}
       <div className="border-b border-border-default px-4 py-3">
-        <p className="font-[var(--font-body)] text-sm text-text-secondary">
+        <p className="font-[var(--font-body)] text-body-lg text-text-secondary">
           {isFirstVersion
             ? `Version ${current.versionNumber} (initial)`
             : `Version ${previous!.versionNumber} \u2192 Version ${current.versionNumber}`}
         </p>
-        <div className="mt-1 flex items-center gap-3 text-xs text-text-tertiary">
+        <div className="mt-1 flex items-center gap-3 text-body-sm text-text-tertiary">
           <span>{formatDate(current.date)}</span>
           {current.updatedBy && (
             <span className="text-text-tertiary">{current.updatedBy}</span>
@@ -173,8 +173,8 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {isFirstVersion ? (
           <div>
-            <p className="mb-2 text-xs font-medium text-text-tertiary">Initial version</p>
-            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary whitespace-pre-wrap">
+            <p className="mb-2 text-body-sm font-medium text-text-tertiary">Initial version</p>
+            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-body-lg leading-[1.7] text-text-primary whitespace-pre-wrap">
               {current.content || <span className="text-text-tertiary">No content</span>}
             </div>
           </div>

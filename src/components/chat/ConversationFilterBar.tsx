@@ -37,7 +37,7 @@ export default function ConversationFilterBar({
         type="button"
         onClick={onClearAll}
         className={[
-          "rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-100 cursor-pointer",
+          "rounded-full px-2.5 py-1 text-body-sm font-medium transition-colors duration-100 cursor-pointer",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
           isAllActive
             ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]"
@@ -59,7 +59,7 @@ export default function ConversationFilterBar({
             onClick={() => onToggle(category)}
             data-testid={`filter-pill-${category}`}
             className={[
-              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-100 cursor-pointer",
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-body-sm font-medium transition-colors duration-100 cursor-pointer",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
               isActive
                 ? "text-text-primary"

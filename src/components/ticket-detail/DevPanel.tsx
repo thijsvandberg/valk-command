@@ -67,7 +67,7 @@ function BranchItem({ branch }: { branch: DevBranch }) {
             href={branch.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="truncate text-xs font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="truncate text-body-sm font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             style={{ transition: "color 0.15s ease" }}
           >
             {branch.name}
@@ -106,7 +106,7 @@ function PullRequestCard({ pr }: { pr: DevPullRequest }) {
               href={pr.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-w-0 text-xs font-medium leading-snug text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="min-w-0 text-body-sm font-medium leading-snug text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {pr.title}
@@ -210,13 +210,13 @@ function CommitSummary({ commits }: { commits: DevCommit[] }) {
               href={latest.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="truncate text-xs text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="truncate text-body-sm text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease" }}
             >
               {truncate(latest.message, 80)}
             </a>
           ) : (
-            <span className="truncate text-xs text-text-secondary">{truncate(latest.message, 80)}</span>
+            <span className="truncate text-body-sm text-text-secondary">{truncate(latest.message, 80)}</span>
           )}
         </div>
         <p className="mt-0.5 text-label text-text-muted">
@@ -241,7 +241,7 @@ function BuildItem({ build }: { build: DevBuild }) {
         href={build.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="min-w-0 truncate text-xs text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="min-w-0 truncate text-body-sm text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "color 0.15s ease" }}
       >
         {build.name}
@@ -344,7 +344,7 @@ export function DevPanel({
           {isLoading && !data && <LoadingSkeleton />}
 
           {!isLoading && !hasData && (
-            <p className="py-2 text-xs text-text-muted">
+            <p className="py-2 text-body-sm text-text-muted">
               No development activity linked to this ticket
             </p>
           )}

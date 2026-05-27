@@ -63,7 +63,7 @@ function SectionHeader({ icon, title, count }: { icon: React.ReactNode; title: s
   return (
     <div className="flex items-center gap-2 pb-3">
       <span className="text-text-muted">{icon}</span>
-      <h3 className="text-sm font-semibold text-text-secondary">{title}</h3>
+      <h3 className="text-body-lg font-semibold text-text-secondary">{title}</h3>
       {count !== undefined && count > 0 && (
         <span className="rounded-md bg-overlay-default px-1.5 py-0.5 text-label tabular-nums text-text-tertiary">{count}</span>
       )}
@@ -86,7 +86,7 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               href={pr.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-w-0 truncate text-sm font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="min-w-0 truncate text-body-lg font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 0.15s ease" }}
             >
               {pr.title}
@@ -98,7 +98,7 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
               {pr.status}
             </span>
           </div>
-          <p className="mt-1.5 text-xs text-text-tertiary">
+          <p className="mt-1.5 text-body-sm text-text-tertiary">
             {pr.author}
             <span className="text-text-muted"> in </span>
             <span className="font-medium text-text-muted">{pr.repo}</span>
@@ -108,10 +108,10 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
             <span className="text-text-muted">{pr.destBranch}</span>
           </p>
         </div>
-        <span className="shrink-0 text-xs text-text-muted">{relativeDate(pr.createdAt)}</span>
+        <span className="shrink-0 text-body-sm text-text-muted">{relativeDate(pr.createdAt)}</span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-text-tertiary">
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-body-sm text-text-tertiary">
         {/* Reviewers */}
         {totalReviewers > 0 && (
           <div className="flex items-center gap-2">
@@ -198,9 +198,9 @@ function DeploymentsTable({ deployments }: { deployments: DevDeployment[] }) {
     <div className="space-y-4">
       {sortedTypes.map((type) => (
         <div key={type}>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">{type}</h4>
+          <h4 className="mb-2 text-body-sm font-semibold uppercase tracking-wider text-text-tertiary">{type}</h4>
           <div className="overflow-hidden rounded-lg border border-border-default">
-            <table className="w-full text-xs">
+            <table className="w-full text-body-sm">
               <thead>
                 <tr className="border-b border-border-subtle bg-overlay-subtle">
                   <th className="px-3 py-2 text-left font-medium text-text-muted">Pipeline</th>
@@ -251,7 +251,7 @@ function BranchRow({ branch }: { branch: DevBranch }) {
           href={branch.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="truncate text-xs font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)]"
+          className="truncate text-body-sm font-medium text-text-secondary cursor-pointer hover:text-[var(--color-brand-400)]"
           style={{ transition: "color 0.15s ease" }}
         >
           {branch.name}
@@ -270,8 +270,8 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <GitCommit size={32} strokeWidth={1} className="text-text-muted" />
-      <p className="mt-3 text-sm text-text-muted">No development activity linked to this ticket</p>
-      <p className="mt-1 text-xs text-text-muted">Branches, pull requests, and deployments will appear here when linked via the ticket key.</p>
+      <p className="mt-3 text-body-lg text-text-muted">No development activity linked to this ticket</p>
+      <p className="mt-1 text-body-sm text-text-muted">Branches, pull requests, and deployments will appear here when linked via the ticket key.</p>
     </div>
   );
 }

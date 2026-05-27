@@ -21,7 +21,7 @@ function ModeToggle({ explainMode, onChange }: { explainMode: boolean; onChange:
         <button
           type="button"
           onClick={() => onChange(false)}
-          className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
+          className={`rounded-md px-3 py-1 text-body-sm font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
             !explainMode
               ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[var(--shadow-sm)]"
               : "text-text-tertiary hover:text-text-secondary"
@@ -32,7 +32,7 @@ function ModeToggle({ explainMode, onChange }: { explainMode: boolean; onChange:
         <button
           type="button"
           onClick={() => onChange(true)}
-          className={`rounded-md px-3 py-1 text-xs font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
+          className={`rounded-md px-3 py-1 text-body-sm font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
             explainMode
               ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[var(--shadow-sm)]"
               : "text-text-tertiary hover:text-text-secondary"

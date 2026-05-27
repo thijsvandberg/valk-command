@@ -114,7 +114,7 @@ export default function Sidebar() {
                     href={item.href}
                     prefetch={true}
                     onClick={() => setMobileOpen(false)}
-                    className={`group flex items-center justify-center rounded-lg px-0 py-2.5 text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    className={`group flex items-center justify-center rounded-lg px-0 py-2.5 text-body-lg font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       active
                         ? "bg-[var(--color-brand-600)]/12 text-[var(--color-brand-300)]"
                         : "text-text-secondary hover:bg-hover-list-item hover:text-text-primary active:bg-overlay-default"

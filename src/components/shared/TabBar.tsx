@@ -4,7 +4,7 @@ import Link from "next/link";
 import { BarContainer } from "./BarContainer";
 
 const baseClass =
-  "relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
+  "relative flex items-center gap-1.5 px-3 py-2 text-body-sm font-medium cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 const activeClass =
   "text-text-primary after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-[var(--color-brand-400)] after:rounded-full";

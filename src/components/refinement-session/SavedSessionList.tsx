@@ -72,7 +72,7 @@ export function SavedSessionList({
           return (
             <div
               key={session.id}
-              className={`group relative flex shrink-0 items-center gap-1.5 px-3 text-xs font-medium ${
+              className={`group relative flex shrink-0 items-center gap-1.5 px-3 text-body-sm font-medium ${
                 isActive
                   ? "text-text-primary"
                   : isCompleted
@@ -99,7 +99,7 @@ export function SavedSessionList({
                     if (e.key === "Enter") handleRename(session.id, editValue);
                     if (e.key === "Escape") setEditingId(null);
                   }}
-                  className="min-w-0 max-w-[160px] bg-transparent text-xs font-medium outline-none"
+                  className="min-w-0 max-w-[160px] bg-transparent text-body-sm font-medium outline-none"
                 />
               ) : (
                 <button

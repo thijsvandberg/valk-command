@@ -219,10 +219,10 @@ export function LinkIssueDialog({
   return (
     <Modal open={open} onClose={onClose} aria-label="Link issue">
       <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]">
-        <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+        <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
           Link issue
         </h3>
-        <p className="mt-1 text-xs text-text-tertiary">
+        <p className="mt-1 text-body-sm text-text-tertiary">
           Create a relationship between {ticketKey} and another issue.
         </p>
 
@@ -235,7 +235,7 @@ export function LinkIssueDialog({
             <button
               type="button"
               onClick={() => setRelationOpen((v) => !v)}
-              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-border-default bg-[var(--color-surface-default)] px-3 py-1.5 text-sm text-text-primary outline-none hover:border-border-strong focus-visible:border-[var(--color-brand-500)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/25"
+              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-border-default bg-[var(--color-surface-default)] px-3 py-1.5 text-body-lg text-text-primary outline-none hover:border-border-strong focus-visible:border-[var(--color-brand-500)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/25"
               style={{ transition: "border-color 120ms" }}
             >
               <span>{RELATION_OPTIONS.find((o) => o.value === relation)?.label ?? relation}</span>
@@ -252,7 +252,7 @@ export function LinkIssueDialog({
                     key={opt.value}
                     type="button"
                     onClick={() => { setRelation(opt.value); setRelationOpen(false); }}
-                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm ${
+                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-lg ${
                       opt.value === relation
                         ? "bg-overlay-default text-text-primary"
                         : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
@@ -295,7 +295,7 @@ export function LinkIssueDialog({
               }}
               onBlur={() => setTimeout(() => setShowResults(false), 200)}
               placeholder="Search by key or title..."
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-default)] py-1.5 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50 focus:ring-1 focus:ring-[var(--color-brand-500)]/25"
+              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-default)] py-1.5 pl-9 pr-3 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50 focus:ring-1 focus:ring-[var(--color-brand-500)]/25"
             />
 
             {/* Search results dropdown */}
@@ -318,8 +318,8 @@ export function LinkIssueDialog({
                     }}
                   >
                     <IssueTypeIcon type={r.type as IssueType} size={13} />
-                    <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{r.title}</span>
+                    <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{r.key}</span>
+                    <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{r.title}</span>
                     <StatusBadge status={r.status} />
                     {r.source === "jira" && (
                       <span
@@ -332,7 +332,7 @@ export function LinkIssueDialog({
                     )}
                   </button>
                 )) : !isSearching ? (
-                  <div className="px-3 py-2.5 text-xs text-text-muted">
+                  <div className="px-3 py-2.5 text-body-sm text-text-muted">
                     No issues found for &ldquo;{query}&rdquo;
                   </div>
                 ) : null}
@@ -373,8 +373,8 @@ export function LinkIssueDialog({
                     }}
                   >
                     <IssueTypeIcon type={r.type as IssueType} size={13} />
-                    <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{r.title}</span>
+                    <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{r.key}</span>
+                    <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{r.title}</span>
                     <StatusBadge status={r.status} />
                   </button>
                 ))}
@@ -386,8 +386,8 @@ export function LinkIssueDialog({
           {selected && (
             <div className="mt-2 flex items-center gap-2 rounded-md bg-overlay-default px-2.5 py-1.5">
               <IssueTypeIcon type={selected.type as IssueType} size={13} />
-              <span className="font-mono text-xs text-[var(--color-brand-400)]">{selected.key}</span>
-              <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{selected.title}</span>
+              <span className="font-mono text-body-sm text-[var(--color-brand-400)]">{selected.key}</span>
+              <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{selected.title}</span>
               <StatusBadge status={selected.status} />
               {selected.source === "jira" && (
                 <span
@@ -403,7 +403,7 @@ export function LinkIssueDialog({
         </div>
 
         {submitError && (
-          <p className="mt-3 text-xs text-red-400/80">{submitError}</p>
+          <p className="mt-3 text-body-sm text-red-400/80">{submitError}</p>
         )}
 
         {/* Actions */}

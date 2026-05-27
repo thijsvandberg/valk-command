@@ -31,8 +31,8 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
 
       <div className="space-y-3">
         <div>
-          <span className="font-mono text-xs text-[var(--color-brand-400)]">{ticketData.key}</span>
-          <h3 className="mt-1 font-[var(--font-display)] text-sm font-semibold leading-snug text-text-primary">
+          <span className="font-mono text-body-sm text-[var(--color-brand-400)]">{ticketData.key}</span>
+          <h3 className="mt-1 font-[var(--font-display)] text-body-lg font-semibold leading-snug text-text-primary">
             {ticketData.title}
           </h3>
         </div>
@@ -52,13 +52,13 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
           )}
         </div>
 
-        <div className="rounded-lg border border-border-default bg-overlay-subtle p-3 text-xs leading-[1.6] text-text-tertiary">
+        <div className="rounded-lg border border-border-default bg-overlay-subtle p-3 text-body-sm leading-[1.6] text-text-tertiary">
           {descSnippet}
         </div>
 
         <div className="rounded-lg border border-dashed border-border-strong bg-overlay-subtle px-3 py-4 text-center">
           <MessageCircle className="mx-auto mb-2 h-5 w-5 text-text-muted" strokeWidth={1.5} />
-          <p className="text-xs text-text-muted">Chat with agent about this ticket</p>
+          <p className="text-body-sm text-text-muted">Chat with agent about this ticket</p>
         </div>
       </div>
     </div>

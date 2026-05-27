@@ -81,7 +81,7 @@ export function BulkActionBar({
         </button>
       )}
 
-      <span className="text-xs font-medium text-text-secondary">
+      <span className="text-body-sm font-medium text-text-secondary">
         {count}{totalCount ? `/${totalCount}` : ""} selected
         {selectedPoints !== undefined && selectedPoints > 0 && (
           <span className="ml-1 text-text-tertiary">&middot; {selectedPoints} pts</span>
@@ -110,7 +110,7 @@ export function BulkActionBar({
                       onSetReadiness(opt.value);
                       setShowStatusDropdown(false);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+                    className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
                   >
                     <span
                       className="shrink-0 flex h-4 w-4 items-center justify-center rounded-full"

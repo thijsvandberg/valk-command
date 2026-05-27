@@ -29,7 +29,7 @@ export function HealthScoreBadge({ healthScore }: { healthScore: HealthScore }) 
         className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-default select-none"
         style={{ background: bandColor.bg, boxShadow: `0 0 0 1px ${bandColor.ring}` }}
       >
-        <span className={`text-sm font-bold tabular-nums font-[var(--font-display)] tracking-tight ${bandColor.text}`}>
+        <span className={`text-body-lg font-bold tabular-nums font-[var(--font-display)] tracking-tight ${bandColor.text}`}>
           {score}
         </span>
         <span className="text-caption text-text-muted font-[var(--font-body)]">/100</span>
@@ -133,7 +133,7 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
           <span className="text-caption uppercase tracking-widest text-text-muted font-semibold font-[var(--font-body)]">
             {m.label}
           </span>
-          <span className="text-xl font-bold tabular-nums font-[var(--font-display)] tracking-tight text-text-primary">
+          <span className="text-heading font-bold tabular-nums font-[var(--font-display)] tracking-tight text-text-primary">
             {m.value}
           </span>
           {m.delta}

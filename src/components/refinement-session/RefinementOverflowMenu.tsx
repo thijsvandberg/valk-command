@@ -67,7 +67,7 @@ export function RefinementOverflowMenu() {
             href="/refinement/history"
             role="menuitem"
             onClick={close}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
             style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
           >
             <Clock size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />

@@ -303,7 +303,7 @@ function PickerSearch({ placeholder = "Search...", actions, onChange }: SearchPr
           onChange?.(e.target.value);
         }}
         placeholder={placeholder}
-        className="flex-1 bg-transparent text-xs text-text-secondary placeholder:text-text-muted focus:outline-none"
+        className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
       />
       {actions}
     </div>
@@ -345,7 +345,7 @@ function Item({ children, selected, onSelect, className, style }: ItemProps) {
     <button
       type="button"
       onClick={onSelect}
-      className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default${className ? ` ${className}` : ""}`}
+      className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default${className ? ` ${className}` : ""}`}
       style={style}
     >
       {children}
@@ -366,7 +366,7 @@ interface EmptyProps {
 
 function Empty({ children }: EmptyProps) {
   return (
-    <p className="px-3 py-2 text-xs text-text-muted">{children}</p>
+    <p className="px-3 py-2 text-body-sm text-text-muted">{children}</p>
   );
 }
 

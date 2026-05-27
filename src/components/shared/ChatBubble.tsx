@@ -40,7 +40,7 @@ export function ChatBubble({
       className={`group/msg flex flex-col ${isUser ? "items-end" : "items-start"}`}
     >
       <div
-        className={`max-w-[80%] overflow-x-auto rounded-2xl px-4 py-3 text-sm leading-[1.7] font-[var(--font-body)] shadow-sm ${
+        className={`max-w-[80%] overflow-x-auto rounded-2xl px-4 py-3 text-body-lg leading-[1.7] font-[var(--font-body)] shadow-sm ${
           isUser
             ? "rounded-br-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_rgba(46,145,73,0.18)]"
             : "rounded-bl-lg bg-[var(--color-surface-floating)] text-text-primary border border-border-default"

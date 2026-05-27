@@ -61,7 +61,7 @@ function ConversationTypePickerInner({ onCreate }: { onCreate: (type: Conversati
               type="button"
               role="menuitem"
               onClick={() => handleSelect(opt.type)}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-[var(--font-body)] text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-body-lg font-[var(--font-body)] text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
             >
               <span className="text-text-tertiary">{opt.icon}</span>
               {opt.label}

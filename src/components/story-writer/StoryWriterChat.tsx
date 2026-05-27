@@ -409,7 +409,7 @@ export function StoryWriterChat({
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-brand-500)]/[0.08] border border-[var(--color-brand-500)]/[0.12]">
                 <Sparkles size={18} className="text-[var(--color-brand-400)] opacity-60" strokeWidth={1.5} />
               </div>
-              <p className="text-xs text-text-muted text-center max-w-[200px]">
+              <p className="text-body-sm text-text-muted text-center max-w-[200px]">
                 Start a conversation to improve this story
               </p>
             </div>
@@ -486,7 +486,8 @@ export function StoryWriterChat({
                       variant="ghost"
                       size="sm"
                       icon={<RotateCcw size={9} strokeWidth={2} />}
-                      onClick={() => onSend(msg.content)}
+                      onClick={() => onRetry?.(msg.id)}
+                      disabled={!onRetry || isBusy}
                       className="text-caption text-text-tertiary hover:text-text-secondary"
                     >
                       Retry
@@ -506,7 +507,7 @@ export function StoryWriterChat({
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
               <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
             </div>
-            <span className="text-xs text-text-secondary truncate">
+            <span className="text-body-sm text-text-secondary truncate">
               {streamProgress.slice(0, 80)}
             </span>
           </div>
@@ -515,13 +516,13 @@ export function StoryWriterChat({
 
       {streamError && (
         <div className="border-t border-red-500/20 px-4 py-2">
-          <span className="text-xs text-red-400">{streamError}</span>
+          <span className="text-body-sm text-red-400">{streamError}</span>
         </div>
       )}
 
       {dupWarning && (
         <div className="border-t border-amber-500/20 px-4 py-2">
-          <span className="text-xs text-amber-400">Duplicate message blocked</span>
+          <span className="text-body-sm text-amber-400">Duplicate message blocked</span>
         </div>
       )}
 
@@ -607,7 +608,7 @@ export function StoryWriterChat({
                 onKeyDown={handleKeyDown}
                 placeholder="Describe what to improve..."
                 rows={1}
-                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-sm leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
+                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-body-lg leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
               />
             </div>
             <div className="flex items-center justify-between px-2 pb-2 pt-0.5">

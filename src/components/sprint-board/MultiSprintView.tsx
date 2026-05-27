@@ -382,7 +382,7 @@ function DroppableSprintColumn({
             <button
               type="button"
               onClick={() => setSelectorOpen((o) => !o)}
-              className="flex items-center gap-1 cursor-pointer py-0.5 text-sm font-semibold tracking-tight text-text-primary hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex items-center gap-1 cursor-pointer py-0.5 text-body-lg font-semibold tracking-tight text-text-primary hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <span className="max-w-36 truncate">{currentSprint?.name ?? sprintId}</span>
               <ChevronDown size={11} strokeWidth={2} className="shrink-0 text-text-tertiary" />
@@ -421,7 +421,7 @@ function DroppableSprintColumn({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search..."
-            className="h-6 w-28 rounded border border-border-default bg-overlay-subtle py-0.5 pl-5 pr-2 text-xs text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+            className="h-6 w-28 rounded border border-border-default bg-overlay-subtle py-0.5 pl-5 pr-2 text-body-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
           />
           {searchQuery && (
             <button
@@ -474,7 +474,7 @@ function DroppableSprintColumn({
                   return (
                     <th
                       key={colId}
-                      className={`relative py-2 pr-2 text-xs font-medium text-text-muted select-none${isCenter ? " text-center" : ""}`}
+                      className={`relative py-2 pr-2 text-body-sm font-medium text-text-muted select-none${isCenter ? " text-center" : ""}`}
                     >
                       {label || "\u00A0"}
                       <ColumnResizeHandle
@@ -542,14 +542,14 @@ function DroppableSprintColumn({
               })}
               {filteredTickets.length === 0 && isFiltered && (
                 <tr>
-                  <td colSpan={1 + activeOrder.length} className="py-12 text-center text-xs text-text-muted">
+                  <td colSpan={1 + activeOrder.length} className="py-12 text-center text-body-sm text-text-muted">
                     No matching tickets
                   </td>
                 </tr>
               )}
               {isOver && filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan={1 + activeOrder.length} className="py-6 text-center text-xs text-[var(--color-brand-400)]/50">
+                  <td colSpan={1 + activeOrder.length} className="py-6 text-center text-body-sm text-[var(--color-brand-400)]/50">
                     Drop here to move
                   </td>
                 </tr>
@@ -1022,7 +1022,7 @@ export function MultiSprintView({
         >
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
           <ViewHeaderDivider />
-          <span className="text-sm text-text-tertiary">{totalItems} items total</span>
+          <span className="text-body-lg text-text-tertiary">{totalItems} items total</span>
         </ViewHeader>
 
         {/* Content */}
@@ -1142,7 +1142,7 @@ export function MultiSprintView({
 
         {toast && (
           <div
-            className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-text-secondary shadow-[var(--shadow-md)]"
+            className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-body-lg text-text-secondary shadow-[var(--shadow-md)]"
             style={{ zIndex: "var(--z-dropdown)" }}
           >
             {toast}
@@ -1166,8 +1166,8 @@ export function MultiSprintView({
               >
                 <div className="flex items-center gap-2">
                   <IssueTypeIcon type={activeDragTicket.type} size={13} />
-                  <span className="font-mono text-xs text-text-tertiary">{activeDragTicket.key}</span>
-                  <span className="max-w-48 truncate text-xs text-text-secondary">{activeDragTicket.title}</span>
+                  <span className="font-mono text-body-sm text-text-tertiary">{activeDragTicket.key}</span>
+                  <span className="max-w-48 truncate text-body-sm text-text-secondary">{activeDragTicket.title}</span>
                   {extraCount > 0 && (
                     <span className="ml-1 rounded-full bg-[var(--color-brand-500)]/20 px-1.5 py-0.5 text-caption text-[var(--color-brand-400)]">
                       +{extraCount} more

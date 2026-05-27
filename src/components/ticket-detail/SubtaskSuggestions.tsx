@@ -96,7 +96,7 @@ export function SubtaskSuggestions({
         <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[var(--color-brand-500)]/10">
           <Sparkles size={11} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
         </div>
-        <span className="text-xs font-semibold tracking-tight text-text-secondary">
+        <span className="text-body-sm font-semibold tracking-tight text-text-secondary">
           AI Suggestions
         </span>
         {suggestions.length > 0 && !isLoading && (
@@ -143,14 +143,14 @@ export function SubtaskSuggestions({
         {isLoading ? (
           <div className="flex items-center gap-2.5 px-2.5 py-3.5">
             <Loader2 size={13} className="animate-spin text-[var(--color-brand-400)]" />
-            <span className="text-xs text-text-muted">
+            <span className="text-body-sm text-text-muted">
               {progressText ?? "Generating subtask suggestions..."}
             </span>
           </div>
         ) : error ? (
           <div className="flex items-center gap-2.5 px-2.5 py-3.5">
             <AlertCircle size={13} className="shrink-0 text-red-400" />
-            <span className="text-xs text-text-muted">{error}</span>
+            <span className="text-body-sm text-text-muted">{error}</span>
           </div>
         ) : (
           <div className="space-y-px">

@@ -92,8 +92,8 @@ function SortableQueueItem({
         onClick={onClick}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
       >
-        <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{ticketKey}</span>
-        <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{title}</span>
+        <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{ticketKey}</span>
+        <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{title}</span>
         {isCurrent && (
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
         )}
@@ -501,7 +501,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Center: progress + navigation */}
           <div className="relative flex items-center gap-3">
-            <span className="text-xs font-medium tabular-nums text-text-secondary">
+            <span className="text-body-sm font-medium tabular-nums text-text-secondary">
               Ticket {currentIndex + 1} of {queue.length}
             </span>
             <button
@@ -597,7 +597,7 @@ export default function RefinementSessionTicketPage({
             <button
               type="button"
               onClick={() => toggleSidebarPanel("chat")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 activeSidebarPanel === "chat"
                   ? "bg-[#a78bfa]/[0.08] text-[#a78bfa]"
                   : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
@@ -618,7 +618,7 @@ export default function RefinementSessionTicketPage({
             <button
               type="button"
               onClick={() => toggleSidebarPanel("subtasks")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 activeSidebarPanel === "subtasks"
                   ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
                   : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
@@ -639,7 +639,7 @@ export default function RefinementSessionTicketPage({
             <button
               type="button"
               onClick={() => toggleSidebarPanel("notes")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 activeSidebarPanel === "notes"
                   ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
                   : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
@@ -660,7 +660,7 @@ export default function RefinementSessionTicketPage({
             <button
               type="button"
               onClick={() => toggleSidebarPanel("info")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 activeSidebarPanel === "info"
                   ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
                   : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
@@ -701,7 +701,7 @@ export default function RefinementSessionTicketPage({
                       setOverflowOpen(false);
                       handleExitSession();
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs text-text-secondary hover:bg-hover-list-item active:bg-overlay-default"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm text-text-secondary hover:bg-hover-list-item active:bg-overlay-default"
                   >
                     <LogOut size={13} strokeWidth={1.5} />
                     Exit session
@@ -774,7 +774,7 @@ export default function RefinementSessionTicketPage({
                 onBlur={handleNotesBlur}
                 placeholder="Quick annotation..."
                 rows={6}
-                className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-body-lg text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                 style={{ transition: "border-color 0.15s ease" }}
               />
             </SubtasksPaneResizable>

@@ -50,7 +50,7 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
         className="flex items-center gap-2 mb-3 cursor-pointer group"
       >
         <Rocket size={14} strokeWidth={1.5} className="text-violet-400/60" />
-        <span className="text-xs font-medium text-text-secondary uppercase tracking-wider group-hover:text-text-secondary transition-colors duration-150">
+        <span className="text-body-sm font-medium text-text-secondary uppercase tracking-wider group-hover:text-text-secondary transition-colors duration-150">
           Deployment Timeline
         </span>
         <span className="rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/60 tabular-nums">

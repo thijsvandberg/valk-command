@@ -452,7 +452,7 @@ export function EmptyState({ query, mode, onSwitchToJira }: { query: string; mod
       <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
         <Search className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
       </div>
-      <p className="text-sm text-text-tertiary">
+      <p className="text-body-lg text-text-tertiary">
         {!hasQuery
           ? "Type at least 2 characters to search"
           : mode === "local" ? `No results matched "${query}"` : `No Jira results for "${query}"`}

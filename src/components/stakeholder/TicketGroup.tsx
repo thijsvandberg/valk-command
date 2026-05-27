@@ -96,7 +96,7 @@ function groupByEpic(tickets: StakeholderTicket[]): [string, StakeholderTicket[]
 
 export function TicketGroup({ tickets, showKeys = false, showAssignee = false, carriedKeys, deemphasizeUnscored = false }: TicketGroupProps) {
   if (tickets.length === 0) {
-    return <p className="text-sm text-text-muted italic">None</p>;
+    return <p className="text-body-lg text-text-muted italic">None</p>;
   }
 
   const groups = groupByEpic(tickets);
@@ -115,7 +115,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                 className={`flex items-start gap-2.5 group${deemphasizeUnscored && t.businessValue === null ? " opacity-50" : ""}`}
               >
                 <StatusDot status={t.status} />
-                <span className="flex-1 text-sm leading-snug text-text-secondary group-hover:text-text-primary transition-colors duration-100">
+                <span className="flex-1 text-body-lg leading-snug text-text-secondary group-hover:text-text-primary transition-colors duration-100">
                   {t.title}
                 </span>
                 <BvBadge value={t.businessValue} />
@@ -145,7 +145,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   <AssigneeAvatar assignee={t.assignee} />
                 )}
                 {t.storyPoints !== null && (
-                  <span className="shrink-0 text-xs tabular-nums text-text-muted">{t.storyPoints} SP</span>
+                  <span className="shrink-0 text-body-sm tabular-nums text-text-muted">{t.storyPoints} SP</span>
                 )}
               </li>
             ))}

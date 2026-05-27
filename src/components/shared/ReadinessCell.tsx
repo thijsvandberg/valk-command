@@ -88,7 +88,7 @@ export function ReadinessCell({
                 key={opt.label}
                 type="button"
                 onClick={() => { onChange(opt.value); setOpen(false); }}
-                className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+                className="flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
               >
                 <span
                   className="shrink-0 w-4 flex items-center justify-center"

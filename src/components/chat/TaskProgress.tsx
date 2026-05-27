@@ -42,7 +42,7 @@ export default function TaskProgress({
     return (
       <div className="border-t border-red-500/20 px-6 py-2.5">
         <div className="mx-auto max-w-3xl">
-          <span className="text-xs text-red-400">{error ?? "Task failed"}</span>
+          <span className="text-body-sm text-red-400">{error ?? "Task failed"}</span>
         </div>
       </div>
     );
@@ -63,7 +63,7 @@ export default function TaskProgress({
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
             <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
           </div>
-          <span className="text-xs text-text-secondary truncate flex-1">
+          <span className="text-body-sm text-text-secondary truncate flex-1">
             {label}
           </span>
           {onCancel && (

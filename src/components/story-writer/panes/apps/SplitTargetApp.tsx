@@ -124,7 +124,7 @@ export function SplitTargetApp() {
 
   if (!writer.targetTicketKey) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-text-muted">
+      <div className="flex h-full items-center justify-center text-body-sm text-text-muted">
         No split target selected
       </div>
     );
@@ -161,7 +161,7 @@ export function SplitTargetApp() {
           showHeader={false}
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-xs text-text-muted">
+        <div className="flex h-full items-center justify-center text-body-sm text-text-muted">
           No AI drafts yet for this story
         </div>
       )}

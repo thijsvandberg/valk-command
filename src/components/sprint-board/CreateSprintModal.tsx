@@ -72,7 +72,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
       <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-default px-5 py-3.5">
-          <h2 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+          <h2 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
             Create Sprint
           </h2>
           <button
@@ -88,7 +88,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
         <div className="space-y-3.5 px-5 py-4">
           {/* Sprint name */}
           <label className="block space-y-1">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+            <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
               <Type size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
               Sprint name
             </span>
@@ -99,7 +99,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
               onChange={(e) => { setName(e.target.value); setError(null); }}
               onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && !creating) handleCreate(); }}
               placeholder="e.g. Sprint 42"
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
+              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
                 placeholder:text-text-muted
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                 transition-colors duration-100"
@@ -110,7 +110,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
           <div className="grid grid-cols-2 gap-3">
             <label className="block space-y-1">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
                   <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
                   Start date
                 </span>
@@ -122,7 +122,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
                 type="datetime-local"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
+                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
                   placeholder:text-text-muted
                   focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                   transition-colors duration-100
@@ -131,7 +131,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
             </label>
             <label className="block space-y-1">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
                   <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
                   End date
                 </span>
@@ -143,7 +143,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
                 type="datetime-local"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
+                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
                   placeholder:text-text-muted
                   focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                   transition-colors duration-100
@@ -154,7 +154,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
 
           {/* Goal field */}
           <label className="block space-y-1">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+            <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
               <Target size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
               Sprint goal
             </span>
@@ -163,7 +163,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
               onChange={(e) => setGoal(e.target.value)}
               placeholder="Describe the sprint's primary objective..."
               rows={3}
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs leading-relaxed text-text-primary
+              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm leading-relaxed text-text-primary
                 placeholder:text-text-muted resize-none
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                 transition-colors duration-100"
@@ -174,7 +174,7 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
           {error && (
             <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2.5">
               <AlertTriangle size={13} strokeWidth={1.5} className="mt-px shrink-0 text-red-400" />
-              <p className="text-xs leading-relaxed text-red-300">{error}</p>
+              <p className="text-body-sm leading-relaxed text-red-300">{error}</p>
             </div>
           )}
         </div>

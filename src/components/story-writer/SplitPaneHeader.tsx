@@ -43,7 +43,7 @@ export function SplitPaneHeader({
             href={`/tickets/${ticketKey}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-xs font-semibold text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
+            className="font-mono text-body-sm font-semibold text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] transition-colors duration-150"
           >
             {ticketKey}
           </Link>
@@ -57,7 +57,7 @@ export function SplitPaneHeader({
             {slot === "original" ? "Original" : "Split target"}
           </span>
         </div>
-        <p className="truncate text-xs text-text-secondary leading-tight mt-0.5">{title}</p>
+        <p className="truncate text-body-sm text-text-secondary leading-tight mt-0.5">{title}</p>
       </div>
 
       <div className="flex items-center gap-1">

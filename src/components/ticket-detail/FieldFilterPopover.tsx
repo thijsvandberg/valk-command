@@ -73,7 +73,7 @@ export function FieldFilterPopover({
             key={opt.value}
             type="button"
             onClick={() => setFilter(opt.value)}
-            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs hover:bg-hover-list-item active:bg-overlay-default"
+            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
           >
             <span className={isActive ? "font-medium text-text-primary" : "text-text-secondary"}>
               {opt.label}
@@ -97,7 +97,7 @@ export function FieldFilterPopover({
                 key={field.id}
                 type="button"
                 onClick={() => onToggleField(field.id, !isVisible)}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-xs hover:bg-hover-list-item active:bg-overlay-default"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
               >
                 <span
                   className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors duration-100 ${

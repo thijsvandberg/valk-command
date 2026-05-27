@@ -101,7 +101,7 @@ function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; tota
   return (
     <tr ref={setNodeRef}>
       <td colSpan={totalColSpan} className={`transition-colors duration-150 ${isOver ? "bg-[var(--color-brand-500)]/[0.04]" : ""}`}>
-        <div className={`mx-3 my-2 flex h-8 items-center justify-center rounded border border-dashed text-xs transition-colors duration-150 ${
+        <div className={`mx-3 my-2 flex h-8 items-center justify-center rounded border border-dashed text-body-sm transition-colors duration-150 ${
           isOver
             ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-300)]"
             : "border-border-default text-text-muted"
@@ -452,7 +452,7 @@ export function TicketTable({
   );
 
   const virtualizedTable = (
-    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
+    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
       {theadContent}
       <tbody>
         {paddingTop > 0 && (
@@ -477,7 +477,7 @@ export function TicketTable({
   );
 
   const plainTable = (
-    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
+    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
       {theadContent}
       <tbody>
         {tickets.map((ticket, ticketIdx) => (
@@ -516,7 +516,7 @@ export function TicketTable({
   // When externalDnd is true, DndContext + DragOverlay are owned by SprintBoard.
   // We only render SortableContext here so ticket rows register with the parent context.
   const dndTable = externalDnd ? (
-    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
+    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
       {theadContent}
       {sortableTableBody}
     </table>
@@ -527,13 +527,13 @@ export function TicketTable({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
+      <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
         {theadContent}
         {sortableTableBody}
       </table>
       <DragOverlay>
         {activeTicket && (
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-body-lg">
             <tbody>
               <tr className="bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg border border-border-strong">
                 <td className="w-5 py-2 pl-1" />
@@ -546,7 +546,7 @@ export function TicketTable({
                   </td>
                 )}
                 {col("key") && (
-                  <td className="py-2 pr-3 font-mono text-xs text-text-secondary">
+                  <td className="py-2 pr-3 font-mono text-body-sm text-text-secondary">
                     {activeTicket.key}
                   </td>
                 )}
@@ -568,7 +568,7 @@ export function TicketTable({
   const isGrouped = groups && groups.length > 0;
 
   const groupedTable = isGrouped ? (
-    <table className="w-full border-collapse text-sm" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
+    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
       {theadContent}
       {groups.map((group, groupIdx) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;

@@ -603,7 +603,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
             <button
               type="button"
               onClick={() => setShowJqlOverride((v) => !v)}
-              className="text-xs text-text-tertiary hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+              className="text-body-sm text-text-tertiary hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
             >
               {showJqlOverride ? "Hide JQL" : "JQL override"}
             </button>
@@ -613,7 +613,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
                 value={jiraJql}
                 onChange={(e) => setJiraJql(e.target.value)}
                 placeholder="project = VPL AND ..."
-                className="flex-1 bg-transparent text-xs text-text-secondary placeholder-text-muted focus:outline-none font-mono"
+                className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder-text-muted focus:outline-none font-mono"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runJiraSearch(); } }}
               />
             )}
@@ -675,7 +675,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
               <div>{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} idx={i} />)}</div>
             )}
             {!loadingJira && mode === "jira" && jiraError && (
-              <div className="flex items-center gap-2 px-4 py-6 text-sm text-red-400/70">{jiraError}</div>
+              <div className="flex items-center gap-2 px-4 py-6 text-body-lg text-red-400/70">{jiraError}</div>
             )}
 
             {/* Local mode — grouped results */}

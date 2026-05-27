@@ -23,6 +23,7 @@ import {
   Check,
   PanelRightClose,
   MessageSquareText,
+  Layers,
 } from "lucide-react";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
@@ -68,6 +69,7 @@ const TicketDevelopment = dynamic(
   () => import("@/components/ticket-detail/TicketDevelopment").then((m) => ({ default: m.TicketDevelopment })),
   { loading: TabLoadingFallback },
 );
+import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { SearchModal } from "@/components/sprint-board/SearchModal";
 import { Tab } from "@/components/shared/TabBar";
 import { Button } from "@/components/ui/Button";
@@ -237,6 +239,7 @@ export default function TicketDetailPage({
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [draftDiscardKey, setDraftDiscardKey] = useState(0);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [showAddToRefinement, setShowAddToRefinement] = useState(false);
   const [showFlagDialog, setShowFlagDialog] = useState(false);
   const [flagReasonInput, setFlagReasonInput] = useState("");
   const [flagOverride, setFlagOverride] = useState<boolean | null>(null);
@@ -440,7 +443,7 @@ export default function TicketDetailPage({
                 <div className="flex-1 flex items-center justify-center">
                   <div className="flex flex-col items-center gap-3">
                     <Loader2 size={32} strokeWidth={2} className="animate-spin text-text-muted" />
-                    <span className="text-sm text-text-tertiary">Checking Jira...</span>
+                    <span className="text-body-lg text-text-tertiary">Checking Jira...</span>
                   </div>
                 </div>
               </div>
@@ -455,16 +458,16 @@ export default function TicketDetailPage({
         {pageTitle}
         <div className="flex h-full flex-col">
           <ViewHeader>
-            <span className="text-sm font-medium text-text-tertiary">{key}</span>
+            <span className="text-body-lg font-medium text-text-tertiary">{key}</span>
           </ViewHeader>
 
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center">
-              <h1 className="font-[var(--font-display)] text-2xl font-semibold text-text-primary">Ticket not found</h1>
-              <p className="mt-2 text-sm text-text-tertiary">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
+              <h1 className="font-[var(--font-display)] text-heading-lg font-semibold text-text-primary">Ticket not found</h1>
+              <p className="mt-2 text-body-lg text-text-tertiary">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
               <Link
                 href="/sprint-board"
-                className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-sm font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-body-lg font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
               >
                 Back to Sprint Board
               </Link>
@@ -627,7 +630,7 @@ export default function TicketDetailPage({
                 <div className="min-w-[220px] py-1">
                   <button
                     onClick={() => { setMoreMenuOpen(false); handleCopyLink(); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     {linkCopied
@@ -639,7 +642,7 @@ export default function TicketDetailPage({
                   <button
                     onClick={() => { setMoreMenuOpen(false); handleRefreshFromJira(); }}
                     disabled={isRefreshing}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     <CloudDownload size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -648,7 +651,7 @@ export default function TicketDetailPage({
                   {!isFlagged ? (
                     <button
                       onClick={() => { setMoreMenuOpen(false); setShowFlagDialog(true); }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
                       style={{ transition: "background-color 0.1s ease" }}
                     >
                       <Flag size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -657,13 +660,22 @@ export default function TicketDetailPage({
                   ) : (
                     <button
                       onClick={() => { setMoreMenuOpen(false); handleUnflag(); }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
                       style={{ transition: "background-color 0.1s ease" }}
                     >
                       <Flag size={13} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
                       Remove flag
                     </button>
                   )}
+                  <div className="mx-2 my-1 h-px bg-overlay-default" />
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); setShowAddToRefinement(true); }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    style={{ transition: "background-color 0.1s ease" }}
+                  >
+                    <Layers size={13} strokeWidth={1.5} className="text-text-muted" />
+                    Add to refinement
+                  </button>
                 </div>
               </Popover>
             </div>
@@ -674,7 +686,7 @@ export default function TicketDetailPage({
               >
                 <Link
                   href={`/tickets/${key}/write`}
-                  className="flex h-7 items-center gap-1.5 rounded-l-md px-2.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  className="flex h-7 items-center gap-1.5 rounded-l-md px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 >
                   <span className="relative flex h-2 w-2 shrink-0">
@@ -702,7 +714,7 @@ export default function TicketDetailPage({
             ) : (
               <Link
                 href={`/tickets/${key}/write`}
-                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
               >
                 <NotebookPen size={13} strokeWidth={1.5} />
@@ -782,8 +794,8 @@ export default function TicketDetailPage({
               <div className="flex w-full items-start gap-2.5">
                 <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[var(--color-status-warning)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[var(--color-status-warning)]">Conflict</p>
-                  <p className="mt-0.5 text-xs text-text-tertiary">
+                  <p className="text-body-lg font-medium text-[var(--color-status-warning)]">Conflict</p>
+                  <p className="mt-0.5 text-body-sm text-text-tertiary">
                     Jira was updated since your local edit. Click to review and resolve.
                   </p>
                 </div>
@@ -792,7 +804,7 @@ export default function TicketDetailPage({
                     type="button"
                     onClick={handleDiscardDraft}
                     disabled={isDiscarding}
-                    className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer rounded px-2.5 py-1 text-body-sm font-medium text-text-secondary hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                   >
                     {isDiscarding ? (
@@ -809,7 +821,7 @@ export default function TicketDetailPage({
                       setShowConflictDiff(true);
                     }}
                     disabled={isDiscarding}
-                    className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-[var(--color-status-warning)]/80 hover:bg-[var(--color-status-warning)]/10 hover:text-[var(--color-status-warning)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)]/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer rounded px-2.5 py-1 text-body-sm font-medium text-[var(--color-status-warning)]/80 hover:bg-[var(--color-status-warning)]/10 hover:text-[var(--color-status-warning)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)]/50 disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                   >
                     Review diff
@@ -817,7 +829,7 @@ export default function TicketDetailPage({
                 </div>
               </div>
               {discardError && (
-                <p className="text-xs text-red-500">{discardError}</p>
+                <p className="text-body-sm text-red-500">{discardError}</p>
               )}
             </div>
           )}
@@ -843,7 +855,7 @@ export default function TicketDetailPage({
 
             {/* Metadata strip */}
             {ticket.assignee && (
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-body-sm">
                 <span className="flex items-center gap-1.5 text-text-tertiary">
                   <Avatar assignee={ticket.assignee} size={18} />
                   <span className="truncate">{ticket.assignee.name}</span>
@@ -866,15 +878,15 @@ export default function TicketDetailPage({
               <div className="mt-4 rounded-lg border border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/[0.04] px-4 py-3">
                 <div className="flex items-center gap-2">
                   <Flag size={14} strokeWidth={1.5} className="shrink-0 text-[var(--color-status-error)]" fill="var(--color-status-error)" />
-                  <span className="text-sm font-semibold text-[var(--color-status-error)]">Flagged</span>
+                  <span className="text-body-lg font-semibold text-[var(--color-status-error)]">Flagged</span>
                   {flagComment && (
-                    <span className="text-xs text-text-muted">
+                    <span className="text-body-sm text-text-muted">
                       by {flagComment.authorName}, {new Date(flagComment.createdAt).toLocaleDateString()}
                     </span>
                   )}
                 </div>
                 {flagReason && (
-                  <div className="mt-2 text-sm leading-relaxed text-text-secondary">
+                  <div className="mt-2 text-body-lg leading-relaxed text-text-secondary">
                     {flagReason.split(/\n{2,}/).map((para, i) => {
                       const parts = para.split(/(\[.*?\]\(.*?\)|https?:\/\/\S+)/g);
                       const elements = parts.map((part, j) => {
@@ -999,7 +1011,7 @@ export default function TicketDetailPage({
           placeholder="Reason (optional)..."
           rows={3}
           maxLength={2000}
-          className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-xs leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
+          className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
         />
       }
     />
@@ -1009,6 +1021,11 @@ export default function TicketDetailPage({
         onClose={() => setPreviewTicketKey(null)}
       />
     )}
+    <AddToRefinementModal
+      open={showAddToRefinement}
+      onClose={() => setShowAddToRefinement(false)}
+      ticketKeys={[key]}
+    />
     </>
   );
 }

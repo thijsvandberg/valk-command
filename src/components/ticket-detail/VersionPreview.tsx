@@ -84,15 +84,15 @@ export function VersionPreview({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-text-secondary">{title}</span>
+            <span className="text-body-lg font-medium text-text-secondary">{title}</span>
             {version.label === "current" && <Tag color="brand">Jira</Tag>}
             {version.label === "draft" && <Tag color="blue">Draft</Tag>}
             {version.label === "ai-draft" && <Tag color="purple">AI</Tag>}
             {version.updatedBy && (
-              <span className="text-xs text-text-tertiary">{version.updatedBy}</span>
+              <span className="text-body-sm text-text-tertiary">{version.updatedBy}</span>
             )}
           </div>
-          <div className="mt-0.5 text-xs text-text-muted">
+          <div className="mt-0.5 text-body-sm text-text-muted">
             {formatVersionDate(version.date)}
           </div>
         </div>
@@ -110,7 +110,7 @@ export function VersionPreview({
           {renderMarkdown(version.content)}
         </div>
       ) : (
-        <p className="text-sm text-text-muted">No content available for this version.</p>
+        <p className="text-body-lg text-text-muted">No content available for this version.</p>
       )}
     </>
   );

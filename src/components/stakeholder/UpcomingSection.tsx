@@ -20,7 +20,7 @@ export function UpcomingSection({ sprintName, tickets }: UpcomingSectionProps) {
   return (
     <section>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">
+        <h2 className="text-body-sm font-semibold uppercase tracking-[0.12em] text-text-tertiary">
           Upcoming &mdash; {sprintName}
         </h2>
         <button

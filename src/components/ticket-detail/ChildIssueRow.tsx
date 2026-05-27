@@ -88,7 +88,7 @@ export function ChildIssueRow({
       {dragHandleSlot}
 
       {isPending && (showKey || showStatus) && (
-        <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
+        <span className="flex items-center gap-1.5 font-mono text-body-sm text-text-muted">
           <Loader2 size={10} className="animate-spin" />
         </span>
       )}
@@ -122,10 +122,10 @@ export function ChildIssueRow({
           onBlur={onSaveEdit}
           onFocus={(e) => e.target.select()}
           onClick={(e) => e.stopPropagation()}
-          className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none border-b border-[var(--color-brand-400)]"
+          className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary outline-none border-b border-[var(--color-brand-400)]"
         />
       ) : (
-        <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
+        <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">
           {item.title}
         </span>
       )}

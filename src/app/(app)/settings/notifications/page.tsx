@@ -155,7 +155,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
         Browser Notifications
       </h2>
 
@@ -169,8 +169,8 @@ export default function NotificationsPage() {
               <BellOff size={16} strokeWidth={1.5} className="text-text-tertiary" />
             )}
             <div>
-              <p className="text-sm font-medium text-text-primary">Desktop notifications</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">
+              <p className="text-body-lg font-medium text-text-primary">Desktop notifications</p>
+              <p className="mt-0.5 text-body-sm leading-relaxed text-text-tertiary">
                 Get notified when a chat or story writer response completes while you are in another tab.
               </p>
             </div>
@@ -201,19 +201,19 @@ export default function NotificationsPage() {
           {permissionGranted ? (
             <>
               <ShieldCheck size={14} strokeWidth={1.5} className="text-emerald-400/70" />
-              <span className="text-xs text-text-tertiary">Browser permission granted</span>
+              <span className="text-body-sm text-text-tertiary">Browser permission granted</span>
             </>
           ) : permissionDenied ? (
             <>
               <ShieldX size={14} strokeWidth={1.5} className="text-red-400/70" />
-              <span className="text-xs text-text-tertiary">
+              <span className="text-body-sm text-text-tertiary">
                 Browser permission denied. Reset it in your browser&apos;s site settings.
               </span>
             </>
           ) : (
             <>
               <ShieldCheck size={14} strokeWidth={1.5} className="text-text-muted" />
-              <span className="text-xs text-text-tertiary">
+              <span className="text-body-sm text-text-tertiary">
                 Browser permission will be requested when you enable notifications.
               </span>
             </>
@@ -230,7 +230,7 @@ export default function NotificationsPage() {
 
       {availableTeams.length > 0 && (
         <>
-          <h2 className="mb-5 mt-10 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+          <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
             Subscribed Teams
           </h2>
 
@@ -243,7 +243,7 @@ export default function NotificationsPage() {
                     <span className={isSubscribed ? "text-[var(--color-brand-400)]" : "text-text-muted"}>
                       <Users size={14} strokeWidth={1.5} />
                     </span>
-                    <p className="text-sm font-medium text-text-secondary">{team}</p>
+                    <p className="text-body-lg font-medium text-text-secondary">{team}</p>
                   </div>
                   <Toggle
                     enabled={isSubscribed}
@@ -260,7 +260,7 @@ export default function NotificationsPage() {
         </>
       )}
 
-      <h2 className="mb-5 mt-10 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
         Notification Categories
       </h2>
 
@@ -276,8 +276,8 @@ export default function NotificationsPage() {
                   {meta.icon}
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-text-secondary">{meta.label}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">{meta.description}</p>
+                  <p className="text-body-lg font-medium text-text-secondary">{meta.label}</p>
+                  <p className="mt-0.5 text-body-sm leading-relaxed text-text-tertiary">{meta.description}</p>
                 </div>
               </div>
               <Toggle

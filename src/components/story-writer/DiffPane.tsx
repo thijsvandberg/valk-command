@@ -122,7 +122,7 @@ export function DiffPane({
               onClick={() => onNavigateDraft(-1)}
               className="border-0 bg-transparent text-text-tertiary"
             />
-            <span className="text-xs text-text-tertiary">
+            <span className="text-body-sm text-text-tertiary">
               AI Draft {selectedDraftIdx + 1} of {totalDrafts}
             </span>
             <Button
@@ -163,7 +163,7 @@ export function DiffPane({
 
       <div className="flex-1 overflow-y-auto p-3">
         {!selected ? (
-          <div className="flex h-full items-center justify-center text-xs text-text-muted">
+          <div className="flex h-full items-center justify-center text-body-sm text-text-muted">
             {rightVersions.length === 0 ? "No versions to compare" : "Select a version"}
           </div>
         ) : (

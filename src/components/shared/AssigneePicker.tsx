@@ -108,7 +108,7 @@ function AssigneePickerInner({
         className="inline-flex items-center gap-2 rounded-lg px-2 py-1 -mr-2 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
         style={{ transition: "background-color 0.15s ease" }}
       >
-        <span className="truncate text-sm text-text-secondary">{value?.name ?? "Unassigned"}</span>
+        <span className="truncate text-body-lg text-text-secondary">{value?.name ?? "Unassigned"}</span>
         <Avatar assignee={value} size={20} />
       </BasePicker.Trigger>
 

@@ -311,7 +311,7 @@ export default function PipelinesPage() {
                 <>
                   <div className="flex items-center gap-2 mb-4">
                     <Unlink size={14} strokeWidth={1.5} className="text-amber-400/60" />
-                    <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    <span className="text-body-sm font-medium text-text-secondary uppercase tracking-wider">
                       Unlinked runs
                     </span>
                     <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/60 tabular-nums">

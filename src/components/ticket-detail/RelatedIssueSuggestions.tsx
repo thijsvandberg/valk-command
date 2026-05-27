@@ -135,7 +135,7 @@ export function RelatedIssueSuggestionsPanel({
     <div className="mt-4 rounded-lg border border-border-default bg-[var(--color-surface-default)]">
       <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
         <Sparkles size={13} strokeWidth={2} className="text-[var(--color-brand-400)]" />
-        <span className="text-xs font-medium text-text-secondary">AI-Suggested Related Issues</span>
+        <span className="text-body-sm font-medium text-text-secondary">AI-Suggested Related Issues</span>
         <div className="ml-auto">
           <button
             type="button"
@@ -152,14 +152,14 @@ export function RelatedIssueSuggestionsPanel({
         {isLoading ? (
           <div className="flex items-center gap-2 py-3">
             <Loader2 size={14} className="animate-spin text-text-muted" />
-            <span className="text-xs text-text-muted">
+            <span className="text-body-sm text-text-muted">
               {progressText ?? "Analyzing ticket for related issues..."}
             </span>
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 py-3">
             <AlertCircle size={14} className="shrink-0 text-red-400" />
-            <span className="text-xs text-text-muted">{error}</span>
+            <span className="text-body-sm text-text-muted">{error}</span>
           </div>
         ) : suggestions.length > 0 ? (
           <div className="space-y-1">
@@ -167,8 +167,8 @@ export function RelatedIssueSuggestionsPanel({
               <div key={s.key} className="group rounded-md px-2 py-1.5 hover:bg-overlay-default transition-colors duration-100">
                 <div className="flex items-center gap-2.5">
                   <IssueTypeIcon type={s.type} size={13} />
-                  <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{s.key}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{s.title}</span>
+                  <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{s.key}</span>
+                  <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{s.title}</span>
                   <div className="flex shrink-0 items-center gap-1">
                     <div className="h-1.5 w-12 overflow-hidden rounded-full bg-overlay-default">
                       <div
@@ -207,7 +207,7 @@ export function RelatedIssueSuggestionsPanel({
           </div>
         ) : hasSearched ? (
           <div className="py-3 text-center">
-            <p className="text-xs text-text-muted">No related issues found.</p>
+            <p className="text-body-sm text-text-muted">No related issues found.</p>
           </div>
         ) : null}
       </div>

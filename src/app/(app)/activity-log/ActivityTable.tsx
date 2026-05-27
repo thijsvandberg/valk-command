@@ -56,7 +56,7 @@ function ScopeCell({
   sprintMap: Map<string, string>;
 }) {
   if (!scope || scope === "0") {
-    return <span className="text-xs text-text-muted font-[var(--font-body)] truncate">-</span>;
+    return <span className="text-body-sm text-text-muted font-[var(--font-body)] truncate">-</span>;
   }
 
   // Ticket keys: comma-separated VPL-XXXXX patterns
@@ -69,7 +69,7 @@ function ScopeCell({
           <Link
             key={key}
             href={`/tickets/${key}`}
-            className="text-xs font-[var(--font-body)] cursor-pointer transition-colors duration-150"
+            className="text-body-sm font-[var(--font-body)] cursor-pointer transition-colors duration-150"
             style={{ color: "var(--color-brand-400)" }}
           >
             {key}
@@ -85,7 +85,7 @@ function ScopeCell({
     return (
       <Link
         href={`/sprint-board?sprint=${scope}`}
-        className="text-xs font-[var(--font-body)] truncate cursor-pointer transition-colors duration-150"
+        className="text-body-sm font-[var(--font-body)] truncate cursor-pointer transition-colors duration-150"
         style={{ color: "var(--color-brand-400)" }}
         title={sprintName}
       >
@@ -95,7 +95,7 @@ function ScopeCell({
   }
 
   // Fallback: plain text (e.g. "sprints", "history")
-  return <span className="text-xs text-text-muted font-[var(--font-body)] truncate">{scope}</span>;
+  return <span className="text-body-sm text-text-muted font-[var(--font-body)] truncate">{scope}</span>;
 }
 
 export function SelectFilter({
@@ -112,7 +112,7 @@ export function SelectFilter({
       <select
         value={value}
         onChange={onChange}
-        className="appearance-none rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-1.5 pr-7 text-xs text-text-secondary font-[var(--font-body)] cursor-pointer hover:border-border-strong focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+        className="appearance-none rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-1.5 pr-7 text-body-sm text-text-secondary font-[var(--font-body)] cursor-pointer hover:border-border-strong focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -172,7 +172,7 @@ export function ActivityTable({
         {entries?.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <Clock className="h-8 w-8 text-text-muted" strokeWidth={1.5} />
-            <span className="text-sm text-text-muted font-[var(--font-body)]">No activity entries found</span>
+            <span className="text-body-lg text-text-muted font-[var(--font-body)]">No activity entries found</span>
           </div>
         )}
 
@@ -202,7 +202,7 @@ export function ActivityTable({
 
                 {/* Type + summary preview */}
                 <div className="min-w-0">
-                  <span className="text-xs text-text-secondary font-[var(--font-body)]">
+                  <span className="text-body-sm text-text-secondary font-[var(--font-body)]">
                     {entryTypeLabel(entry.type)}
                   </span>
                   {entry.summary && !isExpanded && (
@@ -220,7 +220,7 @@ export function ActivityTable({
                 {/* Status */}
                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                   <StatusIcon status={entry.status} />
-                  <span className={`text-xs font-[var(--font-body)] ${
+                  <span className={`text-body-sm font-[var(--font-body)] ${
                     entry.status === "success" ? "text-[var(--color-brand-400)]/70" :
                     entry.status === "failed" ? "text-amber-400/70" :
                     entry.status === "cancelled" ? "text-text-tertiary" :
@@ -253,7 +253,7 @@ export function ActivityTable({
                 </div>
 
                 {/* Duration */}
-                <span className="text-xs text-text-tertiary font-[var(--font-body)] tabular-nums">
+                <span className="text-body-sm text-text-tertiary font-[var(--font-body)] tabular-nums">
                   {formatDuration(entry.durationMs)}
                 </span>
 
@@ -263,7 +263,7 @@ export function ActivityTable({
                 </div>
 
                 {/* Timestamp */}
-                <span className="text-xs text-text-muted font-[var(--font-body)] tabular-nums text-right">
+                <span className="text-body-sm text-text-muted font-[var(--font-body)] tabular-nums text-right">
                   {formatTimestamp(entry.startedAt)}
                 </span>
               </div>
@@ -274,7 +274,7 @@ export function ActivityTable({
                   {entry.summary && (
                     <div className="mb-2">
                       <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Summary</span>
-                      <p className="mt-1 text-xs text-text-secondary font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
+                      <p className="mt-1 text-body-sm text-text-secondary font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
                     </div>
                   )}
                   {entry.errorDetail && (
@@ -290,7 +290,7 @@ export function ActivityTable({
                           ))}
                         </div>
                       ) : (
-                        <p className="mt-1 text-xs text-amber-400/60 font-[var(--font-body)] leading-relaxed break-all">{entry.errorDetail}</p>
+                        <p className="mt-1 text-body-sm text-amber-400/60 font-[var(--font-body)] leading-relaxed break-all">{entry.errorDetail}</p>
                       )}
                     </div>
                   )}

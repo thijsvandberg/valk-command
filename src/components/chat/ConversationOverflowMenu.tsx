@@ -72,7 +72,7 @@ export default function ConversationOverflowMenu({
   }, [open, close]);
 
   const itemClass =
-    "flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150";
+    "flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150";
 
   return (
     <div className="relative" ref={ref}>

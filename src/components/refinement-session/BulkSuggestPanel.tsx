@@ -102,16 +102,16 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
       {href ? (
         <Link
           href={href}
-          className="shrink-0 text-xs font-medium text-[var(--color-brand-500)] hover:text-[var(--color-brand-400)] hover:underline"
+          className="shrink-0 text-body-sm font-medium text-[var(--color-brand-500)] hover:text-[var(--color-brand-400)] hover:underline"
           style={{ transition: "color 0.15s ease" }}
         >
           {entry.ticketKey}
         </Link>
       ) : (
-        <span className="shrink-0 text-xs font-medium text-text-secondary">{entry.ticketKey}</span>
+        <span className="shrink-0 text-body-sm font-medium text-text-secondary">{entry.ticketKey}</span>
       )}
       {entry.ticketTitle && (
-        <span className="min-w-0 flex-1 truncate text-xs text-text-muted">{entry.ticketTitle}</span>
+        <span className="min-w-0 flex-1 truncate text-body-sm text-text-muted">{entry.ticketTitle}</span>
       )}
       {badge}
     </div>
@@ -178,7 +178,7 @@ export function BulkSuggestPanel({
           <Sparkles size={12} strokeWidth={2} className="shrink-0 text-text-muted" />
         )}
 
-        <span className="text-xs font-medium text-text-secondary">
+        <span className="text-body-sm font-medium text-text-secondary">
           {isRunning
             ? `Generating subtasks (${generatedCount}/${totalCount || "..."})`
             : "Subtask suggestions"}
@@ -220,7 +220,7 @@ export function BulkSuggestPanel({
             {resultEntries.length === 0 && isRunning && (
               <div className="flex items-center gap-2 py-3">
                 <Loader2 size={12} className="animate-spin text-[var(--color-brand-400)]" />
-                <span className="text-xs text-text-muted">Starting...</span>
+                <span className="text-body-sm text-text-muted">Starting...</span>
               </div>
             )}
 

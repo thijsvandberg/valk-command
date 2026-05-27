@@ -35,7 +35,7 @@ export function AdjacentSprintSection({
           onClick={() => setExpanded((v) => !v)}
           className="flex items-center gap-2 group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
-          <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${labelColor}`}>
+          <span className={`text-body-sm font-semibold uppercase tracking-[0.12em] ${labelColor}`}>
             {label} &mdash; {sprintName}
           </span>
           <ChevronDown

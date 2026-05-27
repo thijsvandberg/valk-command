@@ -12,7 +12,7 @@ export function OfflineBanner() {
   return (
     <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/15">
       <WifiOff className="h-3.5 w-3.5 shrink-0 text-amber-400" strokeWidth={2} />
-      <span className="flex-1 text-xs text-amber-300/80 font-[var(--font-body)]">
+      <span className="flex-1 text-body-sm text-amber-300/80 font-[var(--font-body)]">
         Jira unavailable, showing cached data
       </span>
       <Button

@@ -146,7 +146,7 @@ export function CommandPalette() {
             }}
           >
             {allResults.length === 0 && query.trim().length > 0 && !isLoading && (
-              <div className="flex flex-col items-center justify-center py-12 text-text-muted text-sm">
+              <div className="flex flex-col items-center justify-center py-12 text-text-muted text-body-lg">
                 <Search className="h-8 w-8 mb-3 text-text-muted" strokeWidth={1} />
                 <span>No results for &ldquo;{query}&rdquo;</span>
               </div>

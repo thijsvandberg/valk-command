@@ -51,8 +51,8 @@ function CollapsibleText({ label, text, mono = true, defaultOpen = false }: { la
           ? <ChevronDown size={12} className="mt-0.5 shrink-0 text-text-secondary" />
           : <ChevronRight size={12} className="mt-0.5 shrink-0 text-text-secondary" />
         }
-        {label && <span className="text-xs font-semibold text-text-primary shrink-0">{label}</span>}
-        {!open && <span className="text-xs text-text-secondary truncate">{preview}{text.length > 140 ? "…" : ""}</span>}
+        {label && <span className="text-body-sm font-semibold text-text-primary shrink-0">{label}</span>}
+        {!open && <span className="text-body-sm text-text-secondary truncate">{preview}{text.length > 140 ? "…" : ""}</span>}
       </button>
       {open && (
         <pre className={`mt-2 ml-4 whitespace-pre-wrap break-words rounded-md bg-black/30 border border-border-strong px-3 py-2.5 text-body leading-[1.75] text-text-primary ${mono ? "font-mono" : ""}`}>
@@ -65,7 +65,7 @@ function CollapsibleText({ label, text, mono = true, defaultOpen = false }: { la
 
 function EntryLabel({ icon, label, time, color = "text-text-primary" }: { icon: React.ReactNode; label: string; time: string; color?: string }) {
   return (
-    <div className={`flex items-center gap-2 text-xs ${color}`}>
+    <div className={`flex items-center gap-2 text-body-sm ${color}`}>
       {icon}
       <span className="font-semibold">{label}</span>
       <span className="ml-auto text-text-secondary tabular-nums">{time}</span>
@@ -90,7 +90,7 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
     case "system":
       return (
         <div className="rounded-md border border-border-strong bg-overlay-subtle px-3 py-2.5">
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
+          <div className="flex items-center gap-2 text-body-sm text-text-secondary">
             <Cpu size={12} className="text-text-secondary" />
             <span className="font-semibold">Session init</span>
             <span className="font-mono text-text-primary">{entry.model}</span>
@@ -114,7 +114,7 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
     case "tool_use":
       return (
         <div className="rounded-md border border-amber-500/30 bg-amber-500/[0.08] px-3 py-2.5 space-y-2">
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-body-sm">
             <Wrench size={12} className="text-amber-400" />
             <span className="font-mono font-semibold text-amber-300">{entry.name}</span>
             <span className="ml-auto text-text-secondary tabular-nums">{formatTs(entry.timestamp)}</span>
@@ -128,8 +128,8 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
     case "tool_result":
       return (
         <div className="rounded-md border border-border-strong bg-overlay-subtle px-3 py-2.5 space-y-2">
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <span className="font-mono text-text-secondary text-sm">↳</span>
+          <div className="flex items-center gap-2 text-body-sm text-text-secondary">
+            <span className="font-mono text-text-secondary text-body-lg">↳</span>
             <span className="font-semibold">Tool result</span>
             <span className="ml-auto text-text-secondary tabular-nums">{formatTs(entry.timestamp)}</span>
           </div>
@@ -142,7 +142,7 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
     case "result":
       return (
         <div className="rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.08] px-3 py-2.5 space-y-2">
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-body-sm">
             <span className="font-semibold text-[var(--color-brand-300)]">Result</span>
             {entry.durationMs && (
               <span className="text-text-secondary">{(entry.durationMs / 1000).toFixed(1)}s</span>
@@ -169,7 +169,7 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
             time={formatTs(entry.timestamp)}
             color="text-red-400"
           />
-          <p className="text-xs text-red-300 ml-5">{entry.message}</p>
+          <p className="text-body-sm text-red-300 ml-5">{entry.message}</p>
           {entry.details && (
             <CollapsibleText label="details" text={entry.details} />
           )}
@@ -193,14 +193,14 @@ function TaskLogDetail({ taskId, ticketKey }: { taskId: string; ticketKey: strin
     return () => { cancelled = true; };
   }, [taskId, ticketKey]);
 
-  if (error) return <p className="px-2 py-3 text-xs text-red-400/70">Failed to load log</p>;
+  if (error) return <p className="px-2 py-3 text-body-sm text-red-400/70">Failed to load log</p>;
   if (!entries) return (
     <div className="flex items-center gap-2 px-2 py-3">
       <Loader2 size={12} className="animate-spin text-text-tertiary" />
-      <span className="text-xs text-text-tertiary">Loading…</span>
+      <span className="text-body-sm text-text-tertiary">Loading…</span>
     </div>
   );
-  if (entries.length === 0) return <p className="px-2 py-3 text-xs text-text-tertiary">No entries</p>;
+  if (entries.length === 0) return <p className="px-2 py-3 text-body-sm text-text-tertiary">No entries</p>;
 
   return (
     <div className="space-y-1.5 py-2.5">
@@ -225,8 +225,8 @@ function TaskLogRow({ log, ticketKey }: { log: LogMeta; ticketKey: string }) {
           ? <ChevronDown size={13} className="shrink-0 text-text-secondary" />
           : <ChevronRight size={13} className="shrink-0 text-text-secondary" />
         }
-        <span className="font-mono text-sm font-medium text-text-primary">{log.taskId}</span>
-        <span className="ml-auto text-xs text-text-secondary tabular-nums">{formatTs(log.createdAt)}</span>
+        <span className="font-mono text-body-lg font-medium text-text-primary">{log.taskId}</span>
+        <span className="ml-auto text-body-sm text-text-secondary tabular-nums">{formatTs(log.createdAt)}</span>
       </button>
       {expanded && (
         <div className="border-t border-border-default px-3">
@@ -279,7 +279,7 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border-default px-4 py-2.5">
-        <span className="text-xs font-medium text-text-tertiary">Execution logs</span>
+        <span className="text-body-sm font-medium text-text-tertiary">Execution logs</span>
         <Button
           variant="ghost"
           size="sm"
@@ -297,14 +297,14 @@ export function ExecutionLogViewer({ ticketKey, isStreaming }: ExecutionLogViewe
         {loading && !logs && (
           <div className="flex items-center gap-2 py-8 justify-center">
             <Loader2 size={14} className="animate-spin text-text-tertiary" />
-            <span className="text-xs text-text-tertiary">Loading…</span>
+            <span className="text-body-sm text-text-tertiary">Loading…</span>
           </div>
         )}
 
         {!loading && logs?.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-12">
             <Terminal size={18} className="text-text-muted" strokeWidth={1.5} />
-            <p className="text-xs text-text-tertiary text-center">No logs yet. Send a message to start.</p>
+            <p className="text-body-sm text-text-tertiary text-center">No logs yet. Send a message to start.</p>
           </div>
         )}
 

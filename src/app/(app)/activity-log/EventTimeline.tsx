@@ -145,7 +145,7 @@ export function EventTimeline({
 
       {entries.length === 0 && (
         <div className="flex items-center justify-center py-2">
-          <span className="text-xs text-text-muted font-[var(--font-body)]">No events in the last 24 hours</span>
+          <span className="text-body-sm text-text-muted font-[var(--font-body)]">No events in the last 24 hours</span>
         </div>
       )}
     </div>

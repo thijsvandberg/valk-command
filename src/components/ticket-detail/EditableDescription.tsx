@@ -211,7 +211,7 @@ export function EditableDescription({
       {/* Draft indicator badge */}
       {!editing && hasLocalEdit && editIsDraft && (
         <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] px-2.5 py-1 text-xs font-medium text-[var(--color-icon-task)]/80">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] px-2.5 py-1 text-body-sm font-medium text-[var(--color-icon-task)]/80">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-icon-task)]/70" />
             Unsaved changes
           </span>
@@ -222,7 +222,7 @@ export function EditableDescription({
           <button
             type="button"
             onClick={onViewDiff}
-            className={`inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-2.5 py-1 text-xs font-medium text-[var(--color-brand-400)]${onViewDiff ? " cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-500)]/50" : ""}`}
+            className={`inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-2.5 py-1 text-body-sm font-medium text-[var(--color-brand-400)]${onViewDiff ? " cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-500)]/50" : ""}`}
             style={{ transition: "background-color 0.15s ease" }}
           >
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]/70" />
@@ -303,7 +303,7 @@ export function EditableDescription({
         </div>
       ) : (
         <p
-          className="mt-3 text-sm text-text-muted cursor-pointer"
+          className="mt-3 text-body-lg text-text-muted cursor-pointer"
           onClick={() => setEditingState(true)}
           title="Click to edit"
         >

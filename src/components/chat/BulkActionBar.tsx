@@ -36,14 +36,14 @@ export default function BulkActionBar({
         className="sticky bottom-0 z-10 flex items-center gap-2 border-t border-border-default bg-[var(--color-surface-floating)] px-3 py-2 shadow-[var(--shadow-lg)]"
         data-testid="bulk-action-bar"
       >
-        <span className="text-xs font-medium text-text-secondary tabular-nums whitespace-nowrap">
+        <span className="text-body-sm font-medium text-text-secondary tabular-nums whitespace-nowrap">
           {selectedCount} selected
         </span>
 
         <button
           type="button"
           onClick={allSelected ? onDeselectAll : onSelectAll}
-          className="text-xs text-[var(--color-brand-400)] cursor-pointer hover:underline transition-colors duration-150 whitespace-nowrap"
+          className="text-body-sm text-[var(--color-brand-400)] cursor-pointer hover:underline transition-colors duration-150 whitespace-nowrap"
           data-testid="bulk-select-all-toggle"
         >
           {allSelected ? "Deselect all" : `Select all (${totalCount})`}

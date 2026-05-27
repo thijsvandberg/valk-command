@@ -35,17 +35,17 @@ export function SprintDetailsPopover({
       <div className="px-3.5 py-3 space-y-2">
         {/* Date range row */}
         {hasDates && (
-          <div className="text-xs text-text-secondary tabular-nums">
+          <div className="text-body-sm text-text-secondary tabular-nums">
             {fmtDate(sprint.startDate!)} &ndash; {fmtDate(sprint.endDate!)}
           </div>
         )}
 
         {/* Goal */}
         {hasGoal ? (
-          <p className="text-xs leading-relaxed text-text-primary">{sprint.goal}</p>
+          <p className="text-body-sm leading-relaxed text-text-primary">{sprint.goal}</p>
         ) : (
           <div className="space-y-1.5">
-            <p className="flex items-center gap-1.5 text-xs italic text-text-muted">
+            <p className="flex items-center gap-1.5 text-body-sm italic text-text-muted">
               <span>No sprint goal set</span>
               {onSuggestGoal && !goalSuggestionUrl && (
                 <button
@@ -85,7 +85,7 @@ export function SprintDetailsPopover({
           <button
             type="button"
             onClick={() => { onClose(); onEdit(); }}
-            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-text-secondary cursor-pointer
+            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-text-secondary cursor-pointer
               hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong
               transition-colors duration-100"
           >

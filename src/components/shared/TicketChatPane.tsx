@@ -168,7 +168,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
       <div className="flex h-full flex-col">
         <PaneHeader ticketKey={ticketKey} ticketTitle={ticketTitle} onClose={onClose} />
         <div className="flex flex-1 items-center justify-center px-4">
-          <p className="text-xs text-red-400">{initError}</p>
+          <p className="text-body-sm text-red-400">{initError}</p>
         </div>
       </div>
     );
@@ -190,7 +190,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#a78bfa]/[0.08] border border-[#a78bfa]/[0.12]">
               <Sparkles size={16} className="text-[#a78bfa] opacity-60" strokeWidth={1.5} />
             </div>
-            <p className="text-xs text-text-muted text-center max-w-[180px]">
+            <p className="text-body-sm text-text-muted text-center max-w-[180px]">
               Ask a question about this ticket
             </p>
           </div>
@@ -207,7 +207,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
               timestamp={msg.timestamp}
               showTimestamp={isLast ? "always" : "hover"}
               dimmed={isSending}
-              className="!max-w-[90%] !text-xs"
+              className="!max-w-[90%] !text-body-sm"
             >
               <CompactMessageContent content={msg.content} />
             </ChatBubble>
@@ -224,7 +224,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
               <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
             </div>
-            <span className="text-xs text-text-secondary truncate">
+            <span className="text-body-sm text-text-secondary truncate">
               {workspaceTask.progressText?.slice(0, 80) || (isSubmitting ? "Starting..." : "Working...")}
             </span>
           </div>
@@ -233,7 +233,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
 
       {workspaceTask.status === "failed" && workspaceTask.error && (
         <div className="border-t border-red-500/20 px-4 py-2">
-          <span className="text-xs text-red-400">{workspaceTask.error}</span>
+          <span className="text-body-sm text-red-400">{workspaceTask.error}</span>
         </div>
       )}
 
@@ -265,7 +265,7 @@ function PaneHeader({ ticketKey, ticketTitle, onClose, isStreaming }: {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-medium text-text-primary">
+        <span className="block truncate text-body-sm font-medium text-text-primary">
           {ticketKey}
         </span>
         <span className="block truncate text-[10px] text-text-muted leading-tight">

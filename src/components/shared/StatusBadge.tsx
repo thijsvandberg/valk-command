@@ -13,7 +13,7 @@ export function StatusBadge({
   const color = JIRA_STATUS_COLORS[status] || JIRA_STATUS_COLORS["TO DO"];
   return (
     <span
-      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium${className ? ` ${className}` : ""}`}
+      className={`inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium${className ? ` ${className}` : ""}`}
       style={{ backgroundColor: color.bg, color: color.text }}
     >
       {status}

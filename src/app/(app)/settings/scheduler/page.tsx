@@ -122,18 +122,18 @@ export default function SchedulerPage() {
 
   return (
     <>
-      <h2 className="text-xs font-medium text-text-secondary uppercase tracking-[0.06em] mb-2">
+      <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-[0.06em] mb-2">
         Scheduled Tasks
       </h2>
-      <p className="text-xs text-text-tertiary mb-6 leading-[1.6]">
+      <p className="text-body-sm text-text-tertiary mb-6 leading-[1.6]">
         Tasks run automatically during normal app usage. The scheduler checks for due tasks
         on every page load and every 30 seconds.
       </p>
 
       {loading ? (
-        <div className="text-sm text-text-tertiary">Loading...</div>
+        <div className="text-body-lg text-text-tertiary">Loading...</div>
       ) : tasks.length === 0 ? (
-        <div className="text-sm text-text-tertiary">No scheduled tasks registered.</div>
+        <div className="text-body-lg text-text-tertiary">No scheduled tasks registered.</div>
       ) : (
         <div className="flex flex-col gap-3">
           {tasks.map((task) => {
@@ -146,7 +146,7 @@ export default function SchedulerPage() {
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2.5">
                     <Clock size={13} strokeWidth={1.5} className="text-text-tertiary" />
-                    <span className="text-sm font-medium text-text-primary">{task.label}</span>
+                    <span className="text-body-lg font-medium text-text-primary">{task.label}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="rounded-md bg-overlay-default px-2 py-0.5 text-caption font-mono text-text-tertiary">
@@ -175,12 +175,12 @@ export default function SchedulerPage() {
                 </div>
 
                 {task.description && (
-                  <p className="text-xs text-text-tertiary mb-3 ml-[23px] leading-[1.5]">
+                  <p className="text-body-sm text-text-tertiary mb-3 ml-[23px] leading-[1.5]">
                     {task.description}
                   </p>
                 )}
 
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-4 text-body-sm">
                   {task.lastRunAt ? (
                     <>
                       <span className="flex items-center gap-1.5 text-text-tertiary">

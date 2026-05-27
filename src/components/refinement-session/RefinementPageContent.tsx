@@ -178,7 +178,7 @@ function SortableQueueItem({
         {index + 1}
       </span>
       <IssueTypeIcon type={ticket.type} size={14} />
-      <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{ticket.title}</span>
+      <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>
       {ticket.storyPoints != null && (
         <span
           className="rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums"
@@ -202,51 +202,62 @@ function SortableQueueItem({
         </span>
       )}
 
-      {/* Move to another session */}
-      {hasOtherSessions && (
-        <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="cursor-pointer rounded p-0.5 text-text-muted opacity-0 hover:bg-overlay-default hover:text-text-secondary focus-visible:opacity-100 group-hover:opacity-100"
-            style={{ transition: "opacity 0.15s ease" }}
-            aria-label="Move to another session"
-          >
-            <ArrowRightLeft size={13} strokeWidth={2} />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                Move to
-              </div>
-              {otherSessions.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onMoveToSession?.(ticket.key, s.id);
-                  }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-overlay-subtle"
-                >
-                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                  <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => onRemove(ticket.key)}
-        className="cursor-pointer rounded p-0.5 text-text-muted opacity-0 hover:bg-red-500/10 hover:text-red-400 focus-visible:opacity-100 group-hover:opacity-100"
-        style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-        aria-label={`Remove ${ticket.key} from queue`}
+      {/* Hover overlay: actions float over content from the right */}
+      <div
+        className={`absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md pl-6 pr-2 ${menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+        style={{
+          transition: "opacity 0.15s ease",
+          background: isDragging
+            ? "linear-gradient(to right, transparent, var(--color-surface-floating) 24px)"
+            : "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",
+        }}
       >
-        <X size={13} strokeWidth={2} />
-      </button>
+        {/* Move to another session */}
+        {hasOtherSessions && (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="cursor-pointer rounded p-0.5 text-text-muted hover:bg-overlay-default hover:text-text-secondary"
+              style={{ transition: "color 0.15s ease" }}
+              aria-label="Move to another session"
+            >
+              <ArrowRightLeft size={13} strokeWidth={2} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                  Move to
+                </div>
+                {otherSessions.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onMoveToSession?.(ticket.key, s.id);
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-overlay-subtle"
+                  >
+                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                    <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => onRemove(ticket.key)}
+          className="cursor-pointer rounded p-0.5 text-text-muted hover:bg-red-500/10 hover:text-red-400"
+          style={{ transition: "color 0.15s ease" }}
+          aria-label={`Remove ${ticket.key} from queue`}
+        >
+          <X size={13} strokeWidth={2} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -309,7 +320,7 @@ function TicketRow({
           variant="list"
         />
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{ticket.title}</span>
+      <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>
       {ticket.epic && (
         <span
           className="shrink-0 truncate max-w-[140px] rounded-md px-1.5 py-0.5 text-caption font-medium"
@@ -551,14 +562,35 @@ export function RefinementPageContent({
   );
 
   const [searchQuery, setSearchQuery] = useState("");
-  // When search is active, bypass all filters and search across baseTickets
+  // When search is active, bypass all filters and search across baseTickets.
+  // When a session is selected, always show its tickets at the top even if
+  // they would normally be hidden by filters (sprint, estimated, epic, date).
   const availableTickets = useMemo(() => {
-    if (!searchQuery.trim()) return sortedTickets;
-    const q = searchQuery.toLowerCase();
-    return baseTickets
-      .filter((t) => t.key.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))
-      .sort(smartSort);
-  }, [sortedTickets, baseTickets, searchQuery]);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return baseTickets
+        .filter((t) => t.key.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))
+        .sort(smartSort);
+    }
+
+    if (!activeSession || activeSession.ticketKeys.length === 0) return sortedTickets;
+
+    const sessionKeySet = new Set(activeSession.ticketKeys);
+    const filteredKeySet = new Set(sortedTickets.map((t) => t.key));
+
+    const missingSessionTickets = baseTickets
+      .filter((t) => sessionKeySet.has(t.key) && !filteredKeySet.has(t.key));
+
+    if (missingSessionTickets.length === 0) return sortedTickets;
+
+    // Prepend hidden session tickets (in queue order) before the filtered list
+    const keyOrder = activeSession.ticketKeys;
+    missingSessionTickets.sort(
+      (a, b) => keyOrder.indexOf(a.key) - keyOrder.indexOf(b.key),
+    );
+
+    return [...missingSessionTickets, ...sortedTickets];
+  }, [sortedTickets, baseTickets, searchQuery, activeSession]);
 
   // Local queue for when no session is active
   const [localQueue, setLocalQueue] = useState<string[]>([]);
@@ -990,7 +1022,7 @@ export function RefinementPageContent({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search tickets..."
-                  className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+                  className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
                 />
                 {searchQuery && (
                   <button
@@ -1095,7 +1127,7 @@ export function RefinementPageContent({
                             setLastUpdatedFilter(opt.value);
                             setLastUpdatedOpen(false);
                           }}
-                          className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-xs hover:bg-hover-list-item ${
+                          className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-sm hover:bg-hover-list-item ${
                             lastUpdatedFilter === opt.value
                               ? "font-medium text-text-primary"
                               : "text-text-secondary"
@@ -1164,7 +1196,7 @@ export function RefinementPageContent({
                   />
                 ))}
                 {availableTickets.length === 0 && (
-                  <p className="py-8 text-center text-sm text-text-muted">
+                  <p className="py-8 text-center text-body-lg text-text-muted">
                     {searchQuery
                       ? <>No tickets match &ldquo;{searchQuery}&rdquo;</>
                       : "No tickets match the current filters."}
@@ -1206,7 +1238,7 @@ export function RefinementPageContent({
                               type="button"
                               onClick={() => handleBulkSuggest(false)}
                               disabled={bulkSuggestRunning}
-                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40"
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40"
                               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                             >
                               <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
@@ -1216,7 +1248,7 @@ export function RefinementPageContent({
                               type="button"
                               onClick={() => handleBulkSuggest(true)}
                               disabled={bulkSuggestRunning}
-                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40"
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40"
                               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                             >
                               <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-amber-400" />
@@ -1226,7 +1258,7 @@ export function RefinementPageContent({
                             <button
                               type="button"
                               onClick={handleCopyStories}
-                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
+                              className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
                               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                             >
                               <Copy size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
@@ -1241,7 +1273,7 @@ export function RefinementPageContent({
 
                 {queue.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-strong py-12 text-center">
-                    <p className="text-sm text-text-muted">Select tickets from the list</p>
+                    <p className="text-body-lg text-text-muted">Select tickets from the list</p>
                     <p className="mt-1 text-caption text-text-muted">
                       {MIN_TICKETS}-{MAX_TICKETS} tickets recommended
                     </p>
@@ -1321,7 +1353,7 @@ export function RefinementPageContent({
 
       {copyToast && (
         <div
-          className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-text-secondary shadow-[var(--shadow-md)]"
+          className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-body-lg text-text-secondary shadow-[var(--shadow-md)]"
         >
           Copied {queueTickets.length} ticket{queueTickets.length !== 1 ? "s" : ""} to clipboard
         </div>

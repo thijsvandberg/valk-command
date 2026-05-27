@@ -10,7 +10,7 @@ export function PageIntro({ title, description }: PageIntroProps) {
         {title}
       </h1>
       {description && (
-        <p className="mt-2 max-w-lg font-[var(--font-body)] text-base leading-[1.7] text-text-secondary">
+        <p className="mt-2 max-w-lg font-[var(--font-body)] text-heading-sm leading-[1.7] text-text-secondary">
           {description}
         </p>
       )}

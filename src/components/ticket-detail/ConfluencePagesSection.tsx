@@ -68,7 +68,7 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
     return (
       <div className="flex items-center gap-2 py-3 px-3">
         <Loader2 size={12} strokeWidth={1.5} className="animate-spin text-text-muted" />
-        <span className="text-xs text-text-muted">Loading preview...</span>
+        <span className="text-body-sm text-text-muted">Loading preview...</span>
       </div>
     );
   }
@@ -77,7 +77,7 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
     return (
       <div className="flex items-center gap-2 py-3 px-3">
         <AlertCircle size={12} strokeWidth={1.5} className="text-text-muted" />
-        <span className="text-xs text-text-muted">Preview not available</span>
+        <span className="text-body-sm text-text-muted">Preview not available</span>
       </div>
     );
   }
@@ -102,7 +102,7 @@ function PagePreview({ pageId, pageUrl }: { pageId: string; pageUrl: string }) {
 
       {/* Rendered HTML preview */}
       <div
-        className="confluence-preview text-xs leading-relaxed text-text-secondary"
+        className="confluence-preview text-body-sm leading-relaxed text-text-secondary"
         dangerouslySetInnerHTML={{ __html: sanitizeHtmlClient(data.bodyHtml) }}
       />
 
@@ -173,7 +173,7 @@ function SearchPopover({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search Confluence pages..."
-          className="flex-1 bg-transparent text-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
+          className="flex-1 bg-transparent text-body-lg text-text-secondary placeholder:text-text-muted focus:outline-none"
         />
         {isLoading && (
           <Loader2 size={12} strokeWidth={1.5} className="shrink-0 animate-spin text-text-muted" />
@@ -183,9 +183,9 @@ function SearchPopover({
       {/* Results */}
       <div className="max-h-48 overflow-y-auto py-1">
         {!debouncedQuery || debouncedQuery.length < 2 ? (
-          <p className="px-3 py-2 text-xs text-text-muted">Type at least 2 characters to search</p>
+          <p className="px-3 py-2 text-body-sm text-text-muted">Type at least 2 characters to search</p>
         ) : data?.results?.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-text-muted">No pages found</p>
+          <p className="px-3 py-2 text-body-sm text-text-muted">No pages found</p>
         ) : (
           data?.results?.map((r) => (
             <button
@@ -196,7 +196,7 @@ function SearchPopover({
             >
               <FileText size={13} strokeWidth={1.5} className="mt-0.5 shrink-0 text-text-muted" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-text-secondary">{r.title}</p>
+                <p className="truncate text-body-sm font-medium text-text-secondary">{r.title}</p>
                 <p className="mt-0.5 text-label text-text-muted">{r.spaceTitle}</p>
               </div>
             </button>
@@ -352,7 +352,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
         <div className="mt-2 space-y-1">
           {/* Linked pages */}
           {links.length === 0 && (
-            <p className="py-1 text-xs text-text-muted">No pages linked yet</p>
+            <p className="py-1 text-body-sm text-text-muted">No pages linked yet</p>
           )}
 
           {links.map((link) => (
@@ -371,7 +371,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
                     <ChevronRight size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
                   )}
                   <BookOpen size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-                  <span className="truncate text-xs text-text-secondary group-hover/link:text-text-secondary" style={{ transition: "color 0.15s ease" }}>
+                  <span className="truncate text-body-sm text-text-secondary group-hover/link:text-text-secondary" style={{ transition: "color 0.15s ease" }}>
                     {link.pageTitle}
                   </span>
                 </button>
@@ -414,7 +414,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
             <button
               type="button"
               onClick={() => setShowSearch((v) => !v)}
-              className="flex items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-2.5 py-1.5 text-xs text-text-tertiary w-full cursor-pointer hover:border-[var(--color-brand-500)]/40 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-2.5 py-1.5 text-body-sm text-text-tertiary w-full cursor-pointer hover:border-[var(--color-brand-500)]/40 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "border-color 0.15s ease, color 0.15s ease" }}
             >
               <Plus size={12} strokeWidth={1.5} />

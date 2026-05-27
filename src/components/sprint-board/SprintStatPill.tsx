@@ -57,7 +57,7 @@ export const STATUS_PILL_COLORS: Record<string, StatusPillColor> = {
 const SIZE = {
   md: {
     pill: "px-2 py-0.5",
-    text: "text-xs",       // 12px — header bar has more room
+    text: "text-body-sm",       // 12px — header bar has more room
     dot: "h-1.5 w-1.5",
     gap: "gap-1.5",
   },
@@ -209,7 +209,7 @@ interface SprintStatsProps {
 
 export function SprintStats({ totalItems, totalSp, totalBv, className = "" }: SprintStatsProps) {
   return (
-    <div className={`flex items-center gap-2 text-xs tabular-nums ${className}`}>
+    <div className={`flex items-center gap-2 text-body-sm tabular-nums ${className}`}>
       <span className="text-text-tertiary">{totalItems} <span className="text-[10px]">items</span></span>
       {totalSp > 0 && (
         <div className="flex items-center gap-1">

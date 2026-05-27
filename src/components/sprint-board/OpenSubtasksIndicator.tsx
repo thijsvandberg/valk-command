@@ -130,7 +130,7 @@ function IndicatorPopover({
         {/* Header */}
         <div className="px-3 pt-2.5 pb-2 border-b border-border-subtle">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-medium text-text-secondary">
+            <div className="flex items-center gap-2 text-body-sm font-medium text-text-secondary">
               <AlertTriangle size={12} strokeWidth={1.75} className="text-amber-400/80 shrink-0" />
               <span>{openCount} of {totalCount} subtasks open</span>
             </div>
@@ -146,7 +146,7 @@ function IndicatorPopover({
           )}
 
           {loadError && (
-            <div className="px-3 py-3 text-xs text-text-muted">
+            <div className="px-3 py-3 text-body-sm text-text-muted">
               Failed to load subtasks
             </div>
           )}
@@ -158,7 +158,7 @@ function IndicatorPopover({
                 <div key={sub.key} className="flex items-start gap-2 px-3 py-1.5">
                   <Circle size={12} strokeWidth={1.5} className="text-amber-400/70 shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <span className="text-xs text-text-primary leading-snug line-clamp-2">{sub.title}</span>
+                    <span className="text-body-sm text-text-primary leading-snug line-clamp-2">{sub.title}</span>
                     <span className="block text-[10px] text-text-muted mt-0.5">{sub.key} · {sub.status}</span>
                   </div>
                 </div>
@@ -174,7 +174,7 @@ function IndicatorPopover({
                 <div key={sub.key} className="flex items-start gap-2 px-3 py-1.5 opacity-50">
                   <CircleCheckBig size={12} strokeWidth={1.5} className="text-green-400/70 shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <span className="text-xs text-text-primary leading-snug line-clamp-2">{sub.title}</span>
+                    <span className="text-body-sm text-text-primary leading-snug line-clamp-2">{sub.title}</span>
                     <span className="block text-[10px] text-text-muted mt-0.5">{sub.key}</span>
                   </div>
                 </div>
@@ -190,7 +190,7 @@ function IndicatorPopover({
               type="button"
               onClick={handleClose}
               disabled={closing}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150 cursor-pointer bg-amber-500/12 text-amber-300 hover:bg-amber-500/20 active:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium transition-colors duration-150 cursor-pointer bg-amber-500/12 text-amber-300 hover:bg-amber-500/20 active:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {closing ? (
                 <>

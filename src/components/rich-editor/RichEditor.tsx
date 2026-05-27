@@ -289,7 +289,7 @@ export function RichEditor({
                 }
               }}
               placeholder={placeholder}
-              className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-sm text-text-primary placeholder:text-text-muted focus:outline-none ${borderless ? "min-h-full resize-none" : "resize-y"}`}
+              className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-body-lg text-text-primary placeholder:text-text-muted focus:outline-none ${borderless ? "min-h-full resize-none" : "resize-y"}`}
               style={borderless ? undefined : { minHeight: `${minHeight}px` }}
               spellCheck={false}
             />
@@ -312,7 +312,7 @@ function ModeToggle({
     <button
       type="button"
       onClick={() => onToggle(isRich ? "markdown" : "rich")}
-      className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-xs font-medium text-text-tertiary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary active:scale-95"
+      className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-body-sm font-medium text-text-tertiary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary active:scale-95"
     >
       {isRich ? "Markdown" : "Rich Text"}
     </button>

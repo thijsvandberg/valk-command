@@ -77,7 +77,7 @@ const navBtnClass =
   "flex items-center rounded-md p-1.5 text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-secondary disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 const selectClass =
-  "rounded-md border border-border-strong bg-overlay-subtle px-2 py-1 text-xs text-text-secondary cursor-pointer hover:border-border-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
+  "rounded-md border border-border-strong bg-overlay-subtle px-2 py-1 text-body-sm text-text-secondary cursor-pointer hover:border-border-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 // Analysis trigger button with state indicator
 function AnalysisButton({
@@ -104,7 +104,7 @@ function AnalysisButton({
       onClick={onClick}
       disabled={disabled}
       title={`Generate ${label} for this sprint`}
-      className="relative flex items-center gap-1.5 rounded-md px-2 py-1 text-xs bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="relative flex items-center gap-1.5 rounded-md px-2 py-1 text-body-sm bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
     >
       {isRunning ? (
         <RefreshCw size={12} strokeWidth={1.5} className="animate-spin" />
@@ -193,7 +193,7 @@ function OverflowMenu({
   }
 
   const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
+    "flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <div ref={containerRef} className="relative">
@@ -311,16 +311,16 @@ function GeneratePrompt({
     <div className="rounded-xl border border-border-default bg-overlay-subtle px-4 py-4 space-y-3">
       <div className="flex items-center gap-2">
         <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/50 shrink-0" />
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/50">
+        <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/50">
           AI {label}
         </span>
       </div>
-      <p className="text-xs text-text-tertiary leading-relaxed">{description}</p>
+      <p className="text-body-sm text-text-tertiary leading-relaxed">{description}</p>
       <button
         type="button"
         onClick={onGenerate}
         disabled={disabled}
-        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs bg-overlay-default text-text-secondary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm bg-overlay-default text-text-secondary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <Icon size={11} strokeWidth={1.5} />
         Generate {label}
@@ -702,7 +702,7 @@ function StakeholderView() {
 
             {/* Sync status indicator */}
             {syncStatus !== "idle" && (
-              <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-opacity duration-300 ${
+              <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-body-sm transition-opacity duration-300 ${
                 syncStatus === "syncing"
                   ? "text-text-tertiary"
                   : "text-[var(--color-secondary-400)]/60"
@@ -743,7 +743,7 @@ function StakeholderView() {
           <>
             <ViewHeaderDivider />
             <div className="flex items-center gap-1.5">
-              <label htmlFor="team-select" className="text-xs text-text-tertiary">
+              <label htmlFor="team-select" className="text-body-sm text-text-tertiary">
                 Team
               </label>
               <select
@@ -814,7 +814,7 @@ function StakeholderView() {
           <div className="mx-auto max-w-7xl space-y-10">
             {/* Sprint heading + health + goal + sparkline */}
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+              <p className="text-body-sm font-semibold uppercase tracking-[0.14em] text-text-muted">
                 Sprint overview
               </p>
               {!isCompareMode && (
@@ -841,7 +841,7 @@ function StakeholderView() {
 
                   {/* Sprint goal */}
                   {stakeholderSprint.goal && (
-                    <p className="max-w-2xl text-sm italic text-text-tertiary border-l-2 border-[var(--color-brand-400)]/25 pl-3">
+                    <p className="max-w-2xl text-body-lg italic text-text-tertiary border-l-2 border-[var(--color-brand-400)]/25 pl-3">
                       {stakeholderSprint.goal}
                     </p>
                   )}
@@ -858,9 +858,9 @@ function StakeholderView() {
             {isCompareMode && prevStakeholderSprint ? (
               <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
                 <div className="space-y-6 overflow-auto">
-                  <h2 className="text-lg font-semibold tracking-tight text-text-secondary">
+                  <h2 className="text-heading font-semibold tracking-tight text-text-secondary">
                     {prevStakeholderSprint.name}
-                    <span className="ml-2 text-xs font-normal text-text-muted">Previous</span>
+                    <span className="ml-2 text-body-sm font-normal text-text-muted">Previous</span>
                   </h2>
                   {isPrevLoading ? (
                     <LoadingState label="Loading previous sprint..." variant="spinner" />
@@ -876,18 +876,18 @@ function StakeholderView() {
                   )}
                 </div>
                 <div className="space-y-6 overflow-auto">
-                  <h2 className="text-lg font-semibold tracking-tight text-text-primary">
+                  <h2 className="text-heading font-semibold tracking-tight text-text-primary">
                     {stakeholderSprint.name}
-                    <span className="ml-2 text-xs font-normal text-text-muted">Current</span>
+                    <span className="ml-2 text-body-sm font-normal text-text-muted">Current</span>
                   </h2>
                   {isCarryOverLoading && (
-                    <p className="flex items-center gap-1.5 text-xs text-text-muted">
+                    <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
                       <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
                       Loading carry-over data...
                     </p>
                   )}
                   {!isCarryOverLoading && carriedKeys.size > 0 && (
-                    <p className="text-xs text-amber-400/60">
+                    <p className="text-body-sm text-amber-400/60">
                       {carriedKeys.size} ticket{carriedKeys.size === 1 ? "" : "s"} carried from {previousSprint?.name}
                     </p>
                   )}
@@ -906,13 +906,13 @@ function StakeholderView() {
               <div className="space-y-6">
                 {/* Carry-over summary */}
                 {isCarryOverLoading && previousSprint && (
-                  <p className="flex items-center gap-1.5 text-xs text-text-muted">
+                  <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
                     <RefreshCw size={10} strokeWidth={1.5} className="animate-spin" />
                     Loading carry-over data...
                   </p>
                 )}
                 {!isCarryOverLoading && carriedKeys.size > 0 && previousSprint && (
-                  <p className="text-xs text-[var(--color-warning-400)]/60">
+                  <p className="text-body-sm text-[var(--color-warning-400)]/60">
                     {carriedKeys.size} ticket{carriedKeys.size === 1 ? "" : "s"} carried from {previousSprint.name}
                   </p>
                 )}
@@ -931,7 +931,7 @@ function StakeholderView() {
               </div>
             )}
 
-            <p className="text-xs text-text-muted">Last updated: {lastUpdatedDisplay}</p>
+            <p className="text-body-sm text-text-muted">Last updated: {lastUpdatedDisplay}</p>
           </div>
         )}
       </div>
@@ -960,7 +960,7 @@ function StakeholderView() {
 
             {/* Drawer header */}
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-default px-5 py-3.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">
+              <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-text-tertiary">
                 AI Analysis
               </span>
               <button

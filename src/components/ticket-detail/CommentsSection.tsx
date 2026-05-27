@@ -88,7 +88,7 @@ export function CommentsSection({
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a PO comment..."
                 rows={2}
-                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handleAddComment();
@@ -119,7 +119,7 @@ export function CommentsSection({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-text-secondary">{comment.author || "Product Owner"}</span>
+                  <span className="text-body-sm font-medium text-text-secondary">{comment.author || "Product Owner"}</span>
                   <span className="text-caption text-text-muted">{isSending ? "Posting..." : new Date(comment.createdAt).toLocaleString()}</span>
                   <Button
                     variant="destructive"
@@ -132,14 +132,14 @@ export function CommentsSection({
                     icon={<Trash2 size={14} strokeWidth={1.2} />}
                   />
                 </div>
-                <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
+                <div className="description-content mt-1 text-body-lg leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
               </div>
             </div>
             );
           })}
 
           {!loading && poComments.length === 0 && !newComment.trim() && (
-            <p className="pl-10 text-xs text-text-muted">No comments yet</p>
+            <p className="pl-10 text-body-sm text-text-muted">No comments yet</p>
           )}
         </div>
       </div>
@@ -207,13 +207,13 @@ function JiraCommentsSection({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
+                  <span className="text-body-sm font-medium text-text-secondary">{comment.authorName}</span>
                   <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}</span>
                   {isFlagComment && (
                     <Flag size={11} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
                   )}
                 </div>
-                <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">
+                <div className="description-content mt-1 text-body-lg leading-[1.7] text-text-secondary">
                   {renderMarkdown(
                     isFlagComment
                       ? comment.content.replace(/^:?flag_on:?\s*Flag added\s*/i, "").replace(/^:?flag_off:?\s*Flag removed\s*/i, "").trim()
@@ -238,7 +238,7 @@ function JiraCommentsSection({
                 placeholder="Post a comment to Jira..."
                 rows={2}
                 disabled={posting}
-                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 pr-10 text-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
+                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 pr-10 text-body-lg text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handlePostJiraComment();
@@ -261,7 +261,7 @@ function JiraCommentsSection({
             </div>
             {posted && (
               <div
-                className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-brand-400)]"
+                className="mt-1.5 flex items-center gap-1.5 text-body-sm text-[var(--color-brand-400)]"
                 style={{ animation: "fadeInUp 0.15s ease" }}
               >
                 <Check size={13} strokeWidth={2} />
@@ -269,13 +269,13 @@ function JiraCommentsSection({
               </div>
             )}
             {error && (
-              <p className="mt-1.5 text-xs text-[var(--color-status-error)]">{error}</p>
+              <p className="mt-1.5 text-body-sm text-[var(--color-status-error)]">{error}</p>
             )}
           </div>
         </div>
 
         {jiraComments.length === 0 && !newJiraComment.trim() && !posted && (
-          <p className="pl-10 text-xs text-text-muted">No Jira comments</p>
+          <p className="pl-10 text-body-sm text-text-muted">No Jira comments</p>
         )}
       </div>
     </div>

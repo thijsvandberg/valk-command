@@ -187,7 +187,7 @@ function EpicPickerInner({
             key={`suggest-${s.key}`}
             type="button"
             onClick={() => { onChange({ key: s.key, name: s.name }); handleClose(); }}
-            className="flex w-full items-start gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-[rgba(155,108,212,0.08)] active:bg-[rgba(155,108,212,0.12)]"
+            className="flex w-full items-start gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-[rgba(155,108,212,0.08)] active:bg-[rgba(155,108,212,0.12)]"
           >
             <span className="flex w-4 items-center justify-center shrink-0 mt-0.5 text-[var(--color-icon-epic)]">
               <Sparkles size={10} strokeWidth={1.5} />
@@ -235,7 +235,7 @@ function EpicPickerInner({
             value={query}
             onChange={(e) => { setQuery(e.target.value); handleSearchChange(e.target.value); }}
             placeholder="Search epics..."
-            className="flex-1 bg-transparent text-xs text-text-secondary placeholder:text-text-muted focus:outline-none"
+            className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
           />
           {ticketKey && (
             <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] hover:bg-[rgba(155,108,212,0.08)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>

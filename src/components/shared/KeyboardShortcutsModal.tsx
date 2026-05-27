@@ -29,7 +29,7 @@ export function KeyboardShortcutsModal() {
     <Modal open={open} onClose={handleClose} aria-label="Keyboard shortcuts">
       <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-2xl)]">
         <div className="px-5 pt-5 pb-3">
-          <h2 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+          <h2 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
             Keyboard shortcuts
           </h2>
         </div>
@@ -46,7 +46,7 @@ export function KeyboardShortcutsModal() {
                     key={shortcut.action}
                     className="flex items-center justify-between rounded-lg px-2 py-1.5"
                   >
-                    <span className="text-xs text-text-secondary">
+                    <span className="text-body-sm text-text-secondary">
                       {shortcut.action}
                     </span>
                     <div className="flex items-center gap-1">

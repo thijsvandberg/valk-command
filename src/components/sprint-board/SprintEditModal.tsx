@@ -266,7 +266,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
       <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-default px-5 py-3.5">
-          <h2 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+          <h2 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
             Edit Sprint
           </h2>
           <button
@@ -281,7 +281,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
         {/* Body */}
         <div className="space-y-4 px-5 py-4">
           {/* Sprint name (read-only) */}
-          <div className="text-xs text-text-muted">
+          <div className="text-body-sm text-text-muted">
             {sprint.name}
           </div>
 
@@ -289,7 +289,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
                   <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
                   Start date
                 </span>
@@ -301,7 +301,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                 type="datetime-local"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
+                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
                   placeholder:text-text-muted
                   focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                   transition-colors duration-100
@@ -310,7 +310,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
             </label>
             <label className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
                   <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
                   End date
                 </span>
@@ -322,7 +322,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                 type="datetime-local"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs text-text-primary
+                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
                   placeholder:text-text-muted
                   focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                   transition-colors duration-100
@@ -334,7 +334,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
           {/* Goal field */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
                 <Target size={11} strokeWidth={1.5} className="text-text-muted" />
                 Sprint goal
               </span>
@@ -364,7 +364,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
               onChange={(e) => setGoal(e.target.value)}
               placeholder="Describe the sprint's primary objective..."
               rows={3}
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-xs leading-relaxed text-text-primary
+              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm leading-relaxed text-text-primary
                 placeholder:text-text-muted resize-none
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                 transition-colors duration-100"
@@ -384,14 +384,14 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                 )}
               </div>
               {suggesting && !suggestion && (
-                <div className="flex items-center gap-2 text-xs text-text-muted">
+                <div className="flex items-center gap-2 text-body-sm text-text-muted">
                   <Loader2 size={12} strokeWidth={1.5} className="animate-spin" />
                   <span>Analyzing sprint tickets...</span>
                 </div>
               )}
               {suggestion && (
                 <>
-                  <p className="text-xs leading-relaxed text-text-secondary">{suggestion}</p>
+                  <p className="text-body-sm leading-relaxed text-text-secondary">{suggestion}</p>
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"

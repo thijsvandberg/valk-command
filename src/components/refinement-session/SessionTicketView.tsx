@@ -85,7 +85,7 @@ function CollapsibleComments({
         className="flex w-full cursor-pointer items-center gap-2 border-b border-border-default pb-2 text-left"
       >
         <MessageSquare size={13} strokeWidth={1.5} className="text-text-muted" />
-        <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+        <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
           Comments
         </h3>
         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
@@ -107,12 +107,12 @@ function CollapsibleComments({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
+                  <span className="text-body-sm font-medium text-text-secondary">{comment.authorName}</span>
                   <span className="text-caption text-text-muted">
                     {new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}
                   </span>
                 </div>
-                <div className="description-content mt-1 text-xs leading-[1.7] text-text-tertiary">
+                <div className="description-content mt-1 text-body-sm leading-[1.7] text-text-tertiary">
                   {renderMarkdown(comment.content)}
                 </div>
               </div>
@@ -120,7 +120,7 @@ function CollapsibleComments({
           ))}
 
           {totalCount === 0 && !newComment.trim() && !posted && (
-            <p className="text-xs text-text-muted">No comments</p>
+            <p className="text-body-sm text-text-muted">No comments</p>
           )}
 
           {/* Quick-post buttons */}
@@ -148,7 +148,7 @@ function CollapsibleComments({
                 placeholder="Post a comment to Jira..."
                 rows={1}
                 disabled={posting}
-                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5 pr-8 text-xs text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
+                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5 pr-8 text-body-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handlePost();
@@ -192,8 +192,8 @@ function CollapsibleComments({
 function MetadataDetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
-      <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
+      <span className="shrink-0 text-body-sm text-text-tertiary">{label}</span>
+      <div className="min-w-0 text-right text-body-lg text-text-secondary">{children}</div>
     </div>
   );
 }
@@ -230,7 +230,7 @@ export function SessionMetadataPanel({
           <MetadataDetailRow label="Reporter">
             <div className="flex items-center justify-end gap-2">
               <Avatar assignee={detail.reporter} size={18} />
-              <span className="text-xs">{detail.reporter.name}</span>
+              <span className="text-body-sm">{detail.reporter.name}</span>
             </div>
           </MetadataDetailRow>
         )}
@@ -238,16 +238,16 @@ export function SessionMetadataPanel({
           <MetadataDetailRow label="Assignee">
             <div className="flex items-center justify-end gap-2">
               <Avatar assignee={ticket.assignee} size={18} />
-              <span className="text-xs">{ticket.assignee.name}</span>
+              <span className="text-body-sm">{ticket.assignee.name}</span>
             </div>
           </MetadataDetailRow>
         )}
         <MetadataDetailRow label="Priority">
-          <span className="text-xs">{detail.priority}</span>
+          <span className="text-body-sm">{detail.priority}</span>
         </MetadataDetailRow>
         {ticket.epic && (
           <MetadataDetailRow label="Epic">
-            <span className="text-xs text-[var(--color-brand-400)]">{ticket.epic}</span>
+            <span className="text-body-sm text-[var(--color-brand-400)]">{ticket.epic}</span>
           </MetadataDetailRow>
         )}
         <MetadataDetailRow label="Sprint">
@@ -291,7 +291,7 @@ export function SessionMetadataPanel({
             <a
               href={`/tickets/${detail.parent.key}`}
               target="_blank"
-              className="text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)]"
+              className="text-body-sm text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)]"
               style={{ transition: "color 0.15s ease" }}
             >
               {detail.parent.key} {detail.parent.title}
@@ -299,12 +299,12 @@ export function SessionMetadataPanel({
           </MetadataDetailRow>
         )}
         <MetadataDetailRow label="Created">
-          <span className="text-xs" title={formatAbsoluteDate(detail.createdAt)}>
+          <span className="text-body-sm" title={formatAbsoluteDate(detail.createdAt)}>
             {relativeDate(detail.createdAt)}
           </span>
         </MetadataDetailRow>
         <MetadataDetailRow label="Updated">
-          <span className="text-xs" title={formatAbsoluteDate(detail.updatedAt)}>
+          <span className="text-body-sm" title={formatAbsoluteDate(detail.updatedAt)}>
             {relativeDate(detail.updatedAt)}
           </span>
         </MetadataDetailRow>
@@ -340,7 +340,7 @@ export function HeaderOverflowMenu({
   }, [open]);
 
   const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
+    "flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
 
   return (
     <div className="relative" ref={ref}>

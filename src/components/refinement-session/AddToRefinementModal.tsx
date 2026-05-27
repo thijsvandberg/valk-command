@@ -77,11 +77,11 @@ export function AddToRefinementModal({
       <div className="w-full max-w-sm rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-5 shadow-[var(--shadow-2xl)]">
         <div className="flex items-center gap-2">
           <Layers size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-          <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+          <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
             Add to refinement
           </h3>
         </div>
-        <p className="mt-1.5 text-xs text-text-secondary">
+        <p className="mt-1.5 text-body-sm text-text-secondary">
           Add {ticketLabel} to a refinement session.
         </p>
 
@@ -101,7 +101,7 @@ export function AddToRefinementModal({
                 style={{ transition: "background-color 0.15s ease" }}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-text-primary">
+                  <div className="truncate text-body-lg font-medium text-text-primary">
                     {session.name}
                   </div>
                   <div className="text-[11px] text-text-muted">
@@ -123,7 +123,7 @@ export function AddToRefinementModal({
           })}
 
           {draftSessions.length === 0 && (
-            <p className="py-3 text-center text-xs text-text-muted">
+            <p className="py-3 text-center text-body-sm text-text-muted">
               No draft sessions yet.
             </p>
           )}

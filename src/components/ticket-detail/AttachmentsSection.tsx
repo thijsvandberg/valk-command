@@ -10,7 +10,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
     return (
       <div className="mt-8">
         <SectionHeader title="Attachments" />
-        <p className="mt-3 text-sm text-text-muted">No attachments</p>
+        <p className="mt-3 text-body-lg text-text-muted">No attachments</p>
       </div>
     );
   }
@@ -55,7 +55,7 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
               )}
             </div>
             <div className="border-t border-border-subtle px-2.5 py-2">
-              <div className="truncate text-xs text-text-secondary">{att.filename}</div>
+              <div className="truncate text-body-sm text-text-secondary">{att.filename}</div>
               <div className="mt-0.5 text-caption text-text-muted">
                 {att.cleaned && att.cleanedAt
                   ? `Cleaned ${new Date(att.cleanedAt).toLocaleDateString()}`

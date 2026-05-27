@@ -35,11 +35,11 @@ function JobRow({
     <Card className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-overlay-default">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-[var(--font-display)] text-sm font-semibold text-text-primary truncate">
+          <span className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary truncate">
             {job.name}
           </span>
           <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+            className={`shrink-0 rounded-full px-2 py-0.5 text-body-sm font-medium ${
               job.enabled
                 ? "bg-emerald-500/15 text-emerald-400"
                 : "bg-overlay-strong text-text-tertiary"
@@ -48,7 +48,7 @@ function JobRow({
             {job.enabled ? "active" : "paused"}
           </span>
         </div>
-        <div className="mt-1 flex items-center gap-4 text-xs text-text-tertiary">
+        <div className="mt-1 flex items-center gap-4 text-body-sm text-text-tertiary">
           <code className="rounded bg-overlay-default px-1.5 py-0.5 font-mono text-text-secondary">
             {job.cronExpression}
           </code>
@@ -107,13 +107,13 @@ function CreateForm({ onSubmit, onCancel }: CreateFormProps) {
   }
 
   const fieldClass =
-    "w-full rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-sm text-text-primary placeholder-text-tertiary outline-none transition-colors focus:border-[var(--color-brand-500)] focus:bg-overlay-default";
-  const labelClass = "block text-xs font-medium text-text-secondary mb-1";
+    "w-full rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder-text-tertiary outline-none transition-colors focus:border-[var(--color-brand-500)] focus:bg-overlay-default";
+  const labelClass = "block text-body-sm font-medium text-text-secondary mb-1";
 
   return (
     <Card className="p-5">
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">New scheduled job</h3>
+      <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">New scheduled job</h3>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass}>Name</label>
@@ -148,7 +148,7 @@ function CreateForm({ onSubmit, onCancel }: CreateFormProps) {
             className={`${fieldClass} font-mono ${cronError ? "border-red-500/50" : ""}`}
           />
           {cronError && (
-            <p className="mt-1 text-xs text-red-400">{cronError}</p>
+            <p className="mt-1 text-body-sm text-red-400">{cronError}</p>
           )}
         </div>
       </div>
@@ -195,7 +195,7 @@ export default function JobsPanel() {
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-sm text-text-tertiary">
+        <span className="text-body-lg text-text-tertiary">
           {loading ? "Loading..." : `${jobs.length} job${jobs.length === 1 ? "" : "s"}`}
         </span>
         {!showForm && (

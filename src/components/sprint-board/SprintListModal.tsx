@@ -208,7 +208,7 @@ function TeamFilterDropdown({
           <button
             type="button"
             onClick={() => { onToggle(null); setOpen(false); }}
-            className={`flex w-full items-center gap-2 px-3 py-1 text-xs cursor-pointer hover:bg-hover-list-item ${
+            className={`flex w-full items-center gap-2 px-3 py-1 text-body-sm cursor-pointer hover:bg-hover-list-item ${
               !active ? "text-text-primary font-medium" : "text-text-secondary"
             }`}
           >
@@ -220,7 +220,7 @@ function TeamFilterDropdown({
               key={t}
               type="button"
               onClick={() => { onToggle(active === t ? null : t); setOpen(false); }}
-              className={`flex w-full items-center gap-2 px-3 py-1 text-xs cursor-pointer hover:bg-hover-list-item ${
+              className={`flex w-full items-center gap-2 px-3 py-1 text-body-sm cursor-pointer hover:bg-hover-list-item ${
                 active === t ? "text-text-primary font-medium" : "text-text-secondary"
               }`}
             >
@@ -263,7 +263,7 @@ function SprintRow({
   return (
     <button
       type="button"
-      className="flex w-full items-center justify-between rounded-md px-3 py-1 text-sm text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="flex w-full items-center justify-between rounded-md px-3 py-1 text-body-lg text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       onClick={onSelect}
     >
       <span className="flex items-center gap-2 min-w-0">
@@ -292,7 +292,7 @@ function SprintRow({
         {showBadge && <StateBadge state={sprint.state} />}
       </span>
       <span className="ml-2 flex shrink-0 items-center gap-0.5">
-        <span className="mr-0.5 text-xs tabular-nums text-text-muted">
+        <span className="mr-0.5 text-body-sm tabular-nums text-text-muted">
           {dateRange(sprint)}
         </span>
         {showStakeholder && (
@@ -521,16 +521,16 @@ export function SprintListModal({
           ) : (
             <div className="px-3 py-5 text-center">
               {syncDone ? (
-                <p className="text-xs text-text-muted">
+                <p className="text-body-sm text-text-muted">
                   No sprints found in Jira either.
                 </p>
               ) : (
                 <>
-                  <p className="text-xs text-text-muted">
+                  <p className="text-body-sm text-text-muted">
                     No sprints match &ldquo;{search}&rdquo;
                   </p>
                   {syncError ? (
-                    <div className="mt-2 flex items-start justify-center gap-2 text-xs text-red-400">
+                    <div className="mt-2 flex items-start justify-center gap-2 text-body-sm text-red-400">
                       <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />
                       <span>
                         {syncError}{" "}
@@ -542,7 +542,7 @@ export function SprintListModal({
                       type="button"
                       onClick={handleSync}
                       disabled={syncing}
-                      className="mt-2 inline-flex items-center gap-1 text-xs text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="mt-2 inline-flex items-center gap-1 text-body-sm text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} strokeWidth={1.5} />
                       {syncing ? "Syncing..." : "Sync from Jira"}
@@ -555,13 +555,13 @@ export function SprintListModal({
         ) : (
           <>
             {!hasDefaultContent && allSprints.length === 0 && (
-              <div className="px-3 py-5 text-center text-xs text-text-muted">
+              <div className="px-3 py-5 text-center text-body-sm text-text-muted">
                 No sprints cached. Sync from Jira to load.
               </div>
             )}
 
             {!hasDefaultContent && allSprints.length > 0 && teamFilter && (
-              <div className="px-3 py-5 text-center text-xs text-text-muted">
+              <div className="px-3 py-5 text-center text-body-sm text-text-muted">
                 No sprints for team {teamFilter}.
               </div>
             )}
@@ -582,7 +582,7 @@ export function SprintListModal({
 
             {/* Backlog entry */}
             {!teamFilter && !multiSelect && (
-              <div className="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm text-text-secondary hover:bg-overlay-default hover:text-text-primary">
+              <div className="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-body-lg text-text-secondary hover:bg-overlay-default hover:text-text-primary">
                 <button
                   type="button"
                   className="flex items-center gap-2 min-w-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"

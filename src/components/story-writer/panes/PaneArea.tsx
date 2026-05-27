@@ -179,7 +179,7 @@ export function PaneArea() {
                 onDragOver={handleDragOver}
               >
                 {!activeApp && (
-                  <div className="flex h-full items-center justify-center text-xs text-text-muted">
+                  <div className="flex h-full items-center justify-center text-body-sm text-text-muted">
                     Drop an app here
                   </div>
                 )}

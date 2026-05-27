@@ -358,7 +358,7 @@ function LineContent({ line }: { line: DiffLine }) {
 function DiffSummary({ stats }: { stats: DiffStats }) {
   if (stats.added === 0 && stats.removed === 0 && stats.modified === 0) return null;
   return (
-    <div className="flex items-center gap-3 text-xs">
+    <div className="flex items-center gap-3 text-body-sm">
       {stats.added > 0 && (
         <span className="flex items-center gap-1" style={{ color: C.addedGutter }}>
           <span className="font-mono font-semibold">+{stats.added}</span>
@@ -529,7 +529,7 @@ function HunkEditor({
           e.target.style.height = "auto";
           e.target.style.height = `${e.target.scrollHeight}px`;
         }}
-        className="w-full resize-none rounded-md border border-border-strong bg-overlay-subtle px-3 py-2 font-mono text-sm leading-6 text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+        className="w-full resize-none rounded-md border border-border-strong bg-overlay-subtle px-3 py-2 font-mono text-body-lg leading-6 text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
         rows={3}
       />
       <div className="mt-2 flex items-center gap-2">
@@ -598,7 +598,7 @@ function UnifiedLine({ line, showLineNumbers }: { line: DiffLine; showLineNumber
         </>
       )}
       <div
-        className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-sm ${
+        className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-body-lg ${
           line.type === "delete" ? "text-text-secondary" : "text-text-secondary"
         }`}
       >
@@ -709,7 +709,7 @@ function SplitCell({ line, side, showLineNumbers }: { line: DiffLine | null; sid
           {num ?? ""}
         </div>
       )}
-      <div className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-sm ${line.type === "delete" ? "text-text-secondary" : "text-text-secondary"}`}>
+      <div className={`min-w-0 flex-1 whitespace-pre-wrap break-words px-3 py-px font-[var(--font-body)] text-body-lg ${line.type === "delete" ? "text-text-secondary" : "text-text-secondary"}`}>
         <LineContent line={line} />
       </div>
     </div>
@@ -742,8 +742,8 @@ function SplitDiff({
   return (
     <div className="overflow-hidden rounded-lg border" style={{ borderColor: C.border }}>
       <div className="sticky top-0 z-10 grid grid-cols-2 bg-[var(--color-surface-elevated)]" style={{ borderBottom: `1px solid ${C.border}` }}>
-        <div className="px-4 py-2 text-xs font-medium text-text-tertiary" style={{ borderRight: `1px solid ${C.border}` }}>{oldLabel ?? "Old"}</div>
-        <div className="px-4 py-2 text-xs font-medium text-text-tertiary">{newLabel ?? "New"}</div>
+        <div className="px-4 py-2 text-body-sm font-medium text-text-tertiary" style={{ borderRight: `1px solid ${C.border}` }}>{oldLabel ?? "Old"}</div>
+        <div className="px-4 py-2 text-body-sm font-medium text-text-tertiary">{newLabel ?? "New"}</div>
       </div>
 
       {hunks.map((h, hi) => {
@@ -901,7 +901,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
   if (oldText === "" && newText === "") {
     return (
       <div data-testid="story-diff-empty" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
-        <p className="font-[var(--font-body)] text-sm text-text-tertiary">No content in either version.</p>
+        <p className="font-[var(--font-body)] text-body-lg text-text-tertiary">No content in either version.</p>
       </div>
     );
   }
@@ -909,7 +909,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
   if (oldText === newText) {
     return (
       <div data-testid="story-diff-identical" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
-        <p className="font-[var(--font-body)] text-sm text-text-tertiary">No changes between versions.</p>
+        <p className="font-[var(--font-body)] text-body-lg text-text-tertiary">No changes between versions.</p>
       </div>
     );
   }

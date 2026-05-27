@@ -407,7 +407,7 @@ export function ChatMessage({
 
       <div
         ref={containerRef}
-        className={`text-sm leading-[1.75] ${
+        className={`text-body-lg leading-[1.75] ${
           allTitleSuggestions.length > 0 || draftId ? "max-w-[92%]" : isUser ? "max-w-[70%]" : "max-w-[75%]"
         } ${
           draftOnly
@@ -471,7 +471,7 @@ export function ChatMessage({
               <button
                 type="button"
                 onClick={() => setDraftExpanded((v) => !v)}
-                className="flex flex-1 items-center gap-1.5 px-2 py-1 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer rounded-md hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
+                className="flex flex-1 items-center gap-1.5 px-2 py-1 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer rounded-md hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
               >
                 <FileText size={12} strokeWidth={1.5} className="shrink-0" />
                 Draft updated
@@ -505,14 +505,14 @@ export function ChatMessage({
                       : 300,
                   }}
                 >
-                  <div className="description-content chat-markdown text-xs leading-[1.7] text-text-secondary">
+                  <div className="description-content chat-markdown text-body-sm leading-[1.7] text-text-secondary">
                     {renderMarkdown(draftContent)}
                   </div>
                 </div>
                 {onAcceptDraft && draftId && (
                   <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2 flex items-center gap-2">
                     {draftAccepted ? (
-                      <span className="rounded-md px-3 py-1.5 text-xs font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
+                      <span className="rounded-md px-3 py-1.5 text-body-sm font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
                         Accepted
                       </span>
                     ) : (
@@ -523,7 +523,7 @@ export function ChatMessage({
                             onAcceptDraft(draftId);
                             setDraftAccepted(true);
                           }}
-                          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
                         >
                           <Check size={12} strokeWidth={2} />
                           Accept draft
@@ -532,7 +532,7 @@ export function ChatMessage({
                           <button
                             type="button"
                             onClick={() => onShowDiff(draftId)}
-                            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
                           >
                             <GitCompare size={12} strokeWidth={2} />
                             View diff
@@ -601,7 +601,7 @@ export function DraftCard({ content }: { content: string }) {
           <div className="relative">
             <div
               ref={contentRef}
-              className={`description-content chat-markdown text-xs leading-[1.7] text-text-secondary overflow-hidden ${
+              className={`description-content chat-markdown text-body-sm leading-[1.7] text-text-secondary overflow-hidden ${
                 !isOverflowing ? "" : ""
               }`}
               style={isOverflowing ? { maxHeight: "none" } : undefined}
@@ -734,7 +734,7 @@ export function QuickActionsPopover({
                 type="button"
                 onClick={() => action.enabled && onSelect(action.prompt, action.id)}
                 disabled={!action.enabled}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
+                className={`flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150 ${
                   action.enabled
                     ? "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
                     : "text-text-muted cursor-not-allowed"

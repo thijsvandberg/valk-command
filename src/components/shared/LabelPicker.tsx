@@ -68,7 +68,7 @@ function LabelPickerInner({
             {value.map((l) => <Tag key={l}>{l}</Tag>)}
           </span>
         ) : (
-          <span className="text-xs text-text-muted">None</span>
+          <span className="text-body-sm text-text-muted">None</span>
         )}
       </BasePicker.Trigger>
 

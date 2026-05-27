@@ -32,15 +32,15 @@ function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
   const { raw } = parseRawScore(dim.feedback);
   return (
     <div className="grid grid-cols-[16px_1fr_60px_44px] items-center gap-x-2 px-3 py-2">
-      <span className="text-center text-xs font-medium" style={{ color }}>{icon}</span>
-      <span className="text-xs text-text-secondary">{dim.label}</span>
+      <span className="text-center text-body-sm font-medium" style={{ color }}>{icon}</span>
+      <span className="text-body-sm text-text-secondary">{dim.label}</span>
       <div className="h-1 rounded-full bg-overlay-default overflow-hidden">
         <div
           className="h-full rounded-full"
           style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.5 }}
         />
       </div>
-      <span className="text-right text-xs font-medium tabular-nums" style={{ color }}>
+      <span className="text-right text-body-sm font-medium tabular-nums" style={{ color }}>
         {raw ?? dim.score}
       </span>
     </div>
@@ -123,7 +123,7 @@ function ReviewDetail({
       {/* Score header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl font-semibold tabular-nums" style={{ color: verdict.color }}>
+          <span className="text-heading-lg font-semibold tabular-nums" style={{ color: verdict.color }}>
             {review.overallScore}
           </span>
           <div>
@@ -153,7 +153,7 @@ function ReviewDetail({
       {/* Summary */}
       {review.summary && (
         <div className="rounded-lg bg-overlay-subtle px-4 py-3">
-          <p className="text-sm leading-relaxed text-text-secondary">{review.summary}</p>
+          <p className="text-body-lg leading-relaxed text-text-secondary">{review.summary}</p>
         </div>
       )}
 
@@ -182,13 +182,13 @@ function ReviewDetail({
                   </div>
 
                   {/* Problem */}
-                  <p className="text-sm leading-relaxed text-text-secondary">{parsed.problem}</p>
+                  <p className="text-body-lg leading-relaxed text-text-secondary">{parsed.problem}</p>
 
                   {/* Suggestion */}
                   {parsed.suggestion && (
                     <div className="mt-3 flex gap-2 rounded-md bg-[var(--color-brand-500)]/[0.04] px-3 py-2">
-                      <span className="shrink-0 text-xs font-medium text-[var(--color-brand-400)]/50 mt-px">Suggestion</span>
-                      <p className="text-sm leading-relaxed text-text-secondary">{parsed.suggestion}</p>
+                      <span className="shrink-0 text-body-sm font-medium text-[var(--color-brand-400)]/50 mt-px">Suggestion</span>
+                      <p className="text-body-lg leading-relaxed text-text-secondary">{parsed.suggestion}</p>
                     </div>
                   )}
                 </div>
@@ -219,13 +219,13 @@ function ReviewHistoryItem({
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
-        <div className="flex items-center gap-2 text-xs text-text-tertiary">
+        <div className="flex items-center gap-2 text-body-sm text-text-tertiary">
           <span className="font-medium text-text-secondary capitalize">{review.source.replace("-", " ")}</span>
           <span>{new Date(review.createdAt).toLocaleDateString()}</span>
           <VersionFreshnessLabel review={review} currentVersionHash={currentVersionHash} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold tabular-nums" style={{ color: getScoreColor(review.overallScore) }}>
+          <span className="text-body-lg font-semibold tabular-nums" style={{ color: getScoreColor(review.overallScore) }}>
             {review.overallScore}
           </span>
           {expanded ? (
@@ -336,14 +336,14 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
             </Button>
           </div>
           {reviewError && (
-            <p className="mt-2 text-xs text-[var(--color-status-error)]/70">{reviewError}</p>
+            <p className="mt-2 text-body-sm text-[var(--color-status-error)]/70">{reviewError}</p>
           )}
         </div>
       ) : (
         <div>
           <SectionHeader title="Review" />
           <div className="mt-3">
-            <p className="mb-3 text-sm text-text-muted">No review yet</p>
+            <p className="mb-3 text-body-lg text-text-muted">No review yet</p>
             <Button
               variant="secondary"
               size="md"
@@ -357,7 +357,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
               {agentReviewing ? "Reviewing..." : "Review Story via Agent"}
             </Button>
             {reviewError && (
-              <p className="mt-2 text-xs text-[var(--color-status-error)]/70">{reviewError}</p>
+              <p className="mt-2 text-body-sm text-[var(--color-status-error)]/70">{reviewError}</p>
             )}
           </div>
         </div>

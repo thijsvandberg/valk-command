@@ -459,7 +459,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         {effectiveConv && (
           <>
             <ViewHeaderDivider />
-            <span className="text-sm text-text-tertiary">
+            <span className="text-body-lg text-text-tertiary">
               {messages.length} messages
             </span>
           </>
@@ -467,7 +467,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         {(workspaceTask.status === "streaming" || workspaceTask.status === "submitting") && (
           <>
             <ViewHeaderDivider />
-            <span className="flex items-center gap-1.5 text-xs text-text-tertiary">
+            <span className="flex items-center gap-1.5 text-body-sm text-text-tertiary">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse inline-block" />
               Task running...
             </span>
@@ -564,7 +564,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           <div className="border-b border-border-default px-6 py-2">
             <Link
               href={`/tickets/${effectiveConv.relatedTicket}/write`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-colors duration-150"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-colors duration-150"
             >
               <PenLine size={13} strokeWidth={1.5} />
               Open Story Writer for {effectiveConv.relatedTicket}
@@ -601,7 +601,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center">
-            <p className="font-[var(--font-body)] text-sm text-text-tertiary">
+            <p className="font-[var(--font-body)] text-body-lg text-text-tertiary">
               Select a conversation or start a new one.
             </p>
           </div>
@@ -613,7 +613,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       {toast && (
         <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
-          <span className="text-sm text-text-primary">{toast}</span>
+          <span className="text-body-lg text-text-primary">{toast}</span>
         </div>
       )}
     </div>

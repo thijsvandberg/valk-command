@@ -56,7 +56,7 @@ export function BusinessValuePicker({
           }}
         >
           <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">BV</span>
-          <span className="text-xs font-semibold tabular-nums">{displayLabel ?? "?"}</span>
+          <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
         <button
@@ -66,7 +66,7 @@ export function BusinessValuePicker({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
-          className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
+          className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums"
           style={{
             color: color?.text ?? "var(--color-text-muted)",
             backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
@@ -92,7 +92,7 @@ export function BusinessValuePicker({
               const c = getBvColor(n);
               const isActive = n === value;
               return (
-                <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
+                <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-7 w-7 items-center justify-center rounded-md text-body-sm font-medium tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
                   {n}
                 </button>
               );

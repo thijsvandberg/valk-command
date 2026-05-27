@@ -24,8 +24,8 @@ export default function AppError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-text-secondary">
-      <h2 className="font-[var(--font-display)] text-lg font-semibold tracking-[-0.02em] text-text-primary">Something went wrong</h2>
-      <p className="max-w-md text-center text-sm">
+      <h2 className="font-[var(--font-display)] text-heading font-semibold tracking-[-0.02em] text-text-primary">Something went wrong</h2>
+      <p className="max-w-md text-center text-body-lg">
         An unexpected error occurred. You can try again or navigate to a different page.
       </p>
       <Button variant="ghost" size="lg" onClick={reset}>

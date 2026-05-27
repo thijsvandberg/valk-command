@@ -276,7 +276,7 @@ export function SprintStatsPopover({
               <button
                 type="button"
                 onClick={() => setDropdownOpen((v) => !v)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-text-primary tracking-tight cursor-pointer rounded-md px-1.5 py-0.5 -mx-1.5 hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
+                className="flex items-center gap-1.5 text-body-lg font-semibold text-text-primary tracking-tight cursor-pointer rounded-md px-1.5 py-0.5 -mx-1.5 hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
               >
                 <span className="truncate max-w-[280px]">{currentSprintName}</span>
                 <ChevronDown size={12} strokeWidth={2} className={`shrink-0 text-text-muted transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
@@ -297,7 +297,7 @@ export function SprintStatsPopover({
                           setSelectedSprintId(String(s.id));
                           setDropdownOpen(false);
                         }}
-                        className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-100 ${
+                        className={`flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-100 ${
                           isActive
                             ? "bg-overlay-default text-text-primary"
                             : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
@@ -512,7 +512,7 @@ function SummaryCard({ label, value, sub }: { label: string; value: number; sub?
     <div className="rounded-lg px-3.5 py-3" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
       <div className="text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">{label}</div>
       <div className="flex items-baseline gap-2">
-        <span className="text-xl font-semibold text-text-primary tabular-nums leading-none">{value}</span>
+        <span className="text-heading font-semibold text-text-primary tabular-nums leading-none">{value}</span>
         {sub && <span className="text-[10px] text-text-muted">{sub}</span>}
       </div>
     </div>

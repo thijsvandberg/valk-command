@@ -17,11 +17,11 @@ export function StakeholderSummaryCard({ content }: StakeholderSummaryCardProps)
     <div className="mt-4 rounded-xl border border-amber-500/[0.12] bg-amber-950/[0.15] px-5 py-4">
       <div className="flex items-center gap-2 mb-3">
         <Users size={14} strokeWidth={1.5} className="text-amber-400/50" />
-        <span className="font-[var(--font-display)] text-xs font-semibold tracking-[-0.01em] text-amber-400/60 uppercase">
+        <span className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-amber-400/60 uppercase">
           Summary for Stakeholders
         </span>
       </div>
-      <div className="text-sm leading-[1.8] text-text-secondary font-[var(--font-body)]">
+      <div className="text-body-lg leading-[1.8] text-text-secondary font-[var(--font-body)]">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{

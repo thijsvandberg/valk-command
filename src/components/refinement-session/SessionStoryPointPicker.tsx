@@ -68,9 +68,9 @@ export function SessionStoryPointPicker({
             backgroundColor: color?.bg ?? "var(--color-overlay-subtle)",
           }}
         >
-          <span className="text-xs font-medium uppercase tracking-wider text-text-muted">Story Points</span>
+          <span className="text-body-sm font-medium uppercase tracking-wider text-text-muted">Story Points</span>
           <span
-            className="text-lg font-semibold tabular-nums"
+            className="text-heading font-semibold tabular-nums"
             style={{ color: color?.text ?? "var(--color-text-muted)" }}
           >
             {displayValue ?? "Not estimated"}
@@ -78,7 +78,7 @@ export function SessionStoryPointPicker({
         </button>
       ) : (
         <div className="rounded-xl border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-floating)] p-4">
-          <div className="mb-3 text-xs font-medium uppercase tracking-wider text-text-muted">Estimate</div>
+          <div className="mb-3 text-body-sm font-medium uppercase tracking-wider text-text-muted">Estimate</div>
           {customMode ? (
             <div className="flex items-center gap-2">
               <input
@@ -93,7 +93,7 @@ export function SessionStoryPointPicker({
                   if (e.key === "Escape") { e.preventDefault(); setCustomMode(false); setCustomInput(""); }
                 }}
                 placeholder="SP"
-                className="h-12 w-20 rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 text-center text-lg font-medium tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)]"
+                className="h-12 w-20 rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 text-center text-heading font-medium tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)]"
               />
               <button
                 type="button"
@@ -114,7 +114,7 @@ export function SessionStoryPointPicker({
                     key={n}
                     type="button"
                     onClick={() => handleSelect(n)}
-                    className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg text-base font-semibold tabular-nums hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                    className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg text-heading-sm font-semibold tabular-nums hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
                     style={{
                       color: isActive ? "#fff" : c.text,
                       backgroundColor: isActive ? c.text : c.bg,

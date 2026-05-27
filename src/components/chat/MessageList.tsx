@@ -48,11 +48,11 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <a href={data.issue.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium hover:underline" style={{ color: "var(--color-status-info)" }}>
+          <a href={data.issue.url} target="_blank" rel="noopener noreferrer" className="text-body-sm font-medium hover:underline" style={{ color: "var(--color-status-info)" }}>
             {data.issue.key}
           </a>
-          <span className="text-text-tertiary text-xs ml-2">{data.issue.type}</span>
-          <h3 className="text-text-primary text-sm font-medium mt-0.5 leading-snug">{data.issue.summary}</h3>
+          <span className="text-text-tertiary text-body-sm ml-2">{data.issue.type}</span>
+          <h3 className="text-text-primary text-body-lg font-medium mt-0.5 leading-snug">{data.issue.summary}</h3>
           <div className="flex gap-3 mt-1 text-label text-text-tertiary">
             {data.issue.sprint && <span>{data.issue.sprint}</span>}
             {data.issue.assignee && <span>{data.issue.assignee}</span>}
@@ -64,9 +64,9 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       {/* Score */}
       <div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-text-primary">{data.score}</span>
-          <span className="text-sm text-text-tertiary">/ {data.maxScore}</span>
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: chatVerdictColor(data.verdict) + "20", color: chatVerdictColor(data.verdict) }}>
+          <span className="text-heading-lg font-bold text-text-primary">{data.score}</span>
+          <span className="text-body-lg text-text-tertiary">/ {data.maxScore}</span>
+          <span className="text-body-sm font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: chatVerdictColor(data.verdict) + "20", color: chatVerdictColor(data.verdict) }}>
             {data.verdict}
           </span>
         </div>
@@ -80,12 +80,12 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
         {data.criteria.map((c) => (
           <div key={c.name}>
             <div className="flex items-center gap-2 py-1">
-              <span className="text-xs w-4 text-center" style={{ color: chatStatusColor(c.status) }}>{statusIcon(c.status)}</span>
-              <span className="text-xs text-text-secondary flex-1">{c.name}</span>
-              <span className="text-xs font-mono" style={{ color: c.score === c.maxScore ? "var(--color-status-done)" : c.score === 0 ? "var(--color-status-error)" : "var(--color-status-caution)" }}>
+              <span className="text-body-sm w-4 text-center" style={{ color: chatStatusColor(c.status) }}>{statusIcon(c.status)}</span>
+              <span className="text-body-sm text-text-secondary flex-1">{c.name}</span>
+              <span className="text-body-sm font-mono" style={{ color: c.score === c.maxScore ? "var(--color-status-done)" : c.score === 0 ? "var(--color-status-error)" : "var(--color-status-caution)" }}>
                 {c.score}
               </span>
-              <span className="text-xs text-text-muted font-mono">/{c.maxScore}</span>
+              <span className="text-body-sm text-text-muted font-mono">/{c.maxScore}</span>
             </div>
             {c.subItems && c.status !== "pass" && (
               <div className="ml-6 space-y-0.5">
@@ -110,7 +110,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
         <div className="border-t border-border-default pt-3 space-y-2">
           <p className="text-label text-text-tertiary font-medium uppercase tracking-wider">Suggestions</p>
           {data.issues.map((issue, i) => (
-            <div key={i} className="text-xs">
+            <div key={i} className="text-body-sm">
               <span className="text-text-secondary font-medium">{issue.criterion}</span>
               {issue.location && <span className="text-text-tertiary"> ({issue.location})</span>}
               <p className="text-text-tertiary mt-0.5">{issue.problem}</p>
@@ -121,7 +121,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       )}
 
       {/* Summary */}
-      <p className="text-xs text-text-tertiary border-t border-border-default pt-3">{data.summary}</p>
+      <p className="text-body-sm text-text-tertiary border-t border-border-default pt-3">{data.summary}</p>
     </div>
   );
 }
@@ -162,7 +162,7 @@ function MessageContent({ content }: { content: string }) {
     if (typeof jsonData === "object" && jsonData && "skill" in jsonData && (jsonData as ReviewStoryData).skill === "review-story") {
       return <ReviewStoryCard data={jsonData as ReviewStoryData} />;
     }
-    return <pre className="text-xs text-text-secondary whitespace-pre-wrap">{JSON.stringify(jsonData, null, 2)}</pre>;
+    return <pre className="text-body-sm text-text-secondary whitespace-pre-wrap">{JSON.stringify(jsonData, null, 2)}</pre>;
   }
 
   // HTML report (legacy)
@@ -173,7 +173,7 @@ function MessageContent({ content }: { content: string }) {
     const summary = summaryMatch ? summaryMatch[1].trim() : null;
     return (
       <div className="space-y-3">
-        {summary && <p className="text-text-secondary text-xs">{summary}</p>}
+        {summary && <p className="text-text-secondary text-body-sm">{summary}</p>}
         <iframe
           srcDoc={html}
           className="w-full rounded-lg border border-border-default"
@@ -256,7 +256,7 @@ export default function MessageList({ messages, loading, error, conversation, sh
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-text-tertiary">Send a message to start the conversation.</p>
+        <p className="text-body-lg text-text-tertiary">Send a message to start the conversation.</p>
       </div>
     );
   }
@@ -279,7 +279,7 @@ export default function MessageList({ messages, loading, error, conversation, sh
             return (
               <div key={message.id} className="group/msg flex flex-col items-start">
                 <div
-                  className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-sm leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""} ${message.cancelled ? "opacity-40" : ""}`}
+                  className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-body-lg leading-[1.7] font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""} ${message.cancelled ? "opacity-40" : ""}`}
                   data-testid="message-investigation"
                 >
                   <MessageContent content={message.content} />

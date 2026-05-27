@@ -184,7 +184,7 @@ export default function PromptsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xs font-medium text-text-secondary uppercase tracking-[0.06em]">
+        <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-[0.06em]">
           Story Writer Quick Prompts
         </h2>
         <Button
@@ -211,11 +211,11 @@ export default function PromptsPage() {
       </TabBar>
 
       {loading ? (
-        <div className="text-sm text-text-tertiary">Loading...</div>
+        <div className="text-body-lg text-text-tertiary">Loading...</div>
       ) : (
         <div className="flex flex-col gap-3">
           {prompts.length === 0 && (
-            <p className="text-sm text-text-tertiary py-1">
+            <p className="text-body-lg text-text-tertiary py-1">
               No quick prompts configured for this issue type.
             </p>
           )}

@@ -68,7 +68,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "page":
       return (
         <div className="flex flex-col min-w-0 flex-1">
-          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
+          <span className={`text-body-lg truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.label}
           </span>
         </div>
@@ -76,7 +76,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "action":
       return (
         <div className="flex flex-col min-w-0 flex-1">
-          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
+          <span className={`text-body-lg truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.label}
           </span>
           {result.description && (
@@ -89,7 +89,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
       return (
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <span className="shrink-0 font-mono text-label text-text-tertiary font-medium">{result.key}</span>
-          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
+          <span className={`text-body-lg truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.summary}
           </span>
           <span
@@ -107,7 +107,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
           <span className="shrink-0 rounded px-1.5 py-0.5 text-label font-mono font-semibold bg-[var(--color-brand-600)]/15 text-[var(--color-brand-400)]">
             {result.key}
           </span>
-          <span className={`text-sm ${isActive ? "text-text-secondary" : "text-text-tertiary"}`}>
+          <span className={`text-body-lg ${isActive ? "text-text-secondary" : "text-text-tertiary"}`}>
             Press Enter to open directly
           </span>
         </div>
@@ -115,11 +115,11 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
     case "conversation":
       return (
         <div className="flex flex-col min-w-0 flex-1">
-          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
+          <span className={`text-body-lg truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.title}
           </span>
           {result.lastMessage && (
-            <span className="text-xs text-text-muted truncate mt-0.5">{result.lastMessage}</span>
+            <span className="text-body-sm text-text-muted truncate mt-0.5">{result.lastMessage}</span>
           )}
         </div>
       );
@@ -129,7 +129,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="shrink-0 font-mono text-label text-text-tertiary font-medium">{result.key}</span>
-            <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
+            <span className={`text-body-lg truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
               {result.name}
             </span>
             <span
@@ -160,7 +160,7 @@ export function ResultLabel({ result, isActive }: { result: PaletteResult; isAct
               <span className="shrink-0 font-mono text-label text-text-tertiary font-medium">{result.targetTicketKey}</span>
             </>
           )}
-          <span className={`text-sm truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
+          <span className={`text-body-lg truncate ${isActive ? "text-text-primary" : "text-text-secondary"}`}>
             {result.title}
           </span>
           {result.targetTicketKey && (

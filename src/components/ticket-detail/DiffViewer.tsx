@@ -87,7 +87,7 @@ export function DiffViewer({
       >
         <Eye size={13} strokeWidth={1.5} />
       </button>
-      <span className="shrink-0 text-xs text-text-muted">vs</span>
+      <span className="shrink-0 text-body-sm text-text-muted">vs</span>
       <VersionPicker
         options={newOptions}
         selectedId={compareNew !== null ? String(compareNew) : ""}
@@ -119,7 +119,7 @@ export function DiffViewer({
       <div className="mb-3 flex items-center justify-between">
         {compareBar}
         {diffStats && (
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-3 text-body-sm">
             {diffStats.changeHunkCount > 0 && (
               <span className="text-text-tertiary">
                 {diffStats.decidedCount}/{diffStats.changeHunkCount} reviewed
@@ -152,7 +152,7 @@ export function DiffViewer({
         <div className="mb-3 flex items-center gap-3 rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-600)]/[0.06] px-4 py-3">
           <Info size={16} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-text-secondary">No content changes detected</p>
+            <p className="text-body-sm font-medium text-text-secondary">No content changes detected</p>
             <p className="mt-0.5 text-label text-text-tertiary">
               Jira was updated (e.g. status transition, comment, or field change) but the description content is unchanged.
             </p>
@@ -214,11 +214,11 @@ export function DiffViewer({
             </>
           )}
           {showRevertActions && (
-            <span className="text-xs text-text-tertiary">Revert:</span>
+            <span className="text-body-sm text-text-tertiary">Revert:</span>
           )}
 
           {mergeResult !== null && !showConflictActions && (
-            <span className="text-xs text-text-secondary">Apply merge selections as local edit</span>
+            <span className="text-body-sm text-text-secondary">Apply merge selections as local edit</span>
           )}
 
           <div className="flex-1" />

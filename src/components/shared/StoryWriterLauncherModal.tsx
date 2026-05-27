@@ -147,7 +147,7 @@ function SprintSelectDropdown({
               <input ref={searchRef} type="text" value={search}
                 onChange={(e) => { setSearch(e.target.value); setFocused(0); }}
                 onKeyDown={nav}
-                className="w-full rounded bg-overlay-subtle py-1 pl-6 pr-2 text-xs text-text-secondary placeholder-text-muted focus:outline-none focus:bg-overlay-default"
+                className="w-full rounded bg-overlay-subtle py-1 pl-6 pr-2 text-body-sm text-text-secondary placeholder-text-muted focus:outline-none focus:bg-overlay-default"
                 placeholder="Search sprints…"
                 style={{ transition: "background-color 80ms" }}
               />
@@ -155,7 +155,7 @@ function SprintSelectDropdown({
           </div>
           <div className="max-h-52 overflow-y-auto">
             {flat.length === 0
-              ? <p className="px-3.5 py-3 text-xs text-text-tertiary">No sprints found</p>
+              ? <p className="px-3.5 py-3 text-body-sm text-text-tertiary">No sprints found</p>
               : sections.map((sec, si) => (
                 <div key={sec.key}>
                   {sec.label && (
@@ -271,7 +271,7 @@ function SessionSelectDropdown({
         >
           <div className="max-h-52 overflow-y-auto">
             {options.length === 0
-              ? <p className="px-3.5 py-3 text-xs text-text-tertiary">No sessions found</p>
+              ? <p className="px-3.5 py-3 text-body-sm text-text-tertiary">No sessions found</p>
               : options.map((opt, fi) => {
                 const isSel = opt.value === value;
                 const isFoc = fi === focused;
@@ -294,7 +294,7 @@ function SessionSelectDropdown({
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block font-mono text-label font-medium text-[var(--color-brand-400)]/80">{opt.label}</span>
-                      {opt.sublabel && <span className="block truncate text-xs text-text-secondary mt-0.5">{opt.sublabel}</span>}
+                      {opt.sublabel && <span className="block truncate text-body-sm text-text-secondary mt-0.5">{opt.sublabel}</span>}
                     </span>
                   </button>
                 );
@@ -608,14 +608,14 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           {mode === "session" && (
             <div>
               {sessionsLoading ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-xs text-text-muted">
+                <div className="flex items-center justify-center gap-2 py-10 text-body-sm text-text-muted">
                   <span className="h-3 w-3 rounded-full border-2 border-border-strong border-t-white/40 animate-spin" />
                   Loading…
                 </div>
               ) : sessions.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border-default py-8 text-center">
                   <History size={18} strokeWidth={1} className="mx-auto mb-2 text-text-muted" />
-                  <p className="text-xs text-text-muted">No open sessions</p>
+                  <p className="text-body-sm text-text-muted">No open sessions</p>
                   <p className="mt-1 text-label text-text-muted">Start a new story to begin</p>
                 </div>
               ) : sessions.length <= 3 ? (
@@ -819,7 +819,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               {selectedTicket && (
                 <div className="mt-2 flex items-center gap-2.5 rounded-md border border-[var(--color-brand-500)]/18 bg-[var(--color-brand-500)]/[0.05] px-3 py-2">
                   <span className="shrink-0 font-mono text-label font-medium text-[var(--color-brand-400)]">{selectedTicket.key}</span>
-                  <span className="truncate text-xs text-text-secondary">{selectedTicket.summary}</span>
+                  <span className="truncate text-body-sm text-text-secondary">{selectedTicket.summary}</span>
                 </div>
               )}
               {!selectedTicket && searchQuery.length >= 2 && !searchLoading && searchResults.length === 0 && (
@@ -829,7 +829,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
           )}
 
           {createError && (
-            <p className="mt-3 rounded-md bg-red-500/[0.08] px-3 py-1.5 text-xs text-red-400/80">{createError}</p>
+            <p className="mt-3 rounded-md bg-red-500/[0.08] px-3 py-1.5 text-body-sm text-red-400/80">{createError}</p>
           )}
 
           {/* ── Actions ── */}

@@ -274,20 +274,20 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                     >
                       <IssueTypeIcon type={item.type} size={14} />
                       {isPending ? (
-                        <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
+                        <span className="flex items-center gap-1.5 font-mono text-body-sm text-text-muted">
                           <Loader2 size={10} className="animate-spin" />
                           {item.key}
                         </span>
                       ) : (
                         <Link
                           href={`/tickets/${item.key}`}
-                          className="font-mono text-xs text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                          className="font-mono text-body-sm text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {item.key}
                         </Link>
                       )}
-                      <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{item.title}</span>
+                      <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{item.title}</span>
                       <StatusBadge status={item.jiraStatus} />
                       <Avatar assignee={item.assignee} size={22} />
                       {!isPending && (
@@ -335,7 +335,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                       setInlineRelation(opt.value);
                       setInlineRelationOpen(false);
                     }}
-                    className={`flex w-full items-center px-3 py-1.5 text-xs cursor-pointer transition-colors duration-150 ${
+                    className={`flex w-full items-center px-3 py-1.5 text-body-sm cursor-pointer transition-colors duration-150 ${
                       inlineRelation === opt.value
                         ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
                         : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
@@ -356,7 +356,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
             onFocus={() => inlineResults.length > 0 && setInlineShowResults(true)}
             onBlur={() => setTimeout(() => setInlineShowResults(false), 200)}
             placeholder="Link issue..."
-            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+            className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
           />
           {inlineSearching && <Loader2 size={13} className="shrink-0 animate-spin text-text-muted" />}
         </div>
@@ -379,8 +379,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                 }}
               >
                 <IssueTypeIcon type={r.type as IssueType} size={13} />
-                <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">{r.key}</span>
-                <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">{r.title}</span>
+                <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{r.key}</span>
+                <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{r.title}</span>
                 <SearchStatusBadge status={r.status} />
                 {r.source === "jira" && (
                   <span
@@ -393,7 +393,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                 )}
               </button>
             )) : !inlineSearching ? (
-              <div className="px-3 py-2.5 text-xs text-text-muted">
+              <div className="px-3 py-2.5 text-body-sm text-text-muted">
                 No issues found for &ldquo;{inlineQuery}&rdquo;
               </div>
             ) : null}
@@ -408,7 +408,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       </div>
 
       {inlineError && (
-        <p className="mt-2 text-xs text-red-400/80">{inlineError}</p>
+        <p className="mt-2 text-body-sm text-red-400/80">{inlineError}</p>
       )}
 
       {showSuggestions && (

@@ -23,10 +23,10 @@ function StatusIcon({ state }: { state: StatusState }) {
 }
 
 function StatusLabel({ state, errorMsg }: { state: StatusState; errorMsg?: string }) {
-  if (state === "loading") return <span className="text-xs text-text-tertiary">Checking...</span>;
-  if (state === "ok") return <span className="text-xs" style={{ color: "var(--color-status-success)", opacity: 0.8 }}>Connected</span>;
-  if (state === "unconfigured") return <span className="text-xs text-text-muted">Not configured</span>;
-  return <span className="text-xs" style={{ color: "var(--color-status-error)", opacity: 0.8 }} title={errorMsg}>Error</span>;
+  if (state === "loading") return <span className="text-body-sm text-text-tertiary">Checking...</span>;
+  if (state === "ok") return <span className="text-body-sm" style={{ color: "var(--color-status-success)", opacity: 0.8 }}>Connected</span>;
+  if (state === "unconfigured") return <span className="text-body-sm text-text-muted">Not configured</span>;
+  return <span className="text-body-sm" style={{ color: "var(--color-status-error)", opacity: 0.8 }} title={errorMsg}>Error</span>;
 }
 
 function IntegrationRow({
@@ -50,7 +50,7 @@ function IntegrationRow({
         <StatusIcon state={state} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-text-secondary">{name}</p>
+            <p className="text-body-lg font-medium text-text-secondary">{name}</p>
             {docsUrl && (
               <a
                 href={docsUrl}
@@ -64,7 +64,7 @@ function IntegrationRow({
               </a>
             )}
           </div>
-          <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">{description}</p>
+          <p className="mt-0.5 text-body-sm leading-relaxed text-text-tertiary">{description}</p>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ function IntegrationRow({
           type="button"
           onClick={onRetest}
           disabled={state === "unconfigured" || state === "loading"}
-          className="rounded-lg border border-border-strong bg-overlay-subtle px-2.5 py-1 text-xs text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-lg border border-border-strong bg-overlay-subtle px-2.5 py-1 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30"
           style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
         >
           Test
@@ -112,11 +112,11 @@ export default function IntegrationsPage() {
 
   return (
     <>
-      <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
         Integrations
       </h2>
 
-      <p className="mb-6 text-xs leading-relaxed text-text-tertiary">
+      <p className="mb-6 text-body-sm leading-relaxed text-text-tertiary">
         Credentials are configured via environment variables in{" "}
         <code className="rounded bg-overlay-default px-1.5 py-0.5 font-mono text-label text-text-secondary">.env.local</code>.
         Use the test buttons to verify connectivity.

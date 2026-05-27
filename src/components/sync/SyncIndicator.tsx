@@ -145,7 +145,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
         </span>
         {!collapsed && (
           <>
-            <span className="flex-1 text-left text-xs font-[var(--font-body)] truncate">
+            <span className="flex-1 text-left text-body-sm font-[var(--font-body)] truncate">
               {stateLabel(activityState, incrementalSyncRemaining, hasChecked)}
               {lastEntry?.completedAt && activityState === "idle" && incrementalSyncRemaining === 0 && hasChecked && (
                 <span className="text-text-muted ml-1.5">{timeAgo(lastEntry.completedAt)}</span>
@@ -218,7 +218,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
           </div>
           <ul className="max-h-[240px] overflow-y-auto">
             {(!recentEntries || recentEntries.length === 0) && (
-              <li className="px-3 py-3 text-xs text-text-muted font-[var(--font-body)]">
+              <li className="px-3 py-3 text-body-sm text-text-muted font-[var(--font-body)]">
                 No activity yet
               </li>
             )}
@@ -230,7 +230,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
                 <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${statusDot(entry.status)}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs text-text-secondary font-[var(--font-body)] truncate">
+                    <span className="text-body-sm text-text-secondary font-[var(--font-body)] truncate">
                       {entryTypeLabel(entry.type)}
                       {entry.sprintName && (
                         <span className="text-text-tertiary ml-1">&middot; {entry.sprintName}</span>

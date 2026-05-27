@@ -270,7 +270,7 @@ export default function ConversationList({
               {isUnread && (
                 <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]" aria-label="Unread" />
               )}
-              <span className={`block truncate font-[var(--font-body)] text-sm ${isUnread ? "font-semibold text-text-primary" : "font-medium"}`}>
+              <span className={`block truncate font-[var(--font-body)] text-body-lg ${isUnread ? "font-semibold text-text-primary" : "font-medium"}`}>
                 {conversation.title}
               </span>
               {conversation.pinned && (
@@ -332,7 +332,7 @@ export default function ConversationList({
       {/* Header */}
       <div className={`flex items-center ${collapsed ? "justify-center px-1 pt-3 pb-2" : "justify-between px-4 pt-4 pb-3"}`}>
         {!collapsed && (
-          <h2 className="font-[var(--font-display)] text-sm font-semibold tracking-wide text-text-secondary">
+          <h2 className="font-[var(--font-display)] text-body-lg font-semibold tracking-wide text-text-secondary">
             Conversations
           </h2>
         )}
@@ -396,7 +396,7 @@ export default function ConversationList({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               placeholder="Search conversations..."
-              className="w-full rounded-md border border-border-default bg-[var(--color-surface-base)] py-1.5 pl-8 pr-7 text-xs text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-default bg-[var(--color-surface-base)] py-1.5 pl-8 pr-7 text-body-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)]/40 focus:outline-none transition-colors duration-150"
               aria-label="Search conversations"
               data-testid="conversation-search"
             />
@@ -434,7 +434,7 @@ export default function ConversationList({
       )}
 
       {error && (
-        <InlineAlert variant="error" className="mx-4 mb-2 text-xs">
+        <InlineAlert variant="error" className="mx-4 mb-2 text-body-sm">
           {error}
         </InlineAlert>
       )}
@@ -494,7 +494,7 @@ export default function ConversationList({
                 onTogglePin(contextMenu.conversationId, !contextMenu.pinned);
                 setContextMenu(null);
               }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
             >
               <Pin size={12} strokeWidth={1.5} />
               {contextMenu.pinned ? "Unpin conversation" : "Pin conversation"}
@@ -507,7 +507,7 @@ export default function ConversationList({
                 onToggleRead(contextMenu.conversationId, contextMenu.readAt === null);
                 setContextMenu(null);
               }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
               data-testid="context-menu-toggle-read"
             >
               {contextMenu.readAt === null ? (
@@ -532,7 +532,7 @@ export default function ConversationList({
               onDelete(contextMenu.conversationId);
               setContextMenu(null);
             }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-danger-400)] cursor-pointer hover:bg-hover-list-item hover:text-[var(--color-danger-300)] transition-colors duration-150"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-[var(--color-danger-400)] cursor-pointer hover:bg-hover-list-item hover:text-[var(--color-danger-300)] transition-colors duration-150"
             data-testid="context-menu-delete"
           >
             <Trash2 size={12} strokeWidth={1.5} />

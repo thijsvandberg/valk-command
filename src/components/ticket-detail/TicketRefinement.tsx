@@ -70,7 +70,7 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
         <div className="mt-3 space-y-2">
           {estimates.map((est, idx) => (
             <div key={est.member} className="flex items-center gap-3 rounded-lg border border-border-default px-4 py-2.5">
-              <span className="min-w-0 flex-1 text-sm text-text-secondary">{est.member}</span>
+              <span className="min-w-0 flex-1 text-body-lg text-text-secondary">{est.member}</span>
               <input
                 type="number"
                 min="0"
@@ -79,16 +79,16 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
                 value={est.points ?? ""}
                 onChange={(e) => handleEstimateChange(idx, e.target.value)}
                 placeholder="SP"
-                className="w-16 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-right text-sm tabular-nums text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                className="w-16 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-right text-body-lg tabular-nums text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
               />
             </div>
           ))}
         </div>
         {avgEstimate !== null && (
           <div className="mt-3 flex items-center justify-between rounded-lg border border-border-default bg-overlay-subtle px-4 py-3">
-            <span className="text-sm font-medium text-text-secondary">Average Estimate</span>
-            <span className="text-lg font-semibold tabular-nums text-text-primary">
-              {avgEstimate} <span className="text-xs font-normal text-text-tertiary">SP</span>
+            <span className="text-body-lg font-medium text-text-secondary">Average Estimate</span>
+            <span className="text-heading font-semibold tabular-nums text-text-primary">
+              {avgEstimate} <span className="text-body-sm font-normal text-text-tertiary">SP</span>
             </span>
           </div>
         )}
@@ -96,7 +96,7 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
 
       <div>
         <div className="flex items-center justify-between border-b border-border-default pb-2">
-          <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">Ready to Refine</h3>
+          <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">Ready to Refine</h3>
           {allChecked && (
             <span className="rounded-full bg-[rgba(46,145,73,0.12)] px-2.5 py-0.5 text-caption font-medium text-[var(--color-status-success)]">
               All complete
@@ -128,14 +128,14 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
                   <Check size={10} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
                 )}
               </span>
-              <span className={`text-sm ${checklist[item.key] ? "text-text-tertiary line-through" : "text-text-secondary"}`}>
+              <span className={`text-body-lg ${checklist[item.key] ? "text-text-tertiary line-through" : "text-text-secondary"}`}>
                 {item.label}
               </span>
             </label>
           ))}
         </div>
         {allChecked && (
-          <p className="mt-3 text-xs text-[var(--color-status-success)]/70">
+          <p className="mt-3 text-body-sm text-[var(--color-status-success)]/70">
             Readiness automatically set to &quot;Ready to Refine&quot;
           </p>
         )}

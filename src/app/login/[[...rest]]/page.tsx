@@ -50,10 +50,10 @@ export default function LoginPage() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface-base)] px-4">
         <div className="w-full max-w-sm rounded-xl border border-border-default bg-[var(--color-surface-elevated)] p-8 shadow-[var(--shadow-lg)]">
           <div className="mb-6 text-center">
-            <h1 className="font-[var(--font-display)] text-xl font-semibold tracking-[-0.03em] text-text-primary">
+            <h1 className="font-[var(--font-display)] text-heading font-semibold tracking-[-0.03em] text-text-primary">
               Access denied
             </h1>
-            <p className="mt-2 text-sm leading-relaxed text-text-tertiary">
+            <p className="mt-2 text-body-lg leading-relaxed text-text-tertiary">
               Your account is not a member of the Bridge organization. Contact
               the admin to get access.
             </p>
@@ -61,7 +61,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => signOut({ redirectUrl: "/login" })}
-            className="h-10 w-full cursor-pointer rounded-lg border border-border-strong bg-overlay-subtle text-sm text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
+            className="h-10 w-full cursor-pointer rounded-lg border border-border-strong bg-overlay-subtle text-body-lg text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
           >
             Sign out
           </button>

@@ -83,11 +83,11 @@ export function StoryPointPicker({
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
 
   const btnSize = isLg ? "h-10 w-10" : "h-7 w-7";
-  const btnText = isLg ? "text-sm font-semibold" : "text-xs font-medium";
+  const btnText = isLg ? "text-body-lg font-semibold" : "text-body-sm font-medium";
   const iconSize = isLg ? 14 : 12;
   const popoverPadding = isLg ? "p-3" : "p-1.5";
   const customInputH = isLg ? "h-10 w-20" : "h-7 w-14";
-  const customInputText = isLg ? "text-sm font-semibold" : "text-xs font-medium";
+  const customInputText = isLg ? "text-body-lg font-semibold" : "text-body-sm font-medium";
 
   return (
     <>
@@ -108,7 +108,7 @@ export function StoryPointPicker({
           }}
         >
           <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>
-          <span className="text-xs font-semibold tabular-nums">{displayLabel ?? "?"}</span>
+          <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
         <button
@@ -118,7 +118,7 @@ export function StoryPointPicker({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           title={isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points"}
-          className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-xs font-medium tabular-nums"
+          className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums"
           style={{
             color: color?.text ?? "var(--color-text-muted)",
             backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
@@ -146,12 +146,12 @@ export function StoryPointPicker({
                   const c = getSpColor(n);
                   const isActive = n === value;
                   return (
-                    <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
+                    <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-10 w-10 items-center justify-center rounded-md text-body-lg font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
                       {n}
                     </button>
                   );
                 })}
-                <input ref={lgCustomInputRef} type="number" min="1" max="999" value={lgCustomInput} onChange={(e) => setLgCustomInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleLgCustomSubmit(); } if (e.key === "Escape") { e.preventDefault(); handleClose(); } }} placeholder="#" className="h-10 w-10 rounded-md border border-border-default bg-[var(--color-surface-default)] text-center text-sm font-medium tabular-nums text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" style={{ transition: "border-color 0.15s ease" }} />
+                <input ref={lgCustomInputRef} type="number" min="1" max="999" value={lgCustomInput} onChange={(e) => setLgCustomInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleLgCustomSubmit(); } if (e.key === "Escape") { e.preventDefault(); handleClose(); } }} placeholder="#" className="h-10 w-10 rounded-md border border-border-default bg-[var(--color-surface-default)] text-center text-body-lg font-medium tabular-nums text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" style={{ transition: "border-color 0.15s ease" }} />
                 {value != null && (
                   <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear" className="flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60">
                     <X size={14} strokeWidth={1.5} />

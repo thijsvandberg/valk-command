@@ -70,7 +70,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
       >
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-text-tertiary" strokeWidth={1.5} />
-          <span className="text-xs font-semibold text-text-secondary">Sprint Insights</span>
+          <span className="text-body-sm font-semibold text-text-secondary">Sprint Insights</span>
           <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-overlay-default px-1 text-caption tabular-nums text-text-tertiary">
             {insights.totalTickets}
           </span>
@@ -92,7 +92,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
                 <span
-                  className="text-lg font-semibold tabular-nums"
+                  className="text-heading font-semibold tabular-nums"
                   style={{ color: getInsightColor(insights.staleStories, { warn: 2, danger: 5 }) }}
                 >
                   {insights.staleStories}
@@ -108,7 +108,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
                 <span
-                  className="text-lg font-semibold tabular-nums"
+                  className="text-heading font-semibold tabular-nums"
                   style={{ color: getInsightColor(insights.unreviewedTickets, { warn: 3, danger: 6 }) }}
                 >
                   {insights.unreviewedTickets}
@@ -124,7 +124,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
                 <span
-                  className="text-lg font-semibold tabular-nums"
+                  className="text-heading font-semibold tabular-nums"
                   style={{ color: getInsightColor(insights.blockedItems, { warn: 1, danger: 3 }) }}
                 >
                   {insights.blockedItems}
@@ -142,7 +142,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                 {insights.avgQualityScore !== null ? (
                   <>
                     <span
-                      className="text-lg font-semibold tabular-nums"
+                      className="text-heading font-semibold tabular-nums"
                       style={{ color: getScoreColor(insights.avgQualityScore) }}
                     >
                       {insights.avgQualityScore}
@@ -150,7 +150,7 @@ export function SprintInsights({ tickets }: { tickets: Ticket[] }) {
                     <span className="text-caption text-text-muted">/100</span>
                   </>
                 ) : (
-                  <span className="text-sm text-text-muted">--</span>
+                  <span className="text-body-lg text-text-muted">--</span>
                 )}
               </div>
             </Card>

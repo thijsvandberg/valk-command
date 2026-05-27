@@ -13,7 +13,7 @@ export function RefinementHistoryList({ sessions }: RefinementHistoryListProps) 
   if (sessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-sm text-text-muted">No refinements yet.</p>
+        <p className="text-body-lg text-text-muted">No refinements yet.</p>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export function RefinementHistoryList({ sessions }: RefinementHistoryListProps) 
               ) : (
                 <Check size={14} strokeWidth={2.5} className="shrink-0 text-[var(--color-brand-500)]" />
               )}
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
+              <span className="min-w-0 flex-1 truncate text-body-lg font-medium text-text-primary">
                 {session.name}
               </span>
               {isInProgress && (
@@ -59,7 +59,7 @@ export function RefinementHistoryList({ sessions }: RefinementHistoryListProps) 
             {session.generalComment && (
               <div className="mt-2 flex items-start gap-2 pl-[26px]">
                 <MessageSquare size={11} strokeWidth={1.5} className="mt-0.5 shrink-0 text-text-muted" />
-                <p className="line-clamp-2 text-xs leading-relaxed text-text-tertiary">
+                <p className="line-clamp-2 text-body-sm leading-relaxed text-text-tertiary">
                   {session.generalComment}
                 </p>
               </div>

@@ -288,7 +288,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                     }
                   }}
                   rows={1}
-                  className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-sm leading-snug text-text-primary shadow-[var(--shadow-lg)] outline-none focus:border-[var(--color-brand-500)]/70"
+                  className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-body-lg leading-snug text-text-primary shadow-[var(--shadow-lg)] outline-none focus:border-[var(--color-brand-500)]/70"
                 />
                 <button
                   type="button"
@@ -389,7 +389,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
         );
       case "sprint":
         return (
-          <td key={id} className="overflow-hidden py-2 pr-3 text-xs text-text-tertiary truncate">
+          <td key={id} className="overflow-hidden py-2 pr-3 text-body-sm text-text-tertiary truncate">
             {ticket.sprintId
               ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId)
               : <span className="inline-block h-[3px] w-[3px] rounded-full bg-[var(--color-text-muted)]/40 align-middle" />}
@@ -441,7 +441,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
         return (
           <td
             key={id}
-            className="overflow-hidden py-2 pr-3 text-xs tabular-nums leading-none"
+            className="overflow-hidden py-2 pr-3 text-body-sm tabular-nums leading-none"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >

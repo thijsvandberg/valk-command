@@ -16,8 +16,8 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-4">
-        <span className="text-sm text-text-secondary">Story points</span>
-        <span className="text-sm font-medium tabular-nums text-text-secondary">
+        <span className="text-body-lg text-text-secondary">Story points</span>
+        <span className="text-body-lg font-medium tabular-nums text-text-secondary">
           {completed} <span className="text-text-tertiary">/ {total}</span>
         </span>
       </div>
@@ -59,7 +59,7 @@ export function ProgressBar({ completed, inReview, inProgress, total }: Progress
             </span>
           )}
         </div>
-        <div className="text-xs text-text-tertiary tabular-nums">{overallPct}% complete</div>
+        <div className="text-body-sm text-text-tertiary tabular-nums">{overallPct}% complete</div>
       </div>
     </div>
   );

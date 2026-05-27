@@ -202,7 +202,7 @@ export default function StoryWriterLandingPage() {
           {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
 
           <div className="flex items-center justify-between mb-5">
-            <span className="text-sm text-text-tertiary">
+            <span className="text-body-lg text-text-tertiary">
               {loading
                 ? "Loading..."
                 : `${sessions.length} active session${sessions.length === 1 ? "" : "s"}`}

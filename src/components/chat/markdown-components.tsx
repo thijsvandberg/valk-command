@@ -2,17 +2,17 @@ import type { Components } from "react-markdown";
 
 export const markdownComponents: Components = {
   h1: ({ children }) => (
-    <h1 className="mb-2 mt-4 font-[var(--font-display)] text-base font-semibold tracking-[-0.02em] text-text-primary first:mt-0">
+    <h1 className="mb-2 mt-4 font-[var(--font-display)] text-heading-sm font-semibold tracking-[-0.02em] text-text-primary first:mt-0">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="mb-2 mt-4 font-[var(--font-display)] text-sm font-semibold tracking-[-0.01em] text-text-primary first:mt-0">
+    <h2 className="mb-2 mt-4 font-[var(--font-display)] text-body-lg font-semibold tracking-[-0.01em] text-text-primary first:mt-0">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mb-1.5 mt-3 font-[var(--font-display)] text-sm font-semibold text-text-primary first:mt-0">
+    <h3 className="mb-1.5 mt-3 font-[var(--font-display)] text-body-lg font-semibold text-text-primary first:mt-0">
       {children}
     </h3>
   ),
@@ -33,19 +33,19 @@ export const markdownComponents: Components = {
   ),
   em: ({ children }) => <em className="italic text-text-secondary">{children}</em>,
   code: ({ children }) => (
-    <code className="rounded bg-[var(--color-code-bg)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-code-inline)]">
+    <code className="rounded bg-[var(--color-code-bg)] px-1.5 py-0.5 font-mono text-body-sm text-[var(--color-code-inline)]">
       {children}
     </code>
   ),
   pre: ({ children }) => (
-    <pre className="mb-2 overflow-x-auto rounded-lg bg-overlay-default p-3 font-mono text-xs last:mb-0">
+    <pre className="mb-2 overflow-x-auto rounded-lg bg-overlay-default p-3 font-mono text-body-sm last:mb-0">
       {children}
     </pre>
   ),
   hr: () => <hr className="my-3 border-border-strong" />,
   table: ({ children }) => (
     <div className="overflow-x-auto mb-2 last:mb-0">
-      <table className="min-w-full text-xs border-collapse">
+      <table className="min-w-full text-body-sm border-collapse">
         {children}
       </table>
     </div>

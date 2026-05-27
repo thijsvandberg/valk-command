@@ -176,7 +176,7 @@ export function POStatusCell({
       >
         <POStatusIcon status={value} />
         {showLabel && (
-          <span className="text-xs font-medium" style={{ color: colors?.text || "var(--color-text-tertiary)" }}>
+          <span className="text-body-sm font-medium" style={{ color: colors?.text || "var(--color-text-tertiary)" }}>
             {value || "No status"}
           </span>
         )}
@@ -194,7 +194,7 @@ export function POStatusCell({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default ${
+                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default ${
                   opt.value === value ? "text-text-primary" : "text-text-secondary"
                 }`}
               >

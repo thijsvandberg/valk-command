@@ -192,7 +192,7 @@ export default function ActivityLogPage() {
               type="button"
               onClick={refresh}
               title="Refresh"
-              className="flex items-center gap-1.5 rounded-lg border border-border-default bg-transparent px-2.5 py-1.5 text-xs text-text-tertiary cursor-pointer hover:border-border-strong hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+              className="flex items-center gap-1.5 rounded-lg border border-border-default bg-transparent px-2.5 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:border-border-strong hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
             >
               <RefreshCw className="h-3 w-3" strokeWidth={2} />
             </button>

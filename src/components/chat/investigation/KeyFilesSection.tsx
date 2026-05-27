@@ -36,7 +36,7 @@ function FileRow({ file }: { file: InvestigationKeyFile }) {
             {repo}
           </span>
         )}
-        <span className="font-mono text-xs text-text-secondary break-all">
+        <span className="font-mono text-body-sm text-text-secondary break-all">
           <span className="text-text-tertiary">{directory}</span>
           <span className="text-[var(--color-brand-300)]">{filename}</span>
         </span>

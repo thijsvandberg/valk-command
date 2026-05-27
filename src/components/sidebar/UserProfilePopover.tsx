@@ -250,7 +250,7 @@ export function UserProfilePopover({
               referrerPolicy="no-referrer"
             />
           ) : initials ? (
-            <span className="text-xs font-semibold tracking-wide text-[var(--color-brand-300)]">
+            <span className="text-body-sm font-semibold tracking-wide text-[var(--color-brand-300)]">
               {initials}
             </span>
           ) : (
@@ -258,7 +258,7 @@ export function UserProfilePopover({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-text-primary">
+          <div className="truncate text-body-lg font-medium text-text-primary">
             {user?.fullName ?? "User"}
           </div>
           <div className="truncate text-[11px] text-text-tertiary">

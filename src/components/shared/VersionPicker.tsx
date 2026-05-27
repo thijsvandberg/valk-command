@@ -122,7 +122,7 @@ function VersionPickerInner({
   return (
     <>
       <BasePicker.Trigger
-        className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+        className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
           open
             ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/[0.06] text-text-primary"
             : "border-border-strong bg-overlay-subtle text-text-secondary hover:bg-overlay-default hover:text-text-primary"

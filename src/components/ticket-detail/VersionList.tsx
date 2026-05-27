@@ -46,7 +46,7 @@ export function VersionList({
         selectedId={compareOld !== null ? String(compareOld) : ""}
         onSelect={(id) => onOldChange(Number(id))}
       />
-      <span className="shrink-0 text-xs text-text-muted">vs</span>
+      <span className="shrink-0 text-body-sm text-text-muted">vs</span>
       <VersionPicker
         options={newOptions}
         selectedId={compareNew !== null ? String(compareNew) : ""}
@@ -60,7 +60,7 @@ export function VersionList({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-default pb-2">
         <div className="flex items-center gap-2">
-          <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">History</h3>
+          <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">History</h3>
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
             {sorted.length}
           </span>
@@ -79,7 +79,7 @@ export function VersionList({
 
       {/* Import result feedback */}
       {importResult && (
-        <div className="mt-2 rounded-lg border border-border-default bg-overlay-subtle px-4 py-2.5 text-xs text-text-secondary">
+        <div className="mt-2 rounded-lg border border-border-default bg-overlay-subtle px-4 py-2.5 text-body-sm text-text-secondary">
           {importResult.imported > 0
             ? `Imported ${importResult.imported} version${importResult.imported !== 1 ? "s" : ""} from Jira${importResult.skipped > 0 ? ` (${importResult.skipped} already existed)` : ""}.`
             : "History is up to date. No new versions found in Jira."}
@@ -123,7 +123,7 @@ export function VersionList({
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-text-secondary">
+                  <span className="text-body-lg text-text-secondary">
                     {version.label === "draft"
                       ? "Local draft"
                       : version.label === "ai-draft"
@@ -145,10 +145,10 @@ export function VersionList({
                     <Tag color="amber">Outdated</Tag>
                   )}
                   {version.updatedBy && (
-                    <span className="text-xs text-text-tertiary">{version.updatedBy}</span>
+                    <span className="text-body-sm text-text-tertiary">{version.updatedBy}</span>
                   )}
                 </div>
-                <div className="mt-0.5 text-xs text-text-muted">
+                <div className="mt-0.5 text-body-sm text-text-muted">
                   {formatVersionDate(version.date)}
                 </div>
               </div>

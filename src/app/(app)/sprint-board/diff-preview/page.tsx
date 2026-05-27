@@ -55,12 +55,12 @@ function DiffPreviewContent() {
           Diff Preview
         </h1>
         {ticketKey && (
-          <span className="mr-2 font-mono text-xs text-[var(--color-brand-400)]">{ticketKey}</span>
+          <span className="mr-2 font-mono text-body-sm text-[var(--color-brand-400)]">{ticketKey}</span>
         )}
         <button
           type="button"
           onClick={() => setView("panel")}
-          className={`rounded-md px-3 py-1.5 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
+          className={`rounded-md px-3 py-1.5 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
             view === "panel"
               ? "bg-overlay-strong text-text-primary"
               : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
@@ -72,7 +72,7 @@ function DiffPreviewContent() {
         <button
           type="button"
           onClick={() => setView("raw")}
-          className={`rounded-md px-3 py-1.5 text-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
+          className={`rounded-md px-3 py-1.5 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
             view === "raw"
               ? "bg-overlay-strong text-text-primary"
               : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
@@ -97,7 +97,7 @@ function DiffPreviewContent() {
         ) : versions.length >= 2 ? (
           <div className="mx-auto max-w-2xl overflow-y-auto p-6">
             <div className="mb-4">
-              <p className="text-xs text-text-tertiary mb-2">
+              <p className="text-body-sm text-text-tertiary mb-2">
                 Version {versions.length - 1} vs Version {versions.length} (raw diff)
               </p>
               <StoryDiff
@@ -110,7 +110,7 @@ function DiffPreviewContent() {
           </div>
         ) : (
           <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-text-tertiary">Not enough versions to show a diff</p>
+            <p className="text-body-lg text-text-tertiary">Not enough versions to show a diff</p>
           </div>
         )}
       </div>

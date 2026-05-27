@@ -33,7 +33,7 @@ export function SubFlowForm({
         <button
           type="button"
           onClick={() => onModeChange("create")}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
             subFlow.mode === "create"
               ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
@@ -45,7 +45,7 @@ export function SubFlowForm({
         <button
           type="button"
           onClick={() => onModeChange("existing")}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
             subFlow.mode === "existing"
               ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
@@ -68,7 +68,7 @@ export function SubFlowForm({
               type="text"
               value={subFlow.title}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="Story title (optional, AI will suggest)"
             />
           </div>
@@ -80,7 +80,7 @@ export function SubFlowForm({
               <select
                 value={subFlow.sprintId}
                 onChange={(e) => onSprintChange(e.target.value)}
-                className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
               >
                 {subFlow.loadingSprints ? (
                   <option value="">Loading sprints...</option>
@@ -115,7 +115,7 @@ export function SubFlowForm({
             type="text"
             value={subFlow.existingKey}
             onChange={(e) => onExistingKeyChange(e.target.value.toUpperCase())}
-            className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+            className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
             placeholder="VPL-123"
           />
           <p className="mt-1.5 text-label text-text-tertiary">
@@ -126,7 +126,7 @@ export function SubFlowForm({
 
       {/* Inline error */}
       {subFlow.error && (
-        <p className="mb-4 rounded-md bg-red-500/[0.08] px-3 py-2 text-xs text-red-400/80">
+        <p className="mb-4 rounded-md bg-red-500/[0.08] px-3 py-2 text-body-sm text-red-400/80">
           {subFlow.error}
         </p>
       )}
@@ -137,7 +137,7 @@ export function SubFlowForm({
           type="button"
           onClick={onCancel}
           disabled={subFlow.loading}
-          className="px-3 py-1.5 text-sm text-text-tertiary hover:text-text-secondary disabled:opacity-40 transition-colors duration-150 cursor-pointer"
+          className="px-3 py-1.5 text-body-lg text-text-tertiary hover:text-text-secondary disabled:opacity-40 transition-colors duration-150 cursor-pointer"
         >
           Cancel
         </button>
@@ -145,7 +145,7 @@ export function SubFlowForm({
           type="button"
           onClick={onConfirm}
           disabled={subFlow.loading}
-          className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-4 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-brand-500)] disabled:opacity-50 transition-colors duration-150 cursor-pointer"
+          className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-4 py-1.5 text-body-lg font-medium text-white hover:bg-[var(--color-brand-500)] disabled:opacity-50 transition-colors duration-150 cursor-pointer"
         >
           {subFlow.loading ? (
             <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-border-strong border-t-white/80 animate-spin" />

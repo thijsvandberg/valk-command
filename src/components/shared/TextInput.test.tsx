@@ -32,7 +32,7 @@ describe("TextInput", () => {
   it("applies sm size classes", () => {
     render(<TextInput inputSize="sm" placeholder="Small" />);
     const input = screen.getByPlaceholderText("Small");
-    expect(input.className).toContain("text-xs");
+    expect(input.className).toContain("text-body-sm");
   });
 
   it("merges additional className", () => {

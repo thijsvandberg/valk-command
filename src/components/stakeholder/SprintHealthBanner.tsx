@@ -128,7 +128,7 @@ export function SprintHealthBanner({
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border ${s.border} ${s.bg} px-2.5 py-1`}>
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`} />
-        <span className={`text-xs ${s.text}`}>{message}</span>
+        <span className={`text-body-sm ${s.text}`}>{message}</span>
       </span>
     );
   }
@@ -136,7 +136,7 @@ export function SprintHealthBanner({
   return (
     <div className={`flex items-center gap-2.5 rounded-lg border ${s.border} ${s.bg} px-3.5 py-2.5`}>
       <span className={`mt-px h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`} />
-      <p className={`text-xs ${s.text}`}>{message}</p>
+      <p className={`text-body-sm ${s.text}`}>{message}</p>
     </div>
   );
 }

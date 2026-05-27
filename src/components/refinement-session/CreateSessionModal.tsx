@@ -50,10 +50,10 @@ function CreateSessionForm({
 
   return (
     <div className="w-full max-w-sm rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]">
-      <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+      <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
         New refinement session
       </h3>
-      <p className="mt-1.5 text-xs leading-relaxed text-text-tertiary">
+      <p className="mt-1.5 text-body-sm leading-relaxed text-text-tertiary">
         Give this session a name to keep things organized.
       </p>
 
@@ -69,7 +69,7 @@ function CreateSessionForm({
           }
         }}
         placeholder="Session name"
-        className="mt-4 w-full rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)] focus:ring-1 focus:ring-[var(--color-brand-500)]/30"
+        className="mt-4 w-full rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)] focus:ring-1 focus:ring-[var(--color-brand-500)]/30"
         style={{ transition: "border-color 0.15s ease, box-shadow 0.15s ease" }}
         data-testid="create-session-name-input"
       />

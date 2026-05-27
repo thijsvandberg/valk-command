@@ -20,17 +20,17 @@ function renderSimpleMarkdown(text: string): React.ReactNode[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.startsWith("## ")) {
-      elements.push(<h3 key={`h-${i}`} className="mt-4 mb-1 font-[var(--font-display)] text-sm font-semibold text-text-primary">{line.slice(3)}</h3>);
+      elements.push(<h3 key={`h-${i}`} className="mt-4 mb-1 font-[var(--font-display)] text-body-lg font-semibold text-text-primary">{line.slice(3)}</h3>);
     } else if (line.startsWith("### ")) {
-      elements.push(<h4 key={`h4-${i}`} className="mt-3 mb-1 text-xs font-semibold text-text-secondary">{line.slice(4)}</h4>);
+      elements.push(<h4 key={`h4-${i}`} className="mt-3 mb-1 text-body-sm font-semibold text-text-secondary">{line.slice(4)}</h4>);
     } else if (line.startsWith("- ")) {
-      elements.push(<li key={`li-${i}`} className="ml-4 list-disc text-xs text-text-secondary">{line.slice(2)}</li>);
+      elements.push(<li key={`li-${i}`} className="ml-4 list-disc text-body-sm text-text-secondary">{line.slice(2)}</li>);
     } else if (/^\d+\. /.test(line)) {
-      elements.push(<li key={`ol-${i}`} className="ml-4 list-decimal text-xs text-text-secondary">{line.replace(/^\d+\.\s*/, "")}</li>);
+      elements.push(<li key={`ol-${i}`} className="ml-4 list-decimal text-body-sm text-text-secondary">{line.replace(/^\d+\.\s*/, "")}</li>);
     } else if (line.trim() === "") {
       elements.push(<div key={`br-${i}`} className="h-1.5" />);
     } else {
-      elements.push(<p key={`p-${i}`} className="text-xs leading-relaxed text-text-secondary">{line}</p>);
+      elements.push(<p key={`p-${i}`} className="text-body-sm leading-relaxed text-text-secondary">{line}</p>);
     }
   }
   return elements;
@@ -115,7 +115,7 @@ export function TicketPreviewPanel({
         <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
           <div className="flex items-center gap-2.5">
             {data && <IssueTypeIcon type={data.type} />}
-            <span className="font-mono text-sm font-medium text-text-secondary">
+            <span className="font-mono text-body-lg font-medium text-text-secondary">
               {ticketKey}
             </span>
           </div>
@@ -154,7 +154,7 @@ export function TicketPreviewPanel({
 
           {data && (
             <>
-              <h2 className="font-[var(--font-display)] text-lg font-semibold leading-snug text-text-primary">
+              <h2 className="font-[var(--font-display)] text-heading font-semibold leading-snug text-text-primary">
                 {data.title}
               </h2>
 
@@ -162,7 +162,7 @@ export function TicketPreviewPanel({
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <StatusBadge status={data.jiraStatus} />
                 {data.storyPoints !== undefined && data.storyPoints !== null && (
-                  <span className="inline-flex items-center rounded-md bg-overlay-default px-2 py-0.5 text-xs font-medium text-text-secondary">
+                  <span className="inline-flex items-center rounded-md bg-overlay-default px-2 py-0.5 text-body-sm font-medium text-text-secondary">
                     {data.storyPoints} pts
                   </span>
                 )}
@@ -172,7 +172,7 @@ export function TicketPreviewPanel({
               {data.assignee && (
                 <div className="mt-4 flex items-center gap-2.5">
                   <Avatar assignee={data.assignee} />
-                  <span className="text-sm text-text-secondary">
+                  <span className="text-body-lg text-text-secondary">
                     {data.assignee.name}
                   </span>
                 </div>
@@ -180,14 +180,14 @@ export function TicketPreviewPanel({
 
               {/* Description */}
               <div className="my-5 h-px bg-overlay-default" />
-              <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
+              <h3 className="text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
               <div className="mt-2">
                 {data.description ? (
                   <div className="max-h-[50vh] overflow-y-auto">
                     {renderSimpleMarkdown(data.description)}
                   </div>
                 ) : (
-                  <p className="text-xs text-text-muted">No description</p>
+                  <p className="text-body-sm text-text-muted">No description</p>
                 )}
               </div>
 
@@ -195,13 +195,13 @@ export function TicketPreviewPanel({
               {data.subtasks && data.subtasks.length > 0 && (
                 <>
                   <div className="my-5 h-px bg-overlay-default" />
-                  <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+                  <h3 className="text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
                     Subtasks
                     <span className="ml-1.5 text-text-muted">({data.subtasks.length})</span>
                   </h3>
                   <div className="mt-2 space-y-1">
                     {data.subtasks.map((sub) => (
-                      <div key={sub.key} className="flex items-center gap-2 text-xs">
+                      <div key={sub.key} className="flex items-center gap-2 text-body-sm">
                         <StatusBadge status={sub.jiraStatus} />
                         <span className="truncate text-text-secondary">{sub.title}</span>
                       </div>
@@ -214,7 +214,7 @@ export function TicketPreviewPanel({
               <div className="my-5 h-px bg-overlay-default" />
               <Link
                 href={`/tickets/${ticketKey}`}
-                className="flex items-center gap-2 text-xs text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex items-center gap-2 text-body-sm text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                 style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
               >
                 <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />

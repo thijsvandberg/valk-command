@@ -88,7 +88,7 @@ export default function PeoplePage() {
 
   return (
     <>
-      <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
         Team Members
       </h2>
 
@@ -99,7 +99,7 @@ export default function PeoplePage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search people..."
-          className="flex-1 bg-transparent text-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
+          className="flex-1 bg-transparent text-body-lg text-text-secondary placeholder:text-text-muted focus:outline-none"
         />
       </div>
 
@@ -107,7 +107,7 @@ export default function PeoplePage() {
         <button
           type="button"
           onClick={() => setTeamFilter(null)}
-          className={`rounded-md px-2.5 py-1 text-xs font-semibold cursor-pointer active:opacity-60 ${
+          className={`rounded-md px-2.5 py-1 text-body-sm font-semibold cursor-pointer active:opacity-60 ${
             teamFilter === null
               ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
               : "text-text-muted hover:text-text-tertiary"
@@ -121,7 +121,7 @@ export default function PeoplePage() {
             key={team}
             type="button"
             onClick={() => setTeamFilter(teamFilter === team ? null : team)}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold cursor-pointer active:opacity-60 ${
+            className={`rounded-md px-2.5 py-1 text-body-sm font-semibold cursor-pointer active:opacity-60 ${
               teamFilter === team
                 ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
                 : "text-text-muted hover:text-text-tertiary"
@@ -134,10 +134,10 @@ export default function PeoplePage() {
       </div>
 
       {sorted.length === 0 && !data && (
-        <p className="py-6 text-center text-sm text-text-muted">Loading...</p>
+        <p className="py-6 text-center text-body-lg text-text-muted">Loading...</p>
       )}
       {sorted.length === 0 && data && (
-        <p className="py-6 text-center text-sm text-text-muted">No people found</p>
+        <p className="py-6 text-center text-body-lg text-text-muted">No people found</p>
       )}
 
       {sorted.length > 0 && (
@@ -153,7 +153,7 @@ export default function PeoplePage() {
               <div key={user.displayName} className="flex items-center gap-3 px-4 py-3">
                 <Avatar assignee={assignee} size={28} />
 
-                <span className="flex-1 min-w-0 truncate text-sm font-medium text-text-secondary">
+                <span className="flex-1 min-w-0 truncate text-body-lg font-medium text-text-secondary">
                   {user.displayName}
                 </span>
 

@@ -81,7 +81,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               <Scissors size={15} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-text-primary">Split story</h2>
+              <h2 className="text-body-lg font-semibold text-text-primary">Split story</h2>
               <p className="text-label text-text-tertiary mt-0.5">Select or create the target story</p>
             </div>
           </div>
@@ -100,7 +100,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
           <button
             type="button"
             onClick={() => setMode("create")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
               mode === "create"
                 ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
                 : "text-text-tertiary hover:text-text-secondary"
@@ -112,7 +112,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
           <button
             type="button"
             onClick={() => setMode("existing")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium cursor-pointer transition-colors duration-150 ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
               mode === "existing"
                 ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
                 : "text-text-tertiary hover:text-text-secondary"
@@ -134,7 +134,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 type="text"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+                className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
                 placeholder="Story title..."
               />
             </div>
@@ -147,7 +147,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                   <select
                     value={selectedIssueType}
                     onChange={(e) => setSelectedIssueType(e.target.value)}
-                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
                   >
                     <option value="story">Story</option>
                     <option value="task">Task</option>
@@ -165,7 +165,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                   <select
                     value={selectedSprintId}
                     onChange={(e) => setSelectedSprintId(e.target.value)}
-                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-sm text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                    className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
                   >
                     {sprints.length === 0 && (
                       <option value="">No sprints configured</option>
@@ -196,7 +196,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               type="text"
               value={existingKey}
               onChange={(e) => setExistingKey(e.target.value.toUpperCase())}
-              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-sm text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="VPL-123"
             />
             <p className="mt-1.5 text-label text-text-tertiary">
@@ -206,7 +206,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
         )}
 
         {error && (
-          <p className="mb-4 rounded-md bg-red-500/[0.08] px-3 py-2 text-xs text-red-400/80">
+          <p className="mb-4 rounded-md bg-red-500/[0.08] px-3 py-2 text-body-sm text-red-400/80">
             {error}
           </p>
         )}

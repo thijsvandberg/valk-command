@@ -37,10 +37,10 @@ export function ConfirmDialog({
   return (
     <Modal open={open} onClose={onClose}>
       <div className="w-full max-w-sm rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]">
-        <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">
+        <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
           {title}
         </h3>
-        <p className="mt-2 text-xs leading-[1.7] text-text-secondary">{description}</p>
+        <p className="mt-2 text-body-sm leading-[1.7] text-text-secondary">{description}</p>
         {extra && <div className="mt-3">{extra}</div>}
         <div className="mt-5 flex items-center justify-end gap-2">
           {extraActions}

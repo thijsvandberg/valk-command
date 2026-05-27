@@ -90,7 +90,7 @@ function SectionHeader({
   }[color];
 
   return (
-    <h3 className={`mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] ${styles.heading}`}>
+    <h3 className={`mb-4 flex items-center gap-2 text-body-sm font-semibold uppercase tracking-[0.1em] ${styles.heading}`}>
       <span className={`h-px flex-1 ${styles.line}`} />
       {label}
       <span className={`rounded-full px-1.5 py-0.5 text-caption tabular-nums ${styles.badge}`}>
@@ -157,17 +157,17 @@ function BvSummarySection({ tickets, previousTickets }: { tickets: StakeholderTi
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-4">
-        <span className="text-sm text-text-secondary">Business value</span>
+        <span className="text-body-lg text-text-secondary">Business value</span>
         <div className="flex items-baseline gap-2">
           {avg !== null && (
-            <span className="text-xs text-text-muted tabular-nums">avg {avg.toFixed(1)}</span>
+            <span className="text-body-sm text-text-muted tabular-nums">avg {avg.toFixed(1)}</span>
           )}
           {delta !== null && (
-            <span className={`text-xs tabular-nums ${delta > 0 ? "text-emerald-400/70" : delta < 0 ? "text-amber-400/70" : "text-text-muted"}`}>
+            <span className={`text-body-sm tabular-nums ${delta > 0 ? "text-emerald-400/70" : delta < 0 ? "text-amber-400/70" : "text-text-muted"}`}>
               {delta > 0 ? "+" : ""}{delta} vs prev
             </span>
           )}
-          <span className="text-sm font-medium tabular-nums text-text-secondary">{total}</span>
+          <span className="text-body-lg font-medium tabular-nums text-text-secondary">{total}</span>
         </div>
       </div>
       {bandTotal > 0 && (
@@ -254,7 +254,7 @@ function TopValueItems({ tickets }: { tickets: StakeholderTicket[] }) {
         {topItems.map((t, i) => {
           const bvColor = getBvColor(t.businessValue!);
           return (
-            <li key={i} className="flex items-center gap-2 text-sm">
+            <li key={i} className="flex items-center gap-2 text-body-lg">
               <span
                 className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-[10px] font-semibold tabular-nums shrink-0"
                 style={{ color: bvColor.text, backgroundColor: bvColor.bg }}
@@ -367,11 +367,11 @@ export function SprintOverviewCard({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <SprintStateBadge state={sprint.state} />
         {dateLabel && (
-          <span className="text-sm text-text-tertiary">{dateLabel}</span>
+          <span className="text-body-lg text-text-tertiary">{dateLabel}</span>
         )}
         {isActive && sprint.workingDaysRemaining !== null && (
           <span
-            className={`text-sm font-medium ${
+            className={`text-body-lg font-medium ${
               sprint.workingDaysRemaining <= 2 ? "text-amber-400/80" : "text-text-tertiary"
             }`}
           >
@@ -382,7 +382,7 @@ export function SprintOverviewCard({
         )}
         {showGoal && sprint.goal && (
           <div className="w-full border-l-2 border-[var(--color-brand-400)]/25 pl-3 py-1">
-            <p className="text-sm italic text-text-tertiary">{sprint.goal}</p>
+            <p className="text-body-lg italic text-text-tertiary">{sprint.goal}</p>
           </div>
         )}
       </div>
@@ -412,7 +412,7 @@ export function SprintOverviewCard({
             <BvSummarySection tickets={allTickets} previousTickets={previousTickets} />
           )}
           {itemParts.length > 0 && (
-            <p className="text-xs text-text-tertiary tabular-nums">
+            <p className="text-body-sm text-text-tertiary tabular-nums">
               {itemParts.join(" · ")}
             </p>
           )}

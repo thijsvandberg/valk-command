@@ -130,7 +130,7 @@ export const SprintAnalytics = memo(function SprintAnalytics({ tickets, onClose,
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex h-full w-full items-center gap-2 px-5 pr-10 text-xs text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle"
+        className="flex h-full w-full items-center gap-2 px-5 pr-10 text-body-sm text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle"
       >
         <ChevronRight
           className={`h-3 w-3 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}

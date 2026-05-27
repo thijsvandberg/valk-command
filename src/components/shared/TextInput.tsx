@@ -10,8 +10,8 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
   function TextInput({ inputSize = "md", icon, className, ...rest }, ref) {
     const sizeClass =
       inputSize === "sm"
-        ? "h-7 px-2.5 py-1 text-xs"
-        : "px-3 py-1.5 text-sm";
+        ? "h-7 px-2.5 py-1 text-body-sm"
+        : "px-3 py-1.5 text-body-lg";
 
     return (
       <div className="relative">

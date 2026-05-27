@@ -13,7 +13,7 @@ function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
   const color = getScoreColor(dim.score);
   return (
     <div className="flex items-center justify-between py-1.5">
-      <span className="text-xs text-text-secondary">{dim.label}</span>
+      <span className="text-body-sm text-text-secondary">{dim.label}</span>
       <div className="flex items-center gap-2">
         <div className="h-1 w-16 rounded-full bg-overlay-default overflow-hidden">
           <div
@@ -21,7 +21,7 @@ function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
             style={{ width: `${dim.score}%`, backgroundColor: color, opacity: 0.6 }}
           />
         </div>
-        <span className="w-7 text-right text-xs font-medium tabular-nums" style={{ color }}>
+        <span className="w-7 text-right text-body-sm font-medium tabular-nums" style={{ color }}>
           {dim.score}
         </span>
       </div>
@@ -180,7 +180,7 @@ export function ReviewPopover({
       <div className="relative p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-medium text-text-tertiary">Quality Review</span>
+          <span className="text-body-sm font-medium text-text-tertiary">Quality Review</span>
           <Button
             variant="ghost"
             size="sm"
@@ -194,13 +194,13 @@ export function ReviewPopover({
           <>
             {/* Overall score */}
             <div className="flex items-center justify-between mb-3 rounded-md bg-overlay-subtle px-3 py-2">
-              <span className="text-xs text-text-secondary">Overall</span>
+              <span className="text-body-sm text-text-secondary">Overall</span>
               <div className="flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"
                   style={{ backgroundColor: color }}
                 />
-                <span className="text-base font-semibold tabular-nums" style={{ color }}>
+                <span className="text-heading-sm font-semibold tabular-nums" style={{ color }}>
                   {latestReview.overallScore}
                 </span>
                 <span className="text-caption text-text-muted">/100</span>
@@ -259,7 +259,7 @@ export function ReviewPopover({
         ) : (
           /* Empty state */
           <div className="flex flex-col items-center py-4">
-            <p className="mb-3 text-xs text-text-tertiary">No review yet</p>
+            <p className="mb-3 text-body-sm text-text-tertiary">No review yet</p>
             <Button
               variant="secondary"
               size="md"

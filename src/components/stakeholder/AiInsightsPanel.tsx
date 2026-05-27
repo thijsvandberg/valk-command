@@ -43,7 +43,7 @@ function renderDeepDiveContent(content: string, inDrawer = false) {
 
   const bodyClass = inDrawer
     ? "leading-[1.75] text-text-secondary whitespace-pre-wrap"
-    : "text-sm leading-relaxed text-text-secondary whitespace-pre-wrap max-w-prose";
+    : "text-body-lg leading-relaxed text-text-secondary whitespace-pre-wrap max-w-prose";
 
   function flushBuffer() {
     if (buffer.length === 0) return;
@@ -69,7 +69,7 @@ function renderDeepDiveContent(content: string, inDrawer = false) {
           className={
             inDrawer
               ? `font-semibold text-text-primary ${level === "##" ? "mt-6 mb-2" : "mt-4 mb-1"}`
-              : `font-semibold text-text-primary ${level === "##" ? "text-sm mt-3" : "text-xs mt-2"}`
+              : `font-semibold text-text-primary ${level === "##" ? "text-body-lg mt-3" : "text-body-sm mt-2"}`
           }
           style={inDrawer ? { fontSize: level === "##" ? "1.0625rem" : "1rem" } : undefined}
         >
@@ -128,7 +128,7 @@ export function AiInsightsPanel({
         <div className="flex items-center justify-between gap-2 mb-4">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
+            <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
               AI {label}
             </span>
             {generatedAt && hasResult && (
@@ -149,7 +149,7 @@ export function AiInsightsPanel({
               <button
                 type="button"
                 onClick={onRetry}
-                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-amber-400/70 bg-amber-400/[0.08] border border-amber-400/20 cursor-pointer hover:bg-amber-400/[0.14] hover:text-amber-400/90 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-body-sm text-amber-400/70 bg-amber-400/[0.08] border border-amber-400/20 cursor-pointer hover:bg-amber-400/[0.14] hover:text-amber-400/90 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <RotateCcw size={11} strokeWidth={1.5} />
                 Re-run
@@ -161,7 +161,7 @@ export function AiInsightsPanel({
         {/* Body */}
         {isRunning && (
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2 text-xs text-text-tertiary">
+            <div className="flex items-center gap-2 text-body-sm text-text-tertiary">
               <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
               <span>{live.progressText || "Generating..."}</span>
             </div>
@@ -197,11 +197,11 @@ export function AiInsightsPanel({
 
         {hasFailed && (
           <div className="flex items-center justify-between gap-3 mt-2">
-            <p className="text-xs text-red-400/70">{live.error ?? "Failed to generate"}</p>
+            <p className="text-body-sm text-red-400/70">{live.error ?? "Failed to generate"}</p>
             <button
               type="button"
               onClick={onRetry}
-              className="shrink-0 rounded-md px-2.5 py-1 text-xs text-text-tertiary bg-overlay-subtle cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="shrink-0 rounded-md px-2.5 py-1 text-body-sm text-text-tertiary bg-overlay-subtle cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               Retry
             </button>
@@ -241,7 +241,7 @@ export function AiInsightsPanel({
             disabled={!hasResult || isRunning}
           >
             <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
+            <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
               AI {label}
             </span>
             {generatedAt && hasResult && (
@@ -299,7 +299,7 @@ export function AiInsightsPanel({
             {/* Loading state */}
             {isRunning && (
               <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs text-text-tertiary">
+                <div className="flex items-center gap-2 text-body-sm text-text-tertiary">
                   <RefreshCw size={11} strokeWidth={1.5} className="animate-spin shrink-0" />
                   <span>{live.progressText || "Generating..."}</span>
                 </div>
@@ -314,13 +314,13 @@ export function AiInsightsPanel({
             {/* Brief: narrative + risks */}
             {!isRunning && type === "brief" && displayNarrative && (
               <div className="space-y-3">
-                <p className="text-sm leading-relaxed text-text-secondary max-w-prose">{displayNarrative}</p>
+                <p className="text-body-lg leading-relaxed text-text-secondary max-w-prose">{displayNarrative}</p>
                 {displayRisks.length > 0 && (
                   <div className="space-y-1.5 pt-1">
                     {displayRisks.map((risk, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <AlertTriangle size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-amber-400/60" />
-                        <p className="text-xs text-amber-400/60 max-w-prose">{risk}</p>
+                        <p className="text-body-sm text-amber-400/60 max-w-prose">{risk}</p>
                       </div>
                     ))}
                   </div>
@@ -338,11 +338,11 @@ export function AiInsightsPanel({
             {/* Error state */}
             {hasFailed && (
               <div className="flex items-center justify-between gap-3 mt-2">
-                <p className="text-xs text-red-400/70">{live.error ?? "Failed to generate"}</p>
+                <p className="text-body-sm text-red-400/70">{live.error ?? "Failed to generate"}</p>
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="shrink-0 rounded-md px-2.5 py-1 text-xs text-text-tertiary bg-overlay-subtle cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  className="shrink-0 rounded-md px-2.5 py-1 text-body-sm text-text-tertiary bg-overlay-subtle cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   Retry
                 </button>

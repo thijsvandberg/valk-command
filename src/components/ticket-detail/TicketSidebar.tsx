@@ -29,8 +29,8 @@ import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
-      <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
+      <span className="shrink-0 text-body-sm text-text-tertiary">{label}</span>
+      <div className="min-w-0 text-right text-body-lg text-text-secondary">{children}</div>
     </div>
   );
 }
@@ -46,7 +46,7 @@ function CompactField({ label, children, accent }: { label: string; children: Re
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-caption text-text-muted">{label}</span>
-        <div className="text-sm text-text-secondary">{children}</div>
+        <div className="text-body-lg text-text-secondary">{children}</div>
       </div>
     </div>
   );
@@ -372,7 +372,7 @@ export function TicketSidebar({
                 const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
                 return (
                   <span
-                    className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                    className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
                     style={{ backgroundColor: sc.bg, color: sc.text }}
                   >
                     {ticket.jiraStatus}
@@ -411,7 +411,7 @@ export function TicketSidebar({
                     type="button"
                     onClick={() => sprintModalOpen ? setSprintModalOpen(false) : handleOpenSprintModal()}
                     title={currentSprintId ? `Sprint: ${sprints?.find((s) => String(s.id) === currentSprintId)?.name ?? currentSprintId}` : "No sprint"}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 -mr-2 text-sm text-text-secondary cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 -mr-2 text-body-lg text-text-secondary cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
                     style={{ transition: "background-color 0.15s ease" }}
                   >
                     <span className="truncate">{sprints?.find((s) => String(s.id) === currentSprintId)?.name ?? "None"}</span>
@@ -440,7 +440,7 @@ export function TicketSidebar({
                       title={`Open refinement session: ${s.name}`}
                     >
                       <Layers size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
-                      <span className="min-w-0 truncate max-w-[160px] text-sm">{s.name}</span>
+                      <span className="min-w-0 truncate max-w-[160px] text-body-lg">{s.name}</span>
                       <ArrowUpRight size={11} strokeWidth={2} className="shrink-0 opacity-0 group-hover/ref:opacity-100" style={{ transition: "opacity 0.15s ease" }} />
                     </Link>
                   ))}
@@ -503,7 +503,7 @@ export function TicketSidebar({
                 transition: "background-color 0.15s ease, border-color 0.15s ease",
               }}
             >
-              <span className="text-xs font-medium text-text-tertiary">{showMore ? "Less" : "More details"}</span>
+              <span className="text-body-sm font-medium text-text-tertiary">{showMore ? "Less" : "More details"}</span>
               <ChevronDown
                 size={12}
                 strokeWidth={1.5}
@@ -516,7 +516,7 @@ export function TicketSidebar({
                 {/* Completeness indicator */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-tertiary">Readiness</span>
+                    <span className="text-body-sm text-text-tertiary">Readiness</span>
                     <span className="text-label tabular-nums text-text-tertiary">{completenessCount}/{completenessChecks.length}</span>
                   </div>
                   <div className="mt-2 flex gap-1">
@@ -551,7 +551,7 @@ export function TicketSidebar({
                 <DetailRow label="Readiness">
                   <div className="flex items-center justify-end gap-2">
                     <span
-                      className="text-xs"
+                      className="text-body-sm"
                       style={{ color: readinessCfg?.color ?? "var(--color-text-muted)" }}
                     >
                       {readinessCfg?.label ?? "Ready for Development"}
@@ -589,7 +589,7 @@ export function TicketSidebar({
                           )}
                         </>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                        <span className="inline-flex items-center gap-1 text-body-sm text-text-muted">
                           <Play size={9} strokeWidth={2} className="shrink-0" />
                           Run review
                         </span>
@@ -656,7 +656,7 @@ export function TicketSidebar({
                 placeholder="Quick annotation..."
                 rows={2}
                 onBlur={(e) => handleNotesChange(e.target.value)}
-                className="mt-2 w-full resize-none rounded-lg border border-border-subtle bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                className="mt-2 w-full resize-none rounded-lg border border-border-subtle bg-overlay-subtle px-3 py-2 text-body-lg text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
                 style={{ transition: "border-color 0.15s ease" }}
               />
             )}

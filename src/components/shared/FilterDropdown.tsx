@@ -139,7 +139,7 @@ export function FilterDropdown({
       {/* Options list */}
       <div className="max-h-72 overflow-y-auto overscroll-contain py-1">
         {filteredOptions.length === 0 && (
-          <div className="px-3 py-4 text-center text-xs text-text-muted">
+          <div className="px-3 py-4 text-center text-body-sm text-text-muted">
             No matches
           </div>
         )}

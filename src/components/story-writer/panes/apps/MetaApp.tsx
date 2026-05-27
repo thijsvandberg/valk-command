@@ -18,8 +18,8 @@ import { relativeDate } from "@/lib/date-utils";
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2">
-      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
-      <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
+      <span className="shrink-0 text-body-sm text-text-tertiary">{label}</span>
+      <div className="min-w-0 text-right text-body-lg text-text-secondary">{children}</div>
     </div>
   );
 }
@@ -90,7 +90,7 @@ export function MetaApp() {
 
   if (!ticket) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-text-muted">
+      <div className="flex h-full items-center justify-center text-body-sm text-text-muted">
         Loading...
       </div>
     );
@@ -117,11 +117,11 @@ export function MetaApp() {
         <MetaRow label="Reporter">
           {reporter ? (
             <span className="inline-flex items-center gap-2">
-              <span className="truncate text-sm text-text-secondary">{reporter.name}</span>
+              <span className="truncate text-body-lg text-text-secondary">{reporter.name}</span>
               <Avatar assignee={reporter} size={20} />
             </span>
           ) : (
-            <span className="text-xs text-text-muted">Unknown</span>
+            <span className="text-body-sm text-text-muted">Unknown</span>
           )}
         </MetaRow>
       </MetaSection>
@@ -189,7 +189,7 @@ export function MetaApp() {
         )}
         {priority && (
           <MetaRow label="Priority">
-            <span className="text-xs text-text-secondary">{priority}</span>
+            <span className="text-body-sm text-text-secondary">{priority}</span>
           </MetaRow>
         )}
       </MetaSection>
@@ -202,7 +202,7 @@ export function MetaApp() {
               {localLabels.length > 0 ? (
                 localLabels.map((l) => <Tag key={l}>{l}</Tag>)
               ) : (
-                <span className="text-xs text-text-muted">No labels</span>
+                <span className="text-body-sm text-text-muted">No labels</span>
               )}
             </div>
             <LabelPicker
@@ -219,12 +219,12 @@ export function MetaApp() {
         <MetaSection title="Dates">
           {createdAt && (
             <MetaRow label="Created">
-              <span className="text-xs text-text-tertiary">{relativeDate(createdAt)}</span>
+              <span className="text-body-sm text-text-tertiary">{relativeDate(createdAt)}</span>
             </MetaRow>
           )}
           {updatedAt && (
             <MetaRow label="Updated">
-              <span className="text-xs text-text-tertiary">{relativeDate(updatedAt)}</span>
+              <span className="text-body-sm text-text-tertiary">{relativeDate(updatedAt)}</span>
             </MetaRow>
           )}
         </MetaSection>

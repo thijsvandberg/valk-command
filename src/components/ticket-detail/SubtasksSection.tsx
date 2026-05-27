@@ -635,7 +635,7 @@ export function SubtasksSection({
         onChange={(e) => { setNewTitle(e.target.value); setError(null); }}
         onKeyDown={handleKeyDown}
         placeholder="Create subtask..."
-        className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+        className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
       />
     </div>
   );
@@ -739,7 +739,7 @@ export function SubtasksSection({
       )}
 
       {error && (
-        <p className="mt-2 text-xs text-red-400/80">{error}</p>
+        <p className="mt-2 text-body-sm text-red-400/80">{error}</p>
       )}
 
       {filtered.length > 0 && isDndEnabled ? (
@@ -752,7 +752,7 @@ export function SubtasksSection({
         listContent
       ) : mergedSubtasks.length > 0 ? (
         <>
-          <p className="mt-3 text-sm text-text-muted">No subtasks matching this filter</p>
+          <p className="mt-3 text-body-lg text-text-muted">No subtasks matching this filter</p>
           {listContent}
         </>
       ) : (
@@ -761,13 +761,13 @@ export function SubtasksSection({
 
       {pendingDelete && (
         <div className="mt-2 flex items-center gap-2 rounded-lg bg-overlay-subtle px-3 py-2">
-          <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
+          <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">
             Deleted &ldquo;{pendingDelete.sub.title}&rdquo;
           </span>
           <button
             type="button"
             onClick={handleUndoDelete}
-            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-body-sm font-medium text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             style={{ transition: "background-color 0.15s ease" }}
           >
             <Undo2 size={11} strokeWidth={1.5} />

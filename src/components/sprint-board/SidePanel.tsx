@@ -34,8 +34,8 @@ import { Button } from "@/components/ui/Button";
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
-      <div className="min-w-0 text-right text-sm text-text-secondary">{children}</div>
+      <span className="shrink-0 text-body-sm text-text-tertiary">{label}</span>
+      <div className="min-w-0 text-right text-body-lg text-text-secondary">{children}</div>
     </div>
   );
 }
@@ -236,7 +236,7 @@ export function SidePanel({
         <div className="flex-1 px-5 py-5">
 
           {/* Title */}
-          <h2 className="font-[var(--font-display)] text-lg font-semibold leading-snug text-text-primary">
+          <h2 className="font-[var(--font-display)] text-heading font-semibold leading-snug text-text-primary">
             {ticket.title}
           </h2>
 
@@ -251,8 +251,8 @@ export function SidePanel({
             >
               <AlertCircle className="h-4 w-4 shrink-0 text-[var(--color-status-warning)]" strokeWidth={1.5} />
               <div>
-                <span className="text-xs font-medium text-[var(--color-status-warning)]">Conflict</span>
-                <span className="ml-1.5 text-xs text-text-tertiary">Open full view to review diff</span>
+                <span className="text-body-sm font-medium text-[var(--color-status-warning)]">Conflict</span>
+                <span className="ml-1.5 text-body-sm text-text-tertiary">Open full view to review diff</span>
               </div>
               <ChevronRight className="ml-auto h-2.5 w-2.5 text-text-muted" strokeWidth={1.5} />
             </Link>
@@ -262,20 +262,20 @@ export function SidePanel({
           <div className="mt-3 flex flex-wrap gap-1.5">
             {epicColor && (
               <span
-                className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
                 style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
               >
                 {ticket.epic}
               </span>
             )}
             {ticket.storyPoints !== null && (
-              <span className="inline-flex items-center rounded-md bg-overlay-default px-2 py-0.5 text-xs font-medium text-text-secondary">
+              <span className="inline-flex items-center rounded-md bg-overlay-default px-2 py-0.5 text-body-sm font-medium text-text-secondary">
                 {ticket.storyPoints} pts
               </span>
             )}
             {bvColor && (
               <span
-                className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
                 style={{ backgroundColor: bvColor.bg, color: bvColor.text }}
               >
                 BV {ticket.businessValue}
@@ -345,19 +345,19 @@ export function SidePanel({
           {/* Description */}
           <div className="my-5 h-px bg-overlay-default" />
           <div>
-            <h3 className="text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
+            <h3 className="text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
             {description ? (
-              <div className="description-content mt-2 max-h-64 overflow-y-auto text-sm">
+              <div className="description-content mt-2 max-h-64 overflow-y-auto text-body-lg">
                 {renderMarkdown(description)}
               </div>
             ) : (
-              <p className="mt-2 text-xs text-text-muted">No description</p>
+              <p className="mt-2 text-body-sm text-text-muted">No description</p>
             )}
           </div>
 
           {/* PO Metadata section */}
           <div className="my-5 h-px bg-overlay-default" />
-          <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.06em] text-text-secondary">
+          <h3 className="flex items-center gap-2 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
             PO Metadata
             {ticket.notes.trim() && (
               <span
@@ -371,7 +371,7 @@ export function SidePanel({
             {/* Readiness completeness bar */}
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-text-tertiary">Readiness</span>
+                <span className="text-body-sm text-text-tertiary">Readiness</span>
                 <span className="text-label tabular-nums text-text-tertiary">{completenessCount}/{completenessChecks.length}</span>
               </div>
               <div className="mt-2 flex gap-1">
@@ -429,7 +429,7 @@ export function SidePanel({
                   {ticket.qualityScore !== null ? (
                     <QualityBadge score={ticket.qualityScore} />
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                    <span className="inline-flex items-center gap-1 text-body-sm text-text-muted">
                       <Play size={9} strokeWidth={2} className="shrink-0" />
                       Run review
                     </span>
@@ -461,7 +461,7 @@ export function SidePanel({
                 transition: "background-color 0.15s ease, border-color 0.15s ease",
               }}
             >
-              <span className="text-xs font-medium text-text-tertiary">{showMore ? "Less" : "Notes & actions"}</span>
+              <span className="text-body-sm font-medium text-text-tertiary">{showMore ? "Less" : "Notes & actions"}</span>
               <ChevronDown
                 size={12}
                 strokeWidth={1.5}
@@ -474,13 +474,13 @@ export function SidePanel({
               <div className="space-y-3">
                 {/* Notes */}
                 <div>
-                  <label className="mb-1.5 block text-xs text-text-tertiary">Notes</label>
+                  <label className="mb-1.5 block text-body-sm text-text-tertiary">Notes</label>
                   <textarea
                     defaultValue={ticket.notes}
                     placeholder="Add PO notes..."
                     rows={3}
                     onBlur={(e) => onNotesChange(e.target.value)}
-                    className="w-full rounded-md border border-border-default bg-overlay-subtle px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none resize-none"
+                    className="w-full rounded-md border border-border-default bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none resize-none"
                   />
                 </div>
 
@@ -488,7 +488,7 @@ export function SidePanel({
                 {hasVersions && (
                   <Link
                     href={`/tickets/${ticket.key}`}
-                    className="flex items-center gap-2 text-xs text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                    className="flex items-center gap-2 text-body-sm text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                     style={{ transition: "color 0.15s ease, transform 0.1s ease" }}
                   >
                     <History className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -505,13 +505,13 @@ export function SidePanel({
                     onClick={() => {
                       onShowToast(`Review story queued for ${ticket.key}`);
                     }}
-                    className="justify-start px-3 text-sm text-text-secondary hover:text-text-primary"
+                    className="justify-start px-3 text-body-lg text-text-secondary hover:text-text-primary"
                   >
                     Review Story
                   </Button>
                   <a
                     href={`/chat?ticket=${ticket.key}`}
-                    className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                    className="flex items-center gap-2.5 rounded-md px-3 py-2 text-body-lg text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                     style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
                   >
                     <MessageSquare className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />

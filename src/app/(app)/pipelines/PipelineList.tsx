@@ -50,7 +50,7 @@ export function RunningSection({ runs }: { runs: PipelineRunPayload[] }) {
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <div className={`h-2 w-2 rounded-full ${runningCount > 0 ? "bg-[var(--color-brand-400)] animate-pulse" : "bg-amber-400"}`} />
-        <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+        <span className="text-body-sm font-medium text-text-secondary uppercase tracking-wider">
           Active ({label})
         </span>
       </div>

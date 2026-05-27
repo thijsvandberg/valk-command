@@ -16,7 +16,7 @@ function StoryRow({ story }: { story: InvestigationRelatedStory }) {
       <div className="flex items-center gap-2">
         <Link
           href={`/tickets/${story.key}`}
-          className="text-xs font-semibold text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] hover:underline transition-colors duration-150 shrink-0"
+          className="text-body-sm font-semibold text-[var(--color-brand-400)] cursor-pointer hover:text-[var(--color-brand-300)] hover:underline transition-colors duration-150 shrink-0"
         >
           {story.key}
         </Link>
@@ -30,7 +30,7 @@ function StoryRow({ story }: { story: InvestigationRelatedStory }) {
           <ExternalLink size={11} strokeWidth={1.5} />
         </a>
         {exists && status && <StatusBadge status={status} />}
-        <span className="text-xs text-text-secondary">{story.summary}</span>
+        <span className="text-body-sm text-text-secondary">{story.summary}</span>
       </div>
       {story.relevance && (
         <p className="text-label text-text-muted mt-0.5">

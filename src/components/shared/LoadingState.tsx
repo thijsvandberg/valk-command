@@ -23,10 +23,10 @@ export function LoadingState({
             strokeWidth={2}
             className="animate-spin text-text-muted"
           />
-          <span className="text-sm text-text-tertiary">{label}</span>
+          <span className="text-body-lg text-text-tertiary">{label}</span>
         </div>
       ) : (
-        <span className="text-sm text-text-tertiary">{label}</span>
+        <span className="text-body-lg text-text-tertiary">{label}</span>
       )}
     </div>
   );

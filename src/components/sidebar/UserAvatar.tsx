@@ -28,7 +28,7 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="User menu"
-        className={`flex items-center ${collapsed ? "justify-center" : "gap-2.5"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-xs cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`flex items-center ${collapsed ? "justify-center" : "gap-2.5"} rounded-lg ${collapsed ? "px-0 py-1.5" : "px-2 py-1.5"} text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           open
             ? "bg-overlay-default text-text-secondary"
             : "text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary active:bg-overlay-default"

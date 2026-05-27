@@ -16,6 +16,7 @@ import {
   NotebookPen,
   SendHorizontal,
   LogOut,
+  Layers,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,6 +28,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SplitStoryPicker } from "./SplitStoryPicker";
+import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { ApiError, apiFetch, jira, tickets } from "@/lib/api-client";
@@ -93,6 +95,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRefinePrompt, setShowRefinePrompt] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showAddToRefinement, setShowAddToRefinement] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Local readiness state for optimistic updates
@@ -584,7 +587,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 <button
                   onClick={handleSaveDraft}
                   disabled={saving || showSaved}
-                  className={`flex h-7 items-center gap-1.5 rounded-md border px-3 text-xs font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
+                  className={`flex h-7 items-center gap-1.5 rounded-md border px-3 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
                     showSaved
                       ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
                       : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-hover-list-item hover:text-text-secondary"
@@ -648,7 +651,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       <button
                         type="button"
                         onClick={() => { handleSplitButtonClick(); setShowMoreMenu(false); }}
-                        className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors duration-150 ${
+                        className={`flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150 ${
                           splitModeVisible && targetTicketKey
                             ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
                             : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
@@ -668,7 +671,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                             type="button"
                             onClick={() => { setShowMoreMenu(false); handlePushAndClose(); }}
                             disabled={pushing || isDraftDirty}
-                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <SendHorizontal size={13} strokeWidth={1.5} className="shrink-0" />
                             <span>Push &amp; Close</span>
@@ -677,7 +680,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                           <button
                             type="button"
                             onClick={() => { setShowMoreMenu(false); handleCloseAfterPush(); }}
-                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                           >
                             <LogOut size={13} strokeWidth={1.5} className="shrink-0" />
                             <span>Close</span>
@@ -687,7 +690,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                             type="button"
                             onClick={() => { setShowMoreMenu(false); handlePush(); }}
                             disabled={pushing || isDraftDirty}
-                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
                             <span>Push to Jira</span>
@@ -698,7 +701,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                           type="button"
                           onClick={() => { handlePullFromJira().finally(() => setShowMoreMenu(false)); }}
                           disabled={pulling}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {pulling ? <Loader2 size={13} className="animate-spin shrink-0" /> : <CloudDownload size={13} strokeWidth={1.5} className="shrink-0" />}
                           <span>{targetTicketKey && splitModeVisible ? "Pull both from Jira" : "Pull from Jira"}</span>
@@ -717,7 +720,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setShowMoreMenu(false)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                         >
                           <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>Open in Jira</span>
@@ -728,7 +731,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                     <Link
                       href={`/tickets/${ticketKey}`}
                       onClick={() => setShowMoreMenu(false)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                     >
                       <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                       <span>View in Bridge</span>
@@ -744,10 +747,24 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                             setShowMoreMenu(false);
                             await handleFlagChange(next);
                           }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                         >
                           <Flag size={13} strokeWidth={1.5} className={`shrink-0 ${ticketData.flagged ? "text-red-400" : ""}`} />
                           <span>{ticketData.flagged ? "Remove flag" : "Flag issue"}</span>
+                        </button>
+                      </>
+                    )}
+
+                    {!isStillDraft && (
+                      <>
+                        <div className="mx-2 my-1 h-px bg-overlay-default" />
+                        <button
+                          type="button"
+                          onClick={() => { setShowAddToRefinement(true); setShowMoreMenu(false); }}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                        >
+                          <Layers size={13} strokeWidth={1.5} className="shrink-0" />
+                          <span>Add to refinement</span>
                         </button>
                       </>
                     )}
@@ -763,7 +780,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setShowMoreMenu(false)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                         >
                           <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>Open in Jira</span>
@@ -771,7 +788,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         <Link
                           href={`/tickets/${targetTicketKey}`}
                           onClick={() => setShowMoreMenu(false)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                         >
                           <ArrowUpRight size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>View in Bridge</span>
@@ -779,7 +796,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         <Link
                           href={`/tickets/${targetTicketKey}/write`}
                           onClick={() => setShowMoreMenu(false)}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                         >
                           <NotebookPen size={13} strokeWidth={1.5} className="shrink-0" />
                           <span>Open in Story Writer</span>
@@ -795,7 +812,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       <button
                         type="button"
                         onClick={() => { handleDelete(true); setShowMoreMenu(false); }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-tertiary cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
                       >
                         <Trash2 size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Discard draft</span>
@@ -806,7 +823,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       <button
                         type="button"
                         onClick={() => { setShowDeleteConfirm(true); setShowMoreMenu(false); }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-tertiary cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
                       >
                         <Trash2 size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Delete session</span>
@@ -874,19 +891,19 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
 
           {/* Push error */}
           {pushError && (
-            <div className="border-b border-red-500/20 bg-red-500/[0.04] px-4 py-2 text-xs text-red-400">
+            <div className="border-b border-red-500/20 bg-red-500/[0.04] px-4 py-2 text-body-sm text-red-400">
               {pushError}
             </div>
           )}
 
           {/* Draft sync error */}
           {draftSync.syncStatus === "error" && (
-            <div className="flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-xs text-amber-400">
+            <div className="flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-body-sm text-amber-400">
               <span className="flex-1">Failed to create in Jira: {draftSync.error}. Your draft is saved locally.</span>
               <button
                 type="button"
                 onClick={draftSync.retry}
-                className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
+                className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-body-sm font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
               >
                 Retry
               </button>
@@ -931,6 +948,13 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
               await handleReadinessChange("ready_to_refine");
               window.history.back();
             }}
+          />
+
+          {/* Add to refinement modal */}
+          <AddToRefinementModal
+            open={showAddToRefinement}
+            onClose={() => setShowAddToRefinement(false)}
+            ticketKeys={[ticketKey]}
           />
 
           {/* Split story picker modal */}
