@@ -35,7 +35,6 @@ const EXPECTED_ROUTES = [
   { path: "/refinement/[sessionId]", file: "src/app/(app)/refinement/[sessionId]/page.tsx", name: "Refinement Session Detail" },
   { path: "/refinement/[sessionId]/session", file: "src/app/(app)/refinement/[sessionId]/session/page.tsx", name: "Refinement Session" },
   { path: "/refinement/[sessionId]/session/[ticketKey]", file: "src/app/(app)/refinement/[sessionId]/session/[ticketKey]/page.tsx", name: "Refinement Session Ticket" },
-  { path: "/dev/icons", file: "src/app/(app)/dev/icons/page.tsx", name: "Dev Icons Showcase" },
 ];
 
 // API route manifest: ensures search API route files exist
