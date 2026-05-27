@@ -8,14 +8,8 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { tickets, ApiError } from "@/lib/api-client";
+import { getScoreColor, verdictLabel as getVerdictLabel } from "@/lib/status-colors";
 import type { StoredReview } from "@/types/ticket";
-
-function getScoreColor(score: number): string {
-  if (score < 60) return "#e5534b";
-  if (score < 75) return "#ea8744";
-  if (score < 90) return "#eab308";
-  return "#4aaa60";
-}
 
 function statusIcon(score: number): string {
   if (score >= 100) return "\u2713";
@@ -97,7 +91,7 @@ function VersionFreshnessLabel({
 
   if (isCurrent) {
     return (
-      <span className="inline-flex items-center gap-1 text-caption text-[#4aaa60]">
+      <span className="inline-flex items-center gap-1 text-caption" style={{ color: "var(--color-status-success)" }}>
         <CheckCircle2 size={10} strokeWidth={1.5} />
         Based on v{review.storyVersionNumber} (current)
       </span>
@@ -105,19 +99,13 @@ function VersionFreshnessLabel({
   }
 
   return (
-    <span className="inline-flex items-center gap-1 text-caption text-[#ea8744]">
+    <span className="inline-flex items-center gap-1 text-caption" style={{ color: "var(--color-status-warning)" }}>
       <AlertTriangle size={10} strokeWidth={1.5} />
       Based on v{review.storyVersionNumber} (outdated)
     </span>
   );
 }
 
-function verdictLabel(score: number): { text: string; color: string } {
-  if (score >= 90) return { text: "Ready for sprint", color: "#4aaa60" };
-  if (score >= 75) return { text: "Minor issues", color: "#eab308" };
-  if (score >= 60) return { text: "Needs work", color: "#ea8744" };
-  return { text: "Not ready", color: "#e5534b" };
-}
 
 function ReviewDetail({
   review,
@@ -126,7 +114,7 @@ function ReviewDetail({
   review: StoredReview;
   currentVersionHash: string | null;
 }) {
-  const verdict = verdictLabel(review.overallScore);
+  const verdict = getVerdictLabel(review.overallScore);
   const failedDimensions = review.dimensions.filter((d) => d.score < 100);
 
   return (
@@ -373,7 +361,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
             </Button>
           </div>
           {reviewError && (
-            <p className="mt-2 text-xs text-[#e5534b]/70">{reviewError}</p>
+            <p className="mt-2 text-xs text-[var(--color-status-error)]/70">{reviewError}</p>
           )}
         </div>
       ) : (
@@ -394,7 +382,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
               {agentReviewing ? "Reviewing..." : "Review Story via Agent"}
             </Button>
             {reviewError && (
-              <p className="mt-2 text-xs text-[#e5534b]/70">{reviewError}</p>
+              <p className="mt-2 text-xs text-[var(--color-status-error)]/70">{reviewError}</p>
             )}
           </div>
         </div>
@@ -424,7 +412,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         title="Delete review?"
         description="This will permanently remove this review from the history. The quality score will update to reflect the most recent remaining review."
         confirmLabel="Delete"
-        confirmClassName="!bg-[#e5534b] !text-white hover:!bg-[#d04840]"
+        confirmClassName="!bg-[var(--color-status-error)] !text-white hover:!bg-[#d04840]"
         onConfirm={handleConfirmDelete}
       />
     </div>

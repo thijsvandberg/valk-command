@@ -46,17 +46,17 @@ function shortDate(iso: string): string {
 }
 
 const PR_STATUS_STYLES: Record<DevPullRequest["status"], { bg: string; text: string }> = {
-  OPEN: { bg: "rgba(234,135,68,0.15)", text: "#ea8744" },
-  MERGED: { bg: "rgba(74,170,96,0.15)", text: "#4aaa60" },
-  DECLINED: { bg: "rgba(229,83,75,0.10)", text: "#e5534b80" },
+  OPEN: { bg: "var(--color-status-warning-subtle)", text: "var(--color-status-warning)" },
+  MERGED: { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)" },
+  DECLINED: { bg: "var(--color-status-error-subtle)", text: "rgba(229, 83, 75, 0.5)" },
 };
 
 function BuildStateIcon({ state, size = 13 }: { state: string; size?: number }) {
-  if (state === "SUCCESSFUL") return <CheckCircle2 size={size} strokeWidth={1.5} className="text-[#4aaa60]" />;
-  if (state === "FAILED") return <XCircle size={size} strokeWidth={1.5} className="text-[#e5534b]" />;
+  if (state === "SUCCESSFUL") return <CheckCircle2 size={size} strokeWidth={1.5} style={{ color: "var(--color-status-success)" }} />;
+  if (state === "FAILED") return <XCircle size={size} strokeWidth={1.5} style={{ color: "var(--color-status-error)" }} />;
   if (state === "STOPPED") return <OctagonX size={size} strokeWidth={1.5} className="text-text-muted" />;
   if (state === "PAUSED") return <Circle size={size} strokeWidth={1.5} className="text-amber-400" />;
-  return <Loader2 size={size} strokeWidth={1.5} className="animate-spin text-[#ea8744]" />;
+  return <Loader2 size={size} strokeWidth={1.5} className="animate-spin" style={{ color: "var(--color-status-warning)" }} />;
 }
 
 function SectionHeader({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -117,9 +117,9 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1">
               {approvedCount === totalReviewers ? (
-                <CheckCircle2 size={13} strokeWidth={1.5} className="text-[#4aaa60]" />
+                <CheckCircle2 size={13} strokeWidth={1.5} style={{ color: "var(--color-status-success)" }} />
               ) : approvedCount > 0 ? (
-                <Circle size={13} strokeWidth={1.5} className="text-[#ea8744]" />
+                <Circle size={13} strokeWidth={1.5} style={{ color: "var(--color-status-warning)" }} />
               ) : (
                 <Circle size={13} strokeWidth={1.5} className="text-text-muted" />
               )}
@@ -135,8 +135,8 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
         {pr.diffStats && (
           <span className="flex items-center gap-1.5">
             <FileCode2 size={13} strokeWidth={1.5} className="text-text-muted" />
-            <span className="text-[#4aaa60]/70">+{pr.diffStats.linesAdded}</span>
-            <span className="text-[#e5534b]/60">-{pr.diffStats.linesRemoved}</span>
+            <span style={{ color: "var(--color-status-success)", opacity: 0.7 }}>+{pr.diffStats.linesAdded}</span>
+            <span style={{ color: "var(--color-status-error)", opacity: 0.6 }}>-{pr.diffStats.linesRemoved}</span>
             <span className="text-text-muted">{pr.diffStats.filesChanged} files</span>
           </span>
         )}
@@ -151,7 +151,7 @@ function PrCard({ pr }: { pr: DevPullRequest }) {
 
         {/* Tasks */}
         {pr.taskCount > 0 && (
-          <span className="text-[#ea8744]/60">
+          <span style={{ color: "var(--color-status-warning)", opacity: 0.6 }}>
             {pr.taskCount} open task{pr.taskCount > 1 ? "s" : ""}
           </span>
         )}

@@ -148,7 +148,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
   const showCheckbox = isChecked || someChecked;
   const isRemoved = Boolean(ticket.removedFromJiraAt);
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
-  const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "rgba(148, 163, 184, 0.08)", text: "#64748b" };
+  const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" };
 
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -171,7 +171,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     ? "inset 0 -2px 0 var(--color-brand-500)"
     : undefined;
   const style: React.CSSProperties = {
-    ...(ticket.flagged ? { boxShadow: insertLineShadow ? `inset 4px 0 0 #e5534b, ${insertLineShadow}` : "inset 4px 0 0 #e5534b" } : insertLineShadow ? { boxShadow: insertLineShadow } : {}),
+    ...(ticket.flagged ? { boxShadow: insertLineShadow ? `inset 4px 0 0 var(--color-status-error), ${insertLineShadow}` : "inset 4px 0 0 var(--color-status-error)" } : insertLineShadow ? { boxShadow: insertLineShadow } : {}),
     ...rowStyle,
   };
 
@@ -419,7 +419,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       case "flagged":
         return (
           <td key={id} className="overflow-hidden py-2 pr-2">
-            {ticket.flagged && <Flag className="h-3.5 w-3.5 text-[#e5534b]" fill="currentColor" strokeWidth={0} />}
+            {ticket.flagged && <Flag className="h-3.5 w-3.5" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={0} />}
           </td>
         );
       case "poStatus":

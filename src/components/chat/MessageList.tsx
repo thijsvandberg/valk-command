@@ -14,6 +14,7 @@ import { SprintGoalActions } from "./SprintGoalActions";
 import { isInvestigationResult, parseInvestigationResult } from "@/lib/investigation-parser";
 import { InvestigationResult } from "./investigation/InvestigationResult";
 import { formatTimestamp } from "@/lib/format-timestamp";
+import { chatVerdictColor, chatStatusColor } from "@/lib/status-colors";
 
 interface MessageListProps {
   messages: Message[];
@@ -23,23 +24,10 @@ interface MessageListProps {
   showToast?: (msg: string) => void;
 }
 
-function verdictColor(verdict: string): string {
-  if (verdict === "Ready for sprint") return "#34d399";
-  if (verdict === "Minor issues") return "#fbbf24";
-  if (verdict === "Needs work") return "#fb923c";
-  return "#f87171";
-}
-
 function statusIcon(status: string): string {
   if (status === "pass" || status === "na") return "\u2713";
   if (status === "partial") return "~";
   return "\u2717";
-}
-
-function statusColor(status: string): string {
-  if (status === "pass" || status === "na") return "#34d399";
-  if (status === "partial") return "#fbbf24";
-  return "#f87171";
 }
 
 function ScoreBar({ score, max }: { score: number; max: number }) {
@@ -48,7 +36,7 @@ function ScoreBar({ score, max }: { score: number; max: number }) {
     <div className="h-1.5 w-full rounded-full bg-overlay-strong">
       <div
         className="h-full rounded-full transition-[width] duration-150"
-        style={{ width: `${pct}%`, backgroundColor: verdictColor(pct >= 90 ? "Ready for sprint" : pct >= 75 ? "Minor issues" : pct >= 60 ? "Needs work" : "Not ready") }}
+        style={{ width: `${pct}%`, backgroundColor: chatVerdictColor(pct >= 90 ? "Ready for sprint" : pct >= 75 ? "Minor issues" : pct >= 60 ? "Needs work" : "Not ready") }}
       />
     </div>
   );
@@ -60,7 +48,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <a href={data.issue.url} target="_blank" rel="noopener noreferrer" className="text-[#60a5fa] text-xs font-medium hover:underline">
+          <a href={data.issue.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium hover:underline" style={{ color: "var(--color-status-info)" }}>
             {data.issue.key}
           </a>
           <span className="text-text-tertiary text-xs ml-2">{data.issue.type}</span>
@@ -78,7 +66,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-bold text-text-primary">{data.score}</span>
           <span className="text-sm text-text-tertiary">/ {data.maxScore}</span>
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: verdictColor(data.verdict) + "20", color: verdictColor(data.verdict) }}>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: chatVerdictColor(data.verdict) + "20", color: chatVerdictColor(data.verdict) }}>
             {data.verdict}
           </span>
         </div>
@@ -92,9 +80,9 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
         {data.criteria.map((c) => (
           <div key={c.name}>
             <div className="flex items-center gap-2 py-1">
-              <span className="text-xs w-4 text-center" style={{ color: statusColor(c.status) }}>{statusIcon(c.status)}</span>
+              <span className="text-xs w-4 text-center" style={{ color: chatStatusColor(c.status) }}>{statusIcon(c.status)}</span>
               <span className="text-xs text-text-secondary flex-1">{c.name}</span>
-              <span className="text-xs font-mono" style={{ color: c.score === c.maxScore ? "#34d399" : c.score === 0 ? "#f87171" : "#fbbf24" }}>
+              <span className="text-xs font-mono" style={{ color: c.score === c.maxScore ? "var(--color-status-done)" : c.score === 0 ? "var(--color-status-error)" : "var(--color-status-caution)" }}>
                 {c.score}
               </span>
               <span className="text-xs text-text-muted font-mono">/{c.maxScore}</span>
@@ -103,7 +91,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
               <div className="ml-6 space-y-0.5">
                 {c.subItems.map((s, i) => (
                   <div key={i} className="flex items-start gap-2 py-0.5">
-                    <span className="text-caption w-3 text-center mt-0.5" style={{ color: statusColor(s.status) }}>{statusIcon(s.status)}</span>
+                    <span className="text-caption w-3 text-center mt-0.5" style={{ color: chatStatusColor(s.status) }}>{statusIcon(s.status)}</span>
                     <div className="flex-1">
                       <span className="text-label text-text-secondary">{s.name}</span>
                       {s.issue && <p className="text-label text-text-tertiary mt-0.5">{s.issue}</p>}
@@ -126,7 +114,7 @@ function ReviewStoryCard({ data }: { data: ReviewStoryData }) {
               <span className="text-text-secondary font-medium">{issue.criterion}</span>
               {issue.location && <span className="text-text-tertiary"> ({issue.location})</span>}
               <p className="text-text-tertiary mt-0.5">{issue.problem}</p>
-              <p className="text-[#60a5fa]/70 mt-0.5">{issue.suggestion}</p>
+              <p className="mt-0.5" style={{ color: "var(--color-status-info)", opacity: 0.7 }}>{issue.suggestion}</p>
             </div>
           ))}
         </div>

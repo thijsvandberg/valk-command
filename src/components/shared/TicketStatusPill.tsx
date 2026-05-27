@@ -636,9 +636,9 @@ export function TicketStatusPill({
         {removedFromJira ? (
           <span
             className={`${px} ${textSize} font-medium flex items-center gap-1.5 rounded-r-md`}
-            style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "rgba(248,113,113,0.7)" }}
+            style={{ backgroundColor: "var(--color-status-error-subtle)", color: "var(--color-status-error)", opacity: 0.7 }}
           >
-            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: "rgba(248,113,113,0.7)" }} />
+            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: "var(--color-status-error)" }} />
             DELETED
           </span>
         ) : (

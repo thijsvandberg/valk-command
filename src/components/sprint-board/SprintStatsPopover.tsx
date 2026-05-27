@@ -407,7 +407,7 @@ export function SprintStatsPopover({
                     const ss = stats.statusMap[status];
                     if (!ss || ss.count === 0) return null;
                     const colors = STATUS_PILL_COLORS[status];
-                    const barColor = colors?.dot ?? colors?.text ?? "#94a3b8";
+                    const barColor = colors?.dot ?? colors?.text ?? "var(--color-status-neutral)";
                     const pct = (ss.sp / maxStatusSp) * 100;
                     return (
                       <FilterRow
@@ -437,7 +437,7 @@ export function SprintStatsPopover({
                 {stats.typeEntries.length > 0 ? (
                   <div className="space-y-3">
                     {stats.typeEntries.map(([typeName, data]) => {
-                      const barColor = ISSUE_TYPE_COLORS[typeName as keyof typeof ISSUE_TYPE_COLORS] ?? "#94a3b8";
+                      const barColor = ISSUE_TYPE_COLORS[typeName as keyof typeof ISSUE_TYPE_COLORS] ?? "var(--color-status-neutral)";
                       const pct = maxTypeSp > 0 ? (data.sp / maxTypeSp) * 100 : 0;
                       return (
                         <FilterRow
@@ -472,7 +472,7 @@ export function SprintStatsPopover({
                 <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                   {stats.epicEntries.map(([epicName, data]) => {
                     const isNoEpic = epicName === "No Epic";
-                    const epicColor = isNoEpic ? { text: "#6b7280", bg: "rgba(107,114,128,0.12)" } : getEpicColor(epicName);
+                    const epicColor = isNoEpic ? { text: "var(--color-status-neutral)", bg: "rgba(107,114,128,0.12)" } : getEpicColor(epicName);
                     const pct = maxEpicSp > 0 ? (data.sp / maxEpicSp) * 100 : 0;
                     return (
                       <FilterRow

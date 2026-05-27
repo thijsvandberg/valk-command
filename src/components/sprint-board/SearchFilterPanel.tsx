@@ -134,7 +134,7 @@ interface SearchFilterPanelProps {
 }
 
 function StatusDot({ status }: { status: string }) {
-  const color = JIRA_STATUS_COLORS[status as keyof typeof JIRA_STATUS_COLORS]?.text ?? "#94a3b8";
+  const color = JIRA_STATUS_COLORS[status as keyof typeof JIRA_STATUS_COLORS]?.text ?? "var(--color-status-neutral)";
   return (
     <span
       className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -144,7 +144,7 @@ function StatusDot({ status }: { status: string }) {
 }
 
 function PoStatusDot({ status }: { status: string }) {
-  const color = PO_STATUS_COLORS[status]?.dot ?? "#94a3b8";
+  const color = PO_STATUS_COLORS[status]?.dot ?? "var(--color-status-neutral)";
   return (
     <span
       className="inline-block h-2 w-2 shrink-0 rounded-full"

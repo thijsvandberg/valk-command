@@ -23,7 +23,7 @@ export const STATUS_PILL_COLORS: Record<string, StatusPillColor> = {
   "TO DO": {
     bg: "rgba(100, 116, 139, 0.12)",
     bgActive: "rgba(100, 116, 139, 0.20)",
-    text: "#94a3b8",
+    text: "var(--color-status-neutral)",
     textActive: "#b8c8d8",
     ring: "rgba(100, 116, 139, 0.35)",
   },

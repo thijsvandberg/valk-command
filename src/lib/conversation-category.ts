@@ -41,7 +41,7 @@ export const CATEGORY_CONFIG: Record<ConversationCategory, CategoryConfig> = {
   investigation: {
     label: "Investigation",
     icon: Search,
-    color: "#60a5fa",
+    color: "var(--color-status-info)",
   },
   "story-writer": {
     label: "Story Writer",

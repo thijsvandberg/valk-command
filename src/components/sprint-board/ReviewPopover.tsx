@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import type { StoredReview } from "@/types/ticket";
 import { tickets as ticketsApi } from "@/lib/api-client";
-
-function getScoreColor(score: number): string {
-  if (score < 60) return "#e5534b";
-  if (score < 75) return "#ea8744";
-  if (score < 90) return "#eab308";
-  return "#4aaa60";
-}
+import { getScoreColor } from "@/lib/status-colors";
 
 function DimensionRow({ dim }: { dim: StoredReview["dimensions"][number] }) {
   const color = getScoreColor(dim.score);
@@ -51,7 +45,7 @@ function FreshnessIndicator({
 
   if (isCurrent) {
     return (
-      <div className="flex items-center gap-1.5 text-label text-[#4aaa60]/80">
+      <div className="flex items-center gap-1.5 text-label" style={{ color: "var(--color-status-success)", opacity: 0.8 }}>
         <CheckCircle2 size={12} strokeWidth={1.5} />
         <span>Based on v{review.storyVersionNumber} (current)</span>
       </div>
@@ -60,7 +54,7 @@ function FreshnessIndicator({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-1.5 text-label text-[#ea8744]/80">
+      <div className="flex items-center gap-1.5 text-label" style={{ color: "var(--color-status-warning)", opacity: 0.8 }}>
         <AlertTriangle size={12} strokeWidth={1.5} />
         <span>Based on v{review.storyVersionNumber} (outdated)</span>
       </div>
