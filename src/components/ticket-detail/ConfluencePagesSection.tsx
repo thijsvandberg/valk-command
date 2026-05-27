@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useTicketConfluenceLinks } from "@/hooks/useSprintBoard";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import useSWR from "swr";
 import type { ConfluenceSearchResult } from "@/lib/confluence-client";
 import { swrFetcher, tickets } from "@/lib/api-client";
@@ -269,16 +270,12 @@ function MentionedPagesSection({
 
 export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
   const { data, mutate } = useTicketConfluenceLinks(ticketKey);
-  const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [expandedPageId, setExpandedPageId] = useState<string | null>(null);
   const searchAnchorRef = useRef<HTMLDivElement>(null);
 
   const links = data?.links ?? [];
   const linkedPageIds = new Set(links.map((l) => l.pageId));
-
-  // Collapse by default when empty, expand when has content
-  const expanded = userExpanded ?? (links.length > 0);
 
   const handleSelect = useCallback(async (result: ConfluenceSearchResult) => {
     setShowSearch(false);
@@ -325,31 +322,9 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
 
   return (
     <div>
-      {/* Section header */}
-      <button
-        type="button"
-        onClick={() => setUserExpanded(!expanded)}
-        aria-expanded={expanded}
-        className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-      >
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">
-            Confluence
-          </h3>
-          <span className="text-caption text-text-muted">
-            ({links.length})
-          </span>
-        </div>
-        <ChevronDown
-          size={12}
-          strokeWidth={1.5}
-          className={`shrink-0 text-text-muted ${expanded ? "" : "-rotate-90"}`}
-          style={{ transition: "transform 0.2s ease" }}
-        />
-      </button>
+      <SectionHeader title="Confluence" count={links.length} />
 
-      {expanded && (
-        <div className="mt-2 space-y-1">
+      <div className="mt-3 space-y-1.5">
           {/* Linked pages */}
           {links.length === 0 && (
             <p className="py-1 text-body-sm text-text-muted">No pages linked yet</p>
@@ -435,8 +410,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
             linkedPageIds={linkedPageIds}
             onLink={handleLinkMention}
           />
-        </div>
-      )}
+      </div>
     </div>
   );
 }
