@@ -29,6 +29,35 @@ Create a `useTaskStream(taskId, handlers)` hook that:
 3. Handles cleanup on unmount or taskId change
 4. Returns `{ status, progress, output, error }`
 
+## Implementation Plan
+
+1. **Create `useTaskStream` hook + `streamTaskAsPromise` utility** in `src/hooks/useTaskStream.ts`
+   - Hook: reactive to `taskId` (null = idle), uses `attachTaskStreamListeners` internally
+   - Returns `{ status, progress, output, error, close }`
+   - Options: `timeout`, `onProgress`, `onResult`, `onError`, `onNetworkError`, `onDone`, `onToolCall`
+   - `streamTaskAsPromise(taskId, timeout?)`: Promise wrapper for fire-and-forget patterns (TicketReview, ReviewPopover)
+
+2. **Write tests** for `useTaskStream` in `src/hooks/useTaskStream.test.ts`
+
+3. **Migrate RelatedIssueSuggestions.tsx**: Replace eventSourceRef + attachTaskStreamListeners with `useTaskStream(taskStreamId, callbacks)`
+
+4. **Migrate SubtasksSection.tsx**: Replace suggestEsRef + attachTaskStreamListeners with `useTaskStream(suggestTaskId, callbacks)`, keep retry logic in onError callback
+
+5. **Migrate EpicPicker.tsx**: Replace eventSourceRef + manual listeners with `useTaskStream(suggestTaskId, { timeout: 90_000, ... })`, set taskId to null when picker closes
+
+6. **Migrate TicketReview.tsx**: Replace Promise+EventSource with `streamTaskAsPromise(taskId)`
+
+7. **Migrate ReviewPopover.tsx**: Replace Promise+EventSource with `streamTaskAsPromise(taskId).catch(() => {})`
+
+8. **Migrate SprintEditModal.tsx**: Replace connectStream/reconnectStream with `useTaskStream(activeTaskId, callbacks)`, keep localStorage persistence in callbacks
+
+9. **Final verification**: Run full test suite + build
+
+### Notes
+- TicketReview and ReviewPopover use imperative Promise patterns, so they get `streamTaskAsPromise` instead of the hook
+- `useStreamingTask.ts` is NOT deleted (still used by useTaskMonitoring and internally by the new hook)
+- SprintEditModal.test.tsx may need mock adjustments
+
 ## Checklist
 
 - [ ] Design the `useTaskStream` hook API

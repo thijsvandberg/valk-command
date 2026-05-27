@@ -5,7 +5,6 @@ import type { TicketDetail, Subtask, SubtaskSuggestionResponse } from "@/types/t
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader } from "./ChildIssueListHeader";
-import { ChildIssueStatusFilter } from "./ChildIssueStatusFilter";
 import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets } from "@/lib/api-client";
@@ -620,7 +619,7 @@ export function SubtasksSection({
 
   const inlineInput = (
     <div
-      className={`flex items-center gap-2 px-3 py-1.5 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      className={`flex items-center gap-2 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
       {showDragHandles && <span className="w-3 shrink-0" />}
@@ -732,15 +731,6 @@ export function SubtasksSection({
           {suggestButton}
           {compactFilters && compactFilterButton}
         </div>
-      )}
-
-      {/* Inline filter tabs (non-compact mode only) */}
-      {!compactFilters && mergedSubtasks.length > 0 && (
-        <ChildIssueStatusFilter
-          filter={filter}
-          setFilter={setFilter}
-          statusCounts={statusCounts}
-        />
       )}
 
       {error && (
