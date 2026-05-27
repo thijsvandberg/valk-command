@@ -1,0 +1,158 @@
+"use client";
+
+import { useRef, useEffect } from "react";
+import { ChevronDown, Check } from "lucide-react";
+import { SprintListModal } from "@/components/sprint-board/SprintListModal";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { getEpicColor } from "@/types/ticket";
+import { LAST_UPDATED_OPTIONS } from "./refinement-utils";
+import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
+
+interface RefinementFiltersProps {
+  filters: ReturnType<typeof useRefinementFilters>;
+  pinnedSprintIds: Set<string>;
+  epicOptions: string[];
+}
+
+export function RefinementFilters({
+  filters,
+  pinnedSprintIds,
+  epicOptions,
+}: RefinementFiltersProps) {
+  const lastUpdatedRef = useRef<HTMLDivElement>(null);
+
+  const { lastUpdatedOpen, setLastUpdatedOpen } = filters;
+  useEffect(() => {
+    if (!lastUpdatedOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (lastUpdatedRef.current && !lastUpdatedRef.current.contains(e.target as Node)) {
+        setLastUpdatedOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [lastUpdatedOpen, setLastUpdatedOpen]);
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2">
+      {/* Sprint filter */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => filters.setSprintFilterOpen(!filters.sprintFilterOpen)}
+          className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary hover:bg-hover-interactive hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 0.12s ease, border-color 0.12s ease" }}
+        >
+          <span className="text-text-muted">Sprint:</span> {filters.sprintFilterLabel}
+          <ChevronDown size={12} strokeWidth={1.5} className="opacity-40" />
+        </button>
+        {filters.sprintFilterOpen && (
+          <SprintListModal
+            onClose={() => filters.setSprintFilterOpen(false)}
+            onSelect={() => {}}
+            onPin={() => {}}
+            pinnedIds={pinnedSprintIds}
+            alignLeft
+            multiSelect
+            selectedIds={filters.effectiveSprintFilter}
+            onToggleSelect={filters.toggleSprintInFilter}
+          />
+        )}
+      </div>
+
+      {/* Epic filter */}
+      <FilterDropdown
+        label="Epic"
+        options={epicOptions}
+        selected={filters.epicFilter}
+        onChange={filters.setEpicFilter}
+        searchable={epicOptions.length > 6}
+        searchPlaceholder="Search epics..."
+        renderOption={(epic) => {
+          const c = getEpicColor(epic);
+          return (
+            <span
+              className="truncate rounded-md px-1.5 py-0.5 text-caption font-medium"
+              style={{ backgroundColor: c.bg, color: c.text }}
+            >
+              {epic}
+            </span>
+          );
+        }}
+      />
+
+      {/* Last updated filter */}
+      <div className="relative" ref={lastUpdatedRef}>
+        <button
+          type="button"
+          onClick={() => filters.setLastUpdatedOpen(!filters.lastUpdatedOpen)}
+          className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary hover:bg-hover-interactive hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 0.12s ease, border-color 0.12s ease" }}
+        >
+          <span className="text-text-muted">Updated:</span> {filters.lastUpdatedLabel}
+          <ChevronDown
+            size={12}
+            strokeWidth={1.5}
+            className={`opacity-40 ${filters.lastUpdatedOpen ? "rotate-180" : ""}`}
+            style={{ transition: "transform 0.15s ease" }}
+          />
+        </button>
+        {filters.lastUpdatedOpen && (
+          <div className="absolute left-0 top-full z-50 mt-1.5 w-40 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+            {LAST_UPDATED_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  filters.setLastUpdatedFilter(opt.value);
+                  filters.setLastUpdatedOpen(false);
+                }}
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-sm hover:bg-hover-list-item ${
+                  filters.lastUpdatedFilter === opt.value
+                    ? "font-medium text-text-primary"
+                    : "text-text-secondary"
+                }`}
+                style={{ transition: "background-color 80ms" }}
+              >
+                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                  {filters.lastUpdatedFilter === opt.value && (
+                    <Check size={11} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />
+                  )}
+                </span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Hide estimated toggle */}
+      <button
+        type="button"
+        onClick={() => filters.setHideEstimated(!filters.hideEstimated)}
+        className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
+          filters.hideEstimated
+            ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
+            : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-hover-interactive hover:border-border-strong"
+        }`}
+        style={{ transition: "background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 80ms" }}
+      >
+        <span
+          className="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border"
+          style={{
+            backgroundColor: filters.hideEstimated ? "var(--color-brand-500)" : "transparent",
+            borderColor: filters.hideEstimated ? "var(--color-brand-500)" : "var(--color-text-muted)",
+            transition: "background-color 0.1s ease, border-color 0.1s ease",
+          }}
+        >
+          {filters.hideEstimated && (
+            <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
+              <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
+        Hide estimated
+      </button>
+    </div>
+  );
+}

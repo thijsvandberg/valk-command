@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterTickets } from "./RefinementPageContent";
+import { filterTickets } from "./refinement-utils";
 import type { Ticket } from "@/types/ticket";
 
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
