@@ -42,7 +42,7 @@ const noRawTextSizesRule = {
 const eslintConfig = [
   ...nextConfig,
   {
-    ignores: ["deleted/**"],
+    ignores: ["deleted/**", ".next-build/**"],
   },
   {
     plugins: {
