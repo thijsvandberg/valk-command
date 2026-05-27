@@ -671,23 +671,49 @@ describe("CommandPalette", () => {
     });
   });
 
-  it("opens in epic mode with Cmd+Shift+K", async () => {
+  it("Search Epics action switches palette to epic mode", async () => {
     render(<CommandPalette />);
     await act(async () => {
-      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
     });
 
-    // Should show epic mode placeholder
-    expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
-    // Should show "Epics" badge (badge + category label = 2 elements)
-    const epicLabels = screen.getAllByText("Epics");
-    expect(epicLabels.length).toBeGreaterThanOrEqual(1);
+    // Type "epic" to find the action
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "epic" } });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Search Epics")).toBeInTheDocument();
+    });
+
+    // Click the Search Epics action
+    await act(async () => {
+      fireEvent.click(screen.getByText("Search Epics").closest("[data-palette-row]")!);
+    });
+
+    // Should switch to epic mode: placeholder changes, badge appears
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
+    });
   });
 
   it("epic mode only shows epic results, not pages or actions", async () => {
     render(<CommandPalette />);
     await act(async () => {
-      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    // Activate epic mode via the action
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "epic" } });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Search Epics")).toBeInTheDocument();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Search Epics").closest("[data-palette-row]")!);
     });
 
     // Wait for epics to load
@@ -700,34 +726,32 @@ describe("CommandPalette", () => {
     expect(screen.queryByText("Sync Jira")).not.toBeInTheDocument();
   });
 
-  it("Cmd+K while in epic mode switches to normal mode", async () => {
+  it("Escape in epic mode closes the palette", async () => {
     render(<CommandPalette />);
-    await act(async () => {
-      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
-    });
-
-    expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
-
-    // Press Cmd+K to switch to normal mode
     await act(async () => {
       fireEvent.keyDown(window, { key: "k", metaKey: true });
     });
 
-    // Should now show normal placeholder
-    expect(screen.getByPlaceholderText(/search pages/i)).toBeInTheDocument();
-    // Pages should be visible
-    expect(screen.getByText("Sprint Board")).toBeInTheDocument();
-  });
-
-  it("Escape in epic mode closes the palette", async () => {
-    render(<CommandPalette />);
+    // Activate epic mode
+    const input = screen.getByPlaceholderText(/search pages/i);
     await act(async () => {
-      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+      fireEvent.change(input, { target: { value: "epic" } });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Search Epics")).toBeInTheDocument();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Search Epics").closest("[data-palette-row]")!);
     });
 
-    const input = screen.getByPlaceholderText(/search epics/i);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
+    });
+
+    // Press Escape
+    const epicInput = screen.getByPlaceholderText(/search epics/i);
     await act(async () => {
-      fireEvent.keyDown(input, { key: "Escape" });
+      fireEvent.keyDown(epicInput, { key: "Escape" });
     });
 
     await waitFor(() => {
@@ -737,17 +761,30 @@ describe("CommandPalette", () => {
 
   it("epic mode resets when palette is closed and reopened", async () => {
     render(<CommandPalette />);
-
-    // Open in epic mode
     await act(async () => {
-      fireEvent.keyDown(window, { key: "k", metaKey: true, shiftKey: true });
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
     });
-    expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
+
+    // Activate epic mode
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "epic" } });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Search Epics")).toBeInTheDocument();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Search Epics").closest("[data-palette-row]")!);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/search epics/i)).toBeInTheDocument();
+    });
 
     // Close
-    const input = screen.getByPlaceholderText(/search epics/i);
+    const epicInput = screen.getByPlaceholderText(/search epics/i);
     await act(async () => {
-      fireEvent.keyDown(input, { key: "Escape" });
+      fireEvent.keyDown(epicInput, { key: "Escape" });
     });
     await waitFor(() => {
       expect(screen.queryByPlaceholderText(/search epics/i)).not.toBeInTheDocument();

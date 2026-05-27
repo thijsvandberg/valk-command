@@ -95,6 +95,19 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     },
     {
       category: "action",
+      id: "action-search-epics",
+      label: "Search Epics",
+      aliases: ["e", "epic", "epics"],
+      opensSubFlow: true,
+      execute: () => {
+        setEpicMode(true);
+        setQuery("");
+        setActiveIdx(0);
+        requestAnimationFrame(() => inputRef.current?.focus());
+      },
+    },
+    {
+      category: "action",
       id: "action-sync-jira",
       label: "Sync Jira",
       aliases: ["refresh", "pull", "update"],
@@ -181,20 +194,6 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
 
-  const handleOpenEpicMode = useCallback(() => {
-    window.dispatchEvent(new Event("valk:closeGlobalSearch"));
-    setQuery("");
-    setActiveIdx(0);
-    setTicketResults([]);
-    setConversationResults([]);
-    setStoryWriterSessions([]);
-    setEpicMode(true);
-    setSubFlow({ kind: "none" });
-    setClosing(false);
-    setOpen(true);
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, []);
-
   const handleClose = useCallback(() => {
     setSubFlow({ kind: "none" });
     setEpicMode(false);
@@ -205,38 +204,19 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     }, 120);
   }, []);
 
-  /* ---- Global Cmd+K / Cmd+Shift+K listener ---- */
+  /* ---- Global Cmd+K listener ---- */
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      const isK = e.key === "k" || e.key === "K" || e.code === "KeyK";
-      if (!isK) return;
-
-      if (!e.shiftKey) {
-        // Cmd+K: open palette (normal) or switch from epic mode to normal
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "k") {
         e.preventDefault();
         e.stopPropagation();
-        if (open && epicMode) {
-          setEpicMode(false);
-        } else if (open) {
-          handleClose();
-        } else {
-          handleOpen();
-        }
-      } else {
-        // Cmd+Shift+K: open palette in epic mode
-        e.preventDefault();
-        e.stopPropagation();
-        if (open && !epicMode) {
-          setEpicMode(true);
-        } else if (!open) {
-          handleOpenEpicMode();
-        }
+        if (open) handleClose();
+        else handleOpen();
       }
     }
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [open, epicMode, handleOpen, handleOpenEpicMode, handleClose]);
+  }, [open, handleOpen, handleClose]);
 
   /* ---- Listen for close requests from GlobalSearch ---- */
   useEffect(() => {
