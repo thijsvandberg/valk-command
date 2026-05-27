@@ -12,7 +12,8 @@ import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SessionEndModal } from "@/components/refinement-session/SessionEndModal";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
-import { tickets } from "@/lib/api-client";
+import { tickets, apiFetch } from "@/lib/api-client";
+import { mutate as globalMutate } from "swr";
 import type { TicketReadiness } from "@/types/ticket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { BridgeMark } from "@/components/shared/BridgeMark";
@@ -280,6 +281,75 @@ export default function RefinementSessionTicketPage({
   const isLastTicket = currentIndex >= queue.length - 1;
 
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
+
+  // Push / save / discard state
+  const [isPushing, setIsPushing] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+  const [draftDiscardKey, setDraftDiscardKey] = useState(0);
+  const [hasLocalTitleEdit, setHasLocalTitleEdit] = useState(false);
+  const [hasLocalDescEdit, setHasLocalDescEdit] = useState(false);
+
+  // Extract local edits from API response
+  const localEdits = (ticketData as Record<string, unknown> | undefined)?.localEdits as
+    Record<string, { value: string; isDraft: boolean }> | undefined;
+  const showConflictWarning = ticketData?.editState === "conflict";
+
+  // Reset push state when navigating between tickets
+  useEffect(() => {
+    setIsPushing(false);
+    setPushError(null);
+    setOverrideConfirmed(false);
+    setHasLocalTitleEdit(false);
+    setHasLocalDescEdit(false);
+  }, [currentKey]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    if (!currentKey) return;
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(currentKey)}/local-edits`, { method: "DELETE" });
+      setHasLocalTitleEdit(false);
+      setHasLocalDescEdit(false);
+      setPushError(null);
+      setOverrideConfirmed(false);
+      await mutate();
+      setDraftDiscardKey((k) => k + 1);
+    } catch (err) {
+      console.error("Failed to discard draft:", err);
+    }
+  }, [currentKey, mutate]);
+
+  const handlePushToJira = useCallback(async () => {
+    if (!currentKey) return;
+    setIsPushing(true);
+    setPushError(null);
+    try {
+      const data = await tickets.pushToJira(currentKey) as {
+        success?: boolean; conflict?: boolean; contentChanged?: boolean; error?: string;
+      };
+      if (data.conflict) {
+        setPushError("Jira version changed. Review the diff or check override to push anyway.");
+      } else if (data.success) {
+        setHasLocalTitleEdit(false);
+        setHasLocalDescEdit(false);
+        setOverrideConfirmed(false);
+        await mutate();
+        setDraftDiscardKey((k) => k + 1);
+        // Invalidate list caches so sprint board reflects any changes
+        await globalMutate(
+          (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
+          undefined,
+          { revalidate: true },
+        );
+      } else {
+        setPushError(data.error ?? "Push failed");
+      }
+    } catch {
+      setPushError("Failed to push to Jira");
+    } finally {
+      setIsPushing(false);
+    }
+  }, [currentKey, mutate]);
 
   // Header state
   const [storyPoints, setStoryPoints] = useState<number | null>(ticketData?.storyPoints ?? null);
@@ -758,11 +828,22 @@ export default function RefinementSessionTicketPage({
             <div className="mx-auto max-w-3xl px-8 py-8">
               {ticketData ? (
                 <SessionTicketView
-                  key={ticketData.key}
+                  key={`${ticketData.key}-${draftDiscardKey}`}
                   ticket={ticketData}
                   detail={ticketData}
                   onMutate={() => mutate()}
                   subtasksPaneMode={activeSidebarPanel === "subtasks"}
+                  localEdits={localEdits}
+                  showConflictWarning={showConflictWarning}
+                  overrideConfirmed={overrideConfirmed}
+                  onOverrideChange={setOverrideConfirmed}
+                  isPushing={isPushing}
+                  pushError={pushError}
+                  onPushToJira={handlePushToJira}
+                  onDiscard={handleDiscardDraft}
+                  onLocalTitleEdit={setHasLocalTitleEdit}
+                  onLocalDescEdit={setHasLocalDescEdit}
+                  onViewDiff={() => window.open(`/tickets/${currentKey}`, "_blank")}
                 />
               ) : (
                 <div className="flex items-center justify-center py-24">

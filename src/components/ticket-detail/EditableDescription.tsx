@@ -84,12 +84,13 @@ export function EditableDescription({
   const notifiedDescRef = useRef(false);
   // Only call onLocalEdit(true) once per editing session to avoid parent re-renders per keystroke
   const localEditNotifiedRef = useRef(false);
-  // Ref mirrors for unmount flush (cleanup closures cannot read latest state)
-  const valueRef = useRef(value);
-  const ticketKeyRef = useRef(ticketKey);
 
   const hasLocalEdit = localValue !== null;
   const value = localValue ?? initialDescription;
+
+  // Ref mirrors for unmount flush (cleanup closures cannot read latest state)
+  const valueRef = useRef(value);
+  const ticketKeyRef = useRef(ticketKey);
   useEffect(() => { valueRef.current = value; }, [value]);
   useEffect(() => { ticketKeyRef.current = ticketKey; }, [ticketKey]);
   usePrismLanguages(value);

@@ -15,6 +15,7 @@ import { tickets, jira } from "@/lib/api-client";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
   MessageSquare,
@@ -33,6 +34,17 @@ interface SessionTicketViewProps {
   detail: TicketDetail;
   onMutate: () => void;
   subtasksPaneMode?: boolean;
+  localEdits?: Record<string, { value: string; isDraft: boolean }>;
+  showConflictWarning?: boolean;
+  overrideConfirmed?: boolean;
+  onOverrideChange?: (val: boolean) => void;
+  isPushing?: boolean;
+  pushError?: string | null;
+  onPushToJira?: () => Promise<void>;
+  onDiscard?: () => void;
+  onLocalTitleEdit?: (has: boolean) => void;
+  onLocalDescEdit?: (has: boolean) => void;
+  onViewDiff?: () => void;
 }
 
 const QUICK_COMMENTS = [
@@ -395,24 +407,87 @@ export function HeaderOverflowMenu({
   );
 }
 
-export function SessionTicketView({ ticket, detail, onMutate, subtasksPaneMode }: SessionTicketViewProps) {
+export function SessionTicketView({
+  ticket,
+  detail,
+  onMutate,
+  subtasksPaneMode,
+  localEdits,
+  showConflictWarning,
+  overrideConfirmed,
+  onOverrideChange,
+  isPushing,
+  pushError,
+  onPushToJira,
+  onDiscard,
+  onLocalTitleEdit,
+  onLocalDescEdit,
+  onViewDiff,
+}: SessionTicketViewProps) {
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
 
   return (
     <div className="space-y-0">
+      {/* Conflict warning banner */}
+      {showConflictWarning && (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-xl border border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/[0.06] px-4 py-3"
+          style={{ animation: "fadeInUp 0.15s ease" }}
+        >
+          <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[var(--color-status-warning)]" />
+          <div className="min-w-0 flex-1">
+            <p className="text-body-sm font-medium text-text-primary">Jira version changed since your last sync</p>
+            <p className="mt-0.5 text-body-sm text-text-tertiary">
+              Your local edits may overwrite remote changes. Review the diff or accept the Jira version.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onDiscard}
+                className="rounded-lg border border-border-default bg-overlay-subtle px-3 py-1 text-body-sm font-medium text-text-secondary cursor-pointer hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+                style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              >
+                Accept Jira version
+              </button>
+              {onViewDiff && (
+                <button
+                  type="button"
+                  onClick={onViewDiff}
+                  className="rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                >
+                  Review diff
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Title (editable) */}
       <EditableTitle
         ticketKey={ticket.key}
         initialTitle={ticket.title}
-        onLocalEdit={setHasLocalEdit}
+        serverLocalEdit={localEdits?.title}
+        onLocalEdit={onLocalTitleEdit ?? setHasLocalEdit}
+        onViewDiff={onViewDiff}
       />
 
       {/* Description */}
       <EditableDescription
         ticketKey={ticket.key}
         initialDescription={detail.description}
+        serverLocalEdit={localEdits?.description}
         attachments={detail.attachments}
-        onLocalEdit={setHasLocalEdit}
+        onLocalEdit={onLocalDescEdit ?? setHasLocalEdit}
+        onDiscard={onDiscard}
+        onPushToJira={onPushToJira}
+        isPushing={isPushing}
+        pushError={pushError}
+        showConflictWarning={showConflictWarning}
+        overrideConfirmed={overrideConfirmed}
+        onOverrideChange={onOverrideChange}
+        onViewDiff={onViewDiff}
       />
 
       {/* Subtasks (hidden when in side pane mode) */}
