@@ -1,6 +1,6 @@
 # BRDG-201: Extract BasePicker Component
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** High
 **Type:** Refactoring
 
