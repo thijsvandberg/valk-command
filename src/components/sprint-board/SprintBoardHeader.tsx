@@ -72,19 +72,21 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
   const activeSprintName = activeSprint?.name ?? null;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on dep change is intentional
     if (!activeSprintName) { setIsSprintFollowed(false); return; }
+    let cancelled = false;
     followedSprints.list()
-      .then((names: string[]) => setIsSprintFollowed(names.includes(activeSprintName)))
+      .then((names: string[]) => { if (!cancelled) setIsSprintFollowed(names.includes(activeSprintName)); })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [activeSprintName]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on dep change is intentional
     if (!activeSprintId || activeSprintId === "__all__") { setGoalSuggestionUrl(null); return; }
-    try {
-      const raw = localStorage.getItem(`sprint-goal-conv-${activeSprintId}`);
-      if (raw) setGoalSuggestionUrl(`/chat/${raw}`);
-      else setGoalSuggestionUrl(null);
-    } catch { setGoalSuggestionUrl(null); }
+    let url: string | null = null;
+    try { const raw = localStorage.getItem(`sprint-goal-conv-${activeSprintId}`); if (raw) url = `/chat/${raw}`; } catch { /* ok */ }
+    setGoalSuggestionUrl(url);
   }, [activeSprintId]);
 
   useEffect(() => {
