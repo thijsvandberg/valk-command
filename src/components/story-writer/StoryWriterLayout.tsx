@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   CloudUpload,
   CloudDownload,
@@ -429,6 +429,32 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     setSplitModeVisible(true);
   }, [writer]);
 
+  const stableOnMutateTicket = useCallback(() => { mutateTicket(); }, [mutateTicket]);
+
+  const stableOnCreateLink = useCallback(async (targetKey: string, relation: string) => {
+    await writer.createLink(targetKey, relation);
+    mutateTicket();
+  }, [writer.createLink, mutateTicket]);
+
+  const stableOnApplyEpic = useCallback(async (epicKey: string) => {
+    await tickets.updateEpic(ticketKey, epicKey);
+    mutateTicket();
+  }, [ticketKey, mutateTicket]);
+
+  const stableOnAcceptDraft = useCallback(async (draftId: string) => {
+    await writer.acceptDraft(draftId);
+    editVersionRef.current += 1;
+    setIsDraftDirty(true);
+  }, [writer.acceptDraft]);
+
+  const linkedIssueKeys = useMemo(
+    () => new Set(
+      (ticketData as (typeof ticketData & { linkedIssues?: { key: string }[] }) | undefined)
+        ?.linkedIssues?.map((i) => i.key) ?? [],
+    ),
+    [ticketData],
+  );
+
   if (writer.status === "loading") {
     return (
       <div className="flex h-full items-center justify-center">
@@ -472,7 +498,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     ticketKey,
     ticketData: ticketAsTicket,
     ticketDetail: ticketData ?? null,
-    mutateTicket: () => { mutateTicket(); },
+    mutateTicket: stableOnMutateTicket,
     session: writer.session,
     messages: writer.messages,
     aiDrafts: writer.aiDrafts,
@@ -498,25 +524,12 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     onRetry: writer.retryMessage,
     onClearFailed: writer.clearFailedMessages,
     onCancel: writer.cancelCurrentTask,
-    onCreateLink: async (targetKey: string, relation: string) => {
-      await writer.createLink(targetKey, relation);
-      mutateTicket();
-    },
-    linkedIssueKeys: new Set(
-      (ticketData as (typeof ticketData & { linkedIssues?: { key: string }[] }) | undefined)
-        ?.linkedIssues?.map((i) => i.key) ?? [],
-    ),
-    onApplyEpic: async (epicKey: string) => {
-      await tickets.updateEpic(ticketKey, epicKey);
-      mutateTicket();
-    },
+    onCreateLink: stableOnCreateLink,
+    linkedIssueKeys,
+    onApplyEpic: stableOnApplyEpic,
     currentEpicKey: ticketData?.epicKey ?? null,
     onLinkCandidate: writer.linkCandidate,
-    onAcceptDraft: async (draftId: string) => {
-      await writer.acceptDraft(draftId);
-      editVersionRef.current += 1;
-      setIsDraftDirty(true);
-    },
+    onAcceptDraft: stableOnAcceptDraft,
     onDismissDraft: writer.dismissDraft,
     onTypeChange: handleTypeChange,
     onCodebaseResearchChange: writer.setCodbaseResearch,

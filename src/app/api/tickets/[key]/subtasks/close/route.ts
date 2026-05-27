@@ -7,6 +7,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
+import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import type { JiraStatus } from "@/types/ticket";
 
@@ -71,6 +72,8 @@ export async function POST(_request: Request, { params }: RouteContext) {
       ...(jiraError ? { error: "Jira update failed" } : {}),
     });
   }
+
+  await syncJiraTimestamp(key);
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);

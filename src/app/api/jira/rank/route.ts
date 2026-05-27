@@ -6,6 +6,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 
 /**
  * POST /api/jira/rank
@@ -41,6 +42,9 @@ export async function POST(request: Request) {
 
   try {
     await jiraClient.rankIssues(issueKeys, rankBeforeKey, rankAfterKey);
+    for (const k of issueKeys) {
+      await syncJiraTimestamp(k);
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to rank issues", message);

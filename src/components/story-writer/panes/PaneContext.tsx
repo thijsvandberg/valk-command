@@ -219,6 +219,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
   // Refs so chained calls within the same event handler see each other's changes
   const paneVisibleRef = useRef(paneVisible);
   const paneWidthsRef = useRef(paneWidths);
+  const paneAppsRef = useRef(paneApps);
 
   function setVisible(v: PaneVisible) {
     paneVisibleRef.current = v;
@@ -227,6 +228,13 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
   function setWidths(w: PaneWidths) {
     paneWidthsRef.current = w;
     setPaneWidthsState(w);
+  }
+  function setApps(updater: PaneApps | ((prev: PaneApps) => PaneApps)) {
+    setPaneApps((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      paneAppsRef.current = next;
+      return next;
+    });
   }
 
   // paneCount is derived — callers that need a number use this
@@ -258,7 +266,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     setWidths(w);
   }
 
-  function openApp(appId: PaneAppId) {
+  const openApp = useCallback((appId: PaneAppId) => {
     const targetPane = DEFAULT_PANE[appId];
     const { visible, widths } = computeShowPane(
       paneVisibleRef.current,
@@ -267,18 +275,18 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     );
     setVisible(visible);
     setWidths(widths);
-    setPaneApps((prev) => {
+    setApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = appId;
       return next;
     });
-  }
+  }, []);
 
-  function closeApp(appId: PaneAppId) {
-    const slotIdx = paneApps.findIndex((a) => a === appId);
+  const closeApp = useCallback((appId: PaneAppId) => {
+    const slotIdx = paneAppsRef.current.findIndex((a) => a === appId);
     if (slotIdx === -1) return;
     const idx = slotIdx as 0 | 1 | 2;
-    setPaneApps((prev) => {
+    setApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[idx] = null;
       return next;
@@ -286,10 +294,10 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     const { visible, widths } = computeHidePane(paneVisibleRef.current, paneWidthsRef.current, idx);
     setVisible(visible);
     setWidths(widths);
-  }
+  }, []);
 
   function moveApp(appId: PaneAppId, paneIndex: 0 | 1 | 2) {
-    const sourceIdx = paneApps.findIndex((a) => a === appId);
+    const sourceIdx = paneAppsRef.current.findIndex((a) => a === appId);
 
     // Show target pane, then hide source (it will be empty after the move)
     let { visible, widths } = computeShowPane(paneVisibleRef.current, paneWidthsRef.current, paneIndex);
@@ -299,7 +307,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     setVisible(visible);
     setWidths(widths);
 
-    setPaneApps((prev) => {
+    setApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       for (let i = 0; i < 3; i++) {
         if (next[i as 0 | 1 | 2] === appId) next[i as 0 | 1 | 2] = null;
@@ -345,7 +353,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     );
     setVisible(visible);
     setWidths(widths);
-    setPaneApps((prev) => {
+    setApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = "draft-preview";
       return next;
@@ -359,7 +367,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     const nextWidths: PaneWidths = [100, 0, 0];
     setVisible(nextVisible);
     setWidths(nextWidths);
-    setPaneApps((_prev) => ["draft-preview", null, null]);
+    setApps((_prev) => ["draft-preview", null, null]);
   }
 
   function prefillChat(text: string) {
@@ -394,7 +402,7 @@ export function PaneProvider({ ticketKey, initialEditorOpen = true, children }: 
     );
     setVisible(visible);
     setWidths(widths);
-    setPaneApps((prev) => {
+    setApps((prev) => {
       const next: PaneApps = [...prev] as PaneApps;
       next[targetPane] = "related";
       return next;

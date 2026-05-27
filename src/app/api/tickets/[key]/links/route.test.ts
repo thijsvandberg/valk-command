@@ -4,6 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket, ticketLink } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -15,6 +16,9 @@ vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     createIssueLink: vi.fn().mockResolvedValue(undefined),
     deleteIssueLink: vi.fn().mockResolvedValue(undefined),
+    getIssue: vi.fn().mockResolvedValue({
+      fields: { updated: "2024-06-15T12:00:00.000Z" },
+    }),
   },
 }));
 
@@ -217,5 +221,56 @@ describe("DELETE /api/tickets/[key]/links", () => {
       makeParams("VPL-100"),
     );
     expect(res.status).toBe(400);
+  });
+});
+
+describe("jiraUpdatedAt sync after link operations", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.clearAllMocks();
+  });
+
+  it("syncs jiraUpdatedAt after creating a link", async () => {
+    seedTicket("VPL-300");
+
+    const { jiraClient } = await import("@/lib/jira-client");
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-09-01T10:00:00.000Z" },
+    } as ReturnType<typeof jiraClient.getIssue> extends Promise<infer T> ? T : never);
+
+    await POST(
+      postRequest("VPL-300", { targetKey: "VPL-400", relation: "relates to" }),
+      makeParams("VPL-300"),
+    );
+
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-300")).get();
+    expect(row?.jiraUpdatedAt).toBe("2024-09-01T10:00:00.000Z");
+  });
+
+  it("syncs jiraUpdatedAt after deleting a link", async () => {
+    seedTicket("VPL-300");
+    testDb.insert(ticketLink).values({
+      id: "link-sync",
+      ticketKey: "VPL-300",
+      jiraLinkId: "jira-link-sync",
+      relation: "blocks",
+      linkedKey: "VPL-400",
+      title: "Target",
+      type: "task",
+      status: "TO DO",
+    }).run();
+
+    const { jiraClient } = await import("@/lib/jira-client");
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-09-02T11:00:00.000Z" },
+    } as ReturnType<typeof jiraClient.getIssue> extends Promise<infer T> ? T : never);
+
+    await DELETE(
+      deleteRequest("VPL-300", { jiraLinkId: "jira-link-sync", linkedKey: "VPL-400" }),
+      makeParams("VPL-300"),
+    );
+
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-300")).get();
+    expect(row?.jiraUpdatedAt).toBe("2024-09-02T11:00:00.000Z");
   });
 });

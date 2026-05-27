@@ -10,7 +10,8 @@ import { useWriterContext } from "../WriterContext";
 export function DraftPreviewApp() {
   const pane = usePaneContext();
   const writer = useWriterContext();
-  const { draftPreviewContent, openApp, registerToolbar, unregisterToolbar } = pane;
+  const { draftPreviewContent, openApp, closeApp, registerToolbar, unregisterToolbar } = pane;
+  const { onAcceptDraft } = writer;
 
   const handleOpenDiff = useCallback(() => {
     openApp("diff");
@@ -18,10 +19,10 @@ export function DraftPreviewApp() {
 
   const handleAcceptDraft = useCallback(async () => {
     if (!draftPreviewContent?.draftId) return;
-    await writer.onAcceptDraft(draftPreviewContent.draftId);
-    pane.openApp("editor");
-    pane.closeApp("draft-preview");
-  }, [draftPreviewContent, writer, pane]);
+    await onAcceptDraft(draftPreviewContent.draftId);
+    openApp("editor");
+    closeApp("draft-preview");
+  }, [draftPreviewContent, onAcceptDraft, openApp, closeApp]);
 
   useEffect(() => {
     registerToolbar("draft-preview", {

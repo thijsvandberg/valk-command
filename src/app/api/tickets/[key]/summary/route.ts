@@ -7,6 +7,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
+import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteContext = { params: Promise<{ key: string }> };
@@ -44,6 +45,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   let jiraError: string | undefined;
   try {
     await jiraClient.updateIssue(key, { summary: title });
+    await syncJiraTimestamp(key);
   } catch (err) {
     jiraError = err instanceof Error ? err.message : String(err);
     logger.warn("ticket-summary", `Jira summary update failed for ${key}: ${jiraError}`);

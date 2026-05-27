@@ -8,6 +8,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
+import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { randomUUID } from "crypto";
 
 type RouteContext = { params: Promise<{ key: string }> };
@@ -73,6 +74,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   try {
     await jiraClient.createIssueLink(sourceKey, destKey, jiraLinkType);
+    await syncJiraTimestamp(key);
   } catch (err) {
     logger.error("links", `Failed to create Jira link: ${err}`);
     return NextResponse.json({ error: "Failed to create link in Jira" }, { status: 502 });
@@ -144,6 +146,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (jiraLinkId) {
     try {
       await jiraClient.deleteIssueLink(jiraLinkId);
+      await syncJiraTimestamp(key);
     } catch (err) {
       logger.warn("links", `Jira link deletion failed for ${jiraLinkId}: ${err}`);
     }

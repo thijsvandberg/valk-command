@@ -86,6 +86,7 @@ export default function TicketDetailPage({
   const { key } = use(params);
 
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
+  const handleMutate = useCallback(() => { mutateTicket(); }, [mutateTicket]);
   const pageTitle = usePageTitle(apiData ? `${key} - ${apiData.title}` : key);
 
   const ticket: Ticket | undefined = useMemo(() => apiData ? {
@@ -914,16 +915,16 @@ export default function TicketDetailPage({
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
-                ? detail && <EpicChildrenSection items={detail.epicChildren} ticketKey={key} onMutate={() => mutateTicket()} onSelectTicket={setPreviewTicketKey} />
+                ? detail && <EpicChildrenSection items={detail.epicChildren} ticketKey={key} onMutate={handleMutate} onSelectTicket={setPreviewTicketKey} />
                 : <>
-                    {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={key} onMutate={() => mutateTicket()} onSelectTicket={setPreviewTicketKey} />}
-                    {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={key} onMutate={() => mutateTicket()} />}
+                    {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={key} onMutate={handleMutate} onSelectTicket={setPreviewTicketKey} />}
+                    {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={key} onMutate={handleMutate} />}
                   </>
               }
               <CommentsSection
                 ticketKey={key}
                 jiraComments={detail?.jiraComments ?? []}
-                onMutate={() => mutateTicket()}
+                onMutate={handleMutate}
               />
             </>
           )}

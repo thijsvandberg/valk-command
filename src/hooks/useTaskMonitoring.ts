@@ -119,9 +119,10 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
           })()
         : Promise.resolve();
 
-      const refreshPromise = refreshSessionRef.current();
-
-      await Promise.all([applyDraftPromise, applyRelatedPromise, refreshPromise]);
+      // Wait for draft + related to be saved before refreshing, so the
+      // assistant message written by apply-draft is included in the refresh.
+      await Promise.all([applyDraftPromise, applyRelatedPromise]);
+      await refreshSessionRef.current();
 
       const elapsed = Math.round(performance.now() - t0);
       console.debug(`[task-monitoring] applyResult post-processing: ${elapsed}ms (related-tags: ${hasRelatedTags})`);

@@ -15,24 +15,7 @@ import { enqueue as enqueueForRevalidation } from "@/lib/revalidation-queue";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { userInitials, userColor } from "@/lib/user-utils";
-
-/**
- * After Bridge pushes a metadata change to Jira, Jira's `updated` timestamp
- * advances. We must sync that new timestamp back so the conflict detector in
- * pushToJira() does not flag Bridge's own change as an external conflict.
- */
-async function syncJiraTimestamp(key: string): Promise<void> {
-  try {
-    const issue = await jiraClient.getIssue(key);
-    const newUpdated = issue.fields.updated;
-    if (newUpdated) {
-      await db.update(ticket).set({ jiraUpdatedAt: newUpdated }).where(eq(ticket.jiraKey, key));
-      cache.invalidate(`/api/tickets/${key}`);
-    }
-  } catch (err) {
-    logger.error("ticket-detail", `Failed to sync jiraUpdatedAt after metadata push for ${key}:`, err);
-  }
-}
+import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 
 function buildAssignee(name: string | null): Assignee | null {
   if (!name) return null;

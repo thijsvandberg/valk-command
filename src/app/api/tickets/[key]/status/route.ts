@@ -7,6 +7,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
+import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import type { JiraStatus } from "@/types/ticket";
 
@@ -47,8 +48,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
   let jiraError: string | undefined;
   try {
     await jiraClient.transitionIssue(key, status);
+    await syncJiraTimestamp(key);
   } catch (err) {
-    // Log but don't block — Bridge updates locally even if Jira's workflow rejects the transition
     jiraError = err instanceof Error ? err.message : String(err);
     logger.warn("ticket-status", `Jira transition failed for ${key} (updating locally anyway): ${jiraError}`);
   }

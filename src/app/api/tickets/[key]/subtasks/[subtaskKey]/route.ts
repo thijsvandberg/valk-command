@@ -7,6 +7,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
+import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 
 type RouteContext = { params: Promise<{ key: string; subtaskKey: string }> };
 
@@ -34,6 +35,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   try {
     await jiraClient.updateIssue(subtaskKey, { summary: title });
+    await syncJiraTimestamp(key);
   } catch (err) {
     logger.error("subtask-rename", `Jira update failed for ${subtaskKey}: ${err}`);
     const message = err instanceof Error ? err.message : "Jira API error";
@@ -68,6 +70,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
 
   try {
     await jiraClient.updateIssue(subtaskKey, { summary: "deleteme" });
+    await syncJiraTimestamp(key);
   } catch (err) {
     logger.error("subtask-delete", `Jira rename-to-deleteme failed for ${subtaskKey}: ${err}`);
     const message = err instanceof Error ? err.message : "Jira API error";
