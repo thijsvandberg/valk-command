@@ -6,6 +6,7 @@ interface PageIntroProps {
 export function PageIntro({ title, description }: PageIntroProps) {
   return (
     <div>
+      {/* text-3xl: no token exists above text-heading-lg (24px); page title needs ~30px */}
       <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] text-text-primary">
         {title}
       </h1>

@@ -118,6 +118,7 @@ export function EditableTitle({
           if (e.key === "Enter") { e.preventDefault(); save(); }
           if (e.key === "Escape") { e.preventDefault(); discard(); }
         }}
+        /* text-3xl: no token exists above text-heading-lg (24px); page title needs ~30px */
         className="w-full resize-none overflow-hidden border-b-2 border-[var(--color-brand-500)]/40 bg-transparent font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] leading-tight text-text-primary outline-none"
       />
     );
@@ -127,6 +128,7 @@ export function EditableTitle({
     <div className="group flex items-start gap-2">
       <h1
         onClick={startEditing}
+        /* text-3xl: no token exists above text-heading-lg (24px); page title needs ~30px */
         className="font-[var(--font-display)] cursor-pointer text-3xl font-bold tracking-[-0.03em] leading-tight text-text-primary hover:text-text-primary"
         title="Click to edit"
       >

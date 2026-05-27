@@ -51,6 +51,7 @@ function DiffPreviewContent() {
     <div className="flex h-full flex-col">
       {/* View toggle */}
       <div className="flex items-center gap-2 border-b border-border-default px-6 py-3">
+        {/* text-3xl: no token exists above text-heading-lg (24px); page title needs ~30px */}
         <h1 className="font-[var(--font-display)] text-3xl font-bold tracking-[-0.03em] text-text-primary mr-4">
           Diff Preview
         </h1>

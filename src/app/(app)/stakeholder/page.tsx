@@ -821,6 +821,7 @@ function StakeholderView() {
                 <>
                   {/* Title row: name + health + sparkline — natural flow, no justify-between */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {/* text-3xl: no token exists above text-heading-lg (24px); page title needs ~30px */}
                     <h1 className="text-3xl font-semibold tracking-tight text-text-primary leading-none">
                       {stakeholderSprint.name}
                     </h1>
