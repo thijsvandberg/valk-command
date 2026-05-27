@@ -160,6 +160,19 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
       tx.insert(ticket).values(ticketData).run();
     }
 
+    // Keep ticketSubtask rows in sync when this issue IS a subtask.
+    // Incremental sync picks up the subtask itself but its parent may not
+    // be re-fetched, leaving the parent's ticketSubtask row stale.
+    tx.update(ticketSubtask)
+      .set({
+        title: fields.summary,
+        status: normalizeStatus(fields.status.name),
+        assignee: assigneeName,
+        assigneeAvatar,
+      })
+      .where(eq(ticketSubtask.subtaskKey, issue.key))
+      .run();
+
     // Record status transition for burnup chart
     if (statusChanged) {
       tx.insert(ticketStatusChange).values({

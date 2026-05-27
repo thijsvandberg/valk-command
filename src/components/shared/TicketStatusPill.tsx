@@ -337,9 +337,16 @@ function DropdownPortal({
       openUp,
     });
 
+    // Delay attaching the scroll-close listener to avoid closing from
+    // layout-induced micro-scrolls when the dropdown first renders
     const close = () => onClose();
-    window.addEventListener("scroll", close, { capture: true, passive: true });
-    return () => window.removeEventListener("scroll", close, { capture: true });
+    const timer = setTimeout(() => {
+      window.addEventListener("scroll", close, { capture: true, passive: true });
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", close, { capture: true });
+    };
   }, [triggerRef, onClose]);
 
   if (!pos || typeof document === "undefined") return null;
