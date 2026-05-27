@@ -84,9 +84,14 @@ export function EditableDescription({
   const notifiedDescRef = useRef(false);
   // Only call onLocalEdit(true) once per editing session to avoid parent re-renders per keystroke
   const localEditNotifiedRef = useRef(false);
+  // Ref mirrors for unmount flush (cleanup closures cannot read latest state)
+  const valueRef = useRef(value);
+  const ticketKeyRef = useRef(ticketKey);
 
   const hasLocalEdit = localValue !== null;
   const value = localValue ?? initialDescription;
+  useEffect(() => { valueRef.current = value; }, [value]);
+  useEffect(() => { ticketKeyRef.current = ticketKey; }, [ticketKey]);
   usePrismLanguages(value);
 
   // Call onEditingChange synchronously so the parent hides the title header
@@ -114,10 +119,17 @@ export function EditableDescription({
     }, 800);
   }, [ticketKey]);
 
-  // Cleanup timer on unmount
+  // Flush pending draft on unmount (e.g. ticket navigation) via sendBeacon
   useEffect(() => {
     return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        const body = JSON.stringify({ field: "description", localValue: valueRef.current.trim(), isDraft: true });
+        navigator.sendBeacon(
+          `/api/tickets/${ticketKeyRef.current}/local-edits`,
+          new Blob([body], { type: "application/json" }),
+        );
+      }
     };
   }, []);
 
