@@ -12,20 +12,20 @@ type EditState = "draft" | "local_edits" | "conflict";
 
 export const EDIT_STATE_CONFIG: Record<EditState, { dotClass: string; accent: string; label: string; description: string }> = {
   draft: {
-    dotClass: "bg-[#4a90d9]/40",
-    accent: "#4a90d9",
+    dotClass: "bg-[var(--color-icon-task)]/40",
+    accent: "var(--color-icon-task)",
     label: "Unsaved draft",
     description: "A draft is in progress but has not been saved to Jira yet.",
   },
   local_edits: {
-    dotClass: "bg-[#4a90d9]/70",
-    accent: "#4a90d9",
+    dotClass: "bg-[var(--color-icon-task)]/70",
+    accent: "var(--color-icon-task)",
     label: "Local changes",
     description: "This ticket has local edits that are pending sync to Jira.",
   },
   conflict: {
-    dotClass: "bg-[#ea8744]/70",
-    accent: "#ea8744",
+    dotClass: "bg-[var(--color-status-warning)]/70",
+    accent: "var(--color-status-warning)",
     label: "Conflict",
     description: "Jira was updated after your local edit. Review and resolve before saving.",
   },
@@ -70,10 +70,10 @@ export function QualityBadge({
 }) {
   let color: string | undefined;
   if (score !== null) {
-    if (score < 60) color = "#e5534b";
-    else if (score < 75) color = "#ea8744";
-    else if (score < 90) color = "#eab308";
-    else color = "#4aaa60";
+    if (score < 60) color = "var(--color-status-error)";
+    else if (score < 75) color = "var(--color-status-warning)";
+    else if (score < 90) color = "var(--color-status-caution)";
+    else color = "var(--color-status-success)";
   }
 
   const content = score === null ? (

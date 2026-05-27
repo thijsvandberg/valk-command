@@ -15,9 +15,9 @@ export interface EpicSuggestion {
 }
 
 const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  high: { bg: "rgba(74, 170, 96, 0.15)", text: "#4aaa60", label: "High" },
-  medium: { bg: "rgba(234, 179, 8, 0.12)", text: "#eab308", label: "Med" },
-  low: { bg: "rgba(155, 108, 212, 0.10)", text: "#9b6cd4", label: "Low" },
+  high: { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)", label: "High" },
+  medium: { bg: "var(--color-status-caution-subtle)", text: "var(--color-status-caution)", label: "Med" },
+  low: { bg: "rgba(155, 108, 212, 0.10)", text: "var(--color-icon-epic)", label: "Low" },
 };
 
 interface ResolvedInfo {

@@ -211,8 +211,8 @@ export function EditableDescription({
       {/* Draft indicator badge */}
       {!editing && hasLocalEdit && editIsDraft && (
         <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-[#4a90d9]/20 bg-[#4a90d9]/[0.06] px-2.5 py-1 text-xs font-medium text-[#4a90d9]/80">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#4a90d9]/70" />
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] px-2.5 py-1 text-xs font-medium text-[var(--color-icon-task)]/80">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-icon-task)]/70" />
             Unsaved changes
           </span>
         </div>
@@ -244,7 +244,7 @@ export function EditableDescription({
           actions={
             <div className="flex items-center gap-1">
               {pushError && (
-                <span className="text-label text-[#e5534b]">{pushError}</span>
+                <span className="text-label text-[var(--color-status-error)]">{pushError}</span>
               )}
               {showConflictWarning && (
                 <label className="flex items-center gap-1.5 cursor-pointer">

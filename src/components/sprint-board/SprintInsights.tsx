@@ -41,15 +41,15 @@ function computeInsights(tickets: Ticket[]): InsightData {
 }
 
 function getInsightColor(value: number, threshold: { warn: number; danger: number }): string {
-  if (value >= threshold.danger) return "#e5534b";
-  if (value >= threshold.warn) return "#ea8744";
-  return "#4aaa60";
+  if (value >= threshold.danger) return "var(--color-status-error)";
+  if (value >= threshold.warn) return "var(--color-status-warning)";
+  return "var(--color-status-success)";
 }
 
 function getScoreColor(score: number): string {
-  if (score < 30) return "#e5534b";
-  if (score < 70) return "#ea8744";
-  return "#4aaa60";
+  if (score < 30) return "var(--color-status-error)";
+  if (score < 70) return "var(--color-status-warning)";
+  return "var(--color-status-success)";
 }
 
 // ---------------------------------------------------------------------------

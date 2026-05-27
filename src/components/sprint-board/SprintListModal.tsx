@@ -39,8 +39,8 @@ function dateRange(sprint: JiraSprint): string {
 }
 
 function stateColor(state: string): string {
-  if (state === "active") return "#4aaa60";
-  if (state === "future") return "#60a5fa";
+  if (state === "active") return "var(--color-status-success)";
+  if (state === "future") return "var(--color-status-info)";
   return "var(--color-text-muted)";
 }
 

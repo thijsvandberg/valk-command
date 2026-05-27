@@ -98,7 +98,7 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
         <div className="flex items-center justify-between border-b border-border-default pb-2">
           <h3 className="font-[var(--font-display)] text-sm font-semibold text-text-primary">Ready to Refine</h3>
           {allChecked && (
-            <span className="rounded-full bg-[rgba(46,145,73,0.12)] px-2.5 py-0.5 text-caption font-medium text-[#4aaa60]">
+            <span className="rounded-full bg-[rgba(46,145,73,0.12)] px-2.5 py-0.5 text-caption font-medium text-[var(--color-status-success)]">
               All complete
             </span>
           )}
@@ -135,7 +135,7 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
           ))}
         </div>
         {allChecked && (
-          <p className="mt-3 text-xs text-[#4aaa60]/70">
+          <p className="mt-3 text-xs text-[var(--color-status-success)]/70">
             Readiness automatically set to &quot;Ready to Refine&quot;
           </p>
         )}

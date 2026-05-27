@@ -28,9 +28,9 @@ interface EpicSuggestionItem {
 }
 
 const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  high:   { bg: "rgba(74, 170, 96, 0.15)", text: "#4aaa60", label: "High" },
-  medium: { bg: "rgba(234, 179, 8, 0.12)", text: "#eab308", label: "Med" },
-  low:    { bg: "rgba(155, 108, 212, 0.10)", text: "#9b6cd4", label: "Low" },
+  high:   { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)", label: "High" },
+  medium: { bg: "var(--color-status-caution-subtle)", text: "var(--color-status-caution)", label: "Med" },
+  low:    { bg: "rgba(155, 108, 212, 0.10)", text: "var(--color-icon-epic)", label: "Low" },
 };
 
 export function EpicPicker({
@@ -271,8 +271,8 @@ export function EpicPicker({
         title={value ? `Epic: ${value.name}` : "Select epic"}
         className="inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
       >
-        <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[#9b6cd4]" : "text-text-muted"}`} />
-        <span className={`truncate max-w-[140px] ${value ? "text-[#9b6cd4] font-medium" : "text-text-muted"}`}>
+        <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[var(--color-icon-epic)]" : "text-text-muted"}`} />
+        <span className={`truncate max-w-[140px] ${value ? "text-[var(--color-icon-epic)] font-medium" : "text-text-muted"}`}>
           {value ? value.name : "Select epic"}
         </span>
       </button>
@@ -307,7 +307,7 @@ export function EpicPicker({
                 onClick={handleSuggestEpic}
                 disabled={suggesting}
                 title="Suggest epic with AI"
-                className="shrink-0 rounded p-0.5 text-[#9b6cd4] cursor-pointer hover:text-[#b48ee6] hover:bg-[rgba(155,108,212,0.08)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40"
+                className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] hover:bg-[rgba(155,108,212,0.08)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40"
                 style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
               >
                 <Sparkles
@@ -350,7 +350,7 @@ export function EpicPicker({
                     }}
                   />
                 </div>
-                <span className="text-caption text-[#9b6cd4]">Analyzing...</span>
+                <span className="text-caption text-[var(--color-icon-epic)]">Analyzing...</span>
               </div>
             </div>
           )}
@@ -358,7 +358,7 @@ export function EpicPicker({
           {/* AI suggestion error */}
           {suggestError && !suggesting && (
             <div className="border-b border-border-subtle px-3 py-2">
-              <p className="text-caption text-[#e5534b]">{suggestError}</p>
+              <p className="text-caption text-[var(--color-status-error)]">{suggestError}</p>
             </div>
           )}
 
@@ -369,7 +369,7 @@ export function EpicPicker({
               style={{ backgroundColor: "rgba(155, 108, 212, 0.04)" }}
             >
               <div className="px-3 pt-1 pb-0.5">
-                <span className="text-caption font-medium uppercase tracking-wider text-[#9b6cd4]/60">
+                <span className="text-caption font-medium uppercase tracking-wider" style={{ color: "var(--color-icon-epic)", opacity: 0.6 }}>
                   AI Suggestions
                 </span>
               </div>
@@ -383,7 +383,7 @@ export function EpicPicker({
                     onClick={() => { onChange({ key: s.key, name: s.name }); handleClose(); }}
                     className="flex w-full items-start gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-[rgba(155,108,212,0.08)] active:bg-[rgba(155,108,212,0.12)]"
                   >
-                    <span className="flex w-4 items-center justify-center shrink-0 mt-0.5 text-[#9b6cd4]">
+                    <span className="flex w-4 items-center justify-center shrink-0 mt-0.5 text-[var(--color-icon-epic)]">
                       <Sparkles size={10} strokeWidth={1.5} />
                     </span>
                     <div className="flex-1 min-w-0 text-left">
@@ -446,7 +446,7 @@ export function EpicPicker({
                   className="flex w-full items-center gap-2.5 px-3 py-[7px] text-xs cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
                   style={isSuggested && !query.trim() ? { backgroundColor: "rgba(155, 108, 212, 0.04)" } : undefined}
                 >
-                  <span className="flex w-4 items-center justify-center shrink-0 text-[#9b6cd4]">
+                  <span className="flex w-4 items-center justify-center shrink-0 text-[var(--color-icon-epic)]">
                     <Zap size={11} strokeWidth={1.5} />
                   </span>
                   <span className={`flex-1 text-left truncate ${isSelected ? "text-text-primary font-medium" : "text-text-secondary"}`}>
@@ -454,7 +454,7 @@ export function EpicPicker({
                   </span>
                   {epic.summaryStale && (
                     <span title="Summary outdated" className="shrink-0 flex items-center">
-                      <AlertTriangle size={9} strokeWidth={1.5} className="text-[#ea8744]/50" />
+                      <AlertTriangle size={9} strokeWidth={1.5} style={{ color: "var(--color-status-warning)", opacity: 0.5 }} />
                     </span>
                   )}
                   <span className="shrink-0 text-caption text-text-muted">{epic.key}</span>
@@ -474,7 +474,7 @@ export function EpicPicker({
                 type="button"
                 onClick={handleGenerateSummaries}
                 disabled={syncing}
-                className="text-caption text-[#9b6cd4] cursor-pointer hover:text-[#b48ee6] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40"
+                className="text-caption text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40"
                 style={{ transition: "color 0.15s ease" }}
               >
                 Refresh

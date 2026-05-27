@@ -14,19 +14,19 @@ function StatusIcon({ state }: { state: StatusState }) {
     return <RefreshCw size={14} strokeWidth={1.5} className="animate-spin text-text-muted" />;
   }
   if (state === "ok") {
-    return <CheckCircle2 size={14} strokeWidth={1.5} className="text-[#4aaa60]" />;
+    return <CheckCircle2 size={14} strokeWidth={1.5} className="text-[var(--color-status-success)]" />;
   }
   if (state === "unconfigured") {
     return <AlertCircle size={14} strokeWidth={1.5} className="text-text-muted" />;
   }
-  return <XCircle size={14} strokeWidth={1.5} className="text-[#e5534b]" />;
+  return <XCircle size={14} strokeWidth={1.5} className="text-[var(--color-status-error)]" />;
 }
 
 function StatusLabel({ state, errorMsg }: { state: StatusState; errorMsg?: string }) {
   if (state === "loading") return <span className="text-xs text-text-tertiary">Checking...</span>;
-  if (state === "ok") return <span className="text-xs text-[#4aaa60]/80">Connected</span>;
+  if (state === "ok") return <span className="text-xs" style={{ color: "var(--color-status-success)", opacity: 0.8 }}>Connected</span>;
   if (state === "unconfigured") return <span className="text-xs text-text-muted">Not configured</span>;
-  return <span className="text-xs text-[#e5534b]/80" title={errorMsg}>Error</span>;
+  return <span className="text-xs" style={{ color: "var(--color-status-error)", opacity: 0.8 }} title={errorMsg}>Error</span>;
 }
 
 function IntegrationRow({

@@ -115,7 +115,7 @@ export function SprintSelector({
             <span className="flex items-center gap-2 min-w-0">
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: s.state === "active" ? "#4aaa60" : "#60a5fa" }}
+                style={{ backgroundColor: s.state === "active" ? "var(--color-status-success)" : "var(--color-status-info)" }}
               />
               <span className="truncate">{s.name}</span>
             </span>

@@ -26,19 +26,19 @@ import { CSS } from "@dnd-kit/utilities";
 
 // Legacy PO Status colors -- kept for TicketSidebar migration; remove after all consumers updated.
 export const PO_STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  New: { bg: "rgba(148, 163, 184, 0.1)", text: "#94a3b8", dot: "#94a3b8" },
-  Draft: { bg: "rgba(234, 179, 8, 0.1)", text: "#eab308", dot: "#eab308" },
-  "Awaiting Feedback": { bg: "rgba(234, 135, 68, 0.1)", text: "#ea8744", dot: "#ea8744" },
-  "Ready for Refinement": { bg: "rgba(96, 165, 250, 0.1)", text: "#60a5fa", dot: "#60a5fa" },
-  Ready: { bg: "rgba(46, 145, 73, 0.1)", text: "#4aaa60", dot: "#4aaa60" },
+  New: { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)", dot: "var(--color-status-neutral)" },
+  Draft: { bg: "var(--color-status-caution-subtle)", text: "var(--color-status-caution)", dot: "var(--color-status-caution)" },
+  "Awaiting Feedback": { bg: "var(--color-status-warning-subtle)", text: "var(--color-status-warning)", dot: "var(--color-status-warning)" },
+  "Ready for Refinement": { bg: "var(--color-status-info-subtle)", text: "var(--color-status-info)", dot: "var(--color-status-info)" },
+  Ready: { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)", dot: "var(--color-status-success)" },
   "On Hold": { bg: "rgba(100, 100, 120, 0.08)", text: "#64648a", dot: "#64648a" },
 };
 
 // Edit state display config for filter labels
 export const EDIT_STATE_OPTIONS: { value: string; label: string; dotClass: string }[] = [
-  { value: "draft", label: "Unsaved draft", dotClass: "bg-[#4a90d9]/40" },
-  { value: "local_edits", label: "Local changes", dotClass: "bg-[#4a90d9]/70" },
-  { value: "conflict", label: "Conflict", dotClass: "bg-[#ea8744]/70" },
+  { value: "draft", label: "Unsaved draft", dotClass: "bg-[var(--color-icon-task)]/40" },
+  { value: "local_edits", label: "Local changes", dotClass: "bg-[var(--color-icon-task)]/70" },
+  { value: "conflict", label: "Conflict", dotClass: "bg-[var(--color-status-warning)]/70" },
   { value: "removed", label: "Removed from Jira", dotClass: "bg-red-400/60" },
 ];
 
@@ -581,8 +581,8 @@ function ExpandableSearch({
 // ---------------------------------------------------------------------------
 
 export const GAPS_OPTIONS: { value: string; label: string; dotClass: string }[] = [
-  { value: "no_points", label: "No story points", dotClass: "bg-[#eab308]/50" },
-  { value: "no_bv", label: "No business value", dotClass: "bg-[#eab308]/50" },
+  { value: "no_points", label: "No story points", dotClass: "bg-[var(--color-status-caution)]/50" },
+  { value: "no_bv", label: "No business value", dotClass: "bg-[var(--color-status-caution)]/50" },
 ];
 
 export function FilterBar({
@@ -699,7 +699,7 @@ export function FilterBar({
             <span className="flex items-center gap-2">
               <span
                 className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: color?.text ?? "#94a3b8" }}
+                style={{ backgroundColor: color?.text ?? "var(--color-status-neutral)" }}
               />
               {v}
             </span>
@@ -752,7 +752,7 @@ export function FilterBar({
             <span className="flex items-center gap-2">
               <span
                 className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: cfg?.color ?? "#94a3b8" }}
+                style={{ backgroundColor: cfg?.color ?? "var(--color-status-neutral)" }}
               />
               {cfg?.label ?? v}
             </span>

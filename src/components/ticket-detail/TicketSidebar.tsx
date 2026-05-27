@@ -52,7 +52,7 @@ function CompactField({ label, children, accent }: { label: string; children: Re
   );
 }
 
-const DEFAULT_SIDEBAR_WIDTH = 320;
+const DEFAULT_SIDEBAR_WIDTH = 420;
 const MIN_SIDEBAR_WIDTH = 280;
 const SIDEBAR_WIDTH_KEY = "ticket-sidebar-width";
 export const SIDEBAR_COLLAPSED_KEY = "ticket-sidebar-collapsed";
@@ -342,51 +342,12 @@ export function TicketSidebar({
 
       {/* Sidebar content */}
       <div
-        className="h-full overflow-y-auto bg-[var(--color-surface-elevated)] py-4 pr-5 pl-5"
+        className="flex h-full flex-col overflow-y-auto bg-[var(--color-surface-elevated)] py-4 pr-5 pl-5"
         style={{
           opacity: isDragging ? 0.7 : 1,
           transition: isDragging ? "none" : "opacity 150ms ease",
         }}
       >
-
-        {/* Completeness indicator */}
-        <div>
-          <div className="flex items-center justify-between">
-            <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">Readiness</h3>
-            <span className="text-label tabular-nums text-text-tertiary">{completenessCount}/{completenessChecks.length}</span>
-          </div>
-          <div className="mt-2 flex gap-1">
-            {completenessChecks.map((check) => (
-              <div
-                key={check.label}
-                className="group relative h-1.5 flex-1 overflow-hidden rounded-full"
-                title={`${check.label}: ${check.done ? "Complete" : "Missing"}`}
-              >
-                <div className="absolute inset-0 rounded-full bg-overlay-default" />
-                {check.done && (
-                  <div
-                    className="absolute inset-0 rounded-full bg-[var(--color-brand-500)]"
-                    style={{ opacity: 0.7 }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="mt-1.5 flex gap-1">
-            {completenessChecks.map((check) => (
-              <span
-                key={check.label}
-                className={`flex-1 text-center text-caption ${check.done ? "text-text-tertiary" : "text-text-muted"}`}
-                title={check.label}
-              >
-                {COMPLETENESS_LABELS[check.label] ?? check.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="my-4 h-px bg-border-subtle" />
 
         {/* Details */}
         <div className="space-y-3">
@@ -418,17 +379,6 @@ export function TicketSidebar({
                   </span>
                 );
               })()}
-            </DetailRow>
-            <DetailRow label="Readiness">
-              <div className="flex items-center justify-end gap-2">
-                <span
-                  className="text-xs"
-                  style={{ color: readinessCfg?.color ?? "var(--color-text-muted)" }}
-                >
-                  {readinessCfg?.label ?? "Ready for Development"}
-                </span>
-                <ReadinessCell value={readiness} onChange={handleReadinessChange} align="right" />
-              </div>
             </DetailRow>
             {ticket.type !== "epic" && ticket.type !== "subtask" && (
               <DetailRow label="Epic">
@@ -517,18 +467,18 @@ export function TicketSidebar({
           {/* Timestamps & Meta */}
           <div className="space-y-2">
             {detail && (
-              <div className="grid grid-cols-2 gap-2">
-                <CompactField label="Created">
+              <>
+                <DetailRow label="Created">
                   <Tooltip content={formatAbsoluteDate(detail.createdAt)}>
                     <span>{relativeDate(detail.createdAt)}</span>
                   </Tooltip>
-                </CompactField>
-                <CompactField label="Updated">
+                </DetailRow>
+                <DetailRow label="Updated">
                   <Tooltip content={formatAbsoluteDate(detail.updatedAt)}>
                     <span>{relativeDate(detail.updatedAt)}</span>
                   </Tooltip>
-                </CompactField>
-              </div>
+                </DetailRow>
+              </>
             )}
             {detail?.components && detail.components.length > 0 && (
               <DetailRow label="Components">
@@ -541,15 +491,19 @@ export function TicketSidebar({
             )}
           </div>
 
-          {/* More section (collapsible, same pattern as Confluence/Development) */}
+          {/* More section */}
           <div>
             <button
               type="button"
               onClick={() => setShowMore(!showMore)}
               aria-expanded={showMore}
-              className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 cursor-pointer border border-border-subtle hover:border-[var(--color-brand-500)]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{
+                backgroundColor: "var(--color-overlay-subtle)",
+                transition: "background-color 0.15s ease, border-color 0.15s ease",
+              }}
             >
-              <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">More</h3>
+              <span className="text-xs font-medium text-text-tertiary">{showMore ? "Less" : "More details"}</span>
               <ChevronDown
                 size={12}
                 strokeWidth={1.5}
@@ -558,7 +512,53 @@ export function TicketSidebar({
               />
             </button>
             {showMore && (
-              <div className="mt-2 space-y-2">
+              <div className="mt-3 space-y-3">
+                {/* Completeness indicator */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-tertiary">Readiness</span>
+                    <span className="text-label tabular-nums text-text-tertiary">{completenessCount}/{completenessChecks.length}</span>
+                  </div>
+                  <div className="mt-2 flex gap-1">
+                    {completenessChecks.map((check) => (
+                      <div
+                        key={check.label}
+                        className="group relative h-1.5 flex-1 overflow-hidden rounded-full"
+                        title={`${check.label}: ${check.done ? "Complete" : "Missing"}`}
+                      >
+                        <div className="absolute inset-0 rounded-full bg-overlay-default" />
+                        {check.done && (
+                          <div
+                            className="absolute inset-0 rounded-full bg-[var(--color-brand-500)]"
+                            style={{ opacity: 0.7 }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 flex gap-1">
+                    {completenessChecks.map((check) => (
+                      <span
+                        key={check.label}
+                        className={`flex-1 text-center text-caption ${check.done ? "text-text-tertiary" : "text-text-muted"}`}
+                        title={check.label}
+                      >
+                        {COMPLETENESS_LABELS[check.label] ?? check.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <DetailRow label="Readiness">
+                  <div className="flex items-center justify-end gap-2">
+                    <span
+                      className="text-xs"
+                      style={{ color: readinessCfg?.color ?? "var(--color-text-muted)" }}
+                    >
+                      {readinessCfg?.label ?? "Ready for Development"}
+                    </span>
+                    <ReadinessCell value={readiness} onChange={handleReadinessChange} align="right" />
+                  </div>
+                </DetailRow>
                 <DetailRow label="Labels">
                   <LabelPicker
                     value={labels}
@@ -585,7 +585,7 @@ export function TicketSidebar({
                         <>
                           <QualityBadge score={ticket.qualityScore} />
                           {isReviewOutdated && (
-                            <AlertTriangle size={11} strokeWidth={1.5} className="text-[#ea8744]/70" />
+                            <AlertTriangle size={11} strokeWidth={1.5} className="text-[var(--color-status-warning)]/70" />
                           )}
                         </>
                       ) : (
@@ -602,7 +602,7 @@ export function TicketSidebar({
                         className="h-full rounded-full"
                         style={{
                           width: `${ticket.qualityScore}%`,
-                          backgroundColor: ticket.qualityScore < 60 ? "#e5534b" : ticket.qualityScore < 75 ? "#ea8744" : ticket.qualityScore < 90 ? "#eab308" : "#4aaa60",
+                          backgroundColor: ticket.qualityScore < 60 ? "var(--color-status-error)" : ticket.qualityScore < 75 ? "var(--color-status-warning)" : ticket.qualityScore < 90 ? "var(--color-status-caution)" : "var(--color-status-success)",
                           transition: "width 0.4s ease",
                         }}
                       />
@@ -614,63 +614,64 @@ export function TicketSidebar({
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="my-4 h-px bg-border-subtle" />
+        {/* Spacer to push footer sections down */}
+        <div className="min-h-4 flex-1" />
 
-        {/* PO Note (collapsible, same pattern as Confluence/Development) */}
-        <div>
-          <button
-            type="button"
-            onClick={() => {
-              const next = !poNoteExpanded;
-              setPoNoteExpanded(next);
-              if (next) {
-                requestAnimationFrame(() => poNoteRef.current?.focus());
-              }
-            }}
-            aria-expanded={poNoteExpanded}
-            className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          >
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">PO Note</h3>
-              {poNotes.trim() && (
-                <span
-                  className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]"
-                  title="Has PO note"
-                />
-              )}
-            </div>
-            <ChevronDown
-              size={12}
-              strokeWidth={1.5}
-              className={`shrink-0 text-text-muted ${poNoteExpanded ? "" : "-rotate-90"}`}
-              style={{ transition: "transform 0.2s ease" }}
-            />
-          </button>
-          {poNoteExpanded && (
-            <textarea
-              ref={poNoteRef}
-              defaultValue={poNotes}
-              placeholder="Quick annotation..."
-              rows={2}
-              onBlur={(e) => handleNotesChange(e.target.value)}
-              className="mt-2 w-full resize-none rounded-lg border border-border-subtle bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
-              style={{ transition: "border-color 0.15s ease" }}
-            />
-          )}
+        {/* Footer sections: pushed to bottom, scrolls with sidebar */}
+        <div className="-mx-5 -mb-4 border-t border-border-default bg-[var(--color-surface-elevated)] px-5 pt-3 pb-4 space-y-3">
+          {/* PO Note */}
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !poNoteExpanded;
+                setPoNoteExpanded(next);
+                if (next) {
+                  requestAnimationFrame(() => poNoteRef.current?.focus());
+                }
+              }}
+              aria-expanded={poNoteExpanded}
+              className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">PO Note</h3>
+                {poNotes.trim() && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]"
+                    title="Has PO note"
+                  />
+                )}
+              </div>
+              <ChevronDown
+                size={12}
+                strokeWidth={1.5}
+                className={`shrink-0 text-text-muted ${poNoteExpanded ? "" : "-rotate-90"}`}
+                style={{ transition: "transform 0.2s ease" }}
+              />
+            </button>
+            {poNoteExpanded && (
+              <textarea
+                ref={poNoteRef}
+                defaultValue={poNotes}
+                placeholder="Quick annotation..."
+                rows={2}
+                onBlur={(e) => handleNotesChange(e.target.value)}
+                className="mt-2 w-full resize-none rounded-lg border border-border-subtle bg-overlay-subtle px-3 py-2 text-sm text-text-secondary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                style={{ transition: "border-color 0.15s ease" }}
+              />
+            )}
+          </div>
+
+          <div className="h-px bg-border-subtle" />
+
+          {/* Confluence pages */}
+          <ConfluencePagesSection ticketKey={ticket.key} />
+
+          <div className="h-px bg-border-subtle" />
+
+          {/* Development panel */}
+          <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={onNavigateToDev} />
         </div>
-
-        {/* Divider */}
-        <div className="my-4 h-px bg-border-subtle" />
-
-        {/* Confluence pages */}
-        <ConfluencePagesSection ticketKey={ticket.key} />
-
-        {/* Divider */}
-        <div className="my-4 h-px bg-border-subtle" />
-
-        {/* Development panel */}
-        <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={onNavigateToDev} />
       </div>
     </div>
   );

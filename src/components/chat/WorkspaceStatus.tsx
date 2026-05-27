@@ -15,8 +15,8 @@ export default function WorkspaceStatus() {
   const { workspace } = useWorkspaceHealth();
 
   const wsColor =
-    workspace === "connected" ? "#34d399" :
-    workspace === "unreachable" ? "#f87171" : "#94a3b8";
+    workspace === "connected" ? "var(--color-status-done)" :
+    workspace === "unreachable" ? "var(--color-status-error)" : "var(--color-status-neutral)";
 
   const wsLabel =
     workspace === "connected" ? "Remote workspace" :

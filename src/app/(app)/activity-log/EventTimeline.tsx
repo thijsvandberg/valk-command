@@ -24,8 +24,8 @@ export function EventTimeline({
 
   const dotColor = (status: ActivityLogTimelineEntry["status"]) => {
     if (status === "success") return "#14a8a3"; // brand-400
-    if (status === "failed") return "#f87171"; // red-400
-    return "#fbbf24"; // amber-400 for running/cancelled
+    if (status === "failed") return "var(--color-status-error)";
+    return "var(--color-status-caution)";
   };
 
   const hourLabels = Array.from({ length: 7 }, (_, i) => {

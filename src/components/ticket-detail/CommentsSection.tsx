@@ -126,7 +126,7 @@ export function CommentsSection({
                     size="sm"
                     iconOnly
                     onClick={() => handleDeleteComment(comment.id)}
-                    className="ml-auto hidden group-hover:flex !text-text-muted hover:!text-[#e5534b]"
+                    className="ml-auto hidden group-hover:flex !text-text-muted hover:!text-[var(--color-status-error)]"
                     title="Delete comment"
                     aria-label="Delete comment"
                     icon={<Trash2 size={14} strokeWidth={1.2} />}
@@ -197,7 +197,7 @@ function JiraCommentsSection({
             <div
               key={comment.id}
               id={`jira-comment-${comment.id}`}
-              className={`flex gap-3 ${isFlagComment ? "rounded-lg border-l-[3px] border-l-[#e5534b] bg-[#e5534b]/[0.04] py-3 pr-3 pl-2.5" : ""}`}
+              className={`flex gap-3 ${isFlagComment ? "rounded-lg border-l-[3px] border-l-[var(--color-status-error)] bg-[var(--color-status-error)]/[0.04] py-3 pr-3 pl-2.5" : ""}`}
             >
               <div
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
@@ -210,7 +210,7 @@ function JiraCommentsSection({
                   <span className="text-xs font-medium text-text-secondary">{comment.authorName}</span>
                   <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}</span>
                   {isFlagComment && (
-                    <Flag size={11} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
+                    <Flag size={11} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
                   )}
                 </div>
                 <div className="description-content mt-1 text-sm leading-[1.7] text-text-secondary">
@@ -269,7 +269,7 @@ function JiraCommentsSection({
               </div>
             )}
             {error && (
-              <p className="mt-1.5 text-xs text-[#e5534b]">{error}</p>
+              <p className="mt-1.5 text-xs text-[var(--color-status-error)]">{error}</p>
             )}
           </div>
         </div>

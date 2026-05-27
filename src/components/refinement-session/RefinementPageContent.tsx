@@ -388,16 +388,19 @@ export function filterTickets(
   });
 }
 
+function readinessRank(r: string | null | undefined): number {
+  if (r === "ready_to_refine") return 0;
+  if (r === "drafting") return 1;
+  return 2;
+}
+
 function smartSort(a: Ticket, b: Ticket): number {
-  const aReady = a.readiness === "ready_to_refine" ? 0 : 1;
-  const bReady = b.readiness === "ready_to_refine" ? 0 : 1;
-  if (aReady !== bReady) return aReady - bReady;
+  const rankDiff = readinessRank(a.readiness) - readinessRank(b.readiness);
+  if (rankDiff !== 0) return rankDiff;
 
-  const aNoSprint = a.sprintId ? 1 : 0;
-  const bNoSprint = b.sprintId ? 1 : 0;
-  if (aNoSprint !== bNoSprint) return aNoSprint - bNoSprint;
-
-  return 0;
+  const aTime = a.jiraUpdatedAt ? new Date(a.jiraUpdatedAt).getTime() : 0;
+  const bTime = b.jiraUpdatedAt ? new Date(b.jiraUpdatedAt).getTime() : 0;
+  return bTime - aTime;
 }
 
 // ---------------------------------------------------------------------------
@@ -966,10 +969,10 @@ export function RefinementPageContent({
                   <button
                     type="button"
                     onClick={handleToggleReadyToRefine}
-                    className={`shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-caption font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22c55e] active:opacity-70 ${
+                    className={`shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-caption font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-done)] active:opacity-70 ${
                       allReadySelected
-                        ? "bg-[#22c55e] text-white hover:bg-[#1ea34d]"
-                        : "bg-[rgba(34,197,94,0.12)] text-[#22c55e] hover:bg-[rgba(34,197,94,0.20)]"
+                        ? "bg-[var(--color-status-done)] text-white hover:bg-[#1ea34d]"
+                        : "bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)] hover:bg-[rgba(34,197,94,0.20)]"
                     }`}
                     style={{ transition: "background-color 0.15s ease, color 0.15s ease, opacity 0.1s ease" }}
                     title={allReadySelected ? "Click to deselect all ready-to-refine tickets" : "Click to select all ready-to-refine tickets"}

@@ -85,14 +85,14 @@ The 11 pickers fall into 4 categories:
 - [x] Write tests for `BasePicker`
 
 ### Phase 2: Showcase page
-- [ ] Create `/dev/pickers` page (dev-only route, excluded from production build)
-- [ ] Add before/after for `IssueTypePicker` (simplest, proof of concept)
-- [ ] Add before/after for `AssigneePicker` (avatar rendering)
-- [ ] Add before/after for `LabelPicker` (color-coded items)
-- [ ] Add before/after for `StoryPointPicker` (grid layout variant)
-- [ ] Add before/after for `EpicPicker` (complex: SSE streaming for AI suggestions)
-- [ ] Add before/after for remaining pickers (SprintPicker, BusinessValuePicker, VersionPicker)
-- [ ] Fine-tune BasePicker styling and behavior based on showcase review
+- [x] Create `/dev/pickers` page (dev-only route, excluded from production build)
+- [x] Add before/after for `IssueTypePicker` (simplest, proof of concept)
+- [x] Add before/after for `AssigneePicker` (avatar rendering)
+- [x] Add before/after for `LabelPicker` (color-coded items)
+- [x] Add before/after for `StoryPointPicker` (grid layout variant)
+- [x] Add before/after for `EpicPicker` (complex: SSE streaming for AI suggestions)
+- [x] Add before/after for remaining pickers (SprintPicker, BusinessValuePicker, VersionPicker)
+- [x] Fine-tune BasePicker styling and behavior based on showcase review
 
 ### Phase 3: Migration
 - [ ] Replace `IssueTypePicker` with BasePicker version

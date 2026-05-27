@@ -646,7 +646,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             {sprintName && (
                               <>
                                 <span className="flex items-center gap-1">
-                                  <IterationCw size={11} strokeWidth={1.5} style={{ color: "#d4904a", flexShrink: 0 }} />
+                                  <IterationCw size={11} strokeWidth={1.5} style={{ color: "var(--color-icon-sprint)", flexShrink: 0 }} />
                                   <span className="truncate max-w-[120px]">{sprintName}</span>
                                 </span>
                                 <span className="text-text-muted">/</span>
@@ -655,7 +655,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             {s.epic && (
                               <>
                                 <span className="flex items-center gap-1">
-                                  <Zap size={11} strokeWidth={1.5} style={{ color: "#9b6cd4", flexShrink: 0 }} />
+                                  <Zap size={11} strokeWidth={1.5} style={{ color: "var(--color-icon-epic)", flexShrink: 0 }} />
                                   <span className="truncate max-w-[120px]">{s.epic}</span>
                                 </span>
                                 <span className="text-text-muted">/</span>
@@ -713,7 +713,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                               return name ? (
                                 <>
                                   <span className="flex items-center gap-1">
-                                    <IterationCw size={11} strokeWidth={1.5} style={{ color: "#d4904a" }} />
+                                    <IterationCw size={11} strokeWidth={1.5} style={{ color: "var(--color-icon-sprint)" }} />
                                     <span className="truncate max-w-[120px]">{name}</span>
                                   </span>
                                   <span className="text-text-muted">/</span>
@@ -723,7 +723,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             {selectedSession.epic && (
                               <>
                                 <span className="flex items-center gap-1">
-                                  <Zap size={11} strokeWidth={1.5} style={{ color: "#9b6cd4" }} />
+                                  <Zap size={11} strokeWidth={1.5} style={{ color: "var(--color-icon-epic)" }} />
                                   <span className="truncate max-w-[120px]">{selectedSession.epic}</span>
                                 </span>
                                 <span className="text-text-muted">/</span>

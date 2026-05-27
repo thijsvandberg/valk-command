@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { TicketDetail, LinkedIssue, IssueType } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -49,6 +49,28 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [inlineError, setInlineError] = useState<string | null>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const inlineDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Close relation dropdown on Esc or click outside
+  useEffect(() => {
+    if (!inlineRelationOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setInlineRelationOpen(false);
+      }
+    }
+    function handleClick(e: MouseEvent) {
+      if (inlineRelationRef.current && !inlineRelationRef.current.contains(e.target as Node)) {
+        setInlineRelationOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    document.addEventListener("mousedown", handleClick);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [inlineRelationOpen]);
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete || isDeleting) return;
@@ -362,7 +384,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                 {r.source === "jira" && (
                   <span
                     className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                    style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "rgba(147, 197, 253, 0.8)" }}
+                    style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-status-info)" }}
                   >
                     <Cloud size={9} strokeWidth={2} />
                     Jira

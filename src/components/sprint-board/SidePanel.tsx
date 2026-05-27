@@ -201,12 +201,12 @@ export function SidePanel({
             href={`/tickets/${ticket.key}`}
           />
           {ticket.editState === "draft" && (
-            <span className="rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-caption text-[#4a90d9]/50" title="Unsaved draft">
+            <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.5 }} title="Unsaved draft">
               draft
             </span>
           )}
           {ticket.editState === "local_edits" && (
-            <span className="rounded bg-[#4a90d9]/10 px-1.5 py-0.5 text-caption text-[#4a90d9]/70" title="Has local changes not yet pushed to Jira">
+            <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
               local changes
             </span>
           )}
@@ -244,12 +244,14 @@ export function SidePanel({
           {ticket.editState === "conflict" && (
             <Link
               href={`/tickets/${ticket.key}`}
-              className="mt-3 flex w-full items-center gap-2.5 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-3.5 py-2.5 text-left cursor-pointer hover:bg-[#ea8744]/[0.10] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.99]"
-              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              className="mt-3 flex w-full items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.99]"
+              style={{ borderWidth: 1, borderStyle: "solid", borderColor: "color-mix(in srgb, var(--color-status-warning) 20%, transparent)", backgroundColor: "color-mix(in srgb, var(--color-status-warning) 6%, transparent)", transition: "background-color 0.15s ease, transform 0.1s ease" }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--color-status-warning) 10%, transparent)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--color-status-warning) 6%, transparent)"; }}
             >
-              <AlertCircle className="h-4 w-4 shrink-0 text-[#ea8744]" strokeWidth={1.5} />
+              <AlertCircle className="h-4 w-4 shrink-0 text-[var(--color-status-warning)]" strokeWidth={1.5} />
               <div>
-                <span className="text-xs font-medium text-[#ea8744]">Conflict</span>
+                <span className="text-xs font-medium text-[var(--color-status-warning)]">Conflict</span>
                 <span className="ml-1.5 text-xs text-text-tertiary">Open full view to review diff</span>
               </div>
               <ChevronRight className="ml-auto h-2.5 w-2.5 text-text-muted" strokeWidth={1.5} />
@@ -440,7 +442,7 @@ export function SidePanel({
                     className="h-full rounded-full"
                     style={{
                       width: `${ticket.qualityScore}%`,
-                      backgroundColor: ticket.qualityScore < 60 ? "#e5534b" : ticket.qualityScore < 75 ? "#ea8744" : ticket.qualityScore < 90 ? "#eab308" : "#4aaa60",
+                      backgroundColor: ticket.qualityScore < 60 ? "var(--color-status-error)" : ticket.qualityScore < 75 ? "var(--color-status-warning)" : ticket.qualityScore < 90 ? "var(--color-status-caution)" : "var(--color-status-success)",
                       transition: "width 0.4s ease",
                     }}
                   />

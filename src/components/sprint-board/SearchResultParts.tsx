@@ -15,7 +15,7 @@ export type FocusedPanel = "list" | "preview";
 
 export const StatusBadge = memo(function StatusBadge({ status }: { status: string }) {
   const upper = status.toUpperCase();
-  const color = JIRA_STATUS_COLORS[upper as keyof typeof JIRA_STATUS_COLORS] ?? { bg: "rgba(148, 163, 184, 0.12)", text: "#94a3b8" };
+  const color = JIRA_STATUS_COLORS[upper as keyof typeof JIRA_STATUS_COLORS] ?? { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" };
   return (
     <span
       className="inline-flex items-center rounded px-1.5 py-0.5 text-caption font-medium tracking-wide"
@@ -69,7 +69,7 @@ export const PreviewPane = memo(function PreviewPane({
               onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-tertiary)")}
             >
-              <IterationCw className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "#d4904a" }} />
+              <IterationCw className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "var(--color-icon-sprint)" }} />
               <span className="truncate max-w-[160px]" title={displaySprintName}>{displaySprintName}</span>
             </a>
             <span className="text-text-muted">/</span>
@@ -86,12 +86,12 @@ export const PreviewPane = memo(function PreviewPane({
                 onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-tertiary)")}
               >
-                <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "#9b6cd4" }} />
+                <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "var(--color-icon-epic)" }} />
                 <span className="truncate max-w-[160px]" title={result.epic}>{result.epic}</span>
               </a>
             ) : (
               <span className="flex items-center gap-1 text-text-tertiary">
-                <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "#9b6cd4" }} />
+                <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} style={{ color: "var(--color-icon-epic)" }} />
                 <span className="truncate max-w-[160px]" title={result.epic}>{result.epic}</span>
               </span>
             )}
@@ -125,7 +125,7 @@ export const PreviewPane = memo(function PreviewPane({
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer"
-            style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "#60a5fa", transition: "background-color 120ms" }}
+            style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "var(--color-status-info)", transition: "background-color 120ms" }}
           >
             Jira
             <ExternalLink className="h-2.5 w-2.5" strokeWidth={1.5} />
@@ -212,7 +212,7 @@ export function HighlightedText({ text, matches, fieldName }: { text: string; ma
   for (const [start, end] of intervals) {
     if (start > cursor) parts.push(<span key={cursor}>{text.slice(cursor, start)}</span>);
     parts.push(
-      <mark key={start} className="rounded-[2px] px-[1px]" style={{ backgroundColor: "rgba(74, 170, 96, 0.18)", color: "#7ac48a", textDecoration: "none" }}>
+      <mark key={start} className="rounded-[2px] px-[1px]" style={{ backgroundColor: "var(--color-brand-subtle-hover)", color: "var(--color-status-success)", textDecoration: "none" }}>
         {text.slice(start, end + 1)}
       </mark>
     );
@@ -273,7 +273,7 @@ export function MatchSnippet({ matches }: { matches?: readonly FuseResultMatch[]
         <mark
           key={start}
           className="rounded-[2px] px-[1px]"
-          style={{ backgroundColor: "rgba(74, 170, 96, 0.18)", color: "#7ac48a", textDecoration: "none" }}
+          style={{ backgroundColor: "var(--color-brand-subtle-hover)", color: "var(--color-status-success)", textDecoration: "none" }}
         >
           {snippet.slice(clampedStart, clampedEnd)}
         </mark>
@@ -347,7 +347,7 @@ export function LocalResultRow({
       style={{
         display: "flex",
         textDecoration: "none",
-        backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
+        backgroundColor: active ? "var(--color-brand-subtle)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
         cursor: "pointer",
       }}
@@ -401,7 +401,7 @@ export function JiraResultRow({
       style={{
         display: "flex",
         textDecoration: "none",
-        backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
+        backgroundColor: active ? "var(--color-brand-subtle)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
         cursor: "pointer",
       }}
@@ -432,7 +432,7 @@ export function JiraResultRow({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer"
-            style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "#60a5fa", transition: "background-color 120ms" }}
+            style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "var(--color-status-info)", transition: "background-color 120ms" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.2)")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.1)")}
           >
@@ -463,13 +463,13 @@ export function EmptyState({ query, mode, onSwitchToJira }: { query: string; mod
           onClick={onSwitchToJira}
           className="rounded-full px-3 py-1.5 text-body-sm font-medium cursor-pointer"
           style={{
-            backgroundColor: "rgba(74, 170, 96, 0.1)",
+            backgroundColor: "var(--color-brand-subtle)",
             color: "var(--color-brand-400)",
             border: "1px solid rgba(74, 170, 96, 0.2)",
             transition: "background-color 120ms",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(74, 170, 96, 0.18)")}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(74, 170, 96, 0.1)")}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-brand-subtle-hover)")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--color-brand-subtle)")}
         >
           Search in Jira mode
         </button>
@@ -593,7 +593,7 @@ export function ConversationResultRow({
       style={{
         display: "flex",
         textDecoration: "none",
-        backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
+        backgroundColor: active ? "var(--color-brand-subtle)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
         cursor: "pointer",
       }}
@@ -645,7 +645,7 @@ export function CommentResultRow({
       style={{
         display: "flex",
         textDecoration: "none",
-        backgroundColor: active ? "rgba(74, 170, 96, 0.06)" : undefined,
+        backgroundColor: active ? "var(--color-brand-subtle)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
         cursor: "pointer",
       }}
@@ -663,8 +663,8 @@ export function CommentResultRow({
         <span
           className="rounded px-1.5 py-0.5 text-caption font-medium"
           style={{
-            backgroundColor: result.source === "jira" ? "rgba(96, 165, 250, 0.1)" : "rgba(74, 170, 96, 0.1)",
-            color: result.source === "jira" ? "#60a5fa" : "var(--color-brand-400)",
+            backgroundColor: result.source === "jira" ? "rgba(96, 165, 250, 0.1)" : "var(--color-brand-subtle)",
+            color: result.source === "jira" ? "var(--color-status-info)" : "var(--color-brand-400)",
           }}
         >
           {result.source === "jira" ? "Jira" : "PO"}

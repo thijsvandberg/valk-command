@@ -391,7 +391,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
                   <button
                     type="button"
                     onClick={() => handleUnlink(link.id)}
-                    className="rounded p-0.5 text-text-muted cursor-pointer hover:text-[#e5534b]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="rounded p-0.5 text-text-muted cursor-pointer hover:text-[var(--color-status-error)]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "color 0.15s ease" }}
                     title="Unlink page"
                   >

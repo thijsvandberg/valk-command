@@ -181,7 +181,7 @@ function CollapsibleComments({
             </div>
           )}
           {error && (
-            <p className="text-caption text-[#e5534b]">{error}</p>
+            <p className="text-caption text-[var(--color-status-error)]">{error}</p>
           )}
         </div>
       )}

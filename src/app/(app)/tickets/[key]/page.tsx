@@ -493,7 +493,7 @@ export default function TicketDetailPage({
                 {ticket.type === "epic" && (
                   <span
                     className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ backgroundColor: "rgba(155,108,212,0.12)", color: "#9b6cd4", border: "1px solid rgba(155,108,212,0.25)" }}
+                    style={{ backgroundColor: "rgba(155,108,212,0.12)", color: "var(--color-icon-epic)", border: "1px solid rgba(155,108,212,0.25)" }}
                   >
                     <Zap size={11} strokeWidth={2} />
                     Epic
@@ -541,15 +541,15 @@ export default function TicketDetailPage({
                       const el = document.getElementById(`jira-comment-${flagComment.id}`);
                       if (el) {
                         el.scrollIntoView({ behavior: "smooth", block: "center" });
-                        el.classList.add("ring-2", "ring-[#e5534b]/40");
-                        setTimeout(() => el.classList.remove("ring-2", "ring-[#e5534b]/40"), 2000);
+                        el.classList.add("ring-2", "ring-[var(--color-status-error)]/40");
+                        setTimeout(() => el.classList.remove("ring-2", "ring-[var(--color-status-error)]/40"), 2000);
                       }
                     }
                   }}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[#e5534b]/25 bg-[#e5534b]/10 px-2 py-0.5 text-[11px] font-semibold text-[#e5534b] hover:bg-[#e5534b]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e5534b]/40 active:scale-[0.97]"
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-status-error)]/25 bg-[var(--color-status-error)]/10 px-2 py-0.5 text-[11px] font-semibold text-[var(--color-status-error)] hover:bg-[var(--color-status-error)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-error)]/40 active:scale-[0.97]"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 >
-                  <Flag size={11} strokeWidth={1.5} fill="#e5534b" />
+                  <Flag size={11} strokeWidth={1.5} fill="var(--color-status-error)" />
                   Flagged
                 </button>
               </Tooltip>
@@ -659,7 +659,7 @@ export default function TicketDetailPage({
                       className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
                       style={{ transition: "background-color 0.1s ease" }}
                     >
-                      <Flag size={13} strokeWidth={1.5} className="text-[#e5534b]" fill="#e5534b" />
+                      <Flag size={13} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
                       Remove flag
                     </button>
                   )}
@@ -777,11 +777,11 @@ export default function TicketDetailPage({
 
           {/* Conflict warning: clickable, opens conflict diff */}
           {showConflictWarning && (
-            <div className="mt-3 flex w-full flex-col gap-2 rounded-lg border border-[#ea8744]/20 bg-[#ea8744]/[0.06] px-4 py-3">
+            <div className="mt-3 flex w-full flex-col gap-2 rounded-lg border border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/[0.06] px-4 py-3">
               <div className="flex w-full items-start gap-2.5">
-                <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[#ea8744]" />
+                <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[var(--color-status-warning)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[#ea8744]">Conflict</p>
+                  <p className="text-sm font-medium text-[var(--color-status-warning)]">Conflict</p>
                   <p className="mt-0.5 text-xs text-text-tertiary">
                     Jira was updated since your local edit. Click to review and resolve.
                   </p>
@@ -808,7 +808,7 @@ export default function TicketDetailPage({
                       setShowConflictDiff(true);
                     }}
                     disabled={isDiscarding}
-                    className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-[#ea8744]/80 hover:bg-[#ea8744]/10 hover:text-[#ea8744] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ea8744]/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-[var(--color-status-warning)]/80 hover:bg-[var(--color-status-warning)]/10 hover:text-[var(--color-status-warning)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)]/50 disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                   >
                     Review diff
@@ -862,10 +862,10 @@ export default function TicketDetailPage({
               ?.replace(/^:?flag_on:?\s*Flag added\s*/i, "")
               ?.trim() || null;
             return (
-              <div className="mt-4 rounded-lg border border-[#e5534b]/20 bg-[#e5534b]/[0.04] px-4 py-3">
+              <div className="mt-4 rounded-lg border border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/[0.04] px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Flag size={14} strokeWidth={1.5} className="shrink-0 text-[#e5534b]" fill="#e5534b" />
-                  <span className="text-sm font-semibold text-[#e5534b]">Flagged</span>
+                  <Flag size={14} strokeWidth={1.5} className="shrink-0 text-[var(--color-status-error)]" fill="var(--color-status-error)" />
+                  <span className="text-sm font-semibold text-[var(--color-status-error)]">Flagged</span>
                   {flagComment && (
                     <span className="text-xs text-text-muted">
                       by {flagComment.authorName}, {new Date(flagComment.createdAt).toLocaleDateString()}
