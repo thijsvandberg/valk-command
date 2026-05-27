@@ -4,7 +4,7 @@ import RefinementPage from "./page";
 
 // Mock dependencies
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
 vi.mock("@/hooks/usePageTitle", () => ({

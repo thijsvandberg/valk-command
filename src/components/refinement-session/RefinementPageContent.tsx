@@ -10,7 +10,7 @@ import { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import { useRefinementQueue } from "@/hooks/useRefinementQueue";
 import { useBulkSuggest } from "@/hooks/useBulkSuggest";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
-import { Gem, Play, Plus, Clock } from "lucide-react";
+import { Gem, Plus, Clock } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
@@ -53,12 +53,14 @@ export function RefinementPageContent({
 
   const hasCheckedSession = useRef(false);
   useEffect(() => {
-    if (!initialSessionId || sessions.length === 0 || hasCheckedSession.current) return;
+    if (sessions.length === 0 || hasCheckedSession.current) return;
     hasCheckedSession.current = true;
-    if (!sessions.some((s) => s.id === initialSessionId)) {
+    if (initialSessionId && !sessions.some((s) => s.id === initialSessionId)) {
       router.replace("/refinement");
+    } else if (!initialSessionId && resolvedSessionId) {
+      router.replace(`/refinement/${resolvedSessionId}`);
     }
-  }, [initialSessionId, sessions, router]);
+  }, [initialSessionId, sessions, resolvedSessionId, router]);
 
   const ticketSessionMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string }[]>();
@@ -189,8 +191,9 @@ export function RefinementPageContent({
       flushPersistTimer();
       setUserSelectedId(id);
       onSessionChange?.(id);
+      router.replace(`/refinement/${id}`);
     },
-    [onSessionChange, flushPersistTimer],
+    [onSessionChange, flushPersistTimer, router],
   );
 
   const handleBeginRefinement = useCallback(async () => {
@@ -218,17 +221,21 @@ export function RefinementPageContent({
     queueHook.setLocalQueue([]);
     setUserSelectedId(created.id);
     onSessionChange?.(created.id);
+    router.replace(`/refinement/${created.id}`);
     await mutateSessions();
-  }, [queueHook, mutateSessions, onSessionChange]);
+  }, [queueHook, mutateSessions, onSessionChange, router]);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const handleCreateSession = useCallback(async (name: string) => {
-    const created = await refinementSessionsApi.create({ name });
+    const currentQueue = queueHook.localQueue.length > 0 ? queueHook.localQueue : [];
+    const created = await refinementSessionsApi.create({ name, ticketKeys: currentQueue.length > 0 ? currentQueue : undefined });
+    if (currentQueue.length > 0) queueHook.setLocalQueue([]);
     setUserSelectedId(created.id);
     onSessionChange?.(created.id);
+    router.replace(`/refinement/${created.id}`);
     await mutateSessions();
-  }, [mutateSessions, onSessionChange]);
+  }, [mutateSessions, onSessionChange, queueHook]);
 
   const activeSessions = useMemo(
     () => sessions.filter((s) => s.status !== "completed"),
@@ -245,19 +252,11 @@ export function RefinementPageContent({
         actions={
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="md" icon={<Plus size={13} strokeWidth={1.5} />} onClick={() => setCreateModalOpen(true)}>
-              New session
+              Plan session
             </Button>
             <Link href="/refinement/history">
               <Button variant="ghost" size="md" icon={<Clock size={13} strokeWidth={1.5} />}>Sessions</Button>
             </Link>
-            {canStart && (
-              <>
-                <div className="h-5 w-px bg-border-default" />
-                <Button variant="primary" size="lg" icon={<Play size={14} strokeWidth={2} />} onClick={handleBeginRefinement}>
-                  Start Refinement ({queueHook.queue.length})
-                </Button>
-              </>
-            )}
           </div>
         }
       >
