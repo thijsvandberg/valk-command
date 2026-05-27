@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import type { TicketDetail, JiraStatus, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
+import type { TicketDetail, Subtask, SubtaskSuggestionResponse } from "@/types/ticket";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { FieldFilterPopover, STATUS_FILTER_OPTIONS, type StatusFilter } from "./FieldFilterPopover";
+import { ChildIssueRow } from "./ChildIssueRow";
+import { ChildIssueListHeader } from "./ChildIssueListHeader";
+import { ChildIssueStatusFilter } from "./ChildIssueStatusFilter";
+import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
+import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { Loader2, GripVertical, ExternalLink, Filter, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { GripVertical, Filter, Sparkles, Undo2, Loader2, X } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
 import { attachTaskStreamListeners } from "@/hooks/useStreamingTask";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
@@ -28,7 +31,10 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 
-const SUBTASK_FIELDS = [{ id: "issueKey", label: "issue keys" }];
+const SUBTASK_FIELDS = [
+  { id: "issueKey", label: "issue keys" },
+  { id: "status", label: "status" },
+];
 
 interface SubtasksSectionProps {
   subtasks: TicketDetail["subtasks"];
@@ -41,11 +47,27 @@ interface SubtasksSectionProps {
   showDragHandles?: boolean;
 }
 
+function DeleteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+      style={{ transition: "opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease" }}
+      title="Delete subtask"
+    >
+      <X size={14} strokeWidth={2} />
+      <span>Delete</span>
+    </button>
+  );
+}
+
 function SortableSubtaskRow({
   sub,
   isLast,
   onSelect,
-  hideKey,
+  showKey,
+  showStatus,
   showDragHandle,
   displayTitle,
   isEditing,
@@ -59,7 +81,8 @@ function SortableSubtaskRow({
   sub: Subtask;
   isLast: boolean;
   onSelect?: (key: string) => void;
-  hideKey?: boolean;
+  showKey: boolean;
+  showStatus: boolean;
   showDragHandle?: boolean;
   displayTitle: string;
   isEditing: boolean;
@@ -87,95 +110,40 @@ function SortableSubtaskRow({
     position: "relative" as const,
   };
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (e.metaKey || e.ctrlKey) {
-      window.open(`/tickets/${sub.key}`, "_blank");
-      return;
-    }
-    if (onSelect) {
-      e.preventDefault();
-      onSelect(sub.key);
-    }
-  };
+  const dragHandle = showDragHandle ? (
+    <span
+      ref={setActivatorNodeRef}
+      {...attributes}
+      {...listeners}
+      className="shrink-0 cursor-grab text-text-muted opacity-40 hover:opacity-100 active:cursor-grabbing"
+      style={{ transition: "opacity 0.15s ease" }}
+    >
+      <GripVertical size={12} strokeWidth={1.5} />
+    </span>
+  ) : undefined;
+
+  const itemWithTitle = { ...sub, title: displayTitle };
 
   return (
-    <div
+    <ChildIssueRow
       ref={setNodeRef}
+      item={itemWithTitle}
+      isLast={isLast}
+      showKey={showKey}
+      onSelect={onSelect}
+      isEditing={isEditing}
+      editValue={editValue}
+      onEditChange={onEditChange}
+      onStartEdit={onStartEdit}
+      onSaveEdit={onSaveEdit}
+      onCancelEdit={onCancelEdit}
+      metadataSlot={showStatus ? <StatusBadge status={sub.jiraStatus} /> : undefined}
+      actionsSlot={<DeleteButton onClick={onDelete} />}
+      dragHandleSlot={dragHandle}
       style={style}
-      className={`group flex items-center gap-2 px-3 py-2.5 ${
-        onSelect ? "cursor-pointer hover:bg-overlay-subtle" : ""
-      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""} ${
-        !isLast && !isDragging ? "border-b border-border-subtle" : ""
-      }`}
-      onClick={handleClick}
-      {...(showDragHandle ? {} : { ...attributes, ...listeners })}
-    >
-      {showDragHandle && (
-        <span
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          className="shrink-0 cursor-grab text-text-muted opacity-40 hover:opacity-100 active:cursor-grabbing"
-          style={{ transition: "opacity 0.15s ease" }}
-        >
-          <GripVertical size={12} strokeWidth={1.5} />
-        </span>
-      )}
-      {!hideKey && (
-        <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">
-          {sub.key}
-        </span>
-      )}
-      {isEditing ? (
-        <input
-          autoFocus
-          value={editValue}
-          onChange={(e) => onEditChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); onSaveEdit(); }
-            if (e.key === "Escape") { e.preventDefault(); onCancelEdit(); }
-          }}
-          onBlur={onSaveEdit}
-          onFocus={(e) => e.target.select()}
-          onClick={(e) => e.stopPropagation()}
-          className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none border-b border-[var(--color-brand-400)]"
-        />
-      ) : (
-        <span
-          className="min-w-0 flex-1 truncate text-sm text-text-secondary cursor-text hover:text-text-primary"
-          onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
-          style={{ transition: "color 0.15s ease" }}
-        >
-          {displayTitle}
-        </span>
-      )}
-      <StatusBadge status={sub.jiraStatus} />
-      {/* Row actions */}
-      {!isEditing && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="shrink-0 cursor-pointer rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-            title="Delete subtask"
-          >
-            <Trash2 size={12} strokeWidth={1.5} />
-          </button>
-          <a
-            href={`/tickets/${sub.key}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-            title="Open in new tab"
-          >
-            <ExternalLink size={12} strokeWidth={1.5} />
-          </a>
-        </>
-      )}
-    </div>
+      className={isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""}
+      dndProps={showDragHandle ? {} : { ...attributes, ...listeners }}
+    />
   );
 }
 
@@ -195,7 +163,6 @@ export function SubtasksSection({
   const [error, setError] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<Subtask[] | null>(null);
   const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
-  const [hideKeys, setHideKeys] = useState(defaultHideKeys ?? false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<SubtaskSuggestionResponse[]>([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
@@ -215,6 +182,9 @@ export function SubtasksSection({
   const suggestRetryRef = useRef(0);
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
 
+  const defaultVisible = defaultHideKeys ? ["status"] : ["issueKey", "status"];
+  const { visible: visibleFields, toggleField } = useSectionVisibility("subtasks", defaultVisible);
+
   // Load persisted suggestions on mount
   useEffect(() => {
     let cancelled = false;
@@ -222,13 +192,10 @@ export function SubtasksSection({
       if (!cancelled && data.suggestions.length > 0) {
         setSuggestions(data.suggestions);
       }
-    }).catch(() => {
-      // Silently ignore load errors
-    });
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, [ticketKey]);
 
-  // Merge server subtasks with locally added ones (that haven't appeared in server data yet)
   const mergedSubtasks = useMemo(() => [
     ...subtasks,
     ...locallyAdded.filter((la) => !subtasks.some((s) => s.key === la.key)),
@@ -249,7 +216,6 @@ export function SubtasksSection({
     ? visibleSubtasks
     : visibleSubtasks.filter((s) => s.jiraStatus === filter);
 
-  // Counts per status for filter chips (exclude hidden subtasks)
   const countBase = hiddenKeys.size > 0
     ? mergedSubtasks.filter((s) => !hiddenKeys.has(s.key))
     : mergedSubtasks;
@@ -299,7 +265,6 @@ export function SubtasksSection({
     const title = newTitle.trim();
     if (!title) return;
 
-    // Optimistically add a placeholder row and clear input immediately
     const placeholderKey = `pending-${Date.now()}`;
     const placeholder: Subtask = {
       key: placeholderKey,
@@ -313,17 +278,14 @@ export function SubtasksSection({
     setError(null);
     setLocalOrder(null);
 
-    // Create in background
     tickets.createSubtask(ticketKey, { title })
       .then((created) => {
-        // Replace placeholder with real subtask
         setLocallyAdded((prev) =>
           prev.map((s) => s.key === placeholderKey ? created : s),
         );
         onMutate();
       })
       .catch((err) => {
-        // Remove placeholder on failure
         setLocallyAdded((prev) => prev.filter((s) => s.key !== placeholderKey));
         const detail = err instanceof ApiError ? err.message : "Jira API error";
         setError(`Failed to create subtask: ${detail}`);
@@ -371,7 +333,6 @@ export function SubtasksSection({
     tickets.renameSubtask(ticketKey, savedKey, { title: trimmed })
       .then(() => onMutate())
       .catch((err) => {
-        // Remove override so title reverts to original on error
         setLocalRenames((prev) => {
           const next = { ...prev };
           delete next[savedKey];
@@ -393,7 +354,6 @@ export function SubtasksSection({
     tickets.deleteSubtask(ticketKey, sub.key)
       .then(() => onMutate())
       .catch((err) => {
-        // Remove from flushed keys so the subtask reappears on error
         setFlushedDeleteKeys((prev) => {
           const next = new Set(prev);
           next.delete(sub.key);
@@ -405,7 +365,6 @@ export function SubtasksSection({
   }, [ticketKey, onMutate]);
 
   const handleDelete = useCallback((sub: Subtask, index: number) => {
-    // Flush any existing pending delete immediately
     if (pendingDelete) {
       if (pendingDeleteTimerRef.current) clearTimeout(pendingDeleteTimerRef.current);
       flushDelete(pendingDelete.sub);
@@ -425,7 +384,6 @@ export function SubtasksSection({
     setPendingDelete(null);
   }, []);
 
-  // Clean up delete timer on unmount
   useEffect(() => {
     return () => {
       if (pendingDeleteTimerRef.current) {
@@ -434,7 +392,6 @@ export function SubtasksSection({
     };
   }, []);
 
-  // Clean up EventSource on unmount
   useEffect(() => {
     return () => {
       suggestEsRef.current?.close();
@@ -479,11 +436,9 @@ export function SubtasksSection({
           setSuggestLoading(false);
           setSuggestProgress(null);
 
-          // Persist to DB, then update state with IDs
           tickets.persistSubtaskSuggestions(ticketKey, { suggestions: parsed })
             .then((data) => setSuggestions(data.suggestions))
             .catch(() => {
-              // Fallback: use ephemeral suggestions without IDs
               setSuggestions(parsed.map((title, i) => ({
                 id: `ephemeral-${i}`,
                 ticketKey,
@@ -544,7 +499,6 @@ export function SubtasksSection({
       setLocallyAdded((prev) => prev.map((s) => s.key === placeholderKey ? created : s));
       setSuggestions((prev) => prev.filter((_, i) => i !== index));
       onMutate();
-      // Remove accepted suggestion from DB
       if (!suggestion.id.startsWith("ephemeral-")) {
         tickets.dismissSubtaskSuggestion(ticketKey, { id: suggestion.id }).catch(() => {});
       }
@@ -576,16 +530,20 @@ export function SubtasksSection({
   const handleDismissSuggestion = useCallback((index: number) => {
     const suggestion = suggestions[index];
     setSuggestions((prev) => prev.filter((_, i) => i !== index));
-    // Remove from DB
     if (suggestion && !suggestion.id.startsWith("ephemeral-")) {
       tickets.dismissSubtaskSuggestion(ticketKey, { id: suggestion.id }).catch(() => {});
     }
   }, [suggestions, ticketKey]);
 
   const isDndEnabled = filter === "all" && filtered.length > 1;
+  const isFiltered = filter !== "all";
+  const showKey = visibleFields.has("issueKey");
+  const showStatus = visibleFields.has("status");
 
   const subtaskRows = filtered.map((sub, idx) => {
     const isPending = sub.key.startsWith("pending-");
+    const displayTitle = localRenames[sub.key] ?? sub.title;
+
     if (isDndEnabled && !isPending) {
       return (
         <SortableSubtaskRow
@@ -593,98 +551,43 @@ export function SubtasksSection({
           sub={sub}
           isLast={idx === filtered.length - 1}
           onSelect={onSelectTicket}
-          hideKey={hideKeys}
+          showKey={showKey}
+          showStatus={showStatus}
           showDragHandle={showDragHandles}
-          displayTitle={localRenames[sub.key] ?? sub.title}
+          displayTitle={displayTitle}
           isEditing={editingKey === sub.key}
           editValue={editingTitle}
           onEditChange={setEditingTitle}
-          onStartEdit={() => handleStartEdit(sub.key, localRenames[sub.key] ?? sub.title)}
+          onStartEdit={() => handleStartEdit(sub.key, displayTitle)}
           onSaveEdit={handleSaveEdit}
           onCancelEdit={handleCancelEdit}
           onDelete={() => handleDelete(sub, idx)}
         />
       );
     }
+
+    const itemWithTitle = { ...sub, title: displayTitle };
+
     return (
-      <div
+      <ChildIssueRow
         key={sub.key}
-        className={`group flex items-center gap-2 px-3 py-2.5 ${
-          onSelectTicket && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
-        } ${idx < filtered.length - 1 ? "border-b border-border-subtle" : ""} ${
-          isPending ? "opacity-50" : ""
-        }`}
-        onClick={!isPending && onSelectTicket ? (e) => {
-          if (e.metaKey || e.ctrlKey) {
-            window.open(`/tickets/${sub.key}`, "_blank");
-            return;
-          }
-          onSelectTicket(sub.key);
-        } : undefined}
-      >
-        {isPending ? (
-          <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
-            <Loader2 size={10} className="animate-spin" />
-          </span>
-        ) : !hideKeys ? (
-          <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">
-            {sub.key}
-          </span>
-        ) : null}
-        {!isPending && editingKey === sub.key ? (
-          <input
-            autoFocus
-            value={editingTitle}
-            onChange={(e) => setEditingTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); handleSaveEdit(); }
-              if (e.key === "Escape") { e.preventDefault(); handleCancelEdit(); }
-            }}
-            onBlur={handleSaveEdit}
-            onFocus={(e) => e.target.select()}
-            onClick={(e) => e.stopPropagation()}
-            className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none border-b border-[var(--color-brand-400)]"
-          />
-        ) : (
-          <span
-            className={`min-w-0 flex-1 truncate text-sm text-text-secondary ${!isPending ? "cursor-text hover:text-text-primary" : ""}`}
-            onClick={!isPending ? (e: React.MouseEvent) => { e.stopPropagation(); handleStartEdit(sub.key, localRenames[sub.key] ?? sub.title); } : undefined}
-            style={{ transition: "color 0.15s ease" }}
-          >
-            {localRenames[sub.key] ?? sub.title}
-          </span>
-        )}
-        <StatusBadge status={sub.jiraStatus} />
-        {/* Row actions */}
-        {!isPending && editingKey !== sub.key && (
-          <>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); handleDelete(sub, idx); }}
-              className="shrink-0 cursor-pointer rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-              title="Delete subtask"
-            >
-              <Trash2 size={12} strokeWidth={1.5} />
-            </button>
-            <a
-              href={`/tickets/${sub.key}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="shrink-0 rounded p-0.5 text-text-muted opacity-0 group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
-              title="Open in new tab"
-            >
-              <ExternalLink size={12} strokeWidth={1.5} />
-            </a>
-          </>
-        )}
-      </div>
+        item={itemWithTitle}
+        isLast={idx === filtered.length - 1}
+        isPending={isPending}
+        showKey={showKey}
+        onSelect={onSelectTicket}
+        isEditing={!isPending && editingKey === sub.key}
+        editValue={editingTitle}
+        onEditChange={setEditingTitle}
+        onStartEdit={!isPending ? () => handleStartEdit(sub.key, displayTitle) : undefined}
+        onSaveEdit={handleSaveEdit}
+        onCancelEdit={handleCancelEdit}
+        metadataSlot={showStatus ? <StatusBadge status={sub.jiraStatus} /> : undefined}
+        actionsSlot={!isPending ? <DeleteButton onClick={() => handleDelete(sub, idx)} /> : undefined}
+      />
     );
   });
 
-  // Always-visible inline input row at the bottom of the list
   const inlineInput = (
     <div
       className={`flex items-center gap-2 px-3 py-1.5 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
@@ -710,9 +613,6 @@ export function SubtasksSection({
     </div>
   );
 
-  const isFiltered = filter !== "all";
-
-  // Suggest subtasks button with pending count badge
   const suggestButton = (
     <div className="relative">
       <button
@@ -749,8 +649,8 @@ export function SubtasksSection({
     </div>
   );
 
-  // Filter button for compact mode
-  const filterButton = compactFilters ? (
+  // Compact filter button for hideHeader mode (the ChildIssueListHeader has its own built-in filter button)
+  const compactFilterButton = (
     <div className="relative">
       <button
         type="button"
@@ -768,68 +668,55 @@ export function SubtasksSection({
       {filterPopoverOpen && (
         <FieldFilterPopover
           filter={filter}
-          setFilter={(f) => { setFilter(f); }}
+          setFilter={setFilter}
           statusCounts={statusCounts}
           fields={SUBTASK_FIELDS}
-          visibleFields={new Set(hideKeys ? [] : ["issueKey"])}
-          onToggleField={(id, show) => { if (id === "issueKey") setHideKeys(!show); }}
+          visibleFields={visibleFields}
+          onToggleField={(id, show) => toggleField(id, show)}
           onClose={() => setFilterPopoverOpen(false)}
         />
       )}
     </div>
-  ) : null;
+  );
 
   return (
     <div className={hideHeader ? "" : "mt-8"}>
       {!hideHeader && (
-        <SectionHeader
+        <ChildIssueListHeader
           title="Subtasks"
-          count={filter === "all" ? countBase.length : undefined}
-          countLabel={filter !== "all" && countBase.length > 0 ? `${filtered.length} of ${countBase.length}` : undefined}
-          actions={<>{suggestButton}{compactFilters && filterButton}</>}
+          totalCount={countBase.length}
+          filteredCount={filtered.length}
+          isFiltered={isFiltered}
+          filter={filter}
+          setFilter={setFilter}
+          statusCounts={statusCounts}
+          fields={SUBTASK_FIELDS}
+          visibleFields={visibleFields}
+          onToggleField={(id, show) => toggleField(id, show)}
+          extraActions={suggestButton}
         />
       )}
 
       {hideHeader && (
         <div className="flex items-center gap-1">
           {suggestButton}
-          {compactFilters && filterButton}
+          {compactFilters && compactFilterButton}
         </div>
       )}
 
-      {/* Inline filter chips (non-compact mode only) */}
+      {/* Inline filter tabs (non-compact mode only) */}
       {!compactFilters && mergedSubtasks.length > 0 && (
-        <div className="mt-3 flex items-center gap-0.5 rounded-lg bg-overlay-subtle p-0.5">
-          {STATUS_FILTER_OPTIONS.map((opt) => {
-            const isActive = filter === opt.value;
-            const count = statusCounts[opt.value as keyof typeof statusCounts] ?? 0;
-            if (opt.value !== "all" && count === 0) return null;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setFilter(opt.value)}
-                className={`cursor-pointer flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  isActive
-                    ? "bg-[var(--color-surface-elevated)] text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
-                    : "text-text-tertiary hover:text-text-secondary"
-                }`}
-              >
-                {opt.label}
-                <span className={`tabular-nums text-[10px] ${isActive ? "text-text-secondary" : "text-text-muted"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <ChildIssueStatusFilter
+          filter={filter}
+          setFilter={setFilter}
+          statusCounts={statusCounts}
+        />
       )}
 
       {error && (
         <p className="mt-2 text-xs text-red-400/80">{error}</p>
       )}
 
-      {/* Subtask list + inline input */}
       {filtered.length > 0 && isDndEnabled ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={filtered.map((s) => s.key)} strategy={verticalListSortingStrategy}>
@@ -847,7 +734,6 @@ export function SubtasksSection({
         listContent
       )}
 
-      {/* Undo delete bar */}
       {pendingDelete && (
         <div className="mt-2 flex items-center gap-2 rounded-lg bg-overlay-subtle px-3 py-2">
           <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
@@ -865,7 +751,6 @@ export function SubtasksSection({
         </div>
       )}
 
-      {/* AI-suggested subtasks */}
       <SubtaskSuggestions
         suggestions={suggestions}
         isLoading={suggestLoading}

@@ -6,12 +6,13 @@ import { getSpColor } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Tooltip } from "@/components/shared/Tooltip";
-import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
+import { ChildIssueRow } from "./ChildIssueRow";
+import { ChildIssueListHeader } from "./ChildIssueListHeader";
+import type { StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets, ApiError } from "@/lib/api-client";
-import { Loader2, ChevronDown, Search, Filter } from "lucide-react";
+import { Loader2, ChevronDown, Search } from "lucide-react";
 
 const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[] = [
   { value: "story", label: "Story", jiraType: "Story" },
@@ -45,6 +46,10 @@ interface EpicChildrenSectionProps {
   onSelectTicket?: (key: string) => void;
 }
 
+function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
+  return "storyPoints" in child;
+}
+
 export function EpicChildrenSection({
   items,
   ticketKey,
@@ -52,7 +57,6 @@ export function EpicChildrenSection({
   onSelectTicket,
 }: EpicChildrenSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
-  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [selectedType, setSelectedType] = useState<IssueType>("story");
   const [showTypePicker, setShowTypePicker] = useState(false);
@@ -240,7 +244,6 @@ export function EpicChildrenSection({
     setSearchHighlight(-1);
   }, []);
 
-  // Close search dropdown on outside click
   useEffect(() => {
     if (!searchMode) return;
     const handler = (e: MouseEvent) => {
@@ -252,12 +255,10 @@ export function EpicChildrenSection({
     return () => document.removeEventListener("mousedown", handler);
   }, [searchMode, closeSearch]);
 
-  // Focus search input when entering search mode
   useEffect(() => {
     if (searchMode) searchInputRef.current?.focus();
   }, [searchMode]);
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -265,52 +266,11 @@ export function EpicChildrenSection({
     };
   }, []);
 
-  // --- Helper to check if a child has EpicChild fields ---
-  function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
-    return "storyPoints" in child;
-  }
-
-  // --- Render ---
-
-  const childRows = filtered.map((child, idx) => {
-    const isPending = child.key.startsWith("pending-");
+  // --- Render metadata slot for a child issue ---
+  function renderMetadata(child: EpicChild | Subtask) {
     const epic = isEpicChild(child) ? child : null;
-
     return (
-      <div
-        key={child.key}
-        className={`group flex items-center gap-3 px-3 py-2.5 ${
-          onSelectTicket && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
-        } ${idx < filtered.length - 1 ? "border-b border-border-subtle" : ""} ${
-          isPending ? "opacity-50" : ""
-        }`}
-        onClick={!isPending && onSelectTicket ? (e) => {
-          if (e.metaKey || e.ctrlKey) {
-            window.open(`/tickets/${child.key}`, "_blank");
-            return;
-          }
-          onSelectTicket(child.key);
-        } : undefined}
-      >
-        <IssueTypeIcon type={child.type} size={14} />
-
-        {/* Issue key */}
-        {visibleFields.has("issueKey") && (
-          isPending ? (
-            <span className="flex items-center gap-1.5 font-mono text-xs text-text-muted">
-              <Loader2 size={10} className="animate-spin" />
-            </span>
-          ) : (
-            <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">
-              {child.key}
-            </span>
-          )
-        )}
-
-        {/* Title */}
-        <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{child.title}</span>
-
-        {/* Story points */}
+      <>
         {visibleFields.has("storyPoints") && epic?.storyPoints != null && (
           <Tooltip content={`${epic.storyPoints === 0 ? "N/A" : epic.storyPoints} story point${epic.storyPoints === 1 ? "" : "s"}`}>
             <span
@@ -324,8 +284,6 @@ export function EpicChildrenSection({
             </span>
           </Tooltip>
         )}
-
-        {/* Subtask count */}
         {visibleFields.has("subtaskCount") && epic && epic.subtaskCount > 0 && (
           <Tooltip content={`${epic.subtaskCount} subtask${epic.subtaskCount === 1 ? "" : "s"}`}>
             <span className="flex shrink-0 items-center gap-1 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium tabular-nums text-text-muted">
@@ -334,8 +292,6 @@ export function EpicChildrenSection({
             </span>
           </Tooltip>
         )}
-
-        {/* Sprint */}
         {visibleFields.has("sprint") && epic?.sprintName && (
           <Tooltip content={epic.sprintName}>
             <span className="shrink-0 max-w-[100px] truncate rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
@@ -343,15 +299,24 @@ export function EpicChildrenSection({
             </span>
           </Tooltip>
         )}
-
-        {/* Status */}
         {visibleFields.has("status") && <StatusBadge status={child.jiraStatus} />}
-
-        {/* Assignee */}
         {visibleFields.has("assignee") && <Avatar assignee={child.assignee} size={22} />}
-      </div>
+      </>
     );
-  });
+  }
+
+  const childRows = filtered.map((child, idx) => (
+    <ChildIssueRow
+      key={child.key}
+      item={child}
+      isLast={idx === filtered.length - 1}
+      isPending={child.key.startsWith("pending-")}
+      showTypeIcon
+      showKey={visibleFields.has("issueKey")}
+      onSelect={onSelectTicket}
+      metadataSlot={renderMetadata(child)}
+    />
+  ));
 
   // Inline input row (create or search mode)
   const inlineInput = (
@@ -383,7 +348,6 @@ export function EpicChildrenSection({
         </>
       ) : (
         <>
-          {/* Type selector - icon aligns with row icons, label width matches key column */}
           <IssueTypeIcon type={selectedType} size={14} />
           <div className="relative" ref={typePickerRef}>
             <button
@@ -429,7 +393,6 @@ export function EpicChildrenSection({
             className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
           />
 
-          {/* Search toggle */}
           <button
             type="button"
             onClick={() => setSearchMode(true)}
@@ -442,7 +405,6 @@ export function EpicChildrenSection({
         </>
       )}
 
-      {/* Search results dropdown */}
       {searchMode && searchResults.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
           {searchResults.map((r, idx) => (
@@ -481,50 +443,25 @@ export function EpicChildrenSection({
     </div>
   );
 
-  // Filter button in header
-  const filterButton = (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setFilterPopoverOpen((v) => !v)}
-        className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-          filterPopoverOpen || isFiltered
-            ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-            : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-        }`}
-        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-        title="Filter and display options"
-      >
-        <Filter size={13} strokeWidth={1.5} />
-      </button>
-      {filterPopoverOpen && (
-        <FieldFilterPopover
-          filter={filter}
-          setFilter={setFilter}
-          statusCounts={statusCounts}
-          fields={EPIC_CHILD_FIELDS}
-          visibleFields={visibleFields}
-          onToggleField={(id, show) => toggleField(id, show)}
-          onClose={() => setFilterPopoverOpen(false)}
-        />
-      )}
-    </div>
-  );
-
   return (
     <div className="mt-8">
-      <SectionHeader
+      <ChildIssueListHeader
         title="Child Issues"
-        count={filter === "all" ? mergedItems.length : undefined}
-        countLabel={filter !== "all" && mergedItems.length > 0 ? `${filtered.length} of ${mergedItems.length}` : undefined}
-        actions={filterButton}
+        totalCount={mergedItems.length}
+        filteredCount={filtered.length}
+        isFiltered={isFiltered}
+        filter={filter}
+        setFilter={setFilter}
+        statusCounts={statusCounts}
+        fields={EPIC_CHILD_FIELDS}
+        visibleFields={visibleFields}
+        onToggleField={(id, show) => toggleField(id, show)}
       />
 
       {error && (
         <p className="mt-2 text-xs text-red-400/80">{error}</p>
       )}
 
-      {/* Child list + inline input */}
       {filtered.length > 0 ? (
         listContent
       ) : mergedItems.length > 0 ? (

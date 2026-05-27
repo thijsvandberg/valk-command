@@ -1,6 +1,6 @@
 # BRDG-208: Unified Child Issues Component
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -83,19 +83,46 @@ Current subtask rows show controls on the right side (status badge, delete icon,
 6. Rewire `EpicChildrenSection` to use the shared components, keeping epic-specific features (type picker, link existing search, extra metadata columns) as composition
 7. Bring subtask field filter up to parity with epic children
 
+## Implementation Plan
+
+### Phase 1: Extract shared primitives (can be done in parallel)
+
+1. **`ChildIssueRow.tsx`** (new) - `forwardRef` row component accepting `Subtask | EpicChild`. Uses `TicketKeyPill` for issue key. Props: `item`, `isPending`, `showTypeIcon`, `showKey`, `onSelect`, inline edit props, `metadataSlot` (ReactNode), `actionsSlot` (ReactNode), `dragHandleSlot` (ReactNode), `style`. DnD stays in parent via ref forwarding.
+2. **`ChildIssueStatusFilter.tsx`** (new) - Inline tab bar extracted from SubtasksSection lines 801-826.
+3. **`ChildIssueListHeader.tsx`** (new) - Wraps SectionHeader + filter popover trigger pattern.
+
+### Phase 2: Composite wrapper
+
+4. **`ChildIssueList.tsx`** (new) - Thin shell: header + filter + bordered list wrapper + empty state + inline input slot. Does NOT own DnD, API calls, or section-specific logic.
+
+### Phase 3: Migrate both sections
+
+5. **`EpicChildrenSection.tsx`** (modify) - Replace row markup with `ChildIssueRow`, pass metadata columns as `metadataSlot`. Replace header with `ChildIssueListHeader`. ~541 lines -> ~350.
+6. **`SubtasksSection.tsx`** (modify) - Thin `SortableSubtaskRow` wrapper calls `useSortable`, renders `ChildIssueRow` with ref + drag handle. Remove ExternalLink button (replaced by pill). Restyle delete as text "Delete" button. Switch `hideKeys` to `useSectionVisibility`. Replace inline filter tabs with `ChildIssueStatusFilter`. ~885 lines -> ~550.
+
+### Phase 4: Tests + barrel exports
+
+7. Update `index.ts`, create `ChildIssueRow.test.tsx`, `ChildIssueStatusFilter.test.tsx`, update `EpicChildrenSection.test.tsx`.
+
+### DnD strategy
+`ChildIssueRow` is `forwardRef`. The `useSortable` hook stays in SubtasksSection's `SortableSubtaskRow`. Transform/transition styles + drag handle passed as props. Same pattern as sprint board's `TicketRow`.
+
+### TicketKeyPill integration
+`ChildIssueRow` renders `<TicketKeyPill ticketKey={item.key} />` when `showKey` is true and item is not pending. This replaces both the plain text key and the "open externally" link.
+
 ## Checklist
 
-- [ ] Design the shared component API (props, slots, generics)
-- [ ] Extract `ChildIssueRow` with configurable columns/metadata slots
-- [ ] Implement issue pill (clickable badge linking to Jira) to replace plain issue key text
-- [ ] Extract `ChildIssueListHeader` (title, count, filter popover trigger)
-- [ ] Extract `ChildIssueStatusFilter` (tab bar with counts)
-- [ ] Create `ChildIssueList` composite that assembles header + filter + rows
-- [ ] Migrate `EpicChildrenSection` to compose on `ChildIssueList`
-- [ ] Migrate `SubtasksSection` to compose on `ChildIssueList`
-- [ ] Remove "open externally" button from subtask rows (replaced by issue pill)
-- [ ] Restyle subtask delete: hover-only, text label "Delete" with destructive color (like AI suggestions decline)
-- [ ] Add field visibility toggles to subtasks (parity with epic children)
+- [x] Design the shared component API (props, slots, generics)
+- [x] Extract `ChildIssueRow` with configurable columns/metadata slots
+- [x] Implement issue pill (clickable badge linking to Jira) to replace plain issue key text
+- [x] Extract `ChildIssueListHeader` (title, count, filter popover trigger)
+- [x] Extract `ChildIssueStatusFilter` (tab bar with counts)
+- [ ] Create `ChildIssueList` composite that assembles header + filter + rows <!-- skipped: both sections have too many behavioral differences (DnD, search, type picker) for a thin composite to add value; both use the three primitives directly instead -->
+- [x] Migrate `EpicChildrenSection` to compose on `ChildIssueList`
+- [x] Migrate `SubtasksSection` to compose on `ChildIssueList`
+- [x] Remove "open externally" button from subtask rows (replaced by issue pill)
+- [x] Restyle subtask delete: hover-only, text label "Delete" with destructive color (like AI suggestions decline)
+- [x] Add field visibility toggles to subtasks (parity with epic children)
 - [ ] Verify all existing EpicChildrenSection features still work (create, link, search, field toggles)
 - [ ] Verify all existing SubtasksSection features still work (create, drag-and-drop, rename, delete, AI suggestions)
 - [ ] Update/migrate existing tests for both sections
