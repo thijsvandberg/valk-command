@@ -13,7 +13,7 @@ import {
   FileText,
   Star,
   Search,
-  Target,
+  Zap,
   Code2,
   GripHorizontal,
   Sparkles,
@@ -103,7 +103,7 @@ const QUICK_ACTIONS: {
   {
     id: "match-epic",
     label: "Match Epic",
-    icon: Target,
+    icon: Zap,
     prompt: "Suggest the best epic for this story",
     enabled: true,
   },

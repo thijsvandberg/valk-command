@@ -6,6 +6,7 @@ import type { Ticket, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
+import { enqueue as enqueueForRevalidation } from "@/lib/revalidation-queue";
 
 function userInitials(name: string): string {
   return name
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
   const cacheKey = `/api/tickets${sprintId ? `?sprintId=${sprintId}` : ""}`;
   const cached = cache.get<Ticket[]>(cacheKey);
   if (cached) {
+    enqueueForRevalidation(cached.filter((t) => !t.removedFromJiraAt).map((t) => t.key));
     return NextResponse.json(cached, {
       headers: {
         "X-Cache": "HIT",
@@ -160,6 +162,7 @@ export async function GET(request: Request) {
   });
 
   cache.set(cacheKey, result, 30_000);
+  enqueueForRevalidation(result.filter((t) => !t.removedFromJiraAt).map((t) => t.key));
 
   return NextResponse.json(result, {
     headers: {

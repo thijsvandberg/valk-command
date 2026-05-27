@@ -14,7 +14,7 @@ import {
   storyWriterSession,
 } from "@/db/schema";
 import { eq, inArray, and, isNotNull, lt, desc, notInArray } from "drizzle-orm";
-import { jiraClient, extractSprint } from "@/lib/jira-client";
+import { jiraClient, JiraApiError, extractSprint } from "@/lib/jira-client";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertSetting } from "@/lib/upsert-setting";
@@ -23,6 +23,7 @@ import { logger } from "@/lib/logger";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { createNotification } from "@/lib/notifications";
 import { refreshSprintMetadata } from "@/lib/refresh-sprint-metadata";
+import { dequeue, markChecked, remove as removeFromQueue, stats as queueStats } from "@/lib/revalidation-queue";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -31,6 +32,7 @@ import { refreshSprintMetadata } from "@/lib/refresh-sprint-metadata";
 const WATERMARK_KEY = "jira_sync_watermark";
 const BATCH_LIMIT = 50;
 const REMOVED_TICKET_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const REVALIDATION_BATCH_SIZE = 25;
 
 // ---------------------------------------------------------------------------
 // Task: Incremental Jira Sync (every 120s)
@@ -193,6 +195,69 @@ async function cleanupRemovedTickets(): Promise<TaskResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Task: Revalidate deleted tickets (every 10 minutes)
+// ---------------------------------------------------------------------------
+
+export async function revalidateDeletedTickets(): Promise<TaskResult> {
+  if (!jiraClient.isLive) {
+    return { skipped: true, reason: "Jira not configured", ...queueStats() };
+  }
+
+  const keysToCheck = dequeue(REVALIDATION_BATCH_SIZE);
+
+  if (keysToCheck.length === 0) {
+    return { checked: 0, removed: 0, ...queueStats() };
+  }
+
+  try {
+    // Single bulk JQL call returns only tickets that still exist
+    const found = await jiraClient.getIssuesByKeys(keysToCheck);
+    const foundKeys = new Set(found.map((issue) => issue.key));
+    const missingKeys = keysToCheck.filter((k) => !foundKeys.has(k));
+
+    // Keys that exist are confirmed alive
+    const aliveKeys = keysToCheck.filter((k) => foundKeys.has(k));
+    markChecked(aliveKeys);
+
+    let removedCount = 0;
+    const removedKeys: string[] = [];
+
+    // Confirm each missing ticket individually (could be permissions, not deletion)
+    for (const key of missingKeys) {
+      try {
+        await jiraClient.getIssue(key);
+        markChecked([key]);
+      } catch (err) {
+        if (err instanceof JiraApiError && err.status === 404) {
+          await db.update(ticket)
+            .set({ removedFromJiraAt: new Date().toISOString() })
+            .where(eq(ticket.jiraKey, key));
+          removedKeys.push(key);
+          removedCount++;
+          logger.info("scheduled-tasks", `Ticket ${key} confirmed deleted from Jira`);
+        }
+      }
+    }
+
+    if (removedCount > 0) {
+      removeFromQueue(removedKeys);
+      invalidateSearchCache();
+      createNotification(
+        "sync",
+        `Deletion check: ${removedCount} ticket${removedCount === 1 ? "" : "s"} removed from Jira`,
+        { category: "sync" },
+      );
+    }
+
+    return { checked: keysToCheck.length, removed: removedCount, ...queueStats() };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error("scheduled-tasks", "Ticket revalidation failed:", message);
+    return { error: message, ...queueStats() };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Task: Cleanup activity log (every 5 minutes)
 // ---------------------------------------------------------------------------
 
@@ -252,6 +317,14 @@ export function registerScheduledTasks() {
     "Syncs recently updated tickets from Jira using watermark-based incremental fetching. Processes up to 50 tickets per run and creates notifications for changes. Also refreshes sprint metadata (state, goal, dates) every 5 minutes.",
     150_000,
     runIncrementalSync,
+  );
+
+  defineTask(
+    "revalidate-deleted-tickets",
+    "Revalidate Deleted Tickets",
+    "Checks a rotating batch of 25 local tickets against Jira to detect deletions. Uses a cursor to cycle through all tickets over time. Marks confirmed 404s as removed.",
+    10 * 60 * 1000,
+    revalidateDeletedTickets,
   );
 
   defineTask(

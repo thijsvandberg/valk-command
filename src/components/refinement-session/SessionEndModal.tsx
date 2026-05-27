@@ -8,6 +8,8 @@ import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
+import { tickets } from "@/lib/api-client";
 import {
   ArrowLeft,
   Save,
@@ -70,12 +72,13 @@ export function SessionEndModal() {
     return () => { cancelled = true; };
   }, [savedSessionId, commentLoaded]);
 
-  // Debounce-save a ticket note
+  // Debounce-save a ticket note (also persists to the ticket's PO Note field)
   const saveTicketNote = useCallback((ticketKey: string, content: string) => {
     if (!savedSessionId) return;
     if (noteTimerRef.current[ticketKey]) clearTimeout(noteTimerRef.current[ticketKey]);
     noteTimerRef.current[ticketKey] = setTimeout(() => {
       refinementSessionsApi.upsertTicketNote(savedSessionId, { ticketKey, content }).catch(() => {});
+      tickets.updateMetadata(ticketKey, { poNotes: content }).catch(() => {});
     }, NOTE_SAVE_DELAY);
   }, [savedSessionId]);
 
@@ -197,11 +200,9 @@ export function SessionEndModal() {
 
               return (
                 <div key={row.key}>
-                  <div className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-overlay-subtle" style={{ transition: "background-color 0.12s ease" }}>
+                  <div className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-overlay-subtle" style={{ transition: "background-color 0.12s ease" }}>
                     <IssueTypeIcon type={row.type} size={14} />
-                    <span className="shrink-0 font-mono text-xs text-[var(--color-brand-400)]">
-                      {row.key}
-                    </span>
+                    <TicketKeyPill ticketKey={row.key} />
                     <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
                       {row.title}
                     </span>
@@ -264,34 +265,32 @@ export function SessionEndModal() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between border-t border-border-subtle px-6 py-4">
+        <div className="flex items-center justify-end gap-2.5 border-t border-border-subtle px-6 py-4">
           <Button
             variant="ghost"
             size="lg"
             icon={<ArrowLeft size={14} strokeWidth={2} />}
             onClick={handleGoBack}
+            className="mr-auto"
           >
             Back to Session
           </Button>
-
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant={allEstimated ? "primary" : "secondary"}
-              size="lg"
-              icon={<Save size={14} strokeWidth={2} />}
-              onClick={handleSave}
-            >
-              Close / Save
-            </Button>
-            <Button
-              variant={allEstimated ? "secondary" : "primary"}
-              size="lg"
-              icon={<CheckCircle2 size={14} strokeWidth={2} />}
-              onClick={handleFinish}
-            >
-              Done / Finish
-            </Button>
-          </div>
+          <Button
+            variant="secondary"
+            size="lg"
+            icon={<Save size={14} strokeWidth={2} />}
+            onClick={handleSave}
+          >
+            Save
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={<CheckCircle2 size={14} strokeWidth={2} />}
+            onClick={handleFinish}
+          >
+            Complete
+          </Button>
         </div>
       </div>
     </div>

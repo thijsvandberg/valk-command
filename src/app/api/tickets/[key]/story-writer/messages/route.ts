@@ -463,6 +463,7 @@ async function buildFirstMessageBody(
     .all();
 
   const needsTitle = ticketNeedsTitle(session.localTitle) && ticketNeedsTitle(ticketRow?.title);
+  const needsEpic = !ticketRow?.epicKey;
 
   const contextParts = [];
   if (ticketRow) {
@@ -496,10 +497,25 @@ async function buildFirstMessageBody(
     ? `\nThis ticket has no title yet. Along with your response, suggest 3 concise, descriptive title options using a <title-suggestions> tag (one title per line inside the tag).`
     : "";
 
+  let epicInstruction = "";
+  if (needsEpic) {
+    const epicRows = await db
+      .select({ jiraKey: ticket.jiraKey, title: ticket.title })
+      .from(ticket)
+      .where(eq(ticket.type, "epic"))
+      .all();
+    if (epicRows.length > 0) {
+      const epicList = epicRows.map((e) => `${e.jiraKey}: ${e.title}`).join("\n");
+      epicInstruction =
+        `\nThis ticket is not linked to an epic yet. Based on the story content, suggest the best-fitting epic using: <epic-suggestion><epic key="EPIC-KEY" confidence="high|medium|low" reason="brief reason" /></epic-suggestion>. ` +
+        `Only suggest when a good match exists.\nAvailable epics:\n${epicList}`;
+    }
+  }
+
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
   contextParts.push(
     `${researchFlag}\n\nUser request: ${content}\n\n` +
-    `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.${titleInstruction}\n` +
+    `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.${titleInstruction}${epicInstruction}\n` +
     `If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag to suggest changing it. Only suggest when it is clearly warranted.\n` +
     `When you mention or discover related issues that should be linked to this ticket, include link suggestions using: <link-suggestion key="ISSUE-KEY" relation="relates to" /> (or for multiple: <link-suggestions><link key="..." relation="..." /></link-suggestions>). Valid relations: "relates to", "blocks", "is blocked by", "clones", "is cloned by", "duplicates", "is duplicated by". Proactively suggest links during story review when you identify issues that should be connected.`
   );

@@ -16,6 +16,7 @@ Scheduler (src/lib/scheduler.ts)
     | Check each registered task: elapsed >= intervalMs?
     |
     +-- incremental-sync (every 150s)
+    +-- revalidate-deleted-tickets (every 10m)
     +-- cleanup-removed-tickets (every 24h)
     |
     v
@@ -62,6 +63,26 @@ See [jira-sync.md](jira-sync.md) for details. Key behavior:
 - Syncs up to 50 stale tickets per run
 - Advances watermark per ticket for crash resilience
 - Logs to `activity_log` only when tickets are actually synced
+
+#### Revalidate Deleted Tickets (every 10m)
+
+Detects tickets deleted from Jira that the incremental sync cannot catch (deleted tickets do not appear in "updated since" queries). Uses a view-driven queue approach:
+
+**Queue module** (`src/lib/revalidation-queue.ts`): In-memory queue that holds ticket keys for revalidation.
+
+- **Enqueue**: When tickets are served via `/api/tickets` (list) or `/api/tickets/[key]` (detail), their keys are added to the queue. Keys checked within the last 24 hours are skipped (cooldown).
+- **Dequeue**: The scheduled task takes the 25 oldest entries from the queue.
+
+**Task flow**:
+1. Dequeues up to 25 keys from the revalidation queue
+2. Bulk-checks them with a single JQL `key in (...)` call
+3. For any ticket missing from the results, confirms with an individual `getIssue` call
+4. If Jira returns 404, sets `removed_from_jira_at` on the ticket
+5. Marks checked keys with a 24h cooldown to avoid redundant rechecks
+
+**Result includes `queueSize`** for monitoring in the settings UI.
+
+Only tickets that users actually view are checked, avoiding unnecessary API calls for dormant tickets.
 
 #### Cleanup Removed Tickets (every 24h)
 

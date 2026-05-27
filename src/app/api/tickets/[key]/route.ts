@@ -11,6 +11,7 @@ import { jiraClient, STORY_POINTS_FIELD, FLAGGED_FIELD, extractSprint } from "@/
 import { upsertIssue } from "@/lib/upsert-issue";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
+import { enqueue as enqueueForRevalidation } from "@/lib/revalidation-queue";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { userInitials, userColor } from "@/lib/user-utils";
@@ -57,6 +58,7 @@ export async function GET(
   const cacheKey = `/api/tickets/${key}`;
   const cached = cache.get(cacheKey);
   if (cached) {
+    enqueueForRevalidation([key]);
     return NextResponse.json(cached, {
       headers: {
         "X-Cache": "HIT",
@@ -313,6 +315,7 @@ export async function GET(
   };
 
   cache.set(cacheKey, responseBody, 60_000);
+  enqueueForRevalidation([key]);
 
   return NextResponse.json(responseBody, {
     headers: {

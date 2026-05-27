@@ -1,11 +1,29 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 
+const { mockGetIssuesByKeys, mockGetIssue } = vi.hoisted(() => ({
+  mockGetIssuesByKeys: vi.fn().mockResolvedValue([]),
+  mockGetIssue: vi.fn(),
+}));
+
 vi.mock("@/lib/jira-client", () => ({
-  jiraClient: { isLive: false, getUpdatedSince: vi.fn() },
+  jiraClient: {
+    isLive: false,
+    getUpdatedSince: vi.fn(),
+    getIssuesByKeys: mockGetIssuesByKeys,
+    getIssue: mockGetIssue,
+  },
+  JiraApiError: class JiraApiError extends Error {
+    status: number;
+    constructor(status: number, statusText: string, body: string, path: string) {
+      super(`Jira API ${status} ${statusText} on ${path}: ${body}`);
+      this.status = status;
+      this.name = "JiraApiError";
+    }
+  },
   extractSprint: vi.fn(),
 }));
 vi.mock("@/lib/upsert-issue", () => ({
@@ -26,7 +44,7 @@ vi.mock("@/lib/scheduler", () => ({
   defineTask: vi.fn(),
 }));
 vi.mock("@/lib/logger", () => ({
-  logger: { error: vi.fn() },
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 vi.mock("@/lib/notifications", () => ({
   createNotification: vi.fn(),
@@ -40,8 +58,11 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { cleanupActivityLog, cleanupOldNotifications } from "./scheduled-tasks";
-import { activityLog, alert } from "@/db/schema";
+import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets } from "./scheduled-tasks";
+import { jiraClient, JiraApiError } from "@/lib/jira-client";
+import { enqueue, _reset as resetQueue } from "@/lib/revalidation-queue";
+import { activityLog, alert, ticket } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 describe("cleanupActivityLog", () => {
   beforeEach(() => {
@@ -171,5 +192,97 @@ describe("cleanupOldNotifications", () => {
 
     const remaining = testDb.select().from(alert).all();
     expect(remaining).toHaveLength(1);
+  });
+});
+
+describe("revalidateDeletedTickets", () => {
+  function insertTicket(key: string) {
+    testDb.insert(ticket).values({
+      jiraKey: key,
+      title: `Ticket ${key}`,
+      status: "To Do",
+    }).run();
+  }
+
+  beforeEach(() => {
+    testDb = createTestDb();
+    resetQueue();
+    mockGetIssuesByKeys.mockReset().mockResolvedValue([]);
+    mockGetIssue.mockReset();
+    (jiraClient as unknown as Record<string, unknown>).isLive = true;
+  });
+
+  afterEach(() => {
+    (jiraClient as unknown as Record<string, unknown>).isLive = false;
+  });
+
+  it("skips when Jira is not configured", async () => {
+    (jiraClient as unknown as Record<string, unknown>).isLive = false;
+    const result = await revalidateDeletedTickets();
+    expect(result).toMatchObject({ skipped: true });
+  });
+
+  it("returns zero counts when queue is empty", async () => {
+    const result = await revalidateDeletedTickets();
+    expect(result).toMatchObject({ checked: 0, removed: 0, queueSize: 0 });
+  });
+
+  it("marks a 404 ticket as removed", async () => {
+    insertTicket("VPL-100");
+    insertTicket("VPL-200");
+    enqueue(["VPL-100", "VPL-200"]);
+
+    mockGetIssuesByKeys.mockResolvedValue([{ key: "VPL-200", fields: {} }]);
+    mockGetIssue.mockRejectedValue(new JiraApiError(404, "Not Found", "", "/rest/api/3/issue/VPL-100"));
+
+    const result = await revalidateDeletedTickets();
+
+    expect(result).toMatchObject({ checked: 2, removed: 1 });
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
+    expect(row?.removedFromJiraAt).toBeTruthy();
+  });
+
+  it("does not mark a ticket as removed if individual fetch succeeds", async () => {
+    insertTicket("VPL-100");
+    enqueue(["VPL-100"]);
+
+    mockGetIssuesByKeys.mockResolvedValue([]);
+    mockGetIssue.mockResolvedValue({ key: "VPL-100", fields: {} });
+
+    const result = await revalidateDeletedTickets();
+
+    expect(result).toMatchObject({ checked: 1, removed: 0 });
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
+    expect(row?.removedFromJiraAt).toBeNull();
+  });
+
+  it("only checks tickets in the queue", async () => {
+    insertTicket("VPL-100");
+    insertTicket("VPL-200");
+    enqueue(["VPL-200"]);
+
+    mockGetIssuesByKeys.mockResolvedValue([{ key: "VPL-200", fields: {} }]);
+
+    const result = await revalidateDeletedTickets();
+
+    expect(result).toMatchObject({ checked: 1, removed: 0 });
+    expect(mockGetIssuesByKeys).toHaveBeenCalledWith(["VPL-200"]);
+  });
+
+  it("reports queue stats in result", async () => {
+    insertTicket("VPL-100");
+    insertTicket("VPL-200");
+    insertTicket("VPL-300");
+    enqueue(["VPL-100", "VPL-200", "VPL-300"]);
+
+    mockGetIssuesByKeys.mockResolvedValue([
+      { key: "VPL-100", fields: {} },
+      { key: "VPL-200", fields: {} },
+      { key: "VPL-300", fields: {} },
+    ]);
+
+    const result = await revalidateDeletedTickets();
+
+    expect(result).toMatchObject({ checked: 3, removed: 0, queueSize: 0 });
   });
 });

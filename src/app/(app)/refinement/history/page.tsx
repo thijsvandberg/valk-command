@@ -12,8 +12,8 @@ export default function RefinementHistoryPage() {
   const pageTitle = usePageTitle("Refinement History");
   const { sessions, isLoading } = useRefinementSessions();
 
-  const completedSessions = useMemo(
-    () => sessions.filter((s) => s.status === "completed"),
+  const historySessions = useMemo(
+    () => sessions.filter((s) => s.status === "completed" || s.status === "in_progress"),
     [sessions],
   );
 
@@ -42,7 +42,7 @@ export default function RefinementHistoryPage() {
             <span className="text-sm text-text-muted">Loading...</span>
           </div>
         ) : (
-          <RefinementHistoryList sessions={completedSessions} />
+          <RefinementHistoryList sessions={historySessions} />
         )}
       </div>
     </>

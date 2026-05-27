@@ -568,11 +568,9 @@ export function SubtasksSection({
     addSuggestionAsSubtask(toAdd, index);
   }, [suggestions, addSuggestionAsSubtask]);
 
-  const handleAddAllSuggestions = useCallback(async () => {
+  const handleAddAllSuggestions = useCallback(() => {
     const toAdd = [...suggestions];
-    for (let i = 0; i < toAdd.length; i++) {
-      await addSuggestionAsSubtask(toAdd[i], i);
-    }
+    Promise.all(toAdd.map((s, i) => addSuggestionAsSubtask(s, i)));
   }, [suggestions, addSuggestionAsSubtask]);
 
   const handleDismissSuggestion = useCallback((index: number) => {
