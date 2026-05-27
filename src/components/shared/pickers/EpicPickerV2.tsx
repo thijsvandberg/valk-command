@@ -231,7 +231,7 @@ function EpicPickerInner({
   const staleFooter = staleCount > 0 && !query.trim() ? (
     <div className="border-t border-border-subtle px-3 py-1.5 flex items-center justify-between">
       <span className="text-caption text-text-muted">{staleCount} stale {staleCount === 1 ? "summary" : "summaries"}</span>
-      <button type="button" onClick={handleGenerateSummaries} disabled={syncing} className="text-caption text-[#9b6cd4] cursor-pointer hover:text-[#b48ee6] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease" }}>Refresh</button>
+      <button type="button" onClick={handleGenerateSummaries} disabled={syncing} className="text-caption text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease" }}>Refresh</button>
     </div>
   ) : null;
 
@@ -260,7 +260,7 @@ function EpicPickerInner({
             className="flex-1 bg-transparent text-xs text-text-secondary placeholder:text-text-muted focus:outline-none"
           />
           {ticketKey && (
-            <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[#9b6cd4] cursor-pointer hover:text-[#b48ee6] hover:bg-[rgba(155,108,212,0.08)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>
+            <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] hover:bg-[rgba(155,108,212,0.08)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>
               <Sparkles size={11} strokeWidth={1.5} className={suggesting ? "animate-pulse" : ""} />
             </button>
           )}
@@ -276,7 +276,7 @@ function EpicPickerInner({
               <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: "rgba(155, 108, 212, 0.12)" }}>
                 <div className="h-full rounded-full animate-pulse" style={{ width: "60%", backgroundColor: "rgba(155, 108, 212, 0.4)", animation: "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite" }} />
               </div>
-              <span className="text-caption text-[#9b6cd4]">Analyzing...</span>
+              <span className="text-caption text-[var(--color-icon-epic)]">Analyzing...</span>
             </div>
           </div>
         )}
@@ -284,7 +284,7 @@ function EpicPickerInner({
         {/* AI suggestion error */}
         {suggestError && !suggesting && (
           <div className="border-b border-border-subtle px-3 py-2">
-            <p className="text-caption text-[#e5534b]">{suggestError}</p>
+            <p className="text-caption text-[var(--color-status-error)]">{suggestError}</p>
           </div>
         )}
 
@@ -317,7 +317,7 @@ function EpicPickerInner({
                 onSelect={() => { onChange({ key: epic.key, name: epic.name }); handleClose(); }}
                 style={isSuggested && !query.trim() ? { backgroundColor: "rgba(155, 108, 212, 0.04)" } : undefined}
               >
-                <span className="flex w-4 items-center justify-center shrink-0 text-[#9b6cd4]">
+                <span className="flex w-4 items-center justify-center shrink-0 text-[var(--color-icon-epic)]">
                   <Zap size={11} strokeWidth={1.5} />
                 </span>
                 <span className={`flex-1 text-left truncate ${isSelected ? "text-text-primary font-medium" : "text-text-secondary"}`}>
@@ -325,7 +325,7 @@ function EpicPickerInner({
                 </span>
                 {epic.summaryStale && (
                   <span title="Summary outdated" className="shrink-0 flex items-center">
-                    <AlertTriangle size={9} strokeWidth={1.5} className="text-[#ea8744]/50" />
+                    <AlertTriangle size={9} strokeWidth={1.5} className="text-[var(--color-status-warning)]" style={{ opacity: 0.5 }} />
                   </span>
                 )}
                 <span className="shrink-0 text-caption text-text-muted">{epic.key}</span>
