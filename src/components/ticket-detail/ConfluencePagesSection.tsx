@@ -321,7 +321,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
   }, []);
 
   return (
-    <div>
+    <div className="mt-8">
       <SectionHeader title="Confluence" count={links.length} />
 
       <div className="mt-3 space-y-1.5">
