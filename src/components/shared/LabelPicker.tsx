@@ -40,10 +40,16 @@ function LabelPickerInner({
   const labels = data?.labels ?? [];
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return labels;
-    const q = query.toLowerCase();
-    return labels.filter((l) => l.toLowerCase().includes(q));
-  }, [labels, query]);
+    let pool = labels;
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      pool = pool.filter((l) => l.toLowerCase().includes(q));
+    }
+    // Selected labels first
+    const selected = pool.filter((l) => value.includes(l));
+    const rest = pool.filter((l) => !value.includes(l));
+    return [...selected, ...rest];
+  }, [labels, query, value]);
 
   function handleToggle(label: string) {
     const isSelected = value.includes(label);
