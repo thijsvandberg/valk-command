@@ -200,6 +200,10 @@ export const tickets = {
     apiFetch<import("@/types/ticket").Subtask>(`/api/tickets/${enc(key)}/subtasks`, { method: "POST", body: data, signal }),
   rankSubtasks: (key: string, data: { orderedKeys: string[]; movedKey: string; rankBefore?: string; rankAfter?: string }, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/subtasks/rank`, { method: "POST", body: data, signal }),
+  renameSubtask: (key: string, subtaskKey: string, data: { title: string }, signal?: AbortSignal) =>
+    apiFetch<{ key: string; title: string }>(`/api/tickets/${enc(key)}/subtasks/${enc(subtaskKey)}`, { method: "PATCH", body: data, signal }),
+  deleteSubtask: (key: string, subtaskKey: string, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>(`/api/tickets/${enc(key)}/subtasks/${enc(subtaskKey)}`, { method: "DELETE", signal }),
 
   // Epic children
   createChildIssue: (key: string, data: { title: string; issueType?: string }, signal?: AbortSignal) =>
