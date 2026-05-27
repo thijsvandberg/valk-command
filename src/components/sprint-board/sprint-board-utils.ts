@@ -148,3 +148,64 @@ export async function bulkReviewStories(keys: string[]): Promise<void> {
     }
   }
 }
+
+export interface SprintStats {
+  todoCount: number;
+  inProgressCount: number;
+  testCount: number;
+  doneCount: number;
+  totalPoints: number;
+  noPointsCount: number;
+  deprecatedWithSp: number;
+  bvTotal: number;
+  bvScoredCount: number;
+  bvAvg: string | null;
+  statusStats: Record<string, { sp: number; bv: number }>;
+}
+
+export function computeSprintStats(tickets: Ticket[]): SprintStats {
+  let todo = 0, inProg = 0, test = 0, done = 0, pts = 0, noPts = 0, deprSp = 0, bvT = 0, bvC = 0;
+  const stats: Record<string, { sp: number; bv: number }> = {};
+  for (const t of tickets) {
+    if (t.jiraStatus === "TO DO") todo++;
+    else if (t.jiraStatus === "IN PROGRESS") inProg++;
+    else if (t.jiraStatus === "TEST") test++;
+    else if (t.jiraStatus === "DONE") done++;
+    pts += t.storyPoints || 0;
+    if (t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike") noPts++;
+    if (t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0) deprSp++;
+    if (t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED") {
+      bvT += t.businessValue;
+      bvC++;
+    }
+    const s = stats[t.jiraStatus] ?? (stats[t.jiraStatus] = { sp: 0, bv: 0 });
+    s.sp += t.storyPoints ?? 0;
+    s.bv += t.businessValue ?? 0;
+  }
+  return {
+    todoCount: todo, inProgressCount: inProg, testCount: test, doneCount: done,
+    totalPoints: pts, noPointsCount: noPts, deprecatedWithSp: deprSp,
+    bvTotal: bvT, bvScoredCount: bvC,
+    bvAvg: bvC > 0 ? (bvT / bvC).toFixed(1) : null,
+    statusStats: stats,
+  };
+}
+
+export function computeSprintWorkDays(sprint: Sprint | null | undefined): { remaining: number | null; total: number | null } {
+  if (!sprint || sprint.state !== "active" || !sprint.startDate || !sprint.endDate) return { remaining: null, total: null };
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const start = new Date(sprint.startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(sprint.endDate);
+  end.setHours(0, 0, 0, 0);
+  let total = 0;
+  const d1 = new Date(start);
+  while (d1 <= end) { if (d1.getDay() !== 0 && d1.getDay() !== 6) total++; d1.setDate(d1.getDate() + 1); }
+  let remaining = 0;
+  if (end >= now) {
+    const d2 = new Date(now);
+    while (d2 <= end) { if (d2.getDay() !== 0 && d2.getDay() !== 6) remaining++; d2.setDate(d2.getDate() + 1); }
+  }
+  return { remaining, total };
+}

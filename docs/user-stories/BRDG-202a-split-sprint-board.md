@@ -22,6 +22,6 @@
 - [x] Extract drag-drop logic into `useSprintBoardDragDrop` hook
 - [x] Extract keyboard shortcut handling into `useSprintBoardShortcuts` hook
 - [x] Extract column rendering into `SprintBoardColumn` component
-- [ ] Extract grouping/sorting logic into utility functions
+- [x] Extract grouping/sorting logic into utility functions
 - [ ] Verify `SprintBoard.tsx` is under 300 lines after refactor
 - [ ] All existing sprint board tests pass

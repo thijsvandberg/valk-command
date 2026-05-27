@@ -18,7 +18,7 @@ import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories } from "@/components/sprint-board/sprint-board-utils";
+import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, saveStoryPoints, bulkReviewStories, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { StatusCount, SprintCompletionBar, SprintStats } from "@/components/sprint-board/SprintStatPill";
@@ -193,52 +193,8 @@ export default function SprintBoard() {
   }, [activeSprintName, isSprintFollowed]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
   const selected = tickets.find((t) => t.key === selectedTicket);
-  const { todoCount, inProgressCount, testCount, doneCount, totalPoints, noPointsCount, deprecatedWithSp, bvTotal, bvScoredCount, bvAvg, statusStats } = useMemo(() => {
-    let todo = 0, inProg = 0, test = 0, done = 0, pts = 0, noPts = 0, deprSp = 0, bvT = 0, bvC = 0;
-    const stats: Record<string, { sp: number; bv: number }> = {};
-    for (const t of allTickets) {
-      if (t.jiraStatus === "TO DO") todo++;
-      else if (t.jiraStatus === "IN PROGRESS") inProg++;
-      else if (t.jiraStatus === "TEST") test++;
-      else if (t.jiraStatus === "DONE") done++;
-      pts += t.storyPoints || 0;
-      if (t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike") noPts++;
-      if (t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0) deprSp++;
-      if (t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED") {
-        bvT += t.businessValue;
-        bvC++;
-      }
-      const s = stats[t.jiraStatus] ?? (stats[t.jiraStatus] = { sp: 0, bv: 0 });
-      s.sp += t.storyPoints ?? 0;
-      s.bv += t.businessValue ?? 0;
-    }
-    return {
-      todoCount: todo, inProgressCount: inProg, testCount: test, doneCount: done,
-      totalPoints: pts, noPointsCount: noPts, deprecatedWithSp: deprSp,
-      bvTotal: bvT, bvScoredCount: bvC,
-      bvAvg: bvC > 0 ? (bvT / bvC).toFixed(1) : null,
-      statusStats: stats,
-    };
-  }, [allTickets]);
-  // Sprint working days for active sprint time indicator
-  const sprintWorkDays = useMemo(() => {
-    if (!activeSprint || activeSprint.state !== "active" || !activeSprint.startDate || !activeSprint.endDate) return { remaining: null, total: null };
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const start = new Date(activeSprint.startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(activeSprint.endDate);
-    end.setHours(0, 0, 0, 0);
-    let total = 0;
-    const d1 = new Date(start);
-    while (d1 <= end) { if (d1.getDay() !== 0 && d1.getDay() !== 6) total++; d1.setDate(d1.getDate() + 1); }
-    let remaining = 0;
-    if (end >= now) {
-      const d2 = new Date(now);
-      while (d2 <= end) { if (d2.getDay() !== 0 && d2.getDay() !== 6) remaining++; d2.setDate(d2.getDate() + 1); }
-    }
-    return { remaining, total };
-  }, [activeSprint]);
+  const { todoCount, inProgressCount, testCount, doneCount, totalPoints, noPointsCount, deprecatedWithSp, bvTotal, bvScoredCount, bvAvg, statusStats } = useMemo(() => computeSprintStats(allTickets), [allTickets]);
+  const sprintWorkDays = useMemo(() => computeSprintWorkDays(activeSprint), [activeSprint]);
 
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
