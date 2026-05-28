@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { TEAMS } from "@/lib/sprint-utils";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const setTeamsSchema = z.object({
   displayName: z.string().min(1).max(200),
@@ -39,20 +40,8 @@ export async function PUT(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const parsed = setTeamsSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-      { status: 400 },
-    );
-  }
+  const parsed = await parseJsonBody(request, setTeamsSchema);
+  if ("error" in parsed) return parsed.error;
 
   const { displayName, teams } = parsed.data;
 

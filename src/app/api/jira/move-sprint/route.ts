@@ -6,6 +6,8 @@ import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 /**
  * POST /api/jira/move-sprint
@@ -21,20 +23,17 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("sync");
   if (limited) return limited;
 
-  let body: { issueKeys?: string[]; targetSprintId?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
-  const { issueKeys, targetSprintId } = body;
+  const { issueKeys, targetSprintId } = body as { issueKeys?: string[]; targetSprintId?: string };
 
   if (!Array.isArray(issueKeys) || issueKeys.length === 0) {
-    return NextResponse.json({ ok: false, error: "issueKeys must be a non-empty array" }, { status: 400 });
+    return errorResponse("issueKeys must be a non-empty array", 400);
   }
   if (!targetSprintId || typeof targetSprintId !== "string") {
-    return NextResponse.json({ ok: false, error: "targetSprintId is required" }, { status: 400 });
+    return errorResponse("targetSprintId is required", 400);
   }
 
   const isBacklog = targetSprintId === "__backlog__";
@@ -42,7 +41,7 @@ export async function POST(request: Request) {
   if (!isBacklog) {
     const sprintIdNum = parseInt(targetSprintId, 10);
     if (isNaN(sprintIdNum)) {
-      return NextResponse.json({ ok: false, error: "targetSprintId must be a number" }, { status: 400 });
+      return errorResponse("targetSprintId must be a number", 400);
     }
 
     try {
@@ -50,7 +49,7 @@ export async function POST(request: Request) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       logger.error("jira", "Failed to move issues", message);
-      return NextResponse.json({ ok: false, error: "Failed to move issues" }, { status: 500 });
+      return errorResponse("Failed to move issues", 500);
     }
   } else {
     try {
@@ -58,7 +57,7 @@ export async function POST(request: Request) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       logger.error("jira", "Failed to move issues to backlog", message);
-      return NextResponse.json({ ok: false, error: "Failed to move issues to backlog" }, { status: 500 });
+      return errorResponse("Failed to move issues to backlog", 500);
     }
   }
 

@@ -5,6 +5,8 @@ import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET(
   _request: Request,
@@ -18,7 +20,7 @@ export async function GET(
     where: (rs, { eq }) => eq(rs.id, id),
   });
   if (!session) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    return errorResponse("Session not found", 404);
   }
 
   const notes = await db
@@ -44,22 +46,19 @@ export async function PUT(
     where: (rs, { eq }) => eq(rs.id, id),
   });
   if (!session) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    return errorResponse("Session not found", 404);
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const { ticketKey, content } = body;
   if (typeof ticketKey !== "string" || !ticketKey.trim()) {
-    return NextResponse.json({ error: "ticketKey must be a non-empty string" }, { status: 400 });
+    return errorResponse("ticketKey must be a non-empty string", 400);
   }
   if (typeof content !== "string") {
-    return NextResponse.json({ error: "content must be a string" }, { status: 400 });
+    return errorResponse("content must be a string", 400);
   }
 
   const now = new Date().toISOString();

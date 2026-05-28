@@ -45,6 +45,6 @@ catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 - [x] Create `lib/request-parser.ts` with typed JSON body parser
 - [x] Write tests for both utilities
 - [x] Migrate highest-traffic routes first (tickets, story-writer, search)
-- [ ] Migrate remaining routes
+- [x] Migrate remaining routes
 - [ ] Update frontend `api-client.ts` if error format changes
 - [ ] All tests pass

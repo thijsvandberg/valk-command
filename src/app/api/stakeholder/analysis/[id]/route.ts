@@ -8,6 +8,8 @@ import { parseBriefingOutput } from "@/lib/stakeholder-data";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { nextSequence } from "@/db/next-sequence";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function PATCH(
   request: Request,
@@ -20,24 +22,19 @@ export async function PATCH(
   const invalid = validatePathParam(id);
   if (invalid) return invalid;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const b = body as Record<string, unknown>;
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const b = parsed.data as Record<string, unknown>;
   const status = b.status === "completed" || b.status === "failed" ? b.status : null;
   if (!status) {
-    return NextResponse.json({ error: "status must be 'completed' or 'failed'" }, { status: 400 });
+    return errorResponse("status must be 'completed' or 'failed'", 400);
   }
 
   const row = await db.query.stakeholderAnalysis.findFirst({
     where: (r, { eq }) => eq(r.id, id),
   });
   if (!row) {
-    return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
+    return errorResponse("Analysis not found", 404);
   }
 
   if (status === "completed") {

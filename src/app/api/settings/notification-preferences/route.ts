@@ -10,6 +10,8 @@ import {
   getPreferences,
 } from "@/lib/notification-preferences";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
 
@@ -28,11 +30,8 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   try {
-    const body = await request.json();
-    const parsed = preferencesBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid preferences format" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, preferencesBodySchema);
+    if ("error" in parsed) return parsed.error;
 
     const merged = { ...DEFAULT_PREFERENCES, ...parsed.data.preferences };
     const payload = JSON.stringify(merged);
@@ -48,6 +47,6 @@ export async function PUT(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("settings", "Failed to save preferences", message);
-    return NextResponse.json({ error: "Failed to save preferences" }, { status: 500 });
+    return errorResponse("Failed to save preferences", 500);
   }
 }

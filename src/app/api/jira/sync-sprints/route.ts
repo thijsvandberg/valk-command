@@ -7,6 +7,7 @@ import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { errorResponse } from "@/lib/api-response";
 
 interface StoredSprint {
   id: number;
@@ -119,9 +120,9 @@ export async function POST(request: NextRequest) {
           durationMs,
           completedAt: new Date().toISOString(),
         }).where(eq(activityLog.id, logId));
-        return NextResponse.json({ ok: false, error: "Sync timed out" }, { status: 504 });
+        return errorResponse("Sync timed out", 504);
       }
-      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+      return errorResponse("Sync cancelled", 499);
     }
 
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
     }).where(eq(activityLog.id, logId));
 
     logger.error("jira", "Sprint sync failed", message);
-    return NextResponse.json({ ok: false, error: "Sprint sync failed" }, { status: 500 });
+    return errorResponse("Sprint sync failed", 500);
   } finally {
     clearTimeout(routeTimeout);
     unregisterSync(logId);

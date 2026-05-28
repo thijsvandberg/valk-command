@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logger } from "@/lib/logger";
+import { errorResponse, agentErrorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 interface TicketInput {
   key: string;
@@ -26,18 +28,15 @@ export async function POST(
 
   const { id: sprintId } = await params;
 
-  let body: { sprintName?: string; tickets?: TicketInput[] };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as { sprintName?: string; tickets?: TicketInput[] };
 
   const sprintName = body.sprintName ?? `Sprint ${sprintId}`;
   const tickets = Array.isArray(body.tickets) ? body.tickets : [];
 
   if (tickets.length === 0) {
-    return NextResponse.json({ error: "No tickets provided" }, { status: 400 });
+    return errorResponse("No tickets provided", 400);
   }
 
   const result = await agentFetch("/api/tasks", {
@@ -60,10 +59,7 @@ export async function POST(
 
   if (!result.ok) {
     logger.error("suggest-goal", "Failed to invoke suggest-sprint-goal skill", result.error.error);
-    return NextResponse.json(
-      { error: result.error.error, code: result.error.code },
-      { status: result.status || 502 },
-    );
+    return agentErrorResponse(result.error, result.status);
   }
 
   const taskData = result.data as Record<string, unknown>;

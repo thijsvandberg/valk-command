@@ -5,6 +5,8 @@ import { followedTicket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const followTicketSchema = z.object({
   ticketKey: z.string().min(1).max(100),
@@ -23,22 +25,15 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+
+  const validation = followTicketSchema.safeParse(parsed.data);
+  if (!validation.success) {
+    return errorResponse(validation.error.issues[0]?.message ?? "Invalid request body", 400);
   }
 
-  const parsed = followTicketSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-      { status: 400 },
-    );
-  }
-
-  const { ticketKey } = parsed.data;
+  const { ticketKey } = validation.data;
 
   // Atomic insert: unique constraint on ticketKey prevents duplicates
   db.insert(followedTicket)
@@ -57,7 +52,7 @@ export async function DELETE(request: Request) {
   const url = new URL(request.url);
   const ticketKey = url.searchParams.get("ticketKey");
   if (!ticketKey) {
-    return NextResponse.json({ error: "ticketKey required" }, { status: 400 });
+    return errorResponse("ticketKey required", 400);
   }
 
   db.delete(followedTicket)

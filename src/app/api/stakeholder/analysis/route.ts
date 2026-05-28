@@ -6,16 +6,18 @@ import { eq, desc, and } from "drizzle-orm";
 import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { nextSequence } from "@/db/next-sequence";
+import { errorResponse, agentErrorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sprintIdParam = searchParams.get("sprintId");
   if (!sprintIdParam) {
-    return NextResponse.json({ error: "sprintId is required" }, { status: 400 });
+    return errorResponse("sprintId is required", 400);
   }
   const sprintId = parseInt(sprintIdParam, 10);
   if (isNaN(sprintId)) {
-    return NextResponse.json({ error: "sprintId must be a number" }, { status: 400 });
+    return errorResponse("sprintId must be a number", 400);
   }
 
   const rows = await db
@@ -31,14 +33,9 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const b = body as Record<string, unknown>;
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const b = parsed.data as Record<string, unknown>;
   const sprintId = typeof b.sprintId === "number" ? b.sprintId : null;
   const sprintName = typeof b.sprintName === "string" ? b.sprintName : null;
   const type = b.type === "brief" || b.type === "deep-dive" ? b.type : null;
@@ -47,7 +44,7 @@ export async function POST(request: Request) {
   const snapshotTodoCount = typeof b.snapshotTodoCount === "number" ? b.snapshotTodoCount : 0;
 
   if (!sprintId || !sprintName || !type || !sprintData) {
-    return NextResponse.json({ error: "sprintId, sprintName, type, and sprintData are required" }, { status: 400 });
+    return errorResponse("sprintId, sprintName, type, and sprintData are required", 400);
   }
 
   // Find or create conversation for this sprint
@@ -98,10 +95,7 @@ export async function POST(request: Request) {
   });
 
   if (!taskResult.ok) {
-    return NextResponse.json(
-      { error: taskResult.error.error ?? "Failed to submit task", code: taskResult.error.code },
-      { status: taskResult.status || 502 },
-    );
+    return agentErrorResponse(taskResult.error, taskResult.status);
   }
 
   const workspaceTaskId = (taskResult.data as { id: string }).id;
@@ -129,9 +123,9 @@ export async function DELETE(request: Request) {
   // Delete all analyses for a sprint (cleanup)
   const { searchParams } = new URL(request.url);
   const sprintIdParam = searchParams.get("sprintId");
-  if (!sprintIdParam) return NextResponse.json({ error: "sprintId is required" }, { status: 400 });
+  if (!sprintIdParam) return errorResponse("sprintId is required", 400);
   const sprintId = parseInt(sprintIdParam, 10);
-  if (isNaN(sprintId)) return NextResponse.json({ error: "invalid sprintId" }, { status: 400 });
+  if (isNaN(sprintId)) return errorResponse("invalid sprintId", 400);
 
   await db.delete(stakeholderAnalysis).where(and(
     eq(stakeholderAnalysis.sprintId, sprintId),

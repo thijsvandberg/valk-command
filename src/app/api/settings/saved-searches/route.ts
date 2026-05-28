@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const SETTING_KEY = "saved_searches";
 const MAX_SAVED = 10;
@@ -70,11 +72,8 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   try {
-    const body = await request.json();
-    const parsed = bodySchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid saved searches format" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, bodySchema);
+    if ("error" in parsed) return parsed.error;
     const searches = parsed.data.searches;
     const payload = JSON.stringify(searches);
 
@@ -91,6 +90,6 @@ export async function PUT(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("settings", "Failed to save searches", message);
-    return NextResponse.json({ error: "Failed to save searches" }, { status: 500 });
+    return errorResponse("Failed to save searches", 500);
   }
 }

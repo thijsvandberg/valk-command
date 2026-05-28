@@ -7,6 +7,8 @@ import { createNotification } from "@/lib/notifications";
 import { getSubscribedTeams } from "@/lib/subscribed-teams";
 import { escapeLikePattern } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const createNotificationSchema = z.object({
   type: z.string().min(1).max(100),
@@ -103,22 +105,15 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let rawBody: unknown;
-  try {
-    rawBody = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+
+  const validation = createNotificationSchema.safeParse(parsed.data);
+  if (!validation.success) {
+    return errorResponse(validation.error.issues[0]?.message ?? "Invalid request body", 400);
   }
 
-  const parsed = createNotificationSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-      { status: 400 },
-    );
-  }
-
-  const { type, message, category, jiraKey, linkUrl } = parsed.data;
+  const { type, message, category, jiraKey, linkUrl } = validation.data;
   createNotification(type, message, { category: category as never, jiraKey, linkUrl });
   return NextResponse.json({ type, message }, { status: 201 });
 }
@@ -131,19 +126,15 @@ export async function PATCH(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let rawBody: unknown;
-  try {
-    rawBody = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+
+  const validation = patchNotificationSchema.safeParse(parsed.data);
+  if (!validation.success) {
+    return errorResponse("id, ids, or markAll required", 400);
   }
 
-  const parsed = patchNotificationSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "id, ids, or markAll required" }, { status: 400 });
-  }
-
-  const body = parsed.data;
+  const body = validation.data;
 
   if ("markAll" in body) {
     db.update(alert)

@@ -5,6 +5,8 @@ import { appSetting } from "@/db/schema";
 import { logger } from "@/lib/logger";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 function settingKey(section: string) {
   return `section_visibility_${section}`;
@@ -14,11 +16,13 @@ const VALID_SECTIONS = ["epic-children", "subtasks", "refinement-pill"];
 
 interface SectionVisibility {
   visible: string[];
+  allKnown?: string[];
 }
 
 const putSchema = z.object({
   section: z.string().refine((s) => VALID_SECTIONS.includes(s), { message: "Invalid section" }),
   visible: z.array(z.string()).max(20),
+  allKnown: z.array(z.string()).max(20).optional(),
 });
 
 export async function GET(request: Request) {
@@ -41,7 +45,7 @@ export async function GET(request: Request) {
       });
     }
     const parsed = safeJsonParse<SectionVisibility>(row.value, { visible: [] }, "section-visibility");
-    return NextResponse.json({ visible: parsed.visible ?? null }, {
+    return NextResponse.json({ visible: parsed.visible ?? null, allKnown: parsed.allKnown ?? null }, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch {
@@ -56,32 +60,20 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, putSchema);
+    if ("error" in parsed) return parsed.error;
 
-    const parsed = putSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-        { status: 400 },
-      );
-    }
-
-    const { section, visible } = parsed.data;
-    const payload = JSON.stringify({ visible });
+    const { section, visible, allKnown } = parsed.data;
+    const payload = JSON.stringify({ visible, allKnown });
 
     await db.insert(appSetting)
       .values({ key: settingKey(section), value: payload })
       .onConflictDoUpdate({ target: appSetting.key, set: { value: payload } });
 
-    return NextResponse.json({ visible });
+    return NextResponse.json({ visible, allKnown });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("settings", "Failed to save section visibility", message);
-    return NextResponse.json({ error: "Failed to save section visibility" }, { status: 500 });
+    return errorResponse("Failed to save section visibility", 500);
   }
 }

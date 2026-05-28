@@ -7,6 +7,8 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 /**
  * POST /api/jira/rank
@@ -24,20 +26,17 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("sync");
   if (limited) return limited;
 
-  let body: { issueKeys?: string[]; rankBeforeKey?: string; rankAfterKey?: string; sprintId?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
-  const { issueKeys, rankBeforeKey, rankAfterKey, sprintId } = body;
+  const { issueKeys, rankBeforeKey, rankAfterKey, sprintId } = body as { issueKeys?: string[]; rankBeforeKey?: string; rankAfterKey?: string; sprintId?: string };
 
   if (!Array.isArray(issueKeys) || issueKeys.length === 0) {
-    return NextResponse.json({ ok: false, error: "issueKeys must be a non-empty array" }, { status: 400 });
+    return errorResponse("issueKeys must be a non-empty array", 400);
   }
   if (!rankBeforeKey && !rankAfterKey) {
-    return NextResponse.json({ ok: false, error: "Provide rankBeforeKey or rankAfterKey" }, { status: 400 });
+    return errorResponse("Provide rankBeforeKey or rankAfterKey", 400);
   }
 
   try {
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to rank issues", message);
-    return NextResponse.json({ ok: false, error: "Failed to rank issues" }, { status: 500 });
+    return errorResponse("Failed to rank issues", 500);
   }
 
   // Update local jiraRank values for the sprint.

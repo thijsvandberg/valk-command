@@ -6,6 +6,8 @@ import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const SETTING_KEY = "sprint_board_column_config";
 
@@ -48,20 +50,8 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-    }
-
-    const parsed = columnConfigBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-        { status: 400 },
-      );
-    }
+    const parsed = await parseJsonBody(request, columnConfigBodySchema);
+    if ("error" in parsed) return parsed.error;
 
     const { order, visible } = parsed.data;
 
@@ -84,6 +74,6 @@ export async function PUT(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("settings", "Failed to save column config", message);
-    return NextResponse.json({ error: "Failed to save column config" }, { status: 500 });
+    return errorResponse("Failed to save column config", 500);
   }
 }

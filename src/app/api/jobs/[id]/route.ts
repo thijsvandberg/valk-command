@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { isValidCron } from "@/lib/cron";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET(
   _request: Request,
@@ -19,7 +21,7 @@ export async function GET(
   });
 
   if (!job) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    return errorResponse("Job not found", 404);
   }
 
   return NextResponse.json(job);
@@ -41,50 +43,35 @@ export async function PUT(
   });
 
   if (!job) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    return errorResponse("Job not found", 404);
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const updates: Partial<typeof job> = {};
 
   if (body.name !== undefined) {
     if (typeof body.name !== "string" || body.name.trim() === "") {
-      return NextResponse.json(
-        { error: "name must be a non-empty string" },
-        { status: 400 },
-      );
+      return errorResponse("name must be a non-empty string", 400);
     }
     updates.name = body.name.trim();
   }
 
   if (body.cronExpression !== undefined) {
     if (typeof body.cronExpression !== "string" || body.cronExpression.trim() === "") {
-      return NextResponse.json(
-        { error: "cronExpression must be a non-empty string" },
-        { status: 400 },
-      );
+      return errorResponse("cronExpression must be a non-empty string", 400);
     }
     if (!isValidCron(body.cronExpression)) {
-      return NextResponse.json(
-        { error: "cronExpression must be a valid 5-field cron expression" },
-        { status: 400 },
-      );
+      return errorResponse("cronExpression must be a valid 5-field cron expression", 400);
     }
     updates.cronExpression = body.cronExpression.trim();
   }
 
   if (body.skillName !== undefined) {
     if (typeof body.skillName !== "string" || body.skillName.trim() === "") {
-      return NextResponse.json(
-        { error: "skillName must be a non-empty string" },
-        { status: 400 },
-      );
+      return errorResponse("skillName must be a non-empty string", 400);
     }
     updates.skillName = body.skillName.trim();
   }
@@ -118,7 +105,7 @@ export async function DELETE(
   });
 
   if (!job) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    return errorResponse("Job not found", 404);
   }
 
   await db.delete(scheduledJob).where(eq(scheduledJob.id, id));

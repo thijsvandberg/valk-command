@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { cache } from "@/lib/cache";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function PATCH(
   request: Request,
@@ -10,20 +12,17 @@ export async function PATCH(
 ) {
   const { key } = await params;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
 
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return NextResponse.json({ error: "Body must be a JSON object" }, { status: 400 });
+    return errorResponse("Body must be a JSON object", 400);
   }
 
   const { summary } = body as Record<string, unknown>;
   if (typeof summary !== "string") {
-    return NextResponse.json({ error: "summary (string) is required" }, { status: 400 });
+    return errorResponse("summary (string) is required", 400);
   }
 
   const existing = await db
@@ -33,7 +32,7 @@ export async function PATCH(
     .get();
 
   if (!existing) {
-    return NextResponse.json({ error: "Epic not found" }, { status: 404 });
+    return errorResponse("Epic not found", 404);
   }
 
   const now = new Date().toISOString();

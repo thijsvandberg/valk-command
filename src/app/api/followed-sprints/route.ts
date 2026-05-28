@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { followedSprint } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const followSprintSchema = z.object({
   sprintName: z.string().min(1).max(200),
@@ -22,22 +24,15 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+
+  const validation = followSprintSchema.safeParse(parsed.data);
+  if (!validation.success) {
+    return errorResponse(validation.error.issues[0]?.message ?? "Invalid request body", 400);
   }
 
-  const parsed = followSprintSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-      { status: 400 },
-    );
-  }
-
-  const { sprintName } = parsed.data;
+  const { sprintName } = validation.data;
 
   // Atomic insert: sprintName is primary key, so concurrent inserts are safe
   db.insert(followedSprint).values({ sprintName }).onConflictDoNothing().run();
@@ -52,7 +47,7 @@ export async function DELETE(request: Request) {
   const url = new URL(request.url);
   const sprintName = url.searchParams.get("sprintName");
   if (!sprintName) {
-    return NextResponse.json({ error: "sprintName required" }, { status: 400 });
+    return errorResponse("sprintName required", 400);
   }
 
   db.delete(followedSprint).where(eq(followedSprint.sprintName, sprintName)).run();

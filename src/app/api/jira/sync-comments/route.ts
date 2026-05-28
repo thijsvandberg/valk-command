@@ -7,6 +7,7 @@ import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logger } from "@/lib/logger";
+import { errorResponse } from "@/lib/api-response";
 
 /**
  * POST /api/jira/sync-comments?key=VPL-12345
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     const key = searchParams.get("key");
 
     if (!key) {
-      return NextResponse.json({ error: "key query parameter is required" }, { status: 400 });
+      return errorResponse("key query parameter is required", 400);
     }
 
     await db.insert(activityLog).values({
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, key, count: synced });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+      return errorResponse("Sync cancelled", 499);
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
     }).where(eq(activityLog.id, logId));
 
     logger.error("jira", "Comment sync failed", message);
-    return NextResponse.json({ ok: false, error: "Comment sync failed" }, { status: 500 });
+    return errorResponse("Comment sync failed", 500);
   } finally {
     unregisterSync(logId);
   }

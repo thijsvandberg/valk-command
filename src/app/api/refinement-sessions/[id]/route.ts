@@ -4,6 +4,9 @@ import { refinementSession } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { emitRefinementEvent } from "@/lib/refinement-events";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 function withParsedKeys(row: typeof refinementSession.$inferSelect) {
   const keys = JSON.parse(row.ticketKeys) as string[];
@@ -23,7 +26,7 @@ export async function GET(
   });
 
   if (!row) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    return errorResponse("Session not found", 404);
   }
 
   return NextResponse.json(withParsedKeys(row));
@@ -45,15 +48,12 @@ export async function PATCH(
   });
 
   if (!existing) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    return errorResponse("Session not found", 404);
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
@@ -61,20 +61,14 @@ export async function PATCH(
 
   if (body.name !== undefined) {
     if (typeof body.name !== "string" || body.name.trim() === "") {
-      return NextResponse.json(
-        { error: "name must be a non-empty string" },
-        { status: 400 },
-      );
+      return errorResponse("name must be a non-empty string", 400);
     }
     updates.name = body.name.trim();
   }
 
   if (body.ticketKeys !== undefined) {
     if (!Array.isArray(body.ticketKeys)) {
-      return NextResponse.json(
-        { error: "ticketKeys must be an array of strings" },
-        { status: 400 },
-      );
+      return errorResponse("ticketKeys must be an array of strings", 400);
     }
     const keys = body.ticketKeys.filter(
       (k): k is string => typeof k === "string" && k.trim() !== "",
@@ -84,30 +78,21 @@ export async function PATCH(
 
   if (body.status !== undefined) {
     if (body.status !== "draft" && body.status !== "in_progress" && body.status !== "completed") {
-      return NextResponse.json(
-        { error: "status must be 'draft', 'in_progress', or 'completed'" },
-        { status: 400 },
-      );
+      return errorResponse("status must be 'draft', 'in_progress', or 'completed'", 400);
     }
     updates.status = body.status;
   }
 
   if (body.generalComment !== undefined) {
     if (body.generalComment !== null && typeof body.generalComment !== "string") {
-      return NextResponse.json(
-        { error: "generalComment must be a string or null" },
-        { status: 400 },
-      );
+      return errorResponse("generalComment must be a string or null", 400);
     }
     updates.generalComment = body.generalComment;
   }
 
   if (body.currentIndex !== undefined) {
     if (typeof body.currentIndex !== "number" || body.currentIndex < 0 || !Number.isInteger(body.currentIndex)) {
-      return NextResponse.json(
-        { error: "currentIndex must be a non-negative integer" },
-        { status: 400 },
-      );
+      return errorResponse("currentIndex must be a non-negative integer", 400);
     }
     updates.currentIndex = body.currentIndex;
   }
@@ -122,8 +107,10 @@ export async function PATCH(
   });
 
   if (!updated) {
-    return NextResponse.json({ error: "Session not found after update" }, { status: 500 });
+    return errorResponse("Session not found after update", 500);
   }
+
+  emitRefinementEvent({ type: "session:updated", sessionId: id });
 
   return NextResponse.json(withParsedKeys(updated));
 }
@@ -144,10 +131,12 @@ export async function DELETE(
   });
 
   if (!existing) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    return errorResponse("Session not found", 404);
   }
 
   await db.delete(refinementSession).where(eq(refinementSession.id, id));
+
+  emitRefinementEvent({ type: "session:deleted", sessionId: id });
 
   return new NextResponse(null, { status: 204 });
 }

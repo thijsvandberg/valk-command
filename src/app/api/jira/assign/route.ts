@@ -7,6 +7,8 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 /**
  * POST /api/jira/assign
@@ -23,17 +25,14 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("sync");
   if (limited) return limited;
 
-  let body: { issueKey?: string; accountId?: string | null; name?: string | null; avatar?: string | null };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
-  const { issueKey, accountId, name, avatar } = body;
+  const { issueKey, accountId, name, avatar } = body as { issueKey?: string; accountId?: string | null; name?: string | null; avatar?: string | null };
 
   if (!issueKey || typeof issueKey !== "string") {
-    return NextResponse.json({ ok: false, error: "issueKey is required" }, { status: 400 });
+    return errorResponse("issueKey is required", 400);
   }
 
   try {
@@ -42,7 +41,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to assign issue", message);
-    return NextResponse.json({ ok: false, error: "Failed to assign issue" }, { status: 500 });
+    return errorResponse("Failed to assign issue", 500);
   }
 
   // Update local assignee (DB stores just the display name string)

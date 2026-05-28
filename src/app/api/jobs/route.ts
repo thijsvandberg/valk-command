@@ -4,6 +4,8 @@ import { scheduledJob } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { isValidCron } from "@/lib/cron";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET() {
   const result = await db.select().from(scheduledJob).limit(100);
@@ -14,39 +16,24 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   if (typeof body.name !== "string" || body.name.trim() === "") {
-    return NextResponse.json(
-      { error: "name is required and must be a non-empty string" },
-      { status: 400 },
-    );
+    return errorResponse("name is required and must be a non-empty string", 400);
   }
 
   if (typeof body.cronExpression !== "string" || body.cronExpression.trim() === "") {
-    return NextResponse.json(
-      { error: "cronExpression is required and must be a non-empty string" },
-      { status: 400 },
-    );
+    return errorResponse("cronExpression is required and must be a non-empty string", 400);
   }
 
   if (!isValidCron(body.cronExpression)) {
-    return NextResponse.json(
-      { error: "cronExpression must be a valid 5-field cron expression" },
-      { status: 400 },
-    );
+    return errorResponse("cronExpression must be a valid 5-field cron expression", 400);
   }
 
   if (typeof body.skillName !== "string" || body.skillName.trim() === "") {
-    return NextResponse.json(
-      { error: "skillName is required and must be a non-empty string" },
-      { status: 400 },
-    );
+    return errorResponse("skillName is required and must be a non-empty string", 400);
   }
 
   const id = randomUUID();

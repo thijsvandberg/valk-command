@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
 import { db } from "@/db";
 import { ticket, appSetting, activityLog } from "@/db/schema";
 import { inArray } from "drizzle-orm";
@@ -37,7 +38,7 @@ export async function POST() {
   if (limited) return limited;
 
   if (!jiraClient.isLive) {
-    return NextResponse.json({ ok: false, error: "Jira not configured" }, { status: 503 });
+    return errorResponse("Jira not configured", 503);
   }
 
   // Sprint metadata refresh runs on its own 5-minute cooldown,
@@ -78,7 +79,6 @@ export async function POST() {
 
   if (!watermarkRow) {
     return NextResponse.json({
-      ok: false,
       needsFullSync: true,
       error: "No watermark found. Run a full sprint sync first.",
       sprintMetaRefreshed,
@@ -196,11 +196,11 @@ export async function POST() {
     await upsertSetting(COOLDOWN_KEY, new Date(0).toISOString());
 
     if (err instanceof DOMException && err.name === "AbortError") {
-      return NextResponse.json({ ok: false, error: "Sync cancelled" }, { status: 499 });
+      return errorResponse("Sync cancelled", 499);
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Incremental sync failed", message);
-    return NextResponse.json({ ok: false, error: "Incremental sync failed" }, { status: 500 });
+    return errorResponse("Incremental sync failed", 500);
   } finally {
     unregisterSync(syncId);
   }

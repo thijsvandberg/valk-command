@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { errorResponse } from "@/lib/api-response";
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketScopeChange, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
@@ -41,10 +42,7 @@ export async function POST(request: Request) {
     if (body?.ticketKeys !== undefined) {
       const parsed = ticketKeysBodySchema.safeParse(body);
       if (!parsed.success) {
-        return NextResponse.json(
-          { error: parsed.error.issues[0]?.message ?? "Invalid ticketKeys" },
-          { status: 400 },
-        );
+        return errorResponse(parsed.error.issues[0]?.message ?? "Invalid ticketKeys", 400);
       }
       ticketKeys = parsed.data.ticketKeys;
     } else {
@@ -141,7 +139,7 @@ async function syncIndividualTickets(ticketKeys: string[], requestSignal?: Abort
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      return NextResponse.json({ error: "Sync cancelled" }, { status: 499 });
+      return errorResponse("Sync cancelled", 499);
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
@@ -153,7 +151,7 @@ async function syncIndividualTickets(ticketKeys: string[], requestSignal?: Abort
     }).where(eq(activityLog.id, logId));
 
     logger.error("jira", "Ticket sync failed", message);
-    return NextResponse.json({ error: "Ticket sync failed" }, { status: 500 });
+    return errorResponse("Ticket sync failed", 500);
   } finally {
     unregisterSync(logId);
   }
@@ -176,18 +174,12 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
 
   try {
     if (!sprintId) {
-      return NextResponse.json(
-        { error: "sprintId query parameter is required" },
-        { status: 400 },
-      );
+      return errorResponse("sprintId query parameter is required", 400);
     }
 
     const sprintIdNum = parseInt(sprintId, 10);
     if (isNaN(sprintIdNum)) {
-      return NextResponse.json(
-        { error: "sprintId must be a number" },
-        { status: 400 },
-      );
+      return errorResponse("sprintId must be a number", 400);
     }
 
     await db.update(activityLog).set({ scope: sprintId }).where(eq(activityLog.id, logId));
@@ -324,7 +316,7 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      return NextResponse.json({ error: "Sync cancelled" }, { status: 499 });
+      return errorResponse("Sync cancelled", 499);
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
@@ -336,7 +328,7 @@ async function syncSprint(sprintId: string | null, strategy: string, requestSign
     }).where(eq(activityLog.id, logId));
 
     logger.error("jira", "Ticket sync failed", message);
-    return NextResponse.json({ error: "Ticket sync failed" }, { status: 500 });
+    return errorResponse("Ticket sync failed", 500);
   } finally {
     unregisterSync(logId);
   }
@@ -454,7 +446,7 @@ async function syncBacklog(strategy: string, requestSignal?: AbortSignal) {
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      return NextResponse.json({ error: "Sync cancelled" }, { status: 499 });
+      return errorResponse("Sync cancelled", 499);
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     const durationMs = Date.now() - new Date(startedAt).getTime();
@@ -466,7 +458,7 @@ async function syncBacklog(strategy: string, requestSignal?: AbortSignal) {
     }).where(eq(activityLog.id, logId));
 
     logger.error("jira", "Backlog sync failed", message);
-    return NextResponse.json({ error: "Backlog sync failed" }, { status: 500 });
+    return errorResponse("Backlog sync failed", 500);
   } finally {
     unregisterSync(logId);
   }

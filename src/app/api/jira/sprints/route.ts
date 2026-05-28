@@ -8,6 +8,8 @@ import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 async function getHiddenIds(): Promise<Set<string>> {
   const row = await db.query.appSetting.findFirst({
@@ -85,7 +87,7 @@ export async function GET() {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to load sprints", message);
-    return NextResponse.json({ error: "Failed to load sprints" }, { status: 500 });
+    return errorResponse("Failed to load sprints", 500);
   }
 }
 
@@ -118,7 +120,7 @@ export async function PUT(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to update hidden sprints", message);
-    return NextResponse.json({ error: "Failed to update hidden sprints" }, { status: 500 });
+    return errorResponse("Failed to update hidden sprints", 500);
   }
 }
 
@@ -142,30 +144,27 @@ export async function POST(request: NextRequest) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: { name?: string; startDate?: string; endDate?: string; goal?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
-  const name = body.name?.trim();
+  const name = (body.name as string | undefined)?.trim();
   if (!name) {
-    return NextResponse.json({ error: "Sprint name is required" }, { status: 400 });
+    return errorResponse("Sprint name is required", 400);
   }
 
   const boardId = env.JIRA_BOARD_ID ? parseInt(env.JIRA_BOARD_ID, 10) : null;
   if (!boardId || isNaN(boardId)) {
-    return NextResponse.json({ error: "JIRA_BOARD_ID is not configured" }, { status: 400 });
+    return errorResponse("JIRA_BOARD_ID is not configured", 400);
   }
 
   try {
     const created = await jiraClient.createSprint({
       name,
       originBoardId: boardId,
-      ...(body.startDate ? { startDate: body.startDate } : {}),
-      ...(body.endDate ? { endDate: body.endDate } : {}),
-      ...(body.goal ? { goal: body.goal } : {}),
+      ...(body.startDate ? { startDate: body.startDate as string } : {}),
+      ...(body.endDate ? { endDate: body.endDate as string } : {}),
+      ...(body.goal ? { goal: body.goal as string } : {}),
     });
 
     // Insert into local sprint cache
@@ -201,11 +200,11 @@ export async function POST(request: NextRequest) {
       const detail = err.status === 401
         ? "Jira API credentials lack permission to create sprints"
         : "Insufficient permissions to create a sprint";
-      return NextResponse.json({ error: detail }, { status: err.status });
+      return errorResponse(detail, err.status);
     }
 
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to create sprint", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse(message, 500);
   }
 }

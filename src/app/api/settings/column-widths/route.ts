@@ -5,6 +5,8 @@ import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const SETTING_KEY = "sprint_board_column_widths";
 
@@ -42,20 +44,8 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-    }
-
-    const parsed = columnWidthsBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-        { status: 400 },
-      );
-    }
+    const parsed = await parseJsonBody(request, columnWidthsBodySchema);
+    if ("error" in parsed) return parsed.error;
 
     const { widths } = parsed.data;
     const payload = JSON.stringify(widths);
@@ -68,6 +58,6 @@ export async function PUT(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("settings", "Failed to save column widths", message);
-    return NextResponse.json({ error: "Failed to save column widths" }, { status: 500 });
+    return errorResponse("Failed to save column widths", 500);
   }
 }

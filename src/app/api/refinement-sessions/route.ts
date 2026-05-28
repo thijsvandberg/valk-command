@@ -4,6 +4,9 @@ import { refinementSession } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { emitRefinementEvent } from "@/lib/refinement-events";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET() {
   const rows = await db
@@ -25,12 +28,9 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const name =
     typeof body.name === "string" && body.name.trim()
@@ -61,8 +61,10 @@ export async function POST(request: Request) {
   });
 
   if (!created) {
-    return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
+    return errorResponse("Failed to create session", 500);
   }
+
+  emitRefinementEvent({ type: "session:created", sessionId: id });
 
   return NextResponse.json(
     {

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sprintSlot } from "@/db/schema";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET() {
   const slots = await db.select().from(sprintSlot).orderBy(sprintSlot.slotIndex).limit(50);
@@ -12,38 +14,23 @@ export async function PUT(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
 
   if (!Array.isArray(body)) {
-    return NextResponse.json(
-      { error: "Request body must be an array of sprint slot objects" },
-      { status: 400 },
-    );
+    return errorResponse("Request body must be an array of sprint slot objects", 400);
   }
 
   for (const slot of body) {
     if (typeof slot.slotIndex !== "number" || slot.slotIndex < 0 || slot.slotIndex > 7) {
-      return NextResponse.json(
-        { error: "slotIndex must be a number between 0 and 7" },
-        { status: 400 },
-      );
+      return errorResponse("slotIndex must be a number between 0 and 7", 400);
     }
     if (typeof slot.sprintId !== "string" || slot.sprintId.trim() === "") {
-      return NextResponse.json(
-        { error: "sprintId is required and must be a non-empty string" },
-        { status: 400 },
-      );
+      return errorResponse("sprintId is required and must be a non-empty string", 400);
     }
     if (typeof slot.sprintName !== "string" || slot.sprintName.trim() === "") {
-      return NextResponse.json(
-        { error: "sprintName is required and must be a non-empty string" },
-        { status: 400 },
-      );
+      return errorResponse("sprintName is required and must be a non-empty string", 400);
     }
   }
 

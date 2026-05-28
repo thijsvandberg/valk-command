@@ -7,6 +7,8 @@ import {
   getAvailableTeams,
 } from "@/lib/subscribed-teams";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET() {
   return NextResponse.json({
@@ -26,11 +28,8 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   try {
-    const body = await request.json();
-    const parsed = bodySchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid format" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, bodySchema);
+    if ("error" in parsed) return parsed.error;
     setSubscribedTeams(parsed.data.teams);
     return NextResponse.json({
       teams: parsed.data.teams,
@@ -39,6 +38,6 @@ export async function PUT(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("settings", "Failed to save subscribed teams", message);
-    return NextResponse.json({ error: "Failed to save subscribed teams" }, { status: 500 });
+    return errorResponse("Failed to save subscribed teams", 500);
   }
 }
