@@ -22,7 +22,7 @@ import type {
   DevPullRequest,
   DevCommit,
   DevBuild,
-} from "@/app/api/tickets/[key]/dev-info/route";
+} from "@/lib/bitbucket-client";
 
 function relativeDate(iso: string): string {
   const now = Date.now();

@@ -1,7 +1,7 @@
 import useSWR, { mutate as globalMutate } from "swr";
 import { useRef, useMemo, useEffect, useCallback } from "react";
 import type { Ticket, TicketDetail, ActivityLogEntry, StoredReview, StoryVersion } from "@/types/ticket";
-import type { DevInfoPayload } from "@/app/api/tickets/[key]/dev-info/route";
+import type { DevInfoPayload } from "@/lib/bitbucket-client";
 import { swrFetcher, tickets as ticketsApi, jira as jiraApi } from "@/lib/api-client";
 export { useDebouncedCallback } from "./useDebouncedCallback";
 
@@ -88,31 +88,25 @@ export function useTicketDetail(ticketKey: string | null) {
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
 
-  const checkedRef = useRef<string | null>(null);
+  const syncedRef = useRef<string | null>(null);
   const { mutate } = swr;
 
-  // Defer the Jira freshness check so it doesn't compete with the initial SWR fetch
+  // Immediately sync the full ticket from Jira in the background.
+  // SWR serves local/cached data instantly; once the sync finishes
+  // we revalidate so the UI updates with fresh Jira data.
   useEffect(() => {
     if (!ticketKey) return;
     if (ticketKey.startsWith("DRAFT-")) return;
-    if (checkedRef.current === ticketKey) return;
-    checkedRef.current = ticketKey;
+    if (syncedRef.current === ticketKey) return;
+    syncedRef.current = ticketKey;
 
     let cancelled = false;
 
-    const timer = setTimeout(() => {
-      jiraApi.checkUpdated(ticketKey)
-        .then(async (result: { stale?: boolean; removed?: boolean } | null) => {
-          if (cancelled) return;
-          if (result?.removed) { mutate(); return; }
-          if (!result?.stale) return;
-          await jiraApi.syncTickets({ ticketKeys: [ticketKey] });
-          mutate();
-        })
-        .catch(() => {});
-    }, 3000);
+    jiraApi.syncTickets({ ticketKeys: [ticketKey] })
+      .then(() => { if (!cancelled) mutate(); })
+      .catch(() => {});
 
-    return () => { cancelled = true; clearTimeout(timer); };
+    return () => { cancelled = true; };
   }, [ticketKey, mutate]);
 
   return swr;
