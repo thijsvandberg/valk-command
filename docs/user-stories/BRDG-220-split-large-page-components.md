@@ -59,8 +59,8 @@ Per page:
 - [x] Extract export logic into utility
 
 ### refinement session page
-- [ ] Extract session metadata panel into component
-- [ ] Extract zoom/navigation controls into component
+- [x] Extract session metadata panel into component
+- [x] Extract zoom/navigation controls into component
 
 ### tickets/[key]/page.tsx
 - [ ] Extract tab/pane orchestration into component

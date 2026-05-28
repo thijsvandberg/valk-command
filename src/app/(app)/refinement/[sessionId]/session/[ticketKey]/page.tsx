@@ -10,6 +10,8 @@ import { SessionTicketView, SessionMetadataPanel } from "@/components/refinement
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SessionEndModal } from "@/components/refinement-session/SessionEndModal";
+import { SessionNavigation } from "@/components/refinement-session/SessionNavigation";
+import { SubtasksPaneResizable } from "@/components/refinement-session/SubtasksPaneResizable";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets, apiFetch, jira as jiraApi } from "@/lib/api-client";
@@ -20,164 +22,17 @@ import { BridgeMark } from "@/components/shared/BridgeMark";
 import {
   MoreHorizontal,
   LogOut,
-  ChevronLeft,
-  ChevronRight,
   StickyNote,
   SquareMinus,
-  List,
-  GripVertical,
   Info,
   MessageSquareText,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-
-function SortableQueueItem({
-  ticketKey,
-  title,
-  isCurrent,
-  issueType,
-  jiraStatus,
-  onClick,
-}: {
-  ticketKey: string;
-  title: string;
-  isCurrent: boolean;
-  issueType?: string;
-  jiraStatus?: JiraStatus;
-  onClick: () => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: ticketKey });
-
-  const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    transition,
-    zIndex: isDragging ? 10 : undefined,
-    position: "relative" as const,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex w-full items-center gap-2 px-3 py-2 hover:bg-hover-list-item active:bg-overlay-default ${
-        isCurrent ? "bg-overlay-subtle" : ""
-      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""}`}
-    >
-      <span
-        ref={setActivatorNodeRef}
-        {...attributes}
-        {...listeners}
-        className="shrink-0 cursor-grab text-text-muted opacity-40 hover:opacity-100 active:cursor-grabbing"
-        style={{ transition: "opacity 0.15s ease" }}
-      >
-        <GripVertical size={12} strokeWidth={1.5} />
-      </span>
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
-      >
-        {jiraStatus ? (
-          <span className="shrink-0" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-            <TicketStatusPill
-              ticketKey={ticketKey}
-              jiraStatus={jiraStatus}
-              issueType={issueType}
-              title={title}
-              variant="list"
-              compact
-              showKey
-              showStatus
-            />
-          </span>
-        ) : (
-          <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{ticketKey}</span>
-        )}
-        <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{title}</span>
-        {isCurrent && (
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
-        )}
-      </button>
-    </div>
-  );
-}
-
-const MIN_PANE_WIDTH = 320;
-const MAX_PANE_WIDTH_RATIO = 0.5;
 
 function getDefaultPaneWidth() {
   if (typeof window === "undefined") return 400;
-  return Math.max(MIN_PANE_WIDTH, Math.round(window.innerWidth * 0.3));
-}
-
-function SubtasksPaneResizable({ children, width, onWidthChange }: { children: React.ReactNode; width: number; onWidthChange: (w: number) => void }) {
-  const [isDragging, setIsDragging] = useState(false);
-  const paneRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isDragging) return;
-    function handleMouseMove(e: MouseEvent) {
-      if (!paneRef.current) return;
-      const rect = paneRef.current.getBoundingClientRect();
-      const maxW = window.innerWidth * MAX_PANE_WIDTH_RATIO;
-      const newW = Math.max(MIN_PANE_WIDTH, Math.min(maxW, rect.right - e.clientX));
-      onWidthChange(newW);
-    }
-    function handleMouseUp() { setIsDragging(false); }
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, onWidthChange]);
-
-  return (
-    <div
-      ref={paneRef}
-      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] px-6 pt-4 pb-6"
-      style={{
-        width,
-        animation: isDragging ? undefined : "fadeInUp 0.15s ease",
-        transition: isDragging ? "none" : "width 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-      }}
-    >
-      {/* Resize handle */}
-      <div
-        onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
-        className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
-        style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
-      />
-      {children}
-    </div>
-  );
+  return Math.max(320, Math.round(window.innerWidth * 0.3));
 }
 
 export default function RefinementSessionTicketPage({
@@ -461,24 +316,6 @@ export default function RefinementSessionTicketPage({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
 
-  // Navigation dropdown
-  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
-  const navDropdownRef = useRef<HTMLDivElement>(null);
-
-  // DnD for queue reorder
-  const queueSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor),
-  );
-  const handleQueueDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const fromIdx = queue.indexOf(active.id as string);
-    const toIdx = queue.indexOf(over.id as string);
-    if (fromIdx === -1 || toIdx === -1) return;
-    reorderQueue(fromIdx, toIdx);
-  }, [queue, reorderQueue]);
-
   useEffect(() => {
     if (!ticketData || syncedKey === ticketData.key) return;
     setSyncedKey(ticketData.key);
@@ -523,25 +360,6 @@ export default function RefinementSessionTicketPage({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [overflowOpen]);
-
-  // Close nav dropdown on click outside
-  useEffect(() => {
-    if (!navDropdownOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (navDropdownRef.current && !navDropdownRef.current.contains(e.target as Node)) {
-        setNavDropdownOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setNavDropdownOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [navDropdownOpen]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -641,117 +459,18 @@ export default function RefinementSessionTicketPage({
           </div>
 
           {/* Center: progress + navigation */}
-          <div className="relative flex items-center gap-3">
-            <span className="text-body-sm font-medium tabular-nums text-text-secondary">
-              Ticket {currentIndex + 1} of {queue.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => prevTicket()}
-              disabled={currentIndex === 0}
-              className="flex cursor-pointer items-center justify-center rounded-md p-1 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
-              aria-label="Previous ticket"
-            >
-              <ChevronLeft size={14} strokeWidth={2} />
-            </button>
-            <div className="hidden items-center gap-1.5 min-[1400px]:flex">
-              {queue.map((key, idx) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => goToTicket(idx)}
-                  className="group relative cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                  aria-label={`Go to ticket ${idx + 1}: ${key}`}
-                >
-                  <div
-                    className={`h-1.5 rounded-full ${
-                      idx === currentIndex
-                        ? "w-8 bg-[var(--color-brand-500)]"
-                        : idx < currentIndex
-                          ? "w-4 bg-[var(--color-brand-500)]/40"
-                          : "w-4 bg-overlay-strong"
-                    }`}
-                    style={{ transition: "width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease" }}
-                  />
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={handleNext}
-              className={`flex cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                storyPoints != null
-                  ? "gap-1 bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] active:bg-[var(--color-brand-700)]"
-                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-              }`}
-              style={{
-                padding: storyPoints != null ? "4px 10px" : "4px",
-                transition: "background-color 0.25s ease, color 0.25s ease, padding 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease",
-                boxShadow: storyPoints != null ? "0 2px 8px color-mix(in srgb, var(--color-brand-500) 30%, transparent)" : "none",
-              }}
-              aria-label={isLastTicket ? "End session" : "Next ticket"}
-            >
-              <span
-                className="overflow-hidden text-body-sm font-medium whitespace-nowrap"
-                style={{
-                  maxWidth: storyPoints != null ? "60px" : "0px",
-                  opacity: storyPoints != null ? 1 : 0,
-                  transition: "max-width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease",
-                }}
-              >
-                {isLastTicket ? "Finish" : "Next"}
-              </span>
-              <ChevronRight size={14} strokeWidth={2} />
-            </button>
-            {/* Navigation dropdown trigger */}
-            <div className="relative" ref={navDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setNavDropdownOpen((v) => !v)}
-                className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  navDropdownOpen
-                    ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-                    : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-                }`}
-                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-                title="Jump to ticket"
-              >
-                <List size={14} strokeWidth={1.5} />
-              </button>
-              {navDropdownOpen && (
-                <div
-                  className="absolute top-full left-1/2 z-50 mt-2 w-[520px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
-                  style={{ animation: "fadeInUp 0.1s ease" }}
-                >
-                  <div className="px-3 py-2 text-label font-semibold uppercase tracking-wider text-text-muted">
-                    Queue
-                  </div>
-                  <div className="max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-                    <DndContext sensors={queueSensors} collisionDetection={closestCenter} onDragEnd={handleQueueDragEnd}>
-                      <SortableContext items={queue} strategy={verticalListSortingStrategy}>
-                        {queue.map((key, idx) => {
-                          const meta = queueMeta.find((m) => m.key === key);
-                          const t = allTickets?.find((ticket) => ticket.key === key);
-                          return (
-                            <SortableQueueItem
-                              key={key}
-                              ticketKey={key}
-                              title={meta?.title ?? key}
-                              isCurrent={idx === currentIndex}
-                              issueType={t?.type}
-                              jiraStatus={t?.jiraStatus}
-                              onClick={() => { goToTicket(idx); setNavDropdownOpen(false); }}
-                            />
-                          );
-                        })}
-                      </SortableContext>
-                    </DndContext>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <SessionNavigation
+            currentIndex={currentIndex}
+            queue={queue}
+            queueMeta={queueMeta}
+            allTickets={allTickets}
+            isLastTicket={isLastTicket}
+            storyPoints={storyPoints}
+            onPrev={() => prevTicket()}
+            onNext={handleNext}
+            onGoToTicket={goToTicket}
+            onReorderQueue={reorderQueue}
+          />
 
           {/* Right: panel toggles + done/next */}
           <div className="relative flex items-center gap-2">

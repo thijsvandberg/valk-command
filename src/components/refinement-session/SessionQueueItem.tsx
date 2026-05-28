@@ -1,0 +1,85 @@
+"use client";
+
+import { useSortable } from "@dnd-kit/sortable";
+import { GripVertical } from "lucide-react";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import type { JiraStatus } from "@/types/ticket";
+
+export function SessionQueueItem({
+  ticketKey,
+  title,
+  isCurrent,
+  issueType,
+  jiraStatus,
+  onClick,
+}: {
+  ticketKey: string;
+  title: string;
+  isCurrent: boolean;
+  issueType?: string;
+  jiraStatus?: JiraStatus;
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: ticketKey });
+
+  const style = {
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    position: "relative" as const,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex w-full items-center gap-2 px-3 py-2 hover:bg-hover-list-item active:bg-overlay-default ${
+        isCurrent ? "bg-overlay-subtle" : ""
+      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""}`}
+    >
+      <span
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab text-text-muted opacity-40 hover:opacity-100 active:cursor-grabbing"
+        style={{ transition: "opacity 0.15s ease" }}
+      >
+        <GripVertical size={12} strokeWidth={1.5} />
+      </span>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+      >
+        {jiraStatus ? (
+          <span className="shrink-0" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+            <TicketStatusPill
+              ticketKey={ticketKey}
+              jiraStatus={jiraStatus}
+              issueType={issueType}
+              title={title}
+              variant="list"
+              compact
+              showKey
+              showStatus
+            />
+          </span>
+        ) : (
+          <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{ticketKey}</span>
+        )}
+        <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{title}</span>
+        {isCurrent && (
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
+        )}
+      </button>
+    </div>
+  );
+}
