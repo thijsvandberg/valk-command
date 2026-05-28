@@ -210,7 +210,7 @@ export const tickets = {
     apiFetch<import("@/types/ticket").Subtask>(`/api/tickets/${enc(key)}/children`, { method: "POST", body: data, signal }),
 
   // Issue links
-  createLink: (key: string, data: { targetKey: string; relation: string }, signal?: AbortSignal) =>
+  createLink: (key: string, data: { targetKey: string; relation: string; jiraTypeName?: string; direction?: "inward" | "outward" }, signal?: AbortSignal) =>
     apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "POST", body: data, signal }),
   deleteLink: (key: string, data: { jiraLinkId?: string; linkedKey: string }, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/links`, { method: "DELETE", body: data, signal }),
@@ -626,9 +626,9 @@ export const settings = {
     apiFetch<void>("/api/settings/column-config", { method: "PUT", body: config, signal }),
 
   getSectionVisibility: (section: string, signal?: AbortSignal) =>
-    apiFetch<{ visible: string[] | null }>(`/api/settings/section-visibility?section=${encodeURIComponent(section)}`, { signal }),
-  saveSectionVisibility: (section: string, visible: string[], signal?: AbortSignal) =>
-    apiFetch<{ visible: string[] }>("/api/settings/section-visibility", { method: "PUT", body: { section, visible }, signal }),
+    apiFetch<{ visible: string[] | null; allKnown?: string[] | null }>(`/api/settings/section-visibility?section=${encodeURIComponent(section)}`, { signal }),
+  saveSectionVisibility: (section: string, visible: string[], allKnown?: string[], signal?: AbortSignal) =>
+    apiFetch<{ visible: string[] }>("/api/settings/section-visibility", { method: "PUT", body: { section, visible, allKnown }, signal }),
 
   getQuickPrompts: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/settings/quick-prompts", { signal }),

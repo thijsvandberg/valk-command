@@ -165,9 +165,12 @@ export function LinkIssueDialog({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      const linkTypeInfo = linkTypes.find((lt) => lt.value === relation);
       await tickets.createLink(ticketKey, {
         targetKey,
         relation,
+        jiraTypeName: linkTypeInfo?.jiraTypeName,
+        direction: linkTypeInfo?.direction,
       });
       onLinked();
     } catch (err) {

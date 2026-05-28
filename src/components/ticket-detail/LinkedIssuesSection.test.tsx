@@ -147,6 +147,8 @@ describe("LinkedIssuesSection", () => {
     expect(mockCreateLink).toHaveBeenCalledWith("VPL-1", {
       targetKey: "VPL-200",
       relation: "relates to",
+      jiraTypeName: "Relates",
+      direction: "outward",
     });
 
     await waitFor(() => {
@@ -245,6 +247,8 @@ describe("LinkedIssuesSection", () => {
     expect(mockCreateLink).toHaveBeenCalledWith("VPL-1", {
       targetKey: "VPL-300",
       relation: "blocks",
+      jiraTypeName: "Blocks",
+      direction: "outward",
     });
 
     await waitFor(() => {

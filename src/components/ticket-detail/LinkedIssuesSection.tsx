@@ -326,13 +326,20 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     setInlineShowResults(false);
     setInlineError(null);
 
-    tickets.createLink(ticketKey, { targetKey: result.key, relation: inlineRelation })
+    const pendingRelation = inlineRelation;
+    const linkTypeInfo = linkTypes.find((lt) => lt.value === inlineRelation);
+    tickets.createLink(ticketKey, {
+      targetKey: result.key,
+      relation: pendingRelation,
+      jiraTypeName: linkTypeInfo?.jiraTypeName,
+      direction: linkTypeInfo?.direction,
+    })
       .then(() => {
-        setInlinePending((prev) => prev.filter((p) => p.key !== result.key));
+        setInlinePending((prev) => prev.filter((p) => !(p.key === result.key && p.relation === pendingRelation)));
         onMutate();
       })
       .catch((err) => {
-        setInlinePending((prev) => prev.filter((p) => p.key !== result.key));
+        setInlinePending((prev) => prev.filter((p) => !(p.key === result.key && p.relation === pendingRelation)));
         setInlineError(`Failed to link ${result.key}`);
         console.error("Failed to create inline link:", err);
       });
@@ -367,7 +374,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     }
   }, [inlineShowResults, inlineResults, inlineHighlight, handleInlineLink]);
 
-  const allIssues = [...issues, ...inlinePending.filter((p) => !issues.some((i) => i.key === p.key))];
+  const allIssues = [...issues, ...inlinePending.filter((p) => !issues.some((i) => i.key === p.key && i.relation === p.relation))];
 
   const grouped = allIssues.reduce<Record<string, LinkedIssue[]>>((acc, issue) => {
     if (!acc[issue.relation]) acc[issue.relation] = [];

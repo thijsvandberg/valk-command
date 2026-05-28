@@ -75,7 +75,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  let body: { targetKey?: string; linkType?: string; relation?: string };
+  let body: { targetKey?: string; linkType?: string; relation?: string; jiraTypeName?: string; direction?: "inward" | "outward" };
   try {
     body = await request.json();
   } catch {
@@ -89,13 +89,20 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "targetKey is required" }, { status: 400 });
   }
 
-  // Determine Jira link type and direction from the relation label
-  const relationMap = await getRelationMapping();
-  const mapping = relation ? relationMap[relation.toLowerCase()] : null;
-  const jiraLinkType = body.linkType ?? mapping?.type ?? "Relates";
+  // Use jiraTypeName/direction from the frontend when available (already resolved from link-types API).
+  // Fall back to server-side mapping derivation for backwards compatibility.
+  let jiraLinkType: string;
+  let isInward: boolean;
 
-  // Determine inward/outward based on direction
-  const isInward = mapping?.direction === "inward";
+  if (body.jiraTypeName && body.direction) {
+    jiraLinkType = body.jiraTypeName;
+    isInward = body.direction === "inward";
+  } else {
+    const relationMap = await getRelationMapping();
+    const mapping = relation ? relationMap[relation.toLowerCase()] : null;
+    jiraLinkType = body.linkType ?? mapping?.type ?? "Relates";
+    isInward = mapping?.direction === "inward";
+  }
   const sourceKey = isInward ? targetKey : key;
   const destKey = isInward ? key : targetKey;
 

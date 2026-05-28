@@ -172,6 +172,24 @@ describe("POST /api/tickets/[key]/links", () => {
     expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-200", "VPL-100", "Cause");
   });
 
+  it("uses jiraTypeName and direction from request body when provided", async () => {
+    seedTicket("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(
+      postRequest("VPL-100", {
+        targetKey: "VPL-200",
+        relation: "is resolved by",
+        jiraTypeName: "Resolution",
+        direction: "inward",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    // With inward direction, source/dest are swapped
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-200", "VPL-100", "Resolution");
+  });
+
   it("falls back to default when Jira link types fail", async () => {
     seedTicket("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
