@@ -93,4 +93,4 @@ No new API routes needed. All endpoints exist for single-ticket updates.
 - [x] Add Generate Subtasks bulk action (AI-powered)
 - [x] Wire up all new actions in SprintBoard.tsx
 - [x] Update selection counter to show SP and BV separately ("3 SP · 7 BV")
-- [ ] All tests pass, build succeeds
+- [x] All tests pass, build succeeds

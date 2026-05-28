@@ -442,7 +442,7 @@ export function BulkActionBar({
   isRefreshing?: boolean;
 }) {
   return (
-    <BarContainer borderPosition="top" className="sticky bottom-0 z-20 gap-2 overflow-x-auto bg-[var(--color-surface-base)] sm:gap-3">
+    <BarContainer borderPosition="top" className="sticky bottom-0 z-20 gap-2 bg-[var(--color-surface-base)] sm:gap-3">
       {/* Select all / deselect all checkbox */}
       {onToggleAll && (
         <button
