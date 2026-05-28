@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus } from "@/types/ticket";
 import { saveTicketMetadata, saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, jira } from "@/lib/api-client";
 
 interface TicketActionsDeps {
   apiTickets: Ticket[] | undefined;
@@ -135,6 +135,70 @@ export function useTicketActions(deps: TicketActionsDeps) {
     }
   }, [readinessMap, showToast, activeListKey]);
 
+  const handleBulkSetStatus = useCallback(async (status: JiraStatus, checkedTickets: Set<string>) => {
+    const keys = [...checkedTickets];
+    const prevStatuses = Object.fromEntries(keys.map((k) => [k, apiTickets?.find((t) => t.key === k)?.jiraStatus]));
+    mutateTickets((data) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, jiraStatus: status } : t), { revalidate: false });
+    const results = await Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } })));
+    const failedCount = results.filter((r) => r.status === "rejected").length;
+    if (failedCount > 0) {
+      mutateTickets((data) => data?.map((t) => {
+        const prev = prevStatuses[t.key];
+        return prev !== undefined && checkedTickets.has(t.key) ? { ...t, jiraStatus: prev } : t;
+      }), { revalidate: false });
+      showToast(`Failed to update status for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
+    } else {
+      showToast(`Status set to ${status} for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
+    }
+  }, [apiTickets, mutateTickets, showToast]);
+
+  const handleBulkSetEpic = useCallback(async (epicKey: string | null, checkedTickets: Set<string>) => {
+    const keys = [...checkedTickets];
+    const results = await Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}`, { method: "PATCH", body: { epicKey } })));
+    const failedCount = results.filter((r) => r.status === "rejected").length;
+    mutateTickets();
+    if (failedCount > 0) {
+      showToast(`Failed to update epic for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
+    } else {
+      showToast(`Epic updated for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
+    }
+  }, [mutateTickets, showToast]);
+
+  const handleBulkMoveSprint = useCallback(async (targetSprintId: string, checkedTickets: Set<string>) => {
+    const keys = [...checkedTickets];
+    try {
+      await jira.moveSprint({ issueKeys: keys, targetSprintId });
+      mutateTickets();
+      showToast(`Moved ${keys.length} ticket${keys.length === 1 ? "" : "s"} to sprint`);
+    } catch {
+      showToast("Failed to move tickets to sprint");
+    }
+  }, [mutateTickets, showToast]);
+
+  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, checkedTickets: Set<string>) => {
+    const keys = [...checkedTickets];
+    const results = await Promise.allSettled(keys.map((k) => jira.assign({ issueKey: k, accountId, name })));
+    const failedCount = results.filter((r) => r.status === "rejected").length;
+    mutateTickets();
+    if (failedCount > 0) {
+      showToast(`Failed to update assignee for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
+    } else {
+      showToast(`Assignee updated for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
+    }
+  }, [mutateTickets, showToast]);
+
+  const handleBulkUpdateLabels = useCallback(async (labels: string[], checkedTickets: Set<string>) => {
+    const keys = [...checkedTickets];
+    const results = await Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}`, { method: "PATCH", body: { labels } })));
+    const failedCount = results.filter((r) => r.status === "rejected").length;
+    mutateTickets();
+    if (failedCount > 0) {
+      showToast(`Failed to update labels for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
+    } else {
+      showToast(`Labels updated for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
+    }
+  }, [mutateTickets, showToast]);
+
   return {
     poStatuses,
     readinessMap,
@@ -149,5 +213,10 @@ export function useTicketActions(deps: TicketActionsDeps) {
     handleCloseSubtasks,
     syncFromApiTickets,
     handleBulkSetReadiness,
+    handleBulkSetStatus,
+    handleBulkSetEpic,
+    handleBulkMoveSprint,
+    handleBulkUpdateAssignee,
+    handleBulkUpdateLabels,
   };
 }

@@ -149,6 +149,20 @@ export async function bulkReviewStories(keys: string[]): Promise<void> {
   }
 }
 
+export async function bulkGenerateSubtasks(keys: string[]): Promise<{ succeeded: number; failed: number }> {
+  let succeeded = 0;
+  let failed = 0;
+  for (const key of keys) {
+    try {
+      await ticketsApi.suggestSubtasks(key);
+      succeeded++;
+    } catch {
+      failed++;
+    }
+  }
+  return { succeeded, failed };
+}
+
 export interface SprintStats {
   todoCount: number;
   inProgressCount: number;
