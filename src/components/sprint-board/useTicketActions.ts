@@ -187,15 +187,24 @@ export function useTicketActions(deps: TicketActionsDeps) {
     }
   }, [mutateTickets, showToast]);
 
-  const handleBulkUpdateLabels = useCallback(async (labels: string[], checkedTickets: Set<string>) => {
+  const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
-    const results = await Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}`, { method: "PATCH", body: { labels } })));
+    const results = await Promise.allSettled(keys.map(async (k) => {
+      let finalLabels = labels;
+      if (mode === "add") {
+        const detail = await apiFetch<{ labels?: string[] }>(`/api/tickets/${encodeURIComponent(k)}`);
+        const existing = detail?.labels ?? [];
+        finalLabels = [...new Set([...existing, ...labels])];
+      }
+      return apiFetch(`/api/tickets/${encodeURIComponent(k)}`, { method: "PATCH", body: { labels: finalLabels } });
+    }));
     const failedCount = results.filter((r) => r.status === "rejected").length;
     mutateTickets();
     if (failedCount > 0) {
       showToast(`Failed to update labels for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
     } else {
-      showToast(`Labels updated for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
+      const verb = mode === "add" ? "Added" : "Set";
+      showToast(`${verb} labels for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
     }
   }, [mutateTickets, showToast]);
 

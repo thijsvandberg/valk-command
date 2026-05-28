@@ -313,7 +313,7 @@ function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, n
 // Sub-panel: Label picker (multi-select toggle)
 // ---------------------------------------------------------------------------
 
-function LabelSubPanel({ onSelect }: { onSelect: (labels: string[]) => void }) {
+function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" | "set") => void }) {
   const { data } = useSWR<{ labels: string[] }>("/api/jira/labels", swrFetcher);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -373,10 +373,17 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[]) => void }) {
           <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
           <button
             type="button"
-            onClick={() => onSelect([...selected])}
+            onClick={() => onSelect([...selected], "add")}
             className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-hover-list-item"
           >
-            Apply to {selected.size} label{selected.size === 1 ? "" : "s"}
+            Add {selected.size} label{selected.size === 1 ? "" : "s"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelect([...selected], "set")}
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item"
+          >
+            Replace all labels
           </button>
         </>
       )}
@@ -405,7 +412,7 @@ function UpdateDropdown({
   onSetEpic?: (epicKey: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
-  onUpdateLabel?: (labels: string[]) => void;
+  onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   sprints?: Sprint[];
 }) {
   const [open, setOpen] = useState(false);
@@ -543,7 +550,7 @@ function UpdateDropdown({
                 Back
               </button>
               <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
-              <LabelSubPanel onSelect={(labels) => { onUpdateLabel?.(labels); close(); }} />
+              <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />
             </>
           )}
         </Card>
@@ -671,7 +678,7 @@ export function BulkActionBar({
   onSetEpic?: (epicKey: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
-  onUpdateLabel?: (labels: string[]) => void;
+  onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   sprints?: Sprint[];
   // AI Assist dropdown
   onReviewStory?: () => void;
