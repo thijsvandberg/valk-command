@@ -89,6 +89,10 @@ vi.mock("@clerk/nextjs", () => ({
   useUser: () => ({ user: { firstName: "Test", lastName: "User", imageUrl: null } }),
 }));
 
+vi.mock("@clerk/shared/react", () => ({
+  useUser: () => ({ user: { firstName: "Test", lastName: "User", imageUrl: null } }),
+}));
+
 vi.mock("@/lib/api-client", () => ({
   tickets: {
     saveLocalEdit: vi.fn(),

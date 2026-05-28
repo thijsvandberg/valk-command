@@ -268,10 +268,19 @@ function MentionedPagesSection({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
+export function ConfluencePagesSection({
+  ticketKey,
+  variant = "default",
+  hideWhenEmpty = false,
+}: {
+  ticketKey: string;
+  variant?: "default" | "compact";
+  hideWhenEmpty?: boolean;
+}) {
   const { data, mutate } = useTicketConfluenceLinks(ticketKey);
   const [showSearch, setShowSearch] = useState(false);
   const [expandedPageId, setExpandedPageId] = useState<string | null>(null);
+  const [compactExpanded, setCompactExpanded] = useState(false);
   const searchAnchorRef = useRef<HTMLDivElement>(null);
 
   const links = data?.links ?? [];
@@ -320,11 +329,38 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
     setExpandedPageId((prev) => (prev === pageId ? null : pageId));
   }, []);
 
-  return (
-    <div className="mt-8">
-      <SectionHeader title="Confluence" count={links.length} />
+  if (hideWhenEmpty && links.length === 0) return null;
 
-      <div className="mt-3 space-y-1.5">
+  const compactBody = variant === "compact" ? compactExpanded : true;
+
+  return (
+    <div className={variant === "compact" ? "" : "mt-8"}>
+      {variant === "compact" ? (
+        <button
+          type="button"
+          onClick={() => setCompactExpanded(!compactExpanded)}
+          aria-expanded={compactExpanded}
+          className="flex w-full items-center justify-between cursor-pointer bg-transparent border-0 p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        >
+          <div className="flex items-center gap-1.5">
+            <h3 className="shrink-0 text-label font-semibold uppercase tracking-wider text-text-muted">
+              Confluence
+            </h3>
+            <span className="text-caption text-text-muted">({links.length})</span>
+          </div>
+          <ChevronDown
+            size={12}
+            strokeWidth={1.5}
+            className={`shrink-0 text-text-muted ${compactExpanded ? "" : "-rotate-90"}`}
+            style={{ transition: "transform 0.2s ease" }}
+          />
+        </button>
+      ) : (
+        <SectionHeader title="Confluence" count={links.length} />
+      )}
+
+      {compactBody && (
+      <div className={variant === "compact" ? "mt-2 space-y-1.5" : "mt-3 space-y-1.5"}>
           {/* Linked pages */}
           {links.length === 0 && (
             <p className="py-1 text-body-sm text-text-muted">No pages linked yet</p>
@@ -411,6 +447,7 @@ export function ConfluencePagesSection({ ticketKey }: { ticketKey: string }) {
             onLink={handleLinkMention}
           />
       </div>
+      )}
     </div>
   );
 }
