@@ -1,11 +1,19 @@
 "use client";
 
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Search, SlidersHorizontal, X, Settings2, Check } from "lucide-react";
 import { TicketRow } from "./TicketRow";
 import { RefinementFilters } from "./RefinementFilters";
+import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import type { useRefinementQueue } from "@/hooks/useRefinementQueue";
 import type { Ticket } from "@/types/ticket";
+
+const PILL_FIELDS = [
+  { id: "issueType", label: "Type icon" },
+  { id: "key", label: "Ticket key" },
+  { id: "status", label: "Status badge" },
+];
 
 interface RefinementTicketListProps {
   availableTickets: Ticket[];
@@ -32,9 +40,35 @@ export function RefinementTicketList({
   ticketSessionMap,
   resolvedSessionId,
 }: RefinementTicketListProps) {
+  const { visible: pillFields, toggleField: togglePillField } = useSectionVisibility("refinement-pill", ["issueType", "key", "status"]);
+  const [pillSettingsOpen, setPillSettingsOpen] = useState(false);
+  const pillSettingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pillSettingsOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (pillSettingsRef.current && !pillSettingsRef.current.contains(e.target as Node)) {
+        setPillSettingsOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setPillSettingsOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pillSettingsOpen]);
+
+  const showIssueType = pillFields.has("issueType");
+  const showKey = pillFields.has("key");
+  const showStatus = pillFields.has("status");
+
   return (
     <div className="min-w-0 flex-1">
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex min-h-7 items-center gap-3">
         <h2 className="shrink-0 font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">Select tickets</h2>
         {queueHook.readyCount > 0 && (
           <button
@@ -62,6 +96,52 @@ export function RefinementTicketList({
             <X size={13} strokeWidth={2} />
           </button>
         )}
+        <div className="relative" ref={pillSettingsRef}>
+          <button
+            type="button"
+            onClick={() => setPillSettingsOpen((v) => !v)}
+            className={`flex cursor-pointer items-center justify-center rounded-md p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              pillSettingsOpen ? "text-[var(--color-brand-400)]" : "text-text-muted hover:text-text-secondary"
+            }`}
+            style={{ transition: "color 0.12s ease" }}
+            title="Pill display settings"
+          >
+            <Settings2 size={15} strokeWidth={1.5} />
+          </button>
+          {pillSettingsOpen && (
+            <div
+              className="absolute top-full right-0 z-50 mt-1 min-w-[160px] rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+              style={{ animation: "fadeInUp 0.1s ease" }}
+            >
+              <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
+                Pill display
+              </div>
+              {PILL_FIELDS.map((field) => {
+                const isVisible = pillFields.has(field.id);
+                return (
+                  <button
+                    key={field.id}
+                    type="button"
+                    onClick={() => togglePillField(field.id, !isVisible)}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
+                  >
+                    <span
+                      className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
+                        isVisible
+                          ? "border-[var(--color-brand-400)] bg-[var(--color-brand-400)]"
+                          : "border-border-default bg-transparent"
+                      }`}
+                      style={{ transition: "background-color 0.1s ease, border-color 0.1s ease" }}
+                    >
+                      {isVisible && <Check size={10} strokeWidth={3} className="text-white" />}
+                    </span>
+                    <span className="text-text-secondary">{field.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => filters.setFiltersOpen(!filters.filtersOpen)}
@@ -94,6 +174,9 @@ export function RefinementTicketList({
             index={idx}
             sessionNames={ticketSessionMap.get(ticket.key)?.filter((s) => s.id !== resolvedSessionId).map((s) => s.name)}
             isOtherSession={(ticketSessionMap.get(ticket.key)?.some((s) => s.id !== resolvedSessionId)) ?? false}
+            showIssueType={showIssueType}
+            showKey={showKey}
+            showStatus={showStatus}
           />
         ))}
         {availableTickets.length === 0 && (

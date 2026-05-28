@@ -15,6 +15,9 @@ export interface TicketRowProps {
   index: number;
   sessionNames?: string[];
   isOtherSession?: boolean;
+  showIssueType?: boolean;
+  showKey?: boolean;
+  showStatus?: boolean;
 }
 
 export function TicketRow({
@@ -25,6 +28,9 @@ export function TicketRow({
   index,
   sessionNames,
   isOtherSession,
+  showIssueType = true,
+  showKey = true,
+  showStatus = true,
 }: TicketRowProps) {
   return (
     <div
@@ -57,10 +63,12 @@ export function TicketRow({
         <TicketStatusPill
           ticketKey={ticket.key}
           jiraStatus={ticket.jiraStatus}
-          issueType={ticket.type}
+          issueType={showIssueType ? ticket.type : undefined}
           title={ticket.title}
           readiness={ticket.readiness}
           variant="list"
+          showKey={showKey}
+          showStatus={showStatus}
         />
       </span>
       {ticket.editState === "draft" && <EditStateDot state="draft" />}

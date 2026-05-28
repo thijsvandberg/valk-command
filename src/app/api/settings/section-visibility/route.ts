@@ -10,7 +10,7 @@ function settingKey(section: string) {
   return `section_visibility_${section}`;
 }
 
-const VALID_SECTIONS = ["epic-children", "subtasks"];
+const VALID_SECTIONS = ["epic-children", "subtasks", "refinement-pill"];
 
 interface SectionVisibility {
   visible: string[];
