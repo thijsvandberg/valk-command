@@ -179,7 +179,7 @@ describe("LinkedIssuesSection", () => {
     fireEvent.mouseDown(resultButtons[resultButtons.length - 1]);
 
     expect(mockCreateLink).not.toHaveBeenCalled();
-    expect(screen.getByText("VPL-100 is already linked")).toBeInTheDocument();
+    expect(screen.getByText('VPL-100 is already linked as "relates to"')).toBeInTheDocument();
   });
 
   it("extracts issue key from Jira URL", async () => {

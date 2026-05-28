@@ -53,7 +53,9 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   // Inline link input state
   const [inlineRelation, setInlineRelation] = useState("relates to");
   const [inlineRelationOpen, setInlineRelationOpen] = useState(false);
+  const [inlineRelationFilter, setInlineRelationFilter] = useState("");
   const inlineRelationRef = useRef<HTMLDivElement>(null);
+  const inlineRelationFilterRef = useRef<HTMLInputElement>(null);
   const [inlineQuery, setInlineQuery] = useState("");
   const [inlineResults, setInlineResults] = useState<InlineSearchResult[]>([]);
   const [inlineHighlight, setInlineHighlight] = useState(-1);
@@ -302,9 +304,10 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   }, [doInlineSearch]);
 
   const handleInlineLink = useCallback((result: InlineSearchResult) => {
-    const alreadyLinked = issues.some((i) => i.key === result.key) || inlinePending.some((i) => i.key === result.key);
+    const alreadyLinked = issues.some((i) => i.key === result.key && i.relation === inlineRelation)
+      || inlinePending.some((i) => i.key === result.key && i.relation === inlineRelation);
     if (alreadyLinked) {
-      setInlineError(`${result.key} is already linked`);
+      setInlineError(`${result.key} is already linked as "${inlineRelation}"`);
       return;
     }
 
@@ -456,7 +459,15 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
           <div ref={inlineRelationRef} className="relative shrink-0">
             <button
               type="button"
-              onClick={() => setInlineRelationOpen((v) => !v)}
+              onClick={() => {
+                setInlineRelationOpen((v) => {
+                  if (!v) {
+                    setInlineRelationFilter("");
+                    requestAnimationFrame(() => inlineRelationFilterRef.current?.focus());
+                  }
+                  return !v;
+                });
+              }}
               className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:border-border-strong active:bg-overlay-strong transition-colors duration-150"
             >
               <Link2 size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
@@ -467,27 +478,49 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
             </button>
             {inlineRelationOpen && (
               <div
-                className="absolute left-0 top-full z-50 mt-1 w-52 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
-                style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+                className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
               >
-                {linkTypes.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setInlineRelation(opt.value);
-                      setInlineRelationOpen(false);
+                <div className="px-2 pt-2 pb-1">
+                  <input
+                    ref={inlineRelationFilterRef}
+                    type="text"
+                    value={inlineRelationFilter}
+                    onChange={(e) => setInlineRelationFilter(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.stopPropagation();
+                        setInlineRelationOpen(false);
+                      }
                     }}
-                    className={`flex w-full items-center px-3 py-1.5 text-body-sm cursor-pointer transition-colors duration-150 ${
-                      inlineRelation === opt.value
-                        ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
-                        : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                    placeholder="Filter..."
+                    className="w-full rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 py-1 text-body-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50"
+                  />
+                </div>
+                <div
+                  className="max-h-52 overflow-y-auto py-1"
+                  style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+                >
+                  {linkTypes
+                    .filter((opt) => !inlineRelationFilter || opt.label.toLowerCase().includes(inlineRelationFilter.toLowerCase()))
+                    .map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setInlineRelation(opt.value);
+                        setInlineRelationOpen(false);
+                      }}
+                      className={`flex w-full items-center px-3 py-1.5 text-body-sm cursor-pointer transition-colors duration-150 ${
+                        inlineRelation === opt.value
+                          ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
+                          : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -549,11 +582,12 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
             )}
           </div>
         )}
+        {inlineError && (
+          <div className="border-t border-border-default px-3 py-2 text-body-sm text-red-400/80">
+            {inlineError}
+          </div>
+        )}
       </div>
-
-      {inlineError && (
-        <p className="mt-2 text-body-sm text-red-400/80">{inlineError}</p>
-      )}
 
       <RelatedSuggestions
         suggestions={suggestions}

@@ -48,7 +48,9 @@ export function LinkIssueDialog({
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [showResults, setShowResults] = useState(false);
   const [relationOpen, setRelationOpen] = useState(false);
+  const [relationFilter, setRelationFilter] = useState("");
   const relationRef = useRef<HTMLDivElement>(null);
+  const relationFilterRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const jiraDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -64,6 +66,7 @@ export function LinkIssueDialog({
       setHighlightIndex(-1);
       setShowResults(false);
       setRelationOpen(false);
+      setRelationFilter("");
       setSubmitError(null);
       setIsSearchingJira(false);
       requestAnimationFrame(() => searchRef.current?.focus());
@@ -226,7 +229,15 @@ export function LinkIssueDialog({
           <div ref={relationRef} className="relative">
             <button
               type="button"
-              onClick={() => setRelationOpen((v) => !v)}
+              onClick={() => {
+                setRelationOpen((v) => {
+                  if (!v) {
+                    setRelationFilter("");
+                    requestAnimationFrame(() => relationFilterRef.current?.focus());
+                  }
+                  return !v;
+                });
+              }}
               className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-border-default bg-[var(--color-surface-default)] px-3 py-1.5 text-body-lg text-text-primary outline-none hover:border-border-strong focus-visible:border-[var(--color-brand-500)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/25"
               style={{ transition: "border-color 120ms" }}
             >
@@ -239,28 +250,50 @@ export function LinkIssueDialog({
             </button>
             {relationOpen && (
               <div
-                className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
-                style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+                className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
               >
-                {linkTypes.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => { setRelation(opt.value); setRelationOpen(false); }}
-                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-lg ${
-                      opt.value === relation
-                        ? "bg-overlay-default text-text-primary"
-                        : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
-                    }`}
-                    style={{ transition: "background-color 80ms, color 80ms" }}
-                  >
-                    <Check
-                      size={13}
-                      className={`shrink-0 ${opt.value === relation ? "text-[var(--color-brand-400)]" : "invisible"}`}
-                    />
-                    <span>{opt.label}</span>
-                  </button>
-                ))}
+                <div className="px-2 pt-2 pb-1">
+                  <input
+                    ref={relationFilterRef}
+                    type="text"
+                    value={relationFilter}
+                    onChange={(e) => setRelationFilter(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.stopPropagation();
+                        setRelationOpen(false);
+                      }
+                    }}
+                    placeholder="Filter..."
+                    className="w-full rounded-md border border-border-default bg-[var(--color-surface-default)] px-2.5 py-1 text-body-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50"
+                  />
+                </div>
+                <div
+                  className="max-h-56 overflow-y-auto py-1"
+                  style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+                >
+                  {linkTypes
+                    .filter((opt) => !relationFilter || opt.label.toLowerCase().includes(relationFilter.toLowerCase()))
+                    .map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => { setRelation(opt.value); setRelationOpen(false); }}
+                      className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-lg ${
+                        opt.value === relation
+                          ? "bg-overlay-default text-text-primary"
+                          : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
+                      }`}
+                      style={{ transition: "background-color 80ms, color 80ms" }}
+                    >
+                      <Check
+                        size={13}
+                        className={`shrink-0 ${opt.value === relation ? "text-[var(--color-brand-400)]" : "invisible"}`}
+                      />
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
