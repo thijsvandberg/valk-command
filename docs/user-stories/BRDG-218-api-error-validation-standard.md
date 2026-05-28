@@ -46,5 +46,5 @@ catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 - [x] Write tests for both utilities
 - [x] Migrate highest-traffic routes first (tickets, story-writer, search)
 - [x] Migrate remaining routes
-- [ ] Update frontend `api-client.ts` if error format changes
-- [ ] All tests pass
+- [x] Update frontend `api-client.ts` if error format changes <!-- no changes needed: already expects { error, code? } -->
+- [x] All tests pass

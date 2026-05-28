@@ -64,8 +64,8 @@ describe("POST /api/jira/sync-incremental", () => {
     const res = await POST();
     const data = await res.json();
 
-    expect(data.ok).toBe(false);
     expect(data.needsFullSync).toBe(true);
+    expect(data.error).toContain("No watermark");
   });
 
   it("returns count 0 when no tickets changed", async () => {
@@ -240,7 +240,7 @@ describe("POST /api/jira/sync-incremental", () => {
     const res = await POST();
     const data = await res.json();
 
-    expect(data.ok).toBe(false);
+    expect(res.status).toBe(500);
     expect(data.error).toBe("Incremental sync failed");
 
     // Cooldown should be reset (epoch) so next poll is not blocked
