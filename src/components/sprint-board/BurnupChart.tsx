@@ -360,7 +360,7 @@ export function BurnupChart({
 
         {/* SP completed step-line area fill */}
         {hasSp && spPoints.length > 0 && (
-          <path d={stepLineAreaPath(spPoints, y0)} fill="rgba(88, 180, 230, 0.06)" />
+          <path d={stepLineAreaPath(spPoints, y0)} fill="color-mix(in srgb, var(--color-status-progress) 6%, transparent)" />
         )}
 
         {/* SP completed step-line */}

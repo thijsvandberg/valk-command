@@ -74,13 +74,20 @@ export function SubtaskSuggestions({
     <div
       className="mt-3 overflow-hidden rounded-xl border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.03]"
       style={{
-        boxShadow: "0 1px 3px rgba(var(--color-brand-rgb, 0 0 0) / 0.06), 0 0 0 1px rgba(var(--color-brand-rgb, 0 0 0) / 0.03)",
+        boxShadow: "0 1px 3px color-mix(in srgb, var(--color-brand-600) 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-brand-600) 3%, transparent)",
       }}
     >
       {/* Header - clickable to toggle */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggleExpanded}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleExpanded();
+          }
+        }}
         className="flex w-full cursor-pointer items-center gap-2 px-3.5 py-2.5 hover:bg-[var(--color-brand-500)]/[0.04] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 0.15s ease" }}
       >
@@ -136,7 +143,7 @@ export function SubtaskSuggestions({
             )}
           </div>
         )}
-      </button>
+      </div>
 
       {isExpanded && hasContent && (
         <div className="border-t border-[var(--color-brand-500)]/10 px-1.5 py-1.5">

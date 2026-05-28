@@ -155,7 +155,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const isCurrentSearchSaved = mode === "local" && query.trim().length >= 2 && savedSearches.some((s) => s.query === query.trim() && JSON.stringify(serializeFilters(s.filters)) === JSON.stringify(serializeFilters(filters)));
 
   return (
-    <div className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh]" style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh]" style={{ backgroundColor: "color-mix(in srgb, black 55%, transparent)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="pointer-events-none absolute inset-0 backdrop-blur-sm" />
       <div className="relative z-10 w-full max-w-[1200px] overflow-hidden rounded-xl" style={{ backgroundColor: "var(--color-surface-floating)", boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px var(--color-overlay-default)", animation: "searchModalIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)" }} onKeyDown={handleKeyDown}>
         <SearchModalHeader mode={mode} query={query} jiraQuery={jiraQuery} setQuery={setQuery} setJiraQuery={setJiraQuery} setMode={setMode} setActiveIdx={setActiveIdx} showFilters={showFilters} openFilters={handleOpenFilters} filters={filters} onClose={onClose} inputRef={inputRef} />
@@ -167,15 +167,15 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           </div>
         )}
         {detectedKey && (
-          <button type="button" onClick={() => !fetchingKey && navigateToKey(detectedKey, false)} disabled={fetchingKey} className="w-full flex items-center gap-2.5 border-b border-border-default px-5 py-2 text-left cursor-pointer disabled:cursor-default" style={{ backgroundColor: "rgba(74, 170, 96, 0.07)" }}>
-            <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-label font-semibold" style={{ backgroundColor: "rgba(74, 170, 96, 0.18)", color: "var(--color-brand-400)" }}>{detectedKey}</span>
+          <button type="button" onClick={() => !fetchingKey && navigateToKey(detectedKey, false)} disabled={fetchingKey} className="w-full flex items-center gap-2.5 border-b border-border-default px-5 py-2 text-left cursor-pointer disabled:cursor-default" style={{ backgroundColor: "color-mix(in srgb, var(--color-status-success) 7%, transparent)" }}>
+            <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-label font-semibold" style={{ backgroundColor: "var(--color-brand-subtle-hover)", color: "var(--color-brand-400)" }}>{detectedKey}</span>
             <span className="text-label text-text-tertiary">{fetchingKey ? "Downloading from Jira..." : "Press Enter to open directly"}</span>
           </button>
         )}
         {mode === "local" && showFilters && <SearchFilterPanel filters={filters} onChange={setFilters} filterOptions={filterOptions} sectionCounts={{ tickets: groupedResults.tickets.length, conversations: groupedResults.conversations.length, comments: groupedResults.comments.length } satisfies SectionCounts} />}
 
         <div className="flex" style={{ minHeight: showPreview ? 340 : undefined }}>
-          <div ref={listRef} className="overflow-y-auto flex-1" style={{ maxHeight: "min(700px, calc(100vh - 260px))", scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent", borderTop: showPreview ? (focusedPanel === "list" ? "2px solid rgba(74, 170, 96, 0.3)" : "2px solid transparent") : undefined, transition: "border-color 150ms" }}>
+          <div ref={listRef} className="overflow-y-auto flex-1" style={{ maxHeight: "min(700px, calc(100vh - 260px))", scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent", borderTop: showPreview ? (focusedPanel === "list" ? "2px solid color-mix(in srgb, var(--color-status-success) 30%, transparent)" : "2px solid transparent") : undefined, transition: "border-color 150ms" }}>
             {(showLocalSkeleton || showJiraSkeleton) && <div>{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} idx={i} />)}</div>}
             {!loadingJira && mode === "jira" && jiraError && <div className="flex items-center gap-2 px-4 py-6 text-body-lg text-red-400/70">{jiraError}</div>}
             {!showLocalSkeleton && mode === "local" && totalGroupedCount > 0 && <LocalResultSections groupedResults={groupedResults} visibleRows={visibleRows} activeIdx={activeIdx} setActiveIdx={setActiveIdx} expandedSections={expandedSections} collapsedSections={collapsedSections} filters={filters} toggleSection={toggleSection} showMoreSection={showMoreSection} sectionVisible={sectionVisible} effectiveLocalQuery={effectiveLocalQuery} addSearch={addSearch} onClose={onClose} sprintNameMap={sprintNameMap} showPreview={showPreview} />}
@@ -187,7 +187,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           {showPreview && activeTicketResult && (
             <>
               <div onMouseDown={onDragHandleMouseDown} className="relative flex w-2 shrink-0 cursor-col-resize items-center justify-center" style={{ borderLeft: "1px solid var(--color-overlay-default)" }}><div className="h-12 w-0.5 rounded-full" style={{ backgroundColor: "var(--color-overlay-strong)" }} /></div>
-              <div ref={previewPaneRef} className="overflow-y-auto p-5 shrink-0" style={{ width: previewWidth, maxHeight: "min(700px, calc(100vh - 260px))", scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent", borderTop: focusedPanel === "preview" ? "2px solid rgba(74, 170, 96, 0.3)" : "2px solid transparent", transition: "border-color 150ms" }}>
+              <div ref={previewPaneRef} className="overflow-y-auto p-5 shrink-0" style={{ width: previewWidth, maxHeight: "min(700px, calc(100vh - 260px))", scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent", borderTop: focusedPanel === "preview" ? "2px solid color-mix(in srgb, var(--color-status-success) 30%, transparent)" : "2px solid transparent", transition: "border-color 150ms" }}>
                 <PreviewPane result={activeTicketResult} sprintNameMap={sprintNameMap} onClose={onClose} />
               </div>
             </>

@@ -84,7 +84,7 @@ export function BusinessValuePicker({
           style={getPopoverStyle()}
         >
           <div className="flex items-center gap-1">
-            <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-7 w-7 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "rgba(85, 90, 100, 0.08)", boxShadow: isNA ? "0 0 0 1px rgba(85, 90, 100, 0.4)" : undefined }}>
+            <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-7 w-7 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", boxShadow: isNA ? "0 0 0 1px color-mix(in srgb, #555a64 40%, transparent)" : undefined }}>
               <Minus size={12} strokeWidth={1.5} />
             </button>
 

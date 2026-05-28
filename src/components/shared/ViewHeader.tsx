@@ -31,15 +31,15 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
   return createPortal(
     <div className={`relative flex items-center justify-between border-b border-border-strong bg-[var(--color-surface-chrome)] px-5 py-3.5${className ? ` ${className}` : ""}`}>
       {/* Top accent gradient */}
-      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(14,142,136,0.35)] to-transparent" />
+      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
       {/* Left glow */}
-      <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,rgba(14,142,136,0.10)_0%,transparent_70%)]" />
+      <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,color-mix(in_srgb,var(--color-brand-500)_10%,transparent)_0%,transparent_70%)]" />
       {/* Right glow */}
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,rgba(14,142,136,0.05)_0%,transparent_70%)]" />
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,color-mix(in_srgb,var(--color-brand-500)_5%,transparent)_0%,transparent_70%)]" />
 
       {/* Brand: mark + wordmark */}
       <div className="relative flex shrink-0 items-center gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_rgba(14,142,136,0.35),inset_0_1px_0_var(--color-text-muted)]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_var(--color-brand-glow),inset_0_1px_0_var(--color-text-muted)]">
           <BridgeMark size={22} />
         </div>
         <span className="font-[var(--font-display)] text-heading-sm font-extrabold tracking-[-0.04em] text-text-primary">

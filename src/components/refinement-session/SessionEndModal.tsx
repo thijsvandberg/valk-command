@@ -7,9 +7,9 @@ import { useTickets } from "@/hooks/useSprintBoard";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
-import { tickets } from "@/lib/api-client";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { tickets, apiFetch } from "@/lib/api-client";
+import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
   ArrowLeft,
   Save,
@@ -140,12 +140,33 @@ export function SessionEndModal() {
       return {
         key,
         title: meta?.title ?? ticket?.title ?? key,
-        type: ticket?.type ?? "task",
+        type: (ticket?.type ?? "task") as string,
+        jiraStatus: (ticket?.jiraStatus ?? "TO DO") as JiraStatus,
+        readiness: (ticket?.readiness ?? null) as TicketReadiness | null,
         storyPoints: ticket?.storyPoints ?? null,
         isSpike: ticket?.type === "spike",
       };
     });
   }, [queue, queueMeta, allTickets]);
+
+  // Handlers for inline status changes via the pill
+  const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } });
+    } catch { /* optimistic UI not needed here, allTickets will revalidate */ }
+  }, []);
+
+  const handleReadinessChange = useCallback(async (key: string, readiness: TicketReadiness | null) => {
+    try {
+      await tickets.updateMetadata(key, { readiness });
+    } catch { /* silent */ }
+  }, []);
+
+  const handleIssueTypeChange = useCallback(async (key: string, type: IssueType) => {
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { type } });
+    } catch { /* silent */ }
+  }, []);
 
   const unestimatedCount = ticketRows.filter(
     (t) => !t.isSpike && (t.storyPoints == null || t.storyPoints === 0),
@@ -154,7 +175,7 @@ export function SessionEndModal() {
   return (
     <div className="flex h-full items-start justify-center overflow-y-auto py-12 px-4">
       <div
-        className="w-full max-w-2xl rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_8px_40px_rgba(0,0,0,0.25),0_2px_12px_rgba(14,142,136,0.08)]"
+        className="w-full max-w-2xl rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_8px_40px_rgba(0,0,0,0.25),0_2px_12px_color-mix(in_srgb,var(--color-brand-500)_8%,transparent)]"
         style={{ animation: "fadeInUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
       >
         {/* Header */}
@@ -201,8 +222,17 @@ export function SessionEndModal() {
               return (
                 <div key={row.key}>
                   <div className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-overlay-subtle" style={{ transition: "background-color 0.12s ease" }}>
-                    <IssueTypeIcon type={row.type} size={14} />
-                    <TicketKeyPill ticketKey={row.key} />
+                    <TicketStatusPill
+                      ticketKey={row.key}
+                      jiraStatus={row.jiraStatus}
+                      readiness={row.readiness}
+                      issueType={row.type}
+                      title={row.title}
+                      variant="list"
+                      onJiraStatusChange={(s) => handleJiraStatusChange(row.key, s)}
+                      onReadinessChange={(r) => handleReadinessChange(row.key, r)}
+                      onIssueTypeChange={(t) => handleIssueTypeChange(row.key, t)}
+                    />
                     <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">
                       {row.title}
                     </span>

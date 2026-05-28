@@ -48,7 +48,7 @@ function shortDate(iso: string): string {
 const PR_STATUS_STYLES: Record<DevPullRequest["status"], { bg: string; text: string }> = {
   OPEN: { bg: "var(--color-status-warning-subtle)", text: "var(--color-status-warning)" },
   MERGED: { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)" },
-  DECLINED: { bg: "var(--color-status-error-subtle)", text: "rgba(229, 83, 75, 0.5)" },
+  DECLINED: { bg: "var(--color-status-error-subtle)", text: "color-mix(in srgb, var(--color-status-error) 50%, transparent)" },
 };
 
 function BuildStateIcon({ state, size = 13 }: { state: string; size?: number }) {

@@ -354,8 +354,8 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             aria-pressed={isActive}
             className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap shrink-0"
             style={{
-              backgroundColor: isActive ? "rgba(74, 170, 96, 0.12)" : "var(--color-overlay-subtle)",
-              borderColor: isActive ? "rgba(74, 170, 96, 0.35)" : "var(--color-overlay-default)",
+              backgroundColor: isActive ? "color-mix(in srgb, var(--color-status-success) 12%, transparent)" : "var(--color-overlay-subtle)",
+              borderColor: isActive ? "color-mix(in srgb, var(--color-status-success) 35%, transparent)" : "var(--color-overlay-default)",
               color: isActive ? "var(--color-brand-400)" : "var(--color-text-secondary)",
               transition: "background-color 120ms, border-color 120ms, color 120ms, transform 80ms",
             }}

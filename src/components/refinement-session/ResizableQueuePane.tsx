@@ -47,7 +47,7 @@ export function ResizableQueuePane({ children }: { children: React.ReactNode }) 
       >
         <div
           className="mx-auto h-full w-0.5 hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
-          style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
+          style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
         />
       </div>
       {children}

@@ -228,7 +228,7 @@ export function SprintStatsPopover({
       <div
         className="fixed inset-0 z-40"
         style={{
-          backgroundColor: "rgba(0,0,0,0.25)",
+          backgroundColor: "color-mix(in srgb, black 25%, transparent)",
           opacity: mounted ? 1 : 0,
           transition: "opacity 180ms ease-out",
         }}
@@ -304,7 +304,7 @@ export function SprintStatsPopover({
             </div>
 
             {workingDaysRemaining != null && totalWorkingDays != null && totalWorkingDays > 0 && (
-              <div className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${isLastDays ? "text-amber-400/90" : "text-text-muted"}`} style={{ backgroundColor: isLastDays ? "rgba(234,179,8,0.08)" : "var(--color-overlay-subtle)" }}>
+              <div className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${isLastDays ? "text-amber-400/90" : "text-text-muted"}`} style={{ backgroundColor: isLastDays ? "color-mix(in srgb, var(--color-status-caution) 8%, transparent)" : "var(--color-overlay-subtle)" }}>
                 <Calendar size={11} strokeWidth={1.5} />
                 <span className="tabular-nums">
                   {workingDaysRemaining === 0 ? "Last day" : `${workingDaysRemaining} day${workingDaysRemaining !== 1 ? "s" : ""} left`}
@@ -343,7 +343,7 @@ export function SprintStatsPopover({
                   className="h-full rounded-full"
                   style={{
                     width: `${Math.min(timePct, 100)}%`,
-                    backgroundColor: isLastDays ? "rgba(234,179,8,0.6)" : "var(--color-text-muted)",
+                    backgroundColor: isLastDays ? "color-mix(in srgb, var(--color-status-caution) 60%, transparent)" : "var(--color-text-muted)",
                     opacity: 0.5,
                     transition: "width 400ms ease-out",
                   }}
@@ -455,7 +455,7 @@ export function SprintStatsPopover({
                 <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                   {stats.epicEntries.map(([epicName, data]) => {
                     const isNoEpic = epicName === "No Epic";
-                    const epicColor = isNoEpic ? { text: "var(--color-status-neutral)", bg: "rgba(107,114,128,0.12)" } : getEpicColor(epicName);
+                    const epicColor = isNoEpic ? { text: "var(--color-status-neutral)", bg: "color-mix(in srgb, #6b7280 12%, transparent)" } : getEpicColor(epicName);
                     const pct = maxEpicSp > 0 ? (data.sp / maxEpicSp) * 100 : 0;
                     return (
                       <FilterRow

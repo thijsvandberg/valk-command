@@ -31,7 +31,7 @@ interface EpicSuggestionItem {
 const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   high:   { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)", label: "High" },
   medium: { bg: "var(--color-status-caution-subtle)", text: "var(--color-status-caution)", label: "Med" },
-  low:    { bg: "rgba(155, 108, 212, 0.10)", text: "var(--color-icon-epic)", label: "Low" },
+  low:    { bg: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", text: "var(--color-icon-epic)", label: "Low" },
 };
 
 export function EpicPicker({
@@ -175,7 +175,7 @@ function EpicPickerInner({
   }, [suggestions]);
 
   const suggestionsSection = suggestions && suggestions.length > 0 && !query.trim() ? (
-    <div className="border-b border-border-subtle py-1" style={{ backgroundColor: "rgba(155, 108, 212, 0.04)" }}>
+    <div className="border-b border-border-subtle py-1" style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 4%, transparent)" }}>
       <div className="px-3 pt-1 pb-0.5">
         <span className="text-caption font-medium uppercase tracking-wider" style={{ color: "var(--color-icon-epic)", opacity: 0.6 }}>AI Suggestions</span>
       </div>
@@ -187,7 +187,7 @@ function EpicPickerInner({
             key={`suggest-${s.key}`}
             type="button"
             onClick={() => { onChange({ key: s.key, name: s.name }); handleClose(); }}
-            className="flex w-full items-start gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-[rgba(155,108,212,0.08)] active:bg-[rgba(155,108,212,0.12)]"
+            className="flex w-full items-start gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] active:bg-[color-mix(in_srgb,var(--color-icon-epic)_12%,transparent)]"
           >
             <span className="flex w-4 items-center justify-center shrink-0 mt-0.5 text-[var(--color-icon-epic)]">
               <Sparkles size={10} strokeWidth={1.5} />
@@ -238,7 +238,7 @@ function EpicPickerInner({
             className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
           />
           {ticketKey && (
-            <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] hover:bg-[rgba(155,108,212,0.08)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>
+            <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>
               <Sparkles size={11} strokeWidth={1.5} className={suggesting ? "animate-pulse" : ""} />
             </button>
           )}
@@ -251,8 +251,8 @@ function EpicPickerInner({
         {suggesting && (
           <div className="border-b border-border-subtle px-3 py-2.5">
             <div className="flex items-center gap-2">
-              <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: "rgba(155, 108, 212, 0.12)" }}>
-                <div className="h-full rounded-full animate-pulse" style={{ width: "60%", backgroundColor: "rgba(155, 108, 212, 0.4)", animation: "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite" }} />
+              <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 12%, transparent)" }}>
+                <div className="h-full rounded-full animate-pulse" style={{ width: "60%", backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 40%, transparent)", animation: "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite" }} />
               </div>
               <span className="text-caption text-[var(--color-icon-epic)]">Analyzing...</span>
             </div>
@@ -293,7 +293,7 @@ function EpicPickerInner({
                 key={epic.key}
                 selected={isSelected}
                 onSelect={() => { onChange({ key: epic.key, name: epic.name }); handleClose(); }}
-                style={isSuggested && !query.trim() ? { backgroundColor: "rgba(155, 108, 212, 0.04)" } : undefined}
+                style={isSuggested && !query.trim() ? { backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 4%, transparent)" } : undefined}
               >
                 <span className="flex w-4 items-center justify-center shrink-0 text-[var(--color-icon-epic)]">
                   <Zap size={11} strokeWidth={1.5} />

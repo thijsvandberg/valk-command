@@ -219,14 +219,14 @@ export function AiInsightsPanel({
       aria-busy={isRunning}
       className="relative rounded-xl border border-[var(--color-brand-400)]/20 bg-[var(--color-brand-900)]/30 overflow-hidden"
       style={{
-        boxShadow: "0 0 0 1px rgba(51,137,216,0.06), 0 4px 24px -4px rgba(51,137,216,0.08)",
+        boxShadow: "0 0 0 1px color-mix(in srgb, #3389d8 6%, transparent), 0 4px 24px -4px color-mix(in srgb, #3389d8 8%, transparent)",
       }}
     >
       {/* Subtle top glow strip */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
         style={{
-          background: "linear-gradient(90deg, transparent, rgba(51,137,216,0.35) 40%, rgba(52,212,165,0.2) 70%, transparent)",
+          background: "linear-gradient(90deg, transparent, color-mix(in srgb, #3389d8 35%, transparent) 40%, color-mix(in srgb, #34d4a5 20%, transparent) 70%, transparent)",
         }}
       />
 

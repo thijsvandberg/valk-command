@@ -375,7 +375,7 @@ export function LinkIssueDialog({
                     {r.source === "jira" && (
                       <span
                         className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                        style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "rgba(147, 197, 253, 0.8)" }}
+                        style={{ backgroundColor: "color-mix(in srgb, var(--color-status-info) 10%, transparent)", color: "color-mix(in srgb, #93c5fd 80%, transparent)" }}
                       >
                         <Cloud size={9} strokeWidth={2} />
                         Jira
@@ -443,7 +443,7 @@ export function LinkIssueDialog({
               {selected.source === "jira" && (
                 <span
                   className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                  style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "rgba(147, 197, 253, 0.8)" }}
+                  style={{ backgroundColor: "color-mix(in srgb, var(--color-status-info) 10%, transparent)", color: "color-mix(in srgb, #93c5fd 80%, transparent)" }}
                 >
                   <Cloud size={9} strokeWidth={2} />
                   Jira

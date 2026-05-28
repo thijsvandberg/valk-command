@@ -108,7 +108,7 @@ export function TicketPreviewPanel({
         <div
           onMouseDown={handleMouseDown}
           className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
-          style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
+          style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
         />
 
         {/* Header */}

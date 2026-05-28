@@ -18,10 +18,10 @@ export function MetricCard({
   accent?: "emerald" | "amber" | "red";
 }) {
   const accentColor =
-    accent === "emerald" ? "rgba(52,211,153,0.08)" :
-    accent === "red" ? "rgba(248,113,113,0.08)" :
-    accent === "amber" ? "rgba(251,191,36,0.08)" :
-    "rgba(14,142,136,0.06)";
+    accent === "emerald" ? "color-mix(in srgb, var(--color-secondary-400) 8%, transparent)" :
+    accent === "red" ? "color-mix(in srgb, var(--color-status-error) 8%, transparent)" :
+    accent === "amber" ? "color-mix(in srgb, var(--color-status-caution) 8%, transparent)" :
+    "color-mix(in srgb, var(--color-brand-500) 6%, transparent)";
 
   return (
     <Card className="relative overflow-hidden px-4 py-3">

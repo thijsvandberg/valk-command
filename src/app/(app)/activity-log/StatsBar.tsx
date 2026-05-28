@@ -13,10 +13,10 @@ export function HealthScoreBadge({ healthScore }: { healthScore: HealthScore }) 
 
   const bandColor =
     band === "green"
-      ? { ring: "rgba(74,222,128,0.25)", text: "text-green-400", bg: "rgba(74,222,128,0.08)" }
+      ? { ring: "color-mix(in srgb, #4ade80 25%, transparent)", text: "text-green-400", bg: "color-mix(in srgb, #4ade80 8%, transparent)" }
       : band === "amber"
-      ? { ring: "rgba(251,191,36,0.25)", text: "text-amber-400", bg: "rgba(251,191,36,0.08)" }
-      : { ring: "rgba(248,113,113,0.25)", text: "text-red-400", bg: "rgba(248,113,113,0.08)" };
+      ? { ring: "color-mix(in srgb, var(--color-status-caution) 25%, transparent)", text: "text-amber-400", bg: "color-mix(in srgb, var(--color-status-caution) 8%, transparent)" }
+      : { ring: "color-mix(in srgb, var(--color-status-error) 25%, transparent)", text: "text-red-400", bg: "color-mix(in srgb, var(--color-status-error) 8%, transparent)" };
 
   const tooltipContent = `Health score ${score}/100 — Success rate: ${components.successRate} · Duration consistency: ${components.durationConsistency} · Error-free streak: ${components.errorFreeStreak}`;
 

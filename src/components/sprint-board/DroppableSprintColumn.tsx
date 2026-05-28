@@ -262,7 +262,7 @@ export function DroppableSprintColumn({
     >
       {/* Column header - z-20 beats the sticky thead's z-10, keeping dropdown on top */}
       <div className="relative z-20 flex h-[44px] shrink-0 items-center gap-2 border-b border-border-default bg-[var(--color-surface-elevated)] px-3">
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_left,rgba(46,145,73,0.06)_0%,transparent_70%)]" />
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_left,color-mix(in_srgb,var(--color-brand-600)_6%,transparent)_0%,transparent_70%)]" />
 
         {/* Sprint selector trigger */}
         <div className="relative flex shrink-0 items-center gap-1.5">

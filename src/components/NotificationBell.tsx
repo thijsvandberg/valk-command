@@ -151,7 +151,7 @@ export function NotificationBell() {
           <>
             <Bell size={16} strokeWidth={1.5} />
             {badgeCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-caption font-bold text-white tabular-nums shadow-[0_2px_6px_rgba(239,68,68,0.4)]">
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-caption font-bold text-white tabular-nums shadow-[0_2px_6px_color-mix(in_srgb,#ef4444_40%,transparent)]">
                 {badgeCount > 9 ? "9+" : badgeCount}
               </span>
             )}

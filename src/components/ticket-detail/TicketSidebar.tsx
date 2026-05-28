@@ -322,7 +322,7 @@ export function TicketSidebar({
         onMouseDown={handleMouseDown}
         onDoubleClick={handleResizeDoubleClick}
         className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
-        style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
+        style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
       />
 
       {/* Left edge line */}
@@ -665,7 +665,7 @@ export function TicketSidebar({
           <div className="h-px bg-border-subtle" />
 
           {/* Confluence pages */}
-          <ConfluencePagesSection ticketKey={ticket.key} />
+          <ConfluencePagesSection ticketKey={ticket.key} variant="compact" />
 
           <div className="h-px bg-border-subtle" />
 

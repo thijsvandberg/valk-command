@@ -125,7 +125,7 @@ export const PreviewPane = memo(function PreviewPane({
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer"
-            style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "var(--color-status-info)", transition: "background-color 120ms" }}
+            style={{ backgroundColor: "color-mix(in srgb, var(--color-status-info) 10%, transparent)", color: "var(--color-status-info)", transition: "background-color 120ms" }}
           >
             Jira
             <ExternalLink className="h-2.5 w-2.5" strokeWidth={1.5} />
@@ -432,9 +432,9 @@ export function JiraResultRow({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1 rounded px-2 py-0.5 text-label font-medium cursor-pointer"
-            style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", color: "var(--color-status-info)", transition: "background-color 120ms" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.2)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(96, 165, 250, 0.1)")}
+            style={{ backgroundColor: "color-mix(in srgb, var(--color-status-info) 10%, transparent)", color: "var(--color-status-info)", transition: "background-color 120ms" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--color-status-info) 20%, transparent)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--color-status-info) 10%, transparent)")}
           >
             Open in Jira
             <ExternalLink className="h-2.5 w-2.5" strokeWidth={1.5} />
@@ -465,7 +465,7 @@ export function EmptyState({ query, mode, onSwitchToJira }: { query: string; mod
           style={{
             backgroundColor: "var(--color-brand-subtle)",
             color: "var(--color-brand-400)",
-            border: "1px solid rgba(74, 170, 96, 0.2)",
+            border: "1px solid color-mix(in srgb, var(--color-status-success) 20%, transparent)",
             transition: "background-color 120ms",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-brand-subtle-hover)")}
@@ -663,7 +663,7 @@ export function CommentResultRow({
         <span
           className="rounded px-1.5 py-0.5 text-caption font-medium"
           style={{
-            backgroundColor: result.source === "jira" ? "rgba(96, 165, 250, 0.1)" : "var(--color-brand-subtle)",
+            backgroundColor: result.source === "jira" ? "color-mix(in srgb, var(--color-status-info) 10%, transparent)" : "var(--color-brand-subtle)",
             color: result.source === "jira" ? "var(--color-status-info)" : "var(--color-brand-400)",
           }}
         >

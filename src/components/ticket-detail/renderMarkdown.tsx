@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { sanitizePrismOutput } from "@/lib/sanitize-client";
+import { ImageLightbox } from "@/components/shared/ImageLightbox";
 
 const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|ogg)$/i;
 function isVideoAttachment(altOrSrc: string): boolean {
@@ -94,14 +95,13 @@ function inlineFormat(text: string): ReactNode {
           );
         } else {
           parts.push(
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ImageLightbox
               key={i++}
               src={src}
               alt={alt}
-              loading="lazy"
               className="my-1 max-w-full rounded-lg border border-border-default"
               style={{ maxHeight: "480px", objectFit: "contain" }}
+              loading="lazy"
             />,
           );
         }
@@ -241,7 +241,7 @@ function renderTable(tableLines: string[], key: string): ReactNode {
 // Renders a code block with optional language label and line numbers
 function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode {
   return (
-    <div key={key} className="rm-code-block my-3 overflow-hidden rounded-xl" style={{ background: "rgba(0,0,0,0.28)", border: "1px solid var(--color-overlay-default)" }}>
+    <div key={key} className="rm-code-block my-3 overflow-hidden rounded-xl" style={{ background: "color-mix(in srgb, black 28%, transparent)", border: "1px solid var(--color-overlay-default)" }}>
       {/* Header bar */}
       <div className="rm-code-block-header flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--color-overlay-default)", background: "var(--color-overlay-subtle)" }}>
         <div className="flex gap-1.5">
@@ -672,8 +672,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
               style={{ maxHeight: "600px" }}
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ImageLightbox
               src={mediaSrc}
               alt={mediaAlt}
               loading="lazy"

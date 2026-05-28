@@ -50,11 +50,15 @@ function SortableQueueItem({
   ticketKey,
   title,
   isCurrent,
+  issueType,
+  jiraStatus,
   onClick,
 }: {
   ticketKey: string;
   title: string;
   isCurrent: boolean;
+  issueType?: string;
+  jiraStatus?: JiraStatus;
   onClick: () => void;
 }) {
   const {
@@ -96,7 +100,22 @@ function SortableQueueItem({
         onClick={onClick}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
       >
-        <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{ticketKey}</span>
+        {jiraStatus ? (
+          <span className="shrink-0" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+            <TicketStatusPill
+              ticketKey={ticketKey}
+              jiraStatus={jiraStatus}
+              issueType={issueType}
+              title={title}
+              variant="list"
+              compact
+              showKey
+              showStatus
+            />
+          </span>
+        ) : (
+          <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{ticketKey}</span>
+        )}
         <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{title}</span>
         {isCurrent && (
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
@@ -154,7 +173,7 @@ function SubtasksPaneResizable({ children, width, onWidthChange }: { children: R
       <div
         onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
         className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
-        style={isDragging ? { backgroundColor: "rgba(46, 145, 73, 0.5)" } : {}}
+        style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
       />
       {children}
     </div>
@@ -580,18 +599,18 @@ export default function RefinementSessionTicketPage({
         {/* Top bar - matches ViewHeader styling */}
         <div className="relative flex shrink-0 items-center justify-between border-b border-border-strong bg-[var(--color-surface-chrome)] px-5 py-3.5">
           {/* Decorative accents (from ViewHeader) */}
-          <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(14,142,136,0.35)] to-transparent" />
-          <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,rgba(14,142,136,0.10)_0%,transparent_70%)]" />
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,rgba(14,142,136,0.05)_0%,transparent_70%)]" />
+          <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
+          <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,color-mix(in_srgb,var(--color-brand-500)_10%,transparent)_0%,transparent_70%)]" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,color-mix(in_srgb,var(--color-brand-500)_5%,transparent)_0%,transparent_70%)]" />
 
           {/* Left: brand + exit + previous + ticket info */}
           <div className="relative flex items-center gap-3">
             {/* Brand mark */}
             <div className="flex shrink-0 items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_rgba(14,142,136,0.35),inset_0_1px_0_var(--color-text-muted)]">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_var(--color-brand-glow),inset_0_1px_0_var(--color-text-muted)]">
                 <BridgeMark size={22} />
               </div>
-              <span className="hidden font-[var(--font-display)] text-heading-sm font-extrabold tracking-[-0.04em] text-text-primary lg:inline">
+              <span className="hidden font-[var(--font-display)] text-heading-sm font-extrabold tracking-[-0.04em] text-text-primary min-[1160px]:inline">
                 Bridge
               </span>
             </div>
@@ -636,7 +655,7 @@ export default function RefinementSessionTicketPage({
             >
               <ChevronLeft size={14} strokeWidth={2} />
             </button>
-            <div className="flex items-center gap-1.5">
+            <div className="hidden items-center gap-1.5 lg:flex">
               {queue.map((key, idx) => (
                 <button
                   key={key}
@@ -669,7 +688,7 @@ export default function RefinementSessionTicketPage({
               style={{
                 padding: storyPoints != null ? "4px 10px" : "4px",
                 transition: "background-color 0.25s ease, color 0.25s ease, padding 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease",
-                boxShadow: storyPoints != null ? "0 2px 8px rgba(14, 142, 136, 0.3)" : "none",
+                boxShadow: storyPoints != null ? "0 2px 8px color-mix(in srgb, var(--color-brand-500) 30%, transparent)" : "none",
               }}
               aria-label={isLastTicket ? "End session" : "Next ticket"}
             >
@@ -702,7 +721,7 @@ export default function RefinementSessionTicketPage({
               </button>
               {navDropdownOpen && (
                 <div
-                  className="absolute top-full left-1/2 z-50 mt-2 w-[420px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+                  className="absolute top-full left-1/2 z-50 mt-2 w-[520px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
                   style={{ animation: "fadeInUp 0.1s ease" }}
                 >
                   <div className="px-3 py-2 text-label font-semibold uppercase tracking-wider text-text-muted">
@@ -713,12 +732,15 @@ export default function RefinementSessionTicketPage({
                       <SortableContext items={queue} strategy={verticalListSortingStrategy}>
                         {queue.map((key, idx) => {
                           const meta = queueMeta.find((m) => m.key === key);
+                          const t = allTickets?.find((ticket) => ticket.key === key);
                           return (
                             <SortableQueueItem
                               key={key}
                               ticketKey={key}
                               title={meta?.title ?? key}
                               isCurrent={idx === currentIndex}
+                              issueType={t?.type}
+                              jiraStatus={t?.jiraStatus}
                               onClick={() => { goToTicket(idx); setNavDropdownOpen(false); }}
                             />
                           );
@@ -733,86 +755,89 @@ export default function RefinementSessionTicketPage({
 
           {/* Right: panel toggles + done/next */}
           <div className="relative flex items-center gap-2">
-            {/* Chat pane toggle */}
-            <button
-              type="button"
-              onClick={() => toggleSidebarPanel("chat")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                activeSidebarPanel === "chat"
-                  ? "bg-[#a78bfa]/[0.08] text-[#a78bfa]"
-                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-              }`}
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              title="Toggle ticket chat pane"
-            >
-              <MessageSquareText size={13} strokeWidth={1.5} />
-              Chat
-              {chatCount > 0 && (
-                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
-                  activeSidebarPanel === "chat" ? "bg-[#a78bfa]/15 text-[#a78bfa]" : "bg-overlay-default text-text-tertiary"
-                }`}>{chatCount}</span>
-              )}
-            </button>
+            {/* Panel toggles - full buttons on xl+, hidden below */}
+            <div className="hidden items-center gap-2 min-[1160px]:flex">
+              {/* Chat pane toggle */}
+              <button
+                type="button"
+                onClick={() => toggleSidebarPanel("chat")}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  activeSidebarPanel === "chat"
+                    ? "bg-[#a78bfa]/[0.08] text-[#a78bfa]"
+                    : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                title="Toggle ticket chat pane"
+              >
+                <MessageSquareText size={13} strokeWidth={1.5} />
+                Chat
+                {chatCount > 0 && (
+                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
+                    activeSidebarPanel === "chat" ? "bg-[#a78bfa]/15 text-[#a78bfa]" : "bg-overlay-default text-text-tertiary"
+                  }`}>{chatCount}</span>
+                )}
+              </button>
 
-            {/* Subtasks pane toggle */}
-            <button
-              type="button"
-              onClick={() => toggleSidebarPanel("subtasks")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                activeSidebarPanel === "subtasks"
-                  ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-              }`}
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              title="Toggle subtasks pane"
-            >
-              <SquareMinus size={13} strokeWidth={1.5} />
-              Subtasks
-              {subtaskCount > 0 && (
-                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
-                  activeSidebarPanel === "subtasks" ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
-                }`}>{subtaskCount}</span>
-              )}
-            </button>
+              {/* Subtasks pane toggle */}
+              <button
+                type="button"
+                onClick={() => toggleSidebarPanel("subtasks")}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  activeSidebarPanel === "subtasks"
+                    ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                    : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                title="Toggle subtasks pane"
+              >
+                <SquareMinus size={13} strokeWidth={1.5} />
+                Subtasks
+                {subtaskCount > 0 && (
+                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
+                    activeSidebarPanel === "subtasks" ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
+                  }`}>{subtaskCount}</span>
+                )}
+              </button>
 
-            {/* Notes toggle */}
-            <button
-              type="button"
-              onClick={() => toggleSidebarPanel("notes")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                activeSidebarPanel === "notes"
-                  ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-              }`}
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              title="Toggle PO Notes (P)"
-            >
-              <StickyNote size={13} strokeWidth={1.5} />
-              Notes
-              {notesCount > 0 && (
-                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
-                  activeSidebarPanel === "notes" ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
-                }`}>{notesCount}</span>
-              )}
-            </button>
+              {/* Notes toggle */}
+              <button
+                type="button"
+                onClick={() => toggleSidebarPanel("notes")}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  activeSidebarPanel === "notes"
+                    ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                    : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                title="Toggle PO Notes (P)"
+              >
+                <StickyNote size={13} strokeWidth={1.5} />
+                Notes
+                {notesCount > 0 && (
+                  <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
+                    activeSidebarPanel === "notes" ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]" : "bg-overlay-default text-text-tertiary"
+                  }`}>{notesCount}</span>
+                )}
+              </button>
 
-            {/* Info toggle */}
-            <button
-              type="button"
-              onClick={() => toggleSidebarPanel("info")}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                activeSidebarPanel === "info"
-                  ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-                  : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-              }`}
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              title="Toggle ticket info"
-            >
-              <Info size={13} strokeWidth={1.5} />
-              Info
-            </button>
+              {/* Info toggle */}
+              <button
+                type="button"
+                onClick={() => toggleSidebarPanel("info")}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  activeSidebarPanel === "info"
+                    ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                    : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                title="Toggle ticket info"
+              >
+                <Info size={13} strokeWidth={1.5} />
+                Info
+              </button>
 
-            <div className="h-4 w-px bg-border-subtle" />
+              <div className="h-4 w-px bg-border-subtle" />
+            </div>
 
             {/* Overflow menu */}
             <div className="relative" ref={overflowRef}>
@@ -835,6 +860,59 @@ export default function RefinementSessionTicketPage({
                   className="absolute top-full right-0 z-50 mt-2 w-48 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
                   style={{ animation: "fadeInUp 0.1s ease" }}
                 >
+                  {/* Panel toggles - visible in menu below xl */}
+                  <div className="min-[1160px]:hidden">
+                    <button
+                      type="button"
+                      onClick={() => { toggleSidebarPanel("chat"); setOverflowOpen(false); }}
+                      className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
+                        activeSidebarPanel === "chat" ? "text-[#a78bfa]" : "text-text-secondary"
+                      }`}
+                    >
+                      <MessageSquareText size={13} strokeWidth={1.5} />
+                      Chat
+                      {chatCount > 0 && (
+                        <span className="ml-auto text-caption tabular-nums text-text-tertiary">{chatCount}</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { toggleSidebarPanel("subtasks"); setOverflowOpen(false); }}
+                      className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
+                        activeSidebarPanel === "subtasks" ? "text-[var(--color-brand-400)]" : "text-text-secondary"
+                      }`}
+                    >
+                      <SquareMinus size={13} strokeWidth={1.5} />
+                      Subtasks
+                      {subtaskCount > 0 && (
+                        <span className="ml-auto text-caption tabular-nums text-text-tertiary">{subtaskCount}</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { toggleSidebarPanel("notes"); setOverflowOpen(false); }}
+                      className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
+                        activeSidebarPanel === "notes" ? "text-[var(--color-brand-400)]" : "text-text-secondary"
+                      }`}
+                    >
+                      <StickyNote size={13} strokeWidth={1.5} />
+                      Notes
+                      {notesCount > 0 && (
+                        <span className="ml-auto text-caption tabular-nums text-text-tertiary">{notesCount}</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { toggleSidebarPanel("info"); setOverflowOpen(false); }}
+                      className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
+                        activeSidebarPanel === "info" ? "text-[var(--color-brand-400)]" : "text-text-secondary"
+                      }`}
+                    >
+                      <Info size={13} strokeWidth={1.5} />
+                      Info
+                    </button>
+                    <div className="my-1 border-t border-border-default" />
+                  </div>
                   <button
                     type="button"
                     onClick={() => {

@@ -188,10 +188,10 @@ export function UserProfilePopover({
           style={{
             backgroundColor: hasImage
               ? "transparent"
-              : "rgba(14, 142, 136, 0.18)",
+              : "color-mix(in srgb, var(--color-brand-500) 18%, transparent)",
             border: hasImage
               ? "none"
-              : "1px solid rgba(14, 142, 136, 0.25)",
+              : "1px solid color-mix(in srgb, var(--color-brand-500) 25%, transparent)",
           }}
         >
           {hasImage ? (

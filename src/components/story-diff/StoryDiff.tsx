@@ -520,7 +520,7 @@ function HunkEditor({
   }, []);
 
   return (
-    <div className="border-y px-3 py-3" style={{ borderColor: C.border, backgroundColor: "rgba(210, 168, 255, 0.03)" }}>
+    <div className="border-y px-3 py-3" style={{ borderColor: C.border, backgroundColor: "color-mix(in srgb, #d2a8ff 3%, transparent)" }}>
       <textarea
         ref={ref}
         value={text}

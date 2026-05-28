@@ -98,7 +98,7 @@ export function TicketRefinement({ ticketKey }: { ticketKey: string }) {
         <div className="flex items-center justify-between border-b border-border-default pb-2">
           <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">Ready to Refine</h3>
           {allChecked && (
-            <span className="rounded-full bg-[rgba(46,145,73,0.12)] px-2.5 py-0.5 text-caption font-medium text-[var(--color-status-success)]">
+            <span className="rounded-full bg-[color-mix(in_srgb,var(--color-brand-600)_12%,transparent)] px-2.5 py-0.5 text-caption font-medium text-[var(--color-status-success)]">
               All complete
             </span>
           )}

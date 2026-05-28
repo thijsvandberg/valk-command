@@ -59,7 +59,7 @@ export function SearchModalFooter({
             onClick={onSaveOpen}
             className="flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-default"
             style={{
-              backgroundColor: isCurrentSearchSaved ? "rgba(74, 170, 96, 0.1)" : "var(--color-overlay-subtle)",
+              backgroundColor: isCurrentSearchSaved ? "var(--color-brand-subtle)" : "var(--color-overlay-subtle)",
               color: isCurrentSearchSaved ? "var(--color-brand-400)" : isFull ? "var(--color-overlay-strong)" : "var(--color-text-muted)",
               transition: "background-color 120ms, color 120ms",
             }}
@@ -77,7 +77,7 @@ export function SearchModalFooter({
           onClick={() => setPreviewEnabled((v: boolean) => !v)}
           className="flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
           style={{
-            backgroundColor: previewEnabled ? "rgba(74, 170, 96, 0.1)" : "var(--color-overlay-subtle)",
+            backgroundColor: previewEnabled ? "var(--color-brand-subtle)" : "var(--color-overlay-subtle)",
             color: previewEnabled ? "var(--color-brand-400)" : "var(--color-text-muted)",
             transition: "background-color 120ms, color 120ms",
           }}
@@ -112,7 +112,7 @@ function SaveSearchInput({
         className="flex items-center gap-1.5 overflow-hidden rounded-md"
         style={{
           backgroundColor: "var(--color-overlay-default)",
-          border: "1px solid rgba(74, 170, 96, 0.35)",
+          border: "1px solid color-mix(in srgb, var(--color-status-success) 35%, transparent)",
           padding: "2px 6px 2px 8px",
         }}
       >
@@ -134,7 +134,7 @@ function SaveSearchInput({
           title="Save"
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded cursor-pointer disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
           style={{
-            backgroundColor: saveLabel.trim() ? "rgba(74, 170, 96, 0.2)" : "transparent",
+            backgroundColor: saveLabel.trim() ? "color-mix(in srgb, var(--color-status-success) 20%, transparent)" : "transparent",
             color: saveLabel.trim() ? "var(--color-brand-400)" : "var(--color-text-muted)",
             transition: "background-color 100ms, color 100ms",
           }}

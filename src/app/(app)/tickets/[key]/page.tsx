@@ -497,7 +497,7 @@ export default function TicketDetailPage({
                 {ticket.type === "epic" && (
                   <span
                     className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ backgroundColor: "rgba(155,108,212,0.12)", color: "var(--color-icon-epic)", border: "1px solid rgba(155,108,212,0.25)" }}
+                    style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 12%, transparent)", color: "var(--color-icon-epic)", border: "1px solid color-mix(in srgb, var(--color-icon-epic) 25%, transparent)" }}
                   >
                     <Zap size={11} strokeWidth={2} />
                     Epic
@@ -681,7 +681,7 @@ export default function TicketDetailPage({
             </div>
             {hasActiveSession ? (
               <div
-                className="group/session flex h-7 items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+                className="group/session flex h-7 items-center rounded-md border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_12%,transparent)]"
                 style={{ transition: "border-color 0.15s ease" }}
               >
                 <Link
@@ -714,7 +714,7 @@ export default function TicketDetailPage({
             ) : (
               <Link
                 href={`/tickets/${key}/write`}
-                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_rgba(46,145,73,0.12)]"
+                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_12%,transparent)]"
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
               >
                 <NotebookPen size={13} strokeWidth={1.5} />

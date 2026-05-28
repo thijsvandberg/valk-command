@@ -65,7 +65,7 @@ export function CommandPalette() {
         style={{
           backgroundColor: "var(--color-surface-floating)",
           boxShadow:
-            "0 0 0 1px var(--color-overlay-subtle), 0 24px 64px rgba(0,0,0,0.65), 0 8px 24px rgba(0,0,0,0.4), 0 0 80px rgba(19,69,128,0.08)",
+            "0 0 0 1px var(--color-overlay-subtle), 0 24px 64px rgba(0,0,0,0.65), 0 8px 24px rgba(0,0,0,0.4), 0 0 80px color-mix(in srgb, #134580 8%, transparent)",
         }}
         onKeyDown={handleKeyDown}
       >
@@ -225,12 +225,12 @@ export function CommandPalette() {
 
       <style>{`
         @keyframes cmdPaletteBackdropIn {
-          from { background-color: rgba(0,0,0,0); }
-          to { background-color: rgba(0,0,0,0.5); }
+          from { background-color: transparent; }
+          to { background-color: color-mix(in srgb, black 50%, transparent); }
         }
         @keyframes cmdPaletteBackdropOut {
-          from { background-color: rgba(0,0,0,0.5); }
-          to { background-color: rgba(0,0,0,0); }
+          from { background-color: color-mix(in srgb, black 50%, transparent); }
+          to { background-color: transparent; }
         }
         @keyframes cmdPaletteIn {
           from { opacity: 0; transform: scale(0.95) translateY(-8px); }

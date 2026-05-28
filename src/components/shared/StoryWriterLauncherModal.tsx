@@ -259,7 +259,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/12 ring-1 ring-[var(--color-brand-500)]/20 shadow-[0_2px_8px_rgba(46,145,73,0.15)]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/12 ring-1 ring-[var(--color-brand-500)]/20 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_15%,transparent)]">
               <NotebookPen size={14} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             </div>
             <div>
@@ -415,7 +415,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             </span>
                             {s.targetTicketKey && (
                               <>
-                                <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
+                                <Scissors size={9} strokeWidth={2} style={{ color: "color-mix(in srgb, #a78bfa 60%, transparent)", flexShrink: 0 }} />
                                 <span className="font-mono font-medium text-text-secondary">{s.targetTicketKey}</span>
                                 <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>
@@ -483,7 +483,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             </span>
                             {selectedSession.targetTicketKey && (
                               <>
-                                <Scissors size={9} strokeWidth={2} style={{ color: "rgba(167,139,250,0.6)", flexShrink: 0 }} />
+                                <Scissors size={9} strokeWidth={2} style={{ color: "color-mix(in srgb, #a78bfa 60%, transparent)", flexShrink: 0 }} />
                                 <span className="font-mono font-medium text-text-secondary">{selectedSession.targetTicketKey}</span>
                                 <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>

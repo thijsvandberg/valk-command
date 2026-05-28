@@ -62,7 +62,7 @@ export function RelatedSuggestions({
     <div
       className="mt-3 overflow-hidden rounded-xl border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.03]"
       style={{
-        boxShadow: "0 1px 3px rgba(var(--color-brand-rgb, 0 0 0) / 0.06), 0 0 0 1px rgba(var(--color-brand-rgb, 0 0 0) / 0.03)",
+        boxShadow: "0 1px 3px color-mix(in srgb, var(--color-brand-600) 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-brand-600) 3%, transparent)",
       }}
     >
       {/* Header */}

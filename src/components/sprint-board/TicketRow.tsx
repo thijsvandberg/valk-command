@@ -546,7 +546,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
         isSelected
           ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
           : ticket.flagged
-          ? "bg-[rgba(229,83,75,0.06)] border-l-transparent hover:bg-[rgba(229,83,75,0.08)]"
+          ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-transparent hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
           : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
       } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
       {...dragListeners}

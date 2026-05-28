@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, SlidersHorizontal, X, Settings2, Check } from "lucide-react";
+import { Search, SlidersHorizontal, X, ListFilter, Check } from "lucide-react";
 import { TicketRow } from "./TicketRow";
 import { RefinementFilters } from "./RefinementFilters";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
@@ -13,6 +13,11 @@ const PILL_FIELDS = [
   { id: "issueType", label: "Type icon" },
   { id: "key", label: "Ticket key" },
   { id: "status", label: "Status badge" },
+  { id: "epic", label: "Epic" },
+  { id: "subtasks", label: "Subtask count" },
+  { id: "sp", label: "Story points" },
+  { id: "bv", label: "Business value" },
+  { id: "sprint", label: "Sprint" },
 ];
 
 interface RefinementTicketListProps {
@@ -40,7 +45,7 @@ export function RefinementTicketList({
   ticketSessionMap,
   resolvedSessionId,
 }: RefinementTicketListProps) {
-  const { visible: pillFields, toggleField: togglePillField } = useSectionVisibility("refinement-pill", ["issueType", "key", "status"]);
+  const { visible: pillFields, toggleField: togglePillField } = useSectionVisibility("refinement-pill", ["issueType", "key", "status", "epic", "subtasks", "sp", "bv", "sprint"]);
   const [pillSettingsOpen, setPillSettingsOpen] = useState(false);
   const pillSettingsRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +70,11 @@ export function RefinementTicketList({
   const showIssueType = pillFields.has("issueType");
   const showKey = pillFields.has("key");
   const showStatus = pillFields.has("status");
+  const showEpic = pillFields.has("epic");
+  const showSubtasks = pillFields.has("subtasks");
+  const showSp = pillFields.has("sp");
+  const showBv = pillFields.has("bv");
+  const showSprint = pillFields.has("sprint");
 
   return (
     <div className="min-w-0 flex-1">
@@ -77,7 +87,7 @@ export function RefinementTicketList({
             className={`shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-caption font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-done)] active:opacity-70 ${
               queueHook.allReadySelected
                 ? "bg-[var(--color-status-done)] text-white hover:bg-[#1ea34d]"
-                : "bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)] hover:bg-[rgba(34,197,94,0.20)]"
+                : "bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)] hover:bg-[color-mix(in_srgb,var(--color-status-done)_20%,transparent)]"
             }`}
             style={{ transition: "background-color 0.15s ease, color 0.15s ease, opacity 0.1s ease" }}
             title={queueHook.allReadySelected ? "Click to deselect all ready-to-refine tickets" : "Click to select all ready-to-refine tickets"}
@@ -106,7 +116,7 @@ export function RefinementTicketList({
             style={{ transition: "color 0.12s ease" }}
             title="Pill display settings"
           >
-            <Settings2 size={15} strokeWidth={1.5} />
+            <SlidersHorizontal size={15} strokeWidth={1.5} />
           </button>
           {pillSettingsOpen && (
             <div
@@ -151,7 +161,7 @@ export function RefinementTicketList({
           style={{ transition: "color 0.12s ease" }}
           title="Toggle filters"
         >
-          <SlidersHorizontal size={15} strokeWidth={1.5} />
+          <ListFilter size={15} strokeWidth={1.5} />
           {filters.activeFilterCount > 0 && !filters.filtersOpen && (
             <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-[9px] font-semibold text-white">
               {filters.activeFilterCount}
@@ -177,6 +187,11 @@ export function RefinementTicketList({
             showIssueType={showIssueType}
             showKey={showKey}
             showStatus={showStatus}
+            showEpic={showEpic}
+            showSubtasks={showSubtasks}
+            showSp={showSp}
+            showBv={showBv}
+            showSprint={showSprint}
           />
         ))}
         {availableTickets.length === 0 && (

@@ -17,7 +17,7 @@ export interface EpicSuggestion {
 const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   high: { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)", label: "High" },
   medium: { bg: "var(--color-status-caution-subtle)", text: "var(--color-status-caution)", label: "Med" },
-  low: { bg: "rgba(155, 108, 212, 0.10)", text: "var(--color-icon-epic)", label: "Low" },
+  low: { bg: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", text: "var(--color-icon-epic)", label: "Low" },
 };
 
 interface ResolvedInfo {

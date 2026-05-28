@@ -237,7 +237,7 @@ export function SavedSearchesPanel({
             {hasActiveFilters(s.filters) && (
               <span
                 className="shrink-0 rounded-full px-1.5 py-0.5 text-caption font-medium"
-                style={{ backgroundColor: "rgba(74, 170, 96, 0.1)", color: "var(--color-brand-400)" }}
+                style={{ backgroundColor: "var(--color-brand-subtle)", color: "var(--color-brand-400)" }}
               >
                 filtered
               </span>
@@ -249,7 +249,7 @@ export function SavedSearchesPanel({
             onClick={(e) => { e.stopPropagation(); deleteSearch(s.id); }}
             className="shrink-0 opacity-0 group-hover:opacity-100 cursor-pointer rounded p-0.5 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
             style={{ color: "var(--color-text-tertiary)", transition: "opacity 100ms, color 100ms" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,100,100,0.7)")}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "color-mix(in srgb, #ff6464 70%, transparent)")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-tertiary)")}
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />

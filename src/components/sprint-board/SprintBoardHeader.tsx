@@ -131,7 +131,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
               className={isSprintFollowed ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-400)]" : ""}
             />
           )}
-          <Button variant="soft" size="md" icon={<NotebookPen className="h-3 w-3" strokeWidth={1.5} />} onClick={() => setShowStoryWriterLauncher(true)} className="shadow-[0_2px_8px_rgba(46,145,73,0.12)]">
+          <Button variant="soft" size="md" icon={<NotebookPen className="h-3 w-3" strokeWidth={1.5} />} onClick={() => setShowStoryWriterLauncher(true)} className="shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_12%,transparent)]">
             Story writer
           </Button>
           <Button variant="secondary" size="md" iconOnly icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => setSearchModalOpen(true)} title="Search tickets (shift+cmd+K)" aria-label="Search tickets" />
@@ -307,7 +307,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                     }}
                     className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-[background-color,color,box-shadow] duration-150 ${
                       filters.gapsFilter.has("no_points")
-                        ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_rgba(234,179,8,0.3)]"
+                        ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-status-caution)_30%,transparent)]"
                         : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
                     }`}
                     title={`${noPointsCount} without estimate`}

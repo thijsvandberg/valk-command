@@ -40,7 +40,7 @@ export function SearchModalHeader({
       </div>
       {mode === "local" && (
         <div className="relative">
-          <button type="button" onClick={openFilters} aria-label="Toggle filters" className="flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]" style={{ backgroundColor: showFilters ? "rgba(74, 170, 96, 0.12)" : "var(--color-overlay-subtle)", color: showFilters ? "var(--color-brand-400)" : "var(--color-text-tertiary)", transition: "background-color 120ms, color 120ms" }}>
+          <button type="button" onClick={openFilters} aria-label="Toggle filters" className="flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]" style={{ backgroundColor: showFilters ? "color-mix(in srgb, var(--color-status-success) 12%, transparent)" : "var(--color-overlay-subtle)", color: showFilters ? "var(--color-brand-400)" : "var(--color-text-tertiary)", transition: "background-color 120ms, color 120ms" }}>
             <ListFilter className="h-4 w-4" strokeWidth={1.5} />
           </button>
           {hasActiveFilters(filters) && <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-brand-500)" }} />}

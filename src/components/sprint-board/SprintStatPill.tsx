@@ -21,34 +21,34 @@ export interface StatusPillColor {
 // Canonical color tokens for every Jira status
 export const STATUS_PILL_COLORS: Record<string, StatusPillColor> = {
   "TO DO": {
-    bg: "rgba(100, 116, 139, 0.12)",
-    bgActive: "rgba(100, 116, 139, 0.20)",
+    bg: "color-mix(in srgb, var(--color-status-neutral) 12%, transparent)",
+    bgActive: "color-mix(in srgb, var(--color-status-neutral) 20%, transparent)",
     text: "var(--color-status-neutral)",
     textActive: "#b8c8d8",
-    ring: "rgba(100, 116, 139, 0.35)",
+    ring: "color-mix(in srgb, var(--color-status-neutral) 35%, transparent)",
   },
   "IN PROGRESS": {
-    bg: "rgba(56, 152, 210, 0.10)",
-    bgActive: "rgba(56, 152, 210, 0.20)",
+    bg: "color-mix(in srgb, var(--color-status-progress) 10%, transparent)",
+    bgActive: "color-mix(in srgb, var(--color-status-progress) 20%, transparent)",
     text: "#3bbfbe",
     textActive: "#7ec8f0",
-    ring: "rgba(56, 152, 210, 0.35)",
+    ring: "color-mix(in srgb, var(--color-status-progress) 35%, transparent)",
     dot: "#3bbfbe",
   },
   TEST: {
-    bg: "rgba(120, 90, 220, 0.12)",
-    bgActive: "rgba(120, 90, 220, 0.22)",
+    bg: "color-mix(in srgb, var(--color-testing-400) 12%, transparent)",
+    bgActive: "color-mix(in srgb, var(--color-testing-400) 22%, transparent)",
     text: "#9b7ee8",
     textActive: "#b49cf0",
-    ring: "rgba(120, 90, 220, 0.35)",
+    ring: "color-mix(in srgb, var(--color-testing-400) 35%, transparent)",
     dot: "#9b7ee8",
   },
   DONE: {
-    bg: "rgba(34, 197, 94, 0.10)",
-    bgActive: "rgba(34, 197, 94, 0.20)",
+    bg: "color-mix(in srgb, var(--color-status-done) 10%, transparent)",
+    bgActive: "color-mix(in srgb, var(--color-status-done) 20%, transparent)",
     text: "#4ade80",
     textActive: "#6aee96",
-    ring: "rgba(34, 197, 94, 0.35)",
+    ring: "color-mix(in srgb, var(--color-status-done) 35%, transparent)",
     dot: "#4ade80",
   },
 };
@@ -99,11 +99,11 @@ const STAT_VARIANT_STYLE: Record<StatPillVariant, { bg: string; text: string; ac
     activeRing: "var(--color-text-muted)",
   },
   warning: {
-    bg: "rgba(234,179,8,0.06)",
-    text: "rgba(210,155,20,0.55)",
-    activeBg: "rgba(234,179,8,0.13)",
-    activeText: "rgba(234,179,8,0.80)",
-    activeRing: "rgba(234,179,8,0.25)",
+    bg: "color-mix(in srgb, var(--color-status-caution) 6%, transparent)",
+    text: "color-mix(in srgb, #d29b14 55%, transparent)",
+    activeBg: "color-mix(in srgb, var(--color-status-caution) 13%, transparent)",
+    activeText: "color-mix(in srgb, var(--color-status-caution) 80%, transparent)",
+    activeRing: "color-mix(in srgb, var(--color-status-caution) 25%, transparent)",
   },
 };
 
@@ -388,7 +388,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
               className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
               style={{
                 width: `${timePct}%`,
-                backgroundColor: workingDaysRemaining! <= 2 ? "rgba(234,179,8,0.55)" : "var(--color-text-muted)",
+                backgroundColor: workingDaysRemaining! <= 2 ? "color-mix(in srgb, var(--color-status-caution) 55%, transparent)" : "var(--color-text-muted)",
                 opacity: 0.4,
               }}
             />
