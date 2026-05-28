@@ -212,7 +212,7 @@ export const tickets = {
   // Issue links
   createLink: (key: string, data: { targetKey: string; relation: string; jiraTypeName?: string; direction?: "inward" | "outward" }, signal?: AbortSignal) =>
     apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "POST", body: data, signal }),
-  deleteLink: (key: string, data: { jiraLinkId?: string; linkedKey: string }, signal?: AbortSignal) =>
+  deleteLink: (key: string, data: { jiraLinkId?: string; linkedKey: string; relation?: string }, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/links`, { method: "DELETE", body: data, signal }),
 
   // Related suggestions (AI-powered)

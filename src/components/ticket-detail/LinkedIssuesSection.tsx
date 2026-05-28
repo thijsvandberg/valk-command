@@ -244,6 +244,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       await tickets.deleteLink(ticketKey, {
         jiraLinkId: item.jiraLinkId,
         linkedKey: item.key,
+        relation: item.relation,
       });
       onMutate();
       // Keep deleteId in deletingKeys until SWR re-fetch removes it from issues

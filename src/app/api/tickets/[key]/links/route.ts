@@ -169,14 +169,14 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let body: { jiraLinkId?: string; linkedKey?: string };
+  let body: { jiraLinkId?: string; linkedKey?: string; relation?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { jiraLinkId, linkedKey } = body;
+  const { jiraLinkId, linkedKey, relation } = body;
 
   if (!linkedKey) {
     return NextResponse.json({ error: "linkedKey is required" }, { status: 400 });
@@ -192,13 +192,15 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     }
   }
 
-  // Delete from local DB
-  await db.delete(ticketLink).where(
-    and(
-      eq(ticketLink.ticketKey, key),
-      eq(ticketLink.linkedKey, linkedKey),
-    ),
-  );
+  // Delete from local DB, scoped to the specific relation when provided
+  const conditions = [
+    eq(ticketLink.ticketKey, key),
+    eq(ticketLink.linkedKey, linkedKey),
+  ];
+  if (relation) {
+    conditions.push(eq(ticketLink.relation, relation));
+  }
+  await db.delete(ticketLink).where(and(...conditions));
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(`/api/tickets/${linkedKey}`);
