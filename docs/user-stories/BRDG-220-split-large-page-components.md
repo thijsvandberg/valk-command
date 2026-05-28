@@ -54,9 +54,9 @@ Per page:
 ## Checklist
 
 ### stakeholder/page.tsx
-- [ ] Extract AI briefing section into `StakeholderBriefing` component
-- [ ] Extract sprint card grid into `StakeholderSprintCards` component
-- [ ] Extract export logic into utility
+- [x] Extract AI briefing section into `StakeholderBriefing` component
+- [x] Extract sprint card grid into `StakeholderSprintCards` component
+- [x] Extract export logic into utility
 
 ### refinement session page
 - [ ] Extract session metadata panel into component

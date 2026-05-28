@@ -246,3 +246,5 @@ export function useStakeholderAnalysis(sprintId: number | null) {
     mutate,
   };
 }
+
+export type UseStakeholderAnalysisReturn = ReturnType<typeof useStakeholderAnalysis>;
