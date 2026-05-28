@@ -138,6 +138,9 @@ export function BulkSuggestPanel({
   const generatedCount = resultEntries.filter((e) => e.type === "generated").length;
   const totalCount = resultEntries.length;
 
+  // Treat as still running if no completion summary arrived yet
+  const effectiveRunning = isRunning || (!isComplete && resultEntries.length > 0);
+
   // Auto-scroll
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,19 +175,19 @@ export function BulkSuggestPanel({
           <ChevronDown size={12} strokeWidth={2} className="shrink-0 text-text-muted" />
         )}
 
-        {isRunning ? (
+        {effectiveRunning ? (
           <Loader2 size={12} className="shrink-0 animate-spin text-[var(--color-brand-400)]" />
         ) : (
           <Sparkles size={12} strokeWidth={2} className="shrink-0 text-text-muted" />
         )}
 
         <span className="text-body-sm font-medium text-text-secondary">
-          {isRunning
+          {effectiveRunning
             ? `Generating subtasks (${generatedCount}/${totalCount || "..."})`
             : "Subtask suggestions"}
         </span>
 
-        {isComplete && !isRunning && (
+        {isComplete && !effectiveRunning && (
           <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
             Done
           </span>
@@ -201,7 +204,7 @@ export function BulkSuggestPanel({
       {!collapsed && (
         <div className="border-t border-border-subtle">
           {/* Background info */}
-          {isRunning && (
+          {effectiveRunning && (
             <div className="flex items-start gap-2 border-b border-border-subtle bg-[var(--color-brand-500)]/[0.03] px-3 py-2">
               <Info size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-text-muted" />
               <p className="text-[11px] leading-relaxed text-text-muted">
@@ -217,7 +220,7 @@ export function BulkSuggestPanel({
             className="max-h-[200px] overflow-y-auto px-3 py-1.5"
             style={{ scrollbarWidth: "thin" }}
           >
-            {resultEntries.length === 0 && isRunning && (
+            {resultEntries.length === 0 && effectiveRunning && (
               <div className="flex items-center gap-2 py-3">
                 <Loader2 size={12} className="animate-spin text-[var(--color-brand-400)]" />
                 <span className="text-body-sm text-text-muted">Starting...</span>

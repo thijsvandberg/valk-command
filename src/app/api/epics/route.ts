@@ -33,18 +33,22 @@ export async function GET() {
     .where(eq(ticket.type, "epic"))
     .all();
 
-  // Count children per epic in one query
-  const childCounts = await db
+  // Count children and get most recent child update per epic in one query
+  const childStats = await db
     .select({
       epicKey: ticket.epicKey,
       count: sql<number>`count(*)`.as("count"),
+      lastChildUpdated: sql<string | null>`max(${ticket.jiraUpdatedAt})`.as("last_child_updated"),
     })
     .from(ticket)
     .where(sql`${ticket.epicKey} IS NOT NULL`)
     .groupBy(ticket.epicKey)
     .all();
 
-  const countMap = new Map(childCounts.map((r) => [r.epicKey, r.count]));
+  const countMap = new Map(childStats.map((r) => [r.epicKey, r.count]));
+  const lastUsedMap = new Map(childStats.map((r) => [r.epicKey, r.lastChildUpdated]));
+
+  const epicKeySet = new Set(epicRows.map((e) => e.jiraKey));
 
   const epics: EpicListItem[] = epicRows.map((e) => {
     const summaryStale = !e.summaryUpdatedAt
@@ -59,8 +63,37 @@ export async function GET() {
     };
   });
 
-  // Sort: most children first (active epics tend to have more)
-  epics.sort((a, b) => b.childCount - a.childCount);
+  // Include epics referenced by tickets but not synced as type='epic'
+  const referencedEpics = await db
+    .selectDistinct({
+      epicKey: ticket.epicKey,
+      epicName: ticket.epic,
+    })
+    .from(ticket)
+    .where(sql`${ticket.epicKey} IS NOT NULL AND ${ticket.type} != 'epic'`)
+    .all();
+
+  for (const ref of referencedEpics) {
+    if (ref.epicKey && ref.epicName && !epicKeySet.has(ref.epicKey)) {
+      epicKeySet.add(ref.epicKey);
+      epics.push({
+        key: ref.epicKey,
+        name: ref.epicName,
+        status: "Unknown",
+        childCount: countMap.get(ref.epicKey) ?? 0,
+        summary: null,
+        summaryStale: false,
+      });
+    }
+  }
+
+  // Sort: most recently active epics first, then by child count
+  epics.sort((a, b) => {
+    const aDate = lastUsedMap.get(a.key) ?? "";
+    const bDate = lastUsedMap.get(b.key) ?? "";
+    if (aDate !== bDate) return bDate.localeCompare(aDate);
+    return b.childCount - a.childCount;
+  });
 
   cache.set(cacheKey, epics, 300_000);
 

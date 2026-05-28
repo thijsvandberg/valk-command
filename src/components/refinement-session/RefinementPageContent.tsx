@@ -9,7 +9,8 @@ import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import { useRefinementQueue } from "@/hooks/useRefinementQueue";
 import { useBulkSuggest } from "@/hooks/useBulkSuggest";
-import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
+import { useRefinementStream } from "@/hooks/useRefinementStream";
+import { refinementSessions as refinementSessionsApi, jira as jiraApi } from "@/lib/api-client";
 import { Gem, Plus, Clock } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
@@ -45,6 +46,9 @@ export function RefinementPageContent({
     const firstDraft = sessions.find((s) => s.status !== "completed");
     return firstDraft?.id ?? null;
   }, [userSelectedId, sessions]);
+
+  // --- Streaming: auto-refresh when server data changes ---
+  useRefinementStream(resolvedSessionId);
 
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === resolvedSessionId) ?? null,
@@ -213,6 +217,12 @@ export function RefinementPageContent({
     refinementSessionsApi.update(sessionId, { status: "in_progress" }).catch(() => {});
     startSession(queueHook.queue, meta, sessionId);
     router.push(`/refinement/${sessionId}/session/${encodeURIComponent(queueHook.queue[0])}`);
+
+    // Pre-sync remaining tickets from Jira so they are fresh when navigated to
+    const remaining = queueHook.queue.slice(1);
+    if (remaining.length > 0) {
+      jiraApi.syncTickets({ ticketKeys: remaining }).catch(() => {});
+    }
   }, [canStart, queueHook, resolvedSessionId, mutateSessions, startSession, router]);
 
   const handleSaveAsSession = useCallback(async () => {
@@ -235,7 +245,7 @@ export function RefinementPageContent({
     onSessionChange?.(created.id);
     router.replace(`/refinement/${created.id}`);
     await mutateSessions();
-  }, [mutateSessions, onSessionChange, queueHook]);
+  }, [mutateSessions, onSessionChange, queueHook, router]);
 
   const activeSessions = useMemo(
     () => sessions.filter((s) => s.status !== "completed"),

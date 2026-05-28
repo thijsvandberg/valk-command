@@ -555,6 +555,37 @@ describe("pushToJira", () => {
     }
   });
 
+  it("skips conflict check for newly created tickets with no sync baseline", async () => {
+    mockJiraLive = true;
+    // Ticket created via Bridge: no jiraUpdatedAt, no storyVersion
+    seedTicket(testDb, "VPL-1");
+    await upsertLocalEdit("VPL-1", {
+      field: "description",
+      localValue: "New story content",
+    });
+    await upsertLocalEdit("VPL-1", {
+      field: "title",
+      localValue: "New title",
+    });
+    // Promote drafts to saved edits
+    await promoteDrafts("VPL-1");
+
+    // Remote returns a timestamp (Jira always has one)
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-07-01T00:00:00Z" },
+    } as never);
+
+    // Sync creates the first storyVersion
+    fetchMock.mockImplementationOnce(async () => {
+      seedStoryVersion(testDb, "VPL-1", "hash-from-jira", "2024-07-01T00:00:00.000Z");
+      return { ok: true };
+    });
+    vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
+
+    const result = await pushToJira("VPL-1", false);
+    expect("success" in result && result.success).toBe(true);
+  });
+
   it("returns conflict result when remote content changed", async () => {
     mockJiraLive = true;
     seedTicket(testDb, "VPL-1");

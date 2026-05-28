@@ -84,27 +84,32 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
         body: JSON.stringify({ ticketKeys: [key] }),
       });
 
-      const newLatestVersion = await db.query.storyVersion.findFirst({
-        where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
-        orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
-      });
+      // Only check for conflicts when we have a previous sync baseline.
+      // Tickets created via Bridge start with jiraUpdatedAt=null and no
+      // storyVersion, so there is nothing meaningful to conflict with.
+      if (localTicket.jiraUpdatedAt !== null) {
+        const newLatestVersion = await db.query.storyVersion.findFirst({
+          where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
+          orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
+        });
 
-      const contentChanged = newLatestVersion?.contentHash !== baseHash;
+        const contentChanged = baseHash !== null && newLatestVersion?.contentHash !== baseHash;
 
-      if (contentChanged) {
-        return {
-          conflict: true,
-          contentChanged: true,
-          message: "Jira was updated since your edit. Review the diff before pushing.",
-        };
-      }
+        if (contentChanged) {
+          return {
+            conflict: true,
+            contentChanged: true,
+            message: "Jira was updated since your edit. Review the diff before pushing.",
+          };
+        }
 
-      if (!force) {
-        return {
-          conflict: true,
-          contentChanged: false,
-          message: "Jira metadata was updated since your last sync, but the content is unchanged. Review and confirm.",
-        };
+        if (!force) {
+          return {
+            conflict: true,
+            contentChanged: false,
+            message: "Jira metadata was updated since your last sync, but the content is unchanged. Review and confirm.",
+          };
+        }
       }
     }
 

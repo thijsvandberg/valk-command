@@ -75,17 +75,6 @@ export function RefinementQueuePanel({
           {activeSession?.name ?? "Queue"}
         </h2>
         <div className="flex items-center gap-2">
-          {onRefreshEditStates && queueHook.queue.length > 0 && (
-            <button
-              type="button"
-              onClick={onRefreshEditStates}
-              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              aria-label="Refresh edit states"
-            >
-              <RefreshCw size={13} strokeWidth={1.5} className={ticketsValidating ? "animate-spin" : ""} />
-            </button>
-          )}
           {activeSession && queueHook.queue.length > 0 && (
             <div className="relative" ref={bulkSuggestMenuRef}>
               <button
@@ -116,6 +105,14 @@ export function RefinementQueuePanel({
                   <button type="button" onClick={bulk.handleCopyStories} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                     <Copy size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />Copy stories + titles
                   </button>
+                  {onRefreshEditStates && (
+                    <>
+                      <div className="my-1 border-t border-border-subtle" />
+                      <button type="button" onClick={() => { onRefreshEditStates(); setBulkSuggestMenuOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+                        <RefreshCw size={12} strokeWidth={1.5} className={`shrink-0 text-text-tertiary ${ticketsValidating ? "animate-spin" : ""}`} />Refresh edit states
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

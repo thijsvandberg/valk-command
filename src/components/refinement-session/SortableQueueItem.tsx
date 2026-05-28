@@ -50,7 +50,7 @@ export function SortableQueueItem({
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     transition,
-    zIndex: isDragging ? 10 : undefined,
+    zIndex: isDragging ? 10 : menuOpen ? 5 : undefined,
     position: "relative" as const,
   };
 

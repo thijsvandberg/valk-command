@@ -37,9 +37,9 @@ vi.mock("@/contexts/RefinementSessionContext", () => ({
 }));
 
 const mockTickets = [
-  { key: "VPL-1", title: "First ticket", type: "story", storyPoints: 3 },
-  { key: "VPL-2", title: "Second ticket", type: "story", storyPoints: null },
-  { key: "VPL-3", title: "Spike investigation", type: "spike", storyPoints: null },
+  { key: "VPL-1", title: "First ticket", type: "story", storyPoints: 3, jiraStatus: "TO DO", readiness: null },
+  { key: "VPL-2", title: "Second ticket", type: "story", storyPoints: null, jiraStatus: "IN PROGRESS", readiness: "drafting" },
+  { key: "VPL-3", title: "Spike investigation", type: "spike", storyPoints: null, jiraStatus: "TO DO", readiness: null },
 ];
 
 vi.mock("@/hooks/useSprintBoard", () => ({
@@ -57,6 +57,10 @@ vi.mock("@/lib/api-client", () => ({
     update: vi.fn().mockResolvedValue({}),
     upsertTicketNote: vi.fn().mockResolvedValue({}),
   },
+  tickets: {
+    updateMetadata: vi.fn().mockResolvedValue({}),
+  },
+  apiFetch: vi.fn().mockResolvedValue({}),
 }));
 
 describe("SessionEndModal", () => {

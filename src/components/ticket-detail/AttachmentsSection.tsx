@@ -4,6 +4,7 @@ import Image from "next/image";
 import type { Attachment } from "@/types/ticket";
 import { File, FileMinus } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ImageLightbox } from "@/components/shared/ImageLightbox";
 
 export function AttachmentsSection({ attachments }: { attachments: Attachment[] }) {
   if (attachments.length === 0) {
@@ -38,13 +39,18 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
                   <span className="text-caption">Cleaned</span>
                 </div>
               ) : att.mimeType.startsWith("image/") ? (
-                <Image
+                <ImageLightbox
                   src={`/api/attachments/${att.id}`}
                   alt={att.filename}
-                  width={300}
-                  height={96}
-                  className="h-full w-full object-cover"
-                />
+                >
+                  <Image
+                    src={`/api/attachments/${att.id}`}
+                    alt={att.filename}
+                    width={300}
+                    height={96}
+                    className="h-full w-full object-cover"
+                  />
+                </ImageLightbox>
               ) : (
                 <div className="flex flex-col items-center gap-1" style={{ color: att.color }}>
                   <File className="h-8 w-8 opacity-40" strokeWidth={1.5} />

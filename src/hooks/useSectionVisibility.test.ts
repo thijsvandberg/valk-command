@@ -28,7 +28,7 @@ describe("useSectionVisibility", () => {
   });
 
   it("loads persisted visibility on mount", async () => {
-    mockGetSectionVisibility.mockResolvedValue({ visible: ["field1"] });
+    mockGetSectionVisibility.mockResolvedValue({ visible: ["field1"], allKnown: ["field1", "field2"] });
 
     const { result } = renderHook(() =>
       useSectionVisibility("test-section", ["field1", "field2"]),
@@ -40,6 +40,22 @@ describe("useSectionVisibility", () => {
 
     expect(result.current.visible.has("field1")).toBe(true);
     expect(result.current.visible.has("field2")).toBe(false);
+  });
+
+  it("auto-enables new default fields not previously known", async () => {
+    mockGetSectionVisibility.mockResolvedValue({ visible: ["field1"] });
+
+    const { result } = renderHook(() =>
+      useSectionVisibility("test-section", ["field1", "field2", "field3"]),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loaded).toBe(true);
+    });
+
+    expect(result.current.visible.has("field1")).toBe(true);
+    expect(result.current.visible.has("field2")).toBe(true);
+    expect(result.current.visible.has("field3")).toBe(true);
   });
 
   it("uses defaults when API returns null", async () => {

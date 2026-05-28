@@ -11,6 +11,7 @@ import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
 import { createNotification } from "@/lib/notifications";
 import { nextSequence } from "@/db/next-sequence";
 import { logger } from "@/lib/logger";
+import { emitRefinementEvent } from "@/lib/refinement-events";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -192,6 +193,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         if (!ticketRow) {
           postMessage(convId, "assistant", `Skipped [${key}](/tickets/${key}) - ticket not found in local database.`);
           skipped++;
+          emitRefinementEvent({ type: "bulk-suggest:progress", sessionId: id, ticketKey: key });
           continue;
         }
 
@@ -215,6 +217,7 @@ export async function POST(request: Request, { params }: RouteContext) {
                 `Skipped ${ticketLabel} - suggestions are up to date.`,
               );
               skipped++;
+              emitRefinementEvent({ type: "bulk-suggest:progress", sessionId: id, ticketKey: key });
               continue;
             }
           }
@@ -249,6 +252,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         if (!result.ok) {
           postMessage(convId, "assistant", `Failed: ${ticketLabel} - ${result.error.error}`);
           failed++;
+          emitRefinementEvent({ type: "bulk-suggest:progress", sessionId: id, ticketKey: key });
           continue;
         }
 
@@ -258,6 +262,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         if (!taskId) {
           postMessage(convId, "assistant", `Failed: ${ticketLabel} - no task ID returned.`);
           failed++;
+          emitRefinementEvent({ type: "bulk-suggest:progress", sessionId: id, ticketKey: key });
           continue;
         }
 
@@ -267,6 +272,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         if (taskError || !output) {
           postMessage(convId, "assistant", `Failed: ${ticketLabel} - ${taskError ?? "no output"}`);
           failed++;
+          emitRefinementEvent({ type: "bulk-suggest:progress", sessionId: id, ticketKey: key });
           continue;
         }
 
@@ -293,11 +299,13 @@ export async function POST(request: Request, { params }: RouteContext) {
           `Generated ${titles.length} suggestion${titles.length !== 1 ? "s" : ""} for ${ticketLabel}`,
         );
         generated++;
+        emitRefinementEvent({ type: "bulk-suggest:progress", sessionId: id, ticketKey: key });
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error";
         logger.error("bulk-suggest-subtasks", `Error processing ${key}`, errMsg);
         postMessage(convId, "assistant", `Failed: [${key}](/tickets/${key}) - ${errMsg}`);
         failed++;
+        emitRefinementEvent({ type: "bulk-suggest:progress", sessionId: id, ticketKey: key });
       }
     }
 
@@ -312,6 +320,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       "assistant",
       `Bulk suggestion complete. ${parts.join(", ")} (${ticketKeys.length} total).`,
     );
+
+    emitRefinementEvent({ type: "bulk-suggest:complete", sessionId: id });
 
     // Mark conversation as unread
     await db.update(conversation).set({ readAt: null }).where(eq(conversation.id, convId));

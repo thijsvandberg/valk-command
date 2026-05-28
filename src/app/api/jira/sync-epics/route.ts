@@ -34,10 +34,12 @@ export async function POST(request: Request) {
   try {
     const jql = `project = ${env.JIRA_PROJECT_KEY} AND issuetype = Epic ORDER BY updated DESC`;
     const fields = ISSUE_FIELDS.split(",");
-    const epics = await jiraClient.searchIssues(jql, fields, 200, request.signal);
+
+    // Paginate to fetch ALL epics (Jira caps at ~100 per page)
+    const allEpics = await jiraClient.searchAllIssues(jql, fields, request.signal);
 
     let upserted = 0;
-    for (const epic of epics) {
+    for (const epic of allEpics) {
       await upsertIssue(epic, "", request.signal);
       upserted++;
     }

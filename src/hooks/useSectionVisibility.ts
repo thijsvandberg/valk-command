@@ -14,7 +14,14 @@ export function useSectionVisibility(sectionId: string, defaultVisible: string[]
     settingsApi.getSectionVisibility(sectionId)
       .then((data) => {
         if (data.visible && data.visible.length > 0) {
-          setVisible(new Set(data.visible));
+          const stored = new Set(data.visible);
+          // Fields in defaultVisible that aren't in the stored set AND weren't
+          // previously known are new additions; default them to visible.
+          const allKnown = new Set(data.allKnown ?? data.visible);
+          for (const f of defaultVisible) {
+            if (!allKnown.has(f)) stored.add(f);
+          }
+          setVisible(stored);
         }
         setLoaded(true);
       })
@@ -23,7 +30,7 @@ export function useSectionVisibility(sectionId: string, defaultVisible: string[]
 
   const persist = useDebouncedCallback(
     (nextVisible: Set<string>) => {
-      settingsApi.saveSectionVisibility(sectionId, [...nextVisible])
+      settingsApi.saveSectionVisibility(sectionId, [...nextVisible], defaultVisible)
         .catch((err) => console.warn("[section-visibility] persist failed", err));
     },
     DEBOUNCE_MS,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ExternalLink } from "lucide-react";
+
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 
 interface TicketKeyPillProps {
@@ -45,7 +45,7 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor, h
   }`;
 
   return (
-    <div className="group flex shrink-0 items-center">
+    <div className="flex shrink-0 items-center">
       <div className={`flex shrink-0 items-center overflow-hidden ${statusLabel ? "rounded-md bg-overlay-default" : ""}`}>
         {href ? (
           <a
@@ -75,19 +75,6 @@ export function TicketKeyPill({ ticketKey, statusLabel, statusBg, statusColor, h
           </span>
         )}
       </div>
-
-      {/* Slides in from behind the pill, pushing content right */}
-      <span className="overflow-hidden w-0 group-hover:w-[20px] transition-[width] duration-150 ease-out flex items-center">
-        <a
-          href={jiraUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open in Jira"
-          className="flex shrink-0 items-center pl-1.5 text-text-muted hover:text-text-secondary transition-[color] duration-100 focus-visible:outline-none"
-        >
-          <ExternalLink size={14} strokeWidth={1.5} />
-        </a>
-      </span>
     </div>
   );
 }

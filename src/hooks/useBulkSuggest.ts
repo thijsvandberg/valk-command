@@ -1,8 +1,14 @@
-import { useState, useCallback, useEffect } from "react";
-import useSWR from "swr";
+import { useState, useCallback } from "react";
+import useSWR, { mutate } from "swr";
 import { refinementSessions as refinementSessionsApi, swrFetcher } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
 import type { Ticket } from "@/types/ticket";
+
+interface BulkSuggestStatus {
+  conversationId: string | null;
+  hasRun: boolean;
+  isRunning: boolean;
+}
 
 export function useBulkSuggest(opts: {
   resolvedSessionId: string | null;
@@ -10,37 +16,26 @@ export function useBulkSuggest(opts: {
 }) {
   const { resolvedSessionId, queueTickets } = opts;
 
-  const [bulkSuggestConvId, setBulkSuggestConvId] = useState<string | null>(null);
-  const [bulkSuggestRunning, setBulkSuggestRunning] = useState(false);
   const [bulkSuggestPanelCollapsed, setBulkSuggestPanelCollapsed] = useState(true);
   const [bulkSuggestMenuOpen, setBulkSuggestMenuOpen] = useState(false);
   const [bulkSuggestVisible, setBulkSuggestVisible] = useState(false);
 
-  // On mount / session change: check if a bulk suggest conversation exists
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!resolvedSessionId) {
-      setBulkSuggestConvId(null);
-      setBulkSuggestRunning(false);
-      return;
-    }
-    let cancelled = false;
-    refinementSessionsApi.bulkSuggestStatus(resolvedSessionId).then((status) => {
-      if (cancelled) return;
-      setBulkSuggestConvId(status.conversationId);
-      setBulkSuggestRunning(status.isRunning);
-    }).catch(() => {
-      // ignore
-    });
-    return () => { cancelled = true; };
-  }, [resolvedSessionId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  // SSE revalidates this key on bulk-suggest:progress and bulk-suggest:complete
+  const statusUrl = resolvedSessionId
+    ? `/api/refinement-sessions/${resolvedSessionId}/bulk-suggest-subtasks`
+    : null;
+  const { data: statusData } = useSWR<BulkSuggestStatus>(statusUrl, swrFetcher, {
+    revalidateOnFocus: true,
+    dedupingInterval: 2000,
+  });
 
-  // Fetch suggestion counts for queue badges
-  const { data: suggestionCountsData, mutate: mutateSuggestionCounts } = useSWR<{ counts: Record<string, number> }>(
+  const bulkSuggestConvId = statusData?.conversationId ?? null;
+  const bulkSuggestRunning = statusData?.isRunning ?? false;
+
+  // SSE revalidates this key on bulk-suggest:progress
+  const { data: suggestionCountsData } = useSWR<{ counts: Record<string, number> }>(
     refinementSessionsApi.suggestionCountsUrl(resolvedSessionId),
     swrFetcher,
-    { refreshInterval: bulkSuggestRunning ? 5000 : 0 },
   );
   const suggestionCounts = suggestionCountsData?.counts ?? {};
 
@@ -59,33 +54,16 @@ export function useBulkSuggest(opts: {
   const handleBulkSuggest = useCallback(async (force?: boolean) => {
     if (!resolvedSessionId || bulkSuggestRunning) return;
     setBulkSuggestMenuOpen(false);
-    setBulkSuggestRunning(true);
     setBulkSuggestPanelCollapsed(false);
     setBulkSuggestVisible(true);
     try {
       const result = await refinementSessionsApi.bulkSuggestSubtasks(resolvedSessionId, force ? { force: true } : undefined);
-      setBulkSuggestConvId(result.conversationId);
+      // Optimistically mark as running so UI reacts immediately
+      mutate(statusUrl, { conversationId: result.conversationId, hasRun: true, isRunning: true }, false);
     } catch {
-      setBulkSuggestRunning(false);
+      // SSE will update the status
     }
-  }, [resolvedSessionId, bulkSuggestRunning]);
-
-  // Detect when bulk suggest completes by polling the status
-  useEffect(() => {
-    if (!bulkSuggestRunning || !resolvedSessionId) return;
-    const interval = setInterval(async () => {
-      try {
-        const status = await refinementSessionsApi.bulkSuggestStatus(resolvedSessionId);
-        if (!status.isRunning) {
-          setBulkSuggestRunning(false);
-          mutateSuggestionCounts();
-        }
-      } catch {
-        // ignore
-      }
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [bulkSuggestRunning, resolvedSessionId, mutateSuggestionCounts]);
+  }, [resolvedSessionId, bulkSuggestRunning, statusUrl]);
 
   return {
     bulkSuggestConvId,

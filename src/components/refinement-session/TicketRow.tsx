@@ -5,7 +5,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import type { Ticket } from "@/types/ticket";
-import { getSpColor, getEpicColor } from "@/types/ticket";
+import { getSpColor, getEpicColor, getBvColor } from "@/types/ticket";
 
 export interface TicketRowProps {
   ticket: Ticket;
@@ -18,6 +18,11 @@ export interface TicketRowProps {
   showIssueType?: boolean;
   showKey?: boolean;
   showStatus?: boolean;
+  showEpic?: boolean;
+  showSubtasks?: boolean;
+  showSp?: boolean;
+  showBv?: boolean;
+  showSprint?: boolean;
 }
 
 export function TicketRow({
@@ -31,6 +36,11 @@ export function TicketRow({
   showIssueType = true,
   showKey = true,
   showStatus = true,
+  showEpic = true,
+  showSubtasks = true,
+  showSp = true,
+  showBv = true,
+  showSprint = true,
 }: TicketRowProps) {
   return (
     <div
@@ -75,7 +85,7 @@ export function TicketRow({
       {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
       {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
       <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>
-      {ticket.epic && (
+      {showEpic && ticket.epic && (
         <span
           className="shrink-0 truncate max-w-[140px] rounded-md px-1.5 py-0.5 text-caption font-medium"
           style={{
@@ -86,7 +96,7 @@ export function TicketRow({
           {ticket.epic}
         </span>
       )}
-      {(ticket.totalSubtaskCount ?? 0) > 0 && (
+      {showSubtasks && (ticket.totalSubtaskCount ?? 0) > 0 && (
         <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium tabular-nums text-text-muted">
           {ticket.openSubtaskCount ?? 0}/{ticket.totalSubtaskCount}
         </span>
@@ -102,12 +112,23 @@ export function TicketRow({
           In other session
         </span>
       )}
-      {sprintName && (
+      {showSprint && sprintName && (
         <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-muted">
           {sprintName}
         </span>
       )}
-      {ticket.storyPoints != null && (
+      {showBv && ticket.businessValue != null && ticket.businessValue > 0 && (
+        <span
+          className="rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums"
+          style={{
+            color: getBvColor(ticket.businessValue).text,
+            backgroundColor: getBvColor(ticket.businessValue).bg,
+          }}
+        >
+          BV: {ticket.businessValue}
+        </span>
+      )}
+      {showSp && ticket.storyPoints != null && (
         <span
           className="rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums"
           style={{

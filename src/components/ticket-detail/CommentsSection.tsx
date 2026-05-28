@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useUser } from "@clerk/nextjs";
 import type { TicketDetail } from "@/types/ticket";
-import { Trash2, Flag, Send, Check } from "lucide-react";
+import { Trash2, Flag, Send, Check, User } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
@@ -168,6 +169,11 @@ function JiraCommentsSection({
   const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const postedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { user } = useUser();
+  const userInitials = user
+    ? `${(user.firstName?.[0] ?? "").toUpperCase()}${(user.lastName?.[0] ?? "").toUpperCase()}`
+    : "";
+  const hasUserImage = !!user?.imageUrl;
 
   const handlePostJiraComment = useCallback(async () => {
     if (!newJiraComment.trim() || posting) return;
@@ -227,9 +233,28 @@ function JiraCommentsSection({
 
         {/* Post a Jira comment */}
         <div className="flex gap-3 pt-1">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-caption font-semibold text-white">
-            PO
-          </div>
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden"
+            style={{
+              backgroundColor: hasUserImage ? "transparent" : "var(--color-brand-600)",
+            }}
+          >
+            {hasUserImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.imageUrl}
+                alt=""
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : userInitials ? (
+              <span className="text-[10px] font-semibold text-white">
+                {userInitials}
+              </span>
+            ) : (
+              <User className="h-3.5 w-3.5 text-white" strokeWidth={1.5} />
+            )}
+          </span>
           <div className="min-w-0 flex-1">
             <div className="relative">
               <textarea

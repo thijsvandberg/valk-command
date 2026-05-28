@@ -107,7 +107,11 @@ function getEditorMarkdown(editor: ReturnType<typeof useEditor>): string {
     // tiptap-markdown escapes [ and ] in plain text to prevent link ambiguity.
     // We never use markdown link syntax (links are ADF marks), so these escapes
     // accumulate each round-trip through the HTML-wrapped paragraph path.
-    .replace(/\\+([\[\]])/g, "$1");
+    .replace(/\\+([\[\]])/g, "$1")
+    // tiptap-markdown HTML-encodes < and > in text nodes (escapeHTML in its
+    // text serializer). Unescape so stored markdown contains raw characters.
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 export function RichEditor({

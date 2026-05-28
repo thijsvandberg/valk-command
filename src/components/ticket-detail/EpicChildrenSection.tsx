@@ -12,7 +12,7 @@ import { ChildIssueListHeader } from "./ChildIssueListHeader";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets, ApiError } from "@/lib/api-client";
-import { Loader2, ChevronDown, Search } from "lucide-react";
+import { Loader2, ChevronDown, Search, AlertTriangle } from "lucide-react";
 
 const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[] = [
   { value: "story", label: "Story", jiraType: "Story" },
@@ -61,6 +61,7 @@ export function EpicChildrenSection({
   const [selectedType, setSelectedType] = useState<IssueType>("story");
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jiraWarning, setJiraWarning] = useState<string | null>(null);
   const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const typePickerRef = useRef<HTMLDivElement>(null);
@@ -267,15 +268,25 @@ export function EpicChildrenSection({
   }, []);
 
   const handleJiraStatusChange = useCallback(async (childKey: string, status: JiraStatus) => {
+    setJiraWarning(null);
     try {
-      await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
+      const res = await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setJiraWarning(data.error ?? "Failed to update status");
+        return;
+      }
+      if (data.jiraWarning) {
+        setJiraWarning(`${childKey}: status updated locally, but Jira sync failed`);
+      }
       onMutate();
     } catch (err) {
       console.error("Failed to update status:", err);
+      setJiraWarning("Failed to update status");
     }
   }, [onMutate]);
 
@@ -488,6 +499,16 @@ export function EpicChildrenSection({
 
       {error && (
         <p className="mt-2 text-body-sm text-red-400/80">{error}</p>
+      )}
+
+      {jiraWarning && (
+        <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-body-sm text-amber-300/90">
+          <AlertTriangle size={14} className="shrink-0" />
+          <span className="flex-1">{jiraWarning}</span>
+          <button type="button" onClick={() => setJiraWarning(null)} className="shrink-0 text-amber-400/60 hover:text-amber-300 cursor-pointer">
+            &times;
+          </button>
+        </div>
       )}
 
       {filtered.length > 0 ? (
