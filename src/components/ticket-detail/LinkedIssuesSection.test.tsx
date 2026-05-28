@@ -26,6 +26,23 @@ vi.mock("@/lib/api-client", () => ({
     recentLinks: (...args: unknown[]) => mockRecentLinks(...args),
     getRelatedSuggestions: (...args: unknown[]) => mockGetRelatedSuggestions(...args),
   },
+  jira: {
+    linkTypesUrl: () => "/api/jira/link-types",
+  },
+  swrFetcher: vi.fn(),
+}));
+
+// Mock useLinkTypes hook
+vi.mock("@/hooks/useLinkTypes", () => ({
+  useLinkTypes: () => ({
+    linkTypes: [
+      { value: "relates to", label: "Relates to", jiraTypeName: "Relates", direction: "outward" },
+      { value: "blocks", label: "Blocks", jiraTypeName: "Blocks", direction: "outward" },
+      { value: "is blocked by", label: "Is blocked by", jiraTypeName: "Blocks", direction: "inward" },
+    ],
+    error: undefined,
+    isLoading: false,
+  }),
 }));
 
 // Mock RelatedIssueSuggestions to avoid its dependencies

@@ -6,18 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { StatusBadge } from "@/components/sprint-board/SearchResultParts";
 import { tickets } from "@/lib/api-client";
+import { useLinkTypes } from "@/hooks/useLinkTypes";
 import { Loader2, Search, ChevronDown, Check, Clock, Cloud } from "lucide-react";
 import type { IssueType } from "@/types/ticket";
-
-export const RELATION_OPTIONS = [
-  { value: "relates to", label: "Relates to" },
-  { value: "blocks", label: "Blocks" },
-  { value: "is blocked by", label: "Is blocked by" },
-  { value: "clones", label: "Clones" },
-  { value: "is cloned by", label: "Is cloned by" },
-  { value: "duplicates", label: "Duplicates" },
-  { value: "is duplicated by", label: "Is duplicated by" },
-];
 
 interface SearchResult {
   key: string;
@@ -44,6 +35,7 @@ export function LinkIssueDialog({
   defaultTargetKey,
   defaultRelation,
 }: LinkIssueDialogProps) {
+  const { linkTypes } = useLinkTypes();
   const [relation, setRelation] = useState(defaultRelation ?? "relates to");
   const [query, setQuery] = useState(defaultTargetKey ?? "");
   const [selected, setSelected] = useState<SearchResult | null>(null);
@@ -238,7 +230,7 @@ export function LinkIssueDialog({
               className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-border-default bg-[var(--color-surface-default)] px-3 py-1.5 text-body-lg text-text-primary outline-none hover:border-border-strong focus-visible:border-[var(--color-brand-500)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/25"
               style={{ transition: "border-color 120ms" }}
             >
-              <span>{RELATION_OPTIONS.find((o) => o.value === relation)?.label ?? relation}</span>
+              <span>{linkTypes.find((o) => o.value === relation)?.label ?? relation}</span>
               <ChevronDown
                 size={14}
                 className={`shrink-0 text-text-muted ${relationOpen ? "rotate-180" : ""}`}
@@ -246,8 +238,11 @@ export function LinkIssueDialog({
               />
             </button>
             {relationOpen && (
-              <div className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
-                {RELATION_OPTIONS.map((opt) => (
+              <div
+                className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
+                style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+              >
+                {linkTypes.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"

@@ -32,6 +32,13 @@ export const ISSUE_FIELDS = [
 // Jira API response types (subset we care about)
 // ---------------------------------------------------------------------------
 
+export interface JiraIssueLinkType {
+  id: string;
+  name: string;
+  inward: string;
+  outward: string;
+}
+
 export interface JiraSprint {
   id: number;
   name: string;
@@ -383,7 +390,7 @@ async function jiraPost<T>(path: string, body: unknown, signal?: AbortSignal): P
         body: JSON.stringify(body),
         signal: timeoutSignal,
       }),
-      (res) => res.json() as Promise<T>,
+      (res) => res.status === 204 ? Promise.resolve(undefined as T) : res.json() as Promise<T>,
       path,
       timeoutSignal,
     );
@@ -1213,6 +1220,44 @@ export class JiraClient {
       signal,
     );
     return result.issues;
+  }
+
+  /**
+   * Search all Jira issues matching a JQL query, paginating through all pages.
+   */
+  async searchAllIssues(jql: string, fields?: string[], signal?: AbortSignal): Promise<JiraIssue[]> {
+    if (!isConfigured()) return [];
+
+    const fieldList = fields ? fields.join(",") : ISSUE_FIELDS;
+    let all: JiraIssue[] = [];
+    let pageToken: string | undefined;
+
+    while (true) {
+      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${fieldList}&maxResults=100${tokenParam}`,
+        signal,
+      );
+      all = all.concat(result.issues);
+      if (result.isLast !== false || !result.nextPageToken) break;
+      pageToken = result.nextPageToken;
+    }
+
+    return all;
+  }
+
+  /**
+   * Fetch all available issue link types from the Jira instance.
+   * Returns the raw Jira link type objects with id, name, inward, and outward labels.
+   */
+  async getIssueLinkTypes(signal?: AbortSignal): Promise<JiraIssueLinkType[]> {
+    if (!isConfigured()) return [];
+
+    const data = await jiraFetch<{ issueLinkTypes: JiraIssueLinkType[] }>(
+      "/rest/api/3/issueLinkType",
+      signal,
+    );
+    return data.issueLinkTypes ?? [];
   }
 
   /**

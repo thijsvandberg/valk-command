@@ -19,6 +19,14 @@ vi.mock("@/lib/jira-client", () => ({
     getIssue: vi.fn().mockResolvedValue({
       fields: { updated: "2024-06-15T12:00:00.000Z" },
     }),
+    getIssueLinkTypes: vi.fn().mockResolvedValue([
+      { id: "1", name: "Relates", inward: "relates to", outward: "relates to" },
+      { id: "2", name: "Blocks", inward: "is blocked by", outward: "blocks" },
+      { id: "3", name: "Cloners", inward: "is cloned by", outward: "clones" },
+      { id: "4", name: "Duplicate", inward: "is duplicated by", outward: "duplicates" },
+      { id: "5", name: "Implementation", inward: "is implemented by", outward: "implements" },
+      { id: "6", name: "Cause", inward: "is caused by", outward: "causes" },
+    ]),
   },
 }));
 
@@ -27,7 +35,7 @@ vi.mock("@/lib/activity-logger", () => ({
 }));
 
 vi.mock("@/lib/cache", () => ({
-  cache: { invalidate: vi.fn() },
+  cache: { invalidate: vi.fn(), get: vi.fn().mockReturnValue(undefined), set: vi.fn() },
 }));
 
 import { POST, DELETE } from "./route";
@@ -137,6 +145,44 @@ describe("POST /api/tickets/[key]/links", () => {
       makeParams("VPL-100"),
     );
     expect(res.status).toBe(400);
+  });
+
+  it("maps dynamically fetched link types correctly", async () => {
+    seedTicket("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(
+      postRequest("VPL-100", { targetKey: "VPL-200", relation: "implements" }),
+      makeParams("VPL-100"),
+    );
+
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-100", "VPL-200", "Implementation");
+  });
+
+  it("maps inward direction for dynamic link types", async () => {
+    seedTicket("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(
+      postRequest("VPL-100", { targetKey: "VPL-200", relation: "is caused by" }),
+      makeParams("VPL-100"),
+    );
+
+    // "is caused by" is inward, so source/dest should be swapped
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-200", "VPL-100", "Cause");
+  });
+
+  it("falls back to default when Jira link types fail", async () => {
+    seedTicket("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+    vi.mocked(jiraClient.getIssueLinkTypes).mockRejectedValueOnce(new Error("Jira down"));
+
+    await POST(
+      postRequest("VPL-100", { targetKey: "VPL-200", relation: "blocks" }),
+      makeParams("VPL-100"),
+    );
+
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-100", "VPL-200", "Blocks");
   });
 });
 

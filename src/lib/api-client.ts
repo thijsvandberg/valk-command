@@ -433,8 +433,11 @@ export const jira = {
   // -- URLs --
   sprintsUrl: () => "/api/jira/sprints" as const,
   healthUrl: () => "/api/jira/health" as const,
+  linkTypesUrl: () => "/api/jira/link-types" as const,
 
   // -- Actions --
+  getLinkTypes: (signal?: AbortSignal) =>
+    apiFetch<{ linkTypes: import("@/app/api/jira/link-types/route").LinkTypeOption[] }>("/api/jira/link-types", { signal }),
   getSprints: (signal?: AbortSignal) =>
     apiFetch<Sprint[]>("/api/jira/sprints", { signal }),
   syncSprints: (signal?: AbortSignal) =>

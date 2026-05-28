@@ -11,17 +11,12 @@ import { cache } from "@/lib/cache";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { randomUUID } from "crypto";
 
+import type { JiraIssueLinkType } from "@/lib/jira-client";
+
 type RouteContext = { params: Promise<{ key: string }> };
 
-const VALID_LINK_TYPES = [
-  "Relates",
-  "Blocks",
-  "Cloners",
-  "Duplicate",
-];
-
-// Map relation labels to Jira link type names and directions
-const RELATION_TO_JIRA: Record<string, { type: string; direction: "outward" | "inward" }> = {
+// Hardcoded fallback mapping used when Jira link types cannot be fetched
+const FALLBACK_RELATION_TO_JIRA: Record<string, { type: string; direction: "outward" | "inward" }> = {
   "relates to":        { type: "Relates",    direction: "outward" },
   "blocks":            { type: "Blocks",     direction: "outward" },
   "is blocked by":     { type: "Blocks",     direction: "inward" },
@@ -30,6 +25,41 @@ const RELATION_TO_JIRA: Record<string, { type: string; direction: "outward" | "i
   "duplicates":        { type: "Duplicate",  direction: "outward" },
   "is duplicated by":  { type: "Duplicate",  direction: "inward" },
 };
+
+const LINK_TYPES_CACHE_KEY = "jira:link-types:raw";
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Build a relation-to-Jira mapping from raw Jira link types.
+ * Falls back to the hardcoded mapping if Jira is unreachable.
+ */
+async function getRelationMapping(): Promise<Record<string, { type: string; direction: "outward" | "inward" }>> {
+  let jiraTypes = cache.get<JiraIssueLinkType[]>(LINK_TYPES_CACHE_KEY);
+
+  if (!jiraTypes) {
+    try {
+      jiraTypes = await jiraClient.getIssueLinkTypes();
+      if (jiraTypes.length > 0) {
+        cache.set(LINK_TYPES_CACHE_KEY, jiraTypes, ONE_WEEK_MS);
+      }
+    } catch {
+      // Fall through to fallback
+    }
+  }
+
+  if (!jiraTypes || jiraTypes.length === 0) {
+    return FALLBACK_RELATION_TO_JIRA;
+  }
+
+  const mapping: Record<string, { type: string; direction: "outward" | "inward" }> = {};
+  for (const lt of jiraTypes) {
+    mapping[lt.outward.toLowerCase()] = { type: lt.name, direction: "outward" };
+    if (lt.inward.toLowerCase() !== lt.outward.toLowerCase()) {
+      mapping[lt.inward.toLowerCase()] = { type: lt.name, direction: "inward" };
+    }
+  }
+  return mapping;
+}
 
 export async function POST(request: Request, { params }: RouteContext) {
   const { key: rawKey } = await params;
@@ -60,12 +90,9 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   // Determine Jira link type and direction from the relation label
-  const mapping = relation ? RELATION_TO_JIRA[relation.toLowerCase()] : null;
+  const relationMap = await getRelationMapping();
+  const mapping = relation ? relationMap[relation.toLowerCase()] : null;
   const jiraLinkType = body.linkType ?? mapping?.type ?? "Relates";
-
-  if (!VALID_LINK_TYPES.includes(jiraLinkType)) {
-    return NextResponse.json({ error: `Invalid link type: ${jiraLinkType}` }, { status: 400 });
-  }
 
   // Determine inward/outward based on direction
   const isInward = mapping?.direction === "inward";

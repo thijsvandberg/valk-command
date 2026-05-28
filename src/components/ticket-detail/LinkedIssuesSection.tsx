@@ -5,7 +5,8 @@ import type { TicketDetail, LinkedIssue } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { LinkIssueDialog, RELATION_OPTIONS } from "./LinkIssueDialog";
+import { LinkIssueDialog } from "./LinkIssueDialog";
+import { useLinkTypes } from "@/hooks/useLinkTypes";
 import { RelatedSuggestions, toRelatedSuggestion, type RelatedSuggestion } from "./RelatedIssueSuggestions";
 import { tickets } from "@/lib/api-client";
 import { useTaskStream } from "@/hooks/useTaskStream";
@@ -45,6 +46,7 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
 }
 
 export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssuesSectionProps) {
+  const { linkTypes } = useLinkTypes();
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkDialogDefaults, setLinkDialogDefaults] = useState<{ targetKey?: string; relation?: string }>({});
 
@@ -459,13 +461,16 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
             >
               <Link2 size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
               <span className="max-w-[100px] truncate">
-                {RELATION_OPTIONS.find((o) => o.value === inlineRelation)?.label ?? "Relates to"}
+                {linkTypes.find((o) => o.value === inlineRelation)?.label ?? "Relates to"}
               </span>
               <ChevronDown size={10} strokeWidth={2} className="text-text-muted" />
             </button>
             {inlineRelationOpen && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
-                {RELATION_OPTIONS.map((opt) => (
+              <div
+                className="absolute left-0 top-full z-50 mt-1 w-52 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
+                style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+              >
+                {linkTypes.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
