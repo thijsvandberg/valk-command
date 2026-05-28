@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { SearchModal } from "./SearchModal";
-import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({

@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Search, ExternalLink, IterationCw, Zap, ChevronRight, MessageSquare, FileText } from "lucide-react";
 import type { FuseResultMatch } from "fuse.js";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
-import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import type { IssueType } from "@/types/ticket";

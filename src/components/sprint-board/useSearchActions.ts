@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, search, jira, ApiError } from "@/lib/api-client";
 import { filtersToParams, type SearchFilters, type FilterOptionsData } from "@/components/sprint-board/SearchFilterPanel";
-import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 
 interface GroupedResults {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, type RefObject } from "react";
 import type { FocusedPanel } from "@/components/sprint-board/SearchResultParts";
-import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 
 export type SearchMode = "local" | "jira";

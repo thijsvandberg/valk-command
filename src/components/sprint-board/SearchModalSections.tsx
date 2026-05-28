@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Clock, Bookmark, Trash2 } from "lucide-react";
-import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import {
   LocalResultRow, JiraResultRow, ConversationResultRow, CommentResultRow,

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useSavedSearches } from "@/hooks/useSavedSearches";
 import { Button } from "@/components/ui/Button";
-import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/app/api/search/local/route";
+import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import type { FocusedPanel } from "@/components/sprint-board/SearchResultParts";
 import { PreviewPane, SkeletonRow, EmptyState } from "@/components/sprint-board/SearchResultParts";
