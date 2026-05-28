@@ -23,6 +23,34 @@ Per page:
 2. Extract data fetching/state logic into custom hooks where beneficial
 3. Target: page files under 300 lines, acting as layout orchestrators
 
+## Implementation Plan
+
+1. **StoryDiff.tsx** (lowest risk, self-contained, good test coverage)
+   - Extract `HunkActionBar` + `decisionStyles` + types into `src/components/story-diff/HunkActionBar.tsx`
+   - Extract `HunkEditor` into `src/components/story-diff/HunkEditor.tsx`
+   - Extract `CollapsedBar` into `src/components/story-diff/CollapsedBar.tsx`
+   - Keep algorithm functions and main component in `StoryDiff.tsx`
+
+2. **stakeholder/page.tsx**
+   - Extract AI drawer (GeneratePrompt, drawer JSX, resize logic) into `src/components/stakeholder/StakeholderBriefing.tsx`
+   - Extract `AnalysisButton` into `src/components/stakeholder/AnalysisButton.tsx`
+   - Extract main content grid (sprint cards, compare mode, carry-over) into `src/components/stakeholder/StakeholderSprintCards.tsx`
+   - Extract `OverflowMenu` into `src/components/stakeholder/StakeholderOverflowMenu.tsx` (export utilities already in `stakeholder-data.ts`)
+   - Move helper hooks (`usePreviousSprintTickets`, `useCarryOver`) to `src/hooks/useStakeholderHelpers.ts`
+   - Move utility functions (`formatRelativeTime`, `extractTeamPrefix`, `extractSprintNumber`) to `src/lib/stakeholder-data.ts`
+
+3. **refinement session page**
+   - Extract top bar into `src/components/refinement-session/SessionTopBar.tsx`
+   - Extract center navigation (progress, prev/next, queue dropdown) into `src/components/refinement-session/SessionNavigation.tsx`
+   - Rename inline `SortableQueueItem` to `SessionQueueItem` (distinct from existing `SortableQueueItem.tsx`)
+   - Extract `SubtasksPaneResizable` into its own file
+
+4. **tickets/[key]/page.tsx**
+   - Extract data fetching + all handler callbacks into `src/hooks/useTicketDetailPage.ts`
+   - Extract tab bar + tab content rendering into `src/components/ticket-detail/TicketTabContent.tsx`
+
+5. **Final validation**: full test suite, build, line-count verification
+
 ## Checklist
 
 ### stakeholder/page.tsx
@@ -39,7 +67,7 @@ Per page:
 - [ ] Extract data fetching into hook
 
 ### StoryDiff.tsx
-- [ ] Extract hunk rendering into `DiffHunk` component
-- [ ] Extract accept/reject toolbar into component
+- [x] Extract hunk rendering into `DiffHunk` component
+- [x] Extract accept/reject toolbar into component
 
 - [ ] All existing tests pass after each split
