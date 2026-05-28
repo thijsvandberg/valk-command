@@ -108,10 +108,16 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   try {
     await jiraClient.createIssueLink(sourceKey, destKey, jiraLinkType);
-    await syncJiraTimestamp(key);
   } catch (err) {
     logger.error("links", `Failed to create Jira link: ${err}`);
     return NextResponse.json({ error: "Failed to create link in Jira" }, { status: 502 });
+  }
+
+  // Non-fatal: sync the Jira timestamp so stale detection stays accurate
+  try {
+    await syncJiraTimestamp(key);
+  } catch (err) {
+    logger.warn("links", `Failed to sync Jira timestamp after link creation: ${err}`);
   }
 
   // Fetch the target ticket info for the response
