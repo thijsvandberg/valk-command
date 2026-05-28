@@ -7,6 +7,7 @@ import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader } from "./ChildIssueListHeader";
 import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
 import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen, AlertTriangle } from "lucide-react";
@@ -184,7 +185,7 @@ export function SubtasksSection({
   defaultHideKeys,
   showDragHandles,
 }: SubtasksSectionProps) {
-  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [filter, setFilter] = useLocalStorage<StatusFilter>("subtask-status-filter", "all");
   const [newTitle, setNewTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [jiraWarning, setJiraWarning] = useState<string | null>(null);
