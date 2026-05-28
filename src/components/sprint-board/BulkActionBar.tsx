@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
+import { swrFetcher } from "@/lib/api-client";
+import { Search } from "lucide-react";
 import {
   READINESS_OPTIONS,
   READINESS_CONFIG,
@@ -186,11 +189,207 @@ function SprintSubPanel({
 }
 
 // ---------------------------------------------------------------------------
+// Sub-panel: Epic picker
+// ---------------------------------------------------------------------------
+
+interface EpicListItem {
+  key: string;
+  name: string;
+  status: string;
+}
+
+function EpicSubPanel({ onSelect }: { onSelect: (epicKey: string | null, epicName: string | null) => void }) {
+  const { data } = useSWR<EpicListItem[]>("/api/epics", swrFetcher);
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    if (!query) return data;
+    const q = query.toLowerCase();
+    return data.filter((e) => e.name.toLowerCase().includes(q) || e.key.toLowerCase().includes(q));
+  }, [data, query]);
+
+  return (
+    <div className="py-1">
+      <div className="px-2 pb-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
+          <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search epics..."
+            className="w-full bg-transparent text-body-sm text-text-primary outline-none placeholder:text-text-muted"
+            autoFocus
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onSelect(null, null)}
+        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+      >
+        No epic
+      </button>
+      <div className="max-h-[200px] overflow-y-auto">
+        {filtered.map((epic) => (
+          <button
+            key={epic.key}
+            type="button"
+            onClick={() => onSelect(epic.key, epic.name)}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+          >
+            <span className="truncate">{epic.name}</span>
+            <span className="ml-auto shrink-0 text-[10px] text-text-muted">{epic.key}</span>
+          </button>
+        ))}
+        {!data && <div className="px-3 py-2 text-body-sm text-text-tertiary">Loading...</div>}
+        {data && filtered.length === 0 && <div className="px-3 py-2 text-body-sm text-text-tertiary">No epics found</div>}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-panel: Assignee picker
+// ---------------------------------------------------------------------------
+
+interface AssignableUser {
+  accountId: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, name: string | null) => void }) {
+  const { data } = useSWR<{ users: AssignableUser[] }>("/api/jira/assignable-users", swrFetcher);
+  const [query, setQuery] = useState("");
+  const users = data?.users ?? [];
+  const filtered = useMemo(() => {
+    if (!query) return users;
+    const q = query.toLowerCase();
+    return users.filter((u) => u.displayName.toLowerCase().includes(q));
+  }, [users, query]);
+
+  return (
+    <div className="py-1">
+      <div className="px-2 pb-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
+          <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search users..."
+            className="w-full bg-transparent text-body-sm text-text-primary outline-none placeholder:text-text-muted"
+            autoFocus
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onSelect(null, null)}
+        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+      >
+        Unassigned
+      </button>
+      <div className="max-h-[200px] overflow-y-auto">
+        {filtered.map((user) => (
+          <button
+            key={user.accountId}
+            type="button"
+            onClick={() => onSelect(user.accountId, user.displayName)}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+          >
+            {user.displayName}
+          </button>
+        ))}
+        {!data && <div className="px-3 py-2 text-body-sm text-text-tertiary">Loading...</div>}
+        {data && filtered.length === 0 && <div className="px-3 py-2 text-body-sm text-text-tertiary">No users found</div>}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-panel: Label picker (multi-select toggle)
+// ---------------------------------------------------------------------------
+
+function LabelSubPanel({ onSelect }: { onSelect: (labels: string[]) => void }) {
+  const { data } = useSWR<{ labels: string[] }>("/api/jira/labels", swrFetcher);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const allLabels = data?.labels ?? [];
+  const filtered = useMemo(() => {
+    if (!query) return allLabels;
+    const q = query.toLowerCase();
+    return allLabels.filter((l) => l.toLowerCase().includes(q));
+  }, [allLabels, query]);
+
+  const toggle = (label: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  };
+
+  return (
+    <div className="py-1">
+      <div className="px-2 pb-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
+          <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search labels..."
+            className="w-full bg-transparent text-body-sm text-text-primary outline-none placeholder:text-text-muted"
+            autoFocus
+          />
+        </div>
+      </div>
+      <div className="max-h-[200px] overflow-y-auto">
+        {filtered.map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => toggle(label)}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+          >
+            <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${selected.has(label) ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20" : "border-border-default"}`}>
+              {selected.has(label) && (
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
+            {label}
+          </button>
+        ))}
+        {!data && <div className="px-3 py-2 text-body-sm text-text-tertiary">Loading...</div>}
+        {data && filtered.length === 0 && <div className="px-3 py-2 text-body-sm text-text-tertiary">No labels found</div>}
+      </div>
+      {selected.size > 0 && (
+        <>
+          <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
+          <button
+            type="button"
+            onClick={() => onSelect([...selected])}
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-hover-list-item"
+          >
+            Apply to {selected.size} label{selected.size === 1 ? "" : "s"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Update dropdown (Set Status, Set Readiness, Set Epic, Move to Sprint,
 //                  Update Assignee, Add/Update Label)
 // ---------------------------------------------------------------------------
 
-type UpdateSubView = "menu" | "status" | "readiness" | "sprint";
+type UpdateSubView = "menu" | "status" | "readiness" | "sprint" | "epic" | "assignee" | "label";
 
 function UpdateDropdown({
   onSetStatus,
@@ -203,10 +402,10 @@ function UpdateDropdown({
 }: {
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
-  onSetEpic?: () => void;
+  onSetEpic?: (epicKey: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
-  onUpdateAssignee?: () => void;
-  onUpdateLabel?: () => void;
+  onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
+  onUpdateLabel?: (labels: string[]) => void;
   sprints?: Sprint[];
 }) {
   const [open, setOpen] = useState(false);
@@ -244,16 +443,16 @@ function UpdateDropdown({
                 <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>
               )}
               {onSetEpic && (
-                <MenuItem onClick={() => { onSetEpic(); close(); }}>Set Epic</MenuItem>
+                <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>
               )}
               {onMoveSprint && sprints && (
                 <MenuItem onClick={() => setSubView("sprint")}>Move to Sprint</MenuItem>
               )}
               {onUpdateAssignee && (
-                <MenuItem onClick={() => { onUpdateAssignee(); close(); }}>Update Assignee</MenuItem>
+                <MenuItem onClick={() => setSubView("assignee")}>Update Assignee</MenuItem>
               )}
               {onUpdateLabel && (
-                <MenuItem onClick={() => { onUpdateLabel(); close(); }}>Add/Update Label</MenuItem>
+                <MenuItem onClick={() => setSubView("label")}>Add/Update Label</MenuItem>
               )}
             </>
           )}
@@ -300,6 +499,51 @@ function UpdateDropdown({
               </button>
               <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
               <SprintSubPanel sprints={sprints} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
+            </>
+          )}
+
+          {subView === "epic" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSubView("menu")}
+                className="flex w-full items-center gap-1.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item"
+              >
+                <ArrowLeft className="h-3 w-3" strokeWidth={1.5} />
+                Back
+              </button>
+              <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
+              <EpicSubPanel onSelect={(key) => { onSetEpic?.(key); close(); }} />
+            </>
+          )}
+
+          {subView === "assignee" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSubView("menu")}
+                className="flex w-full items-center gap-1.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item"
+              >
+                <ArrowLeft className="h-3 w-3" strokeWidth={1.5} />
+                Back
+              </button>
+              <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
+              <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />
+            </>
+          )}
+
+          {subView === "label" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSubView("menu")}
+                className="flex w-full items-center gap-1.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item"
+              >
+                <ArrowLeft className="h-3 w-3" strokeWidth={1.5} />
+                Back
+              </button>
+              <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
+              <LabelSubPanel onSelect={(labels) => { onUpdateLabel?.(labels); close(); }} />
             </>
           )}
         </Card>
@@ -424,10 +668,10 @@ export function BulkActionBar({
   // Update dropdown
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetStatus?: (status: JiraStatus) => void;
-  onSetEpic?: () => void;
+  onSetEpic?: (epicKey: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
-  onUpdateAssignee?: () => void;
-  onUpdateLabel?: () => void;
+  onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
+  onUpdateLabel?: (labels: string[]) => void;
   sprints?: Sprint[];
   // AI Assist dropdown
   onReviewStory?: () => void;
