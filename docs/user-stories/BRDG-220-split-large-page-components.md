@@ -63,8 +63,8 @@ Per page:
 - [x] Extract zoom/navigation controls into component
 
 ### tickets/[key]/page.tsx
-- [ ] Extract tab/pane orchestration into component
-- [ ] Extract data fetching into hook
+- [x] Extract tab/pane orchestration into component
+- [x] Extract data fetching into hook
 
 ### StoryDiff.tsx
 - [x] Extract hunk rendering into `DiffHunk` component
