@@ -880,6 +880,30 @@ export class JiraClient {
   }
 
   /**
+   * Fetch only issuelinks for a batch of keys. Lightweight alternative to getIssuesByKeys.
+   */
+  async getIssueLinksByKeys(keys: string[], signal?: AbortSignal): Promise<JiraIssue[]> {
+    if (!isConfigured() || keys.length === 0) return [];
+
+    const jql = `key in (${keys.join(",")})`;
+    let all: JiraIssue[] = [];
+    let pageToken: string | undefined;
+
+    while (true) {
+      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=issuelinks&maxResults=100${tokenParam}`,
+        signal,
+      );
+      all = all.concat(result.issues);
+      if (result.isLast !== false || !result.nextPageToken) break;
+      pageToken = result.nextPageToken;
+    }
+
+    return all;
+  }
+
+  /**
    * Fetch the most recent changelog author for an issue.
    * Used to determine who made the latest content change.
    */
