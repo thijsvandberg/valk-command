@@ -197,6 +197,7 @@ export function SubtasksSection({
   const [suggestProgress, setSuggestProgress] = useState<string | null>(null);
   const [addingIndices, setAddingIndices] = useState<Set<number>>(new Set());
   const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [localRenames, setLocalRenames] = useState<Record<string, string>>({});
@@ -454,6 +455,8 @@ export function SubtasksSection({
       const parsed = parseSubtaskSuggestions(output);
       setSuggestLoading(false);
       setSuggestProgress(null);
+      setSuggestionsVisible(true);
+      setSuggestionsExpanded(true);
 
       tickets.persistSubtaskSuggestions(ticketKey, { suggestions: parsed })
         .then((data) => setSuggestions(data.suggestions))
@@ -666,8 +669,11 @@ export function SubtasksSection({
         type="button"
         onClick={() => {
           if (suggestions.length > 0) {
+            setSuggestionsVisible(true);
             setSuggestionsExpanded(true);
           } else {
+            setSuggestionsVisible(true);
+            setSuggestionsExpanded(true);
             handleSuggest();
           }
         }}
@@ -799,19 +805,21 @@ export function SubtasksSection({
         </div>
       )}
 
-      <SubtaskSuggestions
-        suggestions={suggestions}
-        isLoading={suggestLoading}
-        progressText={suggestProgress}
-        error={suggestError}
-        addingIndices={addingIndices}
-        isExpanded={suggestionsExpanded}
-        onToggleExpanded={() => setSuggestionsExpanded((prev) => !prev)}
-        onAdd={handleAddSuggestion}
-        onAddAll={handleAddAllSuggestions}
-        onDismiss={handleDismissSuggestion}
-        onRegenerate={() => handleSuggest()}
-      />
+      {suggestionsVisible && (
+        <SubtaskSuggestions
+          suggestions={suggestions}
+          isLoading={suggestLoading}
+          progressText={suggestProgress}
+          error={suggestError}
+          addingIndices={addingIndices}
+          isExpanded={suggestionsExpanded}
+          onToggleExpanded={() => setSuggestionsExpanded((prev) => !prev)}
+          onAdd={handleAddSuggestion}
+          onAddAll={handleAddAllSuggestions}
+          onDismiss={handleDismissSuggestion}
+          onRegenerate={() => handleSuggest()}
+        />
+      )}
     </div>
   );
 }
