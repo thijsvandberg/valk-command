@@ -641,10 +641,9 @@ export function SubtasksSection({
 
   const inlineInput = (
     <div
-      className={`flex items-center gap-3 px-3 py-1.5 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      className={`flex items-center px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
-      {showDragHandles && <span className="w-3 shrink-0" />}
       <input
         ref={inputRef}
         type="text"
