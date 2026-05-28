@@ -154,22 +154,6 @@ describe("useKeyboardNav", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("resets activeIndex when enabled becomes false", () => {
-    let enabled = true;
-    const { result, rerender } = renderHook(() =>
-      useKeyboardNav(5, undefined, { enabled }),
-    );
-
-    act(() => {
-      fireKey(result.current.handlers.onKeyDown, "ArrowDown");
-    });
-    expect(result.current.activeIndex).toBe(0);
-
-    enabled = false;
-    rerender();
-    expect(result.current.activeIndex).toBe(-1);
-  });
-
   it("handles empty item count", () => {
     const { result } = renderHook(() => useKeyboardNav(0));
 

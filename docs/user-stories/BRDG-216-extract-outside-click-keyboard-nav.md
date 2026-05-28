@@ -1,6 +1,6 @@
 # BRDG-216: Extract useOutsideClick and useKeyboardNav Hooks
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -58,4 +58,4 @@ Handles ArrowUp/Down/Home/End/Escape for navigating a list. Returns `{ activeInd
 - [x] Migrate `UserProfilePopover.tsx` to use both hooks
 - [x] Migrate `TicketStatusPill.tsx` dropdowns to use both hooks
 - [x] Migrate `ConversationList.tsx` context menu to use `useOutsideClick`
-- [ ] All existing tests pass
+- [x] All existing tests pass

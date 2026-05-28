@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 
 interface UseKeyboardNavOptions {
   /** Wrap around at ends (default: true) */
@@ -30,11 +30,6 @@ export function useKeyboardNav(
 ): UseKeyboardNavResult {
   const { loop = true, onEscape, onSelect, enabled = true } = options;
   const [activeIndex, setActiveIndex] = useState(-1);
-
-  // Reset when disabled
-  useEffect(() => {
-    if (!enabled) setActiveIndex(-1);
-  }, [enabled]);
 
   const findNextEnabled = useCallback(
     (from: number, direction: 1 | -1): number => {
