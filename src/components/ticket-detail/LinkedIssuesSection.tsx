@@ -54,6 +54,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [inlineRelation, setInlineRelation] = useState("relates to");
   const [inlineRelationOpen, setInlineRelationOpen] = useState(false);
   const [inlineRelationFilter, setInlineRelationFilter] = useState("");
+  const [inlineRelationHighlight, setInlineRelationHighlight] = useState(-1);
   const inlineRelationRef = useRef<HTMLDivElement>(null);
   const inlineRelationFilterRef = useRef<HTMLInputElement>(null);
   const [inlineQuery, setInlineQuery] = useState("");
@@ -501,6 +502,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                 setInlineRelationOpen((v) => {
                   if (!v) {
                     setInlineRelationFilter("");
+                    setInlineRelationHighlight(-1);
                     requestAnimationFrame(() => inlineRelationFilterRef.current?.focus());
                   }
                   return !v;
@@ -523,9 +525,24 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                     ref={inlineRelationFilterRef}
                     type="text"
                     value={inlineRelationFilter}
-                    onChange={(e) => setInlineRelationFilter(e.target.value)}
+                    onChange={(e) => { setInlineRelationFilter(e.target.value); setInlineRelationHighlight(0); }}
                     onKeyDown={(e) => {
-                      if (e.key === "Escape") {
+                      const filtered = linkTypes.filter((opt) => !inlineRelationFilter || opt.label.toLowerCase().includes(inlineRelationFilter.toLowerCase()));
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setInlineRelationHighlight((i) => Math.min(i + 1, filtered.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setInlineRelationHighlight((i) => Math.max(i - 1, 0));
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        const idx = inlineRelationHighlight >= 0 ? inlineRelationHighlight : 0;
+                        if (idx < filtered.length) {
+                          setInlineRelation(filtered[idx].value);
+                          setInlineRelationOpen(false);
+                          requestAnimationFrame(() => inlineInputRef.current?.focus());
+                        }
+                      } else if (e.key === "Escape") {
                         e.stopPropagation();
                         setInlineRelationOpen(false);
                       }
@@ -540,7 +557,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                 >
                   {linkTypes
                     .filter((opt) => !inlineRelationFilter || opt.label.toLowerCase().includes(inlineRelationFilter.toLowerCase()))
-                    .map((opt) => (
+                    .map((opt, idx) => (
                     <button
                       key={opt.value}
                       type="button"
@@ -548,11 +565,15 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                         e.preventDefault();
                         setInlineRelation(opt.value);
                         setInlineRelationOpen(false);
+                        requestAnimationFrame(() => inlineInputRef.current?.focus());
                       }}
+                      onMouseEnter={() => setInlineRelationHighlight(idx)}
                       className={`flex w-full items-center px-3 py-1.5 text-body-sm cursor-pointer transition-colors duration-150 ${
-                        inlineRelation === opt.value
+                        idx === inlineRelationHighlight
                           ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
-                          : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
+                          : inlineRelation === opt.value
+                            ? "text-[var(--color-brand-400)]"
+                            : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
                       }`}
                     >
                       {opt.label}

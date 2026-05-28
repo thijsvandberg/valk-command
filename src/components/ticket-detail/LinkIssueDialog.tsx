@@ -49,6 +49,7 @@ export function LinkIssueDialog({
   const [showResults, setShowResults] = useState(false);
   const [relationOpen, setRelationOpen] = useState(false);
   const [relationFilter, setRelationFilter] = useState("");
+  const [relationHighlight, setRelationHighlight] = useState(-1);
   const relationRef = useRef<HTMLDivElement>(null);
   const relationFilterRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -236,6 +237,7 @@ export function LinkIssueDialog({
                 setRelationOpen((v) => {
                   if (!v) {
                     setRelationFilter("");
+                    setRelationHighlight(-1);
                     requestAnimationFrame(() => relationFilterRef.current?.focus());
                   }
                   return !v;
@@ -260,9 +262,24 @@ export function LinkIssueDialog({
                     ref={relationFilterRef}
                     type="text"
                     value={relationFilter}
-                    onChange={(e) => setRelationFilter(e.target.value)}
+                    onChange={(e) => { setRelationFilter(e.target.value); setRelationHighlight(0); }}
                     onKeyDown={(e) => {
-                      if (e.key === "Escape") {
+                      const filtered = linkTypes.filter((opt) => !relationFilter || opt.label.toLowerCase().includes(relationFilter.toLowerCase()));
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setRelationHighlight((i) => Math.min(i + 1, filtered.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setRelationHighlight((i) => Math.max(i - 1, 0));
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        const idx = relationHighlight >= 0 ? relationHighlight : 0;
+                        if (idx < filtered.length) {
+                          setRelation(filtered[idx].value);
+                          setRelationOpen(false);
+                          requestAnimationFrame(() => searchRef.current?.focus());
+                        }
+                      } else if (e.key === "Escape") {
                         e.stopPropagation();
                         setRelationOpen(false);
                       }
@@ -277,15 +294,18 @@ export function LinkIssueDialog({
                 >
                   {linkTypes
                     .filter((opt) => !relationFilter || opt.label.toLowerCase().includes(relationFilter.toLowerCase()))
-                    .map((opt) => (
+                    .map((opt, idx) => (
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => { setRelation(opt.value); setRelationOpen(false); }}
+                      onClick={() => { setRelation(opt.value); setRelationOpen(false); requestAnimationFrame(() => searchRef.current?.focus()); }}
+                      onMouseEnter={() => setRelationHighlight(idx)}
                       className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-lg ${
-                        opt.value === relation
+                        idx === relationHighlight
                           ? "bg-overlay-default text-text-primary"
-                          : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
+                          : opt.value === relation
+                            ? "text-[var(--color-brand-400)]"
+                            : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
                       }`}
                       style={{ transition: "background-color 80ms, color 80ms" }}
                     >
