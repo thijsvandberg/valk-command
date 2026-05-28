@@ -89,6 +89,20 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     return () => { cancelled = true; };
   }, [ticketKey]);
 
+  // Prune deletingKeys once SWR re-fetch has removed items from issues
+  useEffect(() => {
+    if (deletingKeys.size === 0) return;
+    const issueIds = new Set(issues.map((i) => `${i.key}:${i.relation}`));
+    const stale = [...deletingKeys].filter((id) => !issueIds.has(id));
+    if (stale.length > 0) {
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        stale.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+  }, [issues, deletingKeys]);
+
   // Close relation dropdown on Esc or click outside
   useEffect(() => {
     if (!inlineRelationOpen) return;
@@ -232,16 +246,17 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         linkedKey: item.key,
       });
       onMutate();
+      // Keep deleteId in deletingKeys until SWR re-fetch removes it from issues
     } catch (err) {
+      // Restore the item on failure
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteId);
+        return next;
+      });
       setInlineError(`Failed to remove link to ${item.key}`);
       console.error("Failed to delete link:", err);
     }
-
-    setDeletingKeys((prev) => {
-      const next = new Set(prev);
-      next.delete(deleteId);
-      return next;
-    });
   }, [ticketKey, onMutate]);
 
   const openLinkDialog = useCallback((defaults?: { targetKey?: string; relation?: string }) => {
