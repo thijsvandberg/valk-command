@@ -159,15 +159,7 @@ export async function GET(
     cleanedAt: a.cleanedAt ?? null,
   }));
 
-  const jiraComments: JiraComment[] = jiraCommentRows.map((c) => ({
-    id: c.id,
-    authorName: c.authorName,
-    authorAvatar: c.authorAvatar ?? null,
-    authorInitials: userInitials(c.authorName),
-    authorColor: userColor(c.authorName),
-    content: c.content,
-    createdAt: c.createdAt,
-  }));
+  // Comment content gets attachment refs resolved below after filenameToId is built
 
   let labels: string[] = [];
   let components: string[] = [];
@@ -266,14 +258,38 @@ export async function GET(
 
   // Resolve inline attachment references: ![filename](attachment) → ![filename](/api/attachments/ID)
   const filenameToId = new Map(attachmentRows.map((a) => [a.filename, a.id]));
+  function resolveAttachmentRefs(text: string): string {
+    // Markdown image syntax from ADF conversion
+    let resolved = text.replace(
+      /!\[([^\]]*)\]\(attachment[^)]*\)/g,
+      (_match, alt: string) => {
+        const id = filenameToId.get(alt);
+        return id ? `![${alt}](/api/attachments/${id})` : `![${alt}](attachment)`;
+      },
+    );
+    // Jira wiki markup format: !filename.png! or !filename.png|thumbnail!
+    resolved = resolved.replace(
+      /(?<![[\w])!([^|\n!]+\.[a-z]{2,5})(?:\|[^!\n]*)?!(?![[\w])/gi,
+      (_match, filename: string) => {
+        const id = filenameToId.get(filename);
+        return id ? `![${filename}](/api/attachments/${id})` : `![${filename}](attachment)`;
+      },
+    );
+    return resolved;
+  }
+
   const rawDescription = t.description ?? "";
-  const description = rawDescription.replace(
-    /!\[([^\]]*)\]\(attachment[^)]*\)/g,
-    (_match, alt: string) => {
-      const id = filenameToId.get(alt);
-      return id ? `![${alt}](/api/attachments/${id})` : `![${alt}](attachment)`;
-    },
-  );
+  const description = resolveAttachmentRefs(rawDescription);
+
+  const jiraComments: JiraComment[] = jiraCommentRows.map((c) => ({
+    id: c.id,
+    authorName: c.authorName,
+    authorAvatar: c.authorAvatar ?? null,
+    authorInitials: userInitials(c.authorName),
+    authorColor: userColor(c.authorName),
+    content: resolveAttachmentRefs(c.content),
+    createdAt: c.createdAt,
+  }));
 
   const detail: TicketDetail = {
     description,
