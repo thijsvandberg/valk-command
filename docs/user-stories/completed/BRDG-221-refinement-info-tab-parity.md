@@ -1,6 +1,6 @@
 # BRDG-221: Refinement Info Tab Parity with Ticket Sidebar
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 **Epic:** Refinement
 
