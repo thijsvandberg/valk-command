@@ -1,6 +1,6 @@
 # BRDG-220: Split Large Page Components
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -70,4 +70,4 @@ Per page:
 - [x] Extract hunk rendering into `DiffHunk` component
 - [x] Extract accept/reject toolbar into component
 
-- [ ] All existing tests pass after each split
+- [x] All existing tests pass after each split
