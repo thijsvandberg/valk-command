@@ -10,8 +10,7 @@ import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen, AlertTriangle, RefreshCw } from "lucide-react";
-import { jira as jiraApi } from "@/lib/api-client";
+import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen, AlertTriangle } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
@@ -211,8 +210,6 @@ export function SubtasksSection({
   const [suggestTaskId, setSuggestTaskId] = useState<string | null>(null);
   const suggestRetryRef = useRef(0);
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
-  const [pullLoading, setPullLoading] = useState(false);
-
   const defaultVisible = defaultHideKeys ? ["status"] : ["issueKey", "status"];
   const { visible: visibleFields, toggleField } = useSectionVisibility("subtasks", defaultVisible);
 
@@ -523,19 +520,6 @@ export function SubtasksSection({
     handleSuggestRef.current = handleSuggest;
   }, [handleSuggest]);
 
-  const handlePullFromJira = useCallback(async () => {
-    if (pullLoading) return;
-    setPullLoading(true);
-    try {
-      await jiraApi.syncTickets({ ticketKeys: [ticketKey] });
-      onMutate();
-    } catch (err) {
-      console.error("Failed to pull subtasks from Jira:", err);
-      setError("Failed to sync from Jira");
-    } finally {
-      setPullLoading(false);
-    }
-  }, [ticketKey, onMutate, pullLoading]);
 
   const addSuggestionAsSubtask = useCallback(async (suggestion: SubtaskSuggestionResponse, index: number) => {
     setAddingIndices((prev) => new Set(prev).add(index));
@@ -719,27 +703,6 @@ export function SubtasksSection({
     </div>
   );
 
-  const pullButton = (
-    <button
-      type="button"
-      onClick={handlePullFromJira}
-      disabled={pullLoading}
-      className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
-        pullLoading
-          ? "text-text-muted"
-          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-      }`}
-      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-      title="Pull latest subtasks from Jira"
-    >
-      {pullLoading ? (
-        <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-      ) : (
-        <RefreshCw size={13} strokeWidth={1.5} />
-      )}
-    </button>
-  );
-
   // Compact filter button for hideHeader mode (the ChildIssueListHeader has its own built-in filter button)
   const compactFilterButton = (
     <div className="relative">
@@ -784,13 +747,12 @@ export function SubtasksSection({
           fields={SUBTASK_FIELDS}
           visibleFields={visibleFields}
           onToggleField={(id, show) => toggleField(id, show)}
-          extraActions={<>{pullButton}{suggestButton}</>}
+          extraActions={suggestButton}
         />
       )}
 
       {hideHeader && (
         <div className="flex items-center gap-1">
-          {pullButton}
           {suggestButton}
           {compactFilters && compactFilterButton}
         </div>
