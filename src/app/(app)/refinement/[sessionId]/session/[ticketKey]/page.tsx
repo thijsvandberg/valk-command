@@ -12,9 +12,9 @@ import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SessionEndModal } from "@/components/refinement-session/SessionEndModal";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
-import { tickets, apiFetch } from "@/lib/api-client";
+import { tickets, apiFetch, jira as jiraApi } from "@/lib/api-client";
 import { mutate as globalMutate } from "swr";
-import type { TicketReadiness } from "@/types/ticket";
+import type { TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { BridgeMark } from "@/components/shared/BridgeMark";
 import {
@@ -282,6 +282,17 @@ export default function RefinementSessionTicketPage({
 
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
 
+  // Force a Jira sync when entering a ticket in the refinement session
+  // to ensure subtasks and other data are up to date
+  const syncedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentKey || currentKey === syncedKeyRef.current) return;
+    syncedKeyRef.current = currentKey;
+    jiraApi.syncTickets({ ticketKeys: [currentKey] })
+      .then(() => mutate())
+      .catch(() => {});
+  }, [currentKey, mutate]);
+
   // Push / save / discard state
   const [isPushing, setIsPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -386,6 +397,38 @@ export default function RefinementSessionTicketPage({
         mutate();
       } catch (err) {
         console.error("Failed to update readiness:", err);
+      }
+    },
+    [currentKey, mutate],
+  );
+
+  const handleJiraStatusChange = useCallback(
+    async (status: JiraStatus) => {
+      if (!currentKey) return;
+      try {
+        await apiFetch(`/api/tickets/${encodeURIComponent(currentKey)}/status`, {
+          method: "PUT",
+          body: { status },
+        });
+        mutate();
+      } catch (err) {
+        console.error("Failed to update Jira status:", err);
+      }
+    },
+    [currentKey, mutate],
+  );
+
+  const handleTypeChange = useCallback(
+    async (newType: IssueType) => {
+      if (!currentKey) return;
+      try {
+        await apiFetch(`/api/tickets/${encodeURIComponent(currentKey)}`, {
+          method: "PATCH",
+          body: { type: newType },
+        });
+        mutate();
+      } catch (err) {
+        console.error("Failed to update issue type:", err);
       }
     },
     [currentKey, mutate],
@@ -557,13 +600,14 @@ export default function RefinementSessionTicketPage({
 
             {ticketData && (
               <>
-                <div className="h-4 w-px bg-border-subtle" />
                 <TicketStatusPill
                   ticketKey={ticketData.key}
                   jiraStatus={ticketData.jiraStatus}
                   readiness={ticketData.readiness}
+                  onJiraStatusChange={handleJiraStatusChange}
                   onReadinessChange={handleReadinessChange}
                   issueType={ticketData.type}
+                  onIssueTypeChange={handleTypeChange}
                   title={ticketData.title}
                   size="lg"
                 />
