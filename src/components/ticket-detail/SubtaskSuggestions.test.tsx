@@ -202,7 +202,7 @@ describe("SubtaskSuggestions", () => {
         suggestions={[item("Task A"), item("Task B"), item("Task C")]}
       />,
     );
-    const header = screen.getByText("AI Suggestions").closest("button")!;
+    const header = screen.getByText("AI Suggestions").closest("[role='button']")!;
     expect(within(header).getByText("3")).toBeInTheDocument();
   });
 
