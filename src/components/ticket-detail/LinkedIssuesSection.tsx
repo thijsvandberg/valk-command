@@ -63,6 +63,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [inlineSearching, setInlineSearching] = useState(false);
   const [inlinePending, setInlinePending] = useState<LinkedIssue[]>([]);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const inlineDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -221,6 +222,10 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   }, [ticketKey]);
 
   const handleDelete = useCallback(async (item: LinkedIssue) => {
+    const deleteId = `${item.key}:${item.relation}`;
+    setDeletingKeys((prev) => new Set(prev).add(deleteId));
+    setInlineError(null);
+
     try {
       await tickets.deleteLink(ticketKey, {
         jiraLinkId: item.jiraLinkId,
@@ -228,8 +233,15 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       });
       onMutate();
     } catch (err) {
+      setInlineError(`Failed to remove link to ${item.key}`);
       console.error("Failed to delete link:", err);
     }
+
+    setDeletingKeys((prev) => {
+      const next = new Set(prev);
+      next.delete(deleteId);
+      return next;
+    });
   }, [ticketKey, onMutate]);
 
   const openLinkDialog = useCallback((defaults?: { targetKey?: string; relation?: string }) => {
@@ -374,7 +386,10 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     }
   }, [inlineShowResults, inlineResults, inlineHighlight, handleInlineLink]);
 
-  const allIssues = [...issues, ...inlinePending.filter((p) => !issues.some((i) => i.key === p.key && i.relation === p.relation))];
+  const allIssues = [
+    ...issues.filter((i) => !deletingKeys.has(`${i.key}:${i.relation}`)),
+    ...inlinePending.filter((p) => !issues.some((i) => i.key === p.key && i.relation === p.relation)),
+  ];
 
   const grouped = allIssues.reduce<Record<string, LinkedIssue[]>>((acc, issue) => {
     if (!acc[issue.relation]) acc[issue.relation] = [];
