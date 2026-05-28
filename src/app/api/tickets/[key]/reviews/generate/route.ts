@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { errorResponse, agentErrorResponse } from "@/lib/api-response";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { agentFetch } from "@/lib/agent-fetch";
@@ -31,7 +32,7 @@ export async function POST(
   });
 
   if (!t) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return errorResponse("Ticket not found", 404);
   }
 
   let source: "ticket-detail" | "chat" | "bulk-action" = "ticket-detail";
@@ -67,10 +68,7 @@ export async function POST(
         retryCount: submitResult.retryCount,
       }),
     });
-    return NextResponse.json(
-      { error: submitResult.error.error, code: submitResult.error.code },
-      { status: submitResult.status || 502 },
-    );
+    return agentErrorResponse(submitResult.error, submitResult.status);
   }
 
   const taskId = submitResult.data.id;

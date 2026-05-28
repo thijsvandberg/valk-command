@@ -8,6 +8,8 @@ import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { captureTaskStream } from "@/lib/task-stream-handler";
 import { nextSequence } from "@/db/next-sequence";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -33,19 +35,16 @@ export async function POST(request: Request, { params }: RouteContext) {
     where: (c, { eq: eq_ }) => eq_(c.id, conversationId),
   });
   if (!conv) {
-    return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+    return errorResponse("Conversation not found", 404);
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const content = typeof body.content === "string" ? body.content.trim() : "";
   if (!content) {
-    return NextResponse.json({ error: "content is required" }, { status: 400 });
+    return errorResponse("content is required", 400);
   }
 
   // Save user message to Bridge DB

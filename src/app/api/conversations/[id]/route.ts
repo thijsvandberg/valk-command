@@ -4,6 +4,8 @@ import { conversation, message, storyWriterSession } from "@/db/schema";
 import { eq, and, ne, sql } from "drizzle-orm";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET(
   _request: Request,
@@ -18,10 +20,7 @@ export async function GET(
   });
 
   if (!conv) {
-    return NextResponse.json(
-      { error: "Conversation not found" },
-      { status: 404 },
-    );
+    return errorResponse("Conversation not found", 404);
   }
 
   const conversationMessages = await db
@@ -49,19 +48,16 @@ export async function PATCH(
   const invalid = validatePathParam(id);
   if (invalid) return invalid;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const conv = await db.query.conversation.findFirst({
     where: (c, { eq }) => eq(c.id, id),
   });
 
   if (!conv) {
-    return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+    return errorResponse("Conversation not found", 404);
   }
 
   const updates: Record<string, unknown> = {};
@@ -84,17 +80,14 @@ export async function PATCH(
         .from(conversation)
         .where(and(eq(conversation.pinned, true), ne(conversation.id, id)));
       if (pinned.length >= 10) {
-        return NextResponse.json(
-          { error: "Maximum 10 pinned conversations reached" },
-          { status: 409 },
-        );
+        return errorResponse("Maximum 10 pinned conversations reached", 409);
       }
     }
     updates.pinned = wantPin;
   }
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    return errorResponse("No valid fields to update", 400);
   }
 
   await db.update(conversation).set(updates).where(eq(conversation.id, id));
@@ -122,10 +115,7 @@ export async function DELETE(
   });
 
   if (!conv) {
-    return NextResponse.json(
-      { error: "Conversation not found" },
-      { status: 404 },
-    );
+    return errorResponse("Conversation not found", 404);
   }
 
   // Remove story writer sessions that reference this conversation (FK constraint)

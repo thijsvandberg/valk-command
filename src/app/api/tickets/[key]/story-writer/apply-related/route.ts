@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { resolveDraftKey } from "@/lib/draft-sync";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { db } from "@/db";
 import { storyWriterSession, relatedStoryCandidate, ticketLink } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -27,12 +29,9 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const postResult = await parseJsonBody(request);
+  if ("error" in postResult) return postResult.error;
+  const body = postResult.data as Record<string, unknown>;
 
   const output = typeof body.output === "string" ? body.output : "";
 
@@ -48,7 +47,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
+    return errorResponse("No active story writer session", 404);
   }
 
   const items = parseRelatedStories(output);
@@ -122,18 +121,15 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const patchResult = await parseJsonBody(request);
+  if ("error" in patchResult) return patchResult.error;
+  const body = patchResult.data as Record<string, unknown>;
 
   const candidateId = typeof body.candidateId === "string" ? body.candidateId : null;
   const isLinked = typeof body.isLinked === "boolean" ? body.isLinked : null;
 
   if (!candidateId || isLinked === null) {
-    return NextResponse.json({ error: "candidateId and isLinked required" }, { status: 400 });
+    return errorResponse("candidateId and isLinked required", 400);
   }
 
   const session = await db
@@ -148,7 +144,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
+    return errorResponse("No active story writer session", 404);
   }
 
   // Handle virtual candidates synthesised from existing ticketLink entries
@@ -161,7 +157,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       .get();
 
     if (!link) {
-      return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+      return errorResponse("Candidate not found", 404);
     }
 
     if (!isLinked) {
@@ -209,7 +205,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     .get();
 
   if (!candidate) {
-    return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    return errorResponse("Candidate not found", 404);
   }
 
   await db

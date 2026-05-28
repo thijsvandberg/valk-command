@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { db } from "@/db";
@@ -72,21 +74,18 @@ export async function POST(request: Request, { params }: RouteContext) {
   });
 
   if (!t) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return errorResponse("Ticket not found", 404);
   }
 
-  let body: { targetKey?: string; linkType?: string; relation?: string; jiraTypeName?: string; direction?: "inward" | "outward" };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as { targetKey?: string; linkType?: string; relation?: string; jiraTypeName?: string; direction?: "inward" | "outward" };
 
   const targetKey = body.targetKey?.trim();
   const relation = body.relation?.trim();
 
   if (!targetKey) {
-    return NextResponse.json({ error: "targetKey is required" }, { status: 400 });
+    return errorResponse("targetKey is required", 400);
   }
 
   // Use jiraTypeName/direction from the frontend when available (already resolved from link-types API).
@@ -110,7 +109,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     await jiraClient.createIssueLink(sourceKey, destKey, jiraLinkType);
   } catch (err) {
     logger.error("links", `Failed to create Jira link: ${err}`);
-    return NextResponse.json({ error: "Failed to create link in Jira" }, { status: 502 });
+    return errorResponse("Failed to create link in Jira", 502);
   }
 
   // Non-fatal: sync the Jira timestamp so stale detection stays accurate
@@ -169,17 +168,14 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let body: { jiraLinkId?: string; linkedKey?: string; relation?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsedDelete = await parseJsonBody(request);
+  if ("error" in parsedDelete) return parsedDelete.error;
+  const body = parsedDelete.data as { jiraLinkId?: string; linkedKey?: string; relation?: string };
 
   const { jiraLinkId, linkedKey, relation } = body;
 
   if (!linkedKey) {
-    return NextResponse.json({ error: "linkedKey is required" }, { status: 400 });
+    return errorResponse("linkedKey is required", 400);
   }
 
   // Delete from Jira if we have a jiraLinkId

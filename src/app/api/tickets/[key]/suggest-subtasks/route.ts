@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorResponse, agentErrorResponse } from "@/lib/api-response";
 import { db } from "@/db";
 import { ticket, ticketSubtask } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -33,7 +34,7 @@ export async function POST(
     .get();
 
   if (!ticketRow) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return errorResponse("Ticket not found", 404);
   }
 
   const existingSubtasks = await db
@@ -64,10 +65,7 @@ export async function POST(
 
   if (!result.ok) {
     logger.error("suggest-subtasks", "Failed to invoke suggest-subtasks skill", result.error.error);
-    return NextResponse.json(
-      { error: result.error.error, code: result.error.code },
-      { status: result.status || 502 },
-    );
+    return agentErrorResponse(result.error, result.status);
   }
 
   const taskData = result.data as Record<string, unknown>;

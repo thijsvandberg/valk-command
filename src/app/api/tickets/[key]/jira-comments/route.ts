@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { sanitizeText } from "@/lib/sanitize";
@@ -20,26 +22,17 @@ export async function POST(
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   if (typeof body.content !== "string" || !(body.content as string).trim()) {
-    return NextResponse.json(
-      { error: "content is required and must be a non-empty string" },
-      { status: 400 },
-    );
+    return errorResponse("content is required and must be a non-empty string", 400);
   }
 
   const content = sanitizeText((body.content as string).trim());
   if (content.length > 10000) {
-    return NextResponse.json(
-      { error: "content must not exceed 10000 characters" },
-      { status: 400 },
-    );
+    return errorResponse("content must not exceed 10000 characters", 400);
   }
 
   let created;
@@ -48,9 +41,9 @@ export async function POST(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     if (message.includes("not configured")) {
-      return NextResponse.json({ error: "Jira is not configured" }, { status: 503 });
+      return errorResponse("Jira is not configured", 503);
     }
-    return NextResponse.json({ error: "Failed to post comment to Jira" }, { status: 502 });
+    return errorResponse("Failed to post comment to Jira", 502);
   }
 
   const authorName = created.author.displayName;

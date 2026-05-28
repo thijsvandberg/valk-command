@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { poComment } from "@/db/schema";
@@ -34,24 +36,16 @@ export async function POST(
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
+
   if (typeof body.content !== "string" || !(body.content as string).trim()) {
-    return NextResponse.json(
-      { error: "content is required and must be a non-empty string" },
-      { status: 400 },
-    );
+    return errorResponse("content is required and must be a non-empty string", 400);
   }
   const content = sanitizeHtml((body.content as string).trim());
   if (content.length > 10000) {
-    return NextResponse.json(
-      { error: "content must not exceed 10000 characters" },
-      { status: 400 },
-    );
+    return errorResponse("content must not exceed 10000 characters", 400);
   }
 
   const author = typeof body.author === "string" && body.author.trim().length > 0

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
 import { resolveDraftKey } from "@/lib/draft-sync";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { db } from "@/db";
 import { storyWriterSession, storyWriterDraft, storyWriterExecutionLog, message } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
@@ -28,12 +30,9 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const result = await parseJsonBody(request);
+  if ("error" in result) return result.error;
+  const body = result.data as Record<string, unknown>;
 
   const output = typeof body.output === "string" ? body.output : "";
   const taskId = typeof body.taskId === "string" ? body.taskId : null;
@@ -51,7 +50,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
+    return errorResponse("No active story writer session", 404);
   }
 
   // Save assistant message if provided
@@ -195,7 +194,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   const draftId = url.searchParams.get("draftId");
 
   if (!draftId) {
-    return NextResponse.json({ error: "draftId query param required" }, { status: 400 });
+    return errorResponse("draftId query param required", 400);
   }
 
   const session = await db
@@ -210,7 +209,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active session" }, { status: 404 });
+    return errorResponse("No active session", 404);
   }
 
   await db

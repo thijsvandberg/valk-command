@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { subtaskSuggestion } from "@/db/schema";
@@ -34,12 +36,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   let titles: string[];
 
@@ -50,10 +49,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   } else if (typeof body.output === "string" && body.output) {
     titles = parseSubtaskSuggestions(body.output);
   } else {
-    return NextResponse.json(
-      { error: "suggestions (string[]) or output (string) is required" },
-      { status: 400 },
-    );
+    return errorResponse("suggestions (string[]) or output (string) is required", 400);
   }
 
   // Replace all existing suggestions for this ticket

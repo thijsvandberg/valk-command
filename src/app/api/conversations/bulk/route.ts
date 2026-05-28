@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { conversation, storyWriterSession } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const VALID_ACTIONS = ["delete", "markRead", "markUnread"] as const;
 type BulkAction = typeof VALID_ACTIONS[number];
@@ -16,23 +18,20 @@ export async function PATCH(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: BulkBody;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as BulkBody;
 
   if (!Array.isArray(body.ids) || body.ids.length === 0 || body.ids.some((id) => typeof id !== "string")) {
-    return NextResponse.json({ error: "ids must be a non-empty array of strings" }, { status: 400 });
+    return errorResponse("ids must be a non-empty array of strings", 400);
   }
 
   if (body.ids.length > 200) {
-    return NextResponse.json({ error: "Maximum 200 conversations per bulk operation" }, { status: 400 });
+    return errorResponse("Maximum 200 conversations per bulk operation", 400);
   }
 
   if (!VALID_ACTIONS.includes(body.action)) {
-    return NextResponse.json({ error: `action must be one of: ${VALID_ACTIONS.join(", ")}` }, { status: 400 });
+    return errorResponse(`action must be one of: ${VALID_ACTIONS.join(", ")}`, 400);
   }
 
   const { ids, action } = body;
@@ -59,5 +58,5 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ updated: result.changes });
   }
 
-  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  return errorResponse("Unknown action", 400);
 }

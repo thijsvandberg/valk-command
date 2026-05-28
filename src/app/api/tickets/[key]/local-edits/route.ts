@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import * as ticketService from "@/services/ticket-service";
 import type { UpsertLocalEditInput } from "@/services/ticket-service";
@@ -30,12 +31,10 @@ export async function PUT(
   const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
+
   try {
     const result = await ticketService.upsertLocalEdit(key, body as unknown as UpsertLocalEditInput);
     return NextResponse.json(result);

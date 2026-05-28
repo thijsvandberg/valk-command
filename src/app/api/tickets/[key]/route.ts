@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticket, ticketLocalEdit, jiraComment, ticketSubtask, storedReview, storyVersion, conversation, message, subtaskSuggestion, sprintNameCache } from "@/db/schema";
@@ -142,7 +144,7 @@ export async function GET(
     }
 
     if (!queryData) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+      return errorResponse("Ticket not found", 404);
     }
   }
 
@@ -363,25 +365,19 @@ export async function PATCH(
   });
 
   if (!t) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return errorResponse("Ticket not found", 404);
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const result: Record<string, unknown> = {};
 
   // Handle issue type change
   if (body.type !== undefined) {
     if (!VALID_ISSUE_TYPES.includes(body.type as IssueType)) {
-      return NextResponse.json(
-        { error: `type must be one of: ${VALID_ISSUE_TYPES.join(", ")}` },
-        { status: 400 },
-      );
+      return errorResponse(`type must be one of: ${VALID_ISSUE_TYPES.join(", ")}`, 400);
     }
 
     const newType = body.type as IssueType;
@@ -404,7 +400,7 @@ export async function PATCH(
   if (body.storyPoints !== undefined) {
     const raw = body.storyPoints;
     if (raw !== null && (typeof raw !== "number" || raw < 0)) {
-      return NextResponse.json({ error: "storyPoints must be null or a non-negative number" }, { status: 400 });
+      return errorResponse("storyPoints must be null or a non-negative number", 400);
     }
 
     const spValue = raw as number | null;
@@ -426,7 +422,7 @@ export async function PATCH(
   if (body.epicKey !== undefined) {
     const rawEpic = body.epicKey;
     if (rawEpic !== null && (typeof rawEpic !== "string" || !rawEpic.trim())) {
-      return NextResponse.json({ error: "epicKey must be null or a non-empty string" }, { status: 400 });
+      return errorResponse("epicKey must be null or a non-empty string", 400);
     }
 
     const epicKey = rawEpic as string | null;
@@ -455,7 +451,7 @@ export async function PATCH(
   // Handle flagged toggle
   if (body.flagged !== undefined) {
     if (typeof body.flagged !== "boolean") {
-      return NextResponse.json({ error: "flagged must be a boolean" }, { status: 400 });
+      return errorResponse("flagged must be a boolean", 400);
     }
 
     const newFlagged = body.flagged;
@@ -503,7 +499,7 @@ export async function PATCH(
   // Handle labels update
   if (body.labels !== undefined) {
     if (!Array.isArray(body.labels) || !body.labels.every((l: unknown) => typeof l === "string")) {
-      return NextResponse.json({ error: "labels must be an array of strings" }, { status: 400 });
+      return errorResponse("labels must be an array of strings", 400);
     }
 
     const labels: string[] = body.labels;
@@ -520,7 +516,7 @@ export async function PATCH(
   }
 
   if (Object.keys(result).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    return errorResponse("No valid fields to update", 400);
   }
 
   cache.invalidate(`/api/tickets/${key}`);

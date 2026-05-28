@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
@@ -13,21 +15,18 @@ export async function POST(request: Request, { params }: RouteContext) {
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  let body: { movedKey?: string; rankBefore?: string; rankAfter?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as { movedKey?: string; rankBefore?: string; rankAfter?: string };
 
   const { movedKey, rankBefore, rankAfter } = body;
 
   if (!movedKey) {
-    return NextResponse.json({ error: "movedKey is required" }, { status: 400 });
+    return errorResponse("movedKey is required", 400);
   }
 
   if (!rankBefore && !rankAfter) {
-    return NextResponse.json({ error: "rankBefore or rankAfter is required" }, { status: 400 });
+    return errorResponse("rankBefore or rankAfter is required", 400);
   }
 
   try {
@@ -35,7 +34,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     await syncJiraTimestamp(key);
   } catch (err) {
     logger.error("subtask-rank", `Failed to rank subtask ${movedKey}: ${err}`);
-    return NextResponse.json({ error: "Failed to rank in Jira" }, { status: 502 });
+    return errorResponse("Failed to rank in Jira", 502);
   }
 
   cache.invalidate(`/api/tickets/${key}`);

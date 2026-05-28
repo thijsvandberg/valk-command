@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { eq, and } from "drizzle-orm";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
@@ -18,19 +20,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const invalidSub = validatePathParam(subtaskKey);
   if (invalidSub) return invalidSub;
 
-  let body: { title?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as { title?: string };
 
   const title = body.title?.trim();
   if (!title) {
-    return NextResponse.json({ error: "title is required" }, { status: 400 });
+    return errorResponse("title is required", 400);
   }
   if (title.length > 255) {
-    return NextResponse.json({ error: "title too long" }, { status: 400 });
+    return errorResponse("title too long", 400);
   }
 
   try {
@@ -39,7 +38,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   } catch (err) {
     logger.error("subtask-rename", `Jira update failed for ${subtaskKey}: ${err}`);
     const message = err instanceof Error ? err.message : "Jira API error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return errorResponse(message, 502);
   }
 
   await db
@@ -74,7 +73,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   } catch (err) {
     logger.error("subtask-delete", `Jira rename-to-deleteme failed for ${subtaskKey}: ${err}`);
     const message = err instanceof Error ? err.message : "Jira API error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return errorResponse(message, 502);
   }
 
   await db

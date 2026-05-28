@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { db } from "@/db";
 import { storedReview, ticketMetadata, storyVersion, activityLog } from "@/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
@@ -58,10 +60,12 @@ export async function POST(
   });
 
   if (!t) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return errorResponse("Ticket not found", 404);
   }
 
-  let body: {
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as {
     source: "ticket-detail" | "chat" | "bulk-action";
     overallScore: number;
     dimensions: { key: string; label: string; score: number; feedback: string }[];
@@ -69,29 +73,17 @@ export async function POST(
     suggestions: string[];
   };
 
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
   if (
     typeof body.overallScore !== "number" ||
     body.overallScore < 0 ||
     body.overallScore > 100
   ) {
-    return NextResponse.json(
-      { error: "overallScore must be 0-100" },
-      { status: 400 },
-    );
+    return errorResponse("overallScore must be 0-100", 400);
   }
 
   const validSources = ["ticket-detail", "chat", "bulk-action"];
   if (!validSources.includes(body.source)) {
-    return NextResponse.json(
-      { error: "source must be ticket-detail, chat, or bulk-action" },
-      { status: 400 },
-    );
+    return errorResponse("source must be ticket-detail, chat, or bulk-action", 400);
   }
 
   // Fetch latest version hash and total count in parallel — no need to load all version rows

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { validatePathParam } from "@/lib/api-validation";
+import { parseJsonBody } from "@/lib/request-parser";
+import { errorResponse, validationError } from "@/lib/api-response";
 import { z } from "zod";
 import { db } from "@/db";
 import { storyWriterSession, storyWriterDraft, conversation, message, storyVersion, ticket, ticketLocalEdit, relatedStoryCandidate, ticketLink } from "@/db/schema";
@@ -120,7 +122,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ session: resolvedSession, messages, aiDrafts, relatedCandidates });
   } catch (err) {
     logger.error("story-writer", "GET failed", err);
-    return NextResponse.json({ error: "Failed to load story writer session" }, { status: 500 });
+    return errorResponse("Failed to load story writer session", 500);
   }
 }
 
@@ -141,7 +143,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
       .get();
 
     if (!ticketRow) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+      return errorResponse("Ticket not found", 404);
     }
 
     const [latestVersion, descLocalEdit, titleLocalEdit] = await Promise.all([
@@ -212,10 +214,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     });
 
     if (conflictError === "conflict") {
-      return NextResponse.json(
-        { error: "An active story writer session already exists for this ticket" },
-        { status: 409 },
-      );
+      return errorResponse("An active story writer session already exists for this ticket", 409);
     }
 
     const session = await db
@@ -233,7 +232,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ session, messages: [], aiDrafts: [] }, { status: 201 });
   } catch (err) {
     logger.error("story-writer", "POST failed", err);
-    return NextResponse.json({ error: "Failed to create story writer session" }, { status: 500 });
+    return errorResponse("Failed to create story writer session", 500);
   }
 }
 
@@ -246,19 +245,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let rawBody: unknown;
-  try {
-    rawBody = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const bodyResult = await parseJsonBody(request);
+  if ("error" in bodyResult) return bodyResult.error;
+  const rawBody = bodyResult.data;
 
   const parsed = patchSessionSchema.safeParse(rawBody);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid request body" },
-      { status: 400 },
-    );
+    return validationError(parsed.error);
   }
 
   const body = parsed.data;
@@ -275,7 +268,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active session" }, { status: 404 });
+    return errorResponse("No active session", 404);
   }
 
   const updates: Record<string, unknown> = {
@@ -355,7 +348,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active session" }, { status: 404 });
+    return errorResponse("No active session", 404);
   }
 
   if (deleteConversation) {

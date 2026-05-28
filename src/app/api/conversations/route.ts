@@ -4,6 +4,8 @@ import { conversation } from "@/db/schema";
 import { randomUUID } from "crypto";
 import { preparedConversationList } from "@/db/prepared";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export async function GET() {
   // Story writer conversations (relatedTicket is set) are only shown once the user
@@ -19,25 +21,16 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("write");
   if (limited) return limited;
 
-  let body: Record<string, string | null>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, string | null>;
 
   if (typeof body.title !== "string" || body.title.trim() === "") {
-    return NextResponse.json(
-      { error: "title is required and must be a non-empty string" },
-      { status: 400 },
-    );
+    return errorResponse("title is required and must be a non-empty string", 400);
   }
 
   if (body.title.length > 500) {
-    return NextResponse.json(
-      { error: "title must not exceed 500 characters" },
-      { status: 400 },
-    );
+    return errorResponse("title must not exceed 500 characters", 400);
   }
 
   const validTypes = ["chat", "investigation"] as const;

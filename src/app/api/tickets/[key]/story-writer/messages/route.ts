@@ -4,21 +4,16 @@ import { db } from "@/db";
 import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
-import { agentFetch, type AgentError } from "@/lib/agent-fetch";
+import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { nextSequence } from "@/db/next-sequence";
 import { hasEditIntent } from "@/lib/edit-intent";
+import { agentErrorResponse, errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 type RouteContext = { params: Promise<{ key: string }> };
-
-function agentErrorResponse(error: AgentError, status: number) {
-  return NextResponse.json(
-    { error: error.error, code: error.code },
-    { status: status || 502 },
-  );
-}
 
 function computeContentHash(conversationId: string, content: string): string {
   const normalized = content.replace(/\s+/g, " ").trim();
@@ -44,16 +39,13 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const content = typeof body.content === "string" ? body.content.trim() : "";
   if (!content) {
-    return NextResponse.json({ error: "content is required" }, { status: 400 });
+    return errorResponse("content is required", 400);
   }
 
   const codebaseResearch = body.codebaseResearch === true;
@@ -73,7 +65,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active story writer session" }, { status: 404 });
+    return errorResponse("No active story writer session", 404);
   }
 
   const contentHash = computeContentHash(session.conversationId, content);
@@ -93,10 +85,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       .get();
 
     if (recent) {
-      return NextResponse.json(
-        { error: "Duplicate message", code: "DUPLICATE" },
-        { status: 409 },
-      );
+      return errorResponse("Duplicate message", 409, "DUPLICATE");
     }
   }
 
@@ -204,7 +193,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     if (epicRows.length === 0) {
       await markMessageFailed(messageId);
-      return NextResponse.json({ error: "No epics available" }, { status: 404 });
+      return errorResponse("No epics available", 404);
     }
 
     const epicsPayload = epicRows.map((e) => ({
@@ -399,7 +388,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     .get();
 
   if (!session) {
-    return NextResponse.json({ error: "No active session" }, { status: 404 });
+    return errorResponse("No active session", 404);
   }
 
   if (failedOnly) {
@@ -414,7 +403,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     return NextResponse.json({ success: true, deleted: deleted.changes });
   }
 
-  return NextResponse.json({ error: "Missing query parameter" }, { status: 400 });
+  return errorResponse("Missing query parameter", 400);
 }
 
 async function taskCreatedResponse(

@@ -5,6 +5,8 @@ import { randomUUID } from "crypto";
 import { validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { nextSequence } from "@/db/next-sequence";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const VALID_ROLES = ["user", "assistant"] as const;
 
@@ -24,38 +26,23 @@ export async function POST(
   });
 
   if (!conv) {
-    return NextResponse.json(
-      { error: "Conversation not found" },
-      { status: 404 },
-    );
+    return errorResponse("Conversation not found", 404);
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   if (typeof body.content !== "string" || body.content.trim() === "") {
-    return NextResponse.json(
-      { error: "content is required and must be a non-empty string" },
-      { status: 400 },
-    );
+    return errorResponse("content is required and must be a non-empty string", 400);
   }
 
   if (body.content.length > 50000) {
-    return NextResponse.json(
-      { error: "content must not exceed 50000 characters" },
-      { status: 400 },
-    );
+    return errorResponse("content must not exceed 50000 characters", 400);
   }
 
   if (!body.role || !VALID_ROLES.includes(body.role as typeof VALID_ROLES[number])) {
-    return NextResponse.json(
-      { error: "role is required and must be 'user' or 'assistant'" },
-      { status: 400 },
-    );
+    return errorResponse("role is required and must be 'user' or 'assistant'", 400);
   }
 
   const messageId = randomUUID();

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticket } from "@/db/schema";
@@ -20,23 +22,20 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  let body: { title?: string } = {};
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as { title?: string };
 
   const title = body.title?.trim();
   if (!title) {
-    return NextResponse.json({ error: "title is required and must be non-empty" }, { status: 400 });
+    return errorResponse("title is required and must be non-empty", 400);
   }
 
   const existing = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
   });
   if (!existing) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return errorResponse("Ticket not found", 404);
   }
 
   await db.update(ticket).set({ title }).where(eq(ticket.jiraKey, key));

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { errorResponse, agentErrorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { relatedSuggestionCache, ticket, ticketLink } from "@/db/schema";
@@ -55,7 +57,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
   });
   if (!ticketRow) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return errorResponse("Ticket not found", 404);
   }
 
   // Check cache freshness
@@ -92,15 +94,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       code: taskResult.error.code,
       error: taskResult.error.error,
     });
-    return NextResponse.json(
-      { error: taskResult.error.error, code: taskResult.error.code },
-      { status: taskResult.status || 502 },
-    );
+    return agentErrorResponse(taskResult.error, taskResult.status);
   }
 
   const taskId = taskResult.data.id;
   if (!taskId) {
-    return NextResponse.json({ error: "No task ID returned" }, { status: 502 });
+    return errorResponse("No task ID returned", 502);
   }
 
   return NextResponse.json({
@@ -122,16 +121,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   const output = typeof body.output === "string" ? body.output : "";
   if (!output) {
-    return NextResponse.json({ error: "output is required" }, { status: 400 });
+    return errorResponse("output is required", 400);
   }
 
   // Parse the workspace output

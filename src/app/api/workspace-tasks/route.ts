@@ -1,5 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { agentFetch } from "@/lib/agent-fetch";
+import { errorResponse, agentErrorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logActivity } from "@/lib/activity-logger";
 import { db } from "@/db";
@@ -121,22 +123,19 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("workspace");
   if (limited) return limited;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as Record<string, unknown>;
 
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
+    return errorResponse("Request body must be a JSON object", 400);
   }
 
   const b = body as Record<string, unknown>;
   // Accept both "skillName" and "skill" for compatibility
   const skillName = typeof b.skillName === "string" ? b.skillName : typeof b.skill === "string" ? b.skill : null;
   if (!skillName) {
-    return NextResponse.json({ error: "skillName (string) is required" }, { status: 400 });
+    return errorResponse("skillName (string) is required", 400);
   }
 
   const conversationId = typeof b.conversationId === "string"
@@ -212,10 +211,7 @@ export async function POST(request: Request) {
       summary: `Agent task failed (skill: ${skillName}): ${result.error.code}`,
       errorDetail: JSON.stringify({ code: result.error.code, error: result.error.error, httpStatus: result.status, retryCount: result.retryCount, skill: skillName }),
     });
-    return NextResponse.json(
-      { error: result.error.error, code: result.error.code },
-      { status: result.status || 502 },
-    );
+    return agentErrorResponse(result.error, result.status);
   }
 
   const taskData = result.data as Record<string, unknown>;
@@ -263,10 +259,7 @@ export async function GET(request: Request) {
   const proxyResult = await agentFetch("/api/tasks");
 
   if (!proxyResult.ok) {
-    return NextResponse.json(
-      { error: proxyResult.error.error, code: proxyResult.error.code },
-      { status: proxyResult.status || 502 },
-    );
+    return agentErrorResponse(proxyResult.error, proxyResult.status);
   }
 
   return NextResponse.json(proxyResult.data, { status: proxyResult.status });

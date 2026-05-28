@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
@@ -18,12 +19,9 @@ export async function PUT(
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let body: UpdateMetadataInput;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as UpdateMetadataInput;
 
   try {
     const result = await ticketService.updateTicketMetadata(key, body);
