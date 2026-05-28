@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SessionTicketView } from "./SessionTicketView";
+import { SessionTicketView, SessionMetadataPanel } from "./SessionTicketView";
 import type { Ticket, TicketDetail } from "@/types/ticket";
 
 // Mock child components so tests focus on SessionTicketView wiring
@@ -85,9 +85,23 @@ vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
   renderMarkdown: (v: string) => v,
 }));
 
+vi.mock("@clerk/nextjs", () => ({
+  useUser: () => ({ user: { firstName: "Test", lastName: "User", imageUrl: null } }),
+}));
+
 vi.mock("@/lib/api-client", () => ({
-  tickets: { saveLocalEdit: vi.fn(), addJiraComment: vi.fn() },
-  jira: { moveSprint: vi.fn() },
+  tickets: {
+    saveLocalEdit: vi.fn(),
+    addJiraComment: vi.fn(),
+    updateStoryPoints: vi.fn().mockResolvedValue({}),
+    updateMetadata: vi.fn().mockResolvedValue({}),
+    updateEpic: vi.fn().mockResolvedValue({}),
+    updateLabels: vi.fn().mockResolvedValue({}),
+  },
+  jira: {
+    moveSprint: vi.fn().mockResolvedValue({}),
+    assign: vi.fn().mockResolvedValue({}),
+  },
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
@@ -101,6 +115,46 @@ vi.mock("@/lib/jira-url", () => ({
 vi.mock("@/lib/date-utils", () => ({
   relativeDate: () => "1 day ago",
   formatAbsoluteDate: () => "2026-05-27",
+}));
+
+vi.mock("@/components/shared/StoryPointPicker", () => ({
+  StoryPointPicker: ({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) => (
+    <button data-testid="story-point-picker" onClick={() => onChange(5)}>SP: {value ?? "none"}</button>
+  ),
+}));
+
+vi.mock("@/components/shared/BusinessValuePicker", () => ({
+  BusinessValuePicker: ({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) => (
+    <button data-testid="business-value-picker" onClick={() => onChange(8)}>BV: {value ?? "none"}</button>
+  ),
+}));
+
+vi.mock("@/components/shared/AssigneePicker", () => ({
+  AssigneePicker: ({ onChange }: { value: unknown; onChange: (v: { accountId: string; displayName: string; avatarUrl: string | null } | null) => void }) => (
+    <button data-testid="assignee-picker" onClick={() => onChange({ accountId: "user-1", displayName: "Jane Doe", avatarUrl: null })}>Assignee</button>
+  ),
+}));
+
+vi.mock("@/components/shared/EpicPicker", () => ({
+  EpicPicker: ({ onChange }: { value: unknown; onChange: (v: { key: string; name: string } | null) => void }) => (
+    <button data-testid="epic-picker" onClick={() => onChange({ key: "EPIC-1", name: "My Epic" })}>Epic</button>
+  ),
+}));
+
+vi.mock("@/components/shared/LabelPicker", () => ({
+  LabelPicker: ({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
+    <button data-testid="label-picker" onClick={() => onChange([...value, "new-label"])}>Labels: {value.join(", ")}</button>
+  ),
+}));
+
+vi.mock("@/components/shared/SprintPicker", () => ({
+  SprintPicker: ({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) => (
+    <button data-testid="sprint-picker" onClick={() => onChange("sprint-2")}>Sprint: {value ?? "none"}</button>
+  ),
+}));
+
+vi.mock("@/components/shared/Tooltip", () => ({
+  Tooltip: ({ children }: { children: React.ReactNode; content: string }) => <>{children}</>,
 }));
 
 function makeTicket(overrides?: Partial<Ticket>): Ticket {
@@ -331,5 +385,128 @@ describe("SessionTicketView", () => {
     expect(onViewDiff).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId("desc-view-diff"));
     expect(onViewDiff).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("SessionMetadataPanel", () => {
+  const onMutate = vi.fn();
+
+  const baseTicket = makeTicket({
+    storyPoints: 3,
+    businessValue: 5,
+    jiraStatus: "TO DO",
+    epic: "My Epic",
+    epicKey: "EPIC-1",
+    assignee: { name: "John Doe", initials: "JD", color: "hsl(200, 55%, 50%)" },
+    sprintId: "sprint-1",
+  });
+
+  const baseDetail = makeDetail({
+    reporter: { name: "Reporter Name", initials: "RN", color: "hsl(100, 55%, 50%)" },
+    labels: ["bug", "frontend"],
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders all editable pickers", () => {
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    expect(screen.getByTestId("story-point-picker")).toBeInTheDocument();
+    expect(screen.getByTestId("business-value-picker")).toBeInTheDocument();
+    expect(screen.getByTestId("assignee-picker")).toBeInTheDocument();
+    expect(screen.getByTestId("epic-picker")).toBeInTheDocument();
+    expect(screen.getByTestId("label-picker")).toBeInTheDocument();
+    expect(screen.getByTestId("sprint-picker")).toBeInTheDocument();
+  });
+
+  it("renders status badge as read-only text", () => {
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    expect(screen.getByText("TO DO")).toBeInTheDocument();
+    expect(screen.getByText("Status")).toBeInTheDocument();
+  });
+
+  it("renders reporter as read-only text", () => {
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    expect(screen.getByText("Reporter Name")).toBeInTheDocument();
+  });
+
+  it("renders created and updated as read-only text", () => {
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    const dates = screen.getAllByText("1 day ago");
+    expect(dates.length).toBe(2);
+  });
+
+  it("does not render Priority or Components fields", () => {
+    render(
+      <SessionMetadataPanel
+        ticket={baseTicket}
+        detail={makeDetail({ priority: "High", components: ["backend"] })}
+        onMutate={onMutate}
+      />,
+    );
+
+    expect(screen.queryByText("Priority")).not.toBeInTheDocument();
+    expect(screen.queryByText("Components")).not.toBeInTheDocument();
+  });
+
+  it("calls tickets.updateStoryPoints when story point picker changes", async () => {
+    const { tickets: ticketsMock } = await import("@/lib/api-client");
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByTestId("story-point-picker"));
+    expect(ticketsMock.updateStoryPoints).toHaveBeenCalledWith("VPL-100", 5);
+  });
+
+  it("calls tickets.updateMetadata when business value picker changes", async () => {
+    const { tickets: ticketsMock } = await import("@/lib/api-client");
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByTestId("business-value-picker"));
+    expect(ticketsMock.updateMetadata).toHaveBeenCalledWith("VPL-100", { businessValue: 8 });
+  });
+
+  it("calls jira.assign when assignee picker changes", async () => {
+    const { jira: jiraMock } = await import("@/lib/api-client");
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByTestId("assignee-picker"));
+    expect(jiraMock.assign).toHaveBeenCalledWith({
+      issueKey: "VPL-100",
+      accountId: "user-1",
+      name: "Jane Doe",
+    });
+  });
+
+  it("calls tickets.updateEpic when epic picker changes", async () => {
+    const { tickets: ticketsMock } = await import("@/lib/api-client");
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByTestId("epic-picker"));
+    expect(ticketsMock.updateEpic).toHaveBeenCalledWith("VPL-100", "EPIC-1");
+  });
+
+  it("calls tickets.updateLabels when label picker changes", async () => {
+    const { tickets: ticketsMock } = await import("@/lib/api-client");
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByTestId("label-picker"));
+    expect(ticketsMock.updateLabels).toHaveBeenCalledWith("VPL-100", ["bug", "frontend", "new-label"]);
+  });
+
+  it("hides epic picker for subtasks", () => {
+    render(
+      <SessionMetadataPanel
+        ticket={makeTicket({ ...baseTicket, type: "subtask" })}
+        detail={baseDetail}
+        onMutate={onMutate}
+      />,
+    );
+
+    expect(screen.queryByTestId("epic-picker")).not.toBeInTheDocument();
   });
 });

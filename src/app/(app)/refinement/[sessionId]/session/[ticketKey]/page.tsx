@@ -655,7 +655,7 @@ export default function RefinementSessionTicketPage({
             >
               <ChevronLeft size={14} strokeWidth={2} />
             </button>
-            <div className="hidden items-center gap-1.5 lg:flex">
+            <div className="hidden items-center gap-1.5 min-[1400px]:flex">
               {queue.map((key, idx) => (
                 <button
                   key={key}
@@ -1025,7 +1025,7 @@ export default function RefinementSessionTicketPage({
           {activeSidebarPanel === "info" && ticketData && (
             <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
               <h3 className="mb-3 text-label font-semibold uppercase tracking-wider text-text-muted">Info</h3>
-              <SessionMetadataPanel ticket={ticketData} detail={ticketData} />
+              <SessionMetadataPanel ticket={ticketData} detail={ticketData} onMutate={() => mutate()} />
             </SubtasksPaneResizable>
           )}
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 import type { Ticket, TicketDetail } from "@/types/ticket";
 
 import { Avatar } from "@/components/shared/Avatar";
@@ -11,6 +12,14 @@ import { LinkedIssuesSection } from "@/components/ticket-detail/LinkedIssuesSect
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
 
 import { SprintPicker } from "@/components/shared/SprintPicker";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { EpicPicker } from "@/components/shared/EpicPicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
+import { LabelPicker } from "@/components/shared/LabelPicker";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { tickets, jira } from "@/lib/api-client";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
@@ -62,13 +71,19 @@ function CollapsibleComments({
   jiraComments: TicketDetail["jiraComments"];
   onMutate?: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const postedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { user } = useUser();
   const totalCount = jiraComments.length;
+
+  const userInitials = user
+    ? `${(user.firstName?.[0] ?? "").toUpperCase()}${(user.lastName?.[0] ?? "").toUpperCase()}`
+    : "";
+  const hasUserImage = !!user?.imageUrl;
 
   const handlePost = useCallback(async (content?: string) => {
     const text = (content ?? newComment).trim();
@@ -108,11 +123,94 @@ function CollapsibleComments({
         </span>
       </button>
       {expanded && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-4">
+          {/* Comment input with user avatar */}
+          <div className="flex gap-3">
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden"
+              style={{
+                backgroundColor: hasUserImage ? "transparent" : "var(--color-brand-600)",
+              }}
+            >
+              {hasUserImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.imageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-[10px] font-semibold text-white">
+                  {userInitials}
+                </span>
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="relative">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => { setNewComment(e.target.value); setError(null); }}
+                  placeholder="Post a comment to Jira..."
+                  rows={2}
+                  disabled={posting}
+                  className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 pr-10 text-body-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      handlePost();
+                    }
+                  }}
+                />
+                {newComment.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handlePost()}
+                    disabled={posting}
+                    className="absolute right-2 bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+                    title="Post to Jira (Cmd+Enter)"
+                    aria-label="Post comment to Jira"
+                  >
+                    <Send size={12} strokeWidth={2} />
+                  </button>
+                )}
+              </div>
+              {posted && (
+                <div
+                  className="mt-1.5 flex items-center gap-1.5 text-caption text-[var(--color-brand-400)]"
+                  style={{ animation: "fadeInUp 0.15s ease" }}
+                >
+                  <Check size={13} strokeWidth={2} />
+                  <span>Comment posted to Jira</span>
+                </div>
+              )}
+              {error && (
+                <p className="mt-1.5 text-caption text-[var(--color-status-error)]">{error}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Quick-post buttons */}
+          <div className="flex flex-wrap gap-1.5 pl-10">
+            {QUICK_COMMENTS.map((text) => (
+              <button
+                key={text}
+                type="button"
+                onClick={() => handlePost(text)}
+                disabled={posting}
+                className="rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-caption text-text-tertiary cursor-pointer hover:border-[var(--color-brand-500)]/30 hover:bg-[var(--color-brand-500)]/[0.06] hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ transition: "border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+
+          {/* Existing comments */}
           {[...jiraComments].reverse().map((comment) => (
             <div key={comment.id} className="flex gap-3">
               <div
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
                 style={{ backgroundColor: comment.authorColor }}
               >
                 {comment.authorInitials}
@@ -132,68 +230,7 @@ function CollapsibleComments({
           ))}
 
           {totalCount === 0 && !newComment.trim() && !posted && (
-            <p className="text-body-sm text-text-muted">No comments</p>
-          )}
-
-          {/* Quick-post buttons */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {QUICK_COMMENTS.map((text) => (
-              <button
-                key={text}
-                type="button"
-                onClick={() => handlePost(text)}
-                disabled={posting}
-                className="rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-caption text-text-tertiary cursor-pointer hover:border-[var(--color-brand-500)]/30 hover:bg-[var(--color-brand-500)]/[0.06] hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ transition: "border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-              >
-                {text}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom comment input */}
-          <div className="flex gap-2">
-            <div className="relative min-w-0 flex-1">
-              <textarea
-                value={newComment}
-                onChange={(e) => { setNewComment(e.target.value); setError(null); }}
-                placeholder="Post a comment to Jira..."
-                rows={1}
-                disabled={posting}
-                className="w-full resize-none rounded-lg border border-border-default bg-overlay-subtle px-3 py-1.5 pr-8 text-body-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    handlePost();
-                  }
-                }}
-              />
-              {newComment.trim() && (
-                <button
-                  type="button"
-                  onClick={() => handlePost()}
-                  disabled={posting}
-                  className="absolute right-1.5 bottom-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
-                  title="Post to Jira (Cmd+Enter)"
-                  aria-label="Post comment to Jira"
-                >
-                  <Send size={10} strokeWidth={2} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {posted && (
-            <div
-              className="flex items-center gap-1.5 text-caption text-[var(--color-brand-400)]"
-              style={{ animation: "fadeInUp 0.15s ease" }}
-            >
-              <Check size={11} strokeWidth={2} />
-              <span>Posted to Jira</span>
-            </div>
-          )}
-          {error && (
-            <p className="text-caption text-[var(--color-status-error)]">{error}</p>
+            <p className="pl-10 text-body-sm text-text-muted">No Jira comments</p>
           )}
         </div>
       )}
@@ -210,15 +247,62 @@ function MetadataDetailRow({ label, children }: { label: string; children: React
   );
 }
 
+function CompactField({ label, children, accent }: { label: string; children: React.ReactNode; accent?: boolean }) {
+  return (
+    <div
+      className="rounded-lg border border-border-subtle px-3 py-2"
+      style={{
+        backgroundColor: accent ? "color-mix(in srgb, var(--color-brand-500) 4%, var(--color-surface-elevated))" : "var(--color-overlay-subtle)",
+        transition: "background-color 0.15s ease",
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-caption text-text-muted">{label}</span>
+        <div className="text-body-lg text-text-secondary">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function SessionMetadataPanel({
   ticket,
   detail,
+  onMutate,
 }: {
   ticket: Ticket;
   detail: TicketDetail;
+  onMutate?: () => void;
 }) {
   const { sprints } = useJiraSprints();
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
+  const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
+  const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
+  const [assignee, setAssignee] = useState(ticket.assignee);
+  const [epicName, setEpicName] = useState<string | null>(ticket.epic);
+  const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
+  const [labels, setLabels] = useState<string[]>(() => detail.labels ?? []);
+
+  const handleStoryPointsChange = useCallback(async (v: number | null) => {
+    const prev = storyPoints;
+    setStoryPoints(v);
+    try {
+      await tickets.updateStoryPoints(ticket.key, v);
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setStoryPoints(prev);
+    }
+  }, [ticket.key, storyPoints, onMutate]);
+
+  const handleBusinessValueChange = useCallback(async (v: number | null) => {
+    setBusinessValue(v);
+    try {
+      await tickets.updateMetadata(ticket.key, { businessValue: v });
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+    }
+  }, [ticket.key, onMutate]);
 
   const handleSprintChange = useCallback(async (sprintId: string | null) => {
     if (!sprintId) return;
@@ -226,100 +310,157 @@ export function SessionMetadataPanel({
     setCurrentSprintId(sprintId);
     try {
       await jira.moveSprint({ issueKeys: [ticket.key], targetSprintId: sprintId });
+      onMutate?.();
     } catch (err) {
-      console.error("Failed to move sprint:", err);
+      console.error("Operation failed:", err);
       setCurrentSprintId(prev);
     }
-  }, [ticket.key, currentSprintId]);
+  }, [ticket.key, currentSprintId, onMutate]);
+
+  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+    const prev = assignee;
+    if (user) {
+      const name = user.displayName;
+      const parts = name.trim().split(/\s+/);
+      const initials = parts.length === 1 ? parts[0].slice(0, 2).toUpperCase() : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      const hue = ((hash % 360) + 360) % 360;
+      setAssignee({ name, initials, color: `hsl(${hue}, 55%, 50%)` });
+    } else {
+      setAssignee(null);
+    }
+    try {
+      await jira.assign({
+        issueKey: ticket.key,
+        accountId: user?.accountId ?? null,
+        name: user?.displayName ?? null,
+      });
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setAssignee(prev);
+    }
+  }, [ticket.key, assignee, onMutate]);
+
+  const handleEpicChange = useCallback(async (epic: EpicOption | null) => {
+    const prevName = epicName;
+    const prevKey = epicKey;
+    setEpicName(epic?.name ?? null);
+    setEpicKey(epic?.key ?? null);
+    try {
+      await tickets.updateEpic(ticket.key, epic?.key ?? null);
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setEpicName(prevName);
+      setEpicKey(prevKey);
+    }
+  }, [ticket.key, epicName, epicKey, onMutate]);
+
+  const handleLabelsChange = useCallback(async (newLabels: string[]) => {
+    const prev = labels;
+    setLabels(newLabels);
+    try {
+      await tickets.updateLabels(ticket.key, newLabels);
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setLabels(prev);
+    }
+  }, [ticket.key, labels, onMutate]);
+
+  const statusColors = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
 
   return (
     <div
-      className="mt-4 rounded-xl border border-border-default bg-overlay-subtle/50 px-4 py-3"
+      className="mt-4 space-y-3"
       style={{ animation: "fadeInUp 0.15s ease" }}
     >
-      <div className="space-y-0.5">
-        {detail.reporter && (
-          <MetadataDetailRow label="Reporter">
-            <div className="flex items-center justify-end gap-2">
-              <Avatar assignee={detail.reporter} size={18} />
-              <span className="text-body-sm">{detail.reporter.name}</span>
-            </div>
-          </MetadataDetailRow>
-        )}
-        {ticket.assignee && (
-          <MetadataDetailRow label="Assignee">
-            <div className="flex items-center justify-end gap-2">
-              <Avatar assignee={ticket.assignee} size={18} />
-              <span className="text-body-sm">{ticket.assignee.name}</span>
-            </div>
-          </MetadataDetailRow>
-        )}
-        <MetadataDetailRow label="Priority">
-          <span className="text-body-sm">{detail.priority}</span>
-        </MetadataDetailRow>
-        {ticket.epic && (
-          <MetadataDetailRow label="Epic">
-            <span className="text-body-sm text-[var(--color-brand-400)]">{ticket.epic}</span>
-          </MetadataDetailRow>
-        )}
-        <MetadataDetailRow label="Sprint">
-          <SprintPicker
-            value={currentSprintId}
-            sprints={sprints ?? []}
-            onChange={handleSprintChange}
-            align="right"
-          />
-        </MetadataDetailRow>
-        {detail.labels.length > 0 && (
-          <MetadataDetailRow label="Labels">
-            <div className="flex flex-wrap justify-end gap-1">
-              {detail.labels.map((label) => (
-                <span
-                  key={label}
-                  className="rounded-md bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary"
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-          </MetadataDetailRow>
-        )}
-        {detail.components.length > 0 && (
-          <MetadataDetailRow label="Components">
-            <div className="flex flex-wrap justify-end gap-1">
-              {detail.components.map((comp) => (
-                <span
-                  key={comp}
-                  className="rounded-md bg-overlay-default px-1.5 py-0.5 text-caption text-text-tertiary"
-                >
-                  {comp}
-                </span>
-              ))}
-            </div>
-          </MetadataDetailRow>
-        )}
-        {detail.parent && (
-          <MetadataDetailRow label="Parent">
-            <a
-              href={`/tickets/${detail.parent.key}`}
-              target="_blank"
-              className="text-body-sm text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)]"
-              style={{ transition: "color 0.15s ease" }}
+      {/* Story Points + Business Value compact row */}
+      <div className="grid grid-cols-2 gap-2">
+        <CompactField label="Story Points" accent={storyPoints !== null}>
+          <StoryPointPicker value={storyPoints} onChange={handleStoryPointsChange} />
+        </CompactField>
+        <CompactField label="Business Value" accent={businessValue !== null}>
+          <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" />
+        </CompactField>
+      </div>
+
+      {/* Metadata rows */}
+      <div className="rounded-xl border border-border-default bg-overlay-subtle/50 px-4 py-3">
+        <div className="space-y-0.5">
+          <MetadataDetailRow label="Status">
+            <span
+              className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
+              style={{ backgroundColor: statusColors.bg, color: statusColors.text }}
             >
-              {detail.parent.key} {detail.parent.title}
-            </a>
+              {ticket.jiraStatus}
+            </span>
           </MetadataDetailRow>
-        )}
-        <MetadataDetailRow label="Created">
-          <span className="text-body-sm" title={formatAbsoluteDate(detail.createdAt)}>
-            {relativeDate(detail.createdAt)}
-          </span>
-        </MetadataDetailRow>
-        <MetadataDetailRow label="Updated">
-          <span className="text-body-sm" title={formatAbsoluteDate(detail.updatedAt)}>
-            {relativeDate(detail.updatedAt)}
-          </span>
-        </MetadataDetailRow>
+          {ticket.type !== "epic" && ticket.type !== "subtask" && (
+            <MetadataDetailRow label="Epic">
+              <EpicPicker
+                value={epicKey ? { key: epicKey, name: epicName ?? epicKey } : null}
+                onChange={handleEpicChange}
+                align="right"
+                ticketKey={ticket.key}
+              />
+            </MetadataDetailRow>
+          )}
+          {detail.parent && (
+            <MetadataDetailRow label="Parent">
+              <a
+                href={`/tickets/${detail.parent.key}`}
+                target="_blank"
+                className="text-body-sm text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] cursor-pointer"
+                style={{ transition: "color 0.15s ease" }}
+              >
+                {detail.parent.key} {detail.parent.title}
+              </a>
+            </MetadataDetailRow>
+          )}
+          <MetadataDetailRow label="Sprint">
+            <SprintPicker
+              value={currentSprintId}
+              sprints={sprints ?? []}
+              onChange={handleSprintChange}
+              align="right"
+            />
+          </MetadataDetailRow>
+          <MetadataDetailRow label="Assignee">
+            <AssigneePicker
+              value={assignee}
+              onChange={handleAssigneeChange}
+              align="right"
+            />
+          </MetadataDetailRow>
+          {detail.reporter && (
+            <MetadataDetailRow label="Reporter">
+              <div className="flex items-center justify-end gap-2">
+                <span className="truncate">{detail.reporter.name}</span>
+                <Avatar assignee={detail.reporter} size={20} />
+              </div>
+            </MetadataDetailRow>
+          )}
+          <MetadataDetailRow label="Created">
+            <Tooltip content={formatAbsoluteDate(detail.createdAt)}>
+              <span className="text-body-sm">{relativeDate(detail.createdAt)}</span>
+            </Tooltip>
+          </MetadataDetailRow>
+          <MetadataDetailRow label="Updated">
+            <Tooltip content={formatAbsoluteDate(detail.updatedAt)}>
+              <span className="text-body-sm">{relativeDate(detail.updatedAt)}</span>
+            </Tooltip>
+          </MetadataDetailRow>
+          <MetadataDetailRow label="Labels">
+            <LabelPicker
+              value={labels}
+              onChange={handleLabelsChange}
+              align="right"
+            />
+          </MetadataDetailRow>
+        </div>
       </div>
     </div>
   );
@@ -503,7 +644,7 @@ export function SessionTicketView({
       />
 
       {/* Confluence pages */}
-      <ConfluencePagesSection ticketKey={ticket.key} />
+      <ConfluencePagesSection ticketKey={ticket.key} hideWhenEmpty />
 
       {/* Comments */}
       <CollapsibleComments ticketKey={ticket.key} jiraComments={detail.jiraComments} onMutate={onMutate} />
