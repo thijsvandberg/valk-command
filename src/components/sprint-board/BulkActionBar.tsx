@@ -442,7 +442,7 @@ export function BulkActionBar({
   isRefreshing?: boolean;
 }) {
   return (
-    <BarContainer borderPosition="top" className="sticky bottom-0 z-20 gap-2 bg-[var(--color-surface-base)] sm:gap-3">
+    <BarContainer borderPosition="top" className="sticky bottom-0 z-40 gap-2 bg-[var(--color-surface-base)] sm:gap-3">
       {/* Select all / deselect all checkbox */}
       {onToggleAll && (
         <button
@@ -469,14 +469,20 @@ export function BulkActionBar({
         </button>
       )}
 
-      {/* Selection counter with SP and BV */}
-      <span className="shrink-0 text-body-sm font-medium text-text-secondary whitespace-nowrap">
-        {count}{totalCount ? `/${totalCount}` : ""} selected
+      {/* Selection counter with SP and BV badges */}
+      <span className="shrink-0 flex items-center gap-2 text-body-sm font-medium text-text-secondary whitespace-nowrap tabular-nums">
+        <span>{count}{totalCount ? `/${totalCount}` : ""} selected</span>
         {selectedPoints !== undefined && selectedPoints > 0 && (
-          <span className="ml-1 text-text-tertiary">&middot; {selectedPoints} SP</span>
+          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+            <span className="font-semibold text-text-primary">{selectedPoints}</span>
+            <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">SP</span>
+          </span>
         )}
         {selectedBV !== undefined && selectedBV > 0 && (
-          <span className="ml-1 text-text-tertiary">&middot; {selectedBV} BV</span>
+          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+            <span className="font-semibold text-text-primary">{selectedBV}</span>
+            <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">BV</span>
+          </span>
         )}
       </span>
 

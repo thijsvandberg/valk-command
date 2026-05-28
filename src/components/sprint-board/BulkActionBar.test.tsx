@@ -14,30 +14,32 @@ describe("BulkActionBar", () => {
     expect(screen.getByText(/3\/10 selected/)).toBeTruthy();
   });
 
-  it("shows SP when selectedPoints > 0", () => {
+  it("shows SP badge when selectedPoints > 0", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={5} />);
-    expect(screen.getByText(/5 SP/)).toBeTruthy();
+    expect(screen.getByText("5")).toBeTruthy();
+    expect(screen.getByText("SP")).toBeTruthy();
   });
 
-  it("shows BV when selectedBV > 0", () => {
+  it("shows BV badge when selectedBV > 0", () => {
     render(<BulkActionBar {...defaultProps} selectedBV={7} />);
-    expect(screen.getByText(/7 BV/)).toBeTruthy();
+    expect(screen.getByText("7")).toBeTruthy();
+    expect(screen.getByText("BV")).toBeTruthy();
   });
 
-  it("shows both SP and BV when both > 0", () => {
+  it("shows both SP and BV badges when both > 0", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={3} selectedBV={7} />);
-    expect(screen.getByText(/3 SP/)).toBeTruthy();
-    expect(screen.getByText(/7 BV/)).toBeTruthy();
+    expect(screen.getByText("SP")).toBeTruthy();
+    expect(screen.getByText("BV")).toBeTruthy();
   });
 
   it("hides SP when 0", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={0} />);
-    expect(screen.queryByText(/SP/)).toBeNull();
+    expect(screen.queryByText("SP")).toBeNull();
   });
 
   it("hides BV when 0", () => {
     render(<BulkActionBar {...defaultProps} selectedBV={0} />);
-    expect(screen.queryByText(/BV/)).toBeNull();
+    expect(screen.queryByText("BV")).toBeNull();
   });
 
   it("renders Copy List button when onCopyToClipboard is provided", () => {
