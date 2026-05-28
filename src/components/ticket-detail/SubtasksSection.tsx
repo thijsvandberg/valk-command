@@ -9,7 +9,7 @@ import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
-import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen } from "lucide-react";
+import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen, AlertTriangle } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { parseSubtaskSuggestions } from "@/lib/parse-subtask-suggestions";
@@ -187,6 +187,7 @@ export function SubtasksSection({
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [newTitle, setNewTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [jiraWarning, setJiraWarning] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<Subtask[] | null>(null);
   const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
@@ -258,15 +259,25 @@ export function SubtasksSection({
   );
 
   const handleJiraStatusChange = useCallback(async (childKey: string, status: JiraStatus) => {
+    setJiraWarning(null);
     try {
-      await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
+      const res = await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setJiraWarning(data.error ?? "Failed to update status");
+        return;
+      }
+      if (data.jiraWarning) {
+        setJiraWarning(`${childKey}: status updated locally, but Jira sync failed`);
+      }
       onMutate();
     } catch (err) {
       console.error("Failed to update status:", err);
+      setJiraWarning("Failed to update status");
     }
   }, [onMutate]);
 
@@ -626,7 +637,7 @@ export function SubtasksSection({
 
   const inlineInput = (
     <div
-      className={`flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      className={`flex items-center gap-3 px-3 py-1.5 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
       {showDragHandles && <span className="w-3 shrink-0" />}
@@ -742,6 +753,16 @@ export function SubtasksSection({
 
       {error && (
         <p className="mt-2 text-body-sm text-red-400/80">{error}</p>
+      )}
+
+      {jiraWarning && (
+        <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-body-sm text-amber-300/90">
+          <AlertTriangle size={14} className="shrink-0" />
+          <span className="flex-1">{jiraWarning}</span>
+          <button type="button" onClick={() => setJiraWarning(null)} className="shrink-0 text-amber-400/60 hover:text-amber-300 cursor-pointer">
+            &times;
+          </button>
+        </div>
       )}
 
       {filtered.length > 0 && isDndEnabled ? (
