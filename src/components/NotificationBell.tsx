@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import {
   Bell,
@@ -57,26 +58,19 @@ export function NotificationBell() {
     setOpen((v) => !v);
   }
 
+  const handleCloseDropdown = useCallback(() => {
+    setOpen(false);
+    setActiveType(null);
+    setActiveTeams(null);
+  }, []);
+
+  useOutsideClick([buttonRef, dropdownRef], handleCloseDropdown, { enabled: open });
+
   useEffect(() => {
     if (!open) return;
-    function handleOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        buttonRef.current && !buttonRef.current.contains(target) &&
-        dropdownRef.current && !dropdownRef.current.contains(target)
-      ) {
-        setOpen(false);
-        setActiveType(null);
-        setActiveTeams(null);
-      }
-    }
     function handleResize() { computePos(); }
-    document.addEventListener("mousedown", handleOutside);
     window.addEventListener("resize", handleResize);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      window.removeEventListener("resize", handleResize);
-    };
+    return () => window.removeEventListener("resize", handleResize);
   }, [open, computePos]);
 
   // Derive per-type counts, per-team counts, and the filtered list from loaded notifications.

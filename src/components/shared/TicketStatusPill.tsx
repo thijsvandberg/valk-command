@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
@@ -47,22 +48,8 @@ interface IssueTypeDropdownProps {
 
 function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTypeDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleOutsideClick(e: MouseEvent) {
-      if (skipRef?.current?.contains(e.target as Node)) return;
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
+  const refs = skipRef ? [ref, skipRef] : [ref];
+  useOutsideClick(refs, onClose);
 
   return (
     <div
@@ -110,22 +97,12 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
   const [copied, setCopied] = useState<"url" | "titled" | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const refs = skipRef ? [ref, skipRef] : [ref];
+  useOutsideClick(refs, onClose);
+
   useEffect(() => {
-    function handleOutsideClick(e: MouseEvent) {
-      if (skipRef?.current?.contains(e.target as Node)) return;
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [onClose]);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   async function copyToClipboard(text: string, type: "url" | "titled") {
     try {
@@ -202,22 +179,8 @@ const JIRA_STATUS_ORDER: JiraStatus[] = ["TO DO", "IN PROGRESS", "TEST", "DONE",
 
 function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleOutsideClick(e: MouseEvent) {
-      if (skipRef?.current?.contains(e.target as Node)) return;
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
+  const refs = skipRef ? [ref, skipRef] : [ref];
+  useOutsideClick(refs, onClose);
 
   return (
     <div
@@ -261,22 +224,8 @@ interface ReadinessDropdownProps {
 
 function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: ReadinessDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleOutsideClick(e: MouseEvent) {
-      if (skipRef?.current?.contains(e.target as Node)) return;
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
+  const refs = skipRef ? [ref, skipRef] : [ref];
+  useOutsideClick(refs, onClose);
 
   return (
     <div

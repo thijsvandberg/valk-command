@@ -8,6 +8,8 @@ import {
   useCallback,
   type RefObject,
 } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { useKeyboardNav } from "@/hooks/useKeyboardNav";
 import { createPortal } from "react-dom";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
@@ -58,7 +60,6 @@ export function UserProfilePopover({
     bottom: 0,
     left: 0,
   });
-  const [activeIdx, setActiveIdx] = useState(-1);
 
   const handleSignOut = useCallback(async () => {
     await apiFetch("/api/dev/bypass", { method: "DELETE" }).catch(() => {});
@@ -140,72 +141,24 @@ export function UserProfilePopover({
     });
   }, [open, triggerRef]);
 
-  // Click outside: check both trigger and popover
-  useEffect(() => {
-    if (!open) return;
-    function handle(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        triggerRef.current?.contains(target) ||
-        popoverRef.current?.contains(target)
-      ) {
-        return;
-      }
-      onClose();
-    }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [open, onClose, triggerRef]);
+  useOutsideClick([triggerRef, popoverRef], onClose, { enabled: open });
 
-  // Escape key
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  const disabledIndices = useMemo(
+    () => new Set(allItems.map((item, i) => (item.disabled ? i : -1)).filter((i) => i !== -1)),
+    [allItems],
+  );
 
-  // Keyboard navigation
-  const handleKeyNav = useCallback(
-    (e: React.KeyboardEvent) => {
-      const enabledIndices = allItems
-        .map((item, i) => (item.disabled ? -1 : i))
-        .filter((i) => i !== -1);
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const currentPos = enabledIndices.indexOf(activeIdx);
-        const next =
-          currentPos < enabledIndices.length - 1
-            ? enabledIndices[currentPos + 1]
-            : enabledIndices[0];
-        setActiveIdx(next ?? 0);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const currentPos = enabledIndices.indexOf(activeIdx);
-        const prev =
-          currentPos > 0
-            ? enabledIndices[currentPos - 1]
-            : enabledIndices[enabledIndices.length - 1];
-        setActiveIdx(prev ?? 0);
-      } else if (e.key === "Home") {
-        e.preventDefault();
-        setActiveIdx(enabledIndices[0] ?? 0);
-      } else if (e.key === "End") {
-        e.preventDefault();
-        setActiveIdx(enabledIndices[enabledIndices.length - 1] ?? 0);
-      } else if (e.key === "Enter" && activeIdx >= 0) {
-        e.preventDefault();
-        const item = allItems[activeIdx];
+  const { activeIndex: activeIdx, setActiveIndex: setActiveIdx, handlers: keyNavHandlers } = useKeyboardNav(
+    allItems.length,
+    disabledIndices,
+    {
+      enabled: open,
+      onEscape: onClose,
+      onSelect: useCallback((idx: number) => {
+        const item = allItems[idx];
         if (item && !item.disabled) item.action();
-      }
+      }, [allItems]),
     },
-    [activeIdx, allItems],
   );
 
   if (!open) return null;
@@ -220,7 +173,7 @@ export function UserProfilePopover({
       ref={popoverRef}
       role="menu"
       tabIndex={-1}
-      onKeyDown={handleKeyNav}
+      onKeyDown={keyNavHandlers.onKeyDown}
       className="fixed w-64 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]"
       style={{
         zIndex: 60,

@@ -54,8 +54,8 @@ Handles ArrowUp/Down/Home/End/Escape for navigating a list. Returns `{ activeInd
 - [x] Implement `useOutsideClick` hook in `src/hooks/useOutsideClick.ts`
 - [x] Implement `useKeyboardNav` hook in `src/hooks/useKeyboardNav.ts`
 - [x] Write tests for both hooks
-- [ ] Migrate `NotificationBell.tsx` to use both hooks
-- [ ] Migrate `UserProfilePopover.tsx` to use both hooks
-- [ ] Migrate `TicketStatusPill.tsx` dropdowns to use both hooks
-- [ ] Migrate `ConversationList.tsx` context menu to use `useOutsideClick`
+- [x] Migrate `NotificationBell.tsx` to use both hooks
+- [x] Migrate `UserProfilePopover.tsx` to use both hooks
+- [x] Migrate `TicketStatusPill.tsx` dropdowns to use both hooks
+- [x] Migrate `ConversationList.tsx` context menu to use `useOutsideClick`
 - [ ] All existing tests pass

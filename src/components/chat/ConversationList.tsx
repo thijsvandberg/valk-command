@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import type { Conversation, ConversationType } from "@/types/chat";
 import { Trash2, Filter, Search, X, ChevronRight, Pin, PanelLeftClose, PanelLeftOpen, CheckSquare, Mail, MailOpen } from "lucide-react";
@@ -163,24 +164,8 @@ export default function ConversationList({
     setContextMenu({ x: e.clientX, y: e.clientY, conversationId: conv.id, pinned: conv.pinned, readAt: conv.readAt });
   }, []);
 
-  useEffect(() => {
-    if (!contextMenu) return;
-    function close(e: MouseEvent) {
-      // Ignore events on the context menu itself
-      if (contextMenuRef.current?.contains(e.target as Node)) return;
-      setContextMenu(null);
-    }
-    // Defer so the originating right-click event finishes propagating
-    const timer = setTimeout(() => {
-      window.addEventListener("click", close);
-      window.addEventListener("contextmenu", close);
-    }, 0);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("click", close);
-      window.removeEventListener("contextmenu", close);
-    };
-  }, [contextMenu]);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  useOutsideClick(contextMenuRef, closeContextMenu, { enabled: !!contextMenu, escapeClose: false });
 
   const noResults = searchFiltered.length === 0 && debouncedQuery.length > 0;
 
