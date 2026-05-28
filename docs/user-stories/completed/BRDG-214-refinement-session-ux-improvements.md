@@ -1,6 +1,6 @@
 # BRDG-214: Refinement Session UX Improvements
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** High
 **Related:** [BRDG-170](completed/BRDG-170-refinement-session-v2.md), [BRDG-182](completed/BRDG-182-refinement-session-ui-polish.md)
 
