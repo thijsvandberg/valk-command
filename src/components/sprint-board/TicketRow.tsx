@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, memo, useRef, useCallback, useState, useEffect, useMemo } from "react";
+import { forwardRef, memo, useRef, useCallback, useState, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar";
@@ -122,17 +123,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
   const titleEditContainerRef = useRef<HTMLDivElement>(null);
 
-  // Click outside closes the editor
-  useEffect(() => {
-    if (!isEditingTitle) return;
-    function handleMouseDown(e: MouseEvent) {
-      if (titleEditContainerRef.current && !titleEditContainerRef.current.contains(e.target as Node)) {
-        onEditingTitleKeyChange?.(null);
-      }
-    }
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [isEditingTitle, onEditingTitleKeyChange]);
+  useOutsideClick(titleEditContainerRef, () => onEditingTitleKeyChange?.(null), { enabled: isEditingTitle, escapeClose: false });
 
   // Auto-size textarea: single row when text fits, expands for long text
   const autoSizeTextarea = useCallback((el: HTMLTextAreaElement) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
@@ -173,14 +174,7 @@ function TeamFilterDropdown({
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  useOutsideClick(dropdownRef, () => setOpen(false), { enabled: open });
 
   if (teams.length <= 1) return null;
 
@@ -393,21 +387,7 @@ export function SprintListModal({
 
   useEffect(() => { setSyncDone(false); }, [search]);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [onClose]);
+  useOutsideClick(ref, onClose);
 
   const handleToggleHidden = useCallback(async (sprintId: number, currentlyHidden: boolean) => {
     const currentHiddenIds = allSprints.filter((s) => s.hidden).map((s) => s.id);

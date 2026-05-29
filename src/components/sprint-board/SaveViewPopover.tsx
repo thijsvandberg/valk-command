@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
@@ -25,12 +26,9 @@ export function SaveViewPopover({
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
+  }, []);
+
+  useOutsideClick(ref, onClose);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

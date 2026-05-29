@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import { AlertTriangle, CheckCheck, Loader2, Circle, CircleCheckBig } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
@@ -69,29 +70,18 @@ function IndicatorPopover({
     return () => { cancelled = true; };
   }, [ticketKey]);
 
+  useOutsideClick([ref, triggerRef], onClose);
+
   useEffect(() => {
-    function handleOutsideClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node) &&
-          triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
     function handleScroll(e: Event) {
       if (ref.current?.contains(e.target as Node)) return;
       onClose();
     }
-    document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("scroll", handleScroll, { capture: true });
     };
-  }, [onClose, triggerRef]);
+  }, [onClose]);
 
   const handleClose = useCallback(async () => {
     if (!onCloseSubtasks || closing) return;

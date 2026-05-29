@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { POStatus } from "@/types/ticket";
 import { PO_STATUS_OPTIONS } from "@/types/ticket";
 import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
@@ -148,15 +149,7 @@ export function POStatusCell({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const colors = value ? PO_STATUS_COLORS[value] : null;
 

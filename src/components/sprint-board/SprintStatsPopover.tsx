@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import useSWR from "swr";
 import type { Ticket, JiraStatus, Sprint } from "@/types/ticket";
 import { getEpicColor } from "@/types/ticket";
@@ -114,17 +115,7 @@ export function SprintStatsPopover({
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [dropdownOpen]);
+  useOutsideClick(dropdownRef, () => setDropdownOpen(false), { enabled: dropdownOpen, escapeClose: false });
 
   const stats = useMemo(() => {
     let totalSp = 0;

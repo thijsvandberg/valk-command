@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket } from "@/types/ticket";
 
 interface ShortcutsDeps {
@@ -27,15 +28,7 @@ export function useSprintBoardShortcuts(deps: ShortcutsDeps) {
     return () => { window.removeEventListener("valk:openSearch", onOpenSearch); };
   }, [setSearchModalOpen]);
 
-  // Close header menu on outside click
-  useEffect(() => {
-    if (!headerMenuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) setHeaderMenuOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [headerMenuOpen, headerMenuRef, setHeaderMenuOpen]);
+  useOutsideClick(headerMenuRef, () => setHeaderMenuOpen(false), { enabled: headerMenuOpen });
 
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;

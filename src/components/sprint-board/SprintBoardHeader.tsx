@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
 import type { Sprint, Ticket } from "@/types/ticket";
 import type { SprintStats } from "@/components/sprint-board/sprint-board-utils";
@@ -89,14 +90,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
     setGoalSuggestionUrl(url);
   }, [activeSprintId]);
 
-  useEffect(() => {
-    if (!headerMenuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) setHeaderMenuOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [headerMenuOpen]);
+  useOutsideClick(headerMenuRef, () => setHeaderMenuOpen(false), { enabled: headerMenuOpen });
 
   const handleToggleFollowSprint = useCallback(async () => {
     if (!activeSprintName) return;

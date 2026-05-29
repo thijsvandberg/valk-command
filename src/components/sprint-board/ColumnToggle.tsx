@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Columns3, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { COLUMNS } from "@/components/sprint-board/filter-bar-types";
@@ -108,15 +109,7 @@ export function ColumnToggle({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),

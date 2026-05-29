@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { CheckCircle2, AlertTriangle, RefreshCw, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
@@ -134,22 +135,7 @@ export function ReviewPopover({
     };
   }, [anchorRef]);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [onClose]);
+  useOutsideClick(popoverRef, onClose);
 
   async function handleRunReview() {
     setReviewing(true);

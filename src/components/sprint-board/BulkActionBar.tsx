@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useRef, useMemo, type ReactNode } from "react";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import { swrFetcher } from "@/lib/api-client";
@@ -12,6 +12,7 @@ import {
   JIRA_STATUS_ABBREVIATIONS,
 } from "@/types/ticket";
 import { ReadinessIcon } from "@/components/shared/ReadinessCell";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
 import {
@@ -25,32 +26,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
-
-// ---------------------------------------------------------------------------
-// Shared click-outside hook
-// ---------------------------------------------------------------------------
-
-function useClickOutside(
-  ref: React.RefObject<HTMLElement | null>,
-  open: boolean,
-  onClose: () => void,
-) {
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open, ref, onClose]);
-}
 
 // ---------------------------------------------------------------------------
 // Dropdown menu item
@@ -419,7 +394,7 @@ function UpdateDropdown({
   const [subView, setSubView] = useState<UpdateSubView>("menu");
   const ref = useRef<HTMLDivElement>(null);
 
-  useClickOutside(ref, open, () => { setOpen(false); setSubView("menu"); });
+  useOutsideClick(ref, () => { setOpen(false); setSubView("menu"); }, { enabled: open });
 
   const close = () => { setOpen(false); setSubView("menu"); };
 
@@ -579,7 +554,7 @@ function AiAssistDropdown({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useClickOutside(ref, open, () => setOpen(false));
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const hasAnyAction = onReviewStory || onGenerateSubtasks || onSummarizedList;
   if (!hasAnyAction) return null;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Search, X } from "lucide-react";
 import { TextInput } from "@/components/shared/TextInput";
 
@@ -16,16 +17,7 @@ export function ExpandableSearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const isOpen = expanded || value.length > 0;
 
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node) && !value) {
-        setExpanded(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen, value]);
+  useOutsideClick(containerRef, () => setExpanded(false), { enabled: expanded && !value, escapeClose: false });
 
   if (!isOpen) {
     return (

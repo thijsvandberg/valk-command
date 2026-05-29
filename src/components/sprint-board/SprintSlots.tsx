@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
 import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Gem, X, Plus, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -106,15 +107,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const isActive = value !== "none";
   return (
