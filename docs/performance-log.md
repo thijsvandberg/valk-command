@@ -66,3 +66,16 @@ Key bottlenecks (all pre-existing / external, none caused by the change):
 - **External untracked file**: `src/app/(app)/dev/ticket-pills/page.tsx` appeared mid-session
   from an external process and breaks `routes.test.tsx` (not in the route manifest). Left
   untouched as out of scope.
+
+## BRDG-234 — Unify standalone chat with Story Writer chat (2026-05-29)
+
+Frontend consolidation story. Smooth overall; one environment bottleneck.
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent; correctly flagged the StoryWriterChat input fork and the model/codebase send-path gap. Narrowed checkbox 2 to "footer controls only" (not full input migration) to cut regression risk. |
+| Implementation | Extracted ModelSelector/CodebaseToggle/QuickActionsPopover to shared/chat-controls; routed /chat through shared ChatInput with footer slots + width; wired model (top-level body field) + codebase (args prefix, applied agent-side only) through submitAndStream and chat-messages route; shared StreamingIndicator across 3 surfaces. |
+| Test verification | New tests for the 4 shared components + MessageInput + chat-messages model forwarding. Full suite: 3513 passed; build clean. |
+
+Key bottlenecks:
+- **Stale TS build artifacts** (`.tsbuildinfo`, `.next-build/types/**`) produced phantom/cascading `tsc --noEmit` errors (TS18047 in route tests, ghost errors in untouched confluence/workspace-tasks tests) that flip-flopped across runs. Resolved by deleting `*.tsbuildinfo` and `.next-build` before a clean check; `npm run typecheck` then exits 0. Worth clearing these first when typecheck output looks inconsistent.
