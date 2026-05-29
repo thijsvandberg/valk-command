@@ -36,7 +36,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { id } = await params;
@@ -119,7 +119,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const { id } = await params;

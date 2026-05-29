@@ -20,7 +20,7 @@ import { parseJsonBody } from "@/lib/request-parser";
  *   targetSprintId: string  - destination sprint ID
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);

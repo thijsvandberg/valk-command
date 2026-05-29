@@ -13,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);

@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
  * Body: { pageId, pageTitle, pageUrl, lastModifiedAt?, lastModifiedBy?, source? }
  */
 export async function POST(req: NextRequest, { params }: RouteParams) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key } = await params;
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
  * Unlinks a Confluence page. Body: { linkId }
  */
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const { key } = await params;

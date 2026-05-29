@@ -39,7 +39,7 @@ function sprintToStored(s: { id: number; name: string; state: string; startDate?
  * Merges with existing cached data so syncing one scope does not wipe the other.
  */
 export async function POST(request: NextRequest) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   const scope = request.nextUrl.searchParams.get("scope") || "sprints";

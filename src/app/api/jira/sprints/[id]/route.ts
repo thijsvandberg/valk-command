@@ -29,7 +29,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { id } = await params;

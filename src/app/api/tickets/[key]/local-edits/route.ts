@@ -24,7 +24,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key: rawKey } = await params;
@@ -50,7 +50,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const { key: rawKey } = await params;
@@ -67,7 +67,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key: rawKey } = await params;

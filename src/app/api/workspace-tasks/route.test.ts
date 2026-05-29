@@ -73,7 +73,7 @@ function makeGetRequest(search = "") {
 describe("GET /api/workspace-tasks", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(applyRateLimit).mockReturnValue(null);
+    vi.mocked(applyRateLimit).mockResolvedValue(null);
   });
 
   it("returns agent data on success", async () => {
@@ -127,7 +127,7 @@ describe("GET /api/workspace-tasks", () => {
 describe("POST /api/workspace-tasks", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(applyRateLimit).mockReturnValue(null);
+    vi.mocked(applyRateLimit).mockResolvedValue(null);
     mockDb.query.conversation.findFirst.mockResolvedValue({ id: "conv-1" });
   });
 
@@ -181,7 +181,7 @@ describe("POST /api/workspace-tasks", () => {
   });
 
   it("returns 429 when rate limited", async () => {
-    vi.mocked(applyRateLimit).mockReturnValue(
+    vi.mocked(applyRateLimit).mockResolvedValue(
       new Response(JSON.stringify({ error: "Too many requests" }), { status: 429 })
     );
 

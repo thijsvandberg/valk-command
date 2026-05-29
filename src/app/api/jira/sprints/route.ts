@@ -98,7 +98,7 @@ export async function GET() {
  * Body: { hiddenIds: number[] }
  */
 export async function PUT(request: NextRequest) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   try {
@@ -141,7 +141,7 @@ interface StoredSprint {
  * Body: { name: string; startDate?: string; endDate?: string; goal?: string }
  */
 export async function POST(request: NextRequest) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);

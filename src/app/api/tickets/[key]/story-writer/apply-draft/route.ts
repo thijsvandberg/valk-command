@@ -22,7 +22,7 @@ type RouteContext = { params: Promise<{ key: string }> };
  * Never auto-applies to localDraft; the user explicitly accepts/merges.
  */
 export async function POST(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key: rawKey } = await params;
@@ -183,7 +183,7 @@ async function fetchAndStoreExecutionLog(
  * DELETE: dismiss a specific AI draft by ID (query param ?draftId=xxx)
  */
 export async function DELETE(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const { key: rawKey } = await params;

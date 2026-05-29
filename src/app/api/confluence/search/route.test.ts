@@ -37,7 +37,7 @@ function makeRequest(search = "") {
 describe("GET /api/confluence/search", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(applyRateLimit).mockReturnValue(null);
+    vi.mocked(applyRateLimit).mockResolvedValue(null);
     Object.assign(confluenceClient, { isLive: true });
   });
 

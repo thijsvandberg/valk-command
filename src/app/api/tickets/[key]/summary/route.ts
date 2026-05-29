@@ -15,7 +15,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 type RouteContext = { params: Promise<{ key: string }> };
 
 export async function PUT(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key } = await params;

@@ -42,7 +42,7 @@ export async function GET() {
 
 // PUT /api/pipelines/deploy-settings
 export async function PUT(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const body = await request.json() as DeployNotificationSettings;

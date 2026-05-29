@@ -21,7 +21,7 @@ type RouteContext = { params: Promise<{ key: string }> };
  * Replaces any previous candidates for this session.
  */
 export async function POST(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key: rawKey } = await params;
@@ -113,7 +113,7 @@ export async function POST(request: Request, { params }: RouteContext) {
  * When unlinking, removes that ticketLink entry.
  */
 export async function PATCH(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key: rawKey } = await params;

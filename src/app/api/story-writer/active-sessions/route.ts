@@ -74,7 +74,7 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const { searchParams } = new URL(request.url);

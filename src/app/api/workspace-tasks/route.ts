@@ -120,7 +120,7 @@ function buildPromptSummary(skillName: string, args: Record<string, unknown>): s
 }
 
 export async function POST(request: Request) {
-  const limited = applyRateLimit("workspace");
+  const limited = await applyRateLimit("workspace");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);

@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   try {

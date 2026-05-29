@@ -20,7 +20,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key } = await params;

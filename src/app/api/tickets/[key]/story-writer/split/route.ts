@@ -19,7 +19,7 @@ type RouteContext = { params: Promise<{ key: string }> };
  * inserts a minimal local record, and creates bidirectional ticketLink rows.
  */
 export async function POST(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key: rawKey } = await params;

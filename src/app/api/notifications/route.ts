@@ -102,7 +102,7 @@ export async function GET(request: Request) {
 
 // POST /api/notifications - create a notification
 export async function POST(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
 // { ids: string[] }     → mark specific IDs as read (filtered bulk action)
 // { id: string }        → mark single notification as read
 export async function PATCH(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);
@@ -164,7 +164,7 @@ export async function PATCH(request: Request) {
 // ?ids=a,b,c         → delete specific read notifications (filtered bulk clear)
 // (no params)        → delete all read notifications
 export async function DELETE(request: Request) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const url = new URL(request.url);

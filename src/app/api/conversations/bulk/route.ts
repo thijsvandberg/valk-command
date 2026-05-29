@@ -15,7 +15,7 @@ interface BulkBody {
 }
 
 export async function PATCH(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);

@@ -46,7 +46,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
  * When the task completes, the client calls PUT with the output to parse + cache.
  */
 export async function POST(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key } = await params;
@@ -114,7 +114,7 @@ export async function POST(request: Request, { params }: RouteContext) {
  * Called by the client after the task stream emits a "result" event.
  */
 export async function PUT(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key } = await params;

@@ -16,7 +16,7 @@ type RouteContext = { params: Promise<{ key: string }> };
 const CLOSED_STATUSES: JiraStatus[] = ["DONE", "DEPRECATED"];
 
 export async function POST(_request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const { key } = await params;

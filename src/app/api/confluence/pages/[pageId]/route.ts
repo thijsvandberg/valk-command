@@ -91,7 +91,7 @@ function htmlToText(html: string, maxWords: number): { text: string; truncated: 
  * maxWords (default 500, max 3000): controls content length
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
-  const limited = applyRateLimit("read");
+  const limited = await applyRateLimit("read");
   if (limited) return limited;
 
   const { pageId } = await params;

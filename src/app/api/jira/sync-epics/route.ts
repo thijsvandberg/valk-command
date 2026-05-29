@@ -17,7 +17,7 @@ import { logger } from "@/lib/logger";
  * Called when the EpicPicker opens and the local epic list is empty or stale.
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   const logId = `sync-epics-${crypto.randomUUID()}`;

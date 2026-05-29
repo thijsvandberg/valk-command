@@ -22,7 +22,7 @@ import { parseJsonBody } from "@/lib/request-parser";
  *   avatar:    string|null - avatar URL (for local update)
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);

@@ -11,7 +11,7 @@ import { parseJsonBody } from "@/lib/request-parser";
  * Retries Jira creation for a failed draft ticket.
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("story-writer");
+  const limited = await applyRateLimit("story-writer");
   if (limited) return limited;
 
   const result = await parseJsonBody(request);

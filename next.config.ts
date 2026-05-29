@@ -49,6 +49,12 @@ const nextConfig: NextConfig = {
     position: "bottom-right",
   },
   experimental: {
+    // App Router route handlers ignore the Pages-Router bodyParser config, so
+    // the inbound body size cap is enforced in middleware (see src/middleware.ts).
+    // This setting bounds Server Action payloads as a complementary measure.
+    serverActions: {
+      bodySizeLimit: "1mb",
+    },
     optimizePackageImports: [
       "@tiptap/react",
       "@tiptap/core",

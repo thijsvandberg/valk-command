@@ -23,7 +23,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const limited = applyRateLimit("workspace");
+  const limited = await applyRateLimit("workspace");
   if (limited) return limited;
 
   const { id: sprintId } = await params;

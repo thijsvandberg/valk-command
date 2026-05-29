@@ -41,60 +41,87 @@ describe("rate-limiter", () => {
   });
 
   describe("applyRateLimit", () => {
-    it("returns null when not limited", () => {
-      const result = applyRateLimit("read");
+    it("returns null when not limited", async () => {
+      const result = await applyRateLimit("read");
       expect(result).toBeNull();
     });
 
-    it("returns 429 response when limited", () => {
+    it("returns 429 response when limited", async () => {
       for (let i = 0; i < 120; i++) {
-        applyRateLimit("read");
+        await applyRateLimit("read");
       }
-      const result = applyRateLimit("read");
+      const result = await applyRateLimit("read");
       expect(result).not.toBeNull();
       expect(result!.status).toBe(429);
     });
   });
 
   describe("write tier", () => {
-    it("allows up to 30 requests", () => {
+    it("allows up to 30 requests", async () => {
       for (let i = 0; i < 30; i++) {
-        expect(applyRateLimit("write")).toBeNull();
+        expect(await applyRateLimit("write")).toBeNull();
       }
-      const result = applyRateLimit("write");
+      const result = await applyRateLimit("write");
       expect(result).not.toBeNull();
       expect(result!.status).toBe(429);
     });
 
-    it("includes Retry-After header on 429", () => {
-      for (let i = 0; i < 30; i++) applyRateLimit("write");
-      const result = applyRateLimit("write")!;
+    it("includes Retry-After header on 429", async () => {
+      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      const result = (await applyRateLimit("write"))!;
       expect(result.headers.get("Retry-After")).toBeTruthy();
       expect(Number(result.headers.get("Retry-After"))).toBeGreaterThan(0);
     });
 
     it("includes error message in body", async () => {
-      for (let i = 0; i < 30; i++) applyRateLimit("write");
-      const result = applyRateLimit("write")!;
+      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      const result = (await applyRateLimit("write"))!;
       const body = await result.json();
       expect(body.error).toMatch(/too many requests/i);
     });
   });
 
   describe("delete tier", () => {
-    it("allows up to 15 requests", () => {
+    it("allows up to 15 requests", async () => {
       for (let i = 0; i < 15; i++) {
-        expect(applyRateLimit("delete")).toBeNull();
+        expect(await applyRateLimit("delete")).toBeNull();
       }
-      const result = applyRateLimit("delete");
+      const result = await applyRateLimit("delete");
       expect(result).not.toBeNull();
       expect(result!.status).toBe(429);
     });
 
-    it("uses separate bucket from write tier", () => {
-      for (let i = 0; i < 30; i++) applyRateLimit("write");
-      expect(applyRateLimit("write")!.status).toBe(429);
-      expect(applyRateLimit("delete")).toBeNull();
+    it("uses separate bucket from write tier", async () => {
+      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      expect((await applyRateLimit("write"))!.status).toBe(429);
+      expect(await applyRateLimit("delete")).toBeNull();
+    });
+  });
+
+  describe("per-user bucketing", () => {
+    it("isolates buckets per user within the same tier", async () => {
+      // User A exhausts the write tier (30/min).
+      for (let i = 0; i < 30; i++) {
+        expect(await applyRateLimit("write", "user-a")).toBeNull();
+      }
+      expect((await applyRateLimit("write", "user-a"))!.status).toBe(429);
+
+      // User B is unaffected by user A's usage.
+      expect(await applyRateLimit("write", "user-b")).toBeNull();
+    });
+
+    it("keys buckets by tier and user id", async () => {
+      await applyRateLimit("write", "user-a");
+      await applyRateLimit("write", "user-b");
+      expect(buckets.has("write:user-a")).toBe(true);
+      expect(buckets.has("write:user-b")).toBe(true);
+    });
+
+    it("falls back to a shared global bucket when no user is present", async () => {
+      // No user id available (e.g. outside a request scope) maps to "global".
+      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      expect((await applyRateLimit("write"))!.status).toBe(429);
+      expect(buckets.has("write:global")).toBe(true);
     });
   });
 

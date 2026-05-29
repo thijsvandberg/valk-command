@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   // Delete all analyses for a sprint (cleanup)

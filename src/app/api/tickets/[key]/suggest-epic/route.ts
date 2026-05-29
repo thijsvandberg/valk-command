@@ -17,7 +17,7 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const limited = applyRateLimit("workspace");
+  const limited = await applyRateLimit("workspace");
   if (limited) return limited;
 
   const { key } = await params;

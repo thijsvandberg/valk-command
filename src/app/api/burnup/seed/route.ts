@@ -17,7 +17,7 @@ import { safeJsonParse } from "@/lib/api-validation";
  * for all tickets that were ever in the sprint.
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   const { searchParams } = new URL(request.url);

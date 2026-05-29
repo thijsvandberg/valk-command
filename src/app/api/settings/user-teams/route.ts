@@ -37,7 +37,7 @@ export async function GET() {
 
 // PUT /api/settings/user-teams - replace all team assignments for a user
 export async function PUT(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request, setTeamsSchema);

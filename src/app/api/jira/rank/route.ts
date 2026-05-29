@@ -23,7 +23,7 @@ import { parseJsonBody } from "@/lib/request-parser";
  *   sprintId:     string    - used to refresh all local ranks after the move
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);

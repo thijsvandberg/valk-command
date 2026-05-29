@@ -45,7 +45,7 @@ async function callGET(pageId: string, search = "") {
 describe("GET /api/confluence/pages/[pageId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(applyRateLimit).mockReturnValue(null);
+    vi.mocked(applyRateLimit).mockResolvedValue(null);
     Object.assign(confluenceClient, { isLive: true });
     vi.mocked(confluenceClient.getPage).mockResolvedValue(MOCK_PAGE);
   });

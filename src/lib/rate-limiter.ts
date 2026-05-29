@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 interface RateLimitEntry {
   timestamps: number[];
@@ -65,12 +66,39 @@ const TIER_CONFIG: Record<RateLimitTier, { maxRequests: number; windowMs: number
 };
 
 /**
+ * Resolve the per-user segment for a rate-limit bucket.
+ *
+ * The authenticated user id is forwarded by middleware as the `x-bridge-user-id`
+ * request header. We fall back to a shared "global" segment when no user is
+ * available (public routes, the dev bypass, or outside a request scope such as
+ * unit tests) so callers never have to special-case the absence of a session.
+ */
+async function resolveUserSegment(userIdOverride?: string): Promise<string> {
+  if (userIdOverride !== undefined) return userIdOverride;
+  try {
+    const requestHeaders = await headers();
+    return requestHeaders.get("x-bridge-user-id") ?? "global";
+  } catch {
+    return "global";
+  }
+}
+
+/**
  * Check rate limit for a tier. Returns a 429 Response if limited, or null if allowed.
  * Call at the top of a route handler and return the response if non-null.
+ *
+ * Buckets are keyed by tier AND the authenticated user so one session cannot
+ * exhaust the limit for everyone. Pass `userIdOverride` to bucket explicitly
+ * (used in tests); otherwise the user is read from the request context.
  */
-export function applyRateLimit(tier: RateLimitTier): Response | null {
+export async function applyRateLimit(
+  tier: RateLimitTier,
+  userIdOverride?: string,
+): Promise<Response | null> {
   const config = TIER_CONFIG[tier];
-  const retryAfter = checkRateLimit(tier, config.maxRequests, config.windowMs);
+  const segment = await resolveUserSegment(userIdOverride);
+  const key = `${tier}:${segment}`;
+  const retryAfter = checkRateLimit(key, config.maxRequests, config.windowMs);
   if (retryAfter !== null) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

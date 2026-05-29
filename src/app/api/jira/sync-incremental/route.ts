@@ -34,7 +34,7 @@ const COOLDOWN_MS = 120_000;
  * 5-minute cooldown, independent of the ticket sync cooldown.
  */
 export async function POST() {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   if (!jiraClient.isLive) {

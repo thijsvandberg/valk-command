@@ -16,7 +16,7 @@ import { errorResponse } from "@/lib/api-response";
  * and upserts them into the jira_comment table.
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   // Suffix with a random token so two syncs in the same millisecond cannot

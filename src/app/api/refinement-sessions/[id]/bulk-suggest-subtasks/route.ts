@@ -119,7 +119,7 @@ async function captureSubtaskResult(taskId: string): Promise<{ output: string | 
  * Body: { force?: boolean } - when true, regenerates even if suggestions are up to date.
  */
 export async function POST(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("workspace");
+  const limited = await applyRateLimit("workspace");
   if (limited) return limited;
 
   const { id } = await params;

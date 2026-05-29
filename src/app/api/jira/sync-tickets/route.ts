@@ -16,7 +16,7 @@ const ticketKeysBodySchema = z.object({
  *   2. Query ?sprintId=xxx&strategy=bulk|timestamp-first - syncs all sprint tickets
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("sync");
+  const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
   const { searchParams } = new URL(request.url);

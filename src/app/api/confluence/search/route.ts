@@ -17,7 +17,7 @@ type SearchMode = (typeof VALID_MODES)[number];
  * It is ignored when mode=cql (the caller controls the full CQL expression).
  */
 export async function GET(req: NextRequest) {
-  const limited = applyRateLimit("read");
+  const limited = await applyRateLimit("read");
   if (limited) return limited;
 
   const sp = new URL(req.url).searchParams;

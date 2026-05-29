@@ -21,7 +21,7 @@ export async function GET() {
 
 // POST /api/followed-sprints - follow a sprint (idempotent)
 export async function POST(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
 // DELETE /api/followed-sprints - unfollow a sprint
 export async function DELETE(request: Request) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const url = new URL(request.url);

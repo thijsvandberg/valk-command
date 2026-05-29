@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
  * Returns the new ticket key so the caller can navigate to /tickets/[key]/write.
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("story-writer");
+  const limited = await applyRateLimit("story-writer");
   if (limited) return limited;
 
   let body: { title?: string; sprintId?: string; issueType?: string } = {};

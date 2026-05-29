@@ -12,7 +12,7 @@ import { syncDraftToJira } from "@/lib/draft-sync";
  * Jira creation runs in the background.
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("story-writer");
+  const limited = await applyRateLimit("story-writer");
   if (limited) return limited;
 
   let body: { title?: string; sprintId?: string; issueType?: string; draftKey?: string } = {};

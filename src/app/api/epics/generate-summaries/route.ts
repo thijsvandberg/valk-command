@@ -17,7 +17,7 @@ import { logger } from "@/lib/logger";
  * and upserts summaries into the ticket table.
  */
 export async function POST(request: Request) {
-  const limited = applyRateLimit("workspace");
+  const limited = await applyRateLimit("workspace");
   if (limited) return limited;
 
   const epicRows = await db

@@ -14,7 +14,7 @@ import {
 type RouteContext = { params: Promise<{ key: string }> };
 
 export async function POST(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("story-writer");
+  const limited = await applyRateLimit("story-writer");
   if (limited) return limited;
 
   const { key: rawKey } = await params;
@@ -54,7 +54,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 }
 
 export async function DELETE(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const { key: rawKey } = await params;

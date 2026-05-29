@@ -67,7 +67,7 @@ function makeParams(id: string) {
 describe("POST /api/conversations/[id]/chat-messages", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(applyRateLimit).mockReturnValue(null);
+    vi.mocked(applyRateLimit).mockResolvedValue(null);
     mockDb.query.conversation.findFirst.mockResolvedValue({
       id: "conv-1",
       title: "Chat: hello",
@@ -181,7 +181,7 @@ describe("POST /api/conversations/[id]/chat-messages", () => {
   });
 
   it("returns 429 when rate limited", async () => {
-    vi.mocked(applyRateLimit).mockReturnValue(
+    vi.mocked(applyRateLimit).mockResolvedValue(
       new Response(JSON.stringify({ error: "Too many requests" }), { status: 429 })
     );
 

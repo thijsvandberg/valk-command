@@ -9,7 +9,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ key: string; id: string }> },
 ) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const { key, id } = await params;

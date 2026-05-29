@@ -23,7 +23,7 @@ export async function GET() {
 
 // POST /api/settings/favorite-users - add a favorite (idempotent)
 export async function POST(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request, favoriteUserSchema);
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
 // DELETE /api/settings/favorite-users?displayName=...
 export async function DELETE(request: Request) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const url = new URL(request.url);

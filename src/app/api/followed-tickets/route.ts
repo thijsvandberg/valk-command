@@ -22,7 +22,7 @@ export async function GET() {
 
 // POST /api/followed-tickets - follow a ticket (idempotent)
 export async function POST(request: Request) {
-  const limited = applyRateLimit("write");
+  const limited = await applyRateLimit("write");
   if (limited) return limited;
 
   const parsed = await parseJsonBody(request);
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
 // DELETE /api/followed-tickets - unfollow a ticket
 export async function DELETE(request: Request) {
-  const limited = applyRateLimit("delete");
+  const limited = await applyRateLimit("delete");
   if (limited) return limited;
 
   const url = new URL(request.url);
