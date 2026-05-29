@@ -1,12 +1,16 @@
 "use client";
 
 import { usePaneContext, type PaneAppId } from "./PaneContext";
+import { useFocusModeContext } from "@/contexts/FocusModeContext";
 
 // Width (px) of each inactive-pane drop slot shown during drag
 const EXPAND_SLOT_W = 72;
 
 export function AppToolbar() {
   const pane = usePaneContext();
+  const { focusMode } = useFocusModeContext();
+
+  if (focusMode) return null;
 
   const visiblePaneIndices = ([0, 1, 2] as const).filter((i) => pane.paneVisible[i]);
 
