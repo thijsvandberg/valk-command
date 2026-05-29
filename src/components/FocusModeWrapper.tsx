@@ -48,12 +48,12 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Floating exit button - appears in focus mode */}
+      {/* Floating exit button - appears in focus mode, top-right to match the toggle position */}
       <button
         onClick={exitFocusMode}
         title="Exit focus mode"
         aria-label="Exit focus mode"
-        className={`fixed top-3 left-3 z-[100] flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer
+        className={`fixed top-3 right-3 z-[100] flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer
           bg-[var(--color-surface-floating)] border border-border-default
           text-text-tertiary
           hover:text-text-primary hover:bg-[var(--color-surface-elevated)]

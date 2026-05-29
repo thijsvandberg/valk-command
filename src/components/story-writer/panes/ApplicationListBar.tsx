@@ -14,6 +14,7 @@ import {
 import { usePaneContext, type PaneAppId } from "./PaneContext";
 import { useWriterContext } from "./WriterContext";
 import { BarContainer } from "@/components/shared/BarContainer";
+import { useFocusModeContext } from "@/contexts/FocusModeContext";
 
 const APP_DEFS: Array<{
   id: PaneAppId;
@@ -33,6 +34,9 @@ const APP_DEFS: Array<{
 export function ApplicationListBar() {
   const pane = usePaneContext();
   const writer = useWriterContext();
+  const { focusMode } = useFocusModeContext();
+
+  if (focusMode) return null;
 
   const visibleApps: Array<{ id: PaneAppId; label: string; icon: React.ReactNode }> = [
     ...APP_DEFS,
