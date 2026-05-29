@@ -1,6 +1,6 @@
 # BRDG-225: Improve Link Issue Search
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Enhancement + Bug Fix
 
@@ -156,5 +156,5 @@ As a PO linking related issues, I want a richer search experience so that I can 
 - [x] Apply same improvements to both LinkIssueDialog and inline LinkedIssuesSection
 - [x] Tests for search endpoint: deleted tickets excluded, sprintName included, pagination
 - [x] Tests for status filter logic
-- [ ] Manual test: search, filter by status, verify no deleted tickets appear, verify empty state
-- [ ] Manual test: scroll to load more results, expand to modal
+- [x] Manual test: search, filter by status, verify no deleted tickets appear, verify empty state
+- [x] Manual test: scroll to load more results, expand to modal
