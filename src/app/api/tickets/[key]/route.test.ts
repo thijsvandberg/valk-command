@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { cache } from "@/lib/cache";
 import { seedTicket } from "@/test/builders";
 import { buildGet, buildJson, buildParams } from "@/test/request-helpers";
+import { createJiraClientMock } from "@/test/mocks";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -17,18 +18,15 @@ vi.mock("@/db", () => ({
   },
 }));
 
-vi.mock("@/lib/jira-client", () => ({
-  jiraClient: {
-    updateIssue: vi.fn().mockResolvedValue(undefined),
-    getIssue: vi.fn().mockResolvedValue({
-      fields: { updated: "2024-06-01T00:00:00.000Z" },
-    }),
-    addComment: vi.fn().mockResolvedValue(undefined),
-    addFlagComment: vi.fn().mockResolvedValue(undefined),
-  },
-  STORY_POINTS_FIELD: "customfield_11909",
-  FLAGGED_FIELD: "customfield_10002",
-}));
+vi.mock("@/lib/jira-client", () =>
+  createJiraClientMock({
+    jiraClient: {
+      getIssue: vi.fn().mockResolvedValue({
+        fields: { updated: "2024-06-01T00:00:00.000Z" },
+      }),
+    },
+  }),
+);
 
 vi.mock("@/lib/activity-logger", () => ({
   logActivity: vi.fn().mockResolvedValue(undefined),

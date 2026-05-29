@@ -125,7 +125,7 @@ Only `jira-client` has established mock patterns (19 files). `agent-client` and 
 
 ### Implementation
 
-- [ ] Create `src/test/mocks/jira-client.ts`
+- [x] Create `src/test/mocks/jira-client.ts`
 
 Consolidate the common jira-client mock pattern used across 19 files:
 
@@ -152,7 +152,7 @@ export function createJiraClientMock(overrides?: Partial<JiraClientMock>) {
 }
 ```
 
-- [ ] Create `src/test/mocks/agent-client.ts`
+- [x] Create `src/test/mocks/agent-client.ts`
 
 ```typescript
 export function createAgentClientMock(overrides?: Partial<AgentClientMock>) {
@@ -165,7 +165,7 @@ export function createAgentClientMock(overrides?: Partial<AgentClientMock>) {
 }
 ```
 
-- [ ] Create `src/test/mocks/bitbucket-client.ts`
+- [x] Create `src/test/mocks/bitbucket-client.ts`
 
 ```typescript
 export function createBitbucketClientMock(overrides?: Partial<BitbucketClientMock>) {
@@ -181,12 +181,12 @@ export function createBitbucketClientMock(overrides?: Partial<BitbucketClientMoc
 }
 ```
 
-- [ ] Create `src/test/mocks/index.ts` that re-exports all mock factories
+- [x] Create `src/test/mocks/index.ts` that re-exports all mock factories
 
 ### Migration proof of concept
 
-- [ ] Migrate 3 existing jira-client mock files to use the factory
-- [ ] Verify tests still pass
+- [x] Migrate 3 existing jira-client mock files to use the factory
+- [x] Verify tests still pass
 
 ---
 

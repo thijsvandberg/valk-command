@@ -4,6 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { seedTicket } from "@/test/builders";
+import { createJiraClientMock } from "@/test/mocks";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -13,11 +14,7 @@ vi.mock("@/db", () => ({
   },
 }));
 
-vi.mock("@/lib/jira-client", () => ({
-  jiraClient: {
-    transitionIssue: vi.fn().mockResolvedValue(undefined),
-  },
-}));
+vi.mock("@/lib/jira-client", () => createJiraClientMock());
 
 vi.mock("@/lib/activity-logger", () => ({
   logActivity: vi.fn().mockResolvedValue(undefined),

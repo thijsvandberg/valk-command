@@ -6,6 +6,7 @@ import type * as schema from "@/db/schema";
 import { ticket, ticketLink } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { seedTicket } from "@/test/builders";
+import { createJiraClientMock } from "@/test/mocks";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -13,23 +14,23 @@ vi.mock("@/db", () => ({
   get db() { return testDb; },
 }));
 
-vi.mock("@/lib/jira-client", () => ({
-  jiraClient: {
-    createIssueLink: vi.fn().mockResolvedValue(undefined),
-    deleteIssueLink: vi.fn().mockResolvedValue(undefined),
-    getIssue: vi.fn().mockResolvedValue({
-      fields: { updated: "2024-06-15T12:00:00.000Z" },
-    }),
-    getIssueLinkTypes: vi.fn().mockResolvedValue([
-      { id: "1", name: "Relates", inward: "relates to", outward: "relates to" },
-      { id: "2", name: "Blocks", inward: "is blocked by", outward: "blocks" },
-      { id: "3", name: "Cloners", inward: "is cloned by", outward: "clones" },
-      { id: "4", name: "Duplicate", inward: "is duplicated by", outward: "duplicates" },
-      { id: "5", name: "Implementation", inward: "is implemented by", outward: "implements" },
-      { id: "6", name: "Cause", inward: "is caused by", outward: "causes" },
-    ]),
-  },
-}));
+vi.mock("@/lib/jira-client", () =>
+  createJiraClientMock({
+    jiraClient: {
+      getIssue: vi.fn().mockResolvedValue({
+        fields: { updated: "2024-06-15T12:00:00.000Z" },
+      }),
+      getIssueLinkTypes: vi.fn().mockResolvedValue([
+        { id: "1", name: "Relates", inward: "relates to", outward: "relates to" },
+        { id: "2", name: "Blocks", inward: "is blocked by", outward: "blocks" },
+        { id: "3", name: "Cloners", inward: "is cloned by", outward: "clones" },
+        { id: "4", name: "Duplicate", inward: "is duplicated by", outward: "duplicates" },
+        { id: "5", name: "Implementation", inward: "is implemented by", outward: "implements" },
+        { id: "6", name: "Cause", inward: "is caused by", outward: "causes" },
+      ]),
+    },
+  }),
+);
 
 vi.mock("@/lib/activity-logger", () => ({
   logActivity: vi.fn().mockResolvedValue(undefined),
