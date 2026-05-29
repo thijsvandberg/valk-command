@@ -1,0 +1,119 @@
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { FilterBar } from "./FilterBar";
+
+vi.mock("lucide-react", () => ({
+  X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
+  Bookmark: (props: Record<string, unknown>) => <span data-testid="bookmark" {...props} />,
+  ChevronDown: (props: Record<string, unknown>) => <span data-testid="chevron" {...props} />,
+  Search: (props: Record<string, unknown>) => <span data-testid="search" {...props} />,
+}));
+
+vi.mock("@/components/shared/FilterDropdown", () => ({
+  FilterDropdown: ({ label, onChange }: { label: string; onChange: (s: Set<string>) => void }) => (
+    <button data-testid={`filter-${label.toLowerCase()}`} onClick={() => onChange(new Set(["test"]))}>
+      {label}
+    </button>
+  ),
+}));
+
+vi.mock("@/components/shared/IssueTypeIcon", () => ({
+  IssueTypeIcon: () => <span data-testid="issue-type-icon" />,
+  ISSUE_TYPE_COLORS: {},
+}));
+
+vi.mock("@/components/ui/Button", () => ({
+  Button: ({ children, onClick, title, ...rest }: Record<string, unknown>) => (
+    <button onClick={onClick as () => void} title={title as string}>
+      {rest.icon as React.ReactNode}
+      {children as React.ReactNode}
+    </button>
+  ),
+}));
+
+vi.mock("@/components/shared/BarContainer", () => ({
+  BarContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-container">{children}</div>,
+  BarDivider: () => <span data-testid="divider" />,
+}));
+
+vi.mock("@/components/sprint-board/SaveViewPopover", () => ({
+  SaveViewPopover: () => <div data-testid="save-view-popover" />,
+}));
+
+vi.mock("@/components/sprint-board/ExpandableSearch", () => ({
+  ExpandableSearch: ({ value, onChange }: { value: string; onChange: (q: string) => void }) => (
+    <input data-testid="search-input" value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
+
+const defaultProps = {
+  statusFilter: new Set<string>(),
+  epicFilter: new Set<string>(),
+  assigneeFilter: new Set<string>(),
+  readinessFilter: new Set<string>(),
+  editStateFilter: new Set<string>(),
+  issueTypeFilter: new Set<string>(),
+  onStatusFilterChange: vi.fn(),
+  onEpicFilterChange: vi.fn(),
+  onAssigneeFilterChange: vi.fn(),
+  onReadinessFilterChange: vi.fn(),
+  onEditStateFilterChange: vi.fn(),
+  onIssueTypeFilterChange: vi.fn(),
+  statusOptions: ["TO DO", "IN PROGRESS", "DONE"],
+  epicOptions: ["Epic 1"],
+  assigneeOptions: ["Alice"],
+  issueTypeOptions: ["Story"],
+};
+
+describe("FilterBar", () => {
+  it("renders all filter dropdowns", () => {
+    render(<FilterBar {...defaultProps} />);
+    expect(screen.getByTestId("filter-status")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-epic")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-assignee")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-readiness")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-changes")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-type")).toBeInTheDocument();
+  });
+
+  it("does not render Clear button when no filters active", () => {
+    render(<FilterBar {...defaultProps} />);
+    expect(screen.queryByTitle("Clear all filters")).not.toBeInTheDocument();
+  });
+
+  it("renders Clear button when filters are active", () => {
+    render(<FilterBar {...defaultProps} statusFilter={new Set(["TO DO"])} />);
+    expect(screen.getByTitle("Clear all filters")).toBeInTheDocument();
+  });
+
+  it("clears all filters when Clear clicked", () => {
+    const props = {
+      ...defaultProps,
+      statusFilter: new Set(["TO DO"]),
+    };
+    render(<FilterBar {...props} />);
+    fireEvent.click(screen.getByTitle("Clear all filters"));
+    expect(props.onStatusFilterChange).toHaveBeenCalledWith(new Set());
+    expect(props.onEpicFilterChange).toHaveBeenCalledWith(new Set());
+    expect(props.onAssigneeFilterChange).toHaveBeenCalledWith(new Set());
+    expect(props.onReadinessFilterChange).toHaveBeenCalledWith(new Set());
+    expect(props.onEditStateFilterChange).toHaveBeenCalledWith(new Set());
+    expect(props.onIssueTypeFilterChange).toHaveBeenCalledWith(new Set());
+  });
+
+  it("renders search input when onSearchChange provided", () => {
+    render(<FilterBar {...defaultProps} searchQuery="" onSearchChange={vi.fn()} />);
+    expect(screen.getByTestId("search-input")).toBeInTheDocument();
+  });
+
+  it("renders save view button when onSaveView provided", () => {
+    render(<FilterBar {...defaultProps} onSaveView={vi.fn()} />);
+    expect(screen.getByTitle("Save current filter view")).toBeInTheDocument();
+  });
+
+  it("calls filter onChange when a filter dropdown selection changes", () => {
+    render(<FilterBar {...defaultProps} />);
+    fireEvent.click(screen.getByTestId("filter-status"));
+    expect(defaultProps.onStatusFilterChange).toHaveBeenCalledWith(new Set(["test"]));
+  });
+});
